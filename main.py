@@ -31,6 +31,8 @@ ROOT = Path(__file__).resolve().parent
 DATA = Path(os.environ.get("DATA_DIR") or (ROOT / "data"))
 JOBS = DATA / "jobs"
 USAGE_FILE = DATA / "usage.json"
+# keys: from repo (shipped with deploy) + optional override on volume
+CODES_FILE_REPO = ROOT / "data" / "access_codes.json"
 ACCESS_FILE = DATA / "access_codes.json"
 STATIC = ROOT / "static"
 TEMPLATES = ROOT / "templates"
@@ -70,13 +72,15 @@ def _load_codes() -> dict:
         c = c.strip()
         if c:
             codes[c.upper()] = {"type": "unlimited", "label": "Custom"}
-    if ACCESS_FILE.is_file():
-        try:
-            data = json.loads(ACCESS_FILE.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                codes.update({k.upper(): v for k, v in data.items()})
-        except Exception:
-            pass
+    # 1) bundled with app (git), 2) optional on volume
+    for path in (CODES_FILE_REPO, ACCESS_FILE):
+        if path.is_file():
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    codes.update({str(k).upper(): v for k, v in data.items()})
+            except Exception as e:
+                print("load codes", path, e)
     return codes
 
 
