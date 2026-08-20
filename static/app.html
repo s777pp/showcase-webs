@@ -772,17 +772,50 @@ document.getElementById('btnLogout').onclick = async () => {
 document.getElementById('btnUpgrade').onclick = () => {
   window.open('https://funpay.com/lots/offer?id=75265310', '_blank');
 };
-document.getElementById('btnUnlock').onclick = async () => {
-  const code = document.getElementById('accessCode').value.trim();
-  const r = await fetch('/api/unlock', {
-    method:'POST',
-    headers:{...headers(), 'Content-Type':'application/json'},
-    body: JSON.stringify({code})
-  });
-  const j = await r.json();
-  if (j.ok) { localStorage.removeItem('sm_token'); state.token=''; alert(j.msg || 'Pro activated'); refreshQuota(); }
-  else alert(j.msg || 'Error');
-};
+async function doUnlock(code, statusEl) {
+  code = (code || '').trim();
+  if (!code) {
+    if (statusEl) { statusEl.className = 'status err'; statusEl.textContent = 'Enter a code'; }
+    else alert('Enter a code');
+    return;
+  }
+  if (!localStorage.getItem('sm_session') && !state.session) {
+    if (statusEl) { statusEl.className = 'status err'; statusEl.textContent = 'Log in first'; }
+    else alert('Log in first');
+    return;
+  }
+  if (statusEl) { statusEl.className = 'status'; statusEl.textContent = 'Activating…'; }
+  try {
+    const r = await fetch('/api/unlock', {
+      method: 'POST',
+      headers: { ...headers(), 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ code }),
+    });
+    const j = await r.json();
+    if (j.ok) {
+      localStorage.removeItem('sm_token');
+      state.token = '';
+      if (statusEl) { statusEl.className = 'status ok'; statusEl.textContent = j.msg || 'Pro activated'; }
+      else alert(j.msg || 'Pro activated');
+      try { await refreshQuota(); } catch (e) {}
+      try { await refreshAccountUI(); } catch (e) {}
+    } else {
+      const msg = j.msg || 'Error';
+      if (statusEl) { statusEl.className = 'status err'; statusEl.textContent = msg; }
+      else alert(msg);
+    }
+  } catch (e) {
+    if (statusEl) { statusEl.className = 'status err'; statusEl.textContent = String(e); }
+    else alert(String(e));
+  }
+}
+document.getElementById('btnUnlock')?.addEventListener('click', () => {
+  doUnlock(document.getElementById('accessCode')?.value, document.getElementById('accProfileStatus') || document.getElementById('quotaBox'));
+});
+document.getElementById('btnUnlock2')?.addEventListener('click', () => {
+  doUnlock(document.getElementById('accessCode2')?.value, document.getElementById('accProfileStatus'));
+});
 
 document.querySelectorAll('#nav button').forEach(btn => {
   btn.onclick = () => {
