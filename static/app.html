@@ -152,6 +152,7 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
     <button data-tab="preview">Предпросмотр</button>
     <button data-tab="steam">Steam</button>
     <button data-tab="da">DeviantArt</button>
+    <button data-tab="account">Аккаунт</button>
     <button data-tab="about">О сервисе</button>
   </nav>
   <div class="side-foot">
@@ -271,6 +272,45 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
     </div>
   </section>
 
+  
+  <section class="tab" id="tab-account">
+    <div class="card" id="accGuest">
+      <h2>Вход или регистрация</h2>
+      <p class="steps" style="margin-bottom:16px">Создай аккаунт, чтобы купить Pro прямо на сайте и не зависеть от кода доступа.</p>
+      <div class="row" style="align-items:stretch">
+        <div style="flex:1;min-width:240px">
+          <label class="field">Email<input id="accEmail" type="email" placeholder="you@email.com"/></label>
+          <label class="field" style="margin-top:10px">Пароль<input id="accPass" type="password" placeholder="минимум 6 символов"/></label>
+          <div class="row" style="margin-top:14px">
+            <button class="btn" id="accLogin" type="button">Войти</button>
+            <button class="btn ghost" id="accRegister" type="button">Регистрация</button>
+          </div>
+          <div class="status" id="accStatus"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="accUser" style="display:none">
+      <h2>Твой аккаунт</h2>
+      <p class="steps" id="accInfo" style="margin-bottom:16px"></p>
+      <div class="row">
+        <button class="btn" id="accBuyPro" type="button">Купить Pro</button>
+        <button class="btn ghost" id="accLogout2" type="button">Выйти</button>
+      </div>
+      <p class="steps" style="margin-top:16px;font-size:12px" id="accBillingHint">
+        Покупка на FunPay. После оплаты продавец выдаст код — вставь его ниже.
+      </p>
+      <div class="status" id="accBuyStatus"></div>
+    </div>
+    <div class="card">
+      <h2>Код доступа</h2>
+      <p class="steps" style="margin-bottom:12px">Если купил на FunPay или получил trial-код — вставь сюда.</p>
+      <div class="row">
+        <input id="accessCode2" placeholder="SM-WEB-XXXXXX-XXXX" style="width:240px"/>
+        <button class="btn ghost" id="btnUnlock2" type="button">Применить код</button>
+      </div>
+    </div>
+  </section>
+
   <section class="tab" id="tab-about">
     <div class="card">
       <h2>О сервисе</h2>
@@ -315,6 +355,7 @@ const titles = {
   preview:['Предпросмотр','Как ляжет витрина на страницу профиля Steam'],
   steam:['Steam','Инструкция и код для загрузки artwork'],
   da:['DeviantArt','Публикация — desktop-версия'],
+  account:['Аккаунт','Регистрация, вход и покупка Pro'],
   about:['О сервисе','Лимиты, Pro и контакты']
 };
 function headers() {
@@ -378,11 +419,8 @@ document.getElementById('btnLogout').onclick = async () => {
   await fetch('/api/auth/logout', { method:'POST', headers: headers() });
   state.session = ''; localStorage.removeItem('sm_session'); refreshQuota();
 };
-document.getElementById('btnUpgrade').onclick = async () => {
-  const r = await fetch('/api/billing/checkout', { method:'POST', headers: headers() });
-  const j = await r.json();
-  if (!j.ok) { alert(j.msg || 'Ошибка'); return; }
-  if (j.url) location.href = j.url; else alert(j.msg || 'OK');
+document.getElementById('btnUpgrade').onclick = () => {
+  window.open('https://funpay.com/lots/offer?id=75265310', '_blank');
 };
 document.getElementById('btnUnlock').onclick = async () => {
   const code = document.getElementById('accessCode').value.trim();
@@ -520,6 +558,72 @@ document.getElementById('btnPv').onclick = async () => {
 document.getElementById('btnCopyCode').onclick = () => {
   navigator.clipboard.writeText(document.getElementById('steamCode').textContent).then(()=>alert('Скопировано'));
 };
+
+
+async function refreshAccountUI() {
+  const guest = document.getElementById('accGuest');
+  const user = document.getElementById('accUser');
+  if (!guest || !user) return;
+  const r = await fetch('/api/auth/me', { headers: headers() });
+  const j = await r.json();
+  if (j.logged_in) {
+    guest.style.display = 'none';
+    user.style.display = 'block';
+    const plan = j.is_pro ? 'Pro · без лимита' : 'Free · лимит файлов';
+    document.getElementById('accInfo').innerHTML =
+      `Email: <b>${j.email}</b><br/>Тариф: <b>${plan}</b>`;
+    document.getElementById('accBuyPro').style.display = j.is_pro ? 'none' : 'inline-block';
+  } else {
+    guest.style.display = 'block';
+    user.style.display = 'none';
+  }
+}
+const _oldRefresh = refreshQuota;
+refreshQuota = async function() {
+  await _oldRefresh();
+  try { await refreshAccountUI(); } catch(e) {}
+};
+document.getElementById('accLogin')?.addEventListener('click', async () => {
+  const st = document.getElementById('accStatus');
+  st.className = 'status'; st.textContent = '…';
+  const r = await fetch('/api/auth/login', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ email: document.getElementById('accEmail').value, password: document.getElementById('accPass').value })
+  });
+  const j = await r.json();
+  if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Ошибка'; return; }
+  state.session = j.token; localStorage.setItem('sm_session', j.token);
+  st.className='status ok'; st.textContent='Вход выполнен';
+  refreshQuota();
+});
+document.getElementById('accRegister')?.addEventListener('click', async () => {
+  const st = document.getElementById('accStatus');
+  st.className = 'status'; st.textContent = '…';
+  const r = await fetch('/api/auth/register', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ email: document.getElementById('accEmail').value, password: document.getElementById('accPass').value })
+  });
+  const j = await r.json();
+  if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Ошибка'; return; }
+  state.session = j.token; localStorage.setItem('sm_session', j.token);
+  st.className='status ok'; st.textContent='Аккаунт создан';
+  refreshQuota();
+});
+document.getElementById('accLogout2')?.addEventListener('click', async () => {
+  await fetch('/api/auth/logout', { method:'POST', headers: headers() });
+  state.session = ''; localStorage.removeItem('sm_session');
+  refreshQuota();
+});
+document.getElementById('accBuyPro')?.addEventListener('click', () => {
+  window.open('https://funpay.com/lots/offer?id=75265310', '_blank');
+});
+document.getElementById('btnUnlock2')?.addEventListener('click', async () => {
+  const code = document.getElementById('accessCode2').value.trim();
+  const r = await fetch('/api/unlock', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code}) });
+  const j = await r.json();
+  if (j.ok) { state.token = j.token; localStorage.setItem('sm_token', j.token); alert(j.msg); refreshQuota(); }
+  else alert(j.msg || 'Ошибка');
+});
 
 async function init(){
   const m = await fetch('/api/meta').then(r=>r.json());

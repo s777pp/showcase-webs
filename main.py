@@ -251,39 +251,13 @@ def auth_me(request: Request):
 
 @app.post("/api/billing/checkout")
 async def billing_checkout(request: Request):
-    """Stripe Checkout → Pro. Нужны STRIPE_SECRET_KEY + STRIPE_PRICE_ID."""
-    user = _auth_user(request)
-    if not user:
-        return JSONResponse({"ok": False, "msg": "Сначала войди в аккаунт"}, status_code=401)
-    if user.get("is_pro"):
-        return {"ok": True, "msg": "Уже Pro", "url": None}
-    if not STRIPE_SECRET or not STRIPE_PRICE_ID:
-        return JSONResponse(
-            {
-                "ok": False,
-                "msg": "Stripe не настроен. Задай STRIPE_SECRET_KEY и STRIPE_PRICE_ID, или используй код SHOWCASE-WEB-PRO",
-            },
-            status_code=503,
-        )
-    try:
-        import stripe
-        stripe.api_key = STRIPE_SECRET
-        customer_id = user.get("stripe_customer_id")
-        if not customer_id:
-            cust = stripe.Customer.create(email=user["email"], metadata={"user_id": str(user["id"])})
-            customer_id = cust["id"]
-            auth_db.set_stripe_customer(user["id"], customer_id)
-        session = stripe.checkout.Session.create(
-            mode="payment",
-            customer=customer_id,
-            line_items=[{"price": STRIPE_PRICE_ID, "quantity": 1}],
-            success_url=APP_URL.rstrip("/") + "/?billing=success",
-            cancel_url=APP_URL.rstrip("/") + "/?billing=cancel",
-            metadata={"user_id": str(user["id"])},
-        )
-        return {"ok": True, "url": session.url}
-    except Exception as e:
-        return JSONResponse({"ok": False, "msg": str(e)[:300]}, status_code=400)
+    """Покупка Pro — редирект на FunPay (ключ активируется на сайте)."""
+    # не требуем логин: можно купить и потом ввести код
+    return {
+        "ok": True,
+        "url": "https://funpay.com/lots/offer?id=75265310",
+        "msg": "FunPay",
+    }
 
 
 @app.post("/api/billing/webhook")
@@ -329,6 +303,25 @@ def api_quota(request: Request):
     return quota_state(request)
 
 
+USED_CODES_FILE = DATA / "used_codes.json"
+
+
+def _load_used() -> set:
+    if USED_CODES_FILE.is_file():
+        try:
+            return set(json.loads(USED_CODES_FILE.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+    return set()
+
+
+def _save_used(used: set) -> None:
+    try:
+        USED_CODES_FILE.write_text(json.dumps(sorted(used), ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
 @app.post("/api/unlock")
 async def unlock(request: Request):
     body = await request.json()
@@ -336,6 +329,10 @@ async def unlock(request: Request):
     codes = _load_codes()
     if code not in codes:
         return JSONResponse({"ok": False, "msg": "Неверный код доступа"}, status_code=400)
+    # one-time for SM-WEB-* keys
+    used = _load_used()
+    if code.startswith("SM-WEB-") and code in used:
+        return JSONResponse({"ok": False, "msg": "Код уже использован"}, status_code=400)
     info = codes[code]
     token = secrets.token_hex(16)
     _sessions[token] = {
@@ -343,7 +340,17 @@ async def unlock(request: Request):
         "type": info.get("type") or "unlimited",
         "label": info.get("label") or "Pro",
     }
-    return {"ok": True, "token": token, "label": _sessions[token]["label"], "msg": "Лимит снят"}
+    if code.startswith("SM-WEB-"):
+        used.add(code)
+        _save_used(used)
+    # if logged in — mark user pro permanently
+    user = _auth_user(request)
+    if user and user.get("id"):
+        try:
+            auth_db.set_pro(int(user["id"]), True)
+        except Exception:
+            pass
+    return {"ok": True, "token": token, "label": _sessions[token]["label"], "msg": "Pro активирован"}
 
 
 SOCIALS = [
