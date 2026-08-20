@@ -335,6 +335,50 @@ footer, footer a { color: var(--text-muted) !important; }
   .auth-visual{min-height:140px;padding:24px}
 }
 
+
+/* stronger ambient + glass on landing */
+body {
+  background: #030a12 !important;
+}
+body::before {
+  content: "";
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 70% at 15% 10%, rgba(62, 203, 255, 0.28), transparent 55%),
+    radial-gradient(ellipse 80% 60% at 85% 90%, rgba(90, 110, 255, 0.22), transparent 50%),
+    radial-gradient(ellipse 60% 50% at 50% 40%, rgba(20, 100, 140, 0.18), transparent 55%),
+    linear-gradient(130deg, #020810 0%, #0a1a28 35%, #061428 65%, #030c18 100%);
+  background-size: 200% 200%;
+  animation: landingAmbient 16s ease-in-out infinite;
+}
+@keyframes landingAmbient {
+  0% { background-position: 0% 40%; }
+  50% { background-position: 100% 60%; }
+  100% { background-position: 0% 40%; }
+}
+.nav {
+  background: rgba(6, 16, 26, 0.55) !important;
+  backdrop-filter: blur(20px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.4) !important;
+  border-bottom: 1px solid rgba(255,255,255,.1) !important;
+}
+.card, .step, .cta-band {
+  background: rgba(12, 28, 42, 0.5) !important;
+  backdrop-filter: blur(18px) saturate(1.3) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.3) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.08) !important;
+}
+/* email / primary pill in nav when logged in */
+.nav-auth .btn-primary,
+#navAuthSlot .btn-primary {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
+  background: linear-gradient(135deg, #3ecbff, #5b7cff) !important;
+  border: none !important;
+}
+
 </style>
 </head>
 <body>
@@ -656,7 +700,7 @@ applyLang(localStorage.getItem('sm_lang') || 'en');
         const mail = (j.email || 'Profile');
         const short = mail.length > 18 ? mail.slice(0, 16) + '…' : mail;
         slot.innerHTML =
-          '<a href="/app#account" class="btn btn-primary" title="' + mail + '">' + short + '</a>';
+          '<a href="/app#account" class="btn btn-primary" style="color:#fff!important;font-weight:600" title="' + mail + '">' + short + '</a>';
       } else {
         slot.innerHTML =
           '<a href="#" data-auth="login" class="btn btn-ghost" id="navLoginBtn">Log in</a>' +
