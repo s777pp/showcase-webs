@@ -1498,13 +1498,22 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
     except Exception as e:
         return HTMLResponse(f"<h3>Error</h3><pre>{e}</pre>", status_code=500)
     app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
+    # Same idea as desktop localhost page: "Success! You can close this window."
     return HTMLResponse(
-        f"""<!DOCTYPE html><html><body style="font-family:system-ui;background:#041018;color:#fff;padding:40px;text-align:center">
-        <h2>DeviantArt connected</h2>
-        <p>Returning to Showcase Maker…</p>
-        <script>setTimeout(function(){{ location.href = "{app_url}/app#da"; }}, 800);</script>
-        <p><a href="{app_url}/app" style="color:#3ecbff">Back to tools</a></p>
-        </body></html>"""
+        f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Success</title></head>
+<body style="font-family:system-ui,sans-serif;background:#0b0b12;color:#e8e8f0;display:grid;place-items:center;min-height:100vh;margin:0">
+  <div style="text-align:center;padding:32px">
+    <h1 style="font-size:1.6rem;margin:0 0 12px">Success!</h1>
+    <p style="opacity:.8;margin:0 0 20px">You can close this window.</p>
+    <p style="font-size:13px;opacity:.55">DeviantArt access granted · Showcase Maker</p>
+    <p style="margin-top:24px"><a href="{app_url}/app#da" style="color:#7b5cff">Back to tools</a></p>
+  </div>
+  <script>
+    try {{ if (window.opener) window.opener.postMessage({{type:'da_connected'}}, '*'); }} catch(e) {{}}
+    setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1500);
+  </script>
+</body></html>"""
     )
 
 
