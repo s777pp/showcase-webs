@@ -295,6 +295,14 @@ footer, footer a { color: var(--text-muted) !important; }
   to{opacity:1;transform:scale(1.05)}
 }
 .auth-visual-text{position:relative;z-index:1}
+
+.auth-logo{
+  width:72px;height:72px;object-fit:contain;
+  margin-bottom:16px;
+  filter:drop-shadow(0 8px 24px rgba(62,203,255,.35));
+  border-radius:18px;
+}
+
 .auth-visual-text h2{margin:0 0 8px;font-size:1.75rem;color:#fff;font-weight:700}
 .auth-visual-text p{margin:0;color:rgba(255,255,255,.75);font-size:15px}
 .auth-form-side{
@@ -624,6 +632,7 @@ applyLang(localStorage.getItem('sm_lang') || 'en');
     <div class="auth-visual">
       <div class="auth-visual-bg"></div>
       <div class="auth-visual-text">
+        <img class="auth-logo" src="/static/icon.png" alt="Showcase Maker"/>
         <h2>Showcase Maker</h2>
         <p>Steam showcases without the grind</p>
       </div>
