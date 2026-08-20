@@ -26,6 +26,7 @@ def _conn() -> sqlite3.Connection:
             password_hash TEXT NOT NULL,
             is_pro INTEGER DEFAULT 0,
             pro_code TEXT,
+            pro_until REAL,
             stripe_customer_id TEXT,
             da_access_token TEXT,
             da_refresh_token TEXT,
@@ -60,6 +61,7 @@ def _conn() -> sqlite3.Connection:
     cols = {r[1] for r in c.execute("PRAGMA table_info(users)").fetchall()}
     for col, typ in (
         ("pro_code", "TEXT"),
+        ("pro_until", "REAL"),
         ("da_access_token", "TEXT"),
         ("da_refresh_token", "TEXT"),
         ("da_client_id", "TEXT"),
@@ -133,7 +135,7 @@ def user_by_token(token: str) -> Optional[dict]:
     c = _conn()
     row = c.execute(
         """
-        SELECT u.id, u.email, u.is_pro, u.pro_code, u.stripe_customer_id,
+        SELECT u.id, u.email, u.is_pro, u.pro_code, u.pro_until, u.stripe_customer_id,
                u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret, u.display_name, u.avatar_path
         FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token=?
@@ -148,6 +150,7 @@ def user_by_token(token: str) -> Optional[dict]:
         "email": row["email"],
         "is_pro": bool(row["is_pro"]),
         "pro_code": row["pro_code"],
+        "pro_until": row["pro_until"],
         "stripe_customer_id": row["stripe_customer_id"],
         "da_access_token": row["da_access_token"],
         "da_refresh_token": row["da_refresh_token"],
@@ -158,17 +161,44 @@ def user_by_token(token: str) -> Optional[dict]:
     }
 
 
-def set_pro(user_id: int, pro: bool = True, code: str | None = None) -> None:
+def set_pro(user_id: int, pro: bool = True, code: str | None = None, until: float | None = None) -> None:
+    """until=None means permanent Pro; until=timestamp means trial until that time."""
     c = _conn()
-    if code:
+    if code is not None:
         c.execute(
-            "UPDATE users SET is_pro=?, pro_code=? WHERE id=?",
-            (1 if pro else 0, code, user_id),
+            "UPDATE users SET is_pro=?, pro_code=?, pro_until=? WHERE id=?",
+            (1 if pro else 0, code, until, user_id),
         )
     else:
-        c.execute("UPDATE users SET is_pro=? WHERE id=?", (1 if pro else 0, user_id))
+        c.execute(
+            "UPDATE users SET is_pro=?, pro_until=? WHERE id=?",
+            (1 if pro else 0, until if pro else None, user_id),
+        )
     c.commit()
     c.close()
+
+
+def effective_pro(user: dict | None) -> bool:
+    """True if permanent Pro or trial not expired."""
+    if not user:
+        return False
+    if not user.get("is_pro"):
+        return False
+    until = user.get("pro_until")
+    if until is None:
+        return True
+    try:
+        until_f = float(until)
+    except (TypeError, ValueError):
+        return True
+    if time.time() > until_f:
+        # expire
+        try:
+            set_pro(int(user["id"]), False, code=user.get("pro_code"), until=None)
+        except Exception:
+            pass
+        return False
+    return True
 
 
 def code_used(code: str) -> Optional[int]:

@@ -1006,5 +1006,55 @@
   "WEB-TEST-PRO": {
     "type": "unlimited",
     "label": "Test Pro"
+  },
+  "SM-TRIAL-GBLDWG-RR5E": {
+    "type": "trial",
+    "hours": 2,
+    "label": "Trial 2h"
+  },
+  "SM-TRIAL-VDIXVH-GRBN": {
+    "type": "trial",
+    "hours": 2,
+    "label": "Trial 2h"
+  },
+  "SM-TRIAL-C46IDD-UO7I": {
+    "type": "trial",
+    "hours": 2,
+    "label": "Trial 2h"
+  },
+  "SM-TRIAL-O2G4C2-UQX0": {
+    "type": "trial",
+    "hours": 2,
+    "label": "Trial 2h"
+  },
+  "SM-TRIAL-3OV9HI-EYUL": {
+    "type": "trial",
+    "hours": 2,
+    "label": "Trial 2h"
+  },
+  "SM-TRIAL-W1DEYX-UY2N": {
+    "type": "trial",
+    "hours": 2,
+    "label": "Trial 2h"
+  },
+  "SM-TRIAL-2H0QBG-GBRO": {
+    "type": "trial",
+    "hours": 2,
+    "label": "Trial 2h"
+  },
+  "SM-TRIAL-T6KQ56-VOOS": {
+    "type": "trial",
+    "hours": 2,
+    "label": "Trial 2h"
+  },
+  "SM-TRIAL-1HBWN9-LZUE": {
+    "type": "trial",
+    "hours": 2,
+    "label": "Trial 2h"
+  },
+  "SM-TRIAL-I32DP0-0MJ5": {
+    "type": "trial",
+    "hours": 2,
+    "label": "Trial 2h"
   }
 }

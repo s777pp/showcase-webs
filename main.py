@@ -72,10 +72,18 @@ PRO_PRICE_LABEL = os.environ.get("PRO_PRICE_LABEL", "Pro · безлимит")
 # Коды доступа: снимают лимит. Можно задать env ACCESS_CODES=CODE1,CODE2
 # или файл data/access_codes.json
 DEFAULT_CODES = {
-    # полный безлимит (для тебя / покупателей)
     "SHOWCASE-WEB-PRO": {"type": "unlimited", "label": "Pro"},
-    # тестовый
     "WEB-TEST-PRO": {"type": "unlimited", "label": "Test Pro"},
+    "SM-TRIAL-GBLDWG-RR5E": {"type": "trial", "hours": 2, "label": "Trial 2h"},
+    "SM-TRIAL-VDIXVH-GRBN": {"type": "trial", "hours": 2, "label": "Trial 2h"},
+    "SM-TRIAL-C46IDD-UO7I": {"type": "trial", "hours": 2, "label": "Trial 2h"},
+    "SM-TRIAL-O2G4C2-UQX0": {"type": "trial", "hours": 2, "label": "Trial 2h"},
+    "SM-TRIAL-3OV9HI-EYUL": {"type": "trial", "hours": 2, "label": "Trial 2h"},
+    "SM-TRIAL-W1DEYX-UY2N": {"type": "trial", "hours": 2, "label": "Trial 2h"},
+    "SM-TRIAL-2H0QBG-GBRO": {"type": "trial", "hours": 2, "label": "Trial 2h"},
+    "SM-TRIAL-T6KQ56-VOOS": {"type": "trial", "hours": 2, "label": "Trial 2h"},
+    "SM-TRIAL-1HBWN9-LZUE": {"type": "trial", "hours": 2, "label": "Trial 2h"},
+    "SM-TRIAL-I32DP0-0MJ5": {"type": "trial", "hours": 2, "label": "Trial 2h"},
 }
 
 
@@ -168,7 +176,7 @@ def _clear_session_cookie(resp):
 def quota_state(req: Request) -> dict:
     # 1) logged-in user (Pro is bound to account)
     user = _auth_user(req)
-    if user and user.get("is_pro"):
+    if user and auth_db.effective_pro(user):
         return {
             "used": 0,
             "limit": -1,
@@ -200,7 +208,7 @@ def quota_state(req: Request) -> dict:
 
 def quota_inc(req: Request, n: int) -> None:
     user = _auth_user(req)
-    if user and user.get("is_pro"):
+    if user and auth_db.effective_pro(user):
         return
     if _session(req).get("type") == "unlimited":
         return
@@ -259,7 +267,7 @@ async def auth_login(request: Request):
         "ok": True,
         "token": token,
         "email": user.get("email") if user else None,
-        "is_pro": bool(user and user.get("is_pro")),
+        "is_pro": bool(user and auth_db.effective_pro(user)),
     })
     if token:
         _attach_session_cookie(resp, token)
@@ -340,7 +348,8 @@ def auth_me(request: Request):
         "ok": True,
         "logged_in": True,
         "email": user["email"],
-        "is_pro": user["is_pro"],
+        "is_pro": auth_db.effective_pro(user),
+        "pro_until": user.get("pro_until"),
         "pro_code": user.get("pro_code") or "",
         "display_name": user.get("display_name") or "",
         "avatar_url": av_url,
@@ -446,12 +455,22 @@ async def unlock(request: Request):
     if code.startswith("SM-WEB-") and code in used:
         return JSONResponse({"ok": False, "msg": "Code already used"}, status_code=400)
 
-    auth_db.set_pro(int(user["id"]), True, code=code)
+    meta = codes[code] if isinstance(codes.get(code), dict) else {"type": "unlimited", "label": "Pro"}
+    ctype = str(meta.get("type") or "unlimited")
+    hours = float(meta.get("hours") or 0)
+    label = str(meta.get("label") or "Pro")
+    until = None
+    if ctype == "trial" and hours > 0:
+        until = time.time() + hours * 3600
+    auth_db.set_pro(int(user["id"]), True, code=code, until=until)
     auth_db.mark_code_used(code, int(user["id"]))
-    if code.startswith("SM-WEB-"):
+    if code.startswith("SM-WEB-") or code.startswith("SM-TRIAL-"):
         used.add(code)
         _save_used(used)
-    return {"ok": True, "label": "Pro", "msg": "Pro activated on your account"}
+    msg = "Pro activated on your account"
+    if until:
+        msg = f"Trial activated for {int(hours)} hours"
+    return {"ok": True, "label": label, "msg": msg, "until": until}
 
 
 SOCIALS = [
