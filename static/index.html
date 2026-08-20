@@ -238,8 +238,8 @@ footer a{color:var(--accent);text-decoration:none}
     <a href="#features">Features</a>
     <a href="#how">How it works</a>
     <a href="/app" class="btn btn-ghost" style="padding:8px 16px">Tools</a>
-    <a href="/app?auth=1" class="btn btn-primary" style="padding:8px 16px" data-i18n="nav_reg">Sign up</a>
-    <button type="button" class="btn btn-ghost" id="langBtn" style="padding:8px 12px;min-width:52px">RU</button>
+    <a href="#" data-auth="register" class="btn btn-primary" style="padding:8px 16px" data-i18n="nav_reg" data-auth="register">Sign up</a>
+    <button type="button" class="btn btn-ghost" id="navAuthSlot"></span> <a href="#" data-auth="login" class="btn btn-ghost" style="padding:8px 12px" id="navLoginBtn">Log in</a> <button type="button" id="langBtn" style="padding:8px 12px;min-width:52px">RU</button>
   </div>
 </nav>
 
@@ -252,7 +252,7 @@ footer a{color:var(--accent);text-decoration:none}
     </p>
     <div class="hero-cta">
       <a class="btn btn-primary" href="/app">Open tools</a>
-      <a class="btn btn-ghost" href="/app?auth=1">Create account</a>
+      <a class="btn btn-ghost" href="#" data-auth="register">Create account</a>
     </div>
     <div class="hero-note">Free · 5 files/day &nbsp;·&nbsp; Pro · unlimited</div>
   </div>
@@ -329,7 +329,7 @@ footer a{color:var(--accent);text-decoration:none}
   <p>Free limit to try · Pro removes limits</p>
   <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
     <a class="btn btn-primary" href="/app">Go to tools</a>
-    <a class="btn btn-ghost" href="/app?auth=1">Sign up</a>
+    <a class="btn btn-ghost" href="#" data-auth="register">Sign up</a>
   </div>
 </div>
 
@@ -403,7 +403,7 @@ function applyLang(lang) {
     ['a[href="#features"]', 'nav_feat'],
     ['a[href="#how"]', 'nav_how'],
     ['a[href="/app"].btn-ghost', 'nav_tools'],
-    ['a[href="/app?auth=1"].btn-primary', 'nav_reg'],
+    ['a[href="#" data-auth="register"].btn-primary', 'nav_reg'],
   ];
   // nav
   document.querySelectorAll('.nav-links a').forEach((a,i) => {
@@ -456,6 +456,77 @@ document.getElementById('langBtn')?.addEventListener('click', () => {
   applyLang(cur === 'ru' ? 'en' : 'ru');
 });
 applyLang(localStorage.getItem('sm_lang') || 'en');
+</script>
+
+
+<div id="homeAuthModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#0c1a24;border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:28px;max-width:400px;width:100%">
+    <h3 id="homeAuthTitle" style="margin:0 0 8px">Log in</h3>
+    <p id="homeAuthSub" style="opacity:.7;font-size:13px;margin:0 0 16px">One account for the whole site</p>
+    <input id="homeEmail" type="email" placeholder="Email" style="width:100%;margin-bottom:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.3);color:#fff;box-sizing:border-box"/>
+    <input id="homePass" type="password" placeholder="Password (min 6)" style="width:100%;margin-bottom:14px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.3);color:#fff;box-sizing:border-box"/>
+    <button id="homeAuthSubmit" class="btn btn-primary" style="width:100%;margin-bottom:10px">Log in</button>
+    <p style="font-size:13px;text-align:center;opacity:.75"><span id="homeAuthSwitch">No account? <a href="#" id="homeAuthToggle" style="color:#3ecbff">Sign up</a></span></p>
+    <p id="homeAuthErr" style="color:#ff6b6b;font-size:13px;min-height:18px"></p>
+    <button type="button" id="homeAuthClose" class="btn btn-ghost" style="width:100%">Close</button>
+  </div>
+</div>
+<script>
+(function(){
+  let mode = 'login';
+  const modal = document.getElementById('homeAuthModal');
+  function openAuth(m) {
+    mode = m || 'login';
+    document.getElementById('homeAuthTitle').textContent = mode === 'register' ? 'Sign up' : 'Log in';
+    document.getElementById('homeAuthSub').textContent = 'One account for the whole platform';
+    document.getElementById('homeAuthSubmit').textContent = mode === 'register' ? 'Sign up' : 'Log in';
+    document.getElementById('homeAuthSwitch').innerHTML = mode === 'register'
+      ? 'Have an account? <a href="#" id="homeAuthToggle" style="color:#3ecbff">Log in</a>'
+      : 'No account? <a href="#" id="homeAuthToggle" style="color:#3ecbff">Sign up</a>';
+    document.getElementById('homeAuthToggle').onclick = (e) => { e.preventDefault(); openAuth(mode==='login'?'register':'login'); };
+    modal.style.display = 'flex';
+  }
+  document.getElementById('homeAuthClose').onclick = () => { modal.style.display = 'none'; };
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+  document.querySelectorAll('[data-auth]').forEach(el => {
+    el.addEventListener('click', (e) => { e.preventDefault(); openAuth(el.getAttribute('data-auth') || 'login'); });
+  });
+  document.getElementById('homeAuthSubmit').onclick = async () => {
+    const email = document.getElementById('homeEmail').value.trim();
+    const password = document.getElementById('homePass').value;
+    const err = document.getElementById('homeAuthErr');
+    err.textContent = '';
+    const url = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+      const j = await r.json();
+      if (!j.ok) { err.textContent = j.msg || 'Error'; return; }
+      if (j.token) {
+        localStorage.setItem('sm_session', j.token);
+        try { document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax'; } catch(e) {}
+      }
+      location.href = '/app';
+    } catch (e) { err.textContent = String(e); }
+  };
+  // show account in nav if logged in
+  async function homeSession() {
+    try {
+      const r = await fetch('/api/auth/me', { credentials: 'include', headers: { 'X-Session-Token': localStorage.getItem('sm_session') || '' } });
+      const j = await r.json();
+      const slot = document.getElementById('navAuthSlot');
+      if (!slot) return;
+      if (j.logged_in) {
+        slot.innerHTML = '<a href="/app" class="btn btn-ghost" style="padding:8px 16px">Tools</a> <a href="/app#account" class="btn btn-primary" style="padding:8px 16px">' + (j.email || 'Profile') + '</a>';
+      }
+    } catch(e) {}
+  }
+  homeSession();
+})();
 </script>
 
 </body>

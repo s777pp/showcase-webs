@@ -727,23 +727,17 @@ document.getElementById('btnUnlock2')?.addEventListener('click', async () => {
 
 
 
-    const j = await r.json();
-    if (!j.ok) { st.className='status err'; st.textContent = j.msg || (j.errors||[]).join('; ') || 'Error'; }
-    else { st.className='status ok'; st.textContent = `Uploaded ${j.uploaded}/${j.total}`; }
-  } catch(e) { st.className='status err'; st.textContent=String(e); }
-});
-
 async function init(){
   // restore session after navigating from home
   state.session = localStorage.getItem('sm_session') || '';
   state.token = localStorage.getItem('sm_token') || '';
 
   const m = await fetch('/api/meta').then(r=>r.json());
-  document.getElementById('steamCode').textContent = m.steam_code || '';
-  if (m.buy_url) document.getElementById('buyLink').href = m.buy_url;
+  const sc = document.getElementById('steamCode'); if (sc) sc.textContent = m.steam_code || '';
+  if (m.buy_url) { const bl = document.getElementById('buyLink'); if (bl) bl.href = m.buy_url; }
   const html = (m.socials||[]).map(s=>`<a href="${s.url}" target="_blank" rel="noopener"><img src="${s.icon}" alt="${s.name}"/></a>`).join('');
-  document.getElementById('socials').innerHTML = html;
-  document.getElementById('socials2').innerHTML = html;
+  const so = document.getElementById('socials'); if (so) so.innerHTML = html;
+  const so2 = document.getElementById('socials2'); if (so2) so2.innerHTML = html;
   refreshQuota(); loadPvSlots(); refreshDa();
   if (new URLSearchParams(location.search).get('auth') === '1') {
     state.authMode = 'register'; syncAuthUi(); modal.classList.add('show');
@@ -1144,6 +1138,10 @@ document.getElementById('daUpload')?.addEventListener('click', async () => {
 
 setTimeout(() => applyAppLang(appLang()), 0);
 // open DA tab from OAuth return
+if (location.hash === '#account' || location.hash === '#profile') {
+  const btn = document.querySelector('#nav button[data-tab="account"]');
+  if (btn) btn.click();
+}
 if (location.hash === '#da') {
   const btn = document.querySelector('#nav button[data-tab="da"]');
   if (btn) btn.click();
