@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -85,52 +85,47 @@ body{
 .hero-note{margin-top:18px;font-size:12px;color:var(--muted);opacity:.85}
 
 
-/* hero media */
-.media-stage{
-  position:relative;
-  width:100%;
-  max-width:560px;
-  margin:0 auto;
+
+/* video orb */
+.orb-wrap{position:relative;display:flex;justify-content:center;align-items:center;min-height:min(420px,70vw)}
+.orb-ring{
+  position:absolute;border-radius:50%;border:1.5px solid rgba(255,255,255,.12);
+  animation:spin 28s linear infinite;pointer-events:none;
 }
-.media-frame{
-  position:relative;
-  border-radius:28px;
+.orb-ring:nth-child(1){width:min(340px,70vw);height:min(340px,70vw)}
+.orb-ring:nth-child(2){width:min(420px,82vw);height:min(420px,82vw);animation-direction:reverse;animation-duration:40s;opacity:.7}
+.orb-ring:nth-child(3){width:min(500px,94vw);height:min(500px,94vw);opacity:.4;animation-duration:55s}
+@keyframes spin{to{transform:rotate(360deg)}}
+.orb-core{
+  position:relative;width:min(280px,62vw);aspect-ratio:1;border-radius:50%;
   overflow:hidden;
-  aspect-ratio:4/5;
-  background:#0a1e2e;
-  border:1px solid rgba(255,255,255,.14);
-  box-shadow:
-    0 0 0 1px rgba(62,203,255,.12),
-    0 24px 80px rgba(0,0,0,.45),
-    0 0 100px rgba(62,203,255,.18);
+  box-shadow:0 0 0 3px rgba(62,203,255,.35),0 0 60px #3ecbff55,0 20px 60px #0008;
+  background:#0a2030;
 }
-.media-frame video,
-.media-frame img{
+.orb-core video,.orb-core img{
   width:100%;height:100%;object-fit:cover;display:block;
 }
-.media-frame .fallback{
-  position:absolute;inset:0;display:none;place-items:center;
-  background:radial-gradient(circle at 40% 30%,#1a6a9a,#071820 70%);
+.orb-fallback{
+  width:100%;height:100%;display:none;place-items:center;
+  background:radial-gradient(circle at 40% 35%,#1a6a9a,#0a2030 70%);
+  position:absolute;inset:0;
 }
-.media-frame .fallback img{
-  width:42%;height:auto;object-fit:contain;
-  filter:drop-shadow(0 0 28px #3ecbff66);
+.orb-fallback img{width:48%;height:auto;object-fit:contain;filter:drop-shadow(0 0 20px #3ecbff88)}
+.float-icon{
+  position:absolute;width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(160deg,rgba(80,140,200,.55),rgba(30,60,100,.65));
+  border:1px solid rgba(255,255,255,.2);
+  backdrop-filter:blur(12px);display:grid;place-items:center;
+  box-shadow:0 8px 24px #0005;
+  color:#fff;font-size:20px;z-index:2;
 }
-.media-glow{
-  position:absolute;inset:-20% -15%;
-  background:radial-gradient(ellipse at 50% 50%, #3ecbff22, transparent 65%);
-  z-index:-1;pointer-events:none;
-}
-.media-badge{
-  position:absolute;left:16px;bottom:16px;z-index:2;
-  display:inline-flex;align-items:center;gap:8px;
-  padding:8px 14px;border-radius:999px;
-  background:rgba(4,16,24,.55);border:1px solid rgba(255,255,255,.14);
-  backdrop-filter:blur(12px);font-size:12px;font-weight:500;color:#d6eef8;
-}
-.media-badge i{
-  width:8px;height:8px;border-radius:50%;background:#34d399;
-  box-shadow:0 0 8px #34d399;display:inline-block;
+.float-icon.i1{top:12%;left:8%}
+.float-icon.i2{top:18%;right:6%}
+.float-icon.i3{bottom:22%;left:4%}
+.float-icon.i4{bottom:14%;right:10%}
+@media(max-width:900px){
+  .float-icon{width:44px;height:44px;font-size:16px}
+  .orb-wrap{min-height:min(360px,85vw)}
 }
 
 /* features */
@@ -240,96 +235,101 @@ footer a{color:var(--accent);text-decoration:none}
     <b>Showcase Maker</b>
   </a>
   <div class="nav-links">
-    <a href="#features">Возможности</a>
-    <a href="#how">Как это работает</a>
-    <a href="/app" class="btn btn-ghost" style="padding:8px 16px">Инструменты</a>
-    <a href="/app?auth=1" class="btn btn-primary" style="padding:8px 16px" data-i18n="nav_reg">Регистрация</a>
-    <button type="button" class="btn btn-ghost" id="langBtn" style="padding:8px 12px;min-width:52px">EN</button>
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="/app" class="btn btn-ghost" style="padding:8px 16px">Tools</a>
+    <a href="/app?auth=1" class="btn btn-primary" style="padding:8px 16px" data-i18n="nav_reg">Sign up</a>
+    <button type="button" class="btn btn-ghost" id="langBtn" style="padding:8px 12px;min-width:52px">RU</button>
   </div>
 </nav>
 
 <section class="hero">
   <div>
-    <h1>Steam-витрины<br/><span>без рутины</span></h1>
+    <h1>Steam showcases<br/><span>without the grind</span></h1>
     <p>
       Нарезка Workshop, Featured и Split, watermark, сжатие под лимит Steam,
       скачивание исходников и предпросмотр профиля — в одном браузерном инструменте.
     </p>
     <div class="hero-cta">
-      <a class="btn btn-primary" href="/app">Открыть инструменты</a>
-      <a class="btn btn-ghost" href="/app?auth=1">Создать аккаунт</a>
+      <a class="btn btn-primary" href="/app">Open tools</a>
+      <a class="btn btn-ghost" href="/app?auth=1">Create account</a>
     </div>
-    <div class="hero-note">Free · 5 файлов/сутки &nbsp;·&nbsp; Pro · без лимита</div>
+    <div class="hero-note">Free · 5 files/day &nbsp;·&nbsp; Pro · unlimited</div>
   </div>
 
-  <div class="media-stage">
-    <div class="media-glow"></div>
-    <div class="media-frame" id="orbCore">
+  <div class="orb-wrap">
+    <div class="orb-ring"></div>
+    <div class="orb-ring"></div>
+    <div class="orb-ring"></div>
+    <div class="float-icon i1" title="Download">⬇</div>
+    <div class="float-icon i2" title="Upload">⬆</div>
+    <div class="float-icon i3" title="Cut">✂</div>
+    <div class="float-icon i4" title="Preview">👁</div>
+    <div class="orb-core" id="orbCore">
       <video id="heroVid" autoplay muted loop playsinline poster="/static/icon.png">
         <source src="/static/video/hero.mp4" type="video/mp4"/>
       </video>
-      <div class="fallback" id="orbFallback">
+      <div class="orb-fallback" id="orbFallback">
         <img src="/static/icon.png" alt="Showcase Maker"/>
       </div>
-      <div class="media-badge"><i></i> Showcase Maker</div>
     </div>
   </div>
 </section>
 
 <section class="section" id="features">
-  <h2>Всё для оформления профиля</h2>
-  <p class="lead">От исходника до готовых файлов под загрузку в Steam</p>
+  <h2>Everything for your profile</h2>
+  <p class="lead">From source file to Steam-ready assets</p>
   <div class="grid3">
     <div class="card">
       <div class="ico">✂</div>
-      <h3>Нарезка витрин</h3>
-      <p>Workshop на 5 частей, Featured 630px, Artwork Split 506+100. Полосы, watermark, GIF и видео.</p>
+      <h3>Showcase cuts</h3>
+      <p>Workshop ×5, Featured 630px, Artwork Split 506+100. Bars, watermark, GIF and video.</p>
     </div>
     <div class="card">
       <div class="ico">⬇</div>
-      <h3>Скачивание исходников</h3>
-      <p>YouTube, TikTok, X, Reddit, Pinterest — без сторонних сайтов, сразу в рабочую папку.</p>
+      <h3>Download sources</h3>
+      <p>YouTube, TikTok, X, Reddit, Pinterest — no third-party sites.</p>
     </div>
     <div class="card">
       <div class="ico">👁</div>
-      <h3>Предпросмотр профиля</h3>
-      <p>Шаблон Steam-страницы, слоты под каждую витрину, GIF и MP4 с анимацией.</p>
+      <h3>Profile preview</h3>
+      <p>Steam page template, slots per showcase, animated GIF and MP4.</p>
     </div>
     <div class="card">
       <div class="ico">💧</div>
       <h3>Watermark</h3>
-      <p>Текст, шрифт, прозрачность. Удобно для авторов, которые продают или публикуют работы.</p>
+      <p>Text, font, opacity — handy if you sell or publish art.</p>
     </div>
     <div class="card">
       <div class="ico">📦</div>
       <h3>ZIP под Steam</h3>
-      <p>Готовый архив с part_1…5, featured, split — можно сразу грузить в мастерскую.</p>
+      <p>Ready archive with part_1…5, featured, split — upload to Workshop.</p>
     </div>
     <div class="card">
       <div class="ico">⚡</div>
-      <h3>В браузере</h3>
-      <p>Не нужно ставить exe на каждый ПК. Открыл сайт — обработал — скачал.</p>
+      <h3>In the browser</h3>
+      <p>No .exe on every PC. Open the site, process, download.</p>
     </div>
   </div>
 </section>
 
 <section class="section" id="how">
-  <h2>Четыре шага</h2>
-  <p class="lead">От файла до профиля Steam</p>
+  <h2>Four steps</h2>
+  <p class="lead">From file to Steam profile</p>
   <div class="steps">
-    <div class="step"><div class="n">1</div><h3>Загрузи</h3><p>PNG, JPG, GIF или MP4 — или скачай по ссылке внутри сервиса.</p></div>
-    <div class="step"><div class="n">2</div><h3>Выбери режим</h3><p>Workshop, Featured или Artwork Split + watermark и FPS.</p></div>
-    <div class="step"><div class="n">3</div><h3>Скачай ZIP</h3><p>Файлы уже нарезаны и сжаты под лимиты Steam.</p></div>
-    <div class="step"><div class="n">4</div><h3>Залей в Steam</h3><p>Код для консоли и инструкция — на вкладке Steam в инструментах.</p></div>
+    <div class="step"><div class="n">1</div><h3>Upload</h3><p>PNG, JPG, GIF or MP4 — or download by link inside the app.</p></div>
+    <div class="step"><div class="n">2</div><h3>Pick a mode</h3><p>Workshop, Featured или Artwork Split + watermark и FPS.</p></div>
+    <div class="step"><div class="n">3</div><h3>Download ZIP</h3><p>Already cut and compressed for Steam limits.</p></div>
+    <div class="step"><div class="n">4</div><h3>Upload to Steam</h3><p>Console code and guide are on the Steam tab in Tools.</p></div>
   </div>
 </section>
 
 <div class="cta-band">
-  <h2>Готов оформить профиль?</h2>
-  <p>Бесплатный лимит для теста · Pro снимает ограничения</p>
+  <h2>Ready to style your profile?</h2>
+  <p>Free limit to try · Pro removes limits</p>
   <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-    <a class="btn btn-primary" href="/app">Перейти к инструментам</a>
-    <a class="btn btn-ghost" href="/app?auth=1">Регистрация</a>
+    <a class="btn btn-primary" href="/app">Go to tools</a>
+    <a class="btn btn-ghost" href="/app?auth=1">Sign up</a>
   </div>
 </div>
 
@@ -351,25 +351,25 @@ setTimeout(() => {
 <script>
 const I18N = {
   ru: {
-    nav_feat: "Возможности", nav_how: "Как это работает", nav_tools: "Инструменты", nav_reg: "Регистрация",
-    h1a: "Steam-витрины", h1b: "без рутины",
-    hero_p: "Нарезка Workshop, Featured и Split, watermark, сжатие под лимит Steam, скачивание исходников и предпросмотр профиля — в одном браузерном инструменте.",
-    cta_tools: "Открыть инструменты", cta_reg: "Создать аккаунт",
+    nav_feat: "Features", nav_how: "How it works", nav_tools: "Tools", nav_reg: "Sign up",
+    h1a: "Steam showcases", h1b: "without the grind",
+    hero_p: "Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool.",
+    cta_tools: "Open tools", cta_reg: "Create account",
     hero_note: "Free · 5 файлов/сутки  ·  Pro · без лимита",
-    feat_h: "Всё для оформления профиля", feat_lead: "От исходника до готовых файлов под загрузку в Steam",
-    c1t: "Нарезка витрин", c1p: "Workshop на 5 частей, Featured 630px, Artwork Split 506+100. Полосы, watermark, GIF и видео.",
-    c2t: "Скачивание исходников", c2p: "YouTube, TikTok, X, Reddit, Pinterest — без сторонних сайтов, сразу в рабочую папку.",
-    c3t: "Предпросмотр профиля", c3p: "Шаблон Steam-страницы, слоты под каждую витрину, GIF и MP4 с анимацией.",
-    c4t: "Watermark", c4p: "Текст, шрифт, прозрачность. Удобно для авторов, которые продают или публикуют работы.",
-    c5t: "ZIP под Steam", c5p: "Готовый архив с part_1…5, featured, split — можно сразу грузить в мастерскую.",
-    c6t: "В браузере", c6p: "Не нужно ставить exe на каждый ПК. Открыл сайт — обработал — скачал.",
-    how_h: "Четыре шага", how_lead: "От файла до профиля Steam",
-    s1t: "Загрузи", s1p: "PNG, JPG, GIF или MP4 — или скачай по ссылке внутри сервиса.",
-    s2t: "Выбери режим", s2p: "Workshop, Featured или Artwork Split + watermark и FPS.",
-    s3t: "Скачай ZIP", s3p: "Файлы уже нарезаны и сжаты под лимиты Steam.",
-    s4t: "Залей в Steam", s4p: "Код для консоли и инструкция — на вкладке Steam в инструментах.",
-    band_h: "Готов оформить профиль?", band_p: "Бесплатный лимит для теста · Pro снимает ограничения",
-    band_tools: "Перейти к инструментам", band_reg: "Регистрация",
+    feat_h: "Everything for your profile", feat_lead: "From source file to Steam-ready assets",
+    c1t: "Showcase cuts", c1p: "Workshop ×5, Featured 630px, Artwork Split 506+100. Bars, watermark, GIF and video.",
+    c2t: "Download sources", c2p: "YouTube, TikTok, X, Reddit, Pinterest — no third-party sites.",
+    c3t: "Profile preview", c3p: "Steam page template, slots per showcase, animated GIF and MP4.",
+    c4t: "Watermark", c4p: "Text, font, opacity — handy if you sell or publish art.",
+    c5t: "ZIP под Steam", c5p: "Ready archive with part_1…5, featured, split — upload to Workshop.",
+    c6t: "In the browser", c6p: "No .exe on every PC. Open the site, process, download.",
+    how_h: "Four steps", how_lead: "From file to Steam profile",
+    s1t: "Upload", s1p: "PNG, JPG, GIF or MP4 — or download by link inside the app.",
+    s2t: "Pick a mode", s2p: "Workshop, Featured или Artwork Split + watermark и FPS.",
+    s3t: "Download ZIP", s3p: "Already cut and compressed for Steam limits.",
+    s4t: "Upload to Steam", s4p: "Console code and guide are on the Steam tab in Tools.",
+    band_h: "Ready to style your profile?", band_p: "Free limit to try · Pro removes limits",
+    band_tools: "Go to tools", band_reg: "Sign up",
     foot: "Showcase Maker · by"
   },
   en: {
@@ -455,7 +455,7 @@ document.getElementById('langBtn')?.addEventListener('click', () => {
   const cur = localStorage.getItem('sm_lang') || 'ru';
   applyLang(cur === 'ru' ? 'en' : 'ru');
 });
-applyLang(localStorage.getItem('sm_lang') || 'ru');
+applyLang(localStorage.getItem('sm_lang') || 'en');
 </script>
 
 </body>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Инструменты · Showcase Maker</title>
+<title>Tools · Showcase Maker</title>
 <link rel="icon" href="/static/icon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
@@ -189,16 +189,16 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
 <aside class="side">
   <a class="brand" href="/">
     <img src="/static/icon.png" alt=""/>
-    <div><b>Showcase Maker</b><span>Инструменты</span></div>
+    <div><b>Showcase Maker</b><span>Tools</span></div>
   </a>
   <nav class="nav" id="nav">
-    <button data-tab="process" class="active">Обработка</button>
-    <button data-tab="download">Скачать</button>
-    <button data-tab="preview">Предпросмотр</button>
+    <button data-tab="process" class="active">Process</button>
+    <button data-tab="download">Download</button>
+    <button data-tab="preview">Preview</button>
     <button data-tab="steam">Steam</button>
     <button data-tab="da">DeviantArt</button>
-    <button data-tab="account">Аккаунт</button>
-    <button data-tab="about">О сервисе</button>
+    <button data-tab="account">Account</button>
+    <button data-tab="about">About</button>
   </nav>
   <div class="side-foot">
     <div class="socials" id="socials"></div>
@@ -207,51 +207,51 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
 </aside>
 
 <main class="main">
-  <a class="back" href="/">← На главную</a>
+  <a class="back" href="/">← Home</a>
   <div class="topbar">
     <div>
-      <div class="h-title" id="pageTitle">Обработка</div>
-      <div class="h-sub" id="pageSub">Нарезка Workshop / Featured / Split, watermark и ZIP под Steam</div>
+      <div class="h-title" id="pageTitle">Process</div>
+      <div class="h-sub" id="pageSub">Workshop / Featured / Split cuts, watermark and Steam ZIP</div>
     </div>
     <div class="top-actions">
       <span class="pill" id="planBadge">Free</span>
       <span class="pill" id="userPill" style="display:none"></span>
       <button class="btn ghost" id="langBtn" type="button" style="min-width:48px">EN</button>
-      <button class="btn ghost" id="btnAuth" type="button">Войти</button>
-      <button class="btn" id="btnUpgrade" type="button" style="display:none">Купить Pro</button>
-      <button class="btn ghost" id="btnLogout" type="button" style="display:none">Выйти</button>
+      <button class="btn ghost" id="btnAuth" type="button">Log in</button>
+      <button class="btn" id="btnUpgrade" type="button" style="display:none">Buy Pro</button>
+      <button class="btn ghost" id="btnLogout" type="button" style="display:none">Log out</button>
     </div>
   </div>
 
   <section class="tab active" id="tab-process">
     <div class="card">
-      <h2>Режим</h2>
+      <h2>Mode</h2>
       <div class="modes">
-        <button type="button" class="mode active" data-mode="workshop"><strong>Workshop</strong><span>5 частей для витрины мастерской</span></button>
-        <button type="button" class="mode" data-mode="featured"><strong>Featured</strong><span>Artwork шириной 630 px</span></button>
-        <button type="button" class="mode" data-mode="split"><strong>Artwork Split</strong><span>Центр 506 + боковая 100</span></button>
+        <button type="button" class="mode active" data-mode="workshop"><strong>Workshop</strong><span>5 panels for Workshop showcase</span></button>
+        <button type="button" class="mode" data-mode="featured"><strong>Featured</strong><span>Artwork 630px wide</span></button>
+        <button type="button" class="mode" data-mode="split"><strong>Artwork Split</strong><span>Center 506 + side 100</span></button>
       </div>
     </div>
     <div class="card">
-      <h2>Параметры</h2>
+      <h2>Settings</h2>
       <div class="row">
         <label class="field">FPS<input type="number" id="fps" value="12" min="5" max="30"/></label>
-        <label class="field">Ширина<input type="number" id="size" value="750" min="300" max="1200"/></label>
+        <label class="field">Width<input type="number" id="size" value="750" min="300" max="1200"/></label>
         <label class="field">Watermark<input id="wmText" value="n1t1337"/></label>
-        <label class="field">Шрифт<select id="wmFont"><option>lap</option><option>rob</option><option>caratte</option><option>Fineday</option></select></label>
-        <label class="field">Прозрачность %<input type="range" id="wmOpacity" min="0" max="100" value="22"/></label>
-        <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="wmEnable" checked/> Вкл</label>
+        <label class="field">Font<select id="wmFont"><option>lap</option><option>rob</option><option>caratte</option><option>Fineday</option></select></label>
+        <label class="field">Opacity %<input type="range" id="wmOpacity" min="0" max="100" value="22"/></label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="wmEnable" checked/> On</label>
       </div>
     </div>
     <div class="card">
-      <h2>Файлы</h2>
-      <div class="drop" id="drop">Перетащи PNG, JPG, GIF или MP4 — или нажми, чтобы выбрать</div>
+      <h2>Files</h2>
+      <div class="drop" id="drop">Drop PNG, JPG, GIF or MP4 — or click to browse</div>
       <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif"/>
       <div class="files" id="fileList"></div>
       <div class="row" style="margin-top:16px">
-        <button class="btn" id="btnRun" disabled>Обработать</button>
-        <button class="btn ghost" id="btnClear" type="button">Очистить</button>
-        <a class="btn ghost" id="dlProcess" style="display:none;text-decoration:none" href="#">Скачать ZIP</a>
+        <button class="btn" id="btnRun" disabled>Process</button>
+        <button class="btn ghost" id="btnClear" type="button">Clear</button>
+        <a class="btn ghost" id="dlProcess" style="display:none;text-decoration:none" href="#">Download ZIP</a>
       </div>
       <div class="status" id="status"></div>
     </div>
@@ -259,116 +259,116 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
 
   <section class="tab" id="tab-download">
     <div class="card">
-      <h2>Скачать из сети</h2>
-      <p class="steps" style="margin-bottom:16px">YouTube · TikTok · X · Reddit · Pinterest — без сторонних сайтов</p>
+      <h2>Download from web</h2>
+      <p class="steps" style="margin-bottom:16px">YouTube · TikTok · X · Reddit · Pinterest — no third-party sites</p>
       <div class="row">
         <input id="dlUrl" placeholder="https://…" style="flex:1;min-width:220px"/>
-        <select id="dlQuality"><option value="best">Лучшее</option><option value="720">≤720p</option><option value="audio">Аудио</option></select>
-        <button class="btn" id="btnDl">Скачать</button>
+        <select id="dlQuality"><option value="best">Best</option><option value="720">≤720p</option><option value="audio">Audio</option></select>
+        <button class="btn" id="btnDl">Download</button>
       </div>
       <div class="status" id="dlStatus"></div>
-      <a class="btn" id="dlLink" style="display:none;margin-top:14px;text-decoration:none" href="#">Скачать файл</a>
+      <a class="btn" id="dlLink" style="display:none;margin-top:14px;text-decoration:none" href="#">Download file</a>
     </div>
   </section>
 
   <section class="tab" id="tab-preview">
     <div class="card">
-      <h2>Предпросмотр профиля</h2>
-      <p class="steps" style="margin-bottom:16px">Режим страницы → файл на каждую витрину → открыть в новой вкладке (GIF и MP4 с анимацией).</p>
+      <h2>Profile preview</h2>
+      <p class="steps" style="margin-bottom:16px">Pick page mode → file per showcase → open in a new tab (animated GIF and MP4).</p>
       <div class="row" style="margin-bottom:16px">
-        <label class="field">Режим
+        <label class="field">Mode
           <select id="pvMode">
             <option value="workshop">Workshop</option>
             <option value="featured">Featured</option>
             <option value="split">Artwork Split</option>
           </select>
         </label>
-        <button type="button" class="btn ghost" id="btnPvAvatar" style="align-self:flex-end">Аватар</button>
+        <button type="button" class="btn ghost" id="btnPvAvatar" style="align-self:flex-end">Avatar</button>
         <input type="file" id="pvAvatar" accept="image/*" style="display:none"/>
         <span id="pvAvName" style="font-size:12px;color:var(--muted);align-self:flex-end;padding-bottom:10px">—</span>
       </div>
-      <h2>Витрины</h2>
+      <h2>Showcases</h2>
       <div id="pvSlots" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
-      <button class="btn" id="btnPv" type="button">Открыть в браузере</button>
+      <button class="btn" id="btnPv" type="button">Open in browser</button>
       <div class="status" id="pvStatus"></div>
     </div>
   </section>
 
   <section class="tab" id="tab-steam">
     <div class="card">
-      <h2>Загрузка в Steam</h2>
+      <h2>Upload to Steam</h2>
       <div class="steps">
-        <b>1.</b> Обработай файлы и скачай ZIP<br/>
-        <b>2.</b> Открой страницу загрузки artwork в Steam<br/>
-        <b>3.</b> F12 → Console → вставь код → Enter<br/>
+        <b>1.</b> Process files and download the ZIP<br/>
+        <b>2.</b> Open the Steam artwork upload page<br/>
+        <b>3.</b> F12 → Console → paste the code → Enter<br/>
         <b>4.</b> Workshop: part_1…5 · Featured: featured_630 · Split: center → side
       </div>
     </div>
     <div class="card">
-      <h2>Код консоли</h2>
+      <h2>Console code</h2>
       <pre class="code" id="steamCode"></pre>
-      <button class="btn" id="btnCopyCode" type="button" style="margin-top:12px">Копировать</button>
+      <button class="btn" id="btnCopyCode" type="button" style="margin-top:12px">Copy</button>
     </div>
   </section>
 
   <section class="tab" id="tab-da">
     <div class="card">
       <h2>DeviantArt</h2>
-      <p class="steps">Веб-OAuth в разработке. Полная загрузка — в <a id="buyLink" href="https://funpay.com/lots/offer?id=75265310" target="_blank" style="color:var(--accent)">desktop-версии на FunPay</a>.</p>
+      <p class="steps">Web OAuth is in development. Full upload is in the <a id="buyLink" href="https://funpay.com/lots/offer?id=75265310" target="_blank" style="color:var(--accent)">desktop version on FunPay</a>.</p>
     </div>
   </section>
 
   
   <section class="tab" id="tab-account">
     <div class="card" id="accGuest">
-      <h2>Вход или регистрация</h2>
+      <h2>Log in or sign up</h2>
       <p class="steps" style="margin-bottom:16px">Создай аккаунт, чтобы купить Pro прямо на сайте и не зависеть от кода доступа.</p>
       <div class="row" style="align-items:stretch">
         <div style="flex:1;min-width:240px">
           <label class="field">Email<input id="accEmail" type="email" placeholder="you@email.com"/></label>
-          <label class="field" style="margin-top:10px">Пароль<input id="accPass" type="password" placeholder="минимум 6 символов"/></label>
+          <label class="field" style="margin-top:10px">Пароль<input id="accPass" type="password" placeholder="min 6 characters"/></label>
           <div class="row" style="margin-top:14px">
-            <button class="btn" id="accLogin" type="button">Войти</button>
-            <button class="btn ghost" id="accRegister" type="button">Регистрация</button>
+            <button class="btn" id="accLogin" type="button">Log in</button>
+            <button class="btn ghost" id="accRegister" type="button">Sign up</button>
           </div>
           <div class="status" id="accStatus"></div>
         </div>
       </div>
     </div>
     <div class="card" id="accUser" style="display:none">
-      <h2>Твой аккаунт</h2>
+      <h2>Your account</h2>
       <p class="steps" id="accInfo" style="margin-bottom:16px"></p>
       <div class="row">
-        <button class="btn" id="accBuyPro" type="button">Купить Pro</button>
-        <button class="btn ghost" id="accLogout2" type="button">Выйти</button>
+        <button class="btn" id="accBuyPro" type="button">Buy Pro</button>
+        <button class="btn ghost" id="accLogout2" type="button">Log out</button>
       </div>
       <p class="steps" style="margin-top:16px;font-size:12px" id="accBillingHint">
-        Покупка на FunPay. После оплаты продавец выдаст код — вставь его ниже.
+        Buy on FunPay. After payment you get a code — paste it below.
       </p>
       <div class="status" id="accBuyStatus"></div>
     </div>
     <div class="card">
-      <h2>Код доступа</h2>
-      <p class="steps" style="margin-bottom:12px">Если купил на FunPay или получил trial-код — вставь сюда.</p>
+      <h2>Access code</h2>
+      <p class="steps" style="margin-bottom:12px">If you bought on FunPay or got a trial code — paste it here.</p>
       <div class="row">
         <input id="accessCode2" placeholder="SM-WEB-XXXXXX-XXXX" style="width:240px"/>
-        <button class="btn ghost" id="btnUnlock2" type="button">Применить код</button>
+        <button class="btn ghost" id="btnUnlock2" type="button">Apply код</button>
       </div>
     </div>
   </section>
 
   <section class="tab" id="tab-about">
     <div class="card">
-      <h2>О сервисе</h2>
+      <h2>About</h2>
       <p class="steps">
-        <b>Showcase Maker WEB</b> — браузерные инструменты для Steam-витрин.<br/>
-        Free: лимит файлов · Pro: безлимит (аккаунт + Stripe или код доступа).<br/><br/>
+        <b>Showcase Maker WEB</b> — browser tools for Steam showcases.<br/>
+        Free: daily file limit · Pro: unlimited (account + access code).<br/><br/>
         by n1t1337
       </p>
       <div class="socials" id="socials2" style="justify-content:flex-start;margin-top:16px"></div>
       <div class="row" style="margin-top:20px">
-        <input id="accessCode" placeholder="Код доступа" style="width:220px"/>
-        <button class="btn ghost" id="btnUnlock" type="button">Применить</button>
+        <input id="accessCode" placeholder="Access code" style="width:220px"/>
+        <button class="btn ghost" id="btnUnlock" type="button">Apply</button>
       </div>
     </div>
   </section>
@@ -377,14 +377,14 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
 
 <div class="modal-bg" id="authModal">
   <div class="modal">
-    <h3 id="authTitle">Вход</h3>
-    <p id="authSub">Войди, чтобы купить Pro и сохранить доступ</p>
+    <h3 id="authTitle">Log in</h3>
+    <p id="authSub">Log in to buy Pro and keep access</p>
     <div class="stack">
       <input id="authEmail" type="email" placeholder="Email"/>
-      <input id="authPass" type="password" placeholder="Пароль (мин. 6)"/>
-      <button class="btn" id="authSubmit" type="button">Войти</button>
+      <input id="authPass" type="password" placeholder="Password (min 6)"/>
+      <button class="btn" id="authSubmit" type="button">Log in</button>
     </div>
-    <div class="switch" id="authSwitch">Нет аккаунта? <a id="authToggle">Регистрация</a></div>
+    <div class="switch" id="authSwitch">No account? <a id="authToggle">Sign up</a></div>
   </div>
 </div>
 
@@ -396,13 +396,13 @@ const state = {
   authMode: 'login'
 };
 const titles = {
-  process:['Обработка','Нарезка Workshop / Featured / Split, watermark и ZIP под Steam'],
-  download:['Скачать','Исходники с YouTube, TikTok, X, Reddit и Pinterest'],
-  preview:['Предпросмотр','Как ляжет витрина на страницу профиля Steam'],
-  steam:['Steam','Инструкция и код для загрузки artwork'],
-  da:['DeviantArt','Публикация — desktop-версия'],
-  account:['Аккаунт','Регистрация, вход и покупка Pro'],
-  about:['О сервисе','Лимиты, Pro и контакты']
+  process:['Process','Workshop / Featured / Split cuts, watermark and Steam ZIP'],
+  download:['Download','Sources from YouTube, TikTok, X, Reddit and Pinterest'],
+  preview:['Preview','How the showcase looks on a Steam profile'],
+  steam:['Steam','Guide and console code for artwork upload'],
+  da:['DeviantArt','Publishing — desktop version'],
+  account:['Account','Sign up, log in and buy Pro'],
+  about:['About','Limits, Pro and contacts']
 };
 function headers() {
   const h = {};
@@ -443,11 +443,11 @@ document.getElementById('btnAuth').onclick = () => { state.authMode='login'; syn
 function syncAuthUi() {
   const reg = state.authMode === 'register';
   document.getElementById('authTitle').textContent = reg ? 'Регистрация' : 'Вход';
-  document.getElementById('authSub').textContent = reg ? 'Создай аккаунт для Pro' : 'Войди, чтобы купить Pro';
+  document.getElementById('authSub').textContent = reg ? 'Создай аккаунт для Pro' : 'Log in to buy Pro';
   document.getElementById('authSubmit').textContent = reg ? 'Создать аккаунт' : 'Войти';
   document.getElementById('authSwitch').innerHTML = reg
     ? 'Уже есть аккаунт? <a id="authToggle">Вход</a>'
-    : 'Нет аккаунта? <a id="authToggle">Регистрация</a>';
+    : 'No account? <a id="authToggle">Sign up</a>';
   document.getElementById('authToggle').onclick = () => { state.authMode = reg ? 'login' : 'register'; syncAuthUi(); };
 }
 modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
@@ -457,7 +457,7 @@ document.getElementById('authSubmit').onclick = async () => {
   const url = state.authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
   const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password}) });
   const j = await r.json();
-  if (!j.ok) { alert(j.msg || 'Ошибка'); return; }
+  if (!j.ok) { alert(j.msg || 'Error'); return; }
   state.session = j.token; localStorage.setItem('sm_session', j.token);
   modal.classList.remove('show'); refreshQuota();
 };
@@ -477,7 +477,7 @@ document.getElementById('btnUnlock').onclick = async () => {
   const r = await fetch('/api/unlock', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code}) });
   const j = await r.json();
   if (j.ok) { state.token = j.token; localStorage.setItem('sm_token', j.token); alert(j.msg); refreshQuota(); }
-  else alert(j.msg || 'Ошибка');
+  else alert(j.msg || 'Error');
 };
 
 document.querySelectorAll('#nav button').forEach(btn => {
@@ -524,7 +524,7 @@ document.getElementById('btnClear').onclick = () => {
 document.getElementById('btnRun').onclick = async () => {
   const st = document.getElementById('status');
   const dl = document.getElementById('dlProcess');
-  st.className='status'; st.textContent='Обработка…'; dl.style.display='none';
+  st.className='status'; st.textContent='Processing…'; dl.style.display='none';
   const fd = new FormData();
   fd.append('mode', state.mode);
   fd.append('fps', document.getElementById('fps').value);
@@ -537,7 +537,7 @@ document.getElementById('btnRun').onclick = async () => {
   try {
     const r = await fetch('/api/process', { method:'POST', headers: headers(), body: fd });
     const j = await r.json();
-    if (!j.ok) { st.className='status err'; st.textContent = j.msg || 'Ошибка'; }
+    if (!j.ok) { st.className='status err'; st.textContent = j.msg || 'Error'; }
     else {
       st.className='status ok'; st.textContent = `Готово: ${j.processed}`;
       dl.href = j.download; dl.style.display='inline-block'; refreshQuota();
@@ -548,15 +548,15 @@ document.getElementById('btnRun').onclick = async () => {
 document.getElementById('btnDl').onclick = async () => {
   const st = document.getElementById('dlStatus');
   const link = document.getElementById('dlLink');
-  st.className='status'; st.textContent='Скачивание…'; link.style.display='none';
+  st.className='status'; st.textContent='Downloading…'; link.style.display='none';
   try {
     const r = await fetch('/api/download-url', {
       method:'POST', headers:{...headers(),'Content-Type':'application/json'},
       body: JSON.stringify({ url: document.getElementById('dlUrl').value, quality: document.getElementById('dlQuality').value })
     });
     const j = await r.json();
-    if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Ошибка'; }
-    else { st.className='status ok'; st.textContent=j.name||'Готово'; link.href=j.download; link.style.display='inline-block'; refreshQuota(); }
+    if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Error'; }
+    else { st.className='status ok'; st.textContent=j.name||'Done'; link.href=j.download; link.style.display='inline-block'; refreshQuota(); }
   } catch(e){ st.className='status err'; st.textContent=String(e); }
 };
 
@@ -570,7 +570,7 @@ async function loadPvSlots() {
     const row = document.createElement('div'); row.className = 'fi';
     const name = document.createElement('span'); name.style.flex = '1';
     name.textContent = s.label + (pvFiles[s.id] ? ' · ' + pvFiles[s.id].name : ' · файл не выбран');
-    const pick = document.createElement('button'); pick.type='button'; pick.className='btn ghost'; pick.style.padding='6px 12px'; pick.textContent='Выбрать';
+    const pick = document.createElement('button'); pick.type='button'; pick.className='btn ghost'; pick.style.padding='6px 12px'; pick.textContent='Choose';
     const inp = document.createElement('input'); inp.type='file'; inp.accept='image/*,.gif,video/*'; inp.style.display='none';
     inp.onchange = () => { if (inp.files[0]) { pvFiles[s.id]=inp.files[0]; name.textContent=s.label+' · '+inp.files[0].name; } };
     pick.onclick = (e) => { e.preventDefault(); inp.click(); };
@@ -588,8 +588,8 @@ document.getElementById('pvAvatar').onchange = () => {
 };
 document.getElementById('btnPv').onclick = async () => {
   const st = document.getElementById('pvStatus');
-  if (!Object.keys(pvFiles).length) { st.className='status err'; st.textContent='Выбери хотя бы одну витрину'; return; }
-  st.className='status'; st.textContent='Сборка…';
+  if (!Object.keys(pvFiles).length) { st.className='status err'; st.textContent='Select at least one showcase'; return; }
+  st.className='status'; st.textContent='Building…';
   const fd = new FormData();
   fd.append('mode', document.getElementById('pvMode').value);
   const av = document.getElementById('pvAvatar').files[0];
@@ -598,15 +598,15 @@ document.getElementById('btnPv').onclick = async () => {
   try {
     const r = await fetch('/api/preview-build', { method:'POST', body: fd });
     const j = await r.json();
-    if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Ошибка'; return; }
+    if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Error'; return; }
     window.open(j.open, '_blank');
     st.className='status ok';
-    st.textContent = 'Открыто · ' + (j.applied||[]).join(', ');
+    st.textContent = 'Opened · ' + (j.applied||[]).join(', ');
   } catch(e){ st.className='status err'; st.textContent=String(e); }
 };
 
 document.getElementById('btnCopyCode').onclick = () => {
-  navigator.clipboard.writeText(document.getElementById('steamCode').textContent).then(()=>alert('Скопировано'));
+  navigator.clipboard.writeText(document.getElementById('steamCode').textContent).then(()=>alert('Copied'));
 };
 
 
@@ -641,9 +641,9 @@ document.getElementById('accLogin')?.addEventListener('click', async () => {
     body: JSON.stringify({ email: document.getElementById('accEmail').value, password: document.getElementById('accPass').value })
   });
   const j = await r.json();
-  if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Ошибка'; return; }
+  if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Error'; return; }
   state.session = j.token; localStorage.setItem('sm_session', j.token);
-  st.className='status ok'; st.textContent='Вход выполнен';
+  st.className='status ok'; st.textContent='Logged in';
   refreshQuota();
 });
 document.getElementById('accRegister')?.addEventListener('click', async () => {
@@ -654,9 +654,9 @@ document.getElementById('accRegister')?.addEventListener('click', async () => {
     body: JSON.stringify({ email: document.getElementById('accEmail').value, password: document.getElementById('accPass').value })
   });
   const j = await r.json();
-  if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Ошибка'; return; }
+  if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Error'; return; }
   state.session = j.token; localStorage.setItem('sm_session', j.token);
-  st.className='status ok'; st.textContent='Аккаунт создан';
+  st.className='status ok'; st.textContent='Account created';
   refreshQuota();
 });
 document.getElementById('accLogout2')?.addEventListener('click', async () => {
@@ -675,7 +675,7 @@ document.getElementById('btnUnlock2')?.addEventListener('click', async () => {
   const r = await fetch('/api/unlock', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code}) });
   const j = await r.json();
   if (j.ok) { state.token = j.token; localStorage.setItem('sm_token', j.token); alert(j.msg); refreshQuota(); }
-  else alert(j.msg || 'Ошибка');
+  else alert(j.msg || 'Error');
 });
 
 async function init(){
@@ -699,7 +699,7 @@ init();
 /* ===== i18n ===== */
 const APP_I18N = {
   ru: {
-    back: "← На главную",
+    back: "← Home",
     nav: {process:"Обработка",download:"Скачать",preview:"Предпросмотр",steam:"Steam",da:"DeviantArt",account:"Аккаунт",about:"О сервисе"},
     titles: {
       process:["Обработка","Нарезка Workshop / Featured / Split, watermark и ZIP под Steam"],
@@ -712,19 +712,19 @@ const APP_I18N = {
     },
     login:"Войти", logout:"Выйти", buy:"Купить Pro",
     mode:"Режим", params:"Параметры", files:"Файлы",
-    drop:"Перетащи PNG, JPG, GIF или MP4 — или нажми, чтобы выбрать",
+    drop:"Drop PNG, JPG, GIF or MP4 — or click to browse",
     run:"Обработать", clear:"Очистить", dlzip:"Скачать ZIP",
-    acc_guest:"Вход или регистрация",
-    acc_guest_p:"Создай аккаунт, чтобы купить Pro и сохранить доступ.",
-    reg:"Регистрация", acc_user:"Твой аккаунт",
-    code_h:"Код доступа", code_p:"Если купил на FunPay — вставь код сюда.",
-    apply:"Применить код",
-    funpay_hint:"Покупка на FunPay. После оплаты продавец выдаст код — вставь его ниже.",
+    acc_guest:"Log in or sign up",
+    acc_guest_p:"Create an account to buy Pro and keep your access.",
+    reg:"Регистрация", acc_user:"Your account",
+    code_h:"Access code", code_p:"Bought on FunPay? Paste the code here.",
+    apply:"Apply код",
+    funpay_hint:"Buy on FunPay. After payment you get a code — paste it below.",
     steam_h:"Загрузка в Steam",
     about_h:"О сервисе",
     auth_login:"Вход", auth_reg:"Регистрация",
-    auth_sub_l:"Войди, чтобы купить Pro", auth_sub_r:"Создай аккаунт для Pro",
-    no_acc:"Нет аккаунта?", has_acc:"Уже есть аккаунт?",
+    auth_sub_l:"Log in to buy Pro", auth_sub_r:"Создай аккаунт для Pro",
+    no_acc:"No account?", has_acc:"Уже есть аккаунт?",
   },
   en: {
     back: "← Home",
@@ -757,7 +757,7 @@ const APP_I18N = {
 };
 
 function appLang() {
-  return localStorage.getItem('sm_lang') || 'ru';
+  return localStorage.getItem('sm_lang') || 'en';
 }
 
 function applyAppLang(lang) {
@@ -765,7 +765,7 @@ function applyAppLang(lang) {
   localStorage.setItem('sm_lang', lang);
   document.documentElement.lang = lang;
   const lb = document.getElementById('langBtn');
-  if (lb) lb.textContent = lang === 'ru' ? 'EN' : 'RU';
+  if (lb) lb.textContent = lang === 'en' ? 'RU' : 'EN';
 
   // nav
   document.querySelectorAll('#nav button').forEach(btn => {
@@ -826,6 +826,70 @@ function applyAppLang(lang) {
   const bu2 = document.getElementById('btnUnlock2'); if (bu2) bu2.textContent = t.apply;
 
   // modal
+
+  // mode descriptions
+  const modes = document.querySelectorAll('.mode span');
+  if (modes[0]) modes[0].textContent = lang==='en' ? '5 panels for Workshop showcase' : '5 частей для витрины мастерской';
+  if (modes[1]) modes[1].textContent = lang==='en' ? 'Artwork 630px wide' : 'Artwork шириной 630 px';
+  if (modes[2]) modes[2].textContent = lang==='en' ? 'Center 506 + side 100' : 'Центр 506 + боковая 100';
+  // labels
+  document.querySelectorAll('label.field').forEach(lab => {
+    const txt = lab.childNodes[0];
+    if (!txt || txt.nodeType !== 3) return;
+    const map = lang==='en' ? {
+      'Ширина':'Width','Width':'Width','Шрифт':'Font','Font':'Font',
+      'Прозрачность %':'Opacity %','Opacity %':'Opacity %',
+      'Watermark':'Watermark','FPS':'FPS','Режим':'Mode','Mode':'Mode'
+    } : {
+      'Width':'Ширина','Font':'Шрифт','Opacity %':'Прозрачность %','Mode':'Режим'
+    };
+    const v = txt.textContent.trim();
+    if (map[v]) txt.textContent = map[v];
+  });
+  const wmOn = document.querySelector('#wmEnable')?.parentElement;
+  if (wmOn) {
+    const last = [...wmOn.childNodes].filter(n=>n.nodeType===3).pop();
+    // skip
+  }
+  const dlH = document.querySelector('#tab-download h2');
+  if (dlH) dlH.textContent = lang==='en' ? 'Download from web' : 'Скачать из сети';
+  const dlP = document.querySelector('#tab-download .steps');
+  if (dlP) dlP.textContent = lang==='en'
+    ? 'YouTube · TikTok · X · Reddit · Pinterest — no third-party sites'
+    : 'YouTube · TikTok · X · Reddit · Pinterest — без сторонних сайтов';
+  const btnDl = document.getElementById('btnDl');
+  if (btnDl) btnDl.textContent = lang==='en' ? 'Download' : 'Скачать';
+  const dlLink = document.getElementById('dlLink');
+  if (dlLink) dlLink.textContent = lang==='en' ? 'Download file' : 'Скачать файл';
+  const pvH = document.querySelector('#tab-preview h2');
+  if (pvH) pvH.textContent = lang==='en' ? 'Profile preview' : 'Предпросмотр профиля';
+  const pvSteps = document.querySelector('#tab-preview .steps');
+  if (pvSteps) pvSteps.textContent = lang==='en'
+    ? 'Pick page mode → file per showcase → open in a new tab (animated GIF and MP4).'
+    : 'Режим страницы → файл на каждую витрину → открыть в новой вкладке (GIF и MP4 с анимацией).';
+  const btnPv = document.getElementById('btnPv');
+  if (btnPv) btnPv.textContent = lang==='en' ? 'Open in browser' : 'Открыть в браузере';
+  const btnAv = document.getElementById('btnPvAvatar');
+  if (btnAv) btnAv.textContent = lang==='en' ? 'Avatar' : 'Аватар';
+  const sh = document.querySelector('#tab-steam .card h2');
+  if (sh) sh.textContent = lang==='en' ? 'Upload to Steam' : 'Загрузка в Steam';
+  const sc = document.querySelector('#tab-steam .steps');
+  if (sc) sc.innerHTML = lang==='en'
+    ? '<b>1.</b> Process files and download the ZIP<br/><b>2.</b> Open the Steam artwork upload page<br/><b>3.</b> F12 → Console → paste the code → Enter<br/><b>4.</b> Workshop: part_1…5 · Featured: featured_630 · Split: center → side'
+    : '<b>1.</b> Обработай файлы и скачай ZIP<br/><b>2.</b> Открой страницу загрузки artwork в Steam<br/><b>3.</b> F12 → Console → вставь код → Enter<br/><b>4.</b> Workshop: part_1…5 · Featured: featured_630 · Split: center → side';
+  const sch = document.querySelectorAll('#tab-steam .card h2')[1];
+  if (sch) sch.textContent = lang==='en' ? 'Console code' : 'Код консоли';
+  const bcc = document.getElementById('btnCopyCode');
+  if (bcc) bcc.textContent = lang==='en' ? 'Copy' : 'Копировать';
+  const aboutP = document.querySelector('#tab-about .steps');
+  if (aboutP && aboutP.innerHTML.includes('Showcase Maker')) {
+    aboutP.innerHTML = lang==='en'
+      ? '<b>Showcase Maker WEB</b> — browser tools for Steam showcases.<br/>Free: daily file limit · Pro: unlimited (account + access code).<br/><br/>by n1t1337'
+      : '<b>Showcase Maker WEB</b> — браузерные инструменты для Steam-витрин.<br/>Free: лимит файлов · Pro: безлимит (аккаунт + код доступа).<br/><br/>by n1t1337';
+  }
+  const brandSub = document.querySelector('.brand span');
+  if (brandSub) brandSub.textContent = lang==='en' ? 'Tools' : 'Инструменты';
+
   syncAuthUiLang(lang);
 }
 
@@ -852,7 +916,7 @@ function syncAuthUiLang(lang) {
 }
 
 document.getElementById('langBtn')?.addEventListener('click', () => {
-  applyAppLang(appLang() === 'ru' ? 'en' : 'ru');
+  applyAppLang(appLang() === 'en' ? 'ru' : 'en');
 });
 
 // apply after DOM / init
