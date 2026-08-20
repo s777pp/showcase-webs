@@ -351,25 +351,25 @@ setTimeout(() => {
 <script>
 const I18N = {
   ru: {
-    nav_feat: "Features", nav_how: "How it works", nav_tools: "Tools", nav_reg: "Sign up",
-    h1a: "Steam showcases", h1b: "without the grind",
-    hero_p: "Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool.",
-    cta_tools: "Open tools", cta_reg: "Create account",
+    nav_feat: "Возможности", nav_how: "Как это работает", nav_tools: "Инструменты", nav_reg: "Регистрация",
+    h1a: "Steam-витрины", h1b: "без рутины",
+    hero_p: "Нарезка Workshop, Featured и Split, watermark, сжатие под лимит Steam, скачивание исходников и предпросмотр профиля — в одном браузерном инструменте.",
+    cta_tools: "Открыть инструменты", cta_reg: "Создать аккаунт",
     hero_note: "Free · 5 файлов/сутки  ·  Pro · без лимита",
-    feat_h: "Everything for your profile", feat_lead: "From source file to Steam-ready assets",
-    c1t: "Showcase cuts", c1p: "Workshop ×5, Featured 630px, Artwork Split 506+100. Bars, watermark, GIF and video.",
-    c2t: "Download sources", c2p: "YouTube, TikTok, X, Reddit, Pinterest — no third-party sites.",
-    c3t: "Profile preview", c3p: "Steam page template, slots per showcase, animated GIF and MP4.",
-    c4t: "Watermark", c4p: "Text, font, opacity — handy if you sell or publish art.",
-    c5t: "ZIP под Steam", c5p: "Ready archive with part_1…5, featured, split — upload to Workshop.",
-    c6t: "In the browser", c6p: "No .exe on every PC. Open the site, process, download.",
-    how_h: "Four steps", how_lead: "From file to Steam profile",
-    s1t: "Upload", s1p: "PNG, JPG, GIF or MP4 — or download by link inside the app.",
-    s2t: "Pick a mode", s2p: "Workshop, Featured или Artwork Split + watermark и FPS.",
-    s3t: "Download ZIP", s3p: "Already cut and compressed for Steam limits.",
-    s4t: "Upload to Steam", s4p: "Console code and guide are on the Steam tab in Tools.",
-    band_h: "Ready to style your profile?", band_p: "Free limit to try · Pro removes limits",
-    band_tools: "Go to tools", band_reg: "Sign up",
+    feat_h: "Всё для оформления профиля", feat_lead: "От исходника до готовых файлов под загрузку в Steam",
+    c1t: "Нарезка витрин", c1p: "Workshop на 5 частей, Featured 630px, Artwork Split 506+100. Полосы, watermark, GIF и видео.",
+    c2t: "Скачивание исходников", c2p: "YouTube, TikTok, X, Reddit, Pinterest — без сторонних сайтов, сразу в рабочую папку.",
+    c3t: "Предпросмотр профиля", c3p: "Шаблон Steam-страницы, слоты под каждую витрину, GIF и MP4 с анимацией.",
+    c4t: "Watermark", c4p: "Текст, шрифт, прозрачность. Удобно для авторов, которые продают или публикуют работы.",
+    c5t: "ZIP под Steam", c5p: "Готовый архив с part_1…5, featured, split — можно сразу грузить в мастерскую.",
+    c6t: "В браузере", c6p: "Не нужно ставить exe на каждый ПК. Открыл сайт — обработал — скачал.",
+    how_h: "Четыре шага", how_lead: "От файла до профиля Steam",
+    s1t: "Загрузи", s1p: "PNG, JPG, GIF, MP4 или AVI — или скачай по ссылке внутри сервиса.",
+    s2t: "Выбери режим", s2p: "Workshop, Featured или Artwork Split + watermark и FPS.",
+    s3t: "Скачай ZIP", s3p: "Файлы уже нарезаны и сжаты под лимиты Steam.",
+    s4t: "Залей в Steam", s4p: "Код для консоли и инструкция — на вкладке Steam в инструментах.",
+    band_h: "Готов оформить профиль?", band_p: "Бесплатный лимит для теста · Pro снимает ограничения",
+    band_tools: "Перейти к инструментам", band_reg: "Регистрация",
     foot: "Showcase Maker · by"
   },
   en: {
@@ -386,7 +386,7 @@ const I18N = {
     c5t: "Steam ZIP", c5p: "Ready archive with part_1…5, featured, split — upload to Workshop.",
     c6t: "In the browser", c6p: "No .exe on every PC. Open the site, process, download.",
     how_h: "Four steps", how_lead: "From file to Steam profile",
-    s1t: "Upload", s1p: "PNG, JPG, GIF or MP4 — or download by link inside the app.",
+    s1t: "Upload", s1p: "PNG, JPG, GIF, MP4 or AVI — or download by link inside the app.",
     s2t: "Pick a mode", s2p: "Workshop, Featured or Artwork Split + watermark and FPS.",
     s3t: "Download ZIP", s3p: "Already cut and compressed for Steam limits.",
     s4t: "Upload to Steam", s4p: "Console code and guide are on the Steam tab in Tools.",
@@ -447,7 +447,7 @@ function applyLang(lang) {
   if (ba[0]) ba[0].textContent = t.band_tools;
   if (ba[1]) ba[1].textContent = t.band_reg;
   const lb = document.getElementById('langBtn');
-  if (lb) lb.textContent = lang === 'ru' ? 'EN' : 'RU';
+  if (lb) lb.textContent = lang === 'en' ? 'RU' : 'EN';
   localStorage.setItem('sm_lang', lang);
 }
 

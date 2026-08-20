@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -245,8 +245,8 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
     </div>
     <div class="card">
       <h2>Files</h2>
-      <div class="drop" id="drop">Drop PNG, JPG, GIF or MP4 — or click to browse</div>
-      <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif"/>
+      <div class="drop" id="drop">Drop PNG, JPG, GIF, MP4 or AVI — or click to browse</div>
+      <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif,.avi,.mp4,.mov,.webm"/>
       <div class="files" id="fileList"></div>
       <div class="row" style="margin-top:16px">
         <button class="btn" id="btnRun" disabled>Process</button>
@@ -311,10 +311,25 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
     </div>
   </section>
 
-  <section class="tab" id="tab-da">
+    <section class="tab" id="tab-da">
     <div class="card">
       <h2>DeviantArt</h2>
-      <p class="steps">Web OAuth is in development. Full upload is in the <a id="buyLink" href="https://funpay.com/lots/offer?id=75265310" target="_blank" style="color:var(--accent)">desktop version on FunPay</a>.</p>
+      <p class="steps" style="margin-bottom:14px">Upload previews to Sta.sh (same flow as desktop). Log in to your Showcase account first, then connect DeviantArt.</p>
+      <div class="row" style="margin-bottom:12px">
+        <span class="pill" id="daStatusPill">DA: —</span>
+        <button class="btn" id="daLogin" type="button">Connect DeviantArt</button>
+        <button class="btn ghost" id="daLogout" type="button" style="display:none">Disconnect</button>
+      </div>
+      <div class="row">
+        <input type="file" id="daFiles" multiple accept="image/*,.gif,video/*" />
+      </div>
+      <div class="files" id="daList"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="daUpload" type="button">Upload to Sta.sh</button>
+      </div>
+      <div class="status" id="daMsg"></div>
+      <p class="steps" style="margin-top:12px;font-size:12px">Server needs env: DA_CLIENT_ID, DA_CLIENT_SECRET, DA_REDIRECT_URI=https://YOUR-DOMAIN/api/da/callback<br/>
+      App redirect URI on deviantart.com/developers must match.</p>
     </div>
   </section>
 
@@ -352,7 +367,7 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
       <p class="steps" style="margin-bottom:12px">If you bought on FunPay or got a trial code — paste it here.</p>
       <div class="row">
         <input id="accessCode2" placeholder="SM-WEB-XXXXXX-XXXX" style="width:240px"/>
-        <button class="btn ghost" id="btnUnlock2" type="button">Apply код</button>
+        <button class="btn ghost" id="btnUnlock2" type="button">Apply code</button>
       </div>
     </div>
   </section>
@@ -474,9 +489,13 @@ document.getElementById('btnUpgrade').onclick = () => {
 };
 document.getElementById('btnUnlock').onclick = async () => {
   const code = document.getElementById('accessCode').value.trim();
-  const r = await fetch('/api/unlock', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code}) });
+  const r = await fetch('/api/unlock', {
+    method:'POST',
+    headers:{...headers(), 'Content-Type':'application/json'},
+    body: JSON.stringify({code})
+  });
   const j = await r.json();
-  if (j.ok) { state.token = j.token; localStorage.setItem('sm_token', j.token); alert(j.msg); refreshQuota(); }
+  if (j.ok) { localStorage.removeItem('sm_token'); state.token=''; alert(j.msg || 'Pro activated'); refreshQuota(); }
   else alert(j.msg || 'Error');
 };
 
@@ -672,10 +691,69 @@ document.getElementById('accBuyPro')?.addEventListener('click', () => {
 });
 document.getElementById('btnUnlock2')?.addEventListener('click', async () => {
   const code = document.getElementById('accessCode2').value.trim();
-  const r = await fetch('/api/unlock', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code}) });
+  const r = await fetch('/api/unlock', {
+    method:'POST',
+    headers:{...headers(), 'Content-Type':'application/json'},
+    body: JSON.stringify({code})
+  });
   const j = await r.json();
-  if (j.ok) { state.token = j.token; localStorage.setItem('sm_token', j.token); alert(j.msg); refreshQuota(); }
+  if (j.ok) { localStorage.removeItem('sm_token'); state.token=''; alert(j.msg || 'Pro activated'); refreshQuota(); }
   else alert(j.msg || 'Error');
+});
+
+
+async function refreshDa() {
+  try {
+    const r = await fetch('/api/da/status', { headers: headers() });
+    const j = await r.json();
+    const pill = document.getElementById('daStatusPill');
+    const login = document.getElementById('daLogin');
+    const logout = document.getElementById('daLogout');
+    if (!pill) return;
+    if (!j.logged_in) {
+      pill.textContent = 'DA: log in to account first';
+      if (login) login.style.display = 'none';
+      if (logout) logout.style.display = 'none';
+      return;
+    }
+    if (!j.configured) {
+      pill.textContent = 'DA: not configured on server';
+      if (login) login.style.display = 'none';
+      return;
+    }
+    pill.textContent = j.da ? 'DA: connected' : 'DA: not connected';
+    if (login) login.style.display = j.da ? 'none' : 'inline-block';
+    if (logout) logout.style.display = j.da ? 'inline-block' : 'none';
+  } catch (e) {}
+}
+document.getElementById('daLogin')?.addEventListener('click', async () => {
+  const r = await fetch('/api/da/login', { headers: headers() });
+  const j = await r.json();
+  if (!j.ok) { alert(j.msg || 'Error'); return; }
+  window.open(j.url, '_blank');
+  const t = setInterval(async () => {
+    const st = await fetch('/api/da/status', { headers: headers() }).then(x => x.json());
+    if (st.da) { clearInterval(t); refreshDa(); }
+  }, 2000);
+  setTimeout(() => clearInterval(t), 120000);
+});
+document.getElementById('daLogout')?.addEventListener('click', async () => {
+  await fetch('/api/da/logout', { method: 'POST', headers: headers() });
+  refreshDa();
+});
+document.getElementById('daUpload')?.addEventListener('click', async () => {
+  const inp = document.getElementById('daFiles');
+  const st = document.getElementById('daMsg');
+  if (!inp?.files?.length) { st.className='status err'; st.textContent='Select files'; return; }
+  st.className='status'; st.textContent='Uploading…';
+  const fd = new FormData();
+  [...inp.files].forEach(f => fd.append('file', f));
+  try {
+    const r = await fetch('/api/da/upload', { method:'POST', headers: headers(), body: fd });
+    const j = await r.json();
+    if (!j.ok) { st.className='status err'; st.textContent = j.msg || (j.errors||[]).join('; ') || 'Error'; }
+    else { st.className='status ok'; st.textContent = `Uploaded ${j.uploaded}/${j.total}`; }
+  } catch(e) { st.className='status err'; st.textContent=String(e); }
 });
 
 async function init(){
@@ -685,7 +763,7 @@ async function init(){
   const html = (m.socials||[]).map(s=>`<a href="${s.url}" target="_blank" rel="noopener"><img src="${s.icon}" alt="${s.name}"/></a>`).join('');
   document.getElementById('socials').innerHTML = html;
   document.getElementById('socials2').innerHTML = html;
-  refreshQuota(); loadPvSlots();
+  refreshQuota(); loadPvSlots(); refreshDa();
   if (new URLSearchParams(location.search).get('auth') === '1') {
     state.authMode = 'register'; syncAuthUi(); modal.classList.add('show');
   }
@@ -702,7 +780,7 @@ const APP_I18N = {
     back: "← Home",
     nav: {process:"Обработка",download:"Скачать",preview:"Предпросмотр",steam:"Steam",da:"DeviantArt",account:"Аккаунт",about:"О сервисе"},
     titles: {
-      process:["Обработка","Нарезка Workshop / Featured / Split, watermark и ZIP под Steam"],
+      process:["Обработка","Workshop / Featured / Split cuts, watermark and Steam ZIP"],
       download:["Скачать","Исходники с YouTube, TikTok, X, Reddit и Pinterest"],
       preview:["Предпросмотр","Как ляжет витрина на страницу профиля Steam"],
       steam:["Steam","Инструкция и код для загрузки artwork"],
@@ -712,7 +790,7 @@ const APP_I18N = {
     },
     login:"Войти", logout:"Выйти", buy:"Купить Pro",
     mode:"Режим", params:"Параметры", files:"Файлы",
-    drop:"Drop PNG, JPG, GIF or MP4 — or click to browse",
+    drop:"Drop PNG, JPG, GIF, MP4 or AVI — or click to browse",
     run:"Обработать", clear:"Очистить", dlzip:"Скачать ZIP",
     acc_guest:"Log in or sign up",
     acc_guest_p:"Create an account to buy Pro and keep your access.",
@@ -740,7 +818,7 @@ const APP_I18N = {
     },
     login:"Log in", logout:"Log out", buy:"Buy Pro",
     mode:"Mode", params:"Settings", files:"Files",
-    drop:"Drop PNG, JPG, GIF or MP4 — or click to browse",
+    drop:"Drop PNG, JPG, GIF, MP4 or AVI — or click to browse",
     run:"Process", clear:"Clear", dlzip:"Download ZIP",
     acc_guest:"Log in or sign up",
     acc_guest_p:"Create an account to buy Pro and keep access.",

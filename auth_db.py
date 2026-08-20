@@ -1,7 +1,8 @@
-"""Пользователи + сессии (SQLite)."""
+"""Users + sessions (SQLite). Supports Railway volume via DATA_DIR."""
 from __future__ import annotations
 
 import hashlib
+import os
 import secrets
 import sqlite3
 import time
@@ -9,12 +10,13 @@ from pathlib import Path
 from typing import Optional
 
 ROOT = Path(__file__).resolve().parent
-DB = ROOT / "data" / "users.db"
-DB.parent.mkdir(parents=True, exist_ok=True)
+DATA = Path(os.environ.get("DATA_DIR") or (ROOT / "data"))
+DATA.mkdir(parents=True, exist_ok=True)
+DB = DATA / "users.db"
 
 
 def _conn() -> sqlite3.Connection:
-    c = sqlite3.connect(str(DB))
+    c = sqlite3.connect(str(DB), timeout=30)
     c.row_factory = sqlite3.Row
     c.execute(
         """
@@ -23,7 +25,10 @@ def _conn() -> sqlite3.Connection:
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             is_pro INTEGER DEFAULT 0,
+            pro_code TEXT,
             stripe_customer_id TEXT,
+            da_access_token TEXT,
+            da_refresh_token TEXT,
             created_at REAL
         )
         """
@@ -38,6 +43,27 @@ def _conn() -> sqlite3.Connection:
         )
         """
     )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS used_codes (
+            code TEXT PRIMARY KEY,
+            user_id INTEGER,
+            used_at REAL
+        )
+        """
+    )
+    # migrations for older DBs
+    cols = {r[1] for r in c.execute("PRAGMA table_info(users)").fetchall()}
+    for col, typ in (
+        ("pro_code", "TEXT"),
+        ("da_access_token", "TEXT"),
+        ("da_refresh_token", "TEXT"),
+    ):
+        if col not in cols:
+            try:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
+            except Exception:
+                pass
     c.commit()
     return c
 
@@ -59,9 +85,9 @@ def _check_pw(password: str, stored: str) -> bool:
 def register(email: str, password: str) -> tuple[bool, str]:
     email = email.strip().lower()
     if not email or "@" not in email:
-        return False, "Некорректный email"
+        return False, "Invalid email"
     if len(password) < 6:
-        return False, "Пароль минимум 6 символов"
+        return False, "Password min 6 characters"
     c = _conn()
     try:
         c.execute(
@@ -69,21 +95,20 @@ def register(email: str, password: str) -> tuple[bool, str]:
             (email, _hash_pw(password), time.time()),
         )
         c.commit()
-        return True, "Аккаунт создан"
+        return True, "Account created"
     except sqlite3.IntegrityError:
-        return False, "Email уже зарегистрирован"
+        return False, "Email already registered"
     finally:
         c.close()
 
 
 def login(email: str, password: str) -> tuple[bool, str, Optional[str]]:
-    """→ ok, msg, session_token"""
     email = email.strip().lower()
     c = _conn()
     row = c.execute("SELECT id, password_hash FROM users WHERE email=?", (email,)).fetchone()
     if not row or not _check_pw(password, row["password_hash"]):
         c.close()
-        return False, "Неверный email или пароль", None
+        return False, "Wrong email or password", None
     token = secrets.token_hex(24)
     c.execute(
         "INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)",
@@ -100,7 +125,8 @@ def user_by_token(token: str) -> Optional[dict]:
     c = _conn()
     row = c.execute(
         """
-        SELECT u.id, u.email, u.is_pro, u.stripe_customer_id
+        SELECT u.id, u.email, u.is_pro, u.pro_code, u.stripe_customer_id,
+               u.da_access_token, u.da_refresh_token
         FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token=?
         """,
@@ -113,13 +139,50 @@ def user_by_token(token: str) -> Optional[dict]:
         "id": row["id"],
         "email": row["email"],
         "is_pro": bool(row["is_pro"]),
+        "pro_code": row["pro_code"],
         "stripe_customer_id": row["stripe_customer_id"],
+        "da_access_token": row["da_access_token"],
+        "da_refresh_token": row["da_refresh_token"],
     }
 
 
-def set_pro(user_id: int, pro: bool = True) -> None:
+def set_pro(user_id: int, pro: bool = True, code: str | None = None) -> None:
     c = _conn()
-    c.execute("UPDATE users SET is_pro=? WHERE id=?", (1 if pro else 0, user_id))
+    if code:
+        c.execute(
+            "UPDATE users SET is_pro=?, pro_code=? WHERE id=?",
+            (1 if pro else 0, code, user_id),
+        )
+    else:
+        c.execute("UPDATE users SET is_pro=? WHERE id=?", (1 if pro else 0, user_id))
+    c.commit()
+    c.close()
+
+
+def code_used(code: str) -> Optional[int]:
+    """Return user_id if code already used, else None."""
+    c = _conn()
+    row = c.execute("SELECT user_id FROM used_codes WHERE code=?", (code,)).fetchone()
+    c.close()
+    return int(row["user_id"]) if row and row["user_id"] is not None else (0 if row else None)
+
+
+def mark_code_used(code: str, user_id: int) -> None:
+    c = _conn()
+    c.execute(
+        "INSERT OR REPLACE INTO used_codes(code, user_id, used_at) VALUES (?,?,?)",
+        (code, user_id, time.time()),
+    )
+    c.commit()
+    c.close()
+
+
+def set_da_tokens(user_id: int, access: str | None, refresh: str | None = None) -> None:
+    c = _conn()
+    c.execute(
+        "UPDATE users SET da_access_token=?, da_refresh_token=? WHERE id=?",
+        (access, refresh, user_id),
+    )
     c.commit()
     c.close()
 

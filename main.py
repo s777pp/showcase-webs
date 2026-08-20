@@ -28,7 +28,7 @@ import processor as proc
 import auth_db
 
 ROOT = Path(__file__).resolve().parent
-DATA = ROOT / "data"
+DATA = Path(os.environ.get("DATA_DIR") or (ROOT / "data"))
 JOBS = DATA / "jobs"
 USAGE_FILE = DATA / "usage.json"
 ACCESS_FILE = DATA / "access_codes.json"
@@ -49,6 +49,9 @@ STRIPE_SECRET = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PRICE_ID = os.environ.get("STRIPE_PRICE_ID", "")  # price_... из Dashboard
 APP_URL = os.environ.get("APP_URL", f"http://{HOST}:{PORT}")
+DA_CLIENT_ID = os.environ.get("DA_CLIENT_ID", "").strip()
+DA_CLIENT_SECRET = os.environ.get("DA_CLIENT_SECRET", "").strip()
+DA_REDIRECT_URI = os.environ.get("DA_REDIRECT_URI", "").strip()  # e.g. https://xxx.up.railway.app/api/da/callback
 PRO_PRICE_LABEL = os.environ.get("PRO_PRICE_LABEL", "Pro · безлимит")
 
 # Коды доступа: снимают лимит. Можно задать env ACCESS_CODES=CODE1,CODE2
@@ -126,18 +129,7 @@ def _auth_user(req: Request) -> dict | None:
 
 
 def quota_state(req: Request) -> dict:
-    # 1) access-code pro (legacy)
-    sess = _session(req)
-    if sess.get("type") == "unlimited":
-        return {
-            "used": 0,
-            "limit": -1,
-            "left": -1,
-            "pro": True,
-            "label": sess.get("label") or "Pro",
-            "email": None,
-        }
-    # 2) registered user
+    # 1) logged-in user (Pro is bound to account)
     user = _auth_user(req)
     if user and user.get("is_pro"):
         return {
@@ -170,6 +162,9 @@ def quota_state(req: Request) -> dict:
 
 
 def quota_inc(req: Request, n: int) -> None:
+    user = _auth_user(req)
+    if user and user.get("is_pro"):
+        return
     if _session(req).get("type") == "unlimited":
         return
     ip = _ip(req)
@@ -324,33 +319,36 @@ def _save_used(used: set) -> None:
 
 @app.post("/api/unlock")
 async def unlock(request: Request):
+    """Activate Pro code — must be logged in. Key is bound to the account."""
     body = await request.json()
     code = str(body.get("code") or "").strip().upper().replace(" ", "")
+    user = _auth_user(request)
+    if not user or not user.get("id"):
+        return JSONResponse(
+            {"ok": False, "msg": "Log in first, then activate the code on your account"},
+            status_code=401,
+        )
     codes = _load_codes()
     if code not in codes:
-        return JSONResponse({"ok": False, "msg": "Неверный код доступа"}, status_code=400)
-    # one-time for SM-WEB-* keys
+        return JSONResponse({"ok": False, "msg": "Invalid access code"}, status_code=400)
+    # already Pro on this account
+    if user.get("is_pro"):
+        return {"ok": True, "label": "Pro", "msg": "Already Pro on this account"}
+    # one-time codes
+    used_uid = auth_db.code_used(code)
+    if used_uid is not None:
+        return JSONResponse({"ok": False, "msg": "Code already used"}, status_code=400)
+    # legacy file used_codes.json
     used = _load_used()
     if code.startswith("SM-WEB-") and code in used:
-        return JSONResponse({"ok": False, "msg": "Код уже использован"}, status_code=400)
-    info = codes[code]
-    token = secrets.token_hex(16)
-    _sessions[token] = {
-        "code": code,
-        "type": info.get("type") or "unlimited",
-        "label": info.get("label") or "Pro",
-    }
+        return JSONResponse({"ok": False, "msg": "Code already used"}, status_code=400)
+
+    auth_db.set_pro(int(user["id"]), True, code=code)
+    auth_db.mark_code_used(code, int(user["id"]))
     if code.startswith("SM-WEB-"):
         used.add(code)
         _save_used(used)
-    # if logged in — mark user pro permanently
-    user = _auth_user(request)
-    if user and user.get("id"):
-        try:
-            auth_db.set_pro(int(user["id"]), True)
-        except Exception:
-            pass
-    return {"ok": True, "token": token, "label": _sessions[token]["label"], "msg": "Pro активирован"}
+    return {"ok": True, "label": "Pro", "msg": "Pro activated on your account"}
 
 
 SOCIALS = [
@@ -1269,6 +1267,164 @@ def preview_page(job_id: str):
     if not path.is_file():
         return HTMLResponse("<h3>Preview not found</h3>", status_code=404)
     return HTMLResponse(path.read_text(encoding="utf-8"))
+
+
+
+# ====================== DeviantArt OAuth + Sta.sh ======================
+_da_pending: dict[str, dict] = {}  # state -> {verifier, user_id, ts}
+
+
+@app.get("/api/da/status")
+def da_status(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return {"ok": False, "logged_in": False, "da": False, "configured": bool(DA_CLIENT_ID and DA_CLIENT_SECRET)}
+    return {
+        "ok": True,
+        "logged_in": True,
+        "da": bool(user.get("da_access_token")),
+        "configured": bool(DA_CLIENT_ID and DA_CLIENT_SECRET and DA_REDIRECT_URI),
+        "email": user.get("email"),
+    }
+
+
+@app.get("/api/da/login")
+def da_login_start(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in to Showcase account first"}, status_code=401)
+    if not (DA_CLIENT_ID and DA_CLIENT_SECRET and DA_REDIRECT_URI):
+        return JSONResponse(
+            {
+                "ok": False,
+                "msg": "Set DA_CLIENT_ID, DA_CLIENT_SECRET, DA_REDIRECT_URI on the server",
+            },
+            status_code=503,
+        )
+    import base64
+    import hashlib
+
+    verifier = secrets.token_urlsafe(64)
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+    state = secrets.token_hex(16)
+    _da_pending[state] = {"verifier": verifier, "user_id": int(user["id"]), "ts": time.time()}
+    from urllib.parse import urlencode
+
+    q = urlencode(
+        {
+            "response_type": "code",
+            "client_id": DA_CLIENT_ID,
+            "redirect_uri": DA_REDIRECT_URI,
+            "scope": "stash publish browse",
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "state": state,
+        }
+    )
+    return {"ok": True, "url": f"https://www.deviantart.com/oauth2/authorize?{q}"}
+
+
+@app.get("/api/da/callback")
+async def da_callback(request: Request, code: str = "", state: str = ""):
+    pend = _da_pending.pop(state, None)
+    if not pend or not code:
+        return HTMLResponse("<h3>DeviantArt auth failed</h3><p>Close this tab and try again.</p>", status_code=400)
+    try:
+        import requests as rq
+
+        r = rq.post(
+            "https://www.deviantart.com/oauth2/token",
+            data={
+                "grant_type": "authorization_code",
+                "client_id": DA_CLIENT_ID,
+                "client_secret": DA_CLIENT_SECRET,
+                "code": code,
+                "redirect_uri": DA_REDIRECT_URI,
+                "code_verifier": pend["verifier"],
+            },
+            timeout=30,
+        )
+        if r.status_code != 200:
+            return HTMLResponse(f"<h3>Token error</h3><pre>{r.text[:500]}</pre>", status_code=400)
+        data = r.json()
+        auth_db.set_da_tokens(
+            int(pend["user_id"]),
+            data.get("access_token"),
+            data.get("refresh_token"),
+        )
+    except Exception as e:
+        return HTMLResponse(f"<h3>Error</h3><pre>{e}</pre>", status_code=500)
+    return HTMLResponse(
+        """<!DOCTYPE html><html><body style="font-family:system-ui;background:#041018;color:#fff;padding:40px">
+        <h2>DeviantArt connected</h2>
+        <p>You can close this tab and return to Showcase Maker.</p>
+        <script>setTimeout(()=>window.close(), 1200)</script>
+        </body></html>"""
+    )
+
+
+@app.post("/api/da/logout")
+async def da_logout(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False}, status_code=401)
+    auth_db.set_da_tokens(int(user["id"]), None, None)
+    return {"ok": True}
+
+
+@app.post("/api/da/upload")
+async def da_upload(request: Request):
+    """Upload files to DeviantArt Sta.sh (same as desktop)."""
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
+    token = user.get("da_access_token")
+    if not token:
+        return JSONResponse({"ok": False, "msg": "Connect DeviantArt first"}, status_code=401)
+    form = await request.form()
+    files = []
+    items = form.multi_items() if hasattr(form, "multi_items") else list(form.items())
+    titles = {}
+    for k, v in items:
+        k = str(k)
+        if k.startswith("title_"):
+            titles[k[6:]] = str(v)
+    for k, f in items:
+        if not str(k).startswith("file"):
+            continue
+        if f is None or isinstance(f, (str, bytes)) or not hasattr(f, "read"):
+            continue
+        raw = await f.read()
+        name = getattr(f, "filename", None) or "file.png"
+        files.append((name, raw, titles.get(name) or Path(name).stem))
+
+    if not files:
+        return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
+
+    import requests as rq
+
+    ok_n = 0
+    errors = []
+    for name, raw, title in files:
+        try:
+            r = rq.post(
+                "https://www.deviantart.com/api/v1/oauth2/stash/submit",
+                headers={"Authorization": f"Bearer {token}"},
+                data={"title": title, "artist_comments": "", "is_mature": "false"},
+                files={"file": (name, raw)},
+                timeout=120,
+            )
+            if r.status_code == 200:
+                ok_n += 1
+            else:
+                errors.append(f"{name}: {r.status_code} {r.text[:120]}")
+                if r.status_code in (401, 403):
+                    auth_db.set_da_tokens(int(user["id"]), None, None)
+                    break
+        except Exception as e:
+            errors.append(f"{name}: {e}")
+    return {"ok": ok_n > 0, "uploaded": ok_n, "total": len(files), "errors": errors}
+
 
 
 if __name__ == "__main__":
