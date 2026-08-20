@@ -177,14 +177,26 @@ def quota_state(req: Request) -> dict:
     # 1) logged-in user (Pro is bound to account)
     user = _auth_user(req)
     if user and auth_db.effective_pro(user):
+        until = user.get("pro_until")
+        remaining = None
+        is_trial = False
+        if until is not None:
+            try:
+                remaining = max(0, int(float(until) - time.time()))
+                is_trial = True
+            except (TypeError, ValueError):
+                remaining = None
         return {
             "used": 0,
             "limit": -1,
             "left": -1,
             "pro": True,
-            "label": "Pro",
+            "label": "Trial" if is_trial and remaining is not None else "Pro",
             "email": user.get("email"),
             "user_id": user.get("id"),
+            "pro_until": until,
+            "remaining_sec": remaining,
+            "is_trial": bool(is_trial and remaining is not None),
         }
     email = user.get("email") if user else None
     uid = user.get("id") if user else None
@@ -203,6 +215,9 @@ def quota_state(req: Request) -> dict:
         "label": "Free",
         "email": email,
         "user_id": uid,
+        "pro_until": None,
+        "remaining_sec": None,
+        "is_trial": False,
     }
 
 

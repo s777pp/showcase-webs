@@ -707,6 +707,50 @@ function headers() {
 }
 const fetchOpts = { credentials: 'include' };
 
+let _trialEndsAt = null;
+let _trialTick = null;
+
+function fmtTrial(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  return pad(h) + ':' + pad(m) + ':' + pad(s);
+}
+
+function updateTrialClock() {
+  const box = document.getElementById('trialTimer');
+  const clock = document.getElementById('trialClock');
+  if (!box || !clock) return;
+  if (_trialEndsAt == null) {
+    box.style.display = 'none';
+    return;
+  }
+  const left = Math.max(0, Math.floor(_trialEndsAt - Date.now() / 1000));
+  clock.textContent = fmtTrial(left);
+  box.style.display = 'flex';
+  if (left <= 0) {
+    _trialEndsAt = null;
+    if (_trialTick) { clearInterval(_trialTick); _trialTick = null; }
+    box.style.display = 'none';
+    try { refreshQuota(); } catch (e) {}
+  }
+}
+
+function setTrialTimer(remainingSec) {
+  if (remainingSec == null || remainingSec <= 0) {
+    _trialEndsAt = null;
+    if (_trialTick) { clearInterval(_trialTick); _trialTick = null; }
+    updateTrialClock();
+    return;
+  }
+  _trialEndsAt = Date.now() / 1000 + remainingSec;
+  updateTrialClock();
+  if (_trialTick) clearInterval(_trialTick);
+  _trialTick = setInterval(updateTrialClock, 1000);
+}
+
 async function refreshQuota() {
   const r = await fetch('/api/quota', { headers: headers(), credentials: 'include' });
   const j = await r.json();
@@ -717,17 +761,25 @@ async function refreshQuota() {
   const btnOut = document.getElementById('btnLogout');
   const btnAuth = document.getElementById('btnAuth');
   if (j.pro) {
-    el.innerHTML = `<b>Pro</b> · без лимита`;
-    badge.textContent = j.label || 'Pro'; badge.className = 'pill pro';
+    if (j.is_trial && j.remaining_sec != null) {
+      el.innerHTML = `<b>Trial</b> · ` + fmtTrial(j.remaining_sec);
+      badge.textContent = 'Trial'; badge.className = 'pill pro';
+      setTrialTimer(j.remaining_sec);
+    } else {
+      el.innerHTML = `<b>Pro</b> · unlimited`;
+      badge.textContent = j.label || 'Pro'; badge.className = 'pill pro';
+      setTrialTimer(null);
+    }
     btnUp.style.display = 'none';
   } else {
-    el.innerHTML = `Сегодня <b>${j.used}</b> / ${j.limit}`;
+    el.innerHTML = `Today <b>${j.used}</b> / ${j.limit}`;
     badge.textContent = 'Free'; badge.className = 'pill';
     btnUp.style.display = state.session ? 'inline-block' : 'none';
+    setTrialTimer(null);
   }
   if (j.email || state.session) {
     userPill.style.display = 'inline-block';
-    userPill.textContent = j.email || 'Аккаунт';
+    userPill.textContent = j.email || 'Account';
     btnAuth.style.display = 'none'; btnOut.style.display = 'inline-block';
   } else {
     userPill.style.display = 'none';
