@@ -22,6 +22,7 @@ body{
     radial-gradient(ellipse 50% 40% at 90% 0%, #1a3a8a28, transparent),
     linear-gradient(180deg,#031018,#061a28 50%,#041018);
 }
+.shell{position:relative;z-index:1}
 .shell{display:flex;min-height:100vh;max-width:1280px;margin:0 auto}
 .side{
   width:240px;flex-shrink:0;padding:20px 14px;
@@ -399,9 +400,48 @@ input, select, textarea {
   box-sizing: border-box !important;
 }
 
+
+/* floating stars */
+.stars-layer{
+  position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+}
+.star{
+  position:absolute;
+  width:2px;height:2px;
+  background:#fff;
+  border-radius:50%;
+  opacity:0;
+  box-shadow:0 0 6px rgba(180,230,255,.8);
+  animation: starDrift linear infinite;
+}
+.star.s2{width:3px;height:3px;box-shadow:0 0 10px rgba(120,210,255,.9)}
+.star.s3{width:1.5px;height:1.5px;box-shadow:0 0 4px rgba(255,255,255,.6)}
+@keyframes starDrift{
+  0%{transform:translate3d(0,20px,0) scale(.6);opacity:0}
+  15%{opacity:.85}
+  85%{opacity:.55}
+  100%{transform:translate3d(var(--dx,30px),-110vh,0) scale(1);opacity:0}
+}
+/* desktop btn = primary blue */
+.btn-desktop{
+  background: linear-gradient(180deg, #5ad4ff, #2a9fd4) !important;
+  border: none !important;
+  color: #041018 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 20px rgba(62,203,255,.35) !important;
+}
+.btn-desktop:hover{
+  filter: brightness(1.08);
+  background: linear-gradient(180deg, #6ae0ff, #35b0e0) !important;
+  border-color: transparent !important;
+}
+.btn-desktop::before{content:none !important}
+
 </style>
 </head>
 <body>
+<div class="stars-layer" id="starsLayer" aria-hidden="true"></div>
+
 <div class="shell">
 <aside class="side">
   <a class="brand" href="/">
@@ -1437,5 +1477,24 @@ if (location.hash === '#da') {
 
 
 </script>
+
+<script>
+(function(){
+  const layer = document.getElementById('starsLayer');
+  if (!layer) return;
+  const N = 48;
+  for (let i = 0; i < N; i++) {
+    const el = document.createElement('span');
+    el.className = 'star' + (i % 5 === 0 ? ' s2' : (i % 3 === 0 ? ' s3' : ''));
+    el.style.left = (Math.random() * 100) + '%';
+    el.style.top = (Math.random() * 100) + '%';
+    el.style.setProperty('--dx', ((Math.random() - 0.5) * 80) + 'px');
+    el.style.animationDuration = (12 + Math.random() * 22) + 's';
+    el.style.animationDelay = (-Math.random() * 20) + 's';
+    layer.appendChild(el);
+  }
+})();
+</script>
+
 </body>
 </html>
