@@ -311,25 +311,34 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
     </div>
   </section>
 
-    <section class="tab" id="tab-da">
+      <section class="tab" id="tab-da">
     <div class="card">
       <h2>DeviantArt</h2>
-      <p class="steps" style="margin-bottom:14px">Upload previews to Sta.sh (same flow as desktop). Log in to your Showcase account first, then connect DeviantArt.</p>
+      <p class="steps" style="margin-bottom:14px">
+        Same as desktop: create an app at
+        <a href="https://www.deviantart.com/developers" target="_blank" style="color:var(--accent)">deviantart.com/developers</a>,
+        paste your Client ID &amp; Secret, then connect. Files go to <b>your</b> Sta.sh.
+      </p>
+      <p class="steps" style="margin-bottom:12px;font-size:12px" id="daRedirectHint">
+        In your DA app set Redirect URI to: <code id="daRedirectCode">https://YOUR-DOMAIN/api/da/callback</code>
+      </p>
+      <div class="row" style="margin-bottom:12px">
+        <label class="field" style="flex:1">Client ID<input id="daClientId" placeholder="your app client id"/></label>
+        <label class="field" style="flex:1">Client Secret<input id="daClientSecret" type="password" placeholder="your app secret"/></label>
+        <button class="btn ghost" id="daSaveKeys" type="button" style="align-self:flex-end">Save keys</button>
+      </div>
       <div class="row" style="margin-bottom:12px">
         <span class="pill" id="daStatusPill">DA: —</span>
         <button class="btn" id="daLogin" type="button">Connect DeviantArt</button>
         <button class="btn ghost" id="daLogout" type="button" style="display:none">Disconnect</button>
       </div>
       <div class="row">
-        <input type="file" id="daFiles" multiple accept="image/*,.gif,video/*" />
+        <input type="file" id="daFiles" multiple accept="image/*,.gif,video/*"/>
       </div>
-      <div class="files" id="daList"></div>
       <div class="row" style="margin-top:12px">
         <button class="btn" id="daUpload" type="button">Upload to Sta.sh</button>
       </div>
       <div class="status" id="daMsg"></div>
-      <p class="steps" style="margin-top:12px;font-size:12px">Server needs env: DA_CLIENT_ID, DA_CLIENT_SECRET, DA_REDIRECT_URI=https://YOUR-DOMAIN/api/da/callback<br/>
-      App redirect URI on deviantart.com/developers must match.</p>
     </div>
   </section>
 
@@ -709,23 +718,40 @@ async function refreshDa() {
     const pill = document.getElementById('daStatusPill');
     const login = document.getElementById('daLogin');
     const logout = document.getElementById('daLogout');
+    if (j.redirect_hint) {
+      const c = document.getElementById('daRedirectCode');
+      if (c) c.textContent = j.redirect_hint;
+    }
     if (!pill) return;
     if (!j.logged_in) {
-      pill.textContent = 'DA: log in to account first';
-      if (login) login.style.display = 'none';
+      pill.textContent = 'DA: log in to Showcase account first';
+      if (login) login.disabled = true;
       if (logout) logout.style.display = 'none';
       return;
     }
-    if (!j.configured) {
-      pill.textContent = 'DA: not configured on server';
-      if (login) login.style.display = 'none';
-      return;
-    }
-    pill.textContent = j.da ? 'DA: connected' : 'DA: not connected';
+    if (login) login.disabled = false;
+    let txt = j.da ? 'DA: connected' : 'DA: not connected';
+    if (!j.has_keys) txt += ' · keys not saved';
+    pill.textContent = txt;
     if (login) login.style.display = j.da ? 'none' : 'inline-block';
     if (logout) logout.style.display = j.da ? 'inline-block' : 'none';
   } catch (e) {}
 }
+document.getElementById('daSaveKeys')?.addEventListener('click', async () => {
+  const st = document.getElementById('daMsg');
+  const r = await fetch('/api/da/keys', {
+    method: 'POST',
+    headers: { ...headers(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: document.getElementById('daClientId').value,
+      client_secret: document.getElementById('daClientSecret').value,
+    }),
+  });
+  const j = await r.json();
+  st.className = j.ok ? 'status ok' : 'status err';
+  st.textContent = j.msg || (j.ok ? 'Saved' : 'Error');
+  refreshDa();
+});
 document.getElementById('daLogin')?.addEventListener('click', async () => {
   const r = await fetch('/api/da/login', { headers: headers() });
   const j = await r.json();

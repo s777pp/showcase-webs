@@ -29,6 +29,8 @@ def _conn() -> sqlite3.Connection:
             stripe_customer_id TEXT,
             da_access_token TEXT,
             da_refresh_token TEXT,
+            da_client_id TEXT,
+            da_client_secret TEXT,
             created_at REAL
         )
         """
@@ -58,6 +60,8 @@ def _conn() -> sqlite3.Connection:
         ("pro_code", "TEXT"),
         ("da_access_token", "TEXT"),
         ("da_refresh_token", "TEXT"),
+        ("da_client_id", "TEXT"),
+        ("da_client_secret", "TEXT"),
     ):
         if col not in cols:
             try:
@@ -126,7 +130,7 @@ def user_by_token(token: str) -> Optional[dict]:
     row = c.execute(
         """
         SELECT u.id, u.email, u.is_pro, u.pro_code, u.stripe_customer_id,
-               u.da_access_token, u.da_refresh_token
+               u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret
         FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token=?
         """,
@@ -143,6 +147,8 @@ def user_by_token(token: str) -> Optional[dict]:
         "stripe_customer_id": row["stripe_customer_id"],
         "da_access_token": row["da_access_token"],
         "da_refresh_token": row["da_refresh_token"],
+        "da_client_id": row["da_client_id"],
+        "da_client_secret": row["da_client_secret"],
     }
 
 
@@ -200,5 +206,15 @@ def set_stripe_customer(user_id: int, customer_id: str) -> None:
 def logout(token: str) -> None:
     c = _conn()
     c.execute("DELETE FROM sessions WHERE token=?", (token,))
+    c.commit()
+    c.close()
+
+
+def set_da_keys(user_id: int, client_id: str | None, client_secret: str | None) -> None:
+    c = _conn()
+    c.execute(
+        "UPDATE users SET da_client_id=?, da_client_secret=? WHERE id=?",
+        ((client_id or "").strip() or None, (client_secret or "").strip() or None, user_id),
+    )
     c.commit()
     c.close()

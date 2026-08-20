@@ -54,6 +54,19 @@ APP_URL = os.environ.get("APP_URL", f"http://{HOST}:{PORT}")
 DA_CLIENT_ID = os.environ.get("DA_CLIENT_ID", "").strip()
 DA_CLIENT_SECRET = os.environ.get("DA_CLIENT_SECRET", "").strip()
 DA_REDIRECT_URI = os.environ.get("DA_REDIRECT_URI", "").strip()  # e.g. https://xxx.up.railway.app/api/da/callback
+
+def _da_cfg():
+    """Read DA env at request time (after Railway injects vars)."""
+    return {
+        "id": (os.environ.get("DA_CLIENT_ID") or "").strip(),
+        "secret": (os.environ.get("DA_CLIENT_SECRET") or "").strip(),
+        "redirect": (os.environ.get("DA_REDIRECT_URI") or "").strip(),
+    }
+
+
+def _da_ready():
+    c = _da_cfg()
+    return bool(c["id"] and c["secret"] and c["redirect"]), c
 PRO_PRICE_LABEL = os.environ.get("PRO_PRICE_LABEL", "Pro · безлимит")
 
 # Коды доступа: снимают лимит. Можно задать env ACCESS_CODES=CODE1,CODE2
@@ -1274,22 +1287,106 @@ def preview_page(job_id: str):
 
 
 
-# ====================== DeviantArt OAuth + Sta.sh ======================
-_da_pending: dict[str, dict] = {}  # state -> {verifier, user_id, ts}
+
+
+@app.post("/api/da/logout")
+async def da_logout(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False}, status_code=401)
+    auth_db.set_da_tokens(int(user["id"]), None, None)
+    return {"ok": True}
+
+
+@app.post("/api/da/upload")
+async def da_upload(request: Request):
+    """Upload files to DeviantArt Sta.sh (same as desktop)."""
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
+    token = user.get("da_access_token")
+    if not token:
+        return JSONResponse({"ok": False, "msg": "Connect DeviantArt first"}, status_code=401)
+    form = await request.form()
+    files = []
+    items = form.multi_items() if hasattr(form, "multi_items") else list(form.items())
+    titles = {}
+    for k, v in items:
+        k = str(k)
+        if k.startswith("title_"):
+            titles[k[6:]] = str(v)
+    for k, f in items:
+        if not str(k).startswith("file"):
+            continue
+        if f is None or isinstance(f, (str, bytes)) or not hasattr(f, "read"):
+            continue
+        raw = await f.read()
+        name = getattr(f, "filename", None) or "file.png"
+        files.append((name, raw, titles.get(name) or Path(name).stem))
+
+    if not files:
+        return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
+
+    import requests as rq
+
+    ok_n = 0
+    errors = []
+    for name, raw, title in files:
+        try:
+            r = rq.post(
+                "https://www.deviantart.com/api/v1/oauth2/stash/submit",
+                headers={"Authorization": f"Bearer {token}"},
+                data={"title": title, "artist_comments": "", "is_mature": "false"},
+                files={"file": (name, raw)},
+                timeout=120,
+            )
+            if r.status_code == 200:
+                ok_n += 1
+            else:
+                errors.append(f"{name}: {r.status_code} {r.text[:120]}")
+                if r.status_code in (401, 403):
+                    auth_db.set_da_tokens(int(user["id"]), None, None)
+                    break
+        except Exception as e:
+            errors.append(f"{name}: {e}")
+    return {"ok": ok_n > 0, "uploaded": ok_n, "total": len(files), "errors": errors}
+
+
+
+
+# ====================== DeviantArt OAuth + Sta.sh (per-user keys, like desktop) ======================
+_da_pending: dict[str, dict] = {}  # state -> {verifier, user_id, client_id, client_secret, ts}
 
 
 @app.get("/api/da/status")
 def da_status(request: Request):
     user = _auth_user(request)
     if not user:
-        return {"ok": False, "logged_in": False, "da": False, "configured": bool(DA_CLIENT_ID and DA_CLIENT_SECRET)}
+        return {"ok": False, "logged_in": False, "da": False, "has_keys": False}
     return {
         "ok": True,
         "logged_in": True,
         "da": bool(user.get("da_access_token")),
-        "configured": bool(DA_CLIENT_ID and DA_CLIENT_SECRET and DA_REDIRECT_URI),
+        "has_keys": bool(user.get("da_client_id") and user.get("da_client_secret")),
+        "client_id": (user.get("da_client_id") or "")[:8] + "…" if user.get("da_client_id") else "",
         "email": user.get("email"),
+        "redirect_hint": (os.environ.get("APP_URL") or "").rstrip("/") + "/api/da/callback",
     }
+
+
+@app.post("/api/da/keys")
+async def da_save_keys(request: Request):
+    """Save user's own DeviantArt app Client ID / Secret (desktop-style)."""
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
+    body = await request.json()
+    cid = str(body.get("client_id") or "").strip()
+    sec = str(body.get("client_secret") or "").strip()
+    if not cid or not sec:
+        return JSONResponse({"ok": False, "msg": "Enter Client ID and Client Secret"}, status_code=400)
+    auth_db.set_da_keys(int(user["id"]), cid, sec)
+    return {"ok": True, "msg": "Keys saved"}
 
 
 @app.get("/api/da/login")
@@ -1297,28 +1394,40 @@ def da_login_start(request: Request):
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in to Showcase account first"}, status_code=401)
-    if not (DA_CLIENT_ID and DA_CLIENT_SECRET and DA_REDIRECT_URI):
+    # Prefer user's own keys; fallback to server env
+    cid = (user.get("da_client_id") or "").strip() or (os.environ.get("DA_CLIENT_ID") or "").strip()
+    sec = (user.get("da_client_secret") or "").strip() or (os.environ.get("DA_CLIENT_SECRET") or "").strip()
+    redirect = (os.environ.get("DA_REDIRECT_URI") or "").strip()
+    if not redirect:
+        redirect = (os.environ.get("APP_URL") or "").rstrip("/") + "/api/da/callback"
+    if not cid or not sec:
         return JSONResponse(
             {
                 "ok": False,
-                "msg": "Set DA_CLIENT_ID, DA_CLIENT_SECRET, DA_REDIRECT_URI on the server",
+                "msg": "Enter your DeviantArt Client ID & Secret (create app at deviantart.com/developers). Redirect URI must be: " + redirect,
             },
-            status_code=503,
+            status_code=400,
         )
     import base64
     import hashlib
+    from urllib.parse import urlencode
 
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
     state = secrets.token_hex(16)
-    _da_pending[state] = {"verifier": verifier, "user_id": int(user["id"]), "ts": time.time()}
-    from urllib.parse import urlencode
-
+    _da_pending[state] = {
+        "verifier": verifier,
+        "user_id": int(user["id"]),
+        "client_id": cid,
+        "client_secret": sec,
+        "redirect": redirect,
+        "ts": time.time(),
+    }
     q = urlencode(
         {
             "response_type": "code",
-            "client_id": DA_CLIENT_ID,
-            "redirect_uri": DA_REDIRECT_URI,
+            "client_id": cid,
+            "redirect_uri": redirect,
             "scope": "stash publish browse",
             "code_challenge": challenge,
             "code_challenge_method": "S256",
@@ -1340,10 +1449,10 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
             "https://www.deviantart.com/oauth2/token",
             data={
                 "grant_type": "authorization_code",
-                "client_id": DA_CLIENT_ID,
-                "client_secret": DA_CLIENT_SECRET,
+                "client_id": pend["client_id"],
+                "client_secret": pend["client_secret"],
                 "code": code,
-                "redirect_uri": DA_REDIRECT_URI,
+                "redirect_uri": pend["redirect"],
                 "code_verifier": pend["verifier"],
             },
             timeout=30,
