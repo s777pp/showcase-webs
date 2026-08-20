@@ -649,6 +649,7 @@ document.getElementById('btnLogout').onclick = async () => {
   localStorage.removeItem('sm_session');
   localStorage.removeItem('sm_token');
   try { document.cookie = 'sm_session=; path=/; max-age=0'; } catch(e) {}
+  try { refreshAccountUI(); } catch(e) {}
   refreshQuota();
 };
 document.getElementById('btnUpgrade').onclick = () => {
@@ -672,6 +673,7 @@ document.querySelectorAll('#nav button').forEach(btn => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'account') refreshAccountUI();
     const t = titles[btn.dataset.tab] || ['',''];
     document.getElementById('pageTitle').textContent = t[0];
     document.getElementById('pageSub').textContent = t[1];
@@ -801,6 +803,12 @@ async function refreshAccountUI() {
   const guest = document.getElementById('accGuest');
   const user = document.getElementById('accUser');
   if (!guest || !user) return;
+  // session in localStorage → show profile shell immediately
+  const hasSess = !!(localStorage.getItem('sm_session') || state.session);
+  if (hasSess) {
+    guest.style.display = 'none';
+    user.style.display = '';
+  }
   try {
     const r = await fetch('/api/auth/me', { headers: headers(), credentials: 'include' });
     const j = await r.json();
@@ -920,10 +928,15 @@ async function init(){
   const m = await fetch('/api/meta').then(r=>r.json());
   const sc = document.getElementById('steamCode'); if (sc) sc.textContent = m.steam_code || '';
   if (m.buy_url) { const bl = document.getElementById('buyLink'); if (bl) bl.href = m.buy_url; }
-  const html = (m.socials||[]).map(s=>`<a href="${s.url}" target="_blank" rel="noopener"><img src="${s.icon}" alt="${s.name}"/></a>`).join('');
-  const so = document.getElementById('socials'); if (so) so.innerHTML = html;
-  const so2 = document.getElementById('socials2'); if (so2) so2.innerHTML = html;
-  refreshQuota(); loadPvSlots(); refreshDa();
+  const allSocials = m.socials || [];
+  const sideSocials = allSocials.filter(s => {
+    const k = ((s.name || '') + ' ' + (s.url || '') + ' ' + (s.icon || '')).toLowerCase();
+    return k.indexOf('aboutme') < 0 && k.indexOf('about-me') < 0 && k.indexOf('guns.lol') < 0;
+  });
+  const mkSoc = (arr) => arr.map(s => '<a href="' + s.url + '" target="_blank" rel="noopener"><img src="' + s.icon + '" alt="' + s.name + '"/></a>').join('');
+  const so = document.getElementById('socials'); if (so) so.innerHTML = mkSoc(sideSocials);
+  const so2 = document.getElementById('socials2'); if (so2) so2.innerHTML = mkSoc(allSocials);
+  refreshQuota(); loadPvSlots(); refreshDa(); refreshAccountUI();
   if (new URLSearchParams(location.search).get('auth') === '1') {
     state.authMode = 'register'; syncAuthUi(); modal.classList.add('show');
   }
