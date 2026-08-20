@@ -182,6 +182,143 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
   .pill{font-size:11px;padding:6px 10px}
   .top-actions .btn{padding:10px 12px;font-size:12px}
 }
+
+/* ===== iOS glass + ambient gradient ===== */
+@keyframes ambientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+body::before {
+  content:"";
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(62,203,255,.14), transparent 50%),
+    radial-gradient(ellipse 70% 50% at 90% 80%, rgba(90,100,255,.12), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(30,80,120,.1), transparent 60%),
+    linear-gradient(125deg, #030a10 0%, #061820 40%, #0a1528 70%, #041018 100%);
+  background-size: 200% 200%;
+  animation: ambientShift 18s ease-in-out infinite;
+}
+.shell, .side, .main { position:relative; z-index:1; }
+.side {
+  background: rgba(6, 18, 28, 0.55) !important;
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-right: 1px solid rgba(255,255,255,.08) !important;
+}
+.card {
+  background: rgba(12, 28, 40, 0.45) !important;
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  border: 1px solid rgba(255,255,255,.12) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06) !important;
+  border-radius: 20px !important;
+}
+.topbar { margin-bottom: 28px !important; }
+.h-title { font-size: 32px !important; font-weight: 700 !important; letter-spacing: -0.02em; color: #fff !important; }
+.h-sub { font-size: 15px !important; color: #b0c8d8 !important; margin-top: 6px !important; max-width: 520px; }
+.main { padding: 28px 32px 100px !important; }
+.nav button {
+  background: rgba(255,255,255,.04) !important;
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+}
+.nav button.active {
+  background: rgba(62,203,255,.15) !important;
+  border-color: rgba(62,203,255,.3) !important;
+  color: #fff !important;
+}
+.mode {
+  background: rgba(0,0,0,.25) !important;
+  border: 1px solid rgba(255,255,255,.1) !important;
+  border-radius: 16px !important;
+  backdrop-filter: blur(8px);
+}
+.mode.active {
+  border-color: rgba(62,203,255,.45) !important;
+  background: rgba(62,203,255,.12) !important;
+  box-shadow: 0 0 0 1px rgba(62,203,255,.2);
+}
+.pill {
+  background: rgba(62,203,255,.12) !important;
+  border: 1px solid rgba(62,203,255,.25) !important;
+  color: #c8eefc !important;
+  border-radius: 999px !important;
+}
+.btn {
+  border-radius: 12px !important;
+  backdrop-filter: blur(8px);
+}
+.btn:not(.ghost) {
+  background: linear-gradient(180deg, rgba(62,203,255,.9), rgba(30,140,180,.95)) !important;
+  border: none !important;
+  color: #041018 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 16px rgba(62,203,255,.25);
+}
+.btn.ghost {
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: #e8f4fa !important;
+}
+.drop {
+  border-radius: 18px !important;
+  border: 1.5px dashed rgba(255,255,255,.18) !important;
+  background: rgba(0,0,0,.2) !important;
+  color: #b0c8d8 !important;
+}
+input, select, textarea {
+  background: rgba(0,0,0,.3) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
+  color: #fff !important;
+}
+.modal-bg {
+  backdrop-filter: blur(12px);
+  background: rgba(2,8,14,.7) !important;
+}
+.modal {
+  background: rgba(10,24,36,.85) !important;
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 24px 64px rgba(0,0,0,.5);
+}
+
+/* Account profile card */
+.profile-hero {
+  display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+  padding: 8px 0 8px;
+}
+.profile-avatar {
+  width: 72px; height: 72px; border-radius: 20px;
+  background: linear-gradient(135deg, #3ecbff55, #5a64ff44);
+  border: 1px solid rgba(255,255,255,.2);
+  display: grid; place-items: center;
+  font-size: 28px; font-weight: 700; color: #fff;
+}
+.profile-meta h3 { margin: 0 0 4px; font-size: 1.35rem; color: #fff; }
+.profile-meta p { margin: 0; color: #9bb4c4; font-size: 14px; }
+.pro-badge {
+  display: inline-block; margin-top: 8px;
+  padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: rgba(62,203,255,.15); color: #7ee0ff;
+  border: 1px solid rgba(62,203,255,.3);
+}
+.key-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 16px; padding: 14px 16px;
+  background: rgba(0,0,0,.25); border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.key-row code {
+  font-family: ui-monospace, monospace; font-size: 13px;
+  color: #c8e0f0; letter-spacing: .04em; cursor: pointer;
+  user-select: none;
+}
+.key-row .hint { font-size: 12px; color: #7a94a8; }
+
 </style>
 </head>
 <body>
@@ -348,40 +485,40 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
   </section>
 
   
-  <section class="tab" id="tab-account">
+    <section class="tab" id="tab-account">
     <div class="card" id="accGuest">
-      <h2>Log in or sign up</h2>
-      <p class="steps" style="margin-bottom:16px">Создай аккаунт, чтобы купить Pro прямо на сайте и не зависеть от кода доступа.</p>
-      <div class="row" style="align-items:stretch">
-        <div style="flex:1;min-width:240px">
-          <label class="field">Email<input id="accEmail" type="email" placeholder="you@email.com"/></label>
-          <label class="field" style="margin-top:10px">Пароль<input id="accPass" type="password" placeholder="min 6 characters"/></label>
-          <div class="row" style="margin-top:14px">
-            <button class="btn" id="accLogin" type="button">Log in</button>
-            <button class="btn ghost" id="accRegister" type="button">Sign up</button>
-          </div>
-          <div class="status" id="accStatus"></div>
-        </div>
+      <h2>Account</h2>
+      <p class="steps" style="margin-bottom:16px">Log in or create an account — one profile for the whole site.</p>
+      <div class="row">
+        <button class="btn" id="accLogin" type="button">Log in</button>
+        <button class="btn ghost" id="accRegister" type="button">Sign up</button>
       </div>
     </div>
     <div class="card" id="accUser" style="display:none">
-      <h2>Your account</h2>
-      <p class="steps" id="accInfo" style="margin-bottom:16px"></p>
-      <div class="row">
+      <div class="profile-hero">
+        <div class="profile-avatar" id="accAvatar">S</div>
+        <div class="profile-meta">
+          <h3 id="accEmailTitle">—</h3>
+          <p id="accPlanLine">Free plan</p>
+          <span class="pro-badge" id="accProBadge" style="display:none">PRO</span>
+        </div>
+      </div>
+      <div class="key-row" id="accKeyRow" style="display:none">
+        <span class="hint">License key</span>
+        <code id="accKeyMasked" title="Click to reveal">••••••••••••</code>
+        <span class="hint" id="accKeyHint">click to show</span>
+      </div>
+      <div class="row" style="margin-top:18px">
         <button class="btn" id="accBuyPro" type="button">Buy Pro</button>
         <button class="btn ghost" id="accLogout2" type="button">Log out</button>
       </div>
-      <p class="steps" style="margin-top:16px;font-size:12px" id="accBillingHint">
-        Buy on FunPay. After payment you get a code — paste it below.
-      </p>
-      <div class="status" id="accBuyStatus"></div>
-    </div>
-    <div class="card">
-      <h2>Access code</h2>
-      <p class="steps" style="margin-bottom:12px">If you bought on FunPay or got a trial code — paste it here.</p>
-      <div class="row">
-        <input id="accessCode2" placeholder="SM-WEB-XXXXXX-XXXX" style="width:240px"/>
-        <button class="btn ghost" id="btnUnlock2" type="button">Apply code</button>
+      <p class="steps" style="margin-top:14px;font-size:12px" id="accBillingHint">Buy on FunPay. After payment you get a code — activate below if needed.</p>
+      <div id="accCodeBlock" style="margin-top:16px">
+        <p class="steps" style="margin-bottom:8px;font-size:13px">Activate Pro code</p>
+        <div class="row">
+          <input id="accessCode2" placeholder="SM-WEB-XXXXXX-XXXX" style="width:240px"/>
+          <button class="btn ghost" id="btnUnlock2" type="button">Apply</button>
+        </div>
       </div>
     </div>
   </section>
@@ -654,19 +791,54 @@ async function refreshAccountUI() {
   const guest = document.getElementById('accGuest');
   const user = document.getElementById('accUser');
   if (!guest || !user) return;
-  const r = await fetch('/api/auth/me', { headers: headers(), credentials: 'include' });
-  const j = await r.json();
-  if (j.logged_in) {
+  try {
+    const r = await fetch('/api/auth/me', { headers: headers(), credentials: 'include' });
+    const j = await r.json();
+    if (!j.logged_in) {
+      guest.style.display = '';
+      user.style.display = 'none';
+      return;
+    }
     guest.style.display = 'none';
-    user.style.display = 'block';
-    const plan = j.is_pro ? 'Pro · без лимита' : 'Free · лимит файлов';
-    document.getElementById('accInfo').innerHTML =
-      `Email: <b>${j.email}</b><br/>Тариф: <b>${plan}</b>`;
-    document.getElementById('accBuyPro').style.display = j.is_pro ? 'none' : 'inline-block';
-  } else {
-    guest.style.display = 'block';
-    user.style.display = 'none';
-  }
+    user.style.display = '';
+    const email = j.email || '';
+    document.getElementById('accEmailTitle').textContent = email;
+    document.getElementById('accAvatar').textContent = (email[0] || 'S').toUpperCase();
+    const pro = !!j.is_pro;
+    document.getElementById('accPlanLine').textContent = pro ? 'Pro · unlimited' : 'Free · daily limit';
+    const badge = document.getElementById('accProBadge');
+    if (badge) badge.style.display = pro ? 'inline-block' : 'none';
+    const keyRow = document.getElementById('accKeyRow');
+    const codeBlock = document.getElementById('accCodeBlock');
+    const hint = document.getElementById('accBillingHint');
+    // fetch quota for label / we need pro_code from a new field - use me endpoint
+    let proCode = j.pro_code || '';
+    if (keyRow) {
+      if (pro && proCode) {
+        keyRow.style.display = 'flex';
+        const el = document.getElementById('accKeyMasked');
+        const mask = proCode.length > 8 ? proCode.slice(0, 4) + '••••' + proCode.slice(-4) : '••••••••';
+        el.textContent = mask;
+        el.dataset.full = proCode;
+        el.dataset.shown = '0';
+        el.onclick = () => {
+          if (el.dataset.shown === '1') {
+            el.textContent = mask;
+            el.dataset.shown = '0';
+            document.getElementById('accKeyHint').textContent = 'click to show';
+          } else {
+            el.textContent = el.dataset.full;
+            el.dataset.shown = '1';
+            document.getElementById('accKeyHint').textContent = 'click to hide';
+          }
+        };
+      } else {
+        keyRow.style.display = 'none';
+      }
+    }
+    if (codeBlock) codeBlock.style.display = pro ? 'none' : '';
+    if (hint) hint.style.display = pro ? 'none' : '';
+  } catch (e) {}
 }
 const _oldRefresh = refreshQuota;
 refreshQuota = async function() {

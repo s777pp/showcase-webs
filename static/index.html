@@ -259,6 +259,82 @@ body { color: var(--text); }
 .btn-ghost { color: #e8f2f8 !important; }
 footer, footer a { color: var(--text-muted) !important; }
 
+
+/* split auth modal */
+.auth-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(2,10,18,.72);
+  backdrop-filter:blur(10px);
+  display:none;align-items:center;justify-content:center;
+  padding:20px;
+}
+.auth-card{
+  display:grid;grid-template-columns:1.05fr 1fr;
+  width:min(880px,96vw);min-height:480px;
+  border-radius:24px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 30px 80px rgba(0,0,0,.55);
+  background:#06141e;
+}
+.auth-visual{
+  position:relative;background:
+    radial-gradient(ellipse at 30% 20%, #1a6a9a88, transparent 55%),
+    radial-gradient(ellipse at 70% 80%, #3ecbff33, transparent 50%),
+    linear-gradient(165deg,#0a2030 0%,#041018 50%,#0a1628 100%);
+  display:flex;align-items:flex-end;padding:36px;
+}
+.auth-visual-bg{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(62,203,255,.25), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(80,120,255,.2), transparent 45%);
+  animation:authGlow 8s ease-in-out infinite alternate;
+}
+@keyframes authGlow{
+  from{opacity:.7;transform:scale(1)}
+  to{opacity:1;transform:scale(1.05)}
+}
+.auth-visual-text{position:relative;z-index:1}
+.auth-visual-text h2{margin:0 0 8px;font-size:1.75rem;color:#fff;font-weight:700}
+.auth-visual-text p{margin:0;color:rgba(255,255,255,.75);font-size:15px}
+.auth-form-side{
+  position:relative;padding:40px 36px 32px;
+  display:flex;flex-direction:column;justify-content:center;
+  background:linear-gradient(180deg,#0b1c28 0%,#07141c 100%);
+}
+.auth-x{
+  position:absolute;top:14px;right:16px;
+  background:transparent;border:none;color:rgba(255,255,255,.5);
+  font-size:28px;cursor:pointer;line-height:1;
+}
+.auth-x:hover{color:#fff}
+.auth-kicker{margin:0 0 6px;font-size:12px;color:#7eb0c8;letter-spacing:.04em}
+.auth-form-side h3{margin:0 0 6px;font-size:1.65rem;color:#fff;font-weight:700}
+.auth-sub{margin:0 0 22px;font-size:13px;color:#9bb4c4}
+.auth-label{font-size:12px;color:#8aa8ba;margin-bottom:6px}
+.auth-form-side input{
+  width:100%;box-sizing:border-box;margin-bottom:14px;
+  padding:12px 14px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.35);color:#fff;font-size:14px;
+}
+.auth-form-side input:focus{outline:none;border-color:rgba(62,203,255,.55)}
+.auth-submit{
+  margin-top:8px;width:100%;padding:14px;
+  border:none;border-radius:12px;cursor:pointer;
+  background:linear-gradient(180deg,#1a1a1a,#0a0a0a);
+  color:#fff;font-weight:600;font-size:15px;
+  box-shadow:0 4px 20px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.auth-submit:hover{filter:brightness(1.08)}
+.auth-switch{text-align:center;font-size:13px;color:#8aa8ba;margin:14px 0 0}
+.auth-switch a{color:#3ecbff;text-decoration:none}
+.auth-err{color:#ff7a7a;font-size:13px;min-height:18px;margin:8px 0 0}
+@media(max-width:720px){
+  .auth-card{grid-template-columns:1fr;min-height:auto}
+  .auth-visual{min-height:140px;padding:24px}
+}
+
 </style>
 </head>
 <body>
@@ -497,35 +573,50 @@ applyLang(localStorage.getItem('sm_lang') || 'en');
 </script>
 
 
-<div id="homeAuthModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#0c1a24;border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:28px;max-width:400px;width:100%">
-    <h3 id="homeAuthTitle" style="margin:0 0 8px">Log in</h3>
-    <p id="homeAuthSub" style="opacity:.7;font-size:13px;margin:0 0 16px">One account for the whole site</p>
-    <input id="homeEmail" type="email" placeholder="Email" style="width:100%;margin-bottom:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.3);color:#fff;box-sizing:border-box"/>
-    <input id="homePass" type="password" placeholder="Password (min 6)" style="width:100%;margin-bottom:14px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.3);color:#fff;box-sizing:border-box"/>
-    <button id="homeAuthSubmit" class="btn btn-primary" style="width:100%;margin-bottom:10px">Log in</button>
-    <p style="font-size:13px;text-align:center;opacity:.75"><span id="homeAuthSwitch">No account? <a href="#" id="homeAuthToggle" style="color:#3ecbff">Sign up</a></span></p>
-    <p id="homeAuthErr" style="color:#ff6b6b;font-size:13px;min-height:18px"></p>
-    <button type="button" id="homeAuthClose" class="btn btn-ghost" style="width:100%">Close</button>
+
+<div id="homeAuthModal" class="auth-overlay" style="display:none">
+  <div class="auth-card">
+    <div class="auth-visual">
+      <div class="auth-visual-bg"></div>
+      <div class="auth-visual-text">
+        <h2>Showcase Maker</h2>
+        <p>Steam showcases without the grind</p>
+      </div>
+    </div>
+    <div class="auth-form-side">
+      <button type="button" class="auth-x" id="homeAuthClose" aria-label="Close">×</button>
+      <p class="auth-kicker" id="homeAuthKicker">Login your account</p>
+      <h3 id="homeAuthTitle">Welcome Back!</h3>
+      <p class="auth-sub" id="homeAuthSub">Enter your email and password</p>
+      <label class="auth-label">Email address</label>
+      <input id="homeEmail" type="email" placeholder="you@email.com" autocomplete="email"/>
+      <label class="auth-label">Password</label>
+      <input id="homePass" type="password" placeholder="Enter your password" autocomplete="current-password"/>
+      <button id="homeAuthSubmit" class="auth-submit" type="button">Sign in</button>
+      <p class="auth-switch" id="homeAuthSwitch">No account? <a href="#" id="homeAuthToggle">Sign up</a></p>
+      <p id="homeAuthErr" class="auth-err"></p>
+    </div>
   </div>
 </div>
+
 <script>
 (function(){
   let mode = 'login';
   const modal = document.getElementById('homeAuthModal');
   function openAuth(m) {
     mode = m || 'login';
-    document.getElementById('homeAuthTitle').textContent = mode === 'register' ? 'Sign up' : 'Log in';
-    document.getElementById('homeAuthSub').textContent = 'One account for the whole platform';
-    document.getElementById('homeAuthSubmit').textContent = mode === 'register' ? 'Sign up' : 'Log in';
+    document.getElementById('homeAuthKicker').textContent = mode === 'register' ? 'Create your account' : 'Login your account';
+    document.getElementById('homeAuthTitle').textContent = mode === 'register' ? 'Join us!' : 'Welcome Back!';
+    document.getElementById('homeAuthSub').textContent = mode === 'register' ? 'Create email and password' : 'Enter your email and password';
+    document.getElementById('homeAuthSubmit').textContent = mode === 'register' ? 'Sign up' : 'Sign in';
     document.getElementById('homeAuthSwitch').innerHTML = mode === 'register'
       ? 'Have an account? <a href="#" id="homeAuthToggle" style="color:#3ecbff">Log in</a>'
       : 'No account? <a href="#" id="homeAuthToggle" style="color:#3ecbff">Sign up</a>';
     document.getElementById('homeAuthToggle').onclick = (e) => { e.preventDefault(); openAuth(mode==='login'?'register':'login'); };
-    modal.style.display = 'flex';
+    modal.style.display = 'flex'; modal.classList.add('show');
   }
-  document.getElementById('homeAuthClose').onclick = () => { modal.style.display = 'none'; };
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+  document.getElementById('homeAuthClose').onclick = () => { modal.style.display = 'none'; modal.classList.remove('show'); };
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; modal.classList.remove('show'); });
   document.querySelectorAll('[data-auth]').forEach(el => {
     el.addEventListener('click', (e) => { e.preventDefault(); openAuth(el.getAttribute('data-auth') || 'login'); });
   });
@@ -565,7 +656,6 @@ applyLang(localStorage.getItem('sm_lang') || 'en');
         const mail = (j.email || 'Profile');
         const short = mail.length > 18 ? mail.slice(0, 16) + '…' : mail;
         slot.innerHTML =
-          '<a href="/app" class="btn btn-ghost">Tools</a>' +
           '<a href="/app#account" class="btn btn-primary" title="' + mail + '">' + short + '</a>';
       } else {
         slot.innerHTML =

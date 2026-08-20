@@ -288,6 +288,7 @@ def auth_me(request: Request):
         "logged_in": True,
         "email": user["email"],
         "is_pro": user["is_pro"],
+        "pro_code": user.get("pro_code") or "",
     }
 
 
