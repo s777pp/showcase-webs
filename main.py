@@ -1467,11 +1467,13 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
         )
     except Exception as e:
         return HTMLResponse(f"<h3>Error</h3><pre>{e}</pre>", status_code=500)
+    app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
     return HTMLResponse(
-        """<!DOCTYPE html><html><body style="font-family:system-ui;background:#041018;color:#fff;padding:40px">
+        f"""<!DOCTYPE html><html><body style="font-family:system-ui;background:#041018;color:#fff;padding:40px;text-align:center">
         <h2>DeviantArt connected</h2>
-        <p>You can close this tab and return to Showcase Maker.</p>
-        <script>setTimeout(()=>window.close(), 1200)</script>
+        <p>Returning to Showcase Maker…</p>
+        <script>setTimeout(function(){{ location.href = "{app_url}/app#da"; }}, 800);</script>
+        <p><a href="{app_url}/app" style="color:#3ecbff">Back to tools</a></p>
         </body></html>"""
     )
 

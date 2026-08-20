@@ -753,15 +753,38 @@ document.getElementById('daSaveKeys')?.addEventListener('click', async () => {
   refreshDa();
 });
 document.getElementById('daLogin')?.addEventListener('click', async () => {
-  const r = await fetch('/api/da/login', { headers: headers() });
-  const j = await r.json();
-  if (!j.ok) { alert(j.msg || 'Error'); return; }
-  window.open(j.url, '_blank');
-  const t = setInterval(async () => {
-    const st = await fetch('/api/da/status', { headers: headers() }).then(x => x.json());
-    if (st.da) { clearInterval(t); refreshDa(); }
-  }, 2000);
-  setTimeout(() => clearInterval(t), 120000);
+  const st = document.getElementById('daMsg');
+  const cid = (document.getElementById('daClientId')?.value || '').trim();
+  const sec = (document.getElementById('daClientSecret')?.value || '').trim();
+  if (!cid || !sec) {
+    if (st) { st.className = 'status err'; st.textContent = 'Enter Client ID and Client Secret first'; }
+    return;
+  }
+  if (st) { st.className = 'status'; st.textContent = 'Saving keys…'; }
+  try {
+    const sk = await fetch('/api/da/keys', {
+      method: 'POST',
+      headers: { ...headers(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: cid, client_secret: sec }),
+    });
+    const sj = await sk.json();
+    if (!sj.ok) {
+      if (st) { st.className = 'status err'; st.textContent = sj.msg || 'Save failed — log in to Showcase account first'; }
+      return;
+    }
+    if (st) { st.textContent = 'Opening DeviantArt login…'; }
+    const r = await fetch('/api/da/login', { headers: headers() });
+    const j = await r.json();
+    if (!j.ok) {
+      if (st) { st.className = 'status err'; st.textContent = j.msg || 'Error'; }
+      return;
+    }
+    // same-tab redirect — popup blockers cannot stop this (desktop opens browser the same way)
+    if (st) { st.className = 'status'; st.textContent = 'Redirecting to DeviantArt…'; }
+    window.location.href = j.url;
+  } catch (e) {
+    if (st) { st.className = 'status err'; st.textContent = String(e); }
+  }
 });
 document.getElementById('daLogout')?.addEventListener('click', async () => {
   await fetch('/api/da/logout', { method: 'POST', headers: headers() });
@@ -1025,6 +1048,13 @@ document.getElementById('langBtn')?.addEventListener('click', () => {
 
 // apply after DOM / init
 setTimeout(() => applyAppLang(appLang()), 0);
+// open DA tab from OAuth return
+if (location.hash === '#da') {
+  const btn = document.querySelector('#nav button[data-tab="da"]');
+  if (btn) btn.click();
+  refreshDa();
+}
+
 
 </script>
 </body>
