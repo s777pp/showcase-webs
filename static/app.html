@@ -1056,19 +1056,26 @@ document.getElementById('daLogin')?.addEventListener('click', async () => {
       st.textContent = sj.msg || 'Save failed — are you logged into Showcase?';
       return;
     }
-    st.textContent = 'Opening DeviantArt… allow access in the window';
+    st.textContent = 'Opening DeviantArt authorization…';
     const r = await fetch('/api/da/login', { headers: headers(), credentials: 'include' });
     const j = await r.json();
     if (!j.ok) {
       st.className = 'status err'; st.textContent = j.msg || 'Error';
       return;
     }
-    // popup like desktop (app stays open)
-    const w = window.open(j.url, 'da_oauth', 'width=720,height=800,scrollbars=yes');
+    if (!j.url || j.url.indexOf('oauth2/authorize') < 0) {
+      st.className = 'status err';
+      st.textContent = 'Bad OAuth URL. Check Client ID and Redirect URI.';
+      return;
+    }
+    // Unique window name every time — reusing "da_oauth" kept opening old DA home tab
+    const wname = 'da_oauth_' + Date.now();
+    const w = window.open(j.url, wname, 'width=720,height=800,scrollbars=yes,resizable=yes');
     if (!w) {
-      // popup blocked — open in new tab
-      window.open(j.url, '_blank');
-      st.textContent = 'Popup blocked — opened in new tab. Allow access, then return here.';
+      st.innerHTML = 'Popup blocked. <a id="daAuthLink" href="' + j.url + '" target="_blank" style="color:var(--accent)">Click here to open authorization</a>';
+    } else {
+      try { w.location.href = j.url; } catch(e) {}
+      st.innerHTML = 'Authorize window opened. URL must contain <b>oauth2/authorize</b>. If you see the DA feed, close it and <a id="daAuthLink" href="' + j.url + '" target="_blank" style="color:var(--accent)">open this link</a>.';
     }
     let n = 0;
     const t = setInterval(async () => {

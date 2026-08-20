@@ -1388,6 +1388,26 @@ async def da_upload(request: Request):
 _da_pending: dict[str, dict] = {}  # state -> {verifier, user_id, client_id, client_secret, ts}
 
 
+
+@app.get("/api/da/debug")
+def da_debug(request: Request):
+    """Safe debug: no secrets, helps fix OAuth."""
+    user = _auth_user(request)
+    redirect = (os.environ.get("DA_REDIRECT_URI") or "").strip()
+    if not redirect:
+        redirect = (os.environ.get("APP_URL") or "").rstrip("/") + "/api/da/callback"
+    cid = ""
+    if user:
+        cid = (user.get("da_client_id") or "")[:12]
+    return {
+        "logged_in": bool(user),
+        "has_keys": bool(user and user.get("da_client_id") and user.get("da_client_secret")),
+        "client_id_prefix": cid,
+        "redirect_uri": redirect,
+        "authorize_base": "https://www.deviantart.com/oauth2/authorize",
+        "hint": "In DA app settings, Redirect URI must match redirect_uri EXACTLY. OAuth page URL contains /oauth2/authorize — not the DA home feed.",
+    }
+
 @app.get("/api/da/status")
 def da_status(request: Request):
     user = _auth_user(request)
@@ -1411,8 +1431,8 @@ async def da_save_keys(request: Request):
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
     body = await request.json()
-    cid = str(body.get("client_id") or "").strip()
-    sec = str(body.get("client_secret") or "").strip()
+    cid = str(body.get("client_id") or "").strip().split()[0] if str(body.get("client_id") or "").strip() else ""
+    sec = str(body.get("client_secret") or "").strip().split()[0] if str(body.get("client_secret") or "").strip() else ""
     if not cid or not sec:
         return JSONResponse({"ok": False, "msg": "Enter Client ID and Client Secret"}, status_code=400)
     auth_db.set_da_keys(int(user["id"]), cid, sec)
@@ -1459,6 +1479,7 @@ def da_login_start(request: Request):
             "client_id": cid,
             "redirect_uri": redirect,
             "scope": "stash publish browse",
+            "duration": "permanent",
             "code_challenge": challenge,
             "code_challenge_method": "S256",
             "state": state,
