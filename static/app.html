@@ -131,11 +131,56 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
 .back{font-size:13px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px}
 .back:hover{color:var(--accent)}
 
-@media(max-width:900px){
-  .side{display:none}
-  .main{padding:16px}
-  .modes{grid-template-columns:1fr}
+
+/* mobile top nav when side hidden */
+.mob-nav{display:none}
+
+@media(max-width:960px){
+  .shell{flex-direction:column;min-height:100vh}
+  .side{
+    position:sticky;top:0;z-index:40;height:auto;width:100%;
+    border-right:none;border-bottom:1px solid var(--border);
+    padding:12px 12px 10px;
+    background:rgba(4,16,24,.92);
+  }
+  .brand{padding:4px 4px 10px}
+  .nav{
+    flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:6px;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+    padding-bottom:4px;
+  }
+  .nav::-webkit-scrollbar{display:none}
+  .nav button{
+    flex:0 0 auto;white-space:nowrap;padding:9px 14px;font-size:12px;
+    border:1px solid var(--border);border-radius:999px;
+  }
+  .side-foot{display:none}
+  .main{padding:16px 14px 80px;width:100%}
+  .topbar{flex-direction:column;align-items:stretch;gap:12px;margin-bottom:16px}
+  .top-actions{width:100%;justify-content:flex-start;flex-wrap:wrap}
   .h-title{font-size:22px}
+  .h-sub{font-size:13px}
+  .modes{grid-template-columns:1fr}
+  .card{padding:16px;border-radius:16px}
+  .row{gap:10px}
+  label.field{width:100%}
+  label.field input, label.field select{width:100%}
+  input,select,textarea{font-size:16px} /* no iOS zoom */
+  .drop{padding:28px 14px;font-size:13px}
+  .btn{min-height:44px}
+  .modal{padding:22px 18px;max-width:100%}
+  .modal-bg{align-items:flex-end;padding:0}
+  .modal{border-radius:20px 20px 0 0;max-height:90vh;overflow:auto}
+  .fi{flex-wrap:wrap;gap:8px}
+  .fi span{width:100%;word-break:break-all}
+  pre.code{font-size:11px;padding:12px}
+  .back{margin-bottom:6px}
+}
+
+@media(max-width:480px){
+  .h-title{font-size:20px}
+  .pill{font-size:11px;padding:6px 10px}
+  .top-actions .btn{padding:10px 12px;font-size:12px}
 }
 </style>
 </head>
@@ -171,6 +216,7 @@ pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14p
     <div class="top-actions">
       <span class="pill" id="planBadge">Free</span>
       <span class="pill" id="userPill" style="display:none"></span>
+      <button class="btn ghost" id="langBtn" type="button" style="min-width:48px">EN</button>
       <button class="btn ghost" id="btnAuth" type="button">Войти</button>
       <button class="btn" id="btnUpgrade" type="button" style="display:none">Купить Pro</button>
       <button class="btn ghost" id="btnLogout" type="button" style="display:none">Выйти</button>
@@ -417,7 +463,11 @@ document.getElementById('authSubmit').onclick = async () => {
 };
 document.getElementById('btnLogout').onclick = async () => {
   await fetch('/api/auth/logout', { method:'POST', headers: headers() });
-  state.session = ''; localStorage.removeItem('sm_session'); refreshQuota();
+  state.session = '';
+  state.token = '';
+  localStorage.removeItem('sm_session');
+  localStorage.removeItem('sm_token');
+  refreshQuota();
 };
 document.getElementById('btnUpgrade').onclick = () => {
   window.open('https://funpay.com/lots/offer?id=75265310', '_blank');
@@ -611,7 +661,10 @@ document.getElementById('accRegister')?.addEventListener('click', async () => {
 });
 document.getElementById('accLogout2')?.addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method:'POST', headers: headers() });
-  state.session = ''; localStorage.removeItem('sm_session');
+  state.session = '';
+  state.token = '';
+  localStorage.removeItem('sm_session');
+  localStorage.removeItem('sm_token');
   refreshQuota();
 });
 document.getElementById('accBuyPro')?.addEventListener('click', () => {
@@ -642,6 +695,169 @@ async function init(){
   }
 }
 init();
+
+/* ===== i18n ===== */
+const APP_I18N = {
+  ru: {
+    back: "← На главную",
+    nav: {process:"Обработка",download:"Скачать",preview:"Предпросмотр",steam:"Steam",da:"DeviantArt",account:"Аккаунт",about:"О сервисе"},
+    titles: {
+      process:["Обработка","Нарезка Workshop / Featured / Split, watermark и ZIP под Steam"],
+      download:["Скачать","Исходники с YouTube, TikTok, X, Reddit и Pinterest"],
+      preview:["Предпросмотр","Как ляжет витрина на страницу профиля Steam"],
+      steam:["Steam","Инструкция и код для загрузки artwork"],
+      da:["DeviantArt","Публикация — desktop-версия"],
+      account:["Аккаунт","Регистрация, вход и покупка Pro"],
+      about:["О сервисе","Лимиты, Pro и контакты"]
+    },
+    login:"Войти", logout:"Выйти", buy:"Купить Pro",
+    mode:"Режим", params:"Параметры", files:"Файлы",
+    drop:"Перетащи PNG, JPG, GIF или MP4 — или нажми, чтобы выбрать",
+    run:"Обработать", clear:"Очистить", dlzip:"Скачать ZIP",
+    acc_guest:"Вход или регистрация",
+    acc_guest_p:"Создай аккаунт, чтобы купить Pro и сохранить доступ.",
+    reg:"Регистрация", acc_user:"Твой аккаунт",
+    code_h:"Код доступа", code_p:"Если купил на FunPay — вставь код сюда.",
+    apply:"Применить код",
+    funpay_hint:"Покупка на FunPay. После оплаты продавец выдаст код — вставь его ниже.",
+    steam_h:"Загрузка в Steam",
+    about_h:"О сервисе",
+    auth_login:"Вход", auth_reg:"Регистрация",
+    auth_sub_l:"Войди, чтобы купить Pro", auth_sub_r:"Создай аккаунт для Pro",
+    no_acc:"Нет аккаунта?", has_acc:"Уже есть аккаунт?",
+  },
+  en: {
+    back: "← Home",
+    nav: {process:"Process",download:"Download",preview:"Preview",steam:"Steam",da:"DeviantArt",account:"Account",about:"About"},
+    titles: {
+      process:["Process","Workshop / Featured / Split cuts, watermark and Steam ZIP"],
+      download:["Download","Sources from YouTube, TikTok, X, Reddit and Pinterest"],
+      preview:["Preview","How the showcase looks on a Steam profile"],
+      steam:["Steam","Guide and console code for artwork upload"],
+      da:["DeviantArt","Publishing — desktop version"],
+      account:["Account","Sign up, log in and buy Pro"],
+      about:["About","Limits, Pro and contacts"]
+    },
+    login:"Log in", logout:"Log out", buy:"Buy Pro",
+    mode:"Mode", params:"Settings", files:"Files",
+    drop:"Drop PNG, JPG, GIF or MP4 — or click to browse",
+    run:"Process", clear:"Clear", dlzip:"Download ZIP",
+    acc_guest:"Log in or sign up",
+    acc_guest_p:"Create an account to buy Pro and keep access.",
+    reg:"Sign up", acc_user:"Your account",
+    code_h:"Access code", code_p:"Bought on FunPay? Paste the code here.",
+    apply:"Apply code",
+    funpay_hint:"Buy on FunPay. After payment you get a code — paste it below.",
+    steam_h:"Upload to Steam",
+    about_h:"About",
+    auth_login:"Log in", auth_reg:"Sign up",
+    auth_sub_l:"Log in to buy Pro", auth_sub_r:"Create an account for Pro",
+    no_acc:"No account?", has_acc:"Already have an account?",
+  }
+};
+
+function appLang() {
+  return localStorage.getItem('sm_lang') || 'ru';
+}
+
+function applyAppLang(lang) {
+  const t = APP_I18N[lang] || APP_I18N.ru;
+  localStorage.setItem('sm_lang', lang);
+  document.documentElement.lang = lang;
+  const lb = document.getElementById('langBtn');
+  if (lb) lb.textContent = lang === 'ru' ? 'EN' : 'RU';
+
+  // nav
+  document.querySelectorAll('#nav button').forEach(btn => {
+    const k = btn.dataset.tab;
+    if (t.nav[k]) btn.textContent = t.nav[k];
+  });
+
+  // override titles global used by tab switcher
+  if (typeof titles !== 'undefined') {
+    Object.assign(titles, t.titles);
+    const active = document.querySelector('#nav button.active');
+    if (active) {
+      const key = active.dataset.tab;
+      const pair = t.titles[key];
+      if (pair) {
+        document.getElementById('pageTitle').textContent = pair[0];
+        document.getElementById('pageSub').textContent = pair[1];
+      }
+    }
+  }
+
+  const back = document.querySelector('a.back');
+  if (back) back.textContent = t.back;
+  const ba = document.getElementById('btnAuth'); if (ba) ba.textContent = t.login;
+  const bl = document.getElementById('btnLogout'); if (bl) bl.textContent = t.logout;
+  const bu = document.getElementById('btnUpgrade'); if (bu) bu.textContent = t.buy;
+  const ab = document.getElementById('accBuyPro'); if (ab) ab.textContent = t.buy;
+  const al2 = document.getElementById('accLogout2'); if (al2) al2.textContent = t.logout;
+
+  // cards headings - first h2 in process
+  const ph = document.querySelectorAll('#tab-process .card h2');
+  if (ph[0]) ph[0].textContent = t.mode;
+  if (ph[1]) ph[1].textContent = t.params;
+  if (ph[2]) ph[2].textContent = t.files;
+  const drop = document.getElementById('drop'); if (drop) drop.textContent = t.drop;
+  const br = document.getElementById('btnRun'); if (br) br.textContent = t.run;
+  const bc = document.getElementById('btnClear'); if (bc) bc.textContent = t.clear;
+  const dp = document.getElementById('dlProcess'); if (dp) dp.textContent = t.dlzip;
+
+  // account
+  const ag = document.querySelector('#accGuest h2'); if (ag) ag.textContent = t.acc_guest;
+  const agp = document.querySelector('#accGuest .steps'); if (agp) agp.textContent = t.acc_guest_p;
+  const al = document.getElementById('accLogin'); if (al) al.textContent = t.login;
+  const ar = document.getElementById('accRegister'); if (ar) ar.textContent = t.reg;
+  const au = document.querySelector('#accUser h2'); if (au) au.textContent = t.acc_user;
+  const hint = document.getElementById('accBillingHint'); if (hint) hint.textContent = t.funpay_hint;
+  const ch = document.querySelector('#tab-account .card:last-of-type h2') || document.querySelector('#accessCode2')?.closest('.card')?.querySelector('h2');
+  // code card
+  document.querySelectorAll('#tab-account .card').forEach(card => {
+    const h = card.querySelector('h2');
+    if (!h) return;
+    if (h.textContent.includes('Код') || h.textContent.includes('Access') || h.textContent.includes('код')) {
+      h.textContent = t.code_h;
+      const sp = card.querySelector('.steps');
+      if (sp) sp.textContent = t.code_p;
+    }
+  });
+  const bu2 = document.getElementById('btnUnlock2'); if (bu2) bu2.textContent = t.apply;
+
+  // modal
+  syncAuthUiLang(lang);
+}
+
+function syncAuthUiLang(lang) {
+  const t = APP_I18N[lang] || APP_I18N.ru;
+  const reg = (typeof state !== 'undefined' && state.authMode === 'register');
+  const title = document.getElementById('authTitle');
+  const sub = document.getElementById('authSub');
+  const submit = document.getElementById('authSubmit');
+  const sw = document.getElementById('authSwitch');
+  if (title) title.textContent = reg ? t.auth_reg : t.auth_login;
+  if (sub) sub.textContent = reg ? t.auth_sub_r : t.auth_sub_l;
+  if (submit) submit.textContent = reg ? t.auth_reg : t.auth_login;
+  if (sw) {
+    sw.innerHTML = reg
+      ? t.has_acc + ' <a id="authToggle">' + t.auth_login + '</a>'
+      : t.no_acc + ' <a id="authToggle">' + t.auth_reg + '</a>';
+    document.getElementById('authToggle')?.addEventListener('click', () => {
+      state.authMode = reg ? 'login' : 'register';
+      syncAuthUi();
+      syncAuthUiLang(appLang());
+    });
+  }
+}
+
+document.getElementById('langBtn')?.addEventListener('click', () => {
+  applyAppLang(appLang() === 'ru' ? 'en' : 'ru');
+});
+
+// apply after DOM / init
+setTimeout(() => applyAppLang(appLang()), 0);
+
 </script>
 </body>
 </html>

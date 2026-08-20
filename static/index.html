@@ -84,43 +84,54 @@ body{
 @media(max-width:900px){.hero-cta{justify-content:center}}
 .hero-note{margin-top:18px;font-size:12px;color:var(--muted);opacity:.85}
 
-/* video orb */
-.orb-wrap{position:relative;display:flex;justify-content:center;align-items:center;min-height:420px}
-.orb-ring{
-  position:absolute;border-radius:50%;border:1.5px solid rgba(255,255,255,.12);
-  animation:spin 28s linear infinite;
+
+/* hero media */
+.media-stage{
+  position:relative;
+  width:100%;
+  max-width:560px;
+  margin:0 auto;
 }
-.orb-ring:nth-child(1){width:340px;height:340px}
-.orb-ring:nth-child(2){width:420px;height:420px;animation-direction:reverse;animation-duration:40s;opacity:.7}
-.orb-ring:nth-child(3){width:500px;height:500px;opacity:.4;animation-duration:55s}
-@keyframes spin{to{transform:rotate(360deg)}}
-.orb-core{
-  position:relative;width:min(280px,70vw);aspect-ratio:1;border-radius:50%;
+.media-frame{
+  position:relative;
+  border-radius:28px;
   overflow:hidden;
-  box-shadow:0 0 0 3px rgba(62,203,255,.35),0 0 60px #3ecbff55,0 20px 60px #0008;
-  background:#0a2030;
+  aspect-ratio:4/5;
+  background:#0a1e2e;
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:
+    0 0 0 1px rgba(62,203,255,.12),
+    0 24px 80px rgba(0,0,0,.45),
+    0 0 100px rgba(62,203,255,.18);
 }
-.orb-core video,.orb-core img{
+.media-frame video,
+.media-frame img{
   width:100%;height:100%;object-fit:cover;display:block;
 }
-.orb-fallback{
-  width:100%;height:100%;display:grid;place-items:center;
-  background:radial-gradient(circle at 40% 35%,#1a6a9a,#0a2030 70%);
+.media-frame .fallback{
+  position:absolute;inset:0;display:none;place-items:center;
+  background:radial-gradient(circle at 40% 30%,#1a6a9a,#071820 70%);
 }
-.orb-fallback img{width:48%;height:auto;object-fit:contain;filter:drop-shadow(0 0 20px #3ecbff88)}
-
-.float-icon{
-  position:absolute;width:56px;height:56px;border-radius:50%;
-  background:linear-gradient(160deg,rgba(80,140,200,.55),rgba(30,60,100,.65));
-  border:1px solid rgba(255,255,255,.2);
-  backdrop-filter:blur(12px);display:grid;place-items:center;
-  box-shadow:0 8px 24px #0005;
-  color:#fff;font-size:20px;
+.media-frame .fallback img{
+  width:42%;height:auto;object-fit:contain;
+  filter:drop-shadow(0 0 28px #3ecbff66);
 }
-.float-icon.i1{top:12%;left:8%}
-.float-icon.i2{top:18%;right:6%}
-.float-icon.i3{bottom:22%;left:4%}
-.float-icon.i4{bottom:14%;right:10%}
+.media-glow{
+  position:absolute;inset:-20% -15%;
+  background:radial-gradient(ellipse at 50% 50%, #3ecbff22, transparent 65%);
+  z-index:-1;pointer-events:none;
+}
+.media-badge{
+  position:absolute;left:16px;bottom:16px;z-index:2;
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 14px;border-radius:999px;
+  background:rgba(4,16,24,.55);border:1px solid rgba(255,255,255,.14);
+  backdrop-filter:blur(12px);font-size:12px;font-weight:500;color:#d6eef8;
+}
+.media-badge i{
+  width:8px;height:8px;border-radius:50%;background:#34d399;
+  box-shadow:0 0 8px #34d399;display:inline-block;
+}
 
 /* features */
 .section{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:64px 24px}
@@ -171,6 +182,53 @@ footer{
   color:var(--muted);font-size:12px;border-top:1px solid var(--border);
 }
 footer a{color:var(--accent);text-decoration:none}
+
+/* ===== mobile ===== */
+@media (max-width: 900px) {
+  .nav {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+  .nav-links {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .nav-links a, .nav-links .btn {
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+  }
+  .hero {
+    grid-template-columns: 1fr !important;
+    gap: 28px;
+    padding: 24px 16px 12px;
+    text-align: center;
+  }
+  .hero p { margin-left: auto; margin-right: auto; font-size: 15px; }
+  .hero-cta { justify-content: center; }
+  .hero h1 { font-size: clamp(1.75rem, 7vw, 2.4rem); }
+  .media-stage { max-width: 100% !important; }
+  .media-frame { border-radius: 20px; aspect-ratio: 1/1; }
+  .section { padding: 40px 16px; }
+  .section h2 { font-size: 1.35rem; }
+  .grid3 { grid-template-columns: 1fr !important; gap: 12px; }
+  .steps { grid-template-columns: 1fr !important; }
+  .cta-band {
+    margin: 12px 16px 48px;
+    padding: 28px 18px;
+    border-radius: 20px;
+  }
+  .cta-band h2 { font-size: 1.25rem; }
+  footer { padding: 20px 16px; }
+}
+@media (max-width: 480px) {
+  .btn { padding: 11px 16px; font-size: 13px; }
+  .card { padding: 18px; border-radius: 18px; }
+  .hero-note { font-size: 11px; }
+}
+
 </style>
 </head>
 <body>
@@ -185,7 +243,8 @@ footer a{color:var(--accent);text-decoration:none}
     <a href="#features">Возможности</a>
     <a href="#how">Как это работает</a>
     <a href="/app" class="btn btn-ghost" style="padding:8px 16px">Инструменты</a>
-    <a href="/app?auth=1" class="btn btn-primary" style="padding:8px 16px">Регистрация</a>
+    <a href="/app?auth=1" class="btn btn-primary" style="padding:8px 16px" data-i18n="nav_reg">Регистрация</a>
+    <button type="button" class="btn btn-ghost" id="langBtn" style="padding:8px 12px;min-width:52px">EN</button>
   </div>
 </nav>
 
@@ -203,22 +262,16 @@ footer a{color:var(--accent);text-decoration:none}
     <div class="hero-note">Free · 5 файлов/сутки &nbsp;·&nbsp; Pro · без лимита</div>
   </div>
 
-  <div class="orb-wrap">
-    <div class="orb-ring"></div>
-    <div class="orb-ring"></div>
-    <div class="orb-ring"></div>
-    <div class="float-icon i1" title="Скачать">⬇</div>
-    <div class="float-icon i2" title="Загрузить">⬆</div>
-    <div class="float-icon i3" title="Нарезка">✂</div>
-    <div class="float-icon i4" title="Превью">👁</div>
-    <div class="orb-core" id="orbCore">
-      <!-- video: static/video/hero.mp4 -->
+  <div class="media-stage">
+    <div class="media-glow"></div>
+    <div class="media-frame" id="orbCore">
       <video id="heroVid" autoplay muted loop playsinline poster="/static/icon.png">
         <source src="/static/video/hero.mp4" type="video/mp4"/>
       </video>
-      <div class="orb-fallback" id="orbFallback" style="display:none">
+      <div class="fallback" id="orbFallback">
         <img src="/static/icon.png" alt="Showcase Maker"/>
       </div>
+      <div class="media-badge"><i></i> Showcase Maker</div>
     </div>
   </div>
 </section>
@@ -290,10 +343,120 @@ const vid = document.getElementById('heroVid');
 const fb = document.getElementById('orbFallback');
 vid.addEventListener('error', () => { vid.style.display='none'; fb.style.display='grid'; });
 vid.addEventListener('loadeddata', () => { fb.style.display='none'; vid.style.display='block'; });
-// if no source loads
 setTimeout(() => {
   if (vid.readyState < 2) { vid.style.display='none'; fb.style.display='grid'; }
 }, 1500);
 </script>
+
+<script>
+const I18N = {
+  ru: {
+    nav_feat: "Возможности", nav_how: "Как это работает", nav_tools: "Инструменты", nav_reg: "Регистрация",
+    h1a: "Steam-витрины", h1b: "без рутины",
+    hero_p: "Нарезка Workshop, Featured и Split, watermark, сжатие под лимит Steam, скачивание исходников и предпросмотр профиля — в одном браузерном инструменте.",
+    cta_tools: "Открыть инструменты", cta_reg: "Создать аккаунт",
+    hero_note: "Free · 5 файлов/сутки  ·  Pro · без лимита",
+    feat_h: "Всё для оформления профиля", feat_lead: "От исходника до готовых файлов под загрузку в Steam",
+    c1t: "Нарезка витрин", c1p: "Workshop на 5 частей, Featured 630px, Artwork Split 506+100. Полосы, watermark, GIF и видео.",
+    c2t: "Скачивание исходников", c2p: "YouTube, TikTok, X, Reddit, Pinterest — без сторонних сайтов, сразу в рабочую папку.",
+    c3t: "Предпросмотр профиля", c3p: "Шаблон Steam-страницы, слоты под каждую витрину, GIF и MP4 с анимацией.",
+    c4t: "Watermark", c4p: "Текст, шрифт, прозрачность. Удобно для авторов, которые продают или публикуют работы.",
+    c5t: "ZIP под Steam", c5p: "Готовый архив с part_1…5, featured, split — можно сразу грузить в мастерскую.",
+    c6t: "В браузере", c6p: "Не нужно ставить exe на каждый ПК. Открыл сайт — обработал — скачал.",
+    how_h: "Четыре шага", how_lead: "От файла до профиля Steam",
+    s1t: "Загрузи", s1p: "PNG, JPG, GIF или MP4 — или скачай по ссылке внутри сервиса.",
+    s2t: "Выбери режим", s2p: "Workshop, Featured или Artwork Split + watermark и FPS.",
+    s3t: "Скачай ZIP", s3p: "Файлы уже нарезаны и сжаты под лимиты Steam.",
+    s4t: "Залей в Steam", s4p: "Код для консоли и инструкция — на вкладке Steam в инструментах.",
+    band_h: "Готов оформить профиль?", band_p: "Бесплатный лимит для теста · Pro снимает ограничения",
+    band_tools: "Перейти к инструментам", band_reg: "Регистрация",
+    foot: "Showcase Maker · by"
+  },
+  en: {
+    nav_feat: "Features", nav_how: "How it works", nav_tools: "Tools", nav_reg: "Sign up",
+    h1a: "Steam showcases", h1b: "without the grind",
+    hero_p: "Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool.",
+    cta_tools: "Open tools", cta_reg: "Create account",
+    hero_note: "Free · 5 files/day  ·  Pro · unlimited",
+    feat_h: "Everything for your profile", feat_lead: "From source file to Steam-ready assets",
+    c1t: "Showcase cuts", c1p: "Workshop ×5, Featured 630px, Artwork Split 506+100. Bars, watermark, GIF and video.",
+    c2t: "Download sources", c2p: "YouTube, TikTok, X, Reddit, Pinterest — no third-party sites.",
+    c3t: "Profile preview", c3p: "Steam page template, slots per showcase, animated GIF and MP4.",
+    c4t: "Watermark", c4p: "Text, font, opacity — handy if you sell or publish art.",
+    c5t: "Steam ZIP", c5p: "Ready archive with part_1…5, featured, split — upload to Workshop.",
+    c6t: "In the browser", c6p: "No .exe on every PC. Open the site, process, download.",
+    how_h: "Four steps", how_lead: "From file to Steam profile",
+    s1t: "Upload", s1p: "PNG, JPG, GIF or MP4 — or download by link inside the app.",
+    s2t: "Pick a mode", s2p: "Workshop, Featured or Artwork Split + watermark and FPS.",
+    s3t: "Download ZIP", s3p: "Already cut and compressed for Steam limits.",
+    s4t: "Upload to Steam", s4p: "Console code and guide are on the Steam tab in Tools.",
+    band_h: "Ready to style your profile?", band_p: "Free limit to try · Pro removes limits",
+    band_tools: "Go to tools", band_reg: "Sign up",
+    foot: "Showcase Maker · by"
+  }
+};
+
+function applyLang(lang) {
+  const t = I18N[lang] || I18N.ru;
+  document.documentElement.lang = lang;
+  const map = [
+    ['a[href="#features"]', 'nav_feat'],
+    ['a[href="#how"]', 'nav_how'],
+    ['a[href="/app"].btn-ghost', 'nav_tools'],
+    ['a[href="/app?auth=1"].btn-primary', 'nav_reg'],
+  ];
+  // nav
+  document.querySelectorAll('.nav-links a').forEach((a,i) => {
+    const keys = ['nav_feat','nav_how','nav_tools','nav_reg'];
+    if (keys[i] && t[keys[i]]) a.textContent = t[keys[i]];
+  });
+  const h1 = document.querySelector('.hero h1');
+  if (h1) h1.innerHTML = t.h1a + '<br/><span>' + t.h1b + '</span>';
+  const hp = document.querySelector('.hero p');
+  if (hp) hp.textContent = t.hero_p;
+  const ctas = document.querySelectorAll('.hero-cta a');
+  if (ctas[0]) ctas[0].textContent = t.cta_tools;
+  if (ctas[1]) ctas[1].textContent = t.cta_reg;
+  const note = document.querySelector('.hero-note');
+  if (note) note.textContent = t.hero_note;
+  const fh = document.querySelector('#features h2');
+  if (fh) fh.textContent = t.feat_h;
+  const fl = document.querySelector('#features .lead');
+  if (fl) fl.textContent = t.feat_lead;
+  const cards = document.querySelectorAll('#features .card');
+  const ck = [['c1t','c1p'],['c2t','c2p'],['c3t','c3p'],['c4t','c4p'],['c5t','c5p'],['c6t','c6p']];
+  cards.forEach((c,i) => {
+    if (!ck[i]) return;
+    const h = c.querySelector('h3'); const p = c.querySelector('p');
+    if (h) h.textContent = t[ck[i][0]];
+    if (p) p.textContent = t[ck[i][1]];
+  });
+  const hh = document.querySelector('#how h2'); if (hh) hh.textContent = t.how_h;
+  const hl = document.querySelector('#how .lead'); if (hl) hl.textContent = t.how_lead;
+  const steps = document.querySelectorAll('#how .step');
+  const sk = [['s1t','s1p'],['s2t','s2p'],['s3t','s3p'],['s4t','s4p']];
+  steps.forEach((s,i) => {
+    if (!sk[i]) return;
+    const h = s.querySelector('h3'); const p = s.querySelector('p');
+    if (h) h.textContent = t[sk[i][0]];
+    if (p) p.textContent = t[sk[i][1]];
+  });
+  const bh = document.querySelector('.cta-band h2'); if (bh) bh.textContent = t.band_h;
+  const bp = document.querySelector('.cta-band p'); if (bp) bp.textContent = t.band_p;
+  const ba = document.querySelectorAll('.cta-band a');
+  if (ba[0]) ba[0].textContent = t.band_tools;
+  if (ba[1]) ba[1].textContent = t.band_reg;
+  const lb = document.getElementById('langBtn');
+  if (lb) lb.textContent = lang === 'ru' ? 'EN' : 'RU';
+  localStorage.setItem('sm_lang', lang);
+}
+
+document.getElementById('langBtn')?.addEventListener('click', () => {
+  const cur = localStorage.getItem('sm_lang') || 'ru';
+  applyLang(cur === 'ru' ? 'en' : 'ru');
+});
+applyLang(localStorage.getItem('sm_lang') || 'ru');
+</script>
+
 </body>
 </html>
