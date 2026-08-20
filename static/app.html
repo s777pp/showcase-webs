@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Инструменты · Showcase Maker</title>
+<link rel="icon" href="/static/icon.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#041018;--panel:rgba(8,24,36,.72);--card:rgba(12,32,48,.65);
+  --elev:rgba(20,48,68,.55);--text:#f4fbff;--muted:#9bb8c9;--faint:#6a8a9c;
+  --accent:#3ecbff;--accent2:#6b8cff;--border:rgba(255,255,255,.12);
+  --ok:#34d399;--err:#f87171;--radius:18px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 15% -10%, #0a4a6e44, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 90% 0%, #1a3a8a28, transparent),
+    linear-gradient(180deg,#031018,#061a28 50%,#041018);
+}
+.shell{display:flex;min-height:100vh;max-width:1280px;margin:0 auto}
+.side{
+  width:240px;flex-shrink:0;padding:20px 14px;
+  border-right:1px solid var(--border);
+  background:var(--panel);backdrop-filter:blur(24px);
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 8px 20px;text-decoration:none;color:var(--text)}
+.brand img{width:34px;height:34px;border-radius:10px}
+.brand b{font-size:14px;font-weight:700}
+.brand span{display:block;font-size:11px;color:var(--faint)}
+.nav{display:flex;flex-direction:column;gap:4px;flex:1}
+.nav button{
+  text-align:left;background:transparent;border:none;color:var(--muted);
+  padding:11px 14px;border-radius:12px;cursor:pointer;font:500 13px Inter,sans-serif;
+  transition:.15s;
+}
+.nav button:hover{background:var(--elev);color:var(--text)}
+.nav button.active{
+  background:linear-gradient(135deg,#3ecbff22,#6b8cff22);
+  color:var(--text);border:1px solid #3ecbff33;
+}
+.side-foot{border-top:1px solid var(--border);padding-top:14px}
+.socials{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.socials a img{width:20px;height:20px;opacity:.75}
+.quota{text-align:center;font-size:11px;color:var(--faint);margin-top:12px}
+.quota b{color:var(--accent)}
+
+.main{flex:1;padding:28px 32px 48px;min-width:0}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+.h-title{font-size:26px;font-weight:700;letter-spacing:-.03em}
+.h-sub{font-size:14px;color:var(--muted);margin-top:6px;max-width:520px;line-height:1.45}
+.top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{
+  font-size:12px;font-weight:500;padding:7px 14px;border-radius:999px;
+  border:1px solid var(--border);background:var(--card);color:var(--muted);
+  backdrop-filter:blur(12px);
+}
+.pill.pro{border-color:#3ecbff55;background:#3ecbff18;color:var(--accent)}
+
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px 24px;margin-bottom:16px;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+}
+.card h2{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-bottom:14px}
+
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mode{
+  border:1px solid var(--border);background:var(--elev);border-radius:16px;
+  padding:16px;cursor:pointer;text-align:left;color:var(--text);font-family:inherit;transition:.15s;
+}
+.mode:hover{border-color:#3ecbff44}
+.mode.active{border-color:#3ecbff88;background:linear-gradient(160deg,#3ecbff18,#6b8cff12);box-shadow:0 0 0 1px #3ecbff33}
+.mode strong{display:block;font-size:14px;font-weight:600;margin-bottom:6px}
+.mode span{font-size:12px;color:var(--muted);line-height:1.4}
+
+.drop{
+  border:1.5px dashed #3ecbff44;background:var(--elev);border-radius:16px;
+  padding:40px 20px;text-align:center;cursor:pointer;color:var(--muted);font-size:14px;transition:.15s;
+}
+.drop:hover,.drop.drag{border-color:var(--accent);background:#3ecbff12;color:var(--text)}
+
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+label.field{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--faint);font-weight:500}
+input,select,textarea{
+  background:var(--elev);border:1px solid var(--border);border-radius:12px;
+  padding:11px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none;
+}
+input:focus,select:focus{border-color:#3ecbff88}
+input[type=range]{width:140px;padding:0}
+input[type=checkbox]{accent-color:var(--accent)}
+
+.btn{
+  background:linear-gradient(135deg,#4fd2ff,#6b8cff);color:#041018;border:none;border-radius:12px;
+  padding:11px 18px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;transition:.15s;
+}
+.btn:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn.ghost:hover{border-color:#3ecbff55;color:var(--text)}
+
+.files{margin-top:14px;max-height:160px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.fi{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--elev);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px}
+.fi button{background:none;border:none;color:var(--err);cursor:pointer}
+
+.status{margin-top:12px;font-size:13px;color:var(--muted);min-height:1.2em}
+.status.ok{color:var(--ok)}.status.err{color:var(--err)}
+.tab{display:none}.tab.active{display:block}
+.steps{color:var(--muted);font-size:14px;line-height:1.65}
+.steps b{color:var(--text)}
+pre.code{background:var(--elev);border:1px solid var(--border);border-radius:14px;padding:16px;font-size:12px;overflow:auto;color:#c8e0ee;white-space:pre-wrap;font-family:ui-monospace,monospace}
+
+.modal-bg{position:fixed;inset:0;background:#000a;z-index:50;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}
+.modal-bg.show{display:flex}
+.modal{
+  background:rgba(10,28,42,.92);border:1px solid var(--border);border-radius:20px;
+  padding:28px;width:100%;max-width:400px;box-shadow:0 24px 80px #000a;
+  backdrop-filter:blur(24px);
+}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:6px}
+.modal p{font-size:13px;color:var(--muted);margin-bottom:18px}
+.modal .stack{display:flex;flex-direction:column;gap:10px}
+.modal .switch{font-size:12px;color:var(--faint);text-align:center;margin-top:14px}
+.modal .switch a{color:var(--accent);cursor:pointer}
+
+.back{font-size:13px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px}
+.back:hover{color:var(--accent)}
+
+@media(max-width:900px){
+  .side{display:none}
+  .main{padding:16px}
+  .modes{grid-template-columns:1fr}
+  .h-title{font-size:22px}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side">
+  <a class="brand" href="/">
+    <img src="/static/icon.png" alt=""/>
+    <div><b>Showcase Maker</b><span>Инструменты</span></div>
+  </a>
+  <nav class="nav" id="nav">
+    <button data-tab="process" class="active">Обработка</button>
+    <button data-tab="download">Скачать</button>
+    <button data-tab="preview">Предпросмотр</button>
+    <button data-tab="steam">Steam</button>
+    <button data-tab="da">DeviantArt</button>
+    <button data-tab="about">О сервисе</button>
+  </nav>
+  <div class="side-foot">
+    <div class="socials" id="socials"></div>
+    <div class="quota" id="quota">…</div>
+  </div>
+</aside>
+
+<main class="main">
+  <a class="back" href="/">← На главную</a>
+  <div class="topbar">
+    <div>
+      <div class="h-title" id="pageTitle">Обработка</div>
+      <div class="h-sub" id="pageSub">Нарезка Workshop / Featured / Split, watermark и ZIP под Steam</div>
+    </div>
+    <div class="top-actions">
+      <span class="pill" id="planBadge">Free</span>
+      <span class="pill" id="userPill" style="display:none"></span>
+      <button class="btn ghost" id="btnAuth" type="button">Войти</button>
+      <button class="btn" id="btnUpgrade" type="button" style="display:none">Купить Pro</button>
+      <button class="btn ghost" id="btnLogout" type="button" style="display:none">Выйти</button>
+    </div>
+  </div>
+
+  <section class="tab active" id="tab-process">
+    <div class="card">
+      <h2>Режим</h2>
+      <div class="modes">
+        <button type="button" class="mode active" data-mode="workshop"><strong>Workshop</strong><span>5 частей для витрины мастерской</span></button>
+        <button type="button" class="mode" data-mode="featured"><strong>Featured</strong><span>Artwork шириной 630 px</span></button>
+        <button type="button" class="mode" data-mode="split"><strong>Artwork Split</strong><span>Центр 506 + боковая 100</span></button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Параметры</h2>
+      <div class="row">
+        <label class="field">FPS<input type="number" id="fps" value="12" min="5" max="30"/></label>
+        <label class="field">Ширина<input type="number" id="size" value="750" min="300" max="1200"/></label>
+        <label class="field">Watermark<input id="wmText" value="n1t1337"/></label>
+        <label class="field">Шрифт<select id="wmFont"><option>lap</option><option>rob</option><option>caratte</option><option>Fineday</option></select></label>
+        <label class="field">Прозрачность %<input type="range" id="wmOpacity" min="0" max="100" value="22"/></label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="wmEnable" checked/> Вкл</label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Файлы</h2>
+      <div class="drop" id="drop">Перетащи PNG, JPG, GIF или MP4 — или нажми, чтобы выбрать</div>
+      <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif"/>
+      <div class="files" id="fileList"></div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn" id="btnRun" disabled>Обработать</button>
+        <button class="btn ghost" id="btnClear" type="button">Очистить</button>
+        <a class="btn ghost" id="dlProcess" style="display:none;text-decoration:none" href="#">Скачать ZIP</a>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-download">
+    <div class="card">
+      <h2>Скачать из сети</h2>
+      <p class="steps" style="margin-bottom:16px">YouTube · TikTok · X · Reddit · Pinterest — без сторонних сайтов</p>
+      <div class="row">
+        <input id="dlUrl" placeholder="https://…" style="flex:1;min-width:220px"/>
+        <select id="dlQuality"><option value="best">Лучшее</option><option value="720">≤720p</option><option value="audio">Аудио</option></select>
+        <button class="btn" id="btnDl">Скачать</button>
+      </div>
+      <div class="status" id="dlStatus"></div>
+      <a class="btn" id="dlLink" style="display:none;margin-top:14px;text-decoration:none" href="#">Скачать файл</a>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-preview">
+    <div class="card">
+      <h2>Предпросмотр профиля</h2>
+      <p class="steps" style="margin-bottom:16px">Режим страницы → файл на каждую витрину → открыть в новой вкладке (GIF и MP4 с анимацией).</p>
+      <div class="row" style="margin-bottom:16px">
+        <label class="field">Режим
+          <select id="pvMode">
+            <option value="workshop">Workshop</option>
+            <option value="featured">Featured</option>
+            <option value="split">Artwork Split</option>
+          </select>
+        </label>
+        <button type="button" class="btn ghost" id="btnPvAvatar" style="align-self:flex-end">Аватар</button>
+        <input type="file" id="pvAvatar" accept="image/*" style="display:none"/>
+        <span id="pvAvName" style="font-size:12px;color:var(--muted);align-self:flex-end;padding-bottom:10px">—</span>
+      </div>
+      <h2>Витрины</h2>
+      <div id="pvSlots" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+      <button class="btn" id="btnPv" type="button">Открыть в браузере</button>
+      <div class="status" id="pvStatus"></div>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-steam">
+    <div class="card">
+      <h2>Загрузка в Steam</h2>
+      <div class="steps">
+        <b>1.</b> Обработай файлы и скачай ZIP<br/>
+        <b>2.</b> Открой страницу загрузки artwork в Steam<br/>
+        <b>3.</b> F12 → Console → вставь код → Enter<br/>
+        <b>4.</b> Workshop: part_1…5 · Featured: featured_630 · Split: center → side
+      </div>
+    </div>
+    <div class="card">
+      <h2>Код консоли</h2>
+      <pre class="code" id="steamCode"></pre>
+      <button class="btn" id="btnCopyCode" type="button" style="margin-top:12px">Копировать</button>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-da">
+    <div class="card">
+      <h2>DeviantArt</h2>
+      <p class="steps">Веб-OAuth в разработке. Полная загрузка — в <a id="buyLink" href="https://funpay.com/lots/offer?id=75265310" target="_blank" style="color:var(--accent)">desktop-версии на FunPay</a>.</p>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-about">
+    <div class="card">
+      <h2>О сервисе</h2>
+      <p class="steps">
+        <b>Showcase Maker WEB</b> — браузерные инструменты для Steam-витрин.<br/>
+        Free: лимит файлов · Pro: безлимит (аккаунт + Stripe или код доступа).<br/><br/>
+        by n1t1337
+      </p>
+      <div class="socials" id="socials2" style="justify-content:flex-start;margin-top:16px"></div>
+      <div class="row" style="margin-top:20px">
+        <input id="accessCode" placeholder="Код доступа" style="width:220px"/>
+        <button class="btn ghost" id="btnUnlock" type="button">Применить</button>
+      </div>
+    </div>
+  </section>
+</main>
+</div>
+
+<div class="modal-bg" id="authModal">
+  <div class="modal">
+    <h3 id="authTitle">Вход</h3>
+    <p id="authSub">Войди, чтобы купить Pro и сохранить доступ</p>
+    <div class="stack">
+      <input id="authEmail" type="email" placeholder="Email"/>
+      <input id="authPass" type="password" placeholder="Пароль (мин. 6)"/>
+      <button class="btn" id="authSubmit" type="button">Войти</button>
+    </div>
+    <div class="switch" id="authSwitch">Нет аккаунта? <a id="authToggle">Регистрация</a></div>
+  </div>
+</div>
+
+<script>
+const state = {
+  mode: 'workshop', files: [],
+  token: localStorage.getItem('sm_token') || '',
+  session: localStorage.getItem('sm_session') || '',
+  authMode: 'login'
+};
+const titles = {
+  process:['Обработка','Нарезка Workshop / Featured / Split, watermark и ZIP под Steam'],
+  download:['Скачать','Исходники с YouTube, TikTok, X, Reddit и Pinterest'],
+  preview:['Предпросмотр','Как ляжет витрина на страницу профиля Steam'],
+  steam:['Steam','Инструкция и код для загрузки artwork'],
+  da:['DeviantArt','Публикация — desktop-версия'],
+  about:['О сервисе','Лимиты, Pro и контакты']
+};
+function headers() {
+  const h = {};
+  if (state.token) h['X-Access-Token'] = state.token;
+  if (state.session) h['X-Session-Token'] = state.session;
+  return h;
+}
+async function refreshQuota() {
+  const r = await fetch('/api/quota', { headers: headers() });
+  const j = await r.json();
+  const el = document.getElementById('quota');
+  const badge = document.getElementById('planBadge');
+  const userPill = document.getElementById('userPill');
+  const btnUp = document.getElementById('btnUpgrade');
+  const btnOut = document.getElementById('btnLogout');
+  const btnAuth = document.getElementById('btnAuth');
+  if (j.pro) {
+    el.innerHTML = `<b>Pro</b> · без лимита`;
+    badge.textContent = j.label || 'Pro'; badge.className = 'pill pro';
+    btnUp.style.display = 'none';
+  } else {
+    el.innerHTML = `Сегодня <b>${j.used}</b> / ${j.limit}`;
+    badge.textContent = 'Free'; badge.className = 'pill';
+    btnUp.style.display = state.session ? 'inline-block' : 'none';
+  }
+  if (j.email || state.session) {
+    userPill.style.display = 'inline-block';
+    userPill.textContent = j.email || 'Аккаунт';
+    btnAuth.style.display = 'none'; btnOut.style.display = 'inline-block';
+  } else {
+    userPill.style.display = 'none';
+    btnAuth.style.display = 'inline-block'; btnOut.style.display = 'none';
+    if (!j.pro) btnUp.style.display = 'none';
+  }
+}
+const modal = document.getElementById('authModal');
+document.getElementById('btnAuth').onclick = () => { state.authMode='login'; syncAuthUi(); modal.classList.add('show'); };
+function syncAuthUi() {
+  const reg = state.authMode === 'register';
+  document.getElementById('authTitle').textContent = reg ? 'Регистрация' : 'Вход';
+  document.getElementById('authSub').textContent = reg ? 'Создай аккаунт для Pro' : 'Войди, чтобы купить Pro';
+  document.getElementById('authSubmit').textContent = reg ? 'Создать аккаунт' : 'Войти';
+  document.getElementById('authSwitch').innerHTML = reg
+    ? 'Уже есть аккаунт? <a id="authToggle">Вход</a>'
+    : 'Нет аккаунта? <a id="authToggle">Регистрация</a>';
+  document.getElementById('authToggle').onclick = () => { state.authMode = reg ? 'login' : 'register'; syncAuthUi(); };
+}
+modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
+document.getElementById('authSubmit').onclick = async () => {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPass').value;
+  const url = state.authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password}) });
+  const j = await r.json();
+  if (!j.ok) { alert(j.msg || 'Ошибка'); return; }
+  state.session = j.token; localStorage.setItem('sm_session', j.token);
+  modal.classList.remove('show'); refreshQuota();
+};
+document.getElementById('btnLogout').onclick = async () => {
+  await fetch('/api/auth/logout', { method:'POST', headers: headers() });
+  state.session = ''; localStorage.removeItem('sm_session'); refreshQuota();
+};
+document.getElementById('btnUpgrade').onclick = async () => {
+  const r = await fetch('/api/billing/checkout', { method:'POST', headers: headers() });
+  const j = await r.json();
+  if (!j.ok) { alert(j.msg || 'Ошибка'); return; }
+  if (j.url) location.href = j.url; else alert(j.msg || 'OK');
+};
+document.getElementById('btnUnlock').onclick = async () => {
+  const code = document.getElementById('accessCode').value.trim();
+  const r = await fetch('/api/unlock', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({code}) });
+  const j = await r.json();
+  if (j.ok) { state.token = j.token; localStorage.setItem('sm_token', j.token); alert(j.msg); refreshQuota(); }
+  else alert(j.msg || 'Ошибка');
+};
+
+document.querySelectorAll('#nav button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    const t = titles[btn.dataset.tab] || ['',''];
+    document.getElementById('pageTitle').textContent = t[0];
+    document.getElementById('pageSub').textContent = t[1];
+  };
+});
+document.querySelectorAll('.mode').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.mode').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active'); state.mode = btn.dataset.mode;
+  };
+});
+
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('fileInput');
+drop.onclick = () => fileInput.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('drag'); };
+drop.ondragleave = () => drop.classList.remove('drag');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('drag'); addFiles([...e.dataTransfer.files]); };
+fileInput.onchange = () => { addFiles([...fileInput.files]); fileInput.value=''; };
+function addFiles(list){ state.files.push(...list); renderFiles(); }
+function renderFiles(){
+  const box = document.getElementById('fileList'); box.innerHTML='';
+  state.files.forEach((f,i)=>{
+    const d=document.createElement('div'); d.className='fi';
+    d.innerHTML=`<span>${f.name}</span><button type="button">✕</button>`;
+    d.querySelector('button').onclick=()=>{ state.files.splice(i,1); renderFiles(); };
+    box.appendChild(d);
+  });
+  document.getElementById('btnRun').disabled = !state.files.length;
+}
+document.getElementById('btnClear').onclick = () => {
+  state.files=[]; renderFiles();
+  document.getElementById('status').textContent='';
+  document.getElementById('dlProcess').style.display='none';
+};
+document.getElementById('btnRun').onclick = async () => {
+  const st = document.getElementById('status');
+  const dl = document.getElementById('dlProcess');
+  st.className='status'; st.textContent='Обработка…'; dl.style.display='none';
+  const fd = new FormData();
+  fd.append('mode', state.mode);
+  fd.append('fps', document.getElementById('fps').value);
+  fd.append('size', document.getElementById('size').value);
+  fd.append('wm_text', document.getElementById('wmText').value);
+  fd.append('wm_font', document.getElementById('wmFont').value);
+  fd.append('wm_opacity', document.getElementById('wmOpacity').value);
+  fd.append('wm_enable', document.getElementById('wmEnable').checked ? '1':'0');
+  state.files.forEach(f => fd.append('files', f));
+  try {
+    const r = await fetch('/api/process', { method:'POST', headers: headers(), body: fd });
+    const j = await r.json();
+    if (!j.ok) { st.className='status err'; st.textContent = j.msg || 'Ошибка'; }
+    else {
+      st.className='status ok'; st.textContent = `Готово: ${j.processed}`;
+      dl.href = j.download; dl.style.display='inline-block'; refreshQuota();
+    }
+  } catch(e){ st.className='status err'; st.textContent=String(e); }
+};
+
+document.getElementById('btnDl').onclick = async () => {
+  const st = document.getElementById('dlStatus');
+  const link = document.getElementById('dlLink');
+  st.className='status'; st.textContent='Скачивание…'; link.style.display='none';
+  try {
+    const r = await fetch('/api/download-url', {
+      method:'POST', headers:{...headers(),'Content-Type':'application/json'},
+      body: JSON.stringify({ url: document.getElementById('dlUrl').value, quality: document.getElementById('dlQuality').value })
+    });
+    const j = await r.json();
+    if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Ошибка'; }
+    else { st.className='status ok'; st.textContent=j.name||'Готово'; link.href=j.download; link.style.display='inline-block'; refreshQuota(); }
+  } catch(e){ st.className='status err'; st.textContent=String(e); }
+};
+
+const pvFiles = {};
+async function loadPvSlots() {
+  const mode = document.getElementById('pvMode').value;
+  const r = await fetch('/api/preview-slots?mode=' + encodeURIComponent(mode));
+  const j = await r.json();
+  const box = document.getElementById('pvSlots'); box.innerHTML = '';
+  (j.slots || []).forEach(s => {
+    const row = document.createElement('div'); row.className = 'fi';
+    const name = document.createElement('span'); name.style.flex = '1';
+    name.textContent = s.label + (pvFiles[s.id] ? ' · ' + pvFiles[s.id].name : ' · файл не выбран');
+    const pick = document.createElement('button'); pick.type='button'; pick.className='btn ghost'; pick.style.padding='6px 12px'; pick.textContent='Выбрать';
+    const inp = document.createElement('input'); inp.type='file'; inp.accept='image/*,.gif,video/*'; inp.style.display='none';
+    inp.onchange = () => { if (inp.files[0]) { pvFiles[s.id]=inp.files[0]; name.textContent=s.label+' · '+inp.files[0].name; } };
+    pick.onclick = (e) => { e.preventDefault(); inp.click(); };
+    const clr = document.createElement('button'); clr.type='button'; clr.textContent='✕';
+    clr.onclick = () => { delete pvFiles[s.id]; name.textContent=s.label+' · файл не выбран'; };
+    row.appendChild(name); row.appendChild(inp); row.appendChild(pick); row.appendChild(clr);
+    box.appendChild(row);
+  });
+}
+document.getElementById('pvMode').onchange = () => { Object.keys(pvFiles).forEach(k=>delete pvFiles[k]); loadPvSlots(); };
+document.getElementById('btnPvAvatar').onclick = (e) => { e.preventDefault(); document.getElementById('pvAvatar').click(); };
+document.getElementById('pvAvatar').onchange = () => {
+  const f = document.getElementById('pvAvatar').files[0];
+  document.getElementById('pvAvName').textContent = f ? f.name : '—';
+};
+document.getElementById('btnPv').onclick = async () => {
+  const st = document.getElementById('pvStatus');
+  if (!Object.keys(pvFiles).length) { st.className='status err'; st.textContent='Выбери хотя бы одну витрину'; return; }
+  st.className='status'; st.textContent='Сборка…';
+  const fd = new FormData();
+  fd.append('mode', document.getElementById('pvMode').value);
+  const av = document.getElementById('pvAvatar').files[0];
+  if (av) fd.append('avatar', av);
+  Object.entries(pvFiles).forEach(([id, file]) => fd.append('slot_'+id, file));
+  try {
+    const r = await fetch('/api/preview-build', { method:'POST', body: fd });
+    const j = await r.json();
+    if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Ошибка'; return; }
+    window.open(j.open, '_blank');
+    st.className='status ok';
+    st.textContent = 'Открыто · ' + (j.applied||[]).join(', ');
+  } catch(e){ st.className='status err'; st.textContent=String(e); }
+};
+
+document.getElementById('btnCopyCode').onclick = () => {
+  navigator.clipboard.writeText(document.getElementById('steamCode').textContent).then(()=>alert('Скопировано'));
+};
+
+async function init(){
+  const m = await fetch('/api/meta').then(r=>r.json());
+  document.getElementById('steamCode').textContent = m.steam_code || '';
+  if (m.buy_url) document.getElementById('buyLink').href = m.buy_url;
+  const html = (m.socials||[]).map(s=>`<a href="${s.url}" target="_blank" rel="noopener"><img src="${s.icon}" alt="${s.name}"/></a>`).join('');
+  document.getElementById('socials').innerHTML = html;
+  document.getElementById('socials2').innerHTML = html;
+  refreshQuota(); loadPvSlots();
+  if (new URLSearchParams(location.search).get('auth') === '1') {
+    state.authMode = 'register'; syncAuthUi(); modal.classList.add('show');
+  }
+  if (new URLSearchParams(location.search).get('billing') === 'success') {
+    alert('Оплата прошла. Обнови страницу через пару секунд, если Pro ещё не активен.');
+    history.replaceState({}, '', '/app');
+  }
+}
+init();
+</script>
+</body>
+</html>
