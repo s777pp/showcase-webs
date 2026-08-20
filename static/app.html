@@ -407,20 +407,20 @@ input, select, textarea {
 }
 .star{
   position:absolute;
-  width:2px;height:2px;
+  width:6px;height:6px;
   background:#fff;
   border-radius:50%;
   opacity:0;
-  box-shadow:0 0 6px rgba(180,230,255,.8);
+  box-shadow:0 0 12px 3px rgba(200,240,255,1);
   animation: starDrift linear infinite;
 }
-.star.s2{width:3px;height:3px;box-shadow:0 0 10px rgba(120,210,255,.9)}
-.star.s3{width:1.5px;height:1.5px;box-shadow:0 0 4px rgba(255,255,255,.6)}
+.star.s2{width:8px;height:8px;box-shadow:0 0 18px 4px rgba(120,210,255,1)}
+.star.s3{width:4px;height:4px;box-shadow:0 0 6px 1px rgba(255,255,255,.85)}
 @keyframes starDrift{
-  0%{transform:translate3d(0,20px,0) scale(.6);opacity:0}
-  15%{opacity:.85}
-  85%{opacity:.55}
-  100%{transform:translate3d(var(--dx,30px),-110vh,0) scale(1);opacity:0}
+  0%{transform:translate3d(0,30px,0) scale(.5);opacity:0}
+  12%{opacity:1}
+  70%{opacity:.75}
+  100%{transform:translate3d(var(--dx,40px),-120vh,0) scale(1.15);opacity:0}
 }
 /* desktop btn = primary blue */
 .btn-desktop{
@@ -1482,7 +1482,7 @@ if (location.hash === '#da') {
 (function(){
   const layer = document.getElementById('starsLayer');
   if (!layer) return;
-  const N = 48;
+  const N = 70;
   for (let i = 0; i < N; i++) {
     const el = document.createElement('span');
     el.className = 'star' + (i % 5 === 0 ? ' s2' : (i % 3 === 0 ? ' s3' : ''));

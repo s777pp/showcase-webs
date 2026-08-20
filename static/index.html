@@ -483,20 +483,20 @@ body::before {
 }
 .star{
   position:absolute;
-  width:4px;height:4px;
+  width:6px;height:6px;
   background:#fff;
   border-radius:50%;
   opacity:0;
-  box-shadow:0 0 9px rgba(200,240,255,.8);
+  box-shadow:0 0 12px 3px rgba(200,240,255,1);
   animation: starDrift linear infinite;
 }
-.star.s2{width:5.5px;height:5.5px;box-shadow:0 0 15px rgba(120,210,255,.9)}
-.star.s3{width:4.5px;height:4.5px;box-shadow:0 0 4px rgba(255,255,255,.6)}
+.star.s2{width:8px;height:8px;box-shadow:0 0 18px 4px rgba(120,210,255,1)}
+.star.s3{width:4px;height:4px;box-shadow:0 0 6px 1px rgba(255,255,255,.85)}
 @keyframes starDrift{
-  0%{transform:translate3d(0,20px,0) scale(.6);opacity:0}
-  15%{opacity:.85}
-  85%{opacity:.55}
-  100%{transform:translate3d(var(--dx,30px),-110vh,0) scale(1);opacity:0}
+  0%{transform:translate3d(0,30px,0) scale(.5);opacity:0}
+  12%{opacity:1}
+  70%{opacity:.75}
+  100%{transform:translate3d(var(--dx,40px),-120vh,0) scale(1.15);opacity:0}
 }
 /* desktop btn = primary blue */
 .btn-desktop{
@@ -512,6 +512,174 @@ body::before {
   border-color: transparent !important;
 }
 .btn-desktop::before{content:none !important}
+
+
+/* ===== Mobile layout (kant.tools-like, our design) ===== */
+@media (max-width: 900px) {
+  .nav {
+    padding: 12px 16px !important;
+    gap: 10px;
+    flex-wrap: nowrap !important;
+    align-items: center;
+  }
+  .nav-brand b { font-size: 15px; }
+  .nav-brand img { width: 28px; height: 28px; }
+  .nav-links {
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 70vw;
+    scrollbar-width: none;
+  }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-links a:not(.btn) {
+    font-size: 12px !important;
+    white-space: nowrap;
+    padding: 6px 4px;
+  }
+  .nav-links .btn {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    white-space: nowrap;
+  }
+  .lang-btn { min-width: 40px !important; padding: 8px 10px !important; }
+
+  .hero {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 28px 20px 8px !important;
+    gap: 28px !important;
+    grid-template-columns: 1fr !important;
+  }
+  .hero > div:first-child {
+    width: 100%;
+    order: 1;
+  }
+  .orb-wrap {
+    order: 2;
+    width: 100%;
+    min-height: min(320px, 78vw) !important;
+    margin: 0 auto;
+  }
+  .hero h1 {
+    font-size: clamp(1.85rem, 8vw, 2.5rem) !important;
+    line-height: 1.15 !important;
+    margin-bottom: 14px !important;
+  }
+  .hero p {
+    font-size: 15px !important;
+    max-width: 100% !important;
+    margin: 0 auto 22px !important;
+    line-height: 1.55 !important;
+  }
+  .hero-cta {
+    justify-content: center !important;
+    width: 100%;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .hero-cta .btn {
+    width: 100% !important;
+    justify-content: center;
+    text-align: center;
+    padding: 14px 18px !important;
+    font-size: 15px !important;
+    border-radius: 14px !important;
+  }
+  .hero-note {
+    text-align: center;
+    margin-top: 14px !important;
+    font-size: 12px !important;
+  }
+  .hero-desktop {
+    align-items: center !important;
+    width: 100%;
+    margin-top: 16px !important;
+  }
+  .hero-desktop .btn-desktop {
+    width: 100% !important;
+    justify-content: center;
+    padding: 14px 18px !important;
+    border-radius: 14px !important;
+    font-size: 15px !important;
+  }
+  .hero-desktop-hint { text-align: center; }
+
+  .section {
+    padding: 36px 16px !important;
+  }
+  .section h2 {
+    font-size: 1.45rem !important;
+    text-align: center;
+    margin-bottom: 8px !important;
+  }
+  .lead {
+    text-align: center;
+    font-size: 14px !important;
+    margin: 0 auto 20px !important;
+    max-width: 100% !important;
+  }
+  .grid3, .steps {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .card, .step {
+    padding: 18px 16px !important;
+    border-radius: 18px !important;
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+  .card h3, .step h3 {
+    font-size: 1.05rem !important;
+  }
+  .card p, .step p {
+    font-size: 13.5px !important;
+  }
+  .cta-band {
+    margin: 12px 16px 40px !important;
+    padding: 28px 18px !important;
+    border-radius: 20px !important;
+    text-align: center;
+  }
+  .cta-band h2 { font-size: 1.25rem !important; }
+  .cta-band .btn {
+    width: 100%;
+    margin: 6px 0;
+    padding: 14px !important;
+  }
+  footer {
+    padding: 24px 16px !important;
+    text-align: center;
+    font-size: 12px;
+  }
+  .auth-card {
+    grid-template-columns: 1fr !important;
+    max-height: 92vh;
+    overflow: auto;
+  }
+  .auth-visual {
+    min-height: 160px !important;
+    padding: 24px !important;
+  }
+  .auth-logo {
+    width: 88px !important;
+    height: 88px !important;
+  }
+  .auth-form-side {
+    padding: 24px 20px 28px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-links a:not(.btn) { display: none; } /* Features / How — hide, keep actions */
+  .nav-links { max-width: 75vw; }
+  .hero { padding-top: 20px !important; }
+  .hero h1 { font-size: 1.75rem !important; }
+}
 
 </style>
 </head>
@@ -870,7 +1038,7 @@ applyLang(localStorage.getItem('sm_lang') || 'en');
 (function(){
   const layer = document.getElementById('starsLayer');
   if (!layer) return;
-  const N = 48;
+  const N = 70;
   for (let i = 0; i < N; i++) {
     const el = document.createElement('span');
     el.className = 'star' + (i % 5 === 0 ? ' s2' : (i % 3 === 0 ? ' s3' : ''));
