@@ -320,6 +320,8 @@ input, select, textarea {
 }
 .key-row .hint { font-size: 12px; color: #7a94a8; }
 
+
+#socials a img, #socials2 a img { width: 36px !important; height: 36px !important; }
 </style>
 </head>
 <body>
@@ -486,7 +488,7 @@ input, select, textarea {
   </section>
 
   
-    <section class="tab" id="tab-account">
+      <section class="tab" id="tab-account">
     <div class="card" id="accGuest">
       <h2>Account</h2>
       <p class="steps" style="margin-bottom:16px">Log in or create an account — one profile for the whole site.</p>
@@ -497,10 +499,16 @@ input, select, textarea {
     </div>
     <div class="card" id="accUser" style="display:none">
       <div class="profile-hero">
-        <div class="profile-avatar" id="accAvatar">S</div>
-        <div class="profile-meta">
-          <h3 id="accEmailTitle">—</h3>
-          <p id="accPlanLine">Free plan</p>
+        <div class="profile-avatar" id="accAvatar" title="Change avatar">S
+          <span class="edit-hint">Change</span>
+        </div>
+        <input type="file" id="accAvatarInput" accept="image/*" style="display:none"/>
+        <div class="profile-meta" style="flex:1;min-width:180px">
+          <label class="field" style="margin-bottom:8px">Nickname
+            <input id="accNick" placeholder="Display name" maxlength="40"/>
+          </label>
+          <p id="accEmailLine" style="margin:0;color:#9bb4c4;font-size:13px">—</p>
+          <p id="accPlanLine" style="margin:6px 0 0;color:#9bb4c4;font-size:13px">Free plan</p>
           <span class="pro-badge" id="accProBadge" style="display:none">PRO</span>
         </div>
       </div>
@@ -509,12 +517,12 @@ input, select, textarea {
         <code id="accKeyMasked" title="Click to reveal">••••••••••••</code>
         <span class="hint" id="accKeyHint">click to show</span>
       </div>
-      <div class="row" style="margin-top:18px">
-        <button class="btn" id="accBuyPro" type="button">Buy Pro</button>
+      <div class="row" style="margin-top:16px">
+        <button class="btn" id="accSaveProfile" type="button">Save profile</button>
         <button class="btn ghost" id="accLogout2" type="button">Log out</button>
       </div>
-      <p class="steps" style="margin-top:14px;font-size:12px" id="accBillingHint">Buy on FunPay. After payment you get a code — activate below if needed.</p>
-      <div id="accCodeBlock" style="margin-top:16px">
+      <div class="status" id="accProfileStatus"></div>
+      <div id="accCodeBlock" style="margin-top:18px">
         <p class="steps" style="margin-bottom:8px;font-size:13px">Activate Pro code</p>
         <div class="row">
           <input id="accessCode2" placeholder="SM-WEB-XXXXXX-XXXX" style="width:240px"/>
@@ -788,6 +796,7 @@ document.getElementById('btnCopyCode').onclick = () => {
 };
 
 
+
 async function refreshAccountUI() {
   const guest = document.getElementById('accGuest');
   const user = document.getElementById('accUser');
@@ -803,102 +812,105 @@ async function refreshAccountUI() {
     guest.style.display = 'none';
     user.style.display = '';
     const email = j.email || '';
-    document.getElementById('accEmailTitle').textContent = email;
-    document.getElementById('accAvatar').textContent = (email[0] || 'S').toUpperCase();
+    const nick = j.display_name || '';
+    const emailLine = document.getElementById('accEmailLine');
+    if (emailLine) emailLine.textContent = email;
+    const nickInp = document.getElementById('accNick');
+    if (nickInp && document.activeElement !== nickInp) nickInp.value = nick;
+    const av = document.getElementById('accAvatar');
+    if (av) {
+      if (j.avatar_url) {
+        av.innerHTML = '<img src="' + j.avatar_url + '?t=' + Date.now() + '" alt=""/><span class="edit-hint">Change</span>';
+      } else {
+        const letter = ((nick || email)[0] || 'S').toUpperCase();
+        av.innerHTML = letter + '<span class="edit-hint">Change</span>';
+      }
+    }
     const pro = !!j.is_pro;
-    document.getElementById('accPlanLine').textContent = pro ? 'Pro · unlimited' : 'Free · daily limit';
+    const plan = document.getElementById('accPlanLine');
+    if (plan) plan.textContent = pro ? 'Pro · unlimited' : 'Free · daily limit';
     const badge = document.getElementById('accProBadge');
     if (badge) badge.style.display = pro ? 'inline-block' : 'none';
     const keyRow = document.getElementById('accKeyRow');
     const codeBlock = document.getElementById('accCodeBlock');
-    const hint = document.getElementById('accBillingHint');
-    // fetch quota for label / we need pro_code from a new field - use me endpoint
-    let proCode = j.pro_code || '';
+    const proCode = j.pro_code || '';
     if (keyRow) {
       if (pro && proCode) {
         keyRow.style.display = 'flex';
         const el = document.getElementById('accKeyMasked');
-        const mask = proCode.length > 8 ? proCode.slice(0, 4) + '••••' + proCode.slice(-4) : '••••••••';
-        el.textContent = mask;
-        el.dataset.full = proCode;
-        el.dataset.shown = '0';
-        el.onclick = () => {
-          if (el.dataset.shown === '1') {
-            el.textContent = mask;
-            el.dataset.shown = '0';
-            document.getElementById('accKeyHint').textContent = 'click to show';
-          } else {
-            el.textContent = el.dataset.full;
-            el.dataset.shown = '1';
-            document.getElementById('accKeyHint').textContent = 'click to hide';
-          }
-        };
+        if (el) {
+          const mask = proCode.length > 8 ? proCode.slice(0, 4) + '••••' + proCode.slice(-4) : '••••••••';
+          el.textContent = mask;
+          el.dataset.full = proCode;
+          el.dataset.shown = '0';
+          el.onclick = () => {
+            if (el.dataset.shown === '1') {
+              el.textContent = mask; el.dataset.shown = '0';
+              const h = document.getElementById('accKeyHint');
+              if (h) h.textContent = 'click to show';
+            } else {
+              el.textContent = el.dataset.full; el.dataset.shown = '1';
+              const h = document.getElementById('accKeyHint');
+              if (h) h.textContent = 'click to hide';
+            }
+          };
+        }
       } else {
         keyRow.style.display = 'none';
       }
     }
     if (codeBlock) codeBlock.style.display = pro ? 'none' : '';
-    if (hint) hint.style.display = pro ? 'none' : '';
   } catch (e) {}
 }
-const _oldRefresh = refreshQuota;
-refreshQuota = async function() {
-  await _oldRefresh();
-  try { await refreshAccountUI(); } catch(e) {}
-};
-document.getElementById('accLogin')?.addEventListener('click', async () => {
-  const st = document.getElementById('accStatus');
-  st.className = 'status'; st.textContent = '…';
-  const r = await fetch('/api/auth/login', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ email: document.getElementById('accEmail').value, password: document.getElementById('accPass').value })
-  });
-  const j = await r.json();
-  if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Error'; return; }
-  state.session = j.token; localStorage.setItem('sm_session', j.token);
-  try { document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax'; } catch(e) {}
-  st.className='status ok'; st.textContent='Logged in';
-  refreshQuota();
+
+document.getElementById('accAvatar')?.addEventListener('click', () => {
+  document.getElementById('accAvatarInput')?.click();
 });
-document.getElementById('accRegister')?.addEventListener('click', async () => {
-  const st = document.getElementById('accStatus');
-  st.className = 'status'; st.textContent = '…';
-  const r = await fetch('/api/auth/register', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ email: document.getElementById('accEmail').value, password: document.getElementById('accPass').value })
-  });
-  const j = await r.json();
-  if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Error'; return; }
-  state.session = j.token; localStorage.setItem('sm_session', j.token);
-  try { document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax'; } catch(e) {}
-  st.className='status ok'; st.textContent='Account created';
-  refreshQuota();
+document.getElementById('accAvatarInput')?.addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const fd = new FormData();
+  fd.append('avatar', f);
+  fd.append('display_name', document.getElementById('accNick')?.value || '');
+  const st = document.getElementById('accProfileStatus');
+  if (st) { st.className = 'status'; st.textContent = 'Uploading…'; }
+  try {
+    const r = await fetch('/api/auth/profile', { method: 'POST', headers: headers(), body: fd, credentials: 'include' });
+    const j = await r.json();
+    if (st) { st.className = j.ok ? 'status ok' : 'status err'; st.textContent = j.msg || (j.ok ? 'Avatar updated' : 'Error'); }
+    refreshAccountUI();
+  } catch (err) {
+    if (st) { st.className = 'status err'; st.textContent = String(err); }
+  }
 });
-document.getElementById('accLogout2')?.addEventListener('click', async () => {
-  await fetch('/api/auth/logout', { method:'POST', headers: headers(), credentials: 'include' });
-  state.session = '';
-  state.token = '';
-  localStorage.removeItem('sm_session');
-  localStorage.removeItem('sm_token');
-  try { document.cookie = 'sm_session=; path=/; max-age=0'; } catch(e) {}
-  refreshQuota();
-});
-document.getElementById('accBuyPro')?.addEventListener('click', () => {
-  window.open('https://funpay.com/lots/offer?id=75265310', '_blank');
-});
-document.getElementById('btnUnlock2')?.addEventListener('click', async () => {
-  const code = document.getElementById('accessCode2').value.trim();
-  const r = await fetch('/api/unlock', {
-    method:'POST',
-    headers:{...headers(), 'Content-Type':'application/json'},
-    body: JSON.stringify({code})
-  });
-  const j = await r.json();
-  if (j.ok) { localStorage.removeItem('sm_token'); state.token=''; alert(j.msg || 'Pro activated'); refreshQuota(); }
-  else alert(j.msg || 'Error');
+document.getElementById('accSaveProfile')?.addEventListener('click', async () => {
+  const st = document.getElementById('accProfileStatus');
+  if (st) { st.className = 'status'; st.textContent = 'Saving…'; }
+  try {
+    const r = await fetch('/api/auth/profile', {
+      method: 'POST',
+      headers: { ...headers(), 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ display_name: document.getElementById('accNick')?.value || '' }),
+    });
+    const j = await r.json();
+    if (st) { st.className = j.ok ? 'status ok' : 'status err'; st.textContent = j.msg || (j.ok ? 'Saved' : 'Error'); }
+    refreshAccountUI();
+  } catch (err) {
+    if (st) { st.className = 'status err'; st.textContent = String(err); }
+  }
 });
 
-
+document.getElementById('accLogin')?.addEventListener('click', () => {
+  state.authMode = 'login';
+  if (typeof syncAuthUi === 'function') syncAuthUi();
+  document.getElementById('modal')?.classList.add('show');
+});
+document.getElementById('accRegister')?.addEventListener('click', () => {
+  state.authMode = 'register';
+  if (typeof syncAuthUi === 'function') syncAuthUi();
+  document.getElementById('modal')?.classList.add('show');
+});
 
 async function init(){
   // restore session after navigating from home
@@ -1018,7 +1030,7 @@ function applyAppLang(lang) {
   const ba = document.getElementById('btnAuth'); if (ba) ba.textContent = t.login;
   const bl = document.getElementById('btnLogout'); if (bl) bl.textContent = t.logout;
   const bu = document.getElementById('btnUpgrade'); if (bu) bu.textContent = t.buy;
-  const ab = document.getElementById('accBuyPro'); if (ab) ab.textContent = t.buy;
+  const ab = document.getElementById('accBuyPro_removed'); if (ab) ab.textContent = t.buy;
   const al2 = document.getElementById('accLogout2'); if (al2) al2.textContent = t.logout;
 
   // cards headings - first h2 in process

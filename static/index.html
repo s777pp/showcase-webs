@@ -388,6 +388,57 @@ body::before {
   border: none !important;
 }
 
+
+.auth-visual{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  position:relative !important;
+  padding:36px !important;
+}
+.auth-logo-wrap{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+  z-index:1;
+}
+.auth-logo{
+  width:110px !important;
+  height:110px !important;
+  object-fit:contain;
+  border-radius:28px;
+  margin:0 !important;
+  filter:
+    drop-shadow(0 0 18px rgba(62,203,255,.55))
+    drop-shadow(0 0 40px rgba(62,203,255,.35))
+    drop-shadow(0 8px 24px rgba(0,0,0,.35));
+  animation: logoGlow 3.5s ease-in-out infinite alternate;
+}
+@keyframes logoGlow{
+  from{
+    filter:
+      drop-shadow(0 0 14px rgba(62,203,255,.4))
+      drop-shadow(0 0 28px rgba(62,203,255,.25))
+      drop-shadow(0 8px 20px rgba(0,0,0,.3));
+  }
+  to{
+    filter:
+      drop-shadow(0 0 22px rgba(62,203,255,.7))
+      drop-shadow(0 0 48px rgba(90,140,255,.4))
+      drop-shadow(0 8px 28px rgba(0,0,0,.35));
+  }
+}
+.auth-visual-text{
+  position:relative;
+  z-index:2;
+  width:100%;
+  text-align:left;
+}
+
 </style>
 </head>
 <body>
@@ -631,8 +682,10 @@ applyLang(localStorage.getItem('sm_lang') || 'en');
   <div class="auth-card">
     <div class="auth-visual">
       <div class="auth-visual-bg"></div>
-      <div class="auth-visual-text">
+      <div class="auth-logo-wrap">
         <img class="auth-logo" src="/static/icon.png" alt="Showcase Maker"/>
+      </div>
+      <div class="auth-visual-text">
         <h2>Showcase Maker</h2>
         <p>Steam showcases without the grind</p>
       </div>

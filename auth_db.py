@@ -31,6 +31,8 @@ def _conn() -> sqlite3.Connection:
             da_refresh_token TEXT,
             da_client_id TEXT,
             da_client_secret TEXT,
+            display_name TEXT,
+            avatar_path TEXT,
             created_at REAL
         )
         """
@@ -62,6 +64,8 @@ def _conn() -> sqlite3.Connection:
         ("da_refresh_token", "TEXT"),
         ("da_client_id", "TEXT"),
         ("da_client_secret", "TEXT"),
+        ("display_name", "TEXT"),
+        ("avatar_path", "TEXT"),
     ):
         if col not in cols:
             try:
@@ -130,7 +134,7 @@ def user_by_token(token: str) -> Optional[dict]:
     row = c.execute(
         """
         SELECT u.id, u.email, u.is_pro, u.pro_code, u.stripe_customer_id,
-               u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret
+               u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret, u.display_name, u.avatar_path
         FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token=?
         """,
@@ -149,6 +153,8 @@ def user_by_token(token: str) -> Optional[dict]:
         "da_refresh_token": row["da_refresh_token"],
         "da_client_id": row["da_client_id"],
         "da_client_secret": row["da_client_secret"],
+        "display_name": row["display_name"],
+        "avatar_path": row["avatar_path"],
     }
 
 
@@ -216,5 +222,16 @@ def set_da_keys(user_id: int, client_id: str | None, client_secret: str | None) 
         "UPDATE users SET da_client_id=?, da_client_secret=? WHERE id=?",
         ((client_id or "").strip() or None, (client_secret or "").strip() or None, user_id),
     )
+    c.commit()
+    c.close()
+
+
+def update_profile(user_id: int, display_name: str | None = None, avatar_path: str | None = None) -> None:
+    c = _conn()
+    if display_name is not None:
+        name = (display_name or "").strip()[:40] or None
+        c.execute("UPDATE users SET display_name=? WHERE id=?", (name, user_id))
+    if avatar_path is not None:
+        c.execute("UPDATE users SET avatar_path=? WHERE id=?", (avatar_path, user_id))
     c.commit()
     c.close()
