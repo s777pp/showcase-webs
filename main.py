@@ -145,6 +145,26 @@ def _auth_user(req: Request) -> dict | None:
     return auth_db.user_by_token(tok)
 
 
+
+def _attach_session_cookie(resp, token: str):
+    """Persist login across all pages until logout or cookie expires."""
+    resp.set_cookie(
+        key="sm_session",
+        value=token,
+        max_age=60 * 60 * 24 * 90,  # 90 days
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=True,  # HTTPS on Railway
+    )
+    return resp
+
+
+def _clear_session_cookie(resp):
+    resp.delete_cookie("sm_session", path="/")
+    return resp
+
+
 def quota_state(req: Request) -> dict:
     # 1) logged-in user (Pro is bound to account)
     user = _auth_user(req)
@@ -222,7 +242,10 @@ async def auth_register(request: Request):
         return JSONResponse({"ok": False, "msg": msg}, status_code=400)
     # auto-login
     ok2, msg2, token = auth_db.login(str(body.get("email") or ""), str(body.get("password") or ""))
-    return {"ok": True, "msg": msg, "token": token}
+    resp = JSONResponse({"ok": True, "msg": msg, "token": token})
+    if token:
+        _attach_session_cookie(resp, token)
+    return resp
 
 
 @app.post("/api/auth/login")
@@ -232,20 +255,27 @@ async def auth_login(request: Request):
     if not ok:
         return JSONResponse({"ok": False, "msg": msg}, status_code=400)
     user = auth_db.user_by_token(token)
-    return {
+    resp = JSONResponse({
         "ok": True,
         "token": token,
         "email": user.get("email") if user else None,
         "is_pro": bool(user and user.get("is_pro")),
-    }
+    })
+    if token:
+        _attach_session_cookie(resp, token)
+    return resp
 
 
 @app.post("/api/auth/logout")
 async def auth_logout(request: Request):
     tok = (request.headers.get("x-session-token") or "").strip()
+    if not tok:
+        tok = (request.cookies.get("sm_session") or "").strip()
     if tok:
         auth_db.logout(tok)
-    return {"ok": True}
+    resp = JSONResponse({"ok": True})
+    _clear_session_cookie(resp)
+    return resp
 
 
 @app.get("/api/auth/me")
