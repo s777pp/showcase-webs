@@ -113,11 +113,11 @@ def register(email: str, password: str) -> tuple[bool, str]:
     c = _conn()
     try:
         c.execute(
-            "INSERT INTO users(email, password_hash, is_pro, email_verified, created_at) VALUES (?,?,0,0,?)",
+            "INSERT INTO users(email, password_hash, is_pro, email_verified, created_at) VALUES (?,?,0,1,?)",
             (email, _hash_pw(password), time.time()),
         )
         c.commit()
-        return True, "Account created — verify email"
+        return True, "Account created"
     except sqlite3.IntegrityError:
         return False, "Email already registered"
     finally:
@@ -127,16 +127,10 @@ def register(email: str, password: str) -> tuple[bool, str]:
 def login(email: str, password: str) -> tuple[bool, str, Optional[str]]:
     email = email.strip().lower()
     c = _conn()
-    row = c.execute(
-        "SELECT id, password_hash, COALESCE(email_verified, 0) AS email_verified FROM users WHERE email=?",
-        (email,),
-    ).fetchone()
+    row = c.execute("SELECT id, password_hash FROM users WHERE email=?", (email,)).fetchone()
     if not row or not _check_pw(password, row["password_hash"]):
         c.close()
         return False, "Wrong email or password", None
-    if not int(row["email_verified"] or 0):
-        c.close()
-        return False, "Email not verified. Check your inbox for the code.", None
     token = secrets.token_hex(24)
     c.execute(
         "INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)",

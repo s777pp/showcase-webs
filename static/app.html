@@ -487,15 +487,10 @@ pre.code{
   <div class="modal">
     <h3 id="authTitle">Log in</h3>
     <p id="authSub">Log in to buy Pro and keep access</p>
-    <div class="stack" id="authStackLogin">
+    <div class="stack">
       <input id="authEmail" type="email" placeholder="Email"/>
       <input id="authPass" type="password" placeholder="Password (min 6)"/>
       <button class="btn" id="authSubmit" type="button">Log in</button>
-    </div>
-    <div class="stack" id="authStackVerify" style="display:none">
-      <input id="authCode" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code"/>
-      <button class="btn" id="authVerifyBtn" type="button">Confirm</button>
-      <button class="btn ghost" id="authResendBtn" type="button">Resend code</button>
     </div>
     <div class="switch" id="authSwitch">No account? <a id="authToggle">Sign up</a></div>
   </div>
@@ -613,8 +608,6 @@ document.getElementById('btnAuth').onclick = () => { state.authMode='login'; syn
 modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
 
 function syncAuthUi() {
-  if (state.authMode === 'verify') return;
-  showLoginUI();
   const reg = state.authMode === 'register';
   document.getElementById('authTitle').textContent = reg ? 'Регистрация' : 'Вход';
   document.getElementById('authSub').textContent = reg ? 'Создай аккаунт для Pro' : 'Log in to buy Pro';
@@ -626,87 +619,30 @@ function syncAuthUi() {
   try { syncAuthUiLang(appLang()); } catch(e) {}
 }
 modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
-function showVerifyUI(email) {
-  state.authMode = 'verify';
-  state.verifyEmail = email || document.getElementById('authEmail').value.trim();
-  const loginStack = document.getElementById('authStackLogin');
-  const verStack = document.getElementById('authStackVerify');
-  if (loginStack) loginStack.style.display = 'none';
-  if (verStack) verStack.style.display = 'flex';
-  document.getElementById('authTitle').textContent = (appLang()==='ru') ? 'Подтверждение' : 'Verify email';
-  document.getElementById('authSub').textContent = (appLang()==='ru')
-    ? ('Код отправлен на ' + state.verifyEmail)
-    : ('Code sent to ' + state.verifyEmail);
-  document.getElementById('authSwitch').innerHTML = '';
-}
-function showLoginUI() {
-  const loginStack = document.getElementById('authStackLogin');
-  const verStack = document.getElementById('authStackVerify');
-  if (loginStack) loginStack.style.display = 'flex';
-  if (verStack) verStack.style.display = 'none';
-}
-function finishLogin(token) {
-  if (!token) return;
-  state.session = token;
-  localStorage.setItem('sm_session', token);
-  try {
-    const secure = location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = 'sm_session=' + encodeURIComponent(token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax' + secure;
-  } catch(e) {}
-  modal.classList.remove('open');
-  showLoginUI();
-  try { refreshAccountUI(); } catch(e) {}
-  refreshQuota();
-}
 document.getElementById('authSubmit').onclick = async () => {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPass').value;
-  state.pendingPass = password;
   const url = state.authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
   const r = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ email, password, lang: appLang() }),
+    body: JSON.stringify({ email, password }),
   });
   let j;
   try { j = await r.json(); } catch(e) { alert('Server error'); return; }
-  if (!j.ok) {
-    if (j.need_verify) { showVerifyUI(j.email || email); return; }
-    alert(j.msg || 'Error');
-    return;
-  }
-  if (j.need_verify) { showVerifyUI(j.email || email); return; }
-  if (!j.token) { alert(j.msg || 'No session'); return; }
-  finishLogin(j.token);
-};
-document.getElementById('authVerifyBtn')?.addEventListener('click', async () => {
-  const email = state.verifyEmail || document.getElementById('authEmail').value.trim();
-  const code = document.getElementById('authCode').value.trim();
-  const password = state.pendingPass || document.getElementById('authPass').value;
-  const r = await fetch('/api/auth/verify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ email, code, password }),
-  });
-  let j; try { j = await r.json(); } catch(e) { alert('Server error'); return; }
   if (!j.ok) { alert(j.msg || 'Error'); return; }
-  if (j.token) finishLogin(j.token);
-  else {
-    alert(j.msg || 'Verified — please log in');
-    state.authMode = 'login';
-    showLoginUI();
-    syncAuthUi();
-  }
-});
-document.getElementById('authResendBtn')?.addEventListener('click', async () => {
-  const email = state.verifyEmail || document.getElementById('authEmail').value.trim();
-  const r = await fetch('/api/auth/resend-code', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, lang: appLang() }),
-  });
+  if (!j.token) { alert(j.msg || 'No session'); return; }
+  state.session = j.token;
+  localStorage.setItem('sm_session', j.token);
+  try {
+    const secure = location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax' + secure;
+  } catch(e) {}
+  modal.classList.remove('open');
+  try { refreshAccountUI(); } catch(e) {}
+  refreshQuota();
+};
   let j; try { j = await r.json(); } catch(e) { alert('Server error'); return; }
   alert(j.msg || (j.ok ? 'Sent' : 'Error'));
 });
