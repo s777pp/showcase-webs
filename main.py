@@ -626,11 +626,15 @@ async def api_process(
                 continue
             processed += 1
         except Exception as e:
-            errors.append(f"{name}: {e}")
+            errors.append(f"{name}: {type(e).__name__}: {e}")
 
     zf.close()
     if processed == 0:
-        return JSONResponse({"ok": False, "msg": "Не удалось обработать", "errors": errors}, status_code=400)
+        detail = "; ".join(errors) if errors else "unknown error"
+        return JSONResponse(
+            {"ok": False, "msg": f"Failed to process: {detail}", "errors": errors},
+            status_code=400,
+        )
 
     quota_inc(request, processed)
     (job_dir / "result.zip").write_bytes(zip_buf.getvalue())
@@ -1486,7 +1490,7 @@ async def da_upload(request: Request):
                     auth_db.set_da_tokens(int(user["id"]), None, None)
                     break
         except Exception as e:
-            errors.append(f"{name}: {e}")
+            errors.append(f"{name}: {type(e).__name__}: {e}")
     return {"ok": ok_n > 0, "uploaded": ok_n, "total": len(files), "errors": errors}
 
 
@@ -1705,7 +1709,7 @@ async def da_upload(request: Request):
                     auth_db.set_da_tokens(int(user["id"]), None, None)
                     break
         except Exception as e:
-            errors.append(f"{name}: {e}")
+            errors.append(f"{name}: {type(e).__name__}: {e}")
     return {"ok": ok_n > 0, "uploaded": ok_n, "total": len(files), "errors": errors}
 
 

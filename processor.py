@@ -166,34 +166,75 @@ def _run(cmd: list[str]) -> None:
         raise RuntimeError((r.stderr or r.stdout or "ffmpeg error")[-500:])
 
 
+
 def media_to_gif(src: Path, dest: Path, fps: int, width: int, duration: float = 12) -> None:
-    """Convert image/gif/video to GIF. Even dimensions, limited duration."""
+    """Convert image/gif/video to GIF. Robust path with fallback."""
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg not found (install ffmpeg or put bin/ffmpeg)")
     fps = max(5, min(24, int(fps)))
     width = max(200, min(1200, int(width)))
-    # force even width for codecs
     if width % 2:
         width -= 1
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    vf = (
+    src = Path(src)
+    if not src.is_file():
+        raise RuntimeError(f"source missing: {src}")
+
+    duration = max(1.0, min(20.0, float(duration)))
+    vf_palette = (
         f"fps={fps},scale={width}:-2:flags=lanczos,"
         f"split[s0][s1];[s0]palettegen=stats_mode=single[p];"
         f"[s1][p]paletteuse=dither=bayer:bayer_scale=5"
     )
-    # -t after -i limits output length; -an drops audio
-    _run([
-        ff, "-y", "-i", str(src),
-        "-t", str(max(1, float(duration))),
+    cmd = [
+        ff, "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(src),
+        "-t", str(duration),
         "-an",
-        "-vf", vf,
+        "-vf", vf_palette,
         "-loop", "0",
         str(dest),
-    ])
+    ]
+    try:
+        _run(cmd)
+    except Exception as e1:
+        # Fallback: scale to intermediate mp4 then gif (handles odd codecs)
+        mid = dest.with_suffix(".tmp.mp4")
+        try:
+            _run([
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-i", str(src),
+                "-t", str(duration),
+                "-an",
+                "-vf", f"fps={fps},scale={width}:-2:flags=lanczos",
+                "-pix_fmt", "yuv420p",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+                str(mid),
+            ])
+            _run([
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-i", str(mid),
+                "-an",
+                "-vf", (
+                    f"fps={fps},"
+                    f"split[s0][s1];[s0]palettegen=stats_mode=single[p];"
+                    f"[s1][p]paletteuse=dither=bayer:bayer_scale=5"
+                ),
+                "-loop", "0",
+                str(dest),
+            ])
+        except Exception as e2:
+            raise RuntimeError(f"video→gif failed: {e1} | fallback: {e2}") from e2
+        finally:
+            try:
+                mid.unlink(missing_ok=True)
+            except Exception:
+                pass
+
     if not dest.is_file() or dest.stat().st_size < 50:
-        raise RuntimeError("GIF conversion failed (empty output)")
+        raise RuntimeError("GIF conversion produced empty file")
 
 
 def _probe_wh(path: Path) -> tuple[int, int]:
@@ -201,10 +242,14 @@ def _probe_wh(path: Path) -> tuple[int, int]:
     ff = find_ffmpeg()
     if not probe and ff:
         probe = ff.replace("ffmpeg", "ffprobe")
-    if not probe:
-        # fallback via Pillow for gif/png
+    # Prefer Pillow for GIF/images (more reliable after palette encode)
+    try:
         with Image.open(path) as im:
-            return im.size
+            return int(im.size[0]), int(im.size[1])
+    except Exception:
+        pass
+    if not probe:
+        raise RuntimeError("cannot probe dimensions (no ffprobe / unreadable image)")
     kw = {}
     if os.name == "nt":
         kw["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -212,12 +257,13 @@ def _probe_wh(path: Path) -> tuple[int, int]:
         [
             probe, "-v", "error", "-select_streams", "v:0",
             "-show_entries", "stream=width,height",
-            "-of", "csv=p=0:s=x", str(path),
+            "-of", "csv=p=0",
+            str(path),
         ],
         text=True, **kw,
-    ).strip()
-    # may be "1920x1080" or "1920,1080"
-    out = out.replace(",", "x").split("x")
+    ).strip().replace("x", ",").split(",")
+    if len(out) < 2:
+        raise RuntimeError(f"ffprobe bad output: {out!r}")
     return int(out[0]), int(out[1])
 
 
@@ -231,7 +277,6 @@ def process_video_workshop(
     wm_opacity: float = 0.22,
     duration: float = 12,
 ) -> dict[str, Path]:
-    """Scale video → GIF, then crop into 5 Steam workshop parts."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     gif_src = out_dir / "source.gif"
@@ -266,10 +311,12 @@ def process_video_split(
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    # 506 + 100 = 606 total width for split
     gif_src = out_dir / "source.gif"
     media_to_gif(src, gif_src, fps=fps, width=606, duration=duration)
-    return process_gif_split(gif_src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity)
+    return process_gif_split(
+        gif_src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity
+    )
+
 
 
 def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
