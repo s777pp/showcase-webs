@@ -175,16 +175,21 @@ def _auth_user(req: Request) -> dict | None:
 
 
 
-def _attach_session_cookie(resp, token: str):
-    """Persist login across all pages until logout or cookie expires."""
+def _attach_session_cookie(resp, token: str, request: Request | None = None):
+    """Persist login across pages. secure=True only on HTTPS."""
+    secure = False
+    if request is not None:
+        # Render/Railway terminate TLS; x-forwarded-proto or url scheme
+        proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "").lower()
+        secure = proto == "https"
     resp.set_cookie(
         key="sm_session",
         value=token,
-        max_age=60 * 60 * 24 * 90,  # 90 days
+        max_age=60 * 60 * 24 * 90,
         path="/",
-        httponly=True,
+        httponly=False,  # allow JS fallback read if needed
         samesite="lax",
-        secure=True,  # HTTPS on Railway
+        secure=secure,
     )
     return resp
 
@@ -298,7 +303,7 @@ async def auth_register(request: Request):
     ok2, msg2, token = auth_db.login(str(body.get("email") or ""), str(body.get("password") or ""))
     resp = JSONResponse({"ok": True, "msg": msg, "token": token})
     if token:
-        _attach_session_cookie(resp, token)
+        _attach_session_cookie(resp, token, request)
     return resp
 
 
@@ -316,7 +321,7 @@ async def auth_login(request: Request):
         "is_pro": bool(user and auth_db.effective_pro(user)),
     })
     if token:
-        _attach_session_cookie(resp, token)
+        _attach_session_cookie(resp, token, request)
     return resp
 
 
@@ -905,21 +910,34 @@ async def download_url(request: Request):
     out_dir = JOBS / job_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- Pinterest images (yt-dlp fails: No video formats) ---
+    # --- Pinterest (video first, then image) ---
     if "pinterest." in url.lower() or "pin.it" in url.lower():
         try:
-            # сначала пробуем yt-dlp (видео-пины)
+            import re as _re
+            import requests as _req
+
+            # 1) yt-dlp with broader format + merge
             try:
                 import yt_dlp
-                with yt_dlp.YoutubeDL({
-                    "outtmpl": str(out_dir / "%(title).80s.%(ext)s"),
+                ydl_opts = {
+                    "outtmpl": str(out_dir / "pin_%(id)s.%(ext)s"),
                     "quiet": True,
                     "noplaylist": True,
-                    "format": "bv*+ba/b",
-                }) as ydl:
-                    ydl.extract_info(url, download=True)
-                files = [p for p in out_dir.iterdir() if p.is_file()]
-                if files:
+                    "format": "bv*+ba/b/best",
+                    "merge_output_format": "mp4",
+                    "http_headers": {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                        "Referer": "https://www.pinterest.com/",
+                    },
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                files = sorted(
+                    [p for p in out_dir.iterdir() if p.is_file() and p.suffix.lower() in
+                     (".mp4", ".webm", ".mkv", ".mov", ".gif", ".jpg", ".jpeg", ".png", ".webp")],
+                    key=lambda p: (0 if p.suffix.lower() in (".mp4", ".webm", ".mkv", ".mov") else 1, -p.stat().st_size),
+                )
+                if files and files[0].suffix.lower() in (".mp4", ".webm", ".mkv", ".mov", ".gif"):
                     f = files[0]
                     quota_inc(request, 1)
                     return {
@@ -928,9 +946,65 @@ async def download_url(request: Request):
                         "download": f"/api/job-file/{job_id}/{f.name}",
                         **quota_state(request),
                     }
-            except Exception:
-                pass
-            # fallback: картинка
+                # if only image from yt-dlp, keep trying video extract below
+            except Exception as _ye:
+                print("pinterest yt-dlp:", _ye)
+
+            # 2) scrape page for video urls (v.pinimg / videos)
+            try:
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept-Language": "en-US,en;q=0.9",
+                }
+                page = _req.get(url, headers=headers, timeout=30, allow_redirects=True)
+                html = page.text or ""
+                candidates = []
+                for pat in (
+                    r'https://v\.pinimg\.com/[^"\s<>]+\.mp4',
+                    r'https://[^"\s<>]*pinimg[^"\s<>]+\.mp4',
+                    r'"video_url"\s*:\s*"(https:[^"]+)"',
+                    r'"url"\s*:\s*"(https://v\.pinimg\.com[^"]+)"',
+                    r'contentUrl"\s*:\s*"(https:[^"]+\.mp4[^"]*)"',
+                ):
+                    for mobj in _re.finditer(pat, html, _re.I):
+                        u = mobj.group(1) if mobj.lastindex else mobj.group(0)
+                        u = u.replace(r"\/", "/").replace(r"\u002F", "/")
+                        if u.startswith("http") and u not in candidates:
+                            candidates.append(u)
+                for vu in candidates[:8]:
+                    try:
+                        rr = _req.get(
+                            vu, headers={**headers, "Referer": "https://www.pinterest.com/"},
+                            timeout=60, stream=True,
+                        )
+                        if rr.status_code != 200:
+                            continue
+                        ct = (rr.headers.get("Content-Type") or "").lower()
+                        if "html" in ct:
+                            continue
+                        ext = ".mp4"
+                        if "webm" in ct or vu.lower().endswith(".webm"):
+                            ext = ".webm"
+                        dest = out_dir / f"pinterest_vid_{uuid.uuid4().hex[:8]}{ext}"
+                        with open(dest, "wb") as fh:
+                            for chunk in rr.iter_content(64 * 1024):
+                                if chunk:
+                                    fh.write(chunk)
+                        if dest.stat().st_size > 50_000:
+                            quota_inc(request, 1)
+                            return {
+                                "ok": True,
+                                "name": dest.name,
+                                "download": f"/api/job-file/{job_id}/{dest.name}",
+                                **quota_state(request),
+                            }
+                        dest.unlink(missing_ok=True)
+                    except Exception as ve:
+                        print("pin video cand:", ve)
+            except Exception as se:
+                print("pinterest scrape:", se)
+
+            # 3) image fallback
             f = _download_pinterest(url, out_dir)
             quota_inc(request, 1)
             return {

@@ -25,7 +25,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .shell{position:relative;z-index:2;display:flex;min-height:100vh}
 .side{
   width:240px;flex-shrink:0;padding:20px 14px;border-right:1px solid var(--border);
-  background:rgba(0,0,0,.45);backdrop-filter:blur(16px);display:flex;flex-direction:column;gap:8px
+  background:rgba(0,0,0,.45);backdrop-filter:blur(16px);display:flex;flex-direction:column;gap:8px;min-height:100vh
 }
 .brand{display:flex;align-items:center;gap:10px;padding:8px 10px 18px}
 .brand img,.brand svg{width:32px;height:32px;border-radius:8px}
@@ -38,7 +38,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 }
 .nav button:hover{background:rgba(255,255,255,.05);color:#fff}
 .nav button.active{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.08)}
-.side-foot{font-size:11px;color:var(--faint);padding:12px 10px 4px}
+.side-foot{font-size:11px;color:var(--faint);padding:12px 10px 4px;margin-top:auto;display:flex;flex-direction:column;gap:12px}
+.socials{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.socials a{display:inline-flex;width:32px;height:32px;align-items:center;justify-content:center;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);transition:.15s}
+.socials a:hover{background:rgba(255,255,255,.12)}
+.socials img{width:18px;height:18px;object-fit:contain;display:block;opacity:.95}
+
 .main{flex:1;padding:24px 28px 80px;max-width:1100px}
 .back{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:12px;text-decoration:none}
 .back:hover{color:#fff}
@@ -138,7 +143,7 @@ pre.code{
   .nav{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:6px;scrollbar-width:none}
   .nav::-webkit-scrollbar{display:none}
   .nav button{flex:0 0 auto;white-space:nowrap;padding:9px 14px;font-size:12px;border-radius:999px;border:1px solid var(--border)}
-  .side-foot{display:none}
+  .side-foot{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px;padding-top:8px}.side-foot .quota{margin-left:auto}
   .main{padding:16px 14px 80px;width:100%}
   .topbar{flex-direction:column;align-items:stretch}
   .h-title{font-size:22px}
@@ -504,7 +509,9 @@ async function refreshQuota() {
   }
 }
 const modal = document.getElementById('authModal');
-document.getElementById('btnAuth').onclick = () => { state.authMode='login'; syncAuthUi(); modal.classList.add('show'); };
+document.getElementById('btnAuth').onclick = () => { state.authMode='login'; syncAuthUi(); modal.classList.add('open'); };
+modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+
 function syncAuthUi() {
   const reg = state.authMode === 'register';
   document.getElementById('authTitle').textContent = reg ? 'Регистрация' : 'Вход';
@@ -515,17 +522,30 @@ function syncAuthUi() {
     : 'No account? <a id="authToggle">Sign up</a>';
   document.getElementById('authToggle').onclick = () => { state.authMode = reg ? 'login' : 'register'; syncAuthUi(); };
 }
-modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
+modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
 document.getElementById('authSubmit').onclick = async () => {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPass').value;
   const url = state.authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
-  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password}) });
-  const j = await r.json();
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ email, password }),
+  });
+  let j;
+  try { j = await r.json(); } catch(e) { alert('Server error'); return; }
   if (!j.ok) { alert(j.msg || 'Error'); return; }
-  state.session = j.token; localStorage.setItem('sm_session', j.token);
-  try { document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax'; } catch(e) {}
-  modal.classList.remove('show'); refreshQuota();
+  if (!j.token) { alert('No session token returned'); return; }
+  state.session = j.token;
+  localStorage.setItem('sm_session', j.token);
+  try {
+    const secure = location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax' + secure;
+  } catch(e) {}
+  modal.classList.remove('open');
+  try { refreshAccountUI(); } catch(e) {}
+  refreshQuota();
 };
 document.getElementById('btnLogout').onclick = async () => {
   await fetch('/api/auth/logout', { method:'POST', headers: headers(), credentials: 'include' });
@@ -893,7 +913,7 @@ async function init(){
   const so2 = document.getElementById('socials2'); if (so2) so2.innerHTML = mkSoc(allSocials);
   refreshQuota(); loadPvSlots(); refreshDa(); refreshAccountUI();
   if (new URLSearchParams(location.search).get('auth') === '1') {
-    state.authMode = 'register'; syncAuthUi(); modal.classList.add('show');
+    state.authMode = 'register'; syncAuthUi(); modal.classList.add('open');
   }
   if (new URLSearchParams(location.search).get('billing') === 'success') {
     alert('Оплата прошла. Обнови страницу через пару секунд, если Pro ещё не активен.');
@@ -1327,6 +1347,17 @@ if (location.hash === '#da') {
     layer.appendChild(el);
   }
 })();
+
+// Account tab login / signup open modal
+document.querySelectorAll('#tab-account .btn').forEach(btn => {
+  const label = (btn.textContent || '').trim().toLowerCase();
+  if (label === 'log in' || label === 'войти') {
+    btn.addEventListener('click', () => { state.authMode='login'; syncAuthUi(); modal.classList.add('open'); });
+  }
+  if (label === 'sign up' || label === 'регистрация') {
+    btn.addEventListener('click', () => { state.authMode='register'; syncAuthUi(); modal.classList.add('open'); });
+  }
+});
 </script>
 
 </body>

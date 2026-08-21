@@ -268,7 +268,7 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
         <b>Showcase Maker</b>
         <span class="hidden-sm">File</span><span>Edit</span><span>View</span>
       </div>
-      <div class="os-right">Process · Download · Preview</div>
+      <div class="os-right"><span data-i="os_right">Process · Download · Preview</span></div>
     </div>
   </div>
 
@@ -278,11 +278,11 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
         <span class="dot" style="background:#ff5f57"></span>
         <span class="dot" style="background:#febc2e"></span>
         <span class="dot" style="background:#28c840"></span>
-        <span style="flex:1;text-align:center;font-size:12px;color:rgba(255,255,255,.5)">Showcase Maker — Tools</span>
+        <span style="flex:1;text-align:center;font-size:12px;color:rgba(255,255,255,.5)"><span data-i="mock_title">Showcase Maker — Tools</span></span>
       </div>
       <div class="mock-body">
         <div class="mock-side">
-          <a class="compose" href="/app">✦ Open tools</a>
+          <a class="compose" href="/app" data-i="compose">✦ Open tools</a>
           <div class="nav-item active"><span>Process</span></div>
           <div class="nav-item"><span>Download</span></div>
           <div class="nav-item"><span>Preview</span></div>
@@ -387,15 +387,15 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
   <section class="section quotes">
     <div class="q-grid">
       <figure class="liquid-glass q-card">
-        <blockquote>“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”</blockquote>
+        <blockquote><span data-i="q1">“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”</span></blockquote>
         <figcaption><div class="n">Profile artists</div><div class="r">Steam Workshop</div><div class="c">CREATORS</div></figcaption>
       </figure>
       <figure class="liquid-glass q-card">
-        <blockquote>“Download + process + preview in one tab. No more juggling five sites.”</blockquote>
+        <blockquote><span data-i="q2">“Download + process + preview in one tab. No more juggling five sites.”</span></blockquote>
         <figcaption><div class="n">Commission sellers</div><div class="r">FunPay · Discord</div><div class="c">SELLERS</div></figcaption>
       </figure>
       <figure class="liquid-glass q-card">
-        <blockquote>“Pro is worth it when you ship showcases every week — no daily limit stress.”</blockquote>
+        <blockquote><span data-i="q3">“Pro is worth it when you ship showcases every week — no daily limit stress.”</span></blockquote>
         <figcaption><div class="n">Power users</div><div class="r">Desktop + Web</div><div class="c">PRO</div></figcaption>
       </figure>
     </div>
@@ -420,38 +420,38 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
       <div class="c3-card">
         <div class="c3-tier-small">Free</div>
         <div class="c3-tier-large">Free</div>
-        <p class="c3-desc">Try the full pipeline with a daily file limit.</p>
+        <p class="c3-desc"><span data-i="price_free_d">Try the full pipeline with a daily file limit.</span></p>
         <ul class="c3-list">
           <li><span class="c3-check">✓</span> 5 files / day</li>
           <li><span class="c3-check">✓</span> Workshop · Featured · Split</li>
           <li><span class="c3-check">✓</span> Watermark &amp; preview</li>
           <li><span class="c3-check">✓</span> Source download</li>
         </ul>
-        <a class="c3-btn" href="/app">Start free</a>
+        <a class="c3-btn" href="/app" data-i="start_free">Start free</a>
       </div>
       <div class="c3-card">
         <div class="c3-tier-small">Pro</div>
         <div class="c3-tier-large" id="pricePro">FunPay</div>
-        <p class="c3-desc">Unlimited processing for sellers and daily shippers.</p>
+        <p class="c3-desc"><span data-i="price_pro_d">Unlimited processing for sellers and daily shippers.</span></p>
         <ul class="c3-list">
           <li><span class="c3-check">✓</span> Unlimited files</li>
           <li><span class="c3-check">✓</span> All modes + HEX 21</li>
           <li><span class="c3-check">✓</span> Account-bound access code</li>
           <li><span class="c3-check">✓</span> Priority-ready pipeline</li>
         </ul>
-        <a class="c3-btn" href="https://funpay.com/lots/offer?id=75265310" target="_blank" rel="noopener">Buy on FunPay</a>
+        <a class="c3-btn" href="https://funpay.com/lots/offer?id=75265310" target="_blank" rel="noopener" data-i="buy_fp">Buy on FunPay</a>
       </div>
       <div class="c3-card c3-card-pro">
         <div class="c3-tier-small">Desktop</div>
         <div class="c3-tier-large">EXE</div>
-        <p class="c3-desc">Full desktop app with offline processing and DeviantArt helpers.</p>
+        <p class="c3-desc"><span data-i="price_desk_d">Full desktop app with offline processing and DeviantArt helpers.</span></p>
         <ul class="c3-list">
           <li><span class="c3-check">✓</span> Same core pipeline</li>
           <li><span class="c3-check">✓</span> Local FFmpeg power</li>
           <li><span class="c3-check">✓</span> License key system</li>
           <li><span class="c3-check">✓</span> Auto-update ready</li>
         </ul>
-        <a class="c3-btn" href="https://funpay.com/lots/offer?id=75265310" target="_blank" rel="noopener">Get desktop</a>
+        <a class="c3-btn" href="https://funpay.com/lots/offer?id=75265310" target="_blank" rel="noopener" data-i="get_desk">Get desktop</a>
       </div>
     </div>
   </section>
@@ -479,32 +479,60 @@ const I18N = {
     cta_tools:'Open tools →', h1a:'Steam showcases.', h1b:'Revitalized',
     hero_p:'Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool for creators.',
     cta_open:'Open Showcase Maker', hero_note:'Free · 5 files/day  ·  Pro · unlimited',
-    tri_label:'Process', tri_h:'Clear the busywork.\nShip the showcase.',
+    os_right:'Process · Download · Preview',
+    mock_title:'Showcase Maker — Tools',
+    compose:'✦ Open tools',
+    tri_label:'Process', tri_h:'Clear the busywork.
+Ship the showcase.',
     tri_p:'Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.',
     tri_today:'Today · showcase pipeline', trust:'Built for Steam profile creators',
-    cta_h:'Close the tabs.\nOpen your profile.',
+    q1:'“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”',
+    q2:'“Download + process + preview in one tab. No more juggling five sites.”',
+    q3:'“Pro is worth it when you ship showcases every week — no daily limit stress.”',
+    price_free_d:'Try the full pipeline with a daily file limit.',
+    price_pro_d:'Unlimited processing for sellers and daily shippers.',
+    price_desk_d:'Full desktop app with offline processing and DeviantArt helpers.',
+    start_free:'Start free', buy_fp:'Buy on FunPay', get_desk:'Get desktop',
+    cta_h:'Close the tabs.
+Open your profile.',
     cta_p:'Process, download sources, preview on a Steam template, and ship — without leaving the browser.',
-    cta_open2:'Open tools', cta_reg:'Create account →'
+    cta_open2:'Open tools', cta_reg:'Create account →',
+    footer:'Showcase Maker · by n1t1337 · Tools'
   },
   ru: {
     nav_feat:'Возможности', nav_price:'Цены', nav_tools:'Инструменты', nav_reg:'Регистрация',
     cta_tools:'Открыть →', h1a:'Steam-витрины.', h1b:'Без рутины',
     hero_p:'Нарезка Workshop, Featured и Split, watermark, лимиты Steam, скачивание исходников и предпросмотр профиля — один инструмент в браузере.',
     cta_open:'Открыть Showcase Maker', hero_note:'Free · 5 файлов/сутки  ·  Pro · безлимит',
-    tri_label:'Обработка', tri_h:'Убери рутину.\nОтгрузи витрину.',
+    os_right:'Обработка · Скачать · Превью',
+    mock_title:'Showcase Maker — Инструменты',
+    compose:'✦ Открыть',
+    tri_label:'Обработка', tri_h:'Убери рутину.
+Отгрузи витрину.',
     tri_p:'Showcase Maker режет Workshop, Featured и Split, ставит watermark, укладывается в лимиты Steam и собирает ZIP — ты занимаешься артом, не пикселями.',
     tri_today:'Сегодня · пайплайн витрины', trust:'Для тех, кто оформляет Steam',
-    cta_h:'Закрой лишние вкладки.\nОткрой профиль.',
+    q1:'«Режет Workshop на пять частей с hex 21 за секунды. Руками больше не делаю.»',
+    q2:'«Скачал, обработал, превью — в одной вкладке. Без пяти сайтов.»',
+    q3:'«Pro окупается, если витрины каждый день — без лимита.»',
+    price_free_d:'Полный пайплайн с дневным лимитом файлов.',
+    price_pro_d:'Безлимитная обработка для продавцов и ежедневной работы.',
+    price_desk_d:'Десктоп-приложение: офлайн, FFmpeg, DeviantArt.',
+    start_free:'Начать бесплатно', buy_fp:'Купить на FunPay', get_desk:'Скачать EXE',
+    cta_h:'Закрой лишние вкладки.
+Открой профиль.',
     cta_p:'Обработка, скачивание, предпросмотр на шаблоне Steam — всё в браузере.',
-    cta_open2:'Открыть', cta_reg:'Создать аккаунт →'
+    cta_open2:'Открыть', cta_reg:'Создать аккаунт →',
+    footer:'Showcase Maker · by n1t1337 · Инструменты'
   }
 };
 function lang(){ return localStorage.getItem('sm_lang') || 'en'; }
 function apply(L){
   const t = I18N[L] || I18N.en;
+  document.documentElement.lang = L;
   document.querySelectorAll('[data-i]').forEach(el => {
     const k = el.getAttribute('data-i');
-    if (t[k] != null) el.innerHTML = String(t[k]).replace(/\n/g,'<br/>');
+    if (t[k] != null) el.innerHTML = String(t[k]).replace(/
+/g,'<br/>');
   });
   const b = document.getElementById('langBtn');
   if (b) b.textContent = L === 'en' ? 'RU' : 'EN';
@@ -516,5 +544,6 @@ document.getElementById('langBtn').onclick = () => {
   apply(n);
 };
 </script>
+
 </body>
 </html>
