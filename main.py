@@ -614,12 +614,12 @@ async def api_process(
     wm_font: str = Form("lap"),
     wm_opacity: int = Form(22),
     wm_enable: str = Form("1"),
+    wm_corner: str = Form("bl"),
+    wm_scale: float = Form(1.0),
+    all_modes: str = Form("0"),
     files: list[UploadFile] = File(...),
 ):
-    """
-    Process → return ZIP as download → delete all temp files on server.
-    Nothing is kept on disk after the response is built.
-    """
+    """Process → ZIP download → delete temps."""
     import tempfile
 
     q = quota_state(request)
@@ -633,14 +633,29 @@ async def api_process(
     if mode not in ("workshop", "featured", "split"):
         return JSONResponse({"ok": False, "msg": "Unknown mode"}, status_code=400)
 
+    do_all = str(all_modes).lower() in ("1", "true", "yes", "on")
+    modes = ["workshop", "featured", "split"] if do_all else [mode]
+
     wm_on = wm_enable not in ("0", "false", "False", "")
     opacity = (wm_opacity / 100.0) if wm_on else 0.0
     text = wm_text if wm_on else ""
+    corner = (wm_corner or "bl").strip().lower()
+    if corner not in ("tl", "tr", "bl", "br"):
+        corner = "bl"
+    try:
+        scale = max(0.4, min(2.5, float(wm_scale)))
+    except (TypeError, ValueError):
+        scale = 1.0
+    try:
+        size_i = int(size)
+    except (TypeError, ValueError):
+        size_i = 750
+    if size_i not in (630, 640, 750, 800):
+        size_i = min((630, 640, 750, 800), key=lambda s: abs(s - size_i))
 
     left = 999 if q["pro"] else q["left"]
     files = files[: max(1, left)]
 
-    # work only in /tmp — auto-cleaned
     job_dir = Path(tempfile.mkdtemp(prefix="sm_job_"))
     zip_buf = io.BytesIO()
     processed = 0
@@ -658,87 +673,98 @@ async def api_process(
                     continue
                 ext = Path(name).suffix.lower()
                 stem = Path(name).stem[:40]
-                folder = f"{stem}_{mode}"
-                work = job_dir / folder
-                work.mkdir(exist_ok=True)
-
-                if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp"):
-                    img = Image.open(io.BytesIO(raw))
-                    img.load()
-                    max_side = 4096
-                    if max(img.size) > max_side:
-                        img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
-                    if mode == "workshop":
-                        parts = proc.process_image_workshop(img, text, wm_font, opacity)
-                    elif mode == "featured":
-                        parts = proc.process_image_featured(img)
-                    else:
-                        parts = proc.process_image_split(img, text, wm_font, opacity)
-                    for pname, data in parts.items():
-                        zf.writestr(f"{folder}/{pname}", data)
-                        if len(listed) < 20:
-                            listed.append({"name": f"{folder}/{pname}", "size": len(data)})
-
-                elif ext in (".gif", ".mp4", ".mov", ".webm", ".avi", ".mkv"):
-                    src = work / f"source{ext}"
-                    src.write_bytes(raw)
-                    # free RAM copy
-                    del raw
-                    is_video = ext in (".mp4", ".mov", ".webm", ".avi", ".mkv")
-                    # shorter / lighter for free hosts
-                    v_fps = min(int(fps), 12)
-                    v_dur = 8.0
-                    if is_video:
-                        if not proc.find_ffmpeg():
-                            raise RuntimeError("FFmpeg not available")
-                        if mode == "workshop":
-                            paths = proc.process_video_workshop(
-                                src, work, fps=v_fps, width=min(int(size), 750),
-                                wm_text=text, wm_font=wm_font, wm_opacity=opacity,
-                                duration=v_dur,
-                            )
-                        elif mode == "featured":
-                            paths = proc.process_video_featured(src, work, fps=v_fps, duration=v_dur)
-                        else:
-                            paths = proc.process_video_split(
-                                src, work, fps=v_fps,
-                                wm_text=text, wm_font=wm_font, wm_opacity=opacity,
-                                duration=v_dur,
-                            )
-                    else:
-                        if mode == "workshop":
-                            paths = proc.process_gif_workshop(src, work, text, wm_font, opacity)
-                        elif mode == "featured":
-                            paths = proc.process_gif_featured(src, work, fps=v_fps)
-                        else:
-                            paths = proc.process_gif_split(
-                                src, work, fps=v_fps, wm_text=text, wm_font=wm_font, wm_opacity=opacity,
-                            )
-                    for pname, pth in paths.items():
-                        pth = Path(pth)
-                        if not pth.is_file():
-                            continue
-                        data = pth.read_bytes()
-                        zf.writestr(f"{folder}/{pname}", data)
-                        if len(listed) < 20:
-                            listed.append({"name": f"{folder}/{pname}", "size": len(data)})
-                        # delete part from disk ASAP
-                        try:
-                            pth.unlink(missing_ok=True)
-                        except Exception:
-                            pass
-                    # remove source to free space mid-job
-                    try:
-                        src.unlink(missing_ok=True)
-                    except Exception:
-                        pass
-                else:
+                if ext not in (
+                    ".png", ".jpg", ".jpeg", ".webp", ".bmp",
+                    ".gif", ".mp4", ".mov", ".webm", ".avi", ".mkv",
+                ):
                     errors.append(f"{name}: unsupported format")
                     continue
+
+                for mode in modes:
+                    folder = f"{stem}_{mode}"
+                    work = job_dir / folder
+                    work.mkdir(exist_ok=True)
+
+                    if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp"):
+                        img = Image.open(io.BytesIO(raw))
+                        img.load()
+                        max_side = 4096
+                        if max(img.size) > max_side:
+                            img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+                        if mode == "workshop" and img.size[0] != size_i:
+                            nh = max(1, int(img.size[1] * (size_i / max(1, img.size[0]))))
+                            img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
+                        if mode == "workshop":
+                            parts = proc.process_image_workshop(
+                                img, text, wm_font, opacity, corner, scale
+                            )
+                        elif mode == "featured":
+                            parts = proc.process_image_featured(img)
+                        else:
+                            parts = proc.process_image_split(
+                                img, text, wm_font, opacity, corner, scale
+                            )
+                        for pname, data in parts.items():
+                            zf.writestr(f"{folder}/{pname}", data)
+                            if len(listed) < 20:
+                                listed.append({"name": f"{folder}/{pname}", "size": len(data)})
+                    else:
+                        src = work / f"source{ext}"
+                        src.write_bytes(raw)
+                        is_video = ext in (".mp4", ".mov", ".webm", ".avi", ".mkv")
+                        v_fps = min(int(fps), 12)
+                        v_dur = 8.0
+                        if is_video:
+                            if not proc.find_ffmpeg():
+                                raise RuntimeError("FFmpeg not available")
+                            if mode == "workshop":
+                                paths = proc.process_video_workshop(
+                                    src, work, fps=v_fps, width=size_i,
+                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                                    duration=v_dur, wm_corner=corner, wm_scale=scale,
+                                )
+                            elif mode == "featured":
+                                paths = proc.process_video_featured(
+                                    src, work, fps=v_fps, duration=v_dur
+                                )
+                            else:
+                                paths = proc.process_video_split(
+                                    src, work, fps=v_fps,
+                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                                    duration=v_dur, wm_corner=corner, wm_scale=scale,
+                                )
+                        else:
+                            if mode == "workshop":
+                                paths = proc.process_gif_workshop(
+                                    src, work, text, wm_font, opacity, corner, scale
+                                )
+                            elif mode == "featured":
+                                paths = proc.process_gif_featured(src, work, fps=v_fps)
+                            else:
+                                paths = proc.process_gif_split(
+                                    src, work, fps=v_fps, wm_text=text, wm_font=wm_font,
+                                    wm_opacity=opacity, wm_corner=corner, wm_scale=scale,
+                                )
+                        for pname, pth in paths.items():
+                            pth = Path(pth)
+                            if not pth.is_file():
+                                continue
+                            data = pth.read_bytes()
+                            zf.writestr(f"{folder}/{pname}", data)
+                            if len(listed) < 20:
+                                listed.append({"name": f"{folder}/{pname}", "size": len(data)})
+                            try:
+                                pth.unlink(missing_ok=True)
+                            except Exception:
+                                pass
+                        try:
+                            src.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+
                 processed += 1
             except Exception as e:
                 errors.append(f"{name}: {type(e).__name__}: {e}")
-                # wipe this file's work dir to free space
                 try:
                     shutil.rmtree(work, ignore_errors=True)
                 except Exception:
@@ -763,10 +789,8 @@ async def api_process(
 
         zip_bytes = zip_buf.getvalue()
         zip_buf.close()
-
-        # X- headers so frontend can show status (CORS-safe custom headers)
         headers_out = {
-            "Content-Disposition": f'attachment; filename="showcase_{mode}.zip"',
+            "Content-Disposition": f'attachment; filename="showcase_{"all" if do_all else mode}.zip"',
             "X-Processed": str(processed),
             "X-Errors": str(len(errors)),
             "Access-Control-Expose-Headers": "Content-Disposition, X-Processed, X-Errors",
@@ -777,7 +801,6 @@ async def api_process(
             headers=headers_out,
         )
     finally:
-        # ALWAYS delete temp job from server
         try:
             shutil.rmtree(job_dir, ignore_errors=True)
         except Exception:

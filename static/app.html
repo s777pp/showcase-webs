@@ -240,11 +240,28 @@ pre.code{
       <h2>Settings</h2>
       <div class="row">
         <label class="field">FPS<input type="number" id="fps" value="12" min="5" max="30"/></label>
-        <label class="field">Width<input type="number" id="size" value="750" min="300" max="1200"/></label>
+        <label class="field">Width
+          <select id="size">
+            <option value="630">630</option>
+            <option value="640">640</option>
+            <option value="750" selected>750</option>
+            <option value="800">800</option>
+          </select>
+        </label>
         <label class="field">Watermark<input id="wmText" value="n1t1337"/></label>
         <label class="field">Font<select id="wmFont"><option>lap</option><option>rob</option><option>caratte</option><option>Fineday</option></select></label>
         <label class="field">Opacity %<input type="range" id="wmOpacity" min="0" max="100" value="22"/></label>
+        <label class="field">WM size %<input type="range" id="wmScale" min="40" max="250" value="100"/></label>
+        <label class="field">WM corner
+          <select id="wmCorner">
+            <option value="bl">Bottom left</option>
+            <option value="br">Bottom right</option>
+            <option value="tl">Top left</option>
+            <option value="tr">Top right</option>
+          </select>
+        </label>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="wmEnable" checked/> On</label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="allModes"/> All modes</label>
       </div>
     </div>
     <div class="card">
@@ -693,6 +710,10 @@ document.getElementById('btnRun').onclick = async () => {
   fd.append('wm_font', document.getElementById('wmFont').value);
   fd.append('wm_opacity', document.getElementById('wmOpacity').value);
   fd.append('wm_enable', document.getElementById('wmEnable').checked ? '1':'0');
+  fd.append('wm_corner', (document.getElementById('wmCorner')||{}).value || 'bl');
+  const sc = document.getElementById('wmScale');
+  fd.append('wm_scale', sc ? (Number(sc.value) / 100) : 1);
+  fd.append('all_modes', (document.getElementById('allModes')||{}).checked ? '1':'0');
   state.files.forEach(f => fd.append('files', f));
   try {
     const r = await fetch('/api/process', { method:'POST', headers: headers(), body: fd, credentials:'include' });

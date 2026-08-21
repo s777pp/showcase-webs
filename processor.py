@@ -78,23 +78,49 @@ def load_font(key: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFo
     return ImageFont.load_default()
 
 
+def wm_anchor(corner: str, w: int, h: int, tw: int, th: int, margin_ratio: float = 0.04) -> tuple[int, int]:
+    """Return top-left of text box for corner: tl/tr/bl/br."""
+    c = (corner or "bl").strip().lower()
+    mx = max(4, int(w * margin_ratio))
+    my = max(4, int(h * margin_ratio))
+    if c in ("tl", "top-left", "topleft"):
+        return mx, my
+    if c in ("tr", "top-right", "topright"):
+        return max(mx, w - tw - mx), my
+    if c in ("br", "bottom-right", "bottomright"):
+        return max(mx, w - tw - mx), max(my, h - th - my)
+    # bl default
+    return mx, max(my, h - th - my)
+
+
 def apply_watermark(
     img: Image.Image,
     text: str,
     font_key: str,
     opacity: float,
-    wx: float = 0.08,
-    wy: float = 0.85,
+    corner: str = "bl",
+    scale: float = 1.0,
+    wx: float | None = None,
+    wy: float | None = None,
 ) -> Image.Image:
     if not text or opacity <= 0:
         return img
     img = img.convert("RGBA")
     h = img.height
-    font = load_font(font_key, max(18, h // 28))
+    scale = max(0.4, min(2.5, float(scale or 1.0)))
+    font_size = max(12, int((h // 28) * scale))
+    font = load_font(font_key, font_size)
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
-    x = int(img.width * wx)
-    y = int(img.height * wy)
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    except Exception:
+        tw, th = font_size * max(1, len(text)) // 2, font_size
+    if wx is not None and wy is not None:
+        x, y = int(img.width * wx), int(img.height * wy)
+    else:
+        x, y = wm_anchor(corner, img.width, img.height, tw, th)
     draw.text((x, y), text, font=font, fill=(255, 255, 255, 255))
     a = layer.getchannel("A").point(lambda p: int(p * max(0.0, min(1.0, opacity))))
     layer.putalpha(a)
@@ -132,6 +158,8 @@ def process_image_workshop(
     wm_text: str = "",
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
 ) -> dict[str, bytes]:
     img = img.convert("RGBA")
     w, h = img.size
@@ -157,7 +185,7 @@ def process_image_workshop(
         x += part.width
         if i < 4:
             x += bar
-    full = apply_watermark(full, wm_text, wm_font, wm_opacity, wx=0.08, wy=0.85)
+    full = apply_watermark(full, wm_text, wm_font, wm_opacity, corner=wm_corner, scale=wm_scale)
     out["full_with_bars.png"] = _png_bytes(full)
     return out
 
@@ -178,6 +206,8 @@ def process_image_split(
     wm_text: str = "",
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
 ) -> dict[str, bytes]:
     img = img.convert("RGBA")
     w, h = img.size
@@ -195,7 +225,7 @@ def process_image_split(
     full = Image.new("RGBA", (center.width + bar + side.width, nh), (0, 0, 0, 255))
     full.paste(center, (0, 0))
     full.paste(side, (center.width + bar, 0))
-    full = apply_watermark(full, wm_text, wm_font, wm_opacity)
+    full = apply_watermark(full, wm_text, wm_font, wm_opacity, corner=wm_corner, scale=wm_scale)
     out["full_with_bars.png"] = _png_bytes(full)
     return out
 
@@ -319,12 +349,16 @@ def process_video_workshop(
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
     duration: float = 12,
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     gif_src = out_dir / "source.gif"
     media_to_gif(src, gif_src, fps=fps, width=width, duration=duration)
-    return process_gif_workshop(gif_src, out_dir, wm_text, wm_font, wm_opacity)
+    return process_gif_workshop(
+        gif_src, out_dir, wm_text, wm_font, wm_opacity, wm_corner, wm_scale
+    )
 
 
 def process_video_featured(
@@ -351,13 +385,16 @@ def process_video_split(
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
     duration: float = 12,
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     gif_src = out_dir / "source.gif"
     media_to_gif(src, gif_src, fps=fps, width=606, duration=duration)
     return process_gif_split(
-        gif_src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity
+        gif_src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
+        wm_corner=wm_corner, wm_scale=wm_scale,
     )
 
 
@@ -397,6 +434,8 @@ def _gif_full_with_bars_workshop(
     wm_text: str,
     wm_font: str,
     wm_opacity: float,
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
     bar_width: int = 6,
 ) -> None:
     """Полный GIF: 5 частей + чёрные полосы + watermark (как desktop)."""
@@ -424,17 +463,10 @@ def _gif_full_with_bars_workshop(
                 if i < 4:
                     x += bar_width
             if wm_text and wm_opacity > 0:
-                layer = Image.new("RGBA", full.size, (0, 0, 0, 0))
-                draw = ImageDraw.Draw(layer)
-                draw.text(
-                    (int(pw * 0.08), int(fh * 0.85)),
-                    wm_text,
-                    font=font,
-                    fill=(255, 255, 255, 255),
+                full = apply_watermark(
+                    full, wm_text, wm_font, wm_opacity,
+                    corner=wm_corner, scale=wm_scale,
                 )
-                a = layer.getchannel("A").point(lambda p: int(p * wm_opacity))
-                layer.putalpha(a)
-                full = Image.alpha_composite(full, layer)
             frames_out.append(full.convert("RGB"))
             durations.append(int(im.info.get("duration", 100) or 100))
     if not frames_out:
@@ -456,6 +488,8 @@ def _gif_full_with_bar_split(
     wm_text: str,
     wm_font: str,
     wm_opacity: float,
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
     bar_width: int = 6,
 ) -> None:
     frames_out = []
@@ -479,17 +513,10 @@ def _gif_full_with_bar_split(
             full.paste(center, (0, 0))
             full.paste(side, (center.width + bar_width, 0))
             if wm_text and wm_opacity > 0:
-                layer = Image.new("RGBA", full.size, (0, 0, 0, 0))
-                draw = ImageDraw.Draw(layer)
-                draw.text(
-                    (int(center.width * 0.08), int(fh * 0.85)),
-                    wm_text,
-                    font=font,
-                    fill=(255, 255, 255, 255),
+                full = apply_watermark(
+                    full, wm_text, wm_font, wm_opacity,
+                    corner=wm_corner, scale=wm_scale,
                 )
-                a = layer.getchannel("A").point(lambda p: int(p * wm_opacity))
-                layer.putalpha(a)
-                full = Image.alpha_composite(full, layer)
             frames_out.append(full.convert("RGB"))
             durations.append(int(im.info.get("duration", 100) or 100))
     if not frames_out:
@@ -511,6 +538,8 @@ def process_gif_workshop(
     wm_text: str = "",
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
 ) -> dict[str, Path]:
     """Cut GIF into 5 Steam Workshop parts + full_with_bars.gif."""
     ff = find_ffmpeg()
@@ -540,7 +569,7 @@ def process_gif_workshop(
     # полная гиф с полосами + watermark
     bars = out_dir / "full_with_bars.gif"
     try:
-        _gif_full_with_bars_workshop(gif_path, bars, wm_text, wm_font, wm_opacity)
+        _gif_full_with_bars_workshop(gif_path, bars, wm_text, wm_font, wm_opacity, wm_corner, wm_scale)
         if bars.is_file():
             result[bars.name] = bars
     except Exception as e:
@@ -568,6 +597,8 @@ def process_gif_split(
     wm_text: str = "",
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
 ) -> dict[str, Path]:
     ff = find_ffmpeg()
     if not ff:
@@ -597,7 +628,7 @@ def process_gif_split(
     result = {center.name: center, side.name: side, clean.name: clean}
     bars = out_dir / "full_with_bars.gif"
     try:
-        _gif_full_with_bar_split(tmp, bars, wm_text, wm_font, wm_opacity)
+        _gif_full_with_bar_split(tmp, bars, wm_text, wm_font, wm_opacity, wm_corner, wm_scale)
         if bars.is_file():
             result[bars.name] = bars
     except Exception as e:
