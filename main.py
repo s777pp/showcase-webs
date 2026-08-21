@@ -28,7 +28,25 @@ import processor as proc
 import auth_db
 
 ROOT = Path(__file__).resolve().parent
-DATA = Path(os.environ.get("DATA_DIR") or (ROOT / "data"))
+_data_candidates = []
+if os.environ.get("DATA_DIR"):
+    _data_candidates.append(Path(os.environ["DATA_DIR"]))
+_data_candidates.extend([ROOT / "data", Path("/tmp/showcase_data")])
+DATA = None
+for _c in _data_candidates:
+    try:
+        _c.mkdir(parents=True, exist_ok=True)
+        _t = _c / ".write_test"
+        _t.write_text("ok", encoding="utf-8")
+        _t.unlink(missing_ok=True)
+        DATA = _c
+        break
+    except Exception:
+        continue
+if DATA is None:
+    DATA = Path("/tmp/showcase_data")
+    DATA.mkdir(parents=True, exist_ok=True)
+
 JOBS = DATA / "jobs"
 USAGE_FILE = DATA / "usage.json"
 # keys: from repo (shipped with deploy) + optional override on volume
@@ -39,7 +57,10 @@ TEMPLATES = ROOT / "templates"
 FONTS = ROOT / "fonts"
 
 for d in (DATA, JOBS, STATIC):
-    d.mkdir(parents=True, exist_ok=True)
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        print("mkdir failed", d, e)
 
 FREE_LIMIT = int(os.environ.get("FREE_LIMIT", "5"))
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "40"))
@@ -238,6 +259,16 @@ def quota_inc(req: Request, n: int) -> None:
 
 app = FastAPI(title="Showcase Maker Web")
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
+
+@app.exception_handler(Exception)
+async def _unhandled(request: Request, exc: Exception):
+    import traceback
+    traceback.print_exc()
+    return JSONResponse(
+        {"ok": False, "msg": f"{type(exc).__name__}: {exc}", "errors": [str(exc)]},
+        status_code=500,
+    )
+
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -575,6 +606,11 @@ async def api_process(
 
             if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp"):
                 img = Image.open(io.BytesIO(raw))
+                img.load()
+                # limit huge images (OOM on free hosts)
+                max_side = 4096
+                if max(img.size) > max_side:
+                    img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
                 if mode == "workshop":
                     parts = proc.process_image_workshop(img, text, wm_font, opacity)
                 elif mode == "featured":
@@ -628,7 +664,10 @@ async def api_process(
         except Exception as e:
             errors.append(f"{name}: {type(e).__name__}: {e}")
 
-    zf.close()
+    try:
+        zf.close()
+    except Exception:
+        pass
     if processed == 0:
         detail = "; ".join(errors) if errors else "unknown error"
         return JSONResponse(
@@ -636,9 +675,36 @@ async def api_process(
             status_code=400,
         )
 
-    quota_inc(request, processed)
-    (job_dir / "result.zip").write_bytes(zip_buf.getvalue())
-    q2 = quota_state(request)
+    try:
+        quota_inc(request, processed)
+    except Exception as e:
+        print("quota_inc:", e)
+
+    zip_bytes = zip_buf.getvalue()
+    try:
+        (job_dir / "result.zip").write_bytes(zip_bytes)
+    except Exception as e:
+        # disk full / permission — still return download via memory is not possible long-term
+        print("write result.zip:", e)
+        # try /tmp
+        try:
+            alt = Path("/tmp") / f"showcase_{job_id}.zip"
+            alt.write_bytes(zip_bytes)
+            job_dir = alt.parent
+            # store mapping? keep under JOBS name if possible
+            (JOBS / job_id).mkdir(parents=True, exist_ok=True)
+            (JOBS / job_id / "result.zip").write_bytes(zip_bytes)
+        except Exception as e2:
+            return JSONResponse(
+                {"ok": False, "msg": f"Could not save result: {e2}", "errors": errors + [str(e)]},
+                status_code=500,
+            )
+
+    try:
+        q2 = quota_state(request)
+    except Exception:
+        q2 = {"used": 0, "limit": FREE_LIMIT, "left": 0, "pro": False}
+
     return {
         "ok": True,
         "job_id": job_id,
@@ -646,7 +712,7 @@ async def api_process(
         "errors": errors,
         "files": listed,
         "download": f"/api/download/{job_id}",
-        **{k: q2[k] for k in ("used", "limit", "left", "pro")},
+        **{k: q2.get(k) for k in ("used", "limit", "left", "pro")},
     }
 
 

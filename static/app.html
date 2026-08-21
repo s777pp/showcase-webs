@@ -925,8 +925,15 @@ document.getElementById('btnRun').onclick = async () => {
   fd.append('wm_enable', document.getElementById('wmEnable').checked ? '1':'0');
   state.files.forEach(f => fd.append('files', f));
   try {
-    const r = await fetch('/api/process', { method:'POST', headers: headers(), body: fd });
-    const j = await r.json();
+    const r = await fetch('/api/process', { method:'POST', headers: headers(), body: fd, credentials:'include' });
+    const raw = await r.text();
+    let j;
+    try { j = JSON.parse(raw); }
+    catch (parseErr) {
+      st.className='status err';
+      st.textContent = (raw || ('HTTP ' + r.status)).slice(0, 300);
+      return;
+    }
     if (!j.ok) {
       st.className='status err';
       let msg = j.msg || 'Error';
