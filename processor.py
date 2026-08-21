@@ -107,6 +107,26 @@ def _png_bytes(img: Image.Image) -> bytes:
     return buf.getvalue()
 
 
+def apply_hex21(data: bytes) -> bytes:
+    """Steam upload trick: last byte = 0x21 (works for GIF parts and PNG parts)."""
+    if not data:
+        return data
+    return data[:-1] + b"\x21"
+
+
+def apply_hex21_file(path: Path) -> None:
+    path = Path(path)
+    if not path.is_file():
+        return
+    try:
+        data = path.read_bytes()
+        if data:
+            path.write_bytes(apply_hex21(data))
+    except Exception:
+        pass
+
+
+
 def process_image_workshop(
     img: Image.Image,
     wm_text: str = "",
@@ -123,7 +143,8 @@ def process_image_workshop(
         right = (i + 1) * pw if i < 4 else w
         part = img.crop((left, 0, right, h))
         parts.append(part)
-        out[f"part_{i + 1}.png"] = _png_bytes(part)
+        # Steam: last byte 0x21 on each workshop part
+        out[f"part_{i + 1}.png"] = apply_hex21(_png_bytes(part))
 
     out["full_original.png"] = _png_bytes(img)
 
@@ -147,7 +168,7 @@ def process_image_featured(img: Image.Image) -> dict[str, bytes]:
     nh = max(1, int(h * (630 / max(1, w))))
     img = img.resize((630, nh), Image.Resampling.LANCZOS)
     return {
-        "featured_630.png": _png_bytes(img),
+        "featured_630.png": apply_hex21(_png_bytes(img)),
         "full_original.png": _png_bytes(img),
     }
 
@@ -166,8 +187,8 @@ def process_image_split(
     center = img.crop((0, 0, 506, nh))
     side = img.crop((506, 0, 606, nh))
     out = {
-        "center_506.png": _png_bytes(center),
-        "side_100.png": _png_bytes(side),
+        "center_506.png": apply_hex21(_png_bytes(center)),
+        "side_100.png": apply_hex21(_png_bytes(side)),
         "full_original.png": _png_bytes(img),
     }
     bar = 6
@@ -510,19 +531,8 @@ def process_gif_workshop(
             f"[s1][p]paletteuse"
         )
         _run([ff, "-y", "-i", str(gif_path), "-an", "-vf", vf, "-loop", "0", str(out)])
-        try:
-            with open(out, "r+b") as f:
-                f.seek(-1, os.SEEK_END)
-                f.write(b"\x21")
-        except Exception:
-            pass
         ensure_under_mb(out)
-        try:
-            with open(out, "r+b") as f:
-                f.seek(-1, os.SEEK_END)
-                f.write(b"\x21")
-        except Exception:
-            pass
+        apply_hex21_file(out)
         result[out.name] = out
     clean = out_dir / "full_original.gif"
     shutil.copy2(gif_path, clean)
@@ -545,6 +555,7 @@ def process_gif_featured(gif_path: Path, out_dir: Path, fps: int = 12) -> dict[s
     out = out_dir / "featured_630.gif"
     media_to_gif(gif_path, out, fps=fps, width=630, duration=10)
     ensure_under_mb(out)
+    apply_hex21_file(out)
     clean = out_dir / "full_original.gif"
     shutil.copy2(out, clean)
     return {out.name: out, clean.name: clean}
@@ -579,6 +590,8 @@ def process_gif_split(
     _run([ff, "-y", "-i", str(tmp), "-filter:v", f"crop=100:{height}:506:0", "-loop", "0", str(side)])
     ensure_under_mb(center)
     ensure_under_mb(side)
+    apply_hex21_file(center)
+    apply_hex21_file(side)
     clean = out_dir / "full_original.gif"
     shutil.copy2(tmp, clean)
     result = {center.name: center, side.name: side, clean.name: clean}
