@@ -965,6 +965,134 @@ def _download_pinterest(url: str, out_dir: Path) -> Path:
     raise RuntimeError(last_err or "download failed")
 
 
+
+
+@app.post("/api/convert")
+async def api_convert(
+    request: Request,
+    target: str = Form("gif"),
+    fps: int = Form(12),
+    width: int = Form(750),
+    duration: float = Form(12),
+    file: UploadFile = File(...),
+):
+    """Convert media: video↔gif, image formats."""
+    import tempfile
+
+    q = quota_state(request)
+    if not q["pro"] and q["left"] <= 0:
+        return JSONResponse(
+            {"ok": False, "msg": f"Limit {FREE_LIMIT} files/day."},
+            status_code=403,
+        )
+    target = (target or "gif").lower().lstrip(".")
+    if target == "jpeg":
+        target = "jpg"
+    allowed = {"gif", "mp4", "webm", "png", "jpg", "webp"}
+    if target not in allowed:
+        return JSONResponse({"ok": False, "msg": f"Unsupported target: {target}"}, status_code=400)
+
+    name = file.filename or "file"
+    raw = await file.read()
+    if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+        return JSONResponse({"ok": False, "msg": f"File >{MAX_UPLOAD_MB}MB"}, status_code=400)
+
+    work = Path(tempfile.mkdtemp(prefix="sm_conv_"))
+    try:
+        ext = Path(name).suffix.lower() or ".bin"
+        src = work / f"src{ext}"
+        src.write_bytes(raw)
+        out_name = f"{Path(name).stem[:40]}.{target}"
+        dest = work / out_name
+        proc.convert_media(src, dest, target, fps=fps, width=width, duration=duration)
+        data = dest.read_bytes()
+        quota_inc(request, 1)
+        media = {
+            "gif": "image/gif",
+            "mp4": "video/mp4",
+            "webm": "video/webm",
+            "png": "image/png",
+            "jpg": "image/jpeg",
+            "webp": "image/webp",
+        }.get(target, "application/octet-stream")
+        return StreamingResponse(
+            io.BytesIO(data),
+            media_type=media,
+            headers={
+                "Content-Disposition": f'attachment; filename="{out_name}"',
+                "Access-Control-Expose-Headers": "Content-Disposition",
+            },
+        )
+    except Exception as e:
+        return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"[:400]}, status_code=400)
+    finally:
+        try:
+            shutil.rmtree(work, ignore_errors=True)
+        except Exception:
+            pass
+
+
+@app.post("/api/hex21")
+async def api_hex21(
+    request: Request,
+    files: list[UploadFile] = File(...),
+):
+    """Apply Steam hex 0x21 to PNG/GIF (and other binary) files → ZIP."""
+    import tempfile
+
+    q = quota_state(request)
+    if not q["pro"] and q["left"] <= 0:
+        return JSONResponse(
+            {"ok": False, "msg": f"Limit {FREE_LIMIT} files/day."},
+            status_code=403,
+        )
+    left = 999 if q["pro"] else q["left"]
+    files = files[: max(1, min(30, left))]
+
+    zip_buf = io.BytesIO()
+    done = 0
+    errors: list[str] = []
+    try:
+        with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for uf in files:
+                name = uf.filename or f"file_{done}"
+                try:
+                    raw = await uf.read()
+                    if len(raw) < 2:
+                        errors.append(f"{name}: empty")
+                        continue
+                    if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+                        errors.append(f"{name}: too large")
+                        continue
+                    out = proc.apply_hex21(raw)
+                    stem = Path(name).stem[:50]
+                    ext = Path(name).suffix.lower() or ".bin"
+                    zf.writestr(f"{stem}_hex21{ext}", out)
+                    done += 1
+                except Exception as e:
+                    errors.append(f"{name}: {e}")
+        if done == 0:
+            return JSONResponse(
+                {"ok": False, "msg": "Nothing processed: " + "; ".join(errors[:3])},
+                status_code=400,
+            )
+        try:
+            quota_inc(request, done)
+        except Exception:
+            pass
+        return StreamingResponse(
+            io.BytesIO(zip_buf.getvalue()),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": 'attachment; filename="hex21.zip"',
+                "X-Processed": str(done),
+                "Access-Control-Expose-Headers": "Content-Disposition, X-Processed",
+            },
+        )
+    finally:
+        zip_buf.close()
+
+
 @app.post("/api/download-url")
 async def download_url(request: Request):
     """Скачать с YouTube / TikTok / X / Reddit / Pinterest / прямая ссылка."""

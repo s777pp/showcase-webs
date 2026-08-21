@@ -638,3 +638,109 @@ def process_gif_split(
     except Exception:
         pass
     return result
+
+
+
+def convert_media(
+    src: Path,
+    dest: Path,
+    target: str,
+    fps: int = 12,
+    width: int = 750,
+    duration: float = 12.0,
+) -> Path:
+    """Convert between common formats: gif, mp4, webm, png, jpg, webp."""
+    src = Path(src)
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    target = (target or "").lower().lstrip(".")
+    if target == "jpeg":
+        target = "jpg"
+    if not src.is_file():
+        raise RuntimeError("source missing")
+
+    img_exts = {"png", "jpg", "jpeg", "webp", "bmp"}
+    vid_exts = {"mp4", "webm", "mov", "avi", "mkv", "gif"}
+    src_ext = src.suffix.lower().lstrip(".")
+
+    # Image → image via Pillow
+    if target in img_exts and src_ext in img_exts | {"gif"}:
+        im = Image.open(src)
+        if target in ("jpg", "jpeg"):
+            im = im.convert("RGB")
+            im.save(dest, format="JPEG", quality=92)
+        elif target == "png":
+            im = im.convert("RGBA") if im.mode in ("P", "RGBA", "LA") else im.convert("RGBA")
+            im.save(dest, format="PNG")
+        elif target == "webp":
+            im.save(dest, format="WEBP", quality=90)
+        else:
+            im.save(dest)
+        if not dest.is_file() or dest.stat().st_size < 10:
+            raise RuntimeError("image convert failed")
+        return dest
+
+    ff = find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not available")
+
+    fps = max(5, min(30, int(fps)))
+    width = max(200, min(1920, int(width)))
+    if width % 2:
+        width -= 1
+    duration = max(1.0, min(60.0, float(duration)))
+
+    if target == "gif":
+        media_to_gif(src, dest, fps=fps, width=width, duration=duration)
+        return dest
+
+    if target in ("mp4", "webm", "mov"):
+        # GIF/video → video
+        vf = f"scale={width}:-2:flags=lanczos"
+        if target == "mp4":
+            cmd = [
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-i", str(src), "-t", str(duration),
+                "-vf", vf, "-an",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                str(dest),
+            ]
+        elif target == "webm":
+            cmd = [
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-i", str(src), "-t", str(duration),
+                "-vf", vf, "-an",
+                "-c:v", "libvpx-vp9", "-b:v", "1M",
+                str(dest),
+            ]
+        else:
+            cmd = [
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-i", str(src), "-t", str(duration),
+                "-vf", vf, "-an",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                str(dest),
+            ]
+        _run(cmd)
+        if not dest.is_file() or dest.stat().st_size < 50:
+            raise RuntimeError("video convert failed")
+        return dest
+
+    if target in img_exts:
+        # video/gif → single frame image
+        cmd = [
+            ff, "-y", "-hide_banner", "-loglevel", "error",
+            "-i", str(src), "-vf", f"scale={width}:-2",
+            "-frames:v", "1",
+            str(dest),
+        ]
+        _run(cmd)
+        if not dest.is_file():
+            raise RuntimeError("frame extract failed")
+        return dest
+
+    raise RuntimeError(f"unsupported target: {target}")
+
+
+def hex21_bytes(data: bytes) -> bytes:
+    return apply_hex21(data)

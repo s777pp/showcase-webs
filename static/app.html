@@ -209,6 +209,8 @@ pre.code{
       <nav class="nav" id="nav">
     <button data-tab="process" class="active">Process</button>
     <button data-tab="download">Download</button>
+    <button data-tab="convert">Converter</button>
+    <button data-tab="hex">HEX</button>
     <button data-tab="preview">Preview</button>
     <button data-tab="steam">Steam</button>
     <button data-tab="da">DeviantArt</button>
@@ -289,6 +291,51 @@ pre.code{
       </div>
       <div class="status" id="dlStatus"></div>
       <a class="btn" id="dlLink" style="display:none;margin-top:14px;text-decoration:none" href="#">Download file</a>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-convert">
+    <div class="card">
+      <h2>Converter</h2>
+      <p class="steps" style="margin-bottom:16px">Video → GIF, GIF → MP4, and common image formats.</p>
+      <div class="row" style="margin-bottom:12px">
+        <label class="field">Target format
+          <select id="cvTarget">
+            <option value="gif">GIF</option>
+            <option value="mp4">MP4</option>
+            <option value="webm">WEBM</option>
+            <option value="png">PNG</option>
+            <option value="jpg">JPG</option>
+            <option value="webp">WEBP</option>
+          </select>
+        </label>
+        <label class="field">FPS<input type="number" id="cvFps" value="12" min="5" max="30"/></label>
+        <label class="field">Width<input type="number" id="cvWidth" value="750" min="200" max="1920"/></label>
+        <label class="field">Duration (sec)<input type="number" id="cvDur" value="12" min="1" max="60"/></label>
+      </div>
+      <div class="drop" id="cvDrop">Drop file or click to browse</div>
+      <input type="file" id="cvInput" hidden accept="image/*,video/*,.gif,.mp4,.webm,.mov,.avi"/>
+      <div class="files" id="cvFileList"></div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn" id="btnConvert" disabled>Convert</button>
+        <a class="btn ghost" id="cvDl" style="display:none;text-decoration:none" href="#">Download</a>
+      </div>
+      <div class="status" id="cvStatus"></div>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-hex">
+    <div class="card">
+      <h2>HEX 21</h2>
+      <p class="steps" style="margin-bottom:16px">Steam trick: set last byte to <code>0x21</code> on PNG / GIF (and other files). Download ZIP with patched files.</p>
+      <div class="drop" id="hexDrop">Drop PNG, GIF or images — or click to browse</div>
+      <input type="file" id="hexInput" multiple hidden accept="image/*,.gif,.png,.jpg,.jpeg,.webp"/>
+      <div class="files" id="hexFileList"></div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn" id="btnHex" disabled>Apply HEX 21</button>
+        <a class="btn ghost" id="hexDl" style="display:none;text-decoration:none" href="#">Download ZIP</a>
+      </div>
+      <div class="status" id="hexStatus"></div>
     </div>
   </section>
 
@@ -986,6 +1033,8 @@ const APP_I18N = {
     titles: {
       process:["Обработка","Workshop / Featured / Split cuts, watermark and Steam ZIP"],
       download:["Скачать","Исходники с YouTube, TikTok, X, Reddit и Pinterest"],
+      convert:["Конвертер","Видео ↔ GIF, изображения"],
+      hex:["HEX","Последний байт 0x21 для Steam"],
       preview:["Предпросмотр","Как ляжет витрина на страницу профиля Steam"],
       steam:["Steam","Инструкция и код для загрузки artwork"],
       da:["DeviantArt","Публикация — desktop-версия"],
@@ -1015,6 +1064,8 @@ const APP_I18N = {
     titles: {
       process:["Process","Workshop / Featured / Split cuts, watermark and Steam ZIP"],
       download:["Download","Sources from YouTube, TikTok, X, Reddit and Pinterest"],
+      convert:["Converter","Video ↔ GIF, images"],
+      hex:["HEX","Last byte 0x21 for Steam"],
       preview:["Preview","How the showcase looks on a Steam profile"],
       steam:["Steam","Guide and console code for artwork upload"],
       da:["DeviantArt","Publishing — desktop version"],
@@ -1420,6 +1471,138 @@ document.querySelectorAll('#tab-account .btn').forEach(btn => {
     btn.addEventListener('click', () => { state.authMode='register'; syncAuthUi(); syncAuthUiLang(appLang()); modal.classList.add('open'); });
   }
 });
+
+/* ---- Converter ---- */
+let cvFile = null;
+function renderCvFile() {
+  const box = document.getElementById('cvFileList');
+  if (!box) return;
+  if (!cvFile) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="fi"><span>' + cvFile.name + '</span><button type="button" id="cvRm">×</button></div>';
+  document.getElementById('cvRm').onclick = () => { cvFile = null; renderCvFile(); document.getElementById('btnConvert').disabled = true; };
+}
+(function(){
+  const drop = document.getElementById('cvDrop');
+  const input = document.getElementById('cvInput');
+  if (!drop || !input) return;
+  drop.onclick = () => input.click();
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add('drag'); };
+  drop.ondragleave = () => drop.classList.remove('drag');
+  drop.ondrop = e => {
+    e.preventDefault(); drop.classList.remove('drag');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      cvFile = e.dataTransfer.files[0];
+      renderCvFile();
+      document.getElementById('btnConvert').disabled = false;
+    }
+  };
+  input.onchange = () => {
+    if (input.files && input.files[0]) {
+      cvFile = input.files[0];
+      renderCvFile();
+      document.getElementById('btnConvert').disabled = false;
+    }
+  };
+})();
+document.getElementById('btnConvert')?.addEventListener('click', async () => {
+  if (!cvFile) return;
+  const st = document.getElementById('cvStatus');
+  const dl = document.getElementById('cvDl');
+  st.className = 'status'; st.textContent = 'Converting…';
+  dl.style.display = 'none';
+  const fd = new FormData();
+  fd.append('file', cvFile);
+  fd.append('target', document.getElementById('cvTarget').value);
+  fd.append('fps', document.getElementById('cvFps').value);
+  fd.append('width', document.getElementById('cvWidth').value);
+  fd.append('duration', document.getElementById('cvDur').value);
+  try {
+    const r = await fetch('/api/convert', { method: 'POST', body: fd, headers: headers(), credentials: 'include' });
+    const ct = (r.headers.get('Content-Type') || '');
+    if (!r.ok) {
+      let msg = 'Error';
+      try { const j = await r.json(); msg = j.msg || msg; } catch(e) { msg = await r.text(); }
+      st.className = 'status err'; st.textContent = msg; return;
+    }
+    const blob = await r.blob();
+    const cd = r.headers.get('Content-Disposition') || '';
+    let name = 'converted.bin';
+    const m = /filename="?([^";]+)"?/i.exec(cd);
+    if (m) name = m[1];
+    const url = URL.createObjectURL(blob);
+    dl.href = url; dl.download = name; dl.style.display = 'inline-flex'; dl.textContent = 'Download ' + name;
+    st.className = 'status ok'; st.textContent = 'Done';
+    try { refreshQuota(); } catch(e) {}
+  } catch (e) {
+    st.className = 'status err'; st.textContent = String(e);
+  }
+});
+
+/* ---- HEX 21 ---- */
+let hexFiles = [];
+function renderHexFiles() {
+  const box = document.getElementById('hexFileList');
+  if (!box) return;
+  box.innerHTML = hexFiles.map((f, i) =>
+    '<div class="fi"><span>' + f.name + '</span><button type="button" data-i="' + i + '">×</button></div>'
+  ).join('');
+  box.querySelectorAll('button').forEach(b => {
+    b.onclick = () => {
+      hexFiles.splice(Number(b.dataset.i), 1);
+      renderHexFiles();
+      document.getElementById('btnHex').disabled = !hexFiles.length;
+    };
+  });
+}
+(function(){
+  const drop = document.getElementById('hexDrop');
+  const input = document.getElementById('hexInput');
+  if (!drop || !input) return;
+  drop.onclick = () => input.click();
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add('drag'); };
+  drop.ondragleave = () => drop.classList.remove('drag');
+  drop.ondrop = e => {
+    e.preventDefault(); drop.classList.remove('drag');
+    if (e.dataTransfer.files) {
+      hexFiles = hexFiles.concat(Array.from(e.dataTransfer.files));
+      renderHexFiles();
+      document.getElementById('btnHex').disabled = !hexFiles.length;
+    }
+  };
+  input.onchange = () => {
+    if (input.files) {
+      hexFiles = hexFiles.concat(Array.from(input.files));
+      renderHexFiles();
+      document.getElementById('btnHex').disabled = !hexFiles.length;
+      input.value = '';
+    }
+  };
+})();
+document.getElementById('btnHex')?.addEventListener('click', async () => {
+  if (!hexFiles.length) return;
+  const st = document.getElementById('hexStatus');
+  const dl = document.getElementById('hexDl');
+  st.className = 'status'; st.textContent = 'Applying HEX 21…';
+  dl.style.display = 'none';
+  const fd = new FormData();
+  hexFiles.forEach(f => fd.append('files', f));
+  try {
+    const r = await fetch('/api/hex21', { method: 'POST', body: fd, headers: headers(), credentials: 'include' });
+    if (!r.ok) {
+      let msg = 'Error';
+      try { const j = await r.json(); msg = j.msg || msg; } catch(e) { msg = await r.text(); }
+      st.className = 'status err'; st.textContent = msg; return;
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    dl.href = url; dl.download = 'hex21.zip'; dl.style.display = 'inline-flex';
+    st.className = 'status ok'; st.textContent = 'Done — last byte set to 0x21';
+    try { refreshQuota(); } catch(e) {}
+  } catch (e) {
+    st.className = 'status err'; st.textContent = String(e);
+  }
+});
+
 </script>
 
 </body>
