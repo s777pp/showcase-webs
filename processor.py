@@ -134,11 +134,12 @@ def _png_bytes(img: Image.Image) -> bytes:
 
 
 def apply_hex21(data: bytes) -> bytes:
-    """Steam upload trick: last byte = 0x21 (works for GIF parts and PNG parts)."""
+    """Steam upload trick: force last byte to 0x21 (PNG, GIF, any binary)."""
     if not data:
         return data
-    return data[:-1] + b"\x21"
-
+    if len(data) == 1:
+        return bytes([0x21])
+    return data[:-1] + bytes([0x21])
 
 def apply_hex21_file(path: Path) -> None:
     path = Path(path)
@@ -688,39 +689,31 @@ def convert_media(
     width = max(200, min(1920, int(width)))
     if width % 2:
         width -= 1
-    duration = max(1.0, min(60.0, float(duration)))
+    duration = float(duration or 0)
+    if duration > 0:
+        duration = max(1.0, min(120.0, duration))
 
     if target == "gif":
-        media_to_gif(src, dest, fps=fps, width=width, duration=duration)
+        d = duration if duration > 0 else 120.0
+        w = width if width and width > 0 else 720
+        media_to_gif(src, dest, fps=fps, width=w, duration=d)
         return dest
 
     if target in ("mp4", "webm", "mov"):
         # GIF/video → video
         vf = f"scale={width}:-2:flags=lanczos"
+        def _vid_cmd(codec_args):
+            cmd = [ff, "-y", "-hide_banner", "-loglevel", "error", "-i", str(src)]
+            if duration > 0:
+                cmd += ["-t", str(duration)]
+            cmd += ["-vf", vf, "-an"] + codec_args + [str(dest)]
+            return cmd
         if target == "mp4":
-            cmd = [
-                ff, "-y", "-hide_banner", "-loglevel", "error",
-                "-i", str(src), "-t", str(duration),
-                "-vf", vf, "-an",
-                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-                str(dest),
-            ]
+            cmd = _vid_cmd(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart"])
         elif target == "webm":
-            cmd = [
-                ff, "-y", "-hide_banner", "-loglevel", "error",
-                "-i", str(src), "-t", str(duration),
-                "-vf", vf, "-an",
-                "-c:v", "libvpx-vp9", "-b:v", "1M",
-                str(dest),
-            ]
+            cmd = _vid_cmd(["-c:v", "libvpx-vp9", "-b:v", "1M"])
         else:
-            cmd = [
-                ff, "-y", "-hide_banner", "-loglevel", "error",
-                "-i", str(src), "-t", str(duration),
-                "-vf", vf, "-an",
-                "-c:v", "libx264", "-pix_fmt", "yuv420p",
-                str(dest),
-            ]
+            cmd = _vid_cmd(["-c:v", "libx264", "-pix_fmt", "yuv420p"])
         _run(cmd)
         if not dest.is_file() or dest.stat().st_size < 50:
             raise RuntimeError("video convert failed")

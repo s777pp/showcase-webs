@@ -972,8 +972,8 @@ async def api_convert(
     request: Request,
     target: str = Form("gif"),
     fps: int = Form(12),
-    width: int = Form(750),
-    duration: float = Form(12),
+    width: int = Form(0),
+    duration: float = Form(0),
     file: UploadFile = File(...),
 ):
     """Convert media: video↔gif, image formats."""
@@ -1037,9 +1037,7 @@ async def api_hex21(
     request: Request,
     files: list[UploadFile] = File(...),
 ):
-    """Apply Steam hex 0x21 to PNG/GIF (and other binary) files → ZIP."""
-    import tempfile
-
+    """Apply Steam hex 0x21 to PNG/GIF/any binary. ZIP uses STORE (no recompress)."""
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
         return JSONResponse(
@@ -1047,13 +1045,14 @@ async def api_hex21(
             status_code=403,
         )
     left = 999 if q["pro"] else q["left"]
-    files = files[: max(1, min(30, left))]
+    files = files[: max(1, min(40, left))]
 
     zip_buf = io.BytesIO()
     done = 0
     errors: list[str] = []
+    png_magic = b"\x89PNG\r\n\x1a\n"
     try:
-        with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_STORED) as zf:
             for uf in files:
                 name = uf.filename or f"file_{done}"
                 try:
@@ -1065,15 +1064,22 @@ async def api_hex21(
                         errors.append(f"{name}: too large")
                         continue
                     out = proc.apply_hex21(raw)
-                    stem = Path(name).stem[:50]
+                    if not out or out[-1] != 0x21:
+                        errors.append(f"{name}: hex21 failed")
+                        continue
+                    stem = Path(name).stem[:50] or "file"
                     ext = Path(name).suffix.lower() or ".bin"
+                    if raw[:6] in (b"GIF87a", b"GIF89a"):
+                        ext = ".gif"
+                    elif len(raw) >= 8 and raw[0] == 0x89 and raw[1:4] == b"PNG":
+                        ext = ".png"
                     zf.writestr(f"{stem}_hex21{ext}", out)
                     done += 1
                 except Exception as e:
                     errors.append(f"{name}: {e}")
         if done == 0:
             return JSONResponse(
-                {"ok": False, "msg": "Nothing processed: " + "; ".join(errors[:3])},
+                {"ok": False, "msg": "Nothing processed: " + ("; ".join(errors[:5]) or "no files")},
                 status_code=400,
             )
         try:
@@ -1090,7 +1096,10 @@ async def api_hex21(
             },
         )
     finally:
-        zip_buf.close()
+        try:
+            zip_buf.close()
+        except Exception:
+            pass
 
 
 @app.post("/api/download-url")

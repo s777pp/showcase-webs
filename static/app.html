@@ -297,9 +297,9 @@ pre.code{
   <section class="tab" id="tab-convert">
     <div class="card">
       <h2>Converter</h2>
-      <p class="steps" style="margin-bottom:16px">Video → GIF, GIF → MP4, and common image formats.</p>
+      <p class="steps" style="margin-bottom:16px">Pick a file and the format you need — Video ↔ GIF, MP4, WEBM, PNG, JPG, WEBP.</p>
       <div class="row" style="margin-bottom:12px">
-        <label class="field">Target format
+        <label class="field">Convert to
           <select id="cvTarget">
             <option value="gif">GIF</option>
             <option value="mp4">MP4</option>
@@ -309,9 +309,6 @@ pre.code{
             <option value="webp">WEBP</option>
           </select>
         </label>
-        <label class="field">FPS<input type="number" id="cvFps" value="12" min="5" max="30"/></label>
-        <label class="field">Width<input type="number" id="cvWidth" value="750" min="200" max="1920"/></label>
-        <label class="field">Duration (sec)<input type="number" id="cvDur" value="12" min="1" max="60"/></label>
       </div>
       <div class="drop" id="cvDrop">Drop file or click to browse</div>
       <input type="file" id="cvInput" hidden accept="image/*,video/*,.gif,.mp4,.webm,.mov,.avi"/>
@@ -329,7 +326,7 @@ pre.code{
       <h2>HEX 21</h2>
       <p class="steps" style="margin-bottom:16px">Steam trick: set last byte to <code>0x21</code> on PNG / GIF (and other files). Download ZIP with patched files.</p>
       <div class="drop" id="hexDrop">Drop PNG, GIF or images — or click to browse</div>
-      <input type="file" id="hexInput" multiple hidden accept="image/*,.gif,.png,.jpg,.jpeg,.webp"/>
+      <input type="file" id="hexInput" multiple hidden accept="image/gif,image/png,image/jpeg,image/webp,image/*,.gif,.png,.jpg,.jpeg,.webp,.mp4"/>
       <div class="files" id="hexFileList"></div>
       <div class="row" style="margin-top:16px">
         <button class="btn" id="btnHex" disabled>Apply HEX 21</button>
@@ -1513,9 +1510,6 @@ document.getElementById('btnConvert')?.addEventListener('click', async () => {
   const fd = new FormData();
   fd.append('file', cvFile);
   fd.append('target', document.getElementById('cvTarget').value);
-  fd.append('fps', document.getElementById('cvFps').value);
-  fd.append('width', document.getElementById('cvWidth').value);
-  fd.append('duration', document.getElementById('cvDur').value);
   try {
     const r = await fetch('/api/convert', { method: 'POST', body: fd, headers: headers(), credentials: 'include' });
     const ct = (r.headers.get('Content-Type') || '');
