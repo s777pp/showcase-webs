@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 """
 Showcase Maker WEB — локальный / серверный прототип
@@ -344,23 +345,42 @@ def app_page():
 @app.post("/api/auth/register")
 async def auth_register(request: Request):
     body = await request.json()
-    ok, msg = auth_db.register(str(body.get("email") or ""), str(body.get("password") or ""))
+    email = str(body.get("email") or "").strip()
+    password = str(body.get("password") or "")
+    lang = str(body.get("lang") or "en")
+    ok, msg = auth_db.register(email, password)
     if not ok:
+        # if exists but not verified — allow resend path message
         return JSONResponse({"ok": False, "msg": msg}, status_code=400)
-    # auto-login
-    ok2, msg2, token = auth_db.login(str(body.get("email") or ""), str(body.get("password") or ""))
-    resp = JSONResponse({"ok": True, "msg": msg, "token": token})
-    if token:
-        _attach_session_cookie(resp, token, request)
-    return resp
+    ok_c, msg_c, code = auth_db.create_email_code(email)
+    if not ok_c:
+        return JSONResponse({"ok": False, "msg": msg_c}, status_code=400)
+    from mailer import send_verify_code
+    sent, smsg = send_verify_code(email, code, lang=lang)
+    if not sent:
+        return JSONResponse({
+            "ok": False,
+            "msg": f"Account created but email failed: {smsg}. Use resend code.",
+            "need_verify": True,
+            "email": email,
+        }, status_code=502)
+    return JSONResponse({
+        "ok": True,
+        "msg": "Check your email for the verification code",
+        "need_verify": True,
+        "email": email,
+    })
 
 
 @app.post("/api/auth/login")
 async def auth_login(request: Request):
     body = await request.json()
-    ok, msg, token = auth_db.login(str(body.get("email") or ""), str(body.get("password") or ""))
+    email = str(body.get("email") or "")
+    password = str(body.get("password") or "")
+    ok, msg, token = auth_db.login(email, password)
     if not ok:
-        return JSONResponse({"ok": False, "msg": msg}, status_code=400)
+        need = "not verified" in (msg or "").lower()
+        return JSONResponse({"ok": False, "msg": msg, "need_verify": need, "email": email.strip().lower()}, status_code=400)
     user = auth_db.user_by_token(token)
     resp = JSONResponse({
         "ok": True,
@@ -371,6 +391,56 @@ async def auth_login(request: Request):
     if token:
         _attach_session_cookie(resp, token, request)
     return resp
+
+
+@app.post("/api/auth/verify")
+async def auth_verify(request: Request):
+    body = await request.json()
+    email = str(body.get("email") or "")
+    code = str(body.get("code") or "")
+    password = str(body.get("password") or "")  # optional auto-login
+    ok, msg = auth_db.verify_email_code(email, code)
+    if not ok:
+        return JSONResponse({"ok": False, "msg": msg}, status_code=400)
+    token = None
+    if password:
+        ok_l, msg_l, token = auth_db.login(email, password)
+        if not ok_l:
+            return JSONResponse({"ok": True, "msg": "Verified — please log in", "token": None})
+    resp = JSONResponse({"ok": True, "msg": "Email verified", "token": token})
+    if token:
+        _attach_session_cookie(resp, token, request)
+    return resp
+
+
+@app.post("/api/auth/resend-code")
+async def auth_resend_code(request: Request):
+    body = await request.json()
+    email = str(body.get("email") or "").strip()
+    lang = str(body.get("lang") or "en")
+    if not auth_db.user_exists(email):
+        return JSONResponse({"ok": False, "msg": "No account with this email"}, status_code=400)
+    if auth_db.is_verified(email):
+        return JSONResponse({"ok": False, "msg": "Already verified — log in"}, status_code=400)
+    ok_c, msg_c, code = auth_db.create_email_code(email)
+    if not ok_c:
+        return JSONResponse({"ok": False, "msg": msg_c}, status_code=400)
+    from mailer import send_verify_code
+    sent, smsg = send_verify_code(email, code, lang=lang)
+    if not sent:
+        return JSONResponse({"ok": False, "msg": smsg}, status_code=502)
+    return JSONResponse({"ok": True, "msg": "Code sent"})
+
+
+@app.post("/api/admin/wipe-users")
+async def admin_wipe_users(request: Request):
+    """Delete all accounts. Requires header X-Admin-Secret = ADMIN_SECRET env."""
+    secret = (os.environ.get("ADMIN_SECRET") or "").strip()
+    got = (request.headers.get("x-admin-secret") or "").strip()
+    if not secret or got != secret:
+        return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
+    n = auth_db.wipe_all_users()
+    return JSONResponse({"ok": True, "deleted": n})
 
 
 

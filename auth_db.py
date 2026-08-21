@@ -57,6 +57,17 @@ def _conn() -> sqlite3.Connection:
         )
         """
     )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS email_codes (
+            email TEXT PRIMARY KEY,
+            code_hash TEXT NOT NULL,
+            expires_at REAL NOT NULL,
+            attempts INTEGER DEFAULT 0,
+            last_sent REAL DEFAULT 0
+        )
+        """
+    )
     # migrations for older DBs
     cols = {r[1] for r in c.execute("PRAGMA table_info(users)").fetchall()}
     for col, typ in (
@@ -68,6 +79,7 @@ def _conn() -> sqlite3.Connection:
         ("da_client_secret", "TEXT"),
         ("display_name", "TEXT"),
         ("avatar_path", "TEXT"),
+        ("email_verified", "INTEGER DEFAULT 0"),
     ):
         if col not in cols:
             try:
@@ -101,11 +113,11 @@ def register(email: str, password: str) -> tuple[bool, str]:
     c = _conn()
     try:
         c.execute(
-            "INSERT INTO users(email, password_hash, is_pro, created_at) VALUES (?,?,0,?)",
+            "INSERT INTO users(email, password_hash, is_pro, email_verified, created_at) VALUES (?,?,0,0,?)",
             (email, _hash_pw(password), time.time()),
         )
         c.commit()
-        return True, "Account created"
+        return True, "Account created — verify email"
     except sqlite3.IntegrityError:
         return False, "Email already registered"
     finally:
@@ -115,10 +127,16 @@ def register(email: str, password: str) -> tuple[bool, str]:
 def login(email: str, password: str) -> tuple[bool, str, Optional[str]]:
     email = email.strip().lower()
     c = _conn()
-    row = c.execute("SELECT id, password_hash FROM users WHERE email=?", (email,)).fetchone()
+    row = c.execute(
+        "SELECT id, password_hash, COALESCE(email_verified, 0) AS email_verified FROM users WHERE email=?",
+        (email,),
+    ).fetchone()
     if not row or not _check_pw(password, row["password_hash"]):
         c.close()
         return False, "Wrong email or password", None
+    if not int(row["email_verified"] or 0):
+        c.close()
+        return False, "Email not verified. Check your inbox for the code.", None
     token = secrets.token_hex(24)
     c.execute(
         "INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)",
@@ -136,7 +154,8 @@ def user_by_token(token: str) -> Optional[dict]:
     row = c.execute(
         """
         SELECT u.id, u.email, u.is_pro, u.pro_code, u.pro_until, u.stripe_customer_id,
-               u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret, u.display_name, u.avatar_path
+               u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret, u.display_name, u.avatar_path,
+               COALESCE(u.email_verified, 0) AS email_verified
         FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token=?
         """,
@@ -158,6 +177,7 @@ def user_by_token(token: str) -> Optional[dict]:
         "da_client_secret": row["da_client_secret"],
         "display_name": row["display_name"],
         "avatar_path": row["avatar_path"],
+        "email_verified": bool(row["email_verified"]) if "email_verified" in row.keys() else True,
     }
 
 
@@ -265,3 +285,100 @@ def update_profile(user_id: int, display_name: str | None = None, avatar_path: s
         c.execute("UPDATE users SET avatar_path=? WHERE id=?", (avatar_path, user_id))
     c.commit()
     c.close()
+
+
+def _hash_code(code: str) -> str:
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def create_email_code(email: str, ttl_sec: int = 900) -> tuple[bool, str, str]:
+    """Create 6-digit code. Returns (ok, msg, plain_code). plain_code only if ok."""
+    email = email.strip().lower()
+    if not email or "@" not in email:
+        return False, "Invalid email", ""
+    c = _conn()
+    row = c.execute("SELECT last_sent FROM email_codes WHERE email=?", (email,)).fetchone()
+    now = time.time()
+    if row and row["last_sent"] and now - float(row["last_sent"]) < 60:
+        c.close()
+        return False, "Wait 60 seconds before resending", ""
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    c.execute(
+        """
+        INSERT INTO email_codes(email, code_hash, expires_at, attempts, last_sent)
+        VALUES (?,?,?,?,?)
+        ON CONFLICT(email) DO UPDATE SET
+          code_hash=excluded.code_hash,
+          expires_at=excluded.expires_at,
+          attempts=0,
+          last_sent=excluded.last_sent
+        """,
+        (email, _hash_code(code), now + ttl_sec, 0, now),
+    )
+    c.commit()
+    c.close()
+    return True, "OK", code
+
+
+def verify_email_code(email: str, code: str) -> tuple[bool, str]:
+    email = email.strip().lower()
+    code = (code or "").strip()
+    if not email or not code:
+        return False, "Enter email and code"
+    c = _conn()
+    row = c.execute(
+        "SELECT code_hash, expires_at, attempts FROM email_codes WHERE email=?",
+        (email,),
+    ).fetchone()
+    if not row:
+        c.close()
+        return False, "No code requested — register or resend"
+    if float(row["expires_at"]) < time.time():
+        c.close()
+        return False, "Code expired — request a new one"
+    attempts = int(row["attempts"] or 0)
+    if attempts >= 8:
+        c.close()
+        return False, "Too many attempts — request a new code"
+    c.execute("UPDATE email_codes SET attempts=? WHERE email=?", (attempts + 1, email))
+    c.commit()
+    if not secrets.compare_digest(row["code_hash"], _hash_code(code)):
+        c.close()
+        return False, "Wrong code"
+    c.execute("UPDATE users SET email_verified=1 WHERE email=?", (email,))
+    c.execute("DELETE FROM email_codes WHERE email=?", (email,))
+    c.commit()
+    c.close()
+    return True, "Email verified"
+
+
+def is_verified(email: str) -> bool:
+    email = email.strip().lower()
+    c = _conn()
+    row = c.execute(
+        "SELECT COALESCE(email_verified, 0) AS v FROM users WHERE email=?",
+        (email,),
+    ).fetchone()
+    c.close()
+    return bool(row and int(row["v"]))
+
+
+def user_exists(email: str) -> bool:
+    email = email.strip().lower()
+    c = _conn()
+    row = c.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone()
+    c.close()
+    return bool(row)
+
+
+def wipe_all_users() -> int:
+    """Delete all users, sessions, email codes. Returns deleted user count."""
+    c = _conn()
+    n = c.execute("SELECT COUNT(*) AS n FROM users").fetchone()["n"]
+    c.execute("DELETE FROM sessions")
+    c.execute("DELETE FROM email_codes")
+    c.execute("DELETE FROM used_codes")
+    c.execute("DELETE FROM users")
+    c.commit()
+    c.close()
+    return int(n or 0)
