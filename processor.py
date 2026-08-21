@@ -17,25 +17,47 @@ BIN = ROOT / "bin"
 MAX_STEAM_MB = 5.0
 
 
+def _is_runnable(path: Path) -> bool:
+    """File exists and is executable (skip Windows .exe on Linux, no +x, etc.)."""
+    try:
+        if not path.is_file():
+            return False
+        # never run .exe on non-Windows
+        if path.suffix.lower() == ".exe" and os.name != "nt":
+            return False
+        if os.name == "nt":
+            return True
+        return os.access(str(path), os.X_OK)
+    except Exception:
+        return False
+
+
 def find_ffmpeg() -> Optional[str]:
-    for name in ("ffmpeg.exe", "ffmpeg"):
-        p = BIN / name
-        if p.is_file():
-            return str(p)
-    return shutil.which("ffmpeg")
+    # Prefer system binary on Linux/Docker (Render installs via apt)
+    which = shutil.which("ffmpeg")
+    if which and _is_runnable(Path(which)):
+        return which
+    for name in ("ffmpeg", "ffmpeg.exe"):
+        cand = BIN / name
+        if _is_runnable(cand):
+            return str(cand)
+    return which  # may still be useful
 
 
 def find_ffprobe() -> Optional[str]:
-    for name in ("ffprobe.exe", "ffprobe"):
-        p = BIN / name
-        if p.is_file():
-            return str(p)
+    which = shutil.which("ffprobe")
+    if which and _is_runnable(Path(which)):
+        return which
+    for name in ("ffprobe", "ffprobe.exe"):
+        cand = BIN / name
+        if _is_runnable(cand):
+            return str(cand)
     ff = find_ffmpeg()
     if ff:
         alt = ff.replace("ffmpeg", "ffprobe")
-        if os.path.isfile(alt):
+        if _is_runnable(Path(alt)):
             return alt
-    return shutil.which("ffprobe")
+    return which
 
 
 def load_font(key: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:

@@ -8,6 +8,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
+# ignore broken Windows binaries in bin/; use apt ffmpeg
+RUN rm -f /app/bin/ffmpeg /app/bin/ffmpeg.exe /app/bin/ffprobe /app/bin/ffprobe.exe 2>/dev/null || true
+RUN which ffmpeg && ffmpeg -version | head -1
 
 ENV HOST=0.0.0.0
 ENV PORT=8080
