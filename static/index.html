@@ -3,1054 +3,518 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Showcase Maker — Steam tools</title>
-<link rel="icon" href="/static/icon.png"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<title>Showcase Maker — Steam showcases without the grind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <style>
-:root{
-  --bg:#041018;
-  --text:#f4fbff;
-  --muted:#9bb8c9;
-  --accent:#3ecbff;
-  --accent2:#6b8cff;
-  --glass:rgba(255,255,255,.08);
-  --glass2:rgba(255,255,255,.12);
-  --border:rgba(255,255,255,.14);
-  --ok:#34d399;
-}
+:root { --brand:#3D81E3; --bg:#0c0c0c; }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{
-  font-family:Inter,system-ui,sans-serif;color:var(--text);
-  background:var(--bg);min-height:100vh;overflow-x:hidden;
+html,body{font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:var(--bg);color:#fff}
+::selection{background:rgba(61,129,227,.3)}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+.bg-video{position:fixed;inset:0;z-index:0;pointer-events:none}
+.bg-video video{width:100%;height:100%;object-fit:cover;opacity:.55}
+.bg-video::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(12,12,12,.2),rgba(12,12,12,.92) 70%),linear-gradient(to bottom,rgba(12,12,12,.4),#0c0c0c 95%)}
+.guide{display:none;position:fixed;top:0;bottom:0;width:1px;background:rgba(255,255,255,.1);z-index:5;pointer-events:none}
+@media(min-width:768px){
+  .guide{display:block}
+  .guide.l{left:50%;transform:translateX(calc(-50% - 36rem))}
+  .guide.r{left:50%;transform:translateX(calc(-50% + 36rem))}
 }
-/* atmospheric bg */
-.bg-fx{
-  position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 20%, #0a4a6e55, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 20% 80%, #1a3a8a33, transparent),
-    radial-gradient(ellipse 50% 40% at 85% 70%, #0d6b6b33, transparent),
-    linear-gradient(180deg,#031018 0%,#061a28 40%,#041018 100%);
+
+.shell{position:relative;z-index:10;min-height:100vh;overflow-x:hidden}
+
+.liquid-glass{
+  background:rgba(255,255,255,.01);background-blend-mode:luminosity;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  border:none;box-shadow:inset 0 1px 1px rgba(255,255,255,.1);
+  position:relative;overflow:hidden
 }
-.nav{
-  position:relative;z-index:10;
-  display:flex;align-items:center;justify-content:space-between;
-  max-width:1120px;margin:0 auto;padding:20px 24px;
+.liquid-glass::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;padding:1.4px;
+  background:linear-gradient(180deg,rgba(255,255,255,.45) 0%,rgba(255,255,255,.15) 20%,rgba(255,255,255,0) 40%,rgba(255,255,255,0) 60%,rgba(255,255,255,.15) 80%,rgba(255,255,255,.45) 100%);
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none
 }
-.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text)}
-.nav-brand img{width:36px;height:36px;border-radius:10px}
-.nav-brand b{font-size:15px;font-weight:700;letter-spacing:-.02em}
-.nav-links{display:flex;gap:8px;align-items:center}
-.nav-links a{
-  color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;
-  padding:8px 12px;border-radius:999px;transition:.15s;
-}
-.nav-links a:hover{color:var(--text);background:var(--glass)}
-.btn{
+
+.btn-pill{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  border:none;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;
-  border-radius:999px;padding:12px 22px;text-decoration:none;transition:.18s;
+  border-radius:999px;background:#fff;color:#000;font-weight:500;font-size:14px;
+  padding:12px 20px;transition:all .2s
 }
-.btn-primary{
-  background:linear-gradient(135deg,#4fd2ff,#6b8cff);
-  color:#041018;box-shadow:0 8px 32px #3ecbff44;
-}
-.btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-pill:hover{background:rgba(255,255,255,.9)}
+.btn-pill:active{transform:scale(.98)}
 .btn-ghost{
-  background:var(--glass);color:var(--text);border:1px solid var(--border);
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  display:inline-flex;align-items:center;gap:6px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);color:#fff;font-size:14px;font-weight:500;
+  padding:12px 20px;transition:background .2s
 }
-.btn-ghost:hover{background:var(--glass2)}
+.btn-ghost:hover{background:rgba(255,255,255,.05)}
 
-/* HERO */
-.hero{
-  position:relative;z-index:1;
-  max-width:1120px;margin:0 auto;padding:40px 24px 20px;
-  display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center;
+.nav{
+  max-width:72rem;margin:0 auto;padding:20px 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px
 }
-@media(max-width:900px){.hero{grid-template-columns:1fr;text-align:center}}
-.hero h1{
-  font-size:clamp(2rem,4.5vw,3.1rem);font-weight:800;letter-spacing:-.04em;
-  line-height:1.08;margin-bottom:16px;
-}
-.hero h1 span{
-  background:linear-gradient(135deg,#7fe9ff,#a8b8ff 50%,#6ee7b7);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-}
-.hero p{color:var(--muted);font-size:16px;line-height:1.55;max-width:460px;margin-bottom:28px}
-@media(max-width:900px){.hero p{margin-left:auto;margin-right:auto}}
-.hero-cta{display:flex;gap:12px;flex-wrap:wrap}
-@media(max-width:900px){.hero-cta{justify-content:center}}
-.hero-note{margin-top:18px;font-size:12px;color:var(--muted);opacity:.85}
+.nav-links{display:none;gap:32px}
+@media(min-width:768px){.nav-links{display:flex}}
+.nav-links a{color:rgba(255,255,255,.7);font-size:14px;font-weight:500;transition:color .2s}
+.nav-links a:hover{color:#fff}
+.logo-mark{width:32px;height:32px;display:block}
 
+.hero{padding:64px 24px 80px;text-align:center;display:flex;flex-direction:column;align-items:center}
+@media(min-width:768px){.hero{padding-top:112px}}
+.hero h1{font-size:clamp(2.25rem,6vw,4.5rem);font-weight:600;letter-spacing:-.03em;line-height:.92}
+.hero .shiny{
+  background-image:linear-gradient(to right,#091020 0%,#0B2551 12.5%,#A4F4FD 32.5%,#00d2ff 50%,#0B2551 67.5%,#091020 87.5%,#091020 100%);
+  background-size:200% auto;-webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+  filter:url(#c3-noise);animation:shiny 6s linear infinite;display:inline-block
+}
+@keyframes shiny{0%{background-position:-200% center}100%{background-position:200% center}}
+.hero p{margin-top:32px;color:rgba(255,255,255,.6);max-width:28rem;font-size:16px;line-height:1.5}
+.hero-cta{margin-top:28px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.hero-note{font-size:12px;color:rgba(255,255,255,.4)}
 
+.os-bar{
+  height:40px;background:rgba(0,0,0,.4);backdrop-filter:blur(12px);
+  border-top:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1);
+  display:flex;align-items:center
+}
+.os-inner{max-width:72rem;margin:0 auto;padding:0 24px;width:100%;display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.os-left{display:flex;align-items:center;gap:14px;color:rgba(255,255,255,.7)}
+.os-left b{color:#fff}
+.os-right{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.5)}
 
-/* video orb */
-.orb-wrap{position:relative;display:flex;justify-content:center;align-items:center;min-height:min(420px,70vw)}
-.orb-ring{
-  position:absolute;border-radius:50%;border:1.5px solid rgba(255,255,255,.12);
-  animation:spin 28s linear infinite;pointer-events:none;
+.mock{
+  max-width:72rem;margin:0 auto;padding:64px 24px 96px
 }
-.orb-ring:nth-child(1){width:min(340px,70vw);height:min(340px,70vw)}
-.orb-ring:nth-child(2){width:min(420px,82vw);height:min(420px,82vw);animation-direction:reverse;animation-duration:40s;opacity:.7}
-.orb-ring:nth-child(3){width:min(500px,94vw);height:min(500px,94vw);opacity:.4;animation-duration:55s}
-@keyframes spin{to{transform:rotate(360deg)}}
-.orb-core{
-  position:relative;width:min(280px,62vw);aspect-ratio:1;border-radius:50%;
-  overflow:hidden;
-  box-shadow:0 0 0 3px rgba(62,203,255,.35),0 0 60px #3ecbff55,0 20px 60px #0008;
-  background:#0a2030;
+.mock-frame{
+  position:relative;border-radius:16px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.1);background:rgba(14,16,20,.9);
+  backdrop-filter:blur(24px)
 }
-.orb-core video,.orb-core img{
-  width:100%;height:100%;object-fit:cover;display:block;
+.mock-title{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.dot{width:12px;height:12px;border-radius:50%}
+.mock-body{display:grid;grid-template-columns:1fr;min-height:420px}
+@media(min-width:900px){.mock-body{grid-template-columns:220px 1fr 1.2fr;height:520px}}
+.mock-side{border-right:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.3);padding:16px}
+.mock-side .compose{
+  display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+  border-radius:8px;background:#fff;color:#000;font-size:12px;font-weight:600;padding:8px 12px;margin-bottom:12px
 }
-.orb-fallback{
-  width:100%;height:100%;display:none;place-items:center;
-  background:radial-gradient(circle at 40% 35%,#1a6a9a,#0a2030 70%);
-  position:absolute;inset:0;
+.nav-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;font-size:13px;color:rgba(255,255,255,.6);margin-bottom:2px}
+.nav-item.active{background:rgba(255,255,255,.1);color:#fff}
+.nav-item:hover{background:rgba(255,255,255,.05)}
+.labels{margin-top:20px;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.4);margin-bottom:8px}
+.label-row{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.6);padding:4px 0}
+.ldot{width:8px;height:8px;border-radius:50%}
+.mock-list{border-right:1px solid rgba(255,255,255,.08);overflow:auto}
+.msg{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06);cursor:default}
+.msg.active,.msg:hover{background:rgba(255,255,255,.04)}
+.msg .top{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+.msg .name{font-weight:600;color:#fff}
+.msg .time{color:rgba(255,255,255,.4)}
+.msg .sub{font-size:12px;color:rgba(255,255,255,.85);margin-top:2px}
+.msg .prev{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.unread .name::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#00d2ff;margin-right:6px;vertical-align:middle}
+.mock-reader{padding:16px;overflow:auto}
+.reader-tools{display:flex;gap:4px;margin-bottom:16px}
+.reader-tools span{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;color:rgba(255,255,255,.5);font-size:12px}
+.reader-tools span:hover{background:rgba(255,255,255,.05)}
+.reader h3{font-size:18px;font-weight:600;margin-bottom:10px}
+.reader-meta{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:12px;color:rgba(255,255,255,.5)}
+.av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#00d2ff,#0B2551);display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}
+.pill{padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.1);font-size:11px}
+.summary{
+  border-radius:12px;padding:12px 14px;margin-bottom:16px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08)
 }
-.orb-fallback img{width:48%;height:auto;object-fit:contain;filter:drop-shadow(0 0 20px #3ecbff88)}
-.float-icon{
-  position:absolute;width:56px;height:56px;border-radius:50%;
-  background:linear-gradient(160deg,rgba(80,140,200,.55),rgba(30,60,100,.65));
-  border:1px solid rgba(255,255,255,.2);
-  backdrop-filter:blur(12px);display:grid;place-items:center;
-  box-shadow:0 8px 24px #0005;
-  color:#fff;font-size:20px;z-index:2;
-}
-.float-icon.i1{top:12%;left:8%}
-.float-icon.i2{top:18%;right:6%}
-.float-icon.i3{bottom:22%;left:4%}
-.float-icon.i4{bottom:14%;right:10%}
-@media(max-width:900px){
-  .float-icon{width:44px;height:44px;font-size:16px}
-  .orb-wrap{min-height:min(360px,85vw)}
-}
+.summary b{color:#A4F4FD;font-size:12px}
+.summary p{margin-top:6px;font-size:13px;color:rgba(255,255,255,.7);line-height:1.5}
+.reader p{font-size:13px;color:rgba(255,255,255,.65);line-height:1.6;margin-bottom:10px}
 
-/* features */
-.section{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:64px 24px}
-.section h2{font-size:1.75rem;font-weight:700;letter-spacing:-.03em;margin-bottom:8px;text-align:center}
-.section .lead{text-align:center;color:var(--muted);margin-bottom:36px;font-size:15px}
+.section{max-width:72rem;margin:0 auto;padding:80px 24px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,.7)}
+.eyebrow i{width:6px;height:6px;border-radius:50%;background:#fff;display:inline-block}
+.eyebrow .tag{padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:11px}
+.section h2{margin-top:20px;font-size:clamp(1.75rem,4vw,3rem);font-weight:600;letter-spacing:-.02em;line-height:1.05}
+.section .lead{margin-top:24px;color:rgba(255,255,255,.6);font-size:16px;line-height:1.6;max-width:28rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.chip{font-size:12px;color:rgba(255,255,255,.7);padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03)}
+.grid2{display:grid;gap:40px;align-items:start}
+@media(min-width:768px){.grid2{grid-template-columns:1fr 1fr;gap:64px}}
+.triage-card{border-radius:16px;padding:20px}
+.triage-card > .t{font-size:12px;color:rgba(255,255,255,.5);margin-bottom:12px}
+.subc{border-radius:10px;padding:12px;margin-bottom:10px}
+.subc .h{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:6px}
+.subc .h span{opacity:.5;font-weight:500}
+.subc li{list-style:none;font-size:12px;color:rgba(255,255,255,.55);padding:2px 0}
 
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-@media(max-width:800px){.grid3{grid-template-columns:1fr}}
-.card{
-  background:var(--glass);border:1px solid var(--border);border-radius:22px;
-  padding:24px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  transition:.2s;
-}
-.card:hover{background:var(--glass2);transform:translateY(-2px);box-shadow:0 16px 40px #0004}
-.card .ico{
-  width:44px;height:44px;border-radius:14px;display:grid;place-items:center;
-  background:linear-gradient(135deg,#3ecbff33,#6b8cff33);margin-bottom:14px;font-size:20px;
-}
-.card h3{font-size:16px;font-weight:600;margin-bottom:8px}
-.card p{font-size:13px;color:var(--muted);line-height:1.5}
+.logos{text-align:center}
+.logos .k{font-size:11px;text-transform:uppercase;letter-spacing:.18em;color:rgba(255,255,255,.4)}
+.logo-grid{margin-top:40px;display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+@media(min-width:640px){.logo-grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:1024px){.logo-grid{grid-template-columns:repeat(8,1fr)}}
+.logo-grid span{font-size:14px;font-weight:600;letter-spacing:-.02em;color:rgba(255,255,255,.5);transition:color .2s}
+.logo-grid span:hover{color:#fff}
 
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-@media(max-width:900px){.steps{grid-template-columns:1fr 1fr}}
-@media(max-width:520px){.steps{grid-template-columns:1fr}}
-.step{
-  background:var(--glass);border:1px solid var(--border);border-radius:20px;padding:20px;
-  backdrop-filter:blur(16px);
-}
-.step .n{
-  width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,#4fd2ff,#6b8cff);
-  color:#041018;font-weight:800;font-size:13px;display:grid;place-items:center;margin-bottom:12px;
-}
-.step h3{font-size:14px;font-weight:600;margin-bottom:6px}
-.step p{font-size:12px;color:var(--muted);line-height:1.45}
+.quotes{border-top:1px solid rgba(255,255,255,.1)}
+.q-grid{display:grid;gap:16px}
+@media(min-width:768px){.q-grid{grid-template-columns:repeat(3,1fr)}}
+.q-card{border-radius:16px;padding:24px}
+.q-card blockquote{font-size:14px;color:rgba(255,255,255,.8);line-height:1.6}
+.q-card figcaption{margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.1)}
+.q-card .n{font-size:14px;font-weight:600}
+.q-card .r{font-size:12px;color:rgba(255,255,255,.5)}
+.q-card .c{font-size:11px;font-weight:600;letter-spacing:.06em;margin-top:4px}
 
-.cta-band{
-  margin:20px 24px 80px;max-width:1120px;margin-left:auto;margin-right:auto;
-  border-radius:28px;padding:40px 32px;text-align:center;
-  background:linear-gradient(135deg,rgba(62,203,255,.15),rgba(107,140,255,.12));
-  border:1px solid var(--border);backdrop-filter:blur(20px);
-  position:relative;z-index:1;
+/* pricing */
+.c3-pricing-section{position:relative;padding:40px 20px 80px;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+.c3-watermark-container{position:relative;width:100%;max-width:1100px;text-align:center;margin-top:40px;z-index:2}
+.c3-watermark-main{font-size:clamp(2.5rem,9vw,9rem);font-weight:800;line-height:.9;letter-spacing:-.05em;filter:url(#c3-noise-price);display:flex;flex-direction:column;align-items:center}
+.c3-watermark-line-1{color:#fff}
+.c3-watermark-line-2{
+  background:linear-gradient(to right,#091020 0%,#0B2551 25%,#A4F4FD 65%,#00d2ff 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent
 }
-.cta-band h2{font-size:1.5rem;font-weight:700;margin-bottom:10px}
-.cta-band p{color:var(--muted);margin-bottom:22px;font-size:14px}
+.c3-grid{display:grid;grid-template-columns:1fr;gap:24px;width:100%;max-width:1100px;margin-top:60px;position:relative;z-index:3}
+@media(min-width:1024px){.c3-grid{grid-template-columns:repeat(3,1fr);transform:translateX(12px)}}
+.c3-card{
+  background:linear-gradient(135deg,rgba(0,0,0,.7),rgba(0,0,0,.4));
+  backdrop-filter:blur(14px) brightness(.91);border:1px solid rgba(255,255,255,1);
+  border-radius:44px;padding:40px 24px;min-height:520px;display:flex;flex-direction:column;
+  transition:all .6s cubic-bezier(.22,1,.36,1);overflow:hidden;position:relative
+}
+.c3-card::before{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,rgba(255,255,255,.1) 0%,rgba(255,255,255,0) 50%);pointer-events:none}
+.c3-card:hover{background:rgba(15,15,15,.6);border-color:rgba(34,211,238,.7);transform:translateY(-12px) scale(1.01)}
+.c3-card-pro{background:linear-gradient(135deg,rgba(0,0,0,.85),rgba(0,0,0,.55))}
+.c3-tier-small{font-size:1.1rem;font-weight:400;color:rgba(255,255,255,.6)}
+.c3-tier-large{font-size:2.4rem;font-weight:500;letter-spacing:-.02em;color:#fff;margin-top:8px}
+.c3-desc{font-size:.88rem;color:rgba(255,255,255,.45);min-height:3.2em;margin-top:16px;margin-bottom:32px;line-height:1.5}
+.c3-list{list-style:none;flex:1}
+.c3-list li{display:flex;align-items:flex-start;gap:14px;font-size:.92rem;color:rgba(255,255,255,.8);margin-bottom:16px;line-height:1.4}
+.c3-check{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.c3-btn{background:#fff;color:#000;padding:10px 32px;border-radius:100px;font-weight:600;font-size:.88rem;margin-top:auto;border:none;cursor:pointer;align-self:center;transition:all .3s}
+.c3-btn:hover{background:#f5f5f5;transform:scale(1.02);box-shadow:0 8px 24px rgba(255,255,255,.15)}
+.c3-toggle-wrap{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;max-width:1100px;margin-top:32px}
+.c3-toggle{width:52px;height:28px;background:#fff;border-radius:100px;position:relative;cursor:pointer;border:none;padding:0;transition:background .3s}
+.c3-toggle-knob{width:20px;height:20px;background:#000;border-radius:50%;position:absolute;top:4px;left:4px;transition:all .3s}
+.c3-toggle.active{background:rgba(255,255,255,.2)}
+.c3-toggle.active .c3-toggle-knob{transform:translateX(24px);background:#fff}
 
-footer{
-  position:relative;z-index:1;text-align:center;padding:24px;
-  color:var(--muted);font-size:12px;border-top:1px solid var(--border);
-}
-footer a{color:var(--accent);text-decoration:none}
+.final{max-width:72rem;margin:0 auto;padding:80px 24px 120px}
+.final-card{position:relative;overflow:hidden;border-radius:24px;padding:64px 32px;text-align:center}
+.final-card .glow{position:absolute;inset:0;background:radial-gradient(600px circle at 50% 0%,rgba(255,255,255,.15),transparent 70%);opacity:.3;pointer-events:none}
+.final-card h2{position:relative;font-size:clamp(2rem,5vw,3.75rem);font-weight:600;letter-spacing:-.02em;line-height:1.05}
+.final-card p{position:relative;margin:24px auto 0;color:rgba(255,255,255,.6);max-width:28rem;font-size:14px;line-height:1.6}
+.final-btns{position:relative;margin-top:28px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
 
-/* ===== mobile ===== */
-@media (max-width: 900px) {
-  .nav {
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 14px 16px;
-  }
-  .nav-links {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .nav-links a, .nav-links .btn {
-    font-size: 12px !important;
-    padding: 8px 12px !important;
-  }
-  .hero {
-    grid-template-columns: 1fr !important;
-    gap: 28px;
-    padding: 24px 16px 12px;
-    text-align: center;
-  }
-  .hero p { margin-left: auto; margin-right: auto; font-size: 15px; }
-  .hero-cta { justify-content: center; }
-  .hero h1 { font-size: clamp(1.75rem, 7vw, 2.4rem); }
-  .media-stage { max-width: 100% !important; }
-  .media-frame { border-radius: 20px; aspect-ratio: 1/1; }
-  .section { padding: 40px 16px; }
-  .section h2 { font-size: 1.35rem; }
-  .grid3 { grid-template-columns: 1fr !important; gap: 12px; }
-  .steps { grid-template-columns: 1fr !important; }
-  .cta-band {
-    margin: 12px 16px 48px;
-    padding: 28px 18px;
-    border-radius: 20px;
-  }
-  .cta-band h2 { font-size: 1.25rem; }
-  footer { padding: 20px 16px; }
-}
-@media (max-width: 480px) {
-  .btn { padding: 11px 16px; font-size: 13px; }
-  .card { padding: 18px; border-radius: 18px; }
-  .hero-note { font-size: 11px; }
-}
-
-
-/* readability */
-:root {
-  --text: #f0f6fa;
-  --text-secondary: #c5d4e0;
-  --text-muted: #9aafc0;
-}
-body { color: var(--text); }
-.nav-links a:not(.btn) {
-  color: var(--text-secondary) !important;
-  font-weight: 500;
-}
-.nav-links a:not(.btn):hover { color: #fff !important; }
-.nav-auth { display: inline-flex; gap: 8px; align-items: center; }
-.lang-btn {
-  min-width: 48px !important;
-  font-weight: 700 !important;
-  color: #fff !important;
-  border: 1px solid rgba(255,255,255,.25) !important;
-  background: rgba(255,255,255,.08) !important;
-}
-.hero p, .lead, .steps, .hero-note {
-  color: var(--text-secondary) !important;
-  line-height: 1.55;
-}
-.card p, .step p {
-  color: var(--text-secondary) !important;
-  line-height: 1.5;
-}
-.card h3, .step h3, .section h2, .cta-band h2, .hero h1 {
-  color: #fff !important;
-}
-.btn-ghost { color: #e8f2f8 !important; }
-footer, footer a { color: var(--text-muted) !important; }
-
-
-/* split auth modal */
-.auth-overlay{
-  position:fixed;inset:0;z-index:200;
-  background:rgba(2,10,18,.72);
-  backdrop-filter:blur(10px);
-  display:none;align-items:center;justify-content:center;
-  padding:20px;
-}
-.auth-card{
-  display:grid;grid-template-columns:1.05fr 1fr;
-  width:min(880px,96vw);min-height:480px;
-  border-radius:24px;overflow:hidden;
-  border:1px solid rgba(255,255,255,.12);
-  box-shadow:0 30px 80px rgba(0,0,0,.55);
-  background:#06141e;
-}
-.auth-visual{
-  position:relative;background:
-    radial-gradient(ellipse at 30% 20%, #1a6a9a88, transparent 55%),
-    radial-gradient(ellipse at 70% 80%, #3ecbff33, transparent 50%),
-    linear-gradient(165deg,#0a2030 0%,#041018 50%,#0a1628 100%);
-  display:flex;align-items:flex-end;padding:36px;
-}
-.auth-visual-bg{
-  position:absolute;inset:0;
-  background:
-    radial-gradient(circle at 20% 30%, rgba(62,203,255,.25), transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(80,120,255,.2), transparent 45%);
-  animation:authGlow 8s ease-in-out infinite alternate;
-}
-@keyframes authGlow{
-  from{opacity:.7;transform:scale(1)}
-  to{opacity:1;transform:scale(1.05)}
-}
-.auth-visual-text{position:relative;z-index:1}
-
-.auth-logo{
-  width:72px;height:72px;object-fit:contain;
-  margin-bottom:16px;
-  filter:drop-shadow(0 8px 24px rgba(62,203,255,.35));
-  border-radius:18px;
-}
-
-.auth-visual-text h2{margin:0 0 8px;font-size:1.75rem;color:#fff;font-weight:700}
-.auth-visual-text p{margin:0;color:rgba(255,255,255,.75);font-size:15px}
-.auth-form-side{
-  position:relative;padding:40px 36px 32px;
-  display:flex;flex-direction:column;justify-content:center;
-  background:linear-gradient(180deg,#0b1c28 0%,#07141c 100%);
-}
-.auth-x{
-  position:absolute;top:14px;right:16px;
-  background:transparent;border:none;color:rgba(255,255,255,.5);
-  font-size:28px;cursor:pointer;line-height:1;
-}
-.auth-x:hover{color:#fff}
-.auth-kicker{margin:0 0 6px;font-size:12px;color:#7eb0c8;letter-spacing:.04em}
-.auth-form-side h3{margin:0 0 6px;font-size:1.65rem;color:#fff;font-weight:700}
-.auth-sub{margin:0 0 22px;font-size:13px;color:#9bb4c4}
-.auth-label{font-size:12px;color:#8aa8ba;margin-bottom:6px}
-.auth-form-side input{
-  width:100%;box-sizing:border-box;margin-bottom:14px;
-  padding:12px 14px;border-radius:12px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.35);color:#fff;font-size:14px;
-}
-.auth-form-side input:focus{outline:none;border-color:rgba(62,203,255,.55)}
-.auth-submit{
-  margin-top:8px;width:100%;padding:14px;
-  border:none;border-radius:12px;cursor:pointer;
-  background:linear-gradient(180deg,#1a1a1a,#0a0a0a);
-  color:#fff;font-weight:600;font-size:15px;
-  box-shadow:0 4px 20px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.08);
-}
-.auth-submit:hover{filter:brightness(1.08)}
-.auth-switch{text-align:center;font-size:13px;color:#8aa8ba;margin:14px 0 0}
-.auth-switch a{color:#3ecbff;text-decoration:none}
-.auth-err{color:#ff7a7a;font-size:13px;min-height:18px;margin:8px 0 0}
-@media(max-width:720px){
-  .auth-card{grid-template-columns:1fr;min-height:auto}
-  .auth-visual{min-height:140px;padding:24px}
-}
-
-
-/* stronger ambient + glass on landing */
-body {
-  background: #030a12 !important;
-}
-body::before {
-  content: "";
-  position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(ellipse 90% 70% at 15% 10%, rgba(62, 203, 255, 0.28), transparent 55%),
-    radial-gradient(ellipse 80% 60% at 85% 90%, rgba(90, 110, 255, 0.22), transparent 50%),
-    radial-gradient(ellipse 60% 50% at 50% 40%, rgba(20, 100, 140, 0.18), transparent 55%),
-    linear-gradient(130deg, #020810 0%, #0a1a28 35%, #061428 65%, #030c18 100%);
-  background-size: 200% 200%;
-  animation: landingAmbient 16s ease-in-out infinite;
-}
-@keyframes landingAmbient {
-  0% { background-position: 0% 40%; }
-  50% { background-position: 100% 60%; }
-  100% { background-position: 0% 40%; }
-}
-.nav {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border-bottom: none !important;
-  box-shadow: none !important;
-}
-.card, .step, .cta-band {
-  background: rgba(12, 28, 42, 0.5) !important;
-  backdrop-filter: blur(18px) saturate(1.3) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(1.3) !important;
-  border: 1px solid rgba(255,255,255,.14) !important;
-  box-shadow: 0 8px 40px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.08) !important;
-}
-/* email / primary pill in nav when logged in */
-.nav-auth .btn-primary,
-#navAuthSlot .btn-primary {
-  color: #ffffff !important;
-  font-weight: 600 !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,.35);
-  background: linear-gradient(135deg, #3ecbff, #5b7cff) !important;
-  border: none !important;
-}
-
-
-.auth-visual{
-  display:flex !important;
-  flex-direction:column !important;
-  align-items:center !important;
-  justify-content:flex-end !important;
-  position:relative !important;
-  padding:36px !important;
-}
-.auth-logo-wrap{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  pointer-events:none;
-  z-index:1;
-}
-.auth-logo{
-  width:110px !important;
-  height:110px !important;
-  object-fit:contain;
-  border-radius:28px;
-  margin:0 !important;
-  filter:
-    drop-shadow(0 0 18px rgba(62,203,255,.55))
-    drop-shadow(0 0 40px rgba(62,203,255,.35))
-    drop-shadow(0 8px 24px rgba(0,0,0,.35));
-  animation: logoGlow 3.5s ease-in-out infinite alternate;
-}
-@keyframes logoGlow{
-  from{
-    filter:
-      drop-shadow(0 0 14px rgba(62,203,255,.4))
-      drop-shadow(0 0 28px rgba(62,203,255,.25))
-      drop-shadow(0 8px 20px rgba(0,0,0,.3));
-  }
-  to{
-    filter:
-      drop-shadow(0 0 22px rgba(62,203,255,.7))
-      drop-shadow(0 0 48px rgba(90,140,255,.4))
-      drop-shadow(0 8px 28px rgba(0,0,0,.35));
-  }
-}
-.auth-visual-text{
-  position:relative;
-  z-index:2;
-  width:100%;
-  text-align:left;
-}
-
-
-.hero-desktop{
-  margin-top:20px;
-  display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  gap:8px;
-}
-@media(max-width:900px){
-  .hero-desktop{align-items:center}
-}
-.btn-desktop{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:12px 20px;border-radius:999px;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.2);
-  color:#e8f4fa !important;
-  font-weight:600;font-size:14px;
-  text-decoration:none;
-  backdrop-filter:blur(10px);
-  transition:background .15s, border-color .15s, transform .15s;
-}
-.btn-desktop:hover{
-  background:rgba(62,203,255,.15);
-  border-color:rgba(62,203,255,.45);
-  transform:translateY(-1px);
-}
-.btn-desktop::before{
-  content:"⬇";
-  font-size:14px;
-}
-.hero-desktop-hint{
-  font-size:12px;
-  color:var(--text-muted, #9aafc0);
-  opacity:.9;
-}
-
-
-/* floating stars */
-.stars-layer{
-  position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
-}
-.star{
-  position:absolute;
-  width:6px;height:6px;
-  background:#fff;
-  border-radius:50%;
-  opacity:0;
-  box-shadow:0 0 12px 3px rgba(200,240,255,1);
-  animation: starDrift linear infinite;
-}
-.star.s2{width:8px;height:8px;box-shadow:0 0 18px 4px rgba(120,210,255,1)}
-.star.s3{width:4px;height:4px;box-shadow:0 0 6px 1px rgba(255,255,255,.85)}
-@keyframes starDrift{
-  0%{transform:translate3d(0,30px,0) scale(.5);opacity:0}
-  12%{opacity:1}
-  70%{opacity:.75}
-  100%{transform:translate3d(var(--dx,40px),-120vh,0) scale(1.15);opacity:0}
-}
-/* desktop btn = primary blue */
-.btn-desktop{
-  background: linear-gradient(180deg, #5ad4ff, #2a9fd4) !important;
-  border: none !important;
-  color: #041018 !important;
-  font-weight: 700 !important;
-  box-shadow: 0 4px 20px rgba(62,203,255,.35) !important;
-}
-.btn-desktop:hover{
-  filter: brightness(1.08);
-  background: linear-gradient(180deg, #6ae0ff, #35b0e0) !important;
-  border-color: transparent !important;
-}
-.btn-desktop::before{content:none !important}
-
-
-/* ===== Mobile layout (kant.tools-like, our design) ===== */
-@media (max-width: 900px) {
-  .nav {
-    padding: 12px 16px !important;
-    gap: 10px;
-    flex-wrap: nowrap !important;
-    align-items: center;
-  }
-  .nav-brand b { font-size: 15px; }
-  .nav-brand img { width: 28px; height: 28px; }
-  .nav-links {
-    gap: 6px !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    max-width: 70vw;
-    scrollbar-width: none;
-  }
-  .nav-links::-webkit-scrollbar { display: none; }
-  .nav-links a:not(.btn) {
-    font-size: 12px !important;
-    white-space: nowrap;
-    padding: 6px 4px;
-  }
-  .nav-links .btn {
-    padding: 8px 12px !important;
-    font-size: 12px !important;
-    white-space: nowrap;
-  }
-  .lang-btn { min-width: 40px !important; padding: 8px 10px !important; }
-
-  .hero {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    text-align: center !important;
-    padding: 28px 20px 8px !important;
-    gap: 28px !important;
-    grid-template-columns: 1fr !important;
-  }
-  .hero > div:first-child {
-    width: 100%;
-    order: 1;
-  }
-  .orb-wrap {
-    order: 2;
-    width: 100%;
-    min-height: min(320px, 78vw) !important;
-    margin: 0 auto;
-  }
-  .hero h1 {
-    font-size: clamp(1.85rem, 8vw, 2.5rem) !important;
-    line-height: 1.15 !important;
-    margin-bottom: 14px !important;
-  }
-  .hero p {
-    font-size: 15px !important;
-    max-width: 100% !important;
-    margin: 0 auto 22px !important;
-    line-height: 1.55 !important;
-  }
-  .hero-cta {
-    justify-content: center !important;
-    width: 100%;
-    flex-direction: column !important;
-    gap: 10px !important;
-  }
-  .hero-cta .btn {
-    width: 100% !important;
-    justify-content: center;
-    text-align: center;
-    padding: 14px 18px !important;
-    font-size: 15px !important;
-    border-radius: 14px !important;
-  }
-  .hero-note {
-    text-align: center;
-    margin-top: 14px !important;
-    font-size: 12px !important;
-  }
-  .hero-desktop {
-    align-items: center !important;
-    width: 100%;
-    margin-top: 16px !important;
-  }
-  .hero-desktop .btn-desktop {
-    width: 100% !important;
-    justify-content: center;
-    padding: 14px 18px !important;
-    border-radius: 14px !important;
-    font-size: 15px !important;
-  }
-  .hero-desktop-hint { text-align: center; }
-
-  .section {
-    padding: 36px 16px !important;
-  }
-  .section h2 {
-    font-size: 1.45rem !important;
-    text-align: center;
-    margin-bottom: 8px !important;
-  }
-  .lead {
-    text-align: center;
-    font-size: 14px !important;
-    margin: 0 auto 20px !important;
-    max-width: 100% !important;
-  }
-  .grid3, .steps {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-  .card, .step {
-    padding: 18px 16px !important;
-    border-radius: 18px !important;
-    width: 100% !important;
-    box-sizing: border-box;
-  }
-  .card h3, .step h3 {
-    font-size: 1.05rem !important;
-  }
-  .card p, .step p {
-    font-size: 13.5px !important;
-  }
-  .cta-band {
-    margin: 12px 16px 40px !important;
-    padding: 28px 18px !important;
-    border-radius: 20px !important;
-    text-align: center;
-  }
-  .cta-band h2 { font-size: 1.25rem !important; }
-  .cta-band .btn {
-    width: 100%;
-    margin: 6px 0;
-    padding: 14px !important;
-  }
-  footer {
-    padding: 24px 16px !important;
-    text-align: center;
-    font-size: 12px;
-  }
-  .auth-card {
-    grid-template-columns: 1fr !important;
-    max-height: 92vh;
-    overflow: auto;
-  }
-  .auth-visual {
-    min-height: 160px !important;
-    padding: 24px !important;
-  }
-  .auth-logo {
-    width: 88px !important;
-    height: 88px !important;
-  }
-  .auth-form-side {
-    padding: 24px 20px 28px !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .nav-links a:not(.btn) { display: none; } /* Features / How — hide, keep actions */
-  .nav-links { max-width: 75vw; }
-  .hero { padding-top: 20px !important; }
-  .hero h1 { font-size: 1.75rem !important; }
-}
-
+footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255,.35);border-top:1px solid rgba(255,255,255,.06)}
+.lang{position:fixed;bottom:20px;right:20px;z-index:50;border-radius:999px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.5);backdrop-filter:blur(8px);padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
-<div class="stars-layer" id="starsLayer" aria-hidden="true"></div>
+<svg width="0" height="0" style="position:absolute">
+  <filter id="c3-noise">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.35 0"/>
+    <feComposite in2="SourceGraphic" operator="in" result="noise"/>
+    <feBlend in="SourceGraphic" in2="noise" mode="multiply"/>
+  </filter>
+</svg>
 
-<div class="bg-fx"></div>
+<div class="bg-video">
+  <video autoplay loop muted playsinline poster="/static/icon.png">
+    <source src="/static/video/hero.mp4" type="video/mp4"/>
+    <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4" type="video/mp4"/>
+  </video>
+</div>
+<div class="guide l"></div>
+<div class="guide r"></div>
 
-<nav class="nav">
-  <a class="nav-brand" href="/">
-    <img src="/static/icon.png" alt=""/>
-    <b>Showcase Maker</b>
-  </a>
-  <div class="nav-links">
-    <a href="#features" data-i18n="nav_feat">Features</a>
-    <a href="#how" data-i18n="nav_how">How it works</a>
-    <a href="/app" class="btn btn-ghost" data-i18n="nav_tools">Tools</a>
-    <span id="navAuthSlot" class="nav-auth">
-      <a href="#" data-auth="login" class="btn btn-ghost" id="navLoginBtn">Log in</a>
-      <a href="#" data-auth="register" class="btn btn-primary" data-i18n="nav_reg">Sign up</a>
-    </span>
-    <button type="button" class="btn btn-ghost lang-btn" id="langBtn" title="Language">EN</button>
-  </div>
-</nav>
+<div class="shell">
+  <nav class="nav">
+    <a href="/" aria-label="Showcase Maker">
+      <svg class="logo-mark" viewBox="0 0 256 256" fill="#fff"><path d="M 0 128 C 70.692 128 128 185.308 128 256 L 64 256 C 64 220.654 35.346 192 0 192 Z M 256 192 C 220.654 192 192 220.654 192 256 L 128 256 C 128 185.308 185.308 128 256 128 Z M 128 0 C 128 70.692 70.692 128 0 128 L 0 64 C 35.346 64 64 35.346 64 0 Z M 192 0 C 192 35.346 220.654 64 256 64 L 256 128 C 185.308 128 128 70.692 128 0 Z"/></svg>
+    </a>
+    <div class="nav-links">
+      <a href="#features" data-i="nav_feat">Features</a>
+      <a href="#pricing" data-i="nav_price">Pricing</a>
+      <a href="/app" data-i="nav_tools">Tools</a>
+      <a href="/app?auth=1" data-i="nav_reg">Sign up</a>
+    </div>
+    <a class="btn-pill" href="/app" data-i="cta_tools">Open tools →</a>
+  </nav>
 
-<section class="hero">
-  <div>
-    <h1>Steam showcases<br/><span>without the grind</span></h1>
-    <p>
-      Нарезка Workshop, Featured и Split, watermark, сжатие под лимит Steam,
-      скачивание исходников и предпросмотр профиля — в одном браузерном инструменте.
-    </p>
+  <section class="hero">
+    <h1>
+      <span data-i="h1a">Steam showcases.</span><br/>
+      <span class="shiny" data-i="h1b">Revitalized</span>
+    </h1>
+    <p data-i="hero_p">Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool for creators.</p>
     <div class="hero-cta">
-      <a class="btn btn-primary" href="/app">Open tools</a>
-      <a class="btn btn-ghost" href="#" data-auth="register">Create account</a>
+      <a class="btn-pill" href="/app" data-i="cta_open">Open Showcase Maker</a>
+      <span class="hero-note" data-i="hero_note">Free · 5 files/day  ·  Pro · unlimited</span>
     </div>
-    <div class="hero-note">Free · 5 files/day &nbsp;·&nbsp; Pro · unlimited</div>
-    <div class="hero-desktop">
-      <a class="btn btn-desktop" href="https://funpay.com/lots/offer?id=75265310" target="_blank" rel="noopener" data-i18n="cta_desktop">Download desktop app</a>
-      <span class="hero-desktop-hint" data-i18n="cta_desktop_hint">Windows · full features · offline</span>
+  </section>
+
+  <div class="os-bar">
+    <div class="os-inner">
+      <div class="os-left">
+        <svg width="14" height="14" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+        <b>Showcase Maker</b>
+        <span class="hidden-sm">File</span><span>Edit</span><span>View</span>
+      </div>
+      <div class="os-right">Process · Download · Preview</div>
     </div>
   </div>
 
-  <div class="orb-wrap">
-    <div class="orb-ring"></div>
-    <div class="orb-ring"></div>
-    <div class="orb-ring"></div>
-    <div class="float-icon i1" title="Download">⬇</div>
-    <div class="float-icon i2" title="Upload">⬆</div>
-    <div class="float-icon i3" title="Cut">✂</div>
-    <div class="float-icon i4" title="Preview">👁</div>
-    <div class="orb-core" id="orbCore">
-      <video id="heroVid" autoplay muted loop playsinline poster="/static/icon.png">
-        <source src="/static/video/hero.mp4" type="video/mp4"/>
-      </video>
-      <div class="orb-fallback" id="orbFallback">
-        <img src="/static/icon.png" alt="Showcase Maker"/>
+  <section class="mock" id="features">
+    <div class="mock-frame">
+      <div class="mock-title">
+        <span class="dot" style="background:#ff5f57"></span>
+        <span class="dot" style="background:#febc2e"></span>
+        <span class="dot" style="background:#28c840"></span>
+        <span style="flex:1;text-align:center;font-size:12px;color:rgba(255,255,255,.5)">Showcase Maker — Tools</span>
+      </div>
+      <div class="mock-body">
+        <div class="mock-side">
+          <a class="compose" href="/app">✦ Open tools</a>
+          <div class="nav-item active"><span>Process</span></div>
+          <div class="nav-item"><span>Download</span></div>
+          <div class="nav-item"><span>Preview</span></div>
+          <div class="nav-item"><span>Steam</span></div>
+          <div class="nav-item"><span>Account</span></div>
+          <div class="labels">Modes</div>
+          <div class="label-row"><span class="ldot" style="background:#00d2ff"></span> Workshop ×5</div>
+          <div class="label-row"><span class="ldot" style="background:#A4F4FD"></span> Featured 630</div>
+          <div class="label-row"><span class="ldot" style="background:#f59e0b"></span> Artwork Split</div>
+          <div class="label-row"><span class="ldot" style="background:#10b981"></span> GIF · MP4</div>
+        </div>
+        <div class="mock-list">
+          <div class="msg unread active">
+            <div class="top"><span class="name">Workshop</span><span class="time">5 parts</span></div>
+            <div class="sub">part_1 … part_5 + hex 21</div>
+            <div class="prev">Ready for Steam Workshop showcase upload</div>
+          </div>
+          <div class="msg unread">
+            <div class="top"><span class="name">Featured</span><span class="time">630px</span></div>
+            <div class="sub">featured_630.png / .gif</div>
+            <div class="prev">Compressed under Steam size limits</div>
+          </div>
+          <div class="msg">
+            <div class="top"><span class="name">Artwork Split</span><span class="time">506+100</span></div>
+            <div class="sub">center + side panels</div>
+            <div class="prev">With watermark and bars</div>
+          </div>
+          <div class="msg">
+            <div class="top"><span class="name">Download</span><span class="time">web</span></div>
+            <div class="sub">YouTube · TikTok · X · Reddit · Pinterest</div>
+            <div class="prev">Sources without third-party sites</div>
+          </div>
+          <div class="msg">
+            <div class="top"><span class="name">Preview</span><span class="time">live</span></div>
+            <div class="sub">Steam profile template</div>
+            <div class="prev">GIF and MP4 animated in browser</div>
+          </div>
+        </div>
+        <div class="mock-reader reader">
+          <div class="reader-tools"><span>↩</span><span>↪</span><span>⬇</span><span>✕</span></div>
+          <h3>Workshop pipeline</h3>
+          <div class="reader-meta">
+            <div class="av">S</div>
+            <div><b style="color:#fff">Showcase Maker</b><br/>to Steam · now</div>
+            <span class="pill">AI-ready</span>
+          </div>
+          <div class="summary">
+            <b>✦ What you get</b>
+            <p>Five workshop parts with Steam hex 21, optional watermark, ZIP download — then console paste on the Steam tab.</p>
+          </div>
+          <p>Drop PNG, JPG, GIF or MP4. Choose Workshop, Featured or Split. Hit Process — the ZIP lands on your PC and is wiped from the server.</p>
+          <p style="color:rgba(255,255,255,.45)">Free tier to try · Pro removes the daily limit.</p>
+        </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="section" id="features">
-  <h2>Everything for your profile</h2>
-  <p class="lead">From source file to Steam-ready assets</p>
-  <div class="grid3">
-    <div class="card">
-      <div class="ico">✂</div>
-      <h3>Showcase cuts</h3>
-      <p>Workshop ×5, Featured 630px, Artwork Split 506+100. Bars, watermark, GIF and video.</p>
+  <section class="section">
+    <div class="grid2">
+      <div>
+        <div class="eyebrow"><i></i> <span data-i="tri_label">Process</span> <span class="tag">Steam-native</span></div>
+        <h2 data-i="tri_h">Clear the busywork.<br/>Ship the showcase.</h2>
+        <p class="lead" data-i="tri_p">Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.</p>
+        <div class="chips">
+          <span class="chip">Workshop ×5</span>
+          <span class="chip">Featured 630</span>
+          <span class="chip">Artwork Split</span>
+          <span class="chip">HEX 21</span>
+          <span class="chip">GIF · MP4</span>
+        </div>
+      </div>
+      <div class="liquid-glass triage-card">
+        <div class="t" data-i="tri_today">Today · showcase pipeline</div>
+        <div class="liquid-glass subc">
+          <div class="h" style="color:#fff">Process <span>core</span></div>
+          <ul><li>Workshop / Featured / Split</li><li>Watermark · font · opacity</li></ul>
+        </div>
+        <div class="liquid-glass subc">
+          <div class="h" style="color:#e5e5e5">Download <span>sources</span></div>
+          <ul><li>YouTube · TikTok · X</li><li>Reddit · Pinterest</li></ul>
+        </div>
+        <div class="liquid-glass subc">
+          <div class="h" style="color:#a3a3a3">Preview <span>profile</span></div>
+          <ul><li>Template slots</li><li>Animated GIF / MP4</li></ul>
+        </div>
+        <div class="liquid-glass subc">
+          <div class="h" style="color:#525252">Steam <span>upload</span></div>
+          <ul><li>Console code</li><li>Step-by-step guide</li></ul>
+        </div>
+      </div>
     </div>
-    <div class="card">
-      <div class="ico">⬇</div>
-      <h3>Download sources</h3>
-      <p>YouTube, TikTok, X, Reddit, Pinterest — no third-party sites.</p>
-    </div>
-    <div class="card">
-      <div class="ico">👁</div>
-      <h3>Profile preview</h3>
-      <p>Steam page template, slots per showcase, animated GIF and MP4.</p>
-    </div>
-    <div class="card">
-      <div class="ico">💧</div>
-      <h3>Watermark</h3>
-      <p>Text, font, opacity — handy if you sell or publish art.</p>
-    </div>
-    <div class="card">
-      <div class="ico">📦</div>
-      <h3>ZIP под Steam</h3>
-      <p>Ready archive with part_1…5, featured, split — upload to Workshop.</p>
-    </div>
-    <div class="card">
-      <div class="ico">⚡</div>
-      <h3>In the browser</h3>
-      <p>No .exe on every PC. Open the site, process, download.</p>
-    </div>
-  </div>
-</section>
+  </section>
 
-<section class="section" id="how">
-  <h2>Four steps</h2>
-  <p class="lead">From file to Steam profile</p>
-  <div class="steps">
-    <div class="step"><div class="n">1</div><h3>Upload</h3><p>PNG, JPG, GIF or MP4 — or download by link inside the app.</p></div>
-    <div class="step"><div class="n">2</div><h3>Pick a mode</h3><p>Workshop, Featured или Artwork Split + watermark и FPS.</p></div>
-    <div class="step"><div class="n">3</div><h3>Download ZIP</h3><p>Already cut and compressed for Steam limits.</p></div>
-    <div class="step"><div class="n">4</div><h3>Upload to Steam</h3><p>Console code and guide are on the Steam tab in Tools.</p></div>
-  </div>
-</section>
+  <section class="section logos">
+    <div class="k" data-i="trust">Built for Steam profile creators</div>
+    <div class="logo-grid">
+      <span>Workshop</span><span>Featured</span><span>Split</span><span>GIF</span>
+      <span>MP4</span><span>HEX21</span><span>Preview</span><span>FunPay</span>
+    </div>
+  </section>
 
-<div class="cta-band">
-  <h2>Ready to style your profile?</h2>
-  <p>Free limit to try · Pro removes limits</p>
-  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-    <a class="btn btn-primary" href="/app">Go to tools</a>
-    <a class="btn btn-ghost" href="#" data-auth="register">Sign up</a>
-  </div>
+  <section class="section quotes">
+    <div class="q-grid">
+      <figure class="liquid-glass q-card">
+        <blockquote>“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”</blockquote>
+        <figcaption><div class="n">Profile artists</div><div class="r">Steam Workshop</div><div class="c">CREATORS</div></figcaption>
+      </figure>
+      <figure class="liquid-glass q-card">
+        <blockquote>“Download + process + preview in one tab. No more juggling five sites.”</blockquote>
+        <figcaption><div class="n">Commission sellers</div><div class="r">FunPay · Discord</div><div class="c">SELLERS</div></figcaption>
+      </figure>
+      <figure class="liquid-glass q-card">
+        <blockquote>“Pro is worth it when you ship showcases every week — no daily limit stress.”</blockquote>
+        <figcaption><div class="n">Power users</div><div class="r">Desktop + Web</div><div class="c">PRO</div></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="c3-pricing-section" id="pricing">
+    <svg width="0" height="0" style="position:absolute">
+      <filter id="c3-noise-price">
+        <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" stitchTiles="stitch"/>
+        <feComponentTransfer><feFuncA type="linear" slope="0.075"/></feComponentTransfer>
+        <feComposite in2="SourceGraphic" operator="in" result="noise"/>
+        <feBlend in="SourceGraphic" in2="noise" mode="overlay"/>
+      </filter>
+    </svg>
+    <div class="c3-watermark-container">
+      <div class="c3-watermark-main">
+        <span class="c3-watermark-line-1">Steam showcases.</span>
+        <span class="c3-watermark-line-2">Revitalized</span>
+      </div>
+    </div>
+    <div class="c3-grid">
+      <div class="c3-card">
+        <div class="c3-tier-small">Free</div>
+        <div class="c3-tier-large">Free</div>
+        <p class="c3-desc">Try the full pipeline with a daily file limit.</p>
+        <ul class="c3-list">
+          <li><span class="c3-check">✓</span> 5 files / day</li>
+          <li><span class="c3-check">✓</span> Workshop · Featured · Split</li>
+          <li><span class="c3-check">✓</span> Watermark &amp; preview</li>
+          <li><span class="c3-check">✓</span> Source download</li>
+        </ul>
+        <a class="c3-btn" href="/app">Start free</a>
+      </div>
+      <div class="c3-card">
+        <div class="c3-tier-small">Pro</div>
+        <div class="c3-tier-large" id="pricePro">FunPay</div>
+        <p class="c3-desc">Unlimited processing for sellers and daily shippers.</p>
+        <ul class="c3-list">
+          <li><span class="c3-check">✓</span> Unlimited files</li>
+          <li><span class="c3-check">✓</span> All modes + HEX 21</li>
+          <li><span class="c3-check">✓</span> Account-bound access code</li>
+          <li><span class="c3-check">✓</span> Priority-ready pipeline</li>
+        </ul>
+        <a class="c3-btn" href="https://funpay.com/lots/offer?id=75265310" target="_blank" rel="noopener">Buy on FunPay</a>
+      </div>
+      <div class="c3-card c3-card-pro">
+        <div class="c3-tier-small">Desktop</div>
+        <div class="c3-tier-large">EXE</div>
+        <p class="c3-desc">Full desktop app with offline processing and DeviantArt helpers.</p>
+        <ul class="c3-list">
+          <li><span class="c3-check">✓</span> Same core pipeline</li>
+          <li><span class="c3-check">✓</span> Local FFmpeg power</li>
+          <li><span class="c3-check">✓</span> License key system</li>
+          <li><span class="c3-check">✓</span> Auto-update ready</li>
+        </ul>
+        <a class="c3-btn" href="https://funpay.com/lots/offer?id=75265310" target="_blank" rel="noopener">Get desktop</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="final">
+    <div class="liquid-glass final-card">
+      <div class="glow"></div>
+      <h2 data-i="cta_h">Close the tabs.<br/>Open your profile.</h2>
+      <p data-i="cta_p">Process, download sources, preview on a Steam template, and ship — without leaving the browser.</p>
+      <div class="final-btns">
+        <a class="btn-pill" href="/app" data-i="cta_open2">Open tools</a>
+        <a class="btn-ghost" href="/app?auth=1" data-i="cta_reg">Create account →</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>Showcase Maker · by n1t1337 · <a href="/app">Tools</a></footer>
 </div>
 
-<footer>
-  Showcase Maker · by <a href="https://guns.lol/n1t1337" target="_blank" rel="noopener">n1t1337</a>
-  · <a href="https://funpay.com/lots/offer?id=75265310" target="_blank" rel="noopener">Desktop на FunPay</a>
-</footer>
-
-<script>
-const vid = document.getElementById('heroVid');
-const fb = document.getElementById('orbFallback');
-vid.addEventListener('error', () => { vid.style.display='none'; fb.style.display='grid'; });
-vid.addEventListener('loadeddata', () => { fb.style.display='none'; vid.style.display='block'; });
-setTimeout(() => {
-  if (vid.readyState < 2) { vid.style.display='none'; fb.style.display='grid'; }
-}, 1500);
-</script>
-
+<button type="button" class="lang" id="langBtn">RU</button>
 <script>
 const I18N = {
-  ru: {
-    nav_feat: "Возможности", nav_how: "Как это работает", nav_tools: "Инструменты", nav_reg: "Регистрация",
-    h1a: "Steam-витрины", h1b: "без рутины",
-    hero_p: "Нарезка Workshop, Featured и Split, watermark, сжатие под лимит Steam, скачивание исходников и предпросмотр профиля — в одном браузерном инструменте.",
-    cta_tools: "Открыть инструменты", cta_reg: "Создать аккаунт", cta_desktop: "Скачать desktop", cta_desktop_hint: "Windows · полный функционал · офлайн",
-    hero_note: "Free · 5 файлов/сутки  ·  Pro · без лимита",
-    feat_h: "Всё для оформления профиля", feat_lead: "От исходника до готовых файлов под загрузку в Steam",
-    c1t: "Нарезка витрин", c1p: "Workshop на 5 частей, Featured 630px, Artwork Split 506+100. Полосы, watermark, GIF и видео.",
-    c2t: "Скачивание исходников", c2p: "YouTube, TikTok, X, Reddit, Pinterest — без сторонних сайтов, сразу в рабочую папку.",
-    c3t: "Предпросмотр профиля", c3p: "Шаблон Steam-страницы, слоты под каждую витрину, GIF и MP4 с анимацией.",
-    c4t: "Watermark", c4p: "Текст, шрифт, прозрачность. Удобно для авторов, которые продают или публикуют работы.",
-    c5t: "ZIP под Steam", c5p: "Готовый архив с part_1…5, featured, split — можно сразу грузить в мастерскую.",
-    c6t: "В браузере", c6p: "Не нужно ставить exe на каждый ПК. Открыл сайт — обработал — скачал.",
-    how_h: "Четыре шага", how_lead: "От файла до профиля Steam",
-    s1t: "Загрузи", s1p: "PNG, JPG, GIF, MP4 или AVI — или скачай по ссылке внутри сервиса.",
-    s2t: "Выбери режим", s2p: "Workshop, Featured или Artwork Split + watermark и FPS.",
-    s3t: "Скачай ZIP", s3p: "Файлы уже нарезаны и сжаты под лимиты Steam.",
-    s4t: "Залей в Steam", s4p: "Код для консоли и инструкция — на вкладке Steam в инструментах.",
-    band_h: "Готов оформить профиль?", band_p: "Бесплатный лимит для теста · Pro снимает ограничения",
-    band_tools: "Перейти к инструментам", band_reg: "Регистрация",
-    foot: "Showcase Maker · by"
-  },
   en: {
-    nav_feat: "Features", nav_how: "How it works", nav_tools: "Tools", nav_reg: "Sign up",
-    h1a: "Steam showcases", h1b: "without the grind",
-    hero_p: "Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool.",
-    cta_tools: "Open tools", cta_reg: "Create account", cta_desktop: "Download desktop app", cta_desktop_hint: "Windows · full features · offline",
-    hero_note: "Free · 5 files/day  ·  Pro · unlimited",
-    feat_h: "Everything for your profile", feat_lead: "From source file to Steam-ready assets",
-    c1t: "Showcase cuts", c1p: "Workshop ×5, Featured 630px, Artwork Split 506+100. Bars, watermark, GIF and video.",
-    c2t: "Download sources", c2p: "YouTube, TikTok, X, Reddit, Pinterest — no third-party sites.",
-    c3t: "Profile preview", c3p: "Steam page template, slots per showcase, animated GIF and MP4.",
-    c4t: "Watermark", c4p: "Text, font, opacity — handy if you sell or publish art.",
-    c5t: "Steam ZIP", c5p: "Ready archive with part_1…5, featured, split — upload to Workshop.",
-    c6t: "In the browser", c6p: "No .exe on every PC. Open the site, process, download.",
-    how_h: "Four steps", how_lead: "From file to Steam profile",
-    s1t: "Upload", s1p: "PNG, JPG, GIF, MP4 or AVI — or download by link inside the app.",
-    s2t: "Pick a mode", s2p: "Workshop, Featured or Artwork Split + watermark and FPS.",
-    s3t: "Download ZIP", s3p: "Already cut and compressed for Steam limits.",
-    s4t: "Upload to Steam", s4p: "Console code and guide are on the Steam tab in Tools.",
-    band_h: "Ready to style your profile?", band_p: "Free limit to try · Pro removes limits",
-    band_tools: "Go to tools", band_reg: "Sign up",
-    foot: "Showcase Maker · by"
+    nav_feat:'Features', nav_price:'Pricing', nav_tools:'Tools', nav_reg:'Sign up',
+    cta_tools:'Open tools →', h1a:'Steam showcases.', h1b:'Revitalized',
+    hero_p:'Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool for creators.',
+    cta_open:'Open Showcase Maker', hero_note:'Free · 5 files/day  ·  Pro · unlimited',
+    tri_label:'Process', tri_h:'Clear the busywork.\nShip the showcase.',
+    tri_p:'Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.',
+    tri_today:'Today · showcase pipeline', trust:'Built for Steam profile creators',
+    cta_h:'Close the tabs.\nOpen your profile.',
+    cta_p:'Process, download sources, preview on a Steam template, and ship — without leaving the browser.',
+    cta_open2:'Open tools', cta_reg:'Create account →'
+  },
+  ru: {
+    nav_feat:'Возможности', nav_price:'Цены', nav_tools:'Инструменты', nav_reg:'Регистрация',
+    cta_tools:'Открыть →', h1a:'Steam-витрины.', h1b:'Без рутины',
+    hero_p:'Нарезка Workshop, Featured и Split, watermark, лимиты Steam, скачивание исходников и предпросмотр профиля — один инструмент в браузере.',
+    cta_open:'Открыть Showcase Maker', hero_note:'Free · 5 файлов/сутки  ·  Pro · безлимит',
+    tri_label:'Обработка', tri_h:'Убери рутину.\nОтгрузи витрину.',
+    tri_p:'Showcase Maker режет Workshop, Featured и Split, ставит watermark, укладывается в лимиты Steam и собирает ZIP — ты занимаешься артом, не пикселями.',
+    tri_today:'Сегодня · пайплайн витрины', trust:'Для тех, кто оформляет Steam',
+    cta_h:'Закрой лишние вкладки.\nОткрой профиль.',
+    cta_p:'Обработка, скачивание, предпросмотр на шаблоне Steam — всё в браузере.',
+    cta_open2:'Открыть', cta_reg:'Создать аккаунт →'
   }
 };
-
-function applyLang(lang) {
-  const t = I18N[lang] || I18N.ru;
-  document.documentElement.lang = lang;
-  const map = [
-    ['a[href="#features"]', 'nav_feat'],
-    ['a[href="#how"]', 'nav_how'],
-    ['a[href="/app"].btn-ghost', 'nav_tools'],
-    ['a[href="#" data-auth="register"].btn-primary', 'nav_reg'],
-  ];
-  // nav
-  document.querySelectorAll('.nav-links a').forEach((a,i) => {
-    const keys = ['nav_feat','nav_how','nav_tools','nav_reg'];
-    if (keys[i] && t[keys[i]]) a.textContent = t[keys[i]];
+function lang(){ return localStorage.getItem('sm_lang') || 'en'; }
+function apply(L){
+  const t = I18N[L] || I18N.en;
+  document.querySelectorAll('[data-i]').forEach(el => {
+    const k = el.getAttribute('data-i');
+    if (t[k] != null) el.innerHTML = String(t[k]).replace(/\n/g,'<br/>');
   });
-  const h1 = document.querySelector('.hero h1');
-  if (h1) h1.innerHTML = t.h1a + '<br/><span>' + t.h1b + '</span>';
-  const hp = document.querySelector('.hero p');
-  if (hp) hp.textContent = t.hero_p;
-  const ctas = document.querySelectorAll('.hero-cta a');
-  if (ctas[0]) ctas[0].textContent = t.cta_tools;
-  if (ctas[1]) ctas[1].textContent = t.cta_reg;
-  const note = document.querySelector('.hero-note');
-  if (note) note.textContent = t.hero_note;
-  const desk = document.querySelector('[data-i18n="cta_desktop"]');
-  if (desk && t.cta_desktop) desk.textContent = t.cta_desktop;
-  const deskH = document.querySelector('[data-i18n="cta_desktop_hint"]');
-  if (deskH && t.cta_desktop_hint) deskH.textContent = t.cta_desktop_hint;
-  const fh = document.querySelector('#features h2');
-  if (fh) fh.textContent = t.feat_h;
-  const fl = document.querySelector('#features .lead');
-  if (fl) fl.textContent = t.feat_lead;
-  const cards = document.querySelectorAll('#features .card');
-  const ck = [['c1t','c1p'],['c2t','c2p'],['c3t','c3p'],['c4t','c4p'],['c5t','c5p'],['c6t','c6p']];
-  cards.forEach((c,i) => {
-    if (!ck[i]) return;
-    const h = c.querySelector('h3'); const p = c.querySelector('p');
-    if (h) h.textContent = t[ck[i][0]];
-    if (p) p.textContent = t[ck[i][1]];
-  });
-  const hh = document.querySelector('#how h2'); if (hh) hh.textContent = t.how_h;
-  const hl = document.querySelector('#how .lead'); if (hl) hl.textContent = t.how_lead;
-  const steps = document.querySelectorAll('#how .step');
-  const sk = [['s1t','s1p'],['s2t','s2p'],['s3t','s3p'],['s4t','s4p']];
-  steps.forEach((s,i) => {
-    if (!sk[i]) return;
-    const h = s.querySelector('h3'); const p = s.querySelector('p');
-    if (h) h.textContent = t[sk[i][0]];
-    if (p) p.textContent = t[sk[i][1]];
-  });
-  const bh = document.querySelector('.cta-band h2'); if (bh) bh.textContent = t.band_h;
-  const bp = document.querySelector('.cta-band p'); if (bp) bp.textContent = t.band_p;
-  const ba = document.querySelectorAll('.cta-band a');
-  if (ba[0]) ba[0].textContent = t.band_tools;
-  if (ba[1]) ba[1].textContent = t.band_reg;
-  const lb = document.getElementById('langBtn');
-  if (lb) lb.textContent = lang === 'en' ? 'RU' : 'EN';
-  localStorage.setItem('sm_lang', lang);
+  const b = document.getElementById('langBtn');
+  if (b) b.textContent = L === 'en' ? 'RU' : 'EN';
 }
-
-document.getElementById('langBtn')?.addEventListener('click', () => {
-  const cur = localStorage.getItem('sm_lang') || 'ru';
-  applyLang(cur === 'ru' ? 'en' : 'ru');
-});
-applyLang(localStorage.getItem('sm_lang') || 'en');
+apply(lang());
+document.getElementById('langBtn').onclick = () => {
+  const n = lang() === 'en' ? 'ru' : 'en';
+  localStorage.setItem('sm_lang', n);
+  apply(n);
+};
 </script>
-
-
-
-<div id="homeAuthModal" class="auth-overlay" style="display:none">
-  <div class="auth-card">
-    <div class="auth-visual">
-      <div class="auth-visual-bg"></div>
-      <div class="auth-logo-wrap">
-        <img class="auth-logo" src="/static/icon.png" alt="Showcase Maker"/>
-      </div>
-      <div class="auth-visual-text">
-        <h2>Showcase Maker</h2>
-        <p>Steam showcases without the grind</p>
-      </div>
-    </div>
-    <div class="auth-form-side">
-      <button type="button" class="auth-x" id="homeAuthClose" aria-label="Close">×</button>
-      <p class="auth-kicker" id="homeAuthKicker">Login your account</p>
-      <h3 id="homeAuthTitle">Welcome Back!</h3>
-      <p class="auth-sub" id="homeAuthSub">Enter your email and password</p>
-      <label class="auth-label">Email address</label>
-      <input id="homeEmail" type="email" placeholder="you@email.com" autocomplete="email"/>
-      <label class="auth-label">Password</label>
-      <input id="homePass" type="password" placeholder="Enter your password" autocomplete="current-password"/>
-      <button id="homeAuthSubmit" class="auth-submit" type="button">Sign in</button>
-      <p class="auth-switch" id="homeAuthSwitch">No account? <a href="#" id="homeAuthToggle">Sign up</a></p>
-      <p id="homeAuthErr" class="auth-err"></p>
-    </div>
-  </div>
-</div>
-
-<script>
-(function(){
-  let mode = 'login';
-  const modal = document.getElementById('homeAuthModal');
-  function openAuth(m) {
-    mode = m || 'login';
-    document.getElementById('homeAuthKicker').textContent = mode === 'register' ? 'Create your account' : 'Login your account';
-    document.getElementById('homeAuthTitle').textContent = mode === 'register' ? 'Join us!' : 'Welcome Back!';
-    document.getElementById('homeAuthSub').textContent = mode === 'register' ? 'Create email and password' : 'Enter your email and password';
-    document.getElementById('homeAuthSubmit').textContent = mode === 'register' ? 'Sign up' : 'Sign in';
-    document.getElementById('homeAuthSwitch').innerHTML = mode === 'register'
-      ? 'Have an account? <a href="#" id="homeAuthToggle" style="color:#3ecbff">Log in</a>'
-      : 'No account? <a href="#" id="homeAuthToggle" style="color:#3ecbff">Sign up</a>';
-    document.getElementById('homeAuthToggle').onclick = (e) => { e.preventDefault(); openAuth(mode==='login'?'register':'login'); };
-    modal.style.display = 'flex'; modal.classList.add('show');
-  }
-  document.getElementById('homeAuthClose').onclick = () => { modal.style.display = 'none'; modal.classList.remove('show'); };
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; modal.classList.remove('show'); });
-  document.querySelectorAll('[data-auth]').forEach(el => {
-    el.addEventListener('click', (e) => { e.preventDefault(); openAuth(el.getAttribute('data-auth') || 'login'); });
-  });
-  document.getElementById('homeAuthSubmit').onclick = async () => {
-    const email = document.getElementById('homeEmail').value.trim();
-    const password = document.getElementById('homePass').value;
-    const err = document.getElementById('homeAuthErr');
-    err.textContent = '';
-    const url = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-    try {
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
-      const j = await r.json();
-      if (!j.ok) { err.textContent = j.msg || 'Error'; return; }
-      if (j.token) {
-        localStorage.setItem('sm_session', j.token);
-        try { document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax'; } catch(e) {}
-      }
-      location.href = '/app';
-    } catch (e) { err.textContent = String(e); }
-  };
-  // show account in nav if logged in
-  async function homeSession() {
-    try {
-      const r = await fetch('/api/auth/me', {
-        credentials: 'include',
-        headers: { 'X-Session-Token': localStorage.getItem('sm_session') || '' }
-      });
-      const j = await r.json();
-      const slot = document.getElementById('navAuthSlot');
-      if (!slot) return;
-      if (j.logged_in) {
-        const mail = (j.email || 'Profile');
-        const short = mail.length > 18 ? mail.slice(0, 16) + '…' : mail;
-        slot.innerHTML =
-          '<a href="/app#account" class="btn btn-primary" style="color:#fff!important;font-weight:600" title="' + mail + '">' + short + '</a>';
-      } else {
-        slot.innerHTML =
-          '<a href="#" data-auth="login" class="btn btn-ghost" id="navLoginBtn">Log in</a>' +
-          '<a href="#" data-auth="register" class="btn btn-primary">Sign up</a>';
-        slot.querySelectorAll('[data-auth]').forEach(el => {
-          el.addEventListener('click', (e) => {
-            e.preventDefault();
-            openAuth(el.getAttribute('data-auth') || 'login');
-          });
-        });
-      }
-    } catch(e) {}
-  }
-  homeSession();
-})();
-</script>
-
-
-<script>
-(function(){
-  const layer = document.getElementById('starsLayer');
-  if (!layer) return;
-  const N = 70;
-  for (let i = 0; i < N; i++) {
-    const el = document.createElement('span');
-    el.className = 'star' + (i % 5 === 0 ? ' s2' : (i % 3 === 0 ? ' s3' : ''));
-    el.style.left = (Math.random() * 100) + '%';
-    el.style.top = (Math.random() * 100) + '%';
-    el.style.setProperty('--dx', ((Math.random() - 0.5) * 80) + 'px');
-    el.style.animationDuration = (12 + Math.random() * 22) + 's';
-    el.style.animationDelay = (-Math.random() * 20) + 's';
-    layer.appendChild(el);
-  }
-})();
-</script>
-
 </body>
 </html>
