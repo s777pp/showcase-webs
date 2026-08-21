@@ -40,6 +40,13 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none
 }
 
+.nav-right{display:flex;align-items:center;gap:10px}
+.lang-nav{
+  width:40px;height:40px;border-radius:999px;border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.06);color:#fff;font-size:12px;font-weight:700;
+  cursor:pointer;transition:background .15s
+}
+.lang-nav:hover{background:rgba(255,255,255,.12)}
 .btn-pill{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
   border-radius:999px;background:#fff;color:#000;font-weight:500;font-size:14px;
@@ -62,7 +69,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 @media(min-width:768px){.nav-links{display:flex}}
 .nav-links a{color:rgba(255,255,255,.7);font-size:14px;font-weight:500;transition:color .2s}
 .nav-links a:hover{color:#fff}
-.logo-mark{width:32px;height:32px;display:block}
+.logo-link{display:flex;align-items:center;gap:10px;text-decoration:none}.logo-mark{width:32px;height:32px;display:block;border-radius:8px;object-fit:cover}.logo-text{font-size:14px;font-weight:600;color:#fff;letter-spacing:-.02em}
 
 .hero{padding:64px 24px 80px;text-align:center;display:flex;flex-direction:column;align-items:center}
 @media(min-width:768px){.hero{padding-top:112px}}
@@ -229,8 +236,8 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 
 <div class="shell">
   <nav class="nav">
-    <a href="/" aria-label="Showcase Maker">
-      <svg class="logo-mark" viewBox="0 0 256 256" fill="#fff"><path d="M 0 128 C 70.692 128 128 185.308 128 256 L 64 256 C 64 220.654 35.346 192 0 192 Z M 256 192 C 220.654 192 192 220.654 192 256 L 128 256 C 128 185.308 185.308 128 256 128 Z M 128 0 C 128 70.692 70.692 128 0 128 L 0 64 C 35.346 64 64 35.346 64 0 Z M 192 0 C 192 35.346 220.654 64 256 64 L 256 128 C 185.308 128 128 70.692 128 0 Z"/></svg>
+    <a href="/" aria-label="Showcase Maker" class="logo-link">
+      <img class="logo-mark" src="/static/icon.png" alt="Showcase Maker" width="32" height="32"/>
     </a>
     <div class="nav-links">
       <a href="#features" data-i="nav_feat">Features</a>
@@ -238,7 +245,10 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
       <a href="/app" data-i="nav_tools">Tools</a>
       <a href="/app?auth=1" data-i="nav_reg">Sign up</a>
     </div>
-    <a class="btn-pill" href="/app" data-i="cta_tools">Open tools →</a>
+    <div class="nav-right">
+      <button type="button" class="lang-nav" id="langBtnNav" aria-label="Language">RU</button>
+      <a class="btn-pill" href="/app" data-i="cta_tools">Open tools →</a>
+    </div>
   </nav>
 
   <section class="hero">
@@ -532,19 +542,21 @@ function applyLang(L) {
     const k = el.getAttribute("data-i");
     if (dict[k] != null) el.innerHTML = dict[k];
   });
-  var btn = document.getElementById("langBtn");
-  if (btn) btn.textContent = L === "en" ? "RU" : "EN";
+  ["langBtn","langBtnNav"].forEach(function(id){ var b=document.getElementById(id); if(b) b.textContent = L==="en"?"RU":"EN"; });
   localStorage.setItem("sm_lang", L);
 }
 
+function wireLangBtn(id) {
+  var btn = document.getElementById(id);
+  if (!btn) return;
+  btn.addEventListener("click", function () {
+    applyLang(getLang() === "en" ? "ru" : "en");
+  });
+}
 document.addEventListener("DOMContentLoaded", function () {
   applyLang(getLang());
-  var btn = document.getElementById("langBtn");
-  if (btn) {
-    btn.addEventListener("click", function () {
-      applyLang(getLang() === "en" ? "ru" : "en");
-    });
-  }
+  wireLangBtn("langBtn");
+  wireLangBtn("langBtnNav");
 });
 </script>
 
