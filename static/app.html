@@ -509,7 +509,7 @@ async function refreshQuota() {
   }
 }
 const modal = document.getElementById('authModal');
-document.getElementById('btnAuth').onclick = () => { state.authMode='login'; syncAuthUi(); modal.classList.add('open'); };
+document.getElementById('btnAuth').onclick = () => { state.authMode='login'; syncAuthUi(); syncAuthUiLang(appLang()); modal.classList.add('open'); };
 modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
 
 function syncAuthUi() {
@@ -521,6 +521,7 @@ function syncAuthUi() {
     ? 'Уже есть аккаунт? <a id="authToggle">Вход</a>'
     : 'No account? <a id="authToggle">Sign up</a>';
   document.getElementById('authToggle').onclick = () => { state.authMode = reg ? 'login' : 'register'; syncAuthUi(); };
+  try { syncAuthUiLang(appLang()); } catch(e) {}
 }
 modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
 document.getElementById('authSubmit').onclick = async () => {
@@ -948,9 +949,10 @@ const APP_I18N = {
     funpay_hint:"Buy on FunPay. After payment you get a code — paste it below.",
     steam_h:"Загрузка в Steam",
     about_h:"О сервисе",
-    auth_login:"Вход", auth_reg:"Регистрация",
-    auth_sub_l:"Log in to buy Pro", auth_sub_r:"Создай аккаунт для Pro",
-    no_acc:"No account?", has_acc:"Уже есть аккаунт?",
+    auth_login:"Войти", auth_reg:"Регистрация",
+    auth_sub_l:"Войди, чтобы купить Pro и сохранить доступ", auth_sub_r:"Создай аккаунт, чтобы купить Pro и сохранить доступ",
+    no_acc:"Нет аккаунта?", has_acc:"Уже есть аккаунт?",
+    ph_email:"Email", ph_pass:"Пароль (мин. 6)",
   },
   en: {
     back: "← Home",
@@ -977,7 +979,8 @@ const APP_I18N = {
     steam_h:"Upload to Steam",
     about_h:"About",
     auth_login:"Log in", auth_reg:"Sign up",
-    auth_sub_l:"Log in to buy Pro", auth_sub_r:"Create an account for Pro",
+    auth_sub_l:"Log in to buy Pro and keep access", auth_sub_r:"Create an account to buy Pro and keep access",
+    ph_email:"Email", ph_pass:"Password (min 6)",
     no_acc:"No account?", has_acc:"Already have an account?",
   }
 };
@@ -1120,15 +1123,19 @@ function applyAppLang(lang) {
 }
 
 function syncAuthUiLang(lang) {
-  const t = APP_I18N[lang] || APP_I18N.ru;
+  const t = APP_I18N[lang] || APP_I18N.en;
   const reg = (typeof state !== 'undefined' && state.authMode === 'register');
   const title = document.getElementById('authTitle');
   const sub = document.getElementById('authSub');
   const submit = document.getElementById('authSubmit');
   const sw = document.getElementById('authSwitch');
+  const em = document.getElementById('authEmail');
+  const pw = document.getElementById('authPass');
   if (title) title.textContent = reg ? t.auth_reg : t.auth_login;
   if (sub) sub.textContent = reg ? t.auth_sub_r : t.auth_sub_l;
   if (submit) submit.textContent = reg ? t.auth_reg : t.auth_login;
+  if (em && t.ph_email) em.placeholder = t.ph_email;
+  if (pw && t.ph_pass) pw.placeholder = t.ph_pass;
   if (sw) {
     sw.innerHTML = reg
       ? t.has_acc + ' <a id="authToggle">' + t.auth_login + '</a>'
@@ -1352,10 +1359,10 @@ if (location.hash === '#da') {
 document.querySelectorAll('#tab-account .btn').forEach(btn => {
   const label = (btn.textContent || '').trim().toLowerCase();
   if (label === 'log in' || label === 'войти') {
-    btn.addEventListener('click', () => { state.authMode='login'; syncAuthUi(); modal.classList.add('open'); });
+    btn.addEventListener('click', () => { state.authMode='login'; syncAuthUi(); syncAuthUiLang(appLang()); modal.classList.add('open'); });
   }
   if (label === 'sign up' || label === 'регистрация') {
-    btn.addEventListener('click', () => { state.authMode='register'; syncAuthUi(); modal.classList.add('open'); });
+    btn.addEventListener('click', () => { state.authMode='register'; syncAuthUi(); syncAuthUiLang(appLang()); modal.classList.add('open'); });
   }
 });
 </script>

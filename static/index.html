@@ -78,15 +78,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .hero-cta{margin-top:28px;display:flex;flex-direction:column;align-items:center;gap:12px}
 .hero-note{font-size:12px;color:rgba(255,255,255,.4)}
 
-.os-bar{
-  height:40px;background:rgba(0,0,0,.4);backdrop-filter:blur(12px);
-  border-top:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1);
-  display:flex;align-items:center
-}
-.os-inner{max-width:72rem;margin:0 auto;padding:0 24px;width:100%;display:flex;align-items:center;justify-content:space-between;font-size:12px}
-.os-left{display:flex;align-items:center;gap:14px;color:rgba(255,255,255,.7)}
-.os-left b{color:#fff}
-.os-right{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.5)}
+
 
 .mock{
   max-width:72rem;margin:0 auto;padding:64px 24px 96px
@@ -260,17 +252,6 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
       <span class="hero-note" data-i="hero_note">Free · 5 files/day  ·  Pro · unlimited</span>
     </div>
   </section>
-
-  <div class="os-bar">
-    <div class="os-inner">
-      <div class="os-left">
-        <svg width="14" height="14" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
-        <b>Showcase Maker</b>
-        <span class="hidden-sm">File</span><span>Edit</span><span>View</span>
-      </div>
-      <div class="os-right"><span data-i="os_right">Process · Download · Preview</span></div>
-    </div>
-  </div>
 
   <section class="mock" id="features">
     <div class="mock-frame">
@@ -475,74 +456,96 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 <script>
 const I18N = {
   en: {
-    nav_feat:'Features', nav_price:'Pricing', nav_tools:'Tools', nav_reg:'Sign up',
-    cta_tools:'Open tools →', h1a:'Steam showcases.', h1b:'Revitalized',
-    hero_p:'Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool for creators.',
-    cta_open:'Open Showcase Maker', hero_note:'Free · 5 files/day  ·  Pro · unlimited',
-    os_right:'Process · Download · Preview',
-    mock_title:'Showcase Maker — Tools',
-    compose:'✦ Open tools',
-    tri_label:'Process', tri_h:'Clear the busywork.
-Ship the showcase.',
-    tri_p:'Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.',
-    tri_today:'Today · showcase pipeline', trust:'Built for Steam profile creators',
-    q1:'“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”',
-    q2:'“Download + process + preview in one tab. No more juggling five sites.”',
-    q3:'“Pro is worth it when you ship showcases every week — no daily limit stress.”',
-    price_free_d:'Try the full pipeline with a daily file limit.',
-    price_pro_d:'Unlimited processing for sellers and daily shippers.',
-    price_desk_d:'Full desktop app with offline processing and DeviantArt helpers.',
-    start_free:'Start free', buy_fp:'Buy on FunPay', get_desk:'Get desktop',
-    cta_h:'Close the tabs.
-Open your profile.',
-    cta_p:'Process, download sources, preview on a Steam template, and ship — without leaving the browser.',
-    cta_open2:'Open tools', cta_reg:'Create account →',
-    footer:'Showcase Maker · by n1t1337 · Tools'
+    nav_feat: "Features",
+    nav_price: "Pricing",
+    nav_tools: "Tools",
+    nav_reg: "Sign up",
+    cta_tools: "Open tools →",
+    h1a: "Steam showcases.",
+    h1b: "Revitalized",
+    hero_p: "Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool for creators.",
+    cta_open: "Open Showcase Maker",
+    hero_note: "Free · 5 files/day  ·  Pro · unlimited",
+    mock_title: "Showcase Maker — Tools",
+    compose: "✦ Open tools",
+    tri_label: "Process",
+    tri_h: "Clear the busywork.<br/>Ship the showcase.",
+    tri_p: "Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.",
+    tri_today: "Today · showcase pipeline",
+    trust: "Built for Steam profile creators",
+    q1: "“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”",
+    q2: "“Download + process + preview in one tab. No more juggling five sites.”",
+    q3: "“Pro is worth it when you ship showcases every week — no daily limit stress.”",
+    price_free_d: "Try the full pipeline with a daily file limit.",
+    price_pro_d: "Unlimited processing for sellers and daily shippers.",
+    price_desk_d: "Full desktop app with offline processing and DeviantArt helpers.",
+    start_free: "Start free",
+    buy_fp: "Buy on FunPay",
+    get_desk: "Get desktop",
+    cta_h: "Close the tabs.<br/>Open your profile.",
+    cta_p: "Process, download sources, preview on a Steam template, and ship — without leaving the browser.",
+    cta_open2: "Open tools",
+    cta_reg: "Create account →"
   },
   ru: {
-    nav_feat:'Возможности', nav_price:'Цены', nav_tools:'Инструменты', nav_reg:'Регистрация',
-    cta_tools:'Открыть →', h1a:'Steam-витрины.', h1b:'Без рутины',
-    hero_p:'Нарезка Workshop, Featured и Split, watermark, лимиты Steam, скачивание исходников и предпросмотр профиля — один инструмент в браузере.',
-    cta_open:'Открыть Showcase Maker', hero_note:'Free · 5 файлов/сутки  ·  Pro · безлимит',
-    os_right:'Обработка · Скачать · Превью',
-    mock_title:'Showcase Maker — Инструменты',
-    compose:'✦ Открыть',
-    tri_label:'Обработка', tri_h:'Убери рутину.
-Отгрузи витрину.',
-    tri_p:'Showcase Maker режет Workshop, Featured и Split, ставит watermark, укладывается в лимиты Steam и собирает ZIP — ты занимаешься артом, не пикселями.',
-    tri_today:'Сегодня · пайплайн витрины', trust:'Для тех, кто оформляет Steam',
-    q1:'«Режет Workshop на пять частей с hex 21 за секунды. Руками больше не делаю.»',
-    q2:'«Скачал, обработал, превью — в одной вкладке. Без пяти сайтов.»',
-    q3:'«Pro окупается, если витрины каждый день — без лимита.»',
-    price_free_d:'Полный пайплайн с дневным лимитом файлов.',
-    price_pro_d:'Безлимитная обработка для продавцов и ежедневной работы.',
-    price_desk_d:'Десктоп-приложение: офлайн, FFmpeg, DeviantArt.',
-    start_free:'Начать бесплатно', buy_fp:'Купить на FunPay', get_desk:'Скачать EXE',
-    cta_h:'Закрой лишние вкладки.
-Открой профиль.',
-    cta_p:'Обработка, скачивание, предпросмотр на шаблоне Steam — всё в браузере.',
-    cta_open2:'Открыть', cta_reg:'Создать аккаунт →',
-    footer:'Showcase Maker · by n1t1337 · Инструменты'
+    nav_feat: "Возможности",
+    nav_price: "Цены",
+    nav_tools: "Инструменты",
+    nav_reg: "Регистрация",
+    cta_tools: "Открыть →",
+    h1a: "Steam-витрины.",
+    h1b: "Без рутины",
+    hero_p: "Нарезка Workshop, Featured и Split, watermark, лимиты Steam, скачивание исходников и предпросмотр профиля — один инструмент в браузере.",
+    cta_open: "Открыть Showcase Maker",
+    hero_note: "Free · 5 файлов/сутки  ·  Pro · безлимит",
+    mock_title: "Showcase Maker — Инструменты",
+    compose: "✦ Открыть",
+    tri_label: "Обработка",
+    tri_h: "Убери рутину.<br/>Отгрузи витрину.",
+    tri_p: "Showcase Maker режет Workshop, Featured и Split, ставит watermark, укладывается в лимиты Steam и собирает ZIP — ты занимаешься артом, не пикселями.",
+    tri_today: "Сегодня · пайплайн витрины",
+    trust: "Для тех, кто оформляет Steam",
+    q1: "«Режет Workshop на пять частей с hex 21 за секунды. Руками больше не делаю.»",
+    q2: "«Скачал, обработал, превью — в одной вкладке. Без пяти сайтов.»",
+    q3: "«Pro окупается, если витрины каждый день — без лимита.»",
+    price_free_d: "Полный пайплайн с дневным лимитом файлов.",
+    price_pro_d: "Безлимитная обработка для продавцов и ежедневной работы.",
+    price_desk_d: "Десктоп-приложение: офлайн, FFmpeg, DeviantArt.",
+    start_free: "Начать бесплатно",
+    buy_fp: "Купить на FunPay",
+    get_desk: "Скачать EXE",
+    cta_h: "Закрой лишние вкладки.<br/>Открой профиль.",
+    cta_p: "Обработка, скачивание, предпросмотр на шаблоне Steam — всё в браузере.",
+    cta_open2: "Открыть",
+    cta_reg: "Создать аккаунт →"
   }
 };
-function lang(){ return localStorage.getItem('sm_lang') || 'en'; }
-function apply(L){
-  const t = I18N[L] || I18N.en;
-  document.documentElement.lang = L;
-  document.querySelectorAll('[data-i]').forEach(el => {
-    const k = el.getAttribute('data-i');
-    if (t[k] != null) el.innerHTML = String(t[k]).replace(/
-/g,'<br/>');
-  });
-  const b = document.getElementById('langBtn');
-  if (b) b.textContent = L === 'en' ? 'RU' : 'EN';
+
+function getLang() {
+  return localStorage.getItem("sm_lang") || "en";
 }
-apply(lang());
-document.getElementById('langBtn').onclick = () => {
-  const n = lang() === 'en' ? 'ru' : 'en';
-  localStorage.setItem('sm_lang', n);
-  apply(n);
-};
+
+function applyLang(L) {
+  const dict = I18N[L] || I18N.en;
+  document.documentElement.lang = L;
+  document.querySelectorAll("[data-i]").forEach(function (el) {
+    const k = el.getAttribute("data-i");
+    if (dict[k] != null) el.innerHTML = dict[k];
+  });
+  var btn = document.getElementById("langBtn");
+  if (btn) btn.textContent = L === "en" ? "RU" : "EN";
+  localStorage.setItem("sm_lang", L);
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  applyLang(getLang());
+  var btn = document.getElementById("langBtn");
+  if (btn) {
+    btn.addEventListener("click", function () {
+      applyLang(getLang() === "en" ? "ru" : "en");
+    });
+  }
+});
 </script>
 
 </body>

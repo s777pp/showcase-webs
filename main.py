@@ -62,6 +62,54 @@ for d in (DATA, JOBS, STATIC):
     except Exception as e:
         print("mkdir failed", d, e)
 
+
+def _cleanup_old_jobs(max_age_sec: float = 120.0) -> int:
+    """Delete job folders older than max_age_sec (default 2 minutes)."""
+    import time as _time
+    removed = 0
+    try:
+        if not JOBS.is_dir():
+            return 0
+        now = _time.time()
+        for p in list(JOBS.iterdir()):
+            try:
+                if not p.is_dir():
+                    # orphan files
+                    if now - p.stat().st_mtime > max_age_sec:
+                        p.unlink(missing_ok=True)
+                        removed += 1
+                    continue
+                mtime = p.stat().st_mtime
+                if now - mtime >= max_age_sec:
+                    shutil.rmtree(p, ignore_errors=True)
+                    removed += 1
+            except Exception:
+                continue
+    except Exception as e:
+        print("cleanup jobs:", e)
+    return removed
+
+
+def _cleanup_loop():
+    import time as _time
+    while True:
+        try:
+            n = _cleanup_old_jobs(120.0)
+            if n:
+                print(f"cleanup: removed {n} old job(s)")
+        except Exception as e:
+            print("cleanup loop:", e)
+        _time.sleep(30)
+
+
+# start background cleaner
+try:
+    import threading
+    threading.Thread(target=_cleanup_loop, daemon=True, name="job-cleaner").start()
+except Exception as e:
+    print("cleanup thread:", e)
+
+
 FREE_LIMIT = int(os.environ.get("FREE_LIMIT", "5"))
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "40"))
 HOST = os.environ.get("HOST", "127.0.0.1")
