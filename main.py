@@ -141,18 +141,8 @@ PRO_PRICE_LABEL = os.environ.get("PRO_PRICE_LABEL", "Pro · безлимит")
 # Коды доступа: снимают лимит. Можно задать env ACCESS_CODES=CODE1,CODE2
 # или файл data/access_codes.json
 DEFAULT_CODES = {
-    "SHOWCASE-WEB-PRO": {"type": "unlimited", "label": "Pro"},
-    "WEB-TEST-PRO": {"type": "unlimited", "label": "Test Pro"},
-    "SM-TRIAL-GBLDWG-RR5E": {"type": "trial", "hours": 2, "label": "Trial 2h"},
-    "SM-TRIAL-VDIXVH-GRBN": {"type": "trial", "hours": 2, "label": "Trial 2h"},
-    "SM-TRIAL-C46IDD-UO7I": {"type": "trial", "hours": 2, "label": "Trial 2h"},
-    "SM-TRIAL-O2G4C2-UQX0": {"type": "trial", "hours": 2, "label": "Trial 2h"},
-    "SM-TRIAL-3OV9HI-EYUL": {"type": "trial", "hours": 2, "label": "Trial 2h"},
-    "SM-TRIAL-W1DEYX-UY2N": {"type": "trial", "hours": 2, "label": "Trial 2h"},
-    "SM-TRIAL-2H0QBG-GBRO": {"type": "trial", "hours": 2, "label": "Trial 2h"},
-    "SM-TRIAL-T6KQ56-VOOS": {"type": "trial", "hours": 2, "label": "Trial 2h"},
-    "SM-TRIAL-1HBWN9-LZUE": {"type": "trial", "hours": 2, "label": "Trial 2h"},
-    "SM-TRIAL-I32DP0-0MJ5": {"type": "trial", "hours": 2, "label": "Trial 2h"},
+    # Admin only — all sellable keys live in data/access_codes.json
+    "SHOWCASE-WEB-PRO": {"type": "unlimited", "label": "Pro Admin"},
 }
 
 
