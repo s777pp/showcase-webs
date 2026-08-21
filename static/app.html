@@ -20,6 +20,7 @@ html,body{margin:0;min-height:100%;font-family:'Outfit',system-ui,sans-serif;-we
 ::selection{background:rgba(61,129,227,.3)}
 a{color:inherit}
 button,input,select,textarea{font:inherit;color:inherit}
+.stars-layer{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
 .bg-video{position:fixed;inset:0;z-index:0;pointer-events:none}
 .bg-video video{width:100%;height:100%;object-fit:cover;opacity:.35}
 .bg-video::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(12,12,12,.35),#0c0c0c 75%)}
@@ -73,19 +74,20 @@ button,input,select,textarea{font:inherit;color:inherit}
   border:1px solid var(--border);background:rgba(255,255,255,.03);font-size:12px;color:var(--muted)
 }
 .quota{font-size:12px;color:var(--muted)}
-.tab{display:none}
-.tab.active{display:block}
+.tab{display:none !important}
+.tab.active{display:block !important}
+.main{position:relative;z-index:5}
 .card{
-  background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:var(--radius);
-  padding:20px;margin-bottom:16px;backdrop-filter:blur(8px);
-  box-shadow:inset 0 1px 1px rgba(255,255,255,.06);position:relative
+  background:rgba(18,20,28,.88);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);
+  padding:20px;margin-bottom:16px;backdrop-filter:blur(14px);
+  box-shadow:0 8px 32px rgba(0,0,0,.35), inset 0 1px 1px rgba(255,255,255,.08);position:relative
 }
 .card h2{font-size:15px;font-weight:600;margin:0 0 14px;letter-spacing:-.01em}
 .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 @media(max-width:700px){.modes{grid-template-columns:1fr}}
 .mode{
-  text-align:left;padding:14px;border-radius:12px;border:1px solid var(--border);
-  background:rgba(255,255,255,.02);cursor:pointer;transition:.15s
+  text-align:left;padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.35);cursor:pointer;transition:.15s;color:#fff
 }
 .mode:hover{border-color:rgba(255,255,255,.2)}
 .mode.active{border-color:rgba(0,210,255,.5);background:rgba(0,210,255,.06)}
@@ -99,8 +101,8 @@ label.field input,label.field select,input,select,textarea{
 }
 label.field input:focus,label.field select:focus,input:focus,select:focus{border-color:rgba(61,129,227,.6)}
 .drop{
-  border:1px dashed rgba(255,255,255,.2);border-radius:14px;padding:36px 16px;text-align:center;
-  color:var(--muted);font-size:13px;cursor:pointer;transition:.15s;background:rgba(255,255,255,.02)
+  border:1px dashed rgba(255,255,255,.28);border-radius:14px;padding:36px 16px;text-align:center;
+  color:rgba(255,255,255,.7);font-size:13px;cursor:pointer;transition:.15s;background:rgba(0,0,0,.3)
 }
 .drop:hover,.drop.drag{border-color:rgba(0,210,255,.5);color:#fff;background:rgba(0,210,255,.04)}
 .files{display:flex;flex-direction:column;gap:8px;margin:12px 0}
@@ -224,8 +226,6 @@ pre.code{
         <div class="h-sub" id="pageSub">Workshop / Featured / Split cuts, watermark and Steam ZIP</div>
       </div>
     </div>
-
-  </div>
 
   <section class="tab active" id="tab-process">
     <div class="card">
