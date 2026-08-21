@@ -160,7 +160,6 @@ pre.code{
 .modal h3{margin:0 0 6px;font-size:20px;font-weight:600}
 .modal p{margin:0 0 16px;font-size:13px;color:var(--muted)}
 .modal input{width:100%;margin-bottom:10px}
-.modal .stack{display:flex;flex-direction:column;gap:10px}
 .modal .switch{margin-top:14px;font-size:13px;color:var(--muted);text-align:center}
 .modal .switch a{color:#fff;text-decoration:underline;cursor:pointer}
 #trialTimer{
@@ -632,7 +631,7 @@ document.getElementById('authSubmit').onclick = async () => {
   let j;
   try { j = await r.json(); } catch(e) { alert('Server error'); return; }
   if (!j.ok) { alert(j.msg || 'Error'); return; }
-  if (!j.token) { alert(j.msg || 'No session'); return; }
+  if (!j.token) { alert('No session token returned'); return; }
   state.session = j.token;
   localStorage.setItem('sm_session', j.token);
   try {
@@ -643,9 +642,6 @@ document.getElementById('authSubmit').onclick = async () => {
   try { refreshAccountUI(); } catch(e) {}
   refreshQuota();
 };
-  let j; try { j = await r.json(); } catch(e) { alert('Server error'); return; }
-  alert(j.msg || (j.ok ? 'Sent' : 'Error'));
-});
 document.getElementById('btnLogout').onclick = async () => {
   await fetch('/api/auth/logout', { method:'POST', headers: headers(), credentials: 'include' });
   state.session = '';
