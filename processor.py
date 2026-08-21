@@ -167,17 +167,109 @@ def _run(cmd: list[str]) -> None:
 
 
 def media_to_gif(src: Path, dest: Path, fps: int, width: int, duration: float = 12) -> None:
+    """Convert image/gif/video to GIF. Even dimensions, limited duration."""
     ff = find_ffmpeg()
     if not ff:
-        raise RuntimeError("FFmpeg не найден (положи bin/ffmpeg.exe)")
-    fps = max(5, min(30, int(fps)))
+        raise RuntimeError("FFmpeg not found (install ffmpeg or put bin/ffmpeg)")
+    fps = max(5, min(24, int(fps)))
     width = max(200, min(1200, int(width)))
+    # force even width for codecs
+    if width % 2:
+        width -= 1
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
     vf = (
-        f"fps={fps},scale={width}:-1:flags=lanczos,"
-        f"split[s0][s1];[s0]palettegen=stats_mode=diff[p];"
-        f"[s1][p]paletteuse=dither=bayer:bayer_scale=4"
+        f"fps={fps},scale={width}:-2:flags=lanczos,"
+        f"split[s0][s1];[s0]palettegen=stats_mode=single[p];"
+        f"[s1][p]paletteuse=dither=bayer:bayer_scale=5"
     )
-    _run([ff, "-y", "-i", str(src), "-vf", vf, "-t", str(duration), "-loop", "0", str(dest)])
+    # -t after -i limits output length; -an drops audio
+    _run([
+        ff, "-y", "-i", str(src),
+        "-t", str(max(1, float(duration))),
+        "-an",
+        "-vf", vf,
+        "-loop", "0",
+        str(dest),
+    ])
+    if not dest.is_file() or dest.stat().st_size < 50:
+        raise RuntimeError("GIF conversion failed (empty output)")
+
+
+def _probe_wh(path: Path) -> tuple[int, int]:
+    probe = find_ffprobe()
+    ff = find_ffmpeg()
+    if not probe and ff:
+        probe = ff.replace("ffmpeg", "ffprobe")
+    if not probe:
+        # fallback via Pillow for gif/png
+        with Image.open(path) as im:
+            return im.size
+    kw = {}
+    if os.name == "nt":
+        kw["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    out = subprocess.check_output(
+        [
+            probe, "-v", "error", "-select_streams", "v:0",
+            "-show_entries", "stream=width,height",
+            "-of", "csv=p=0:s=x", str(path),
+        ],
+        text=True, **kw,
+    ).strip()
+    # may be "1920x1080" or "1920,1080"
+    out = out.replace(",", "x").split("x")
+    return int(out[0]), int(out[1])
+
+
+def process_video_workshop(
+    src: Path,
+    out_dir: Path,
+    fps: int = 12,
+    width: int = 750,
+    wm_text: str = "",
+    wm_font: str = "lap",
+    wm_opacity: float = 0.22,
+    duration: float = 12,
+) -> dict[str, Path]:
+    """Scale video → GIF, then crop into 5 Steam workshop parts."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    gif_src = out_dir / "source.gif"
+    media_to_gif(src, gif_src, fps=fps, width=width, duration=duration)
+    return process_gif_workshop(gif_src, out_dir, wm_text, wm_font, wm_opacity)
+
+
+def process_video_featured(
+    src: Path,
+    out_dir: Path,
+    fps: int = 12,
+    duration: float = 10,
+) -> dict[str, Path]:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / "featured_630.gif"
+    media_to_gif(src, out, fps=fps, width=630, duration=duration)
+    ensure_under_mb(out)
+    clean = out_dir / "full_original.gif"
+    shutil.copy2(out, clean)
+    return {out.name: out, clean.name: clean}
+
+
+def process_video_split(
+    src: Path,
+    out_dir: Path,
+    fps: int = 12,
+    wm_text: str = "",
+    wm_font: str = "lap",
+    wm_opacity: float = 0.22,
+    duration: float = 12,
+) -> dict[str, Path]:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    # 506 + 100 = 606 total width for split
+    gif_src = out_dir / "source.gif"
+    media_to_gif(src, gif_src, fps=fps, width=606, duration=duration)
+    return process_gif_split(gif_src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity)
 
 
 def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
@@ -330,26 +422,25 @@ def process_gif_workshop(
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
 ) -> dict[str, Path]:
-    """Режет GIF на 5 частей + hex21 + full_with_bars.gif."""
+    """Cut GIF into 5 Steam Workshop parts + full_with_bars.gif."""
     ff = find_ffmpeg()
     if not ff:
-        raise RuntimeError("FFmpeg не найден")
-    probe = find_ffprobe() or ff.replace("ffmpeg", "ffprobe")
-    kw = {}
-    if os.name == "nt":
-        kw["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    info = subprocess.check_output(
-        [probe, "-v", "quiet", "-select_streams", "v:0",
-         "-show_entries", "stream=width,height", "-of", "csv=p=0", str(gif_path)],
-        text=True, **kw,
-    ).strip().split(",")
-    width, height = int(info[0]), int(info[1])
+        raise RuntimeError("FFmpeg not found")
+    width, height = _probe_wh(gif_path)
+    # last part takes remainder so nothing is lost
     pw = max(1, width // 5)
     result: dict[str, Path] = {}
     for i in range(5):
         out = out_dir / f"part_{i + 1}.gif"
-        _run([ff, "-y", "-i", str(gif_path), "-filter:v",
-              f"crop={pw}:{height}:{i * pw}:0", "-loop", "0", str(out)])
+        x = i * pw
+        w = pw if i < 4 else max(1, width - x)
+        # crop then re-palette for valid GIF
+        vf = (
+            f"crop={w}:{height}:{x}:0,"
+            f"split[s0][s1];[s0]palettegen=stats_mode=single[p];"
+            f"[s1][p]paletteuse"
+        )
+        _run([ff, "-y", "-i", str(gif_path), "-an", "-vf", vf, "-loop", "0", str(out)])
         try:
             with open(out, "r+b") as f:
                 f.seek(-1, os.SEEK_END)

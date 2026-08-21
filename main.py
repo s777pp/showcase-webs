@@ -588,18 +588,36 @@ async def api_process(
             elif ext in (".gif", ".mp4", ".mov", ".webm", ".avi", ".mkv"):
                 src = work / f"source{ext}"
                 src.write_bytes(raw)
-                gif_src = src
-                if ext != ".gif":
-                    gif_src = work / "source.gif"
-                    proc.media_to_gif(src, gif_src, fps=fps, width=size if mode == "workshop" else (630 if mode == "featured" else 606))
-                if mode == "workshop":
-                    paths = proc.process_gif_workshop(gif_src, work, text, wm_font, opacity)
-                elif mode == "featured":
-                    paths = proc.process_gif_featured(gif_src, work, fps=fps)
+                is_video = ext in (".mp4", ".mov", ".webm", ".avi", ".mkv")
+                if is_video:
+                    if not proc.find_ffmpeg():
+                        raise RuntimeError("FFmpeg not available on server — video processing requires ffmpeg")
+                    if mode == "workshop":
+                        paths = proc.process_video_workshop(
+                            src, work, fps=fps, width=size,
+                            wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                        )
+                    elif mode == "featured":
+                        paths = proc.process_video_featured(src, work, fps=fps)
+                    else:
+                        paths = proc.process_video_split(
+                            src, work, fps=fps,
+                            wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                        )
                 else:
-                    paths = proc.process_gif_split(gif_src, work, fps=fps, wm_text=text, wm_font=wm_font, wm_opacity=opacity)
+                    if mode == "workshop":
+                        paths = proc.process_gif_workshop(src, work, text, wm_font, opacity)
+                    elif mode == "featured":
+                        paths = proc.process_gif_featured(src, work, fps=fps)
+                    else:
+                        paths = proc.process_gif_split(
+                            src, work, fps=fps, wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                        )
                 for pname, pth in paths.items():
-                    data = Path(pth).read_bytes()
+                    pth = Path(pth)
+                    if not pth.is_file():
+                        continue
+                    data = pth.read_bytes()
                     zf.writestr(f"{folder}/{pname}", data)
                     if len(listed) < 20:
                         listed.append({"name": f"{folder}/{pname}", "size": len(data)})
