@@ -1,4 +1,3 @@
-import os
 #!/usr/bin/env python3
 """
 Showcase Maker WEB — локальный / серверный прототип
