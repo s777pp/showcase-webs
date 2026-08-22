@@ -471,7 +471,7 @@ async def billing_checkout(request: Request):
     # не требуем логин: можно купить и потом ввести код
     return {
         "ok": True,
-        "url": "https://funpay.com/lots/offer?id=75265310",
+        "url": "https://funpay.com/lots/offer?id=75434891",
         "msg": "FunPay",
     }
 
@@ -595,7 +595,7 @@ SOCIALS = [
 def meta():
     return {
         "socials": SOCIALS,
-        "buy_url": "https://funpay.com/lots/offer?id=75265310",
+        "buy_url": "https://funpay.com/lots/offer?id=75434891",
         "stripe_enabled": bool(STRIPE_SECRET and STRIPE_PRICE_ID),
         "pro_label": PRO_PRICE_LABEL,
         "modes": [
