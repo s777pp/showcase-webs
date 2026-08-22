@@ -148,7 +148,7 @@ pre.code{
 .app-footer .quota{justify-content:center}
 
 .modal-bg{
-  display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.65);
+  display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);
   backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px
 }
 .modal-bg.open{display:flex}
@@ -848,21 +848,83 @@ async function refreshQuota() {
   }
 }
 const modal = document.getElementById('authModal');
-document.getElementById('btnAuth').onclick = () => { state.authMode='login'; syncAuthUi(); syncAuthUiLang(appLang()); modal.classList.add('open'); };
-modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+
+window.openAuthModal = function openAuthModal(mode) {
+  try {
+    state.authMode = (mode === 'register') ? 'register' : 'login';
+  } catch (e) {}
+  try { if (typeof syncAuthUi === 'function') syncAuthUi(); } catch (e) { console.warn('syncAuthUi', e); }
+  try {
+    if (typeof syncAuthUiLang === 'function') {
+      const L = (typeof appLang === 'function') ? appLang() : (localStorage.getItem('sm_lang') || 'en');
+      syncAuthUiLang(L);
+    }
+  } catch (e) { console.warn('syncAuthUiLang', e); }
+  const m = document.getElementById('authModal');
+  if (m) {
+    m.classList.add('open');
+    m.style.display = 'flex';
+  }
+  try {
+    const em = document.getElementById('authEmail');
+    if (em) setTimeout(function(){ em.focus(); }, 50);
+  } catch (e) {}
+};
+
+window.closeAuthModal = function closeAuthModal() {
+  const m = document.getElementById('authModal');
+  if (m) {
+    m.classList.remove('open');
+    m.style.display = '';
+  }
+};
+
+function wireAuthOpeners() {
+  const map = [
+    ['btnAuth', 'login'],
+    ['accLogin', 'login'],
+    ['accRegister', 'register'],
+  ];
+  map.forEach(function (pair) {
+    const el = document.getElementById(pair[0]);
+    if (!el) return;
+    el.onclick = function (e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      openAuthModal(pair[1]);
+    };
+  });
+  if (modal) {
+    modal.onclick = function (e) {
+      if (e.target === modal) closeAuthModal();
+    };
+  }
+}
+wireAuthOpeners();
 
 function syncAuthUi() {
   const reg = state.authMode === 'register';
-  document.getElementById('authTitle').textContent = reg ? 'Регистрация' : 'Вход';
-  document.getElementById('authSub').textContent = reg ? 'Создай аккаунт для Pro' : 'Log in to buy Pro';
-  document.getElementById('authSubmit').textContent = reg ? 'Создать аккаунт' : 'Войти';
-  document.getElementById('authSwitch').innerHTML = reg
-    ? 'Уже есть аккаунт? <a id="authToggle">Вход</a>'
-    : 'No account? <a id="authToggle">Sign up</a>';
-  document.getElementById('authToggle').onclick = () => { state.authMode = reg ? 'login' : 'register'; syncAuthUi(); };
-  try { syncAuthUiLang(appLang()); } catch(e) {}
+  const L = (typeof appLang === 'function') ? appLang() : (localStorage.getItem('sm_lang') || 'en');
+  const isRu = L === 'ru';
+  const title = document.getElementById('authTitle');
+  const sub = document.getElementById('authSub');
+  const submit = document.getElementById('authSubmit');
+  const sw = document.getElementById('authSwitch');
+  if (title) title.textContent = reg ? (isRu ? 'Регистрация' : 'Sign up') : (isRu ? 'Вход' : 'Log in');
+  if (sub) sub.textContent = reg
+    ? (isRu ? 'Создай аккаунт для Pro' : 'Create an account for Pro access')
+    : (isRu ? 'Войди, чтобы купить Pro и сохранить доступ' : 'Log in to buy Pro and keep access');
+  if (submit) submit.textContent = reg ? (isRu ? 'Создать аккаунт' : 'Create account') : (isRu ? 'Войти' : 'Log in');
+  if (sw) {
+    sw.innerHTML = reg
+      ? (isRu ? 'Уже есть аккаунт? <a id="authToggle">Вход</a>' : 'Already have an account? <a id="authToggle">Log in</a>')
+      : (isRu ? 'Нет аккаунта? <a id="authToggle">Регистрация</a>' : 'No account? <a id="authToggle">Sign up</a>');
+    const tog = document.getElementById('authToggle');
+    if (tog) tog.onclick = function () {
+      state.authMode = reg ? 'login' : 'register';
+      syncAuthUi();
+    };
+  }
 }
-modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
 document.getElementById('authSubmit').onclick = async () => {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPass').value;
@@ -883,7 +945,7 @@ document.getElementById('authSubmit').onclick = async () => {
     const secure = location.protocol === 'https:' ? '; Secure' : '';
     document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax' + secure;
   } catch(e) {}
-  modal.classList.remove('open');
+  if (typeof closeAuthModal === 'function') closeAuthModal(); else { try { modal.classList.remove('open'); } catch(e) {} }
   try { refreshAccountUI(); } catch(e) {}
   refreshQuota();
 };
@@ -1247,18 +1309,8 @@ document.getElementById('accSaveProfile')?.addEventListener('click', (e) => {
   saveProfile(null);
 });
 
-document.getElementById('accLogin')?.addEventListener('click', () => {
-  state.authMode = 'login';
-  if (typeof syncAuthUi === 'function') syncAuthUi();
-  if (typeof syncAuthUiLang === 'function') try { syncAuthUiLang(appLang()); } catch(e) {}
-  document.getElementById('authModal')?.classList.add('open');
-});
-document.getElementById('accRegister')?.addEventListener('click', () => {
-  state.authMode = 'register';
-  if (typeof syncAuthUi === 'function') syncAuthUi();
-  if (typeof syncAuthUiLang === 'function') try { syncAuthUiLang(appLang()); } catch(e) {}
-  document.getElementById('authModal')?.classList.add('open');
-});
+document.getElementById('accLogin')?.addEventListener('click', () => openAuthModal('login'));
+document.getElementById('accRegister')?.addEventListener('click', () => openAuthModal('register'));
 
 async function init(){
   // restore session after navigating from home
@@ -1279,7 +1331,7 @@ async function init(){
   document.querySelectorAll('.about-socials').forEach(el => { el.innerHTML = mkSoc(allSocials); });
   refreshQuota(); loadPvSlots(); refreshDa(); refreshAccountUI();
   if (new URLSearchParams(location.search).get('auth') === '1') {
-    state.authMode = 'register'; syncAuthUi(); modal.classList.add('open');
+    openAuthModal('register');
   }
   if (new URLSearchParams(location.search).get('billing') === 'success') {
     alert('Оплата прошла. Обнови страницу через пару секунд, если Pro ещё не активен.');
@@ -1347,6 +1399,7 @@ function refreshSteamUI() {
       ["steamFolderHint", pack.steam_folder_hint],
       ["btnSteamFolder", pack.steam_open_folder],
       ["btnSteamPage", pack.steam_open_page],
+      ["btnCopyBlank", pack.steam_blank],
       ["btnCopyCode", pack.steam_copy],
       ["steamHowTitle", pack.steam_how],
     ];
@@ -1934,10 +1987,10 @@ if (location.hash === '#da') {
 document.querySelectorAll('#tab-account .btn').forEach(btn => {
   const label = (btn.textContent || '').trim().toLowerCase();
   if (label === 'log in' || label === 'войти') {
-    btn.addEventListener('click', () => { state.authMode='login'; syncAuthUi(); syncAuthUiLang(appLang()); modal.classList.add('open'); });
+    btn.addEventListener('click', () => openAuthModal('login'));
   }
   if (label === 'sign up' || label === 'регистрация') {
-    btn.addEventListener('click', () => { state.authMode='register'; syncAuthUi(); syncAuthUiLang(appLang()); modal.classList.add('open'); });
+    btn.addEventListener('click', () => openAuthModal('register'));
   }
 });
 
@@ -2124,6 +2177,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       steam_folder_hint: "After Process, download the ZIP and unpack it — those are your files.",
       steam_open_folder: "Open Process tab",
       steam_open_page: "Open Steam page",
+      steam_blank: "Copy blank character",
+      steam_blank_ok: "Blank character copied (ㅤ)",
       steam_copy: "Copy code",
       steam_how: "Step-by-step",
       steam_how_1: "Run Process and download the ZIP, then unpack",
@@ -2201,6 +2256,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       steam_folder_hint: "После Process скачай ZIP и распакуй — это готовые файлы.",
       steam_open_folder: "К вкладке Process",
       steam_open_page: "Открыть страницу Steam",
+      steam_blank: "Скопировать пустой символ",
+      steam_blank_ok: "Пустой символ скопирован (ㅤ)",
       steam_copy: "Копировать код",
       steam_how: "Пошаговая инструкция",
       steam_how_1: "Обработай файлы и скачай ZIP, затем распакуй",
@@ -2437,6 +2494,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   function start() {
     bind();
     applyDict(getLang());
+    try { if (typeof wireAuthOpeners === 'function') wireAuthOpeners(); } catch (e) {}
   }
 
   document.addEventListener("click", function (e) {
