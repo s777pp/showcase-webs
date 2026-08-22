@@ -534,6 +534,7 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                 pass
 
 
+
 def _gif_full_with_bars_workshop(
     gif_path: Path,
     out_path: Path,
@@ -543,15 +544,13 @@ def _gif_full_with_bars_workshop(
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
     bar_width: int = 6,
+    wm_color: str = "#ffffff",
 ) -> None:
-    """Полный GIF: 5 частей + чёрные полосы + watermark (как desktop)."""
-    frames_out = []
-    durations = []
+    """Full GIF: 5 parts + black bars + watermark (all frames)."""
+    frames_out: list[Image.Image] = []
+    durations: list[int] = []
     with Image.open(gif_path) as im:
-        n = getattr(im, "n_frames", 1)
-        im.seek(0)
-        first = im.convert("RGBA")
-        font = load_font(wm_font, max(18, first.size[1] // 28), text=wm_text or "")
+        n = int(getattr(im, "n_frames", 1) or 1)
         for idx in range(n):
             im.seek(idx)
             frame = im.convert("RGBA")
@@ -564,28 +563,37 @@ def _gif_full_with_bars_workshop(
                 left = i * pw
                 right = (i + 1) * pw if i < 4 else fw
                 part = frame.crop((left, 0, right, fh))
-                full.paste(part, (x, 0))
+                full.paste(part, (x, 0), part)
                 x += part.width
                 if i < 4:
                     x += bar_width
-            if wm_text and wm_opacity > 0:
+            if wm_text and float(wm_opacity or 0) > 0:
                 full = apply_watermark(
-                    full, wm_text, wm_font, wm_opacity,
-                    corner=wm_corner, scale=wm_scale,
+                    full, wm_text, wm_font, float(wm_opacity),
+                    corner=wm_corner, scale=wm_scale, color=wm_color,
                 )
-            frames_out.append(full.convert("RGB"))
-            durations.append(int(im.info.get("duration", 100) or 100))
+            frames_out.append(full.convert("RGBA"))
+            try:
+                d = int(im.info.get("duration", 100) or 100)
+            except Exception:
+                d = 100
+            durations.append(max(20, d))
     if not frames_out:
-        return
-    frames_out[0].save(
+        raise RuntimeError("GIF has no frames")
+    # Pillow animated GIF: convert to P with adaptive palette per-frame is hard;
+    # save RGBA via disposal=2 works on modern Pillow for many viewers / Steam tools.
+    first, rest = frames_out[0], frames_out[1:]
+    first.save(
         out_path,
         save_all=True,
-        append_images=frames_out[1:],
+        append_images=rest,
         duration=durations,
         loop=0,
         disposal=2,
         optimize=False,
     )
+    if not out_path.is_file() or out_path.stat().st_size < 32:
+        raise RuntimeError("full_with_bars.gif not written")
 
 
 def _gif_full_with_bar_split(
@@ -597,14 +605,12 @@ def _gif_full_with_bar_split(
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
     bar_width: int = 6,
+    wm_color: str = "#ffffff",
 ) -> None:
-    frames_out = []
-    durations = []
+    frames_out: list[Image.Image] = []
+    durations: list[int] = []
     with Image.open(gif_path) as im:
-        n = getattr(im, "n_frames", 1)
-        im.seek(0)
-        first = im.convert("RGBA")
-        font = load_font(wm_font, max(18, first.size[1] // 28), text=wm_text or "")
+        n = int(getattr(im, "n_frames", 1) or 1)
         for idx in range(n):
             im.seek(idx)
             frame = im.convert("RGBA")
@@ -616,26 +622,33 @@ def _gif_full_with_bar_split(
                 side = Image.new("RGBA", (100, fh), (0, 0, 0, 255))
             full_w = center.width + bar_width + side.width
             full = Image.new("RGBA", (full_w, fh), (0, 0, 0, 255))
-            full.paste(center, (0, 0))
-            full.paste(side, (center.width + bar_width, 0))
-            if wm_text and wm_opacity > 0:
+            full.paste(center, (0, 0), center)
+            full.paste(side, (center.width + bar_width, 0), side)
+            if wm_text and float(wm_opacity or 0) > 0:
                 full = apply_watermark(
-                    full, wm_text, wm_font, wm_opacity,
-                    corner=wm_corner, scale=wm_scale,
+                    full, wm_text, wm_font, float(wm_opacity),
+                    corner=wm_corner, scale=wm_scale, color=wm_color,
                 )
-            frames_out.append(full.convert("RGB"))
-            durations.append(int(im.info.get("duration", 100) or 100))
+            frames_out.append(full.convert("RGBA"))
+            try:
+                d = int(im.info.get("duration", 100) or 100)
+            except Exception:
+                d = 100
+            durations.append(max(20, d))
     if not frames_out:
-        return
-    frames_out[0].save(
+        raise RuntimeError("GIF has no frames")
+    first, rest = frames_out[0], frames_out[1:]
+    first.save(
         out_path,
         save_all=True,
-        append_images=frames_out[1:],
+        append_images=rest,
         duration=durations,
         loop=0,
         disposal=2,
         optimize=False,
     )
+    if not out_path.is_file() or out_path.stat().st_size < 32:
+        raise RuntimeError("full_with_bars.gif not written")
 
 
 def process_gif_workshop(
@@ -676,11 +689,17 @@ def process_gif_workshop(
     # полная гиф с полосами + watermark
     bars = out_dir / "full_with_bars.gif"
     try:
-        _gif_full_with_bars_workshop(gif_path, bars, wm_text, wm_font, wm_opacity, wm_corner, wm_scale)
+        _gif_full_with_bars_workshop(
+            gif_path, bars, wm_text, wm_font, wm_opacity, wm_corner, wm_scale, wm_color=wm_color
+        )
         if bars.is_file():
             result[bars.name] = bars
+        else:
+            print("full_with_bars.gif workshop: file missing after save")
     except Exception as e:
-        print("full_with_bars.gif workshop:", e)
+        print("full_with_bars.gif workshop:", type(e).__name__, e)
+        import traceback
+        traceback.print_exc()
     return result
 
 
@@ -736,7 +755,7 @@ def process_gif_split(
     result = {center.name: center, side.name: side, clean.name: clean}
     bars = out_dir / "full_with_bars.gif"
     try:
-        _gif_full_with_bar_split(tmp, bars, wm_text, wm_font, wm_opacity, wm_corner, wm_scale)
+        _gif_full_with_bar_split(tmp, bars, wm_text, wm_font, wm_opacity, wm_corner, wm_scale, wm_color=wm_color)
         if bars.is_file():
             result[bars.name] = bars
     except Exception as e:

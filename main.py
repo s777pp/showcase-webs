@@ -756,7 +756,7 @@ async def api_process(
                             else:
                                 paths = proc.process_gif_split(
                                     src, work, fps=v_fps, wm_text=text, wm_font=wm_font,
-                                    wm_opacity=opacity, wm_corner=corner, wm_scale=scale,
+                                    wm_opacity=opacity, wm_color=color, wm_corner=corner, wm_scale=scale,
                                 )
                         for pname, pth in paths.items():
                             pth = Path(pth)
