@@ -60,7 +60,33 @@ def find_ffprobe() -> Optional[str]:
     return which
 
 
-def load_font(key: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+def _has_cyrillic(text: str) -> bool:
+    return any(chr(0x0400) <= ch <= chr(0x04FF) for ch in (text or ""))
+
+
+
+def _cyrillic_font_candidates() -> list:
+    """Fonts known to cover Russian glyphs."""
+    names = (
+        "NotoSans-Regular.ttf", "NotoSans.ttf", "DejaVuSans.ttf",
+        "DejaVuSans-Bold.ttf", "Roboto-Regular.ttf", "arial.ttf", "Arial.ttf",
+        "liberation-sans.ttf", "LiberationSans-Regular.ttf",
+    )
+    paths = []
+    for n in names:
+        paths.append(FONTS / n)
+    # system paths (Linux / Railway images often have DejaVu)
+    for p in (
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+        Path("/usr/share/fonts/TTF/DejaVuSans.ttf"),
+        Path("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
+        Path("/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"),
+    ):
+        paths.append(p)
+    return paths
+
+
+def load_font(key: str, size: int, text: str = "") -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     key = (key or "lap").strip()
     candidates = []
     for ext in (".ttf", ".otf"):
@@ -69,6 +95,9 @@ def load_font(key: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFo
         candidates.append(FONTS / f"{key.capitalize()}{ext}")
     if key.lower() == "fineday":
         candidates.insert(0, FONTS / "Fineday.ttf")
+    # If watermark has Cyrillic, prefer fonts that actually draw it
+    if _has_cyrillic(text):
+        candidates = list(_cyrillic_font_candidates()) + candidates
     for c in candidates:
         if c.is_file():
             try:
@@ -93,6 +122,16 @@ def wm_anchor(corner: str, w: int, h: int, tw: int, th: int, margin_ratio: float
     return mx, max(my, h - th - my)
 
 
+
+def _parse_rgb(color: str) -> tuple[int, int, int]:
+    c = (color or "#ffffff").strip()
+    if c.startswith("#") and len(c) == 7:
+        try:
+            return int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16)
+        except Exception:
+            pass
+    return 255, 255, 255
+
 def apply_watermark(
     img: Image.Image,
     text: str,
@@ -102,6 +141,7 @@ def apply_watermark(
     scale: float = 1.0,
     wx: float | None = None,
     wy: float | None = None,
+    color: str = "#ffffff",
 ) -> Image.Image:
     if not text or opacity <= 0:
         return img
@@ -109,7 +149,7 @@ def apply_watermark(
     h = img.height
     scale = max(0.4, min(2.5, float(scale or 1.0)))
     font_size = max(12, int((h // 28) * scale))
-    font = load_font(font_key, font_size)
+    font = load_font(font_key, font_size, text=text)
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     try:
@@ -121,7 +161,8 @@ def apply_watermark(
         x, y = int(img.width * wx), int(img.height * wy)
     else:
         x, y = wm_anchor(corner, img.width, img.height, tw, th)
-    draw.text((x, y), text, font=font, fill=(255, 255, 255, 255))
+    r, g, b = _parse_rgb(color)
+    draw.text((x, y), text, font=font, fill=(r, g, b, 255))
     a = layer.getchannel("A").point(lambda p: int(p * max(0.0, min(1.0, opacity))))
     layer.putalpha(a)
     return Image.alpha_composite(img, layer)
@@ -159,6 +200,7 @@ def process_image_workshop(
     wm_text: str = "",
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
+    wm_color: str = "#ffffff",
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
 ) -> dict[str, bytes]:
@@ -186,7 +228,7 @@ def process_image_workshop(
         x += part.width
         if i < 4:
             x += bar
-    full = apply_watermark(full, wm_text, wm_font, wm_opacity, corner=wm_corner, scale=wm_scale)
+    full = apply_watermark(full, wm_text, wm_font, wm_opacity, corner=wm_corner, scale=wm_scale, color=wm_color)
     out["full_with_bars.png"] = _png_bytes(full)
     return out
 
@@ -207,6 +249,7 @@ def process_image_split(
     wm_text: str = "",
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
+    wm_color: str = "#ffffff",
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
 ) -> dict[str, bytes]:
@@ -226,7 +269,7 @@ def process_image_split(
     full = Image.new("RGBA", (center.width + bar + side.width, nh), (0, 0, 0, 255))
     full.paste(center, (0, 0))
     full.paste(side, (center.width + bar, 0))
-    full = apply_watermark(full, wm_text, wm_font, wm_opacity, corner=wm_corner, scale=wm_scale)
+    full = apply_watermark(full, wm_text, wm_font, wm_opacity, corner=wm_corner, scale=wm_scale, color=wm_color)
     out["full_with_bars.png"] = _png_bytes(full)
     return out
 
@@ -349,6 +392,7 @@ def process_video_workshop(
     wm_text: str = "",
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
+    wm_color: str = "#ffffff",
     duration: float = 12,
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
@@ -385,6 +429,7 @@ def process_video_split(
     wm_text: str = "",
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
+    wm_color: str = "#ffffff",
     duration: float = 12,
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
@@ -398,6 +443,66 @@ def process_video_split(
         wm_corner=wm_corner, wm_scale=wm_scale,
     )
 
+
+
+
+def find_gifski() -> Optional[str]:
+    which = shutil.which("gifski")
+    if which:
+        return which
+    for name in ("gifski", "gifski.exe"):
+        p = ROOT / name
+        if p.is_file():
+            return str(p)
+    return None
+
+
+def encode_gif_from_png_sequence(
+    frames_dir: Path,
+    dest: Path,
+    fps: int = 12,
+    encoder: str = "ffmpeg",
+) -> None:
+    """encoder: ffmpeg | gifski | pillow (caller may already use pillow)."""
+    encoder = (encoder or "ffmpeg").strip().lower()
+    pattern = str(frames_dir / "frame_*.png")
+    fps = max(5, min(30, int(fps or 12)))
+    if encoder == "gifski":
+        gs = find_gifski()
+        if not gs:
+            encoder = "ffmpeg"
+        else:
+            # gifski --fps N -o out.gif frame_*.png
+            files = sorted(frames_dir.glob("frame_*.png"))
+            if not files:
+                raise RuntimeError("no frames for gifski")
+            cmd = [gs, "--fps", str(fps), "-o", str(dest), *[str(f) for f in files]]
+            subprocess.run(cmd, check=True, capture_output=True)
+            return
+    if encoder == "ffmpeg":
+        ff = find_ffmpeg()
+        if not ff:
+            raise RuntimeError("ffmpeg not found")
+        vf = (
+            f"fps={fps},"
+            f"split[s0][s1];[s0]palettegen=stats_mode=diff[p];"
+            f"[s1][p]paletteuse=dither=bayer:bayer_scale=5"
+        )
+        cmd = [
+            ff, "-y", "-framerate", str(fps), "-i", str(frames_dir / "frame_%04d.png"),
+            "-lavfi", vf, "-loop", "0", str(dest),
+        ]
+        subprocess.run(cmd, check=True, capture_output=True)
+        return
+    # pillow fallback: open frames and save
+    files = sorted(frames_dir.glob("frame_*.png"))
+    if not files:
+        raise RuntimeError("no frames")
+    imgs = [Image.open(f).convert("RGBA") for f in files]
+    duration = int(1000 / fps)
+    imgs[0].save(
+        dest, save_all=True, append_images=imgs[1:], duration=duration, loop=0, disposal=2
+    )
 
 
 def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
@@ -446,7 +551,7 @@ def _gif_full_with_bars_workshop(
         n = getattr(im, "n_frames", 1)
         im.seek(0)
         first = im.convert("RGBA")
-        font = load_font(wm_font, max(18, first.size[1] // 28))
+        font = load_font(wm_font, max(18, first.size[1] // 28), text=wm_text or "")
         for idx in range(n):
             im.seek(idx)
             frame = im.convert("RGBA")
@@ -499,7 +604,7 @@ def _gif_full_with_bar_split(
         n = getattr(im, "n_frames", 1)
         im.seek(0)
         first = im.convert("RGBA")
-        font = load_font(wm_font, max(18, first.size[1] // 28))
+        font = load_font(wm_font, max(18, first.size[1] // 28), text=wm_text or "")
         for idx in range(n):
             im.seek(idx)
             frame = im.convert("RGBA")
@@ -539,6 +644,7 @@ def process_gif_workshop(
     wm_text: str = "",
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
+    wm_color: str = "#ffffff",
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
 ) -> dict[str, Path]:
@@ -598,6 +704,7 @@ def process_gif_split(
     wm_text: str = "",
     wm_font: str = "lap",
     wm_opacity: float = 0.22,
+    wm_color: str = "#ffffff",
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
 ) -> dict[str, Path]:

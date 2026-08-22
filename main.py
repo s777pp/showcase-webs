@@ -386,32 +386,38 @@ async def auth_profile(request: Request):
     ct = (request.headers.get("content-type") or "").lower()
     display_name = None
     avatar_saved = None
-    if "multipart/form-data" in ct:
-        form = await request.form()
-        display_name = str(form.get("display_name") or "")
-        f = form.get("avatar")
-        if f is not None and hasattr(f, "read"):
-            raw = await f.read()
-            if raw and len(raw) < 3_000_000:
-                av_dir = DATA / "avatars"
-                av_dir.mkdir(parents=True, exist_ok=True)
-                # detect ext
-                name = getattr(f, "filename", "") or "a.png"
-                ext = Path(name).suffix.lower()
-                if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
-                    ext = ".png"
-                path = av_dir / f"{user['id']}{ext}"
-                path.write_bytes(raw)
-                avatar_saved = str(path)
-    else:
-        body = await request.json()
-        display_name = str(body.get("display_name") or "")
-    auth_db.update_profile(
-        int(user["id"]),
-        display_name=display_name if display_name is not None else None,
-        avatar_path=avatar_saved,
-    )
-    return {"ok": True, "msg": "Profile updated"}
+    try:
+        if "multipart/form-data" in ct:
+            form = await request.form()
+            display_name = str(form.get("display_name") or "")
+            f = form.get("avatar")
+            if f is not None and hasattr(f, "read"):
+                raw = await f.read()
+                if raw and len(raw) < 3_000_000:
+                    av_dir = Path(DATA) / "avatars"
+                    av_dir.mkdir(parents=True, exist_ok=True)
+                    name = getattr(f, "filename", "") or "a.png"
+                    ext = Path(name).suffix.lower()
+                    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+                        ext = ".png"
+                    path = av_dir / f"{user['id']}{ext}"
+                    path.write_bytes(raw)
+                    avatar_saved = str(path.resolve())
+        else:
+            body = await request.json()
+            display_name = str(body.get("display_name") or "")
+        auth_db.update_profile(
+            int(user["id"]),
+            display_name=display_name,
+            avatar_path=avatar_saved,
+        )
+        return {
+            "ok": True,
+            "msg": "Profile updated",
+            "display_name": (display_name or "").strip()[:40],
+        }
+    except Exception as e:
+        return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
 
 
 @app.get("/api/auth/avatar/{user_id}")
@@ -620,6 +626,8 @@ async def api_process(
     wm_enable: str = Form("1"),
     wm_corner: str = Form("bl"),
     wm_scale: float = Form(1.0),
+    wm_color: str = Form("#ffffff"),
+    gif_encoder: str = Form("ffmpeg"),
     all_modes: str = Form("0"),
     files: list[UploadFile] = File(...),
 ):
@@ -643,6 +651,7 @@ async def api_process(
     wm_on = wm_enable not in ("0", "false", "False", "")
     opacity = (wm_opacity / 100.0) if wm_on else 0.0
     text = wm_text if wm_on else ""
+    color = (wm_color or "#ffffff").strip() or "#ffffff"
     corner = (wm_corner or "bl").strip().lower()
     if corner not in ("tl", "tr", "bl", "br"):
         corner = "bl"
@@ -700,13 +709,13 @@ async def api_process(
                             img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
                         if mode == "workshop":
                             parts = proc.process_image_workshop(
-                                img, text, wm_font, opacity, corner, scale
+                                img, text, wm_font, opacity, color, corner, scale
                             )
                         elif mode == "featured":
                             parts = proc.process_image_featured(img)
                         else:
                             parts = proc.process_image_split(
-                                img, text, wm_font, opacity, corner, scale
+                                img, text, wm_font, opacity, color, corner, scale
                             )
                         for pname, data in parts.items():
                             zf.writestr(f"{folder}/{pname}", data)
@@ -724,7 +733,7 @@ async def api_process(
                             if mode == "workshop":
                                 paths = proc.process_video_workshop(
                                     src, work, fps=v_fps, width=size_i,
-                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
                                     duration=v_dur, wm_corner=corner, wm_scale=scale,
                                 )
                             elif mode == "featured":
@@ -734,13 +743,13 @@ async def api_process(
                             else:
                                 paths = proc.process_video_split(
                                     src, work, fps=v_fps,
-                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
                                     duration=v_dur, wm_corner=corner, wm_scale=scale,
                                 )
                         else:
                             if mode == "workshop":
                                 paths = proc.process_gif_workshop(
-                                    src, work, text, wm_font, opacity, corner, scale
+                                    src, work, text, wm_font, opacity, color, corner, scale
                                 )
                             elif mode == "featured":
                                 paths = proc.process_gif_featured(src, work, fps=v_fps)

@@ -261,7 +261,7 @@ pre.code{
     <div class="card">
       <h2>Settings</h2>
       <div class="row">
-        <label class="field">FPS<input type="number" id="fps" value="12" min="5" max="30"/></label>
+        <label class="field" translate="no"><span class="lbl-fps">FPS</span><input type="number" id="fps" value="12" min="5" max="30"/></label>
         <label class="field">Width
           <select id="size">
             <option value="630">630</option>
@@ -280,6 +280,16 @@ pre.code{
             <option value="br">Bottom right</option>
             <option value="tl">Top left</option>
             <option value="tr">Top right</option>
+          </select>
+        </label>
+        <label class="field">WM color
+          <input type="color" id="wmColor" value="#ffffff" style="height:36px;padding:2px;cursor:pointer"/>
+        </label>
+        <label class="field">GIF encoder
+          <select id="gifEncoder" title="How GIF is encoded">
+            <option value="ffmpeg" selected>ffmpeg (palette)</option>
+            <option value="pillow">Pillow</option>
+            <option value="gifski">gifski (if installed)</option>
           </select>
         </label>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="wmEnable" checked/> On</label>
@@ -776,6 +786,8 @@ document.getElementById('btnRun').onclick = async () => {
   fd.append('wm_enable', document.getElementById('wmEnable').checked ? '1':'0');
   fd.append('wm_corner', (document.getElementById('wmCorner')||{}).value || 'bl');
   const sc = document.getElementById('wmScale');
+  fd.append('wm_color', document.getElementById('wmColor')?.value || '#ffffff');
+  fd.append('gif_encoder', document.getElementById('gifEncoder')?.value || 'ffmpeg');
   fd.append('wm_scale', sc ? (Number(sc.value) / 100) : 1);
   fd.append('all_modes', (document.getElementById('allModes')||{}).checked ? '1':'0');
   state.files.forEach(f => fd.append('files', f));
@@ -1259,6 +1271,12 @@ function applyAppLang(lang) {
 }
 
 function syncAuthUiLang(lang) {
+
+  try {
+    const fpsLbl = document.querySelector('.lbl-fps');
+    if (fpsLbl) fpsLbl.textContent = (lang === 'ru') ? 'Кадр/с' : 'FPS';
+  } catch(e) {}
+
   const t = APP_I18N[lang] || APP_I18N.en;
   const reg = (typeof state !== 'undefined' && state.authMode === 'register');
   const title = document.getElementById('authTitle');
