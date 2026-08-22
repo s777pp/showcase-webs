@@ -230,6 +230,63 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255,.35);border-top:1px solid rgba(255,255,255,.06)}
 .lang{position:fixed;bottom:20px;right:20px;z-index:50;border-radius:999px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.5);backdrop-filter:blur(8px);padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer}
+
+.modal-bg{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{width:100%;max-width:400px;border-radius:20px;border:1px solid rgba(255,255,255,.12);background:rgba(14,16,20,.95);padding:28px 24px;box-shadow:0 24px 80px rgba(0,0,0,.5)}
+.modal h3{margin:0 0 6px;font-size:22px;font-weight:700}
+.modal p.sub{margin:0 0 18px;color:rgba(255,255,255,.55);font-size:14px;line-height:1.4}
+.modal .stack{display:flex;flex-direction:column;gap:10px}
+.modal input{width:100%;min-height:44px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;outline:none}
+.modal input:focus{border-color:rgba(61,129,227,.55);box-shadow:0 0 0 3px rgba(61,129,227,.15)}
+.modal .btn-auth{width:100%;min-height:44px;border-radius:999px;border:none;background:#fff;color:#0c0c0c;font-weight:600;cursor:pointer;font-size:14px}
+.modal .btn-auth:hover{opacity:.92}
+.modal .switch{margin-top:14px;text-align:center;font-size:13px;color:rgba(255,255,255,.5)}
+.modal .switch a{color:#fff;text-decoration:underline;cursor:pointer}
+.modal .status{margin-top:12px;font-size:13px;min-height:18px}
+.modal .status.err{color:#ff5f57}
+.modal .status.ok{color:#28c840}
+.modal .close-x{position:absolute;top:14px;right:16px;background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer}
+.modal{position:relative}
+
+
+/* Shiny Sign up — same sweep as Revitalized */
+.btn-shiny,
+a.btn-shiny,
+#navReg,
+#ctaReg{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 16px;
+  border-radius:999px;
+  border:1px solid rgba(164,244,253,.35);
+  font-weight:700;
+  font-size:13px;
+  text-decoration:none;
+  color:#061018 !important;
+  background-image:linear-gradient(to right,#091020 0%,#0B2551 12.5%,#A4F4FD 32.5%,#00d2ff 50%,#0B2551 67.5%,#091020 87.5%,#091020 100%);
+  background-size:200% auto;
+  animation:shiny 6s linear infinite;
+  box-shadow:0 0 20px rgba(0,210,255,.25), inset 0 1px 0 rgba(255,255,255,.35);
+  transition:transform .15s, box-shadow .15s;
+  white-space:nowrap;
+}
+.btn-shiny:hover,
+a.btn-shiny:hover,
+#navReg:hover,
+#ctaReg:hover{
+  transform:scale(1.03);
+  box-shadow:0 0 28px rgba(0,210,255,.4), inset 0 1px 0 rgba(255,255,255,.45);
+  color:#040a12 !important;
+}
+.btn-ghost.btn-shiny,
+#ctaReg{
+  padding:12px 20px;
+  font-size:14px;
+}
+
 </style>
 </head>
 <body>
@@ -258,7 +315,7 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
       <a href="#features" data-i="nav_feat">Features</a>
       <a href="#pricing" data-i="nav_price">Pricing</a>
       <a href="/app" data-i="nav_tools">Tools</a>
-      <a href="/app?auth=1" data-i="nav_reg">Sign up</a>
+      <a href="#" class="btn-shiny" data-i="nav_reg" id="navReg" role="button">Sign up</a>
     </div>
     <div class="nav-right">
       <button type="button" class="lang-nav" id="langBtnNav" aria-label="Language">RU</button>
@@ -477,12 +534,28 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
       <p data-i="cta_p">Process, download sources, preview on a Steam template, and ship — without leaving the browser.</p>
       <div class="final-btns">
         <a class="btn-pill" href="/app" data-i="cta_open2">Open tools</a>
-        <a class="btn-ghost" href="/app?auth=1" data-i="cta_reg">Create account →</a>
+        <a class="btn-ghost" href="#" class="btn-ghost btn-shiny" data-i="cta_reg" id="ctaReg" role="button">Create account →</a>
       </div>
     </div>
   </section>
 
   <footer>Showcase Maker · by n1t1337 · <a href="/app">Tools</a></footer>
+</div>
+
+
+<div class="modal-bg" id="authModal" aria-hidden="true">
+  <div class="modal">
+    <button type="button" class="close-x" id="authClose" aria-label="Close">×</button>
+    <h3 id="authTitle">Sign up</h3>
+    <p class="sub" id="authSub">Create an account for Pro access</p>
+    <div class="stack">
+      <input id="authEmail" type="email" placeholder="Email" autocomplete="email"/>
+      <input id="authPass" type="password" placeholder="Password (min 6)" autocomplete="new-password"/>
+      <button type="button" class="btn-auth" id="authSubmit">Sign up</button>
+    </div>
+    <div class="status" id="authStatus"></div>
+    <div class="switch" id="authSwitch">Already have an account? <a id="authToggle">Log in</a></div>
+  </div>
 </div>
 
 <button type="button" class="lang" id="langBtn">RU</button>
@@ -518,7 +591,20 @@ const I18N = {
     cta_h: "Close the tabs.<br/>Open your profile.",
     cta_p: "Process, download sources, preview on a Steam template, and ship — without leaving the browser.",
     cta_open2: "Open tools",
-    cta_reg: "Create account →"
+    cta_reg: "Create account →",
+    auth_title_reg: "Sign up",
+    auth_title_login: "Log in",
+    auth_sub_reg: "Create an account to buy Pro and keep access",
+    auth_sub_login: "Log in to buy Pro and keep access",
+    auth_submit_reg: "Create account",
+    auth_submit_login: "Log in",
+    auth_switch_reg: "Already have an account? <a id=\"authToggle\">Log in</a>",
+    auth_switch_login: "No account? <a id=\"authToggle\">Sign up</a>",
+    ph_email: "Email",
+    ph_pass: "Password (min 6)",
+    auth_ok_reg: "Account created. You can open tools.",
+    auth_ok_login: "Logged in. You can open tools.",
+    auth_err: "Error"
   },
   ru: {
     nav_feat: "Возможности",
@@ -535,22 +621,35 @@ const I18N = {
     compose: "✦ Открыть",
     tri_label: "Обработка",
     tri_h: "Убери рутину.<br/>Отгрузи витрину.",
-    tri_p: "Showcase Maker режет Workshop, Featured и Split, ставит watermark, укладывается в лимиты Steam и собирает ZIP — ты занимаешься артом, не пикселями.",
-    tri_today: "Сегодня · пайплайн витрины",
-    trust: "Для тех, кто оформляет Steam",
-    q1: "«Режет Workshop на пять частей с hex 21 за секунды. Руками больше не делаю.»",
-    q2: "«Скачал, обработал, превью — в одной вкладке. Без пяти сайтов.»",
-    q3: "«Pro окупается, если витрины каждый день — без лимита.»",
+    tri_p: "Showcase Maker режет Workshop, Featured и Split, ставит watermark, укладывается в лимиты Steam и собирает ZIP — ты занимаешься артом, а не пиксельной математикой.",
+    tri_today: "Сегодня · конвейер витрин",
+    trust: "Для авторов Steam-профилей",
+    q1: "«Режет Workshop на пять частей с hex 21 за секунды. Больше не делаю это руками.»",
+    q2: "«Скачать + обработать + превью в одной вкладке. Не прыгаю по пяти сайтам.»",
+    q3: "«Pro окупается, если витрины каждую неделю — без дневного лимита.»",
     price_free_d: "Полный пайплайн с дневным лимитом файлов.",
-    price_pro_d: "Безлимитная обработка для продавцов и ежедневной работы.",
-    price_desk_d: "Десктоп-приложение: офлайн, FFmpeg, DeviantArt.",
+    price_pro_d: "Безлимитная обработка для продавцов и ежедневной отгрузки.",
+    price_desk_d: "Десктоп-приложение: офлайн-обработка и помощники DeviantArt.",
     start_free: "Начать бесплатно",
     buy_fp: "Купить на FunPay",
-    get_desk: "Скачать EXE",
+    get_desk: "Взять десктоп",
     cta_h: "Закрой лишние вкладки.<br/>Открой профиль.",
-    cta_p: "Обработка, скачивание, предпросмотр на шаблоне Steam — всё в браузере.",
-    cta_open2: "Открыть",
-    cta_reg: "Создать аккаунт →"
+    cta_p: "Обработка, исходники, превью на шаблоне Steam — без ухода из браузера.",
+    cta_open2: "Открыть инструменты",
+    cta_reg: "Создать аккаунт →",
+    auth_title_reg: "Регистрация",
+    auth_title_login: "Вход",
+    auth_sub_reg: "Создай аккаунт, чтобы купить Pro и сохранить доступ",
+    auth_sub_login: "Войди, чтобы купить Pro и сохранить доступ",
+    auth_submit_reg: "Создать аккаунт",
+    auth_submit_login: "Войти",
+    auth_switch_reg: "Уже есть аккаунт? <a id=\"authToggle\">Вход</a>",
+    auth_switch_login: "Нет аккаунта? <a id=\"authToggle\">Регистрация</a>",
+    ph_email: "Email",
+    ph_pass: "Пароль (мин. 6)",
+    auth_ok_reg: "Аккаунт создан. Можно открыть инструменты.",
+    auth_ok_login: "Вход выполнен. Можно открыть инструменты.",
+    auth_err: "Ошибка"
   }
 };
 
@@ -559,29 +658,151 @@ function getLang() {
 }
 
 function applyLang(L) {
-  const dict = I18N[L] || I18N.en;
+  const pack = I18N[L] || I18N.en;
   document.documentElement.lang = L;
   document.querySelectorAll("[data-i]").forEach(function (el) {
     const k = el.getAttribute("data-i");
-    if (dict[k] != null) el.innerHTML = dict[k];
+    if (pack[k] != null) el.innerHTML = pack[k];
   });
-  ["langBtn","langBtnNav"].forEach(function(id){ var b=document.getElementById(id); if(b) b.textContent = L==="en"?"RU":"EN"; });
+  ["langBtn","langBtnNav"].forEach(function(id){
+    var b = document.getElementById(id);
+    if (b) b.textContent = L === "en" ? "RU" : "EN";
+  });
   localStorage.setItem("sm_lang", L);
+  try { syncAuthUi(); } catch (e) {}
 }
 
 function wireLangBtn(id) {
-  var btn = document.getElementById(id);
-  if (!btn) return;
-  btn.addEventListener("click", function () {
+  var b = document.getElementById(id);
+  if (!b) return;
+  b.onclick = function () {
     applyLang(getLang() === "en" ? "ru" : "en");
-  });
+  };
 }
+
+/* ---- Auth on home (no redirect to /app) ---- */
+let authMode = "register"; // register | login
+
+function openAuth(mode) {
+  authMode = mode === "login" ? "login" : "register";
+  const modal = document.getElementById("authModal");
+  if (!modal) return;
+  syncAuthUi();
+  document.getElementById("authStatus").textContent = "";
+  document.getElementById("authStatus").className = "status";
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeAuth() {
+  const modal = document.getElementById("authModal");
+  if (!modal) return;
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function syncAuthUi() {
+  const L = getLang();
+  const pack = I18N[L] || I18N.en;
+  const reg = authMode === "register";
+  const title = document.getElementById("authTitle");
+  const sub = document.getElementById("authSub");
+  const submit = document.getElementById("authSubmit");
+  const sw = document.getElementById("authSwitch");
+  const em = document.getElementById("authEmail");
+  const pw = document.getElementById("authPass");
+  if (title) title.textContent = reg ? pack.auth_title_reg : pack.auth_title_login;
+  if (sub) sub.textContent = reg ? pack.auth_sub_reg : pack.auth_sub_login;
+  if (submit) submit.textContent = reg ? pack.auth_submit_reg : pack.auth_submit_login;
+  if (sw) {
+    sw.innerHTML = reg ? pack.auth_switch_reg : pack.auth_switch_login;
+    const tog = document.getElementById("authToggle");
+    if (tog) tog.onclick = function (e) {
+      e.preventDefault();
+      authMode = reg ? "login" : "register";
+      syncAuthUi();
+    };
+  }
+  if (em) em.placeholder = pack.ph_email;
+  if (pw) pw.placeholder = pack.ph_pass;
+}
+
+async function submitAuth() {
+  const L = getLang();
+  const pack = I18N[L] || I18N.en;
+  const email = (document.getElementById("authEmail").value || "").trim();
+  const password = document.getElementById("authPass").value || "";
+  const st = document.getElementById("authStatus");
+  const url = authMode === "register" ? "/api/auth/register" : "/api/auth/login";
+  st.className = "status";
+  st.textContent = L === "ru" ? "…" : "…";
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email: email, password: password })
+    });
+    let j = {};
+    try { j = await r.json(); } catch (e) {}
+    if (!j.ok) {
+      st.className = "status err";
+      st.textContent = j.msg || pack.auth_err;
+      return;
+    }
+    if (j.token) {
+      try {
+        localStorage.setItem("sm_session", j.token);
+        const secure = location.protocol === "https:" ? "; Secure" : "";
+        document.cookie = "sm_session=" + encodeURIComponent(j.token) + "; path=/; max-age=" + (90*24*3600) + "; SameSite=Lax" + secure;
+      } catch (e) {}
+    }
+    st.className = "status ok";
+    st.textContent = authMode === "register" ? pack.auth_ok_reg : pack.auth_ok_login;
+    // stay on home — do not force /app
+    setTimeout(function () { closeAuth(); }, 1200);
+  } catch (e) {
+    st.className = "status err";
+    st.textContent = String(e);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   applyLang(getLang());
   wireLangBtn("langBtn");
   wireLangBtn("langBtnNav");
+
+  const modal = document.getElementById("authModal");
+  if (modal) {
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal) closeAuth();
+    });
+  }
+  const closeBtn = document.getElementById("authClose");
+  if (closeBtn) closeBtn.onclick = closeAuth;
+  const submit = document.getElementById("authSubmit");
+  if (submit) submit.onclick = submitAuth;
+
+  function bindOpen(id, mode) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("click", function (e) {
+      e.preventDefault();
+      openAuth(mode);
+    });
+  }
+  bindOpen("navReg", "register");
+  bindOpen("ctaReg", "register");
+
+  // also data-i links that might not have id after i18n innerHTML — use delegation
+  document.querySelectorAll('[data-i="nav_reg"], [data-i="cta_reg"]').forEach(function (el) {
+    el.addEventListener("click", function (e) {
+      e.preventDefault();
+      openAuth("register");
+    });
+  });
 });
-</script>
+</script></script>
 
 </body>
 </html>

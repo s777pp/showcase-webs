@@ -1126,66 +1126,102 @@ init();
 /* ===== i18n ===== */
 const APP_I18N = {
   ru: {
-    back: "← Home",
-    nav: {process:"Обработка",download:"Скачать",preview:"Предпросмотр",steam:"Steam",da:"DeviantArt",account:"Аккаунт",about:"О сервисе"},
-    titles: {
-      process:["Обработка","Workshop / Featured / Split cuts, watermark and Steam ZIP"],
-      download:["Скачать","Исходники с YouTube, TikTok, X, Reddit и Pinterest"],
-      convert:["Конвертер","Видео ↔ GIF, изображения"],
-      hex:["HEX","Последний байт 0x21 для Steam"],
-      preview:["Предпросмотр","Как ляжет витрина на страницу профиля Steam"],
-      steam:["Steam","Инструкция и код для загрузки artwork"],
-      da:["DeviantArt","Публикация — desktop-версия"],
-      account:["Аккаунт","Регистрация, вход и покупка Pro"],
-      about:["О сервисе","Лимиты, Pro и контакты"]
+    back: "← На главную",
+    nav: {
+      process: "Обработка", download: "Скачать", convert: "Конвертер", hex: "HEX",
+      preview: "Предпросмотр", steam: "Steam", da: "DeviantArt", account: "Аккаунт", about: "О сервисе"
     },
-    login:"Войти", logout:"Выйти", buy:"Купить Pro",
-    mode:"Режим", params:"Параметры", files:"Файлы",
-    drop:"Drop PNG, JPG, GIF, MP4 or AVI — or click to browse",
-    run:"Обработать", clear:"Очистить", dlzip:"Скачать ZIP",
-    acc_guest:"Log in or sign up",
-    acc_guest_p:"Create an account to buy Pro and keep your access.",
-    reg:"Регистрация", acc_user:"Your account",
-    code_h:"Access code", code_p:"Bought on FunPay? Paste the code here.",
-    apply:"Apply код",
-    funpay_hint:"Buy on FunPay. After payment you get a code — paste it below.",
-    steam_h:"Загрузка в Steam",
-    about_h:"О сервисе",
-    auth_login:"Войти", auth_reg:"Регистрация",
-    auth_sub_l:"Войди, чтобы купить Pro и сохранить доступ", auth_sub_r:"Создай аккаунт, чтобы купить Pro и сохранить доступ",
-    no_acc:"Нет аккаунта?", has_acc:"Уже есть аккаунт?",
-    ph_email:"Email", ph_pass:"Пароль (мин. 6)",
+    titles: {
+      process: ["Обработка", "Нарезка Workshop / Featured / Split, watermark и ZIP для Steam"],
+      download: ["Скачать", "Исходники с YouTube, TikTok, X, Reddit и Pinterest"],
+      convert: ["Конвертер", "Видео ↔ GIF и другие форматы"],
+      hex: ["HEX", "Последний байт 0x21 для загрузки в Steam"],
+      preview: ["Предпросмотр", "Как витрина выглядит на странице профиля Steam"],
+      steam: ["Steam", "Инструкция и код консоли для загрузки artwork"],
+      da: ["DeviantArt", "Публикация — в desktop-версии"],
+      account: ["Аккаунт", "Регистрация, вход и покупка Pro"],
+      about: ["О сервисе", "Лимиты, Pro и контакты"]
+    },
+    login: "Войти", logout: "Выйти", buy: "Купить Pro",
+    mode: "Режим", params: "Параметры", files: "Файлы",
+    drop: "Перетащи PNG, JPG, GIF, MP4 или AVI — или нажми для выбора",
+    run: "Обработать", clear: "Очистить",
+    lbl_fps: "Кадр/с", lbl_width: "Ширина", lbl_wm: "Вотермарка", lbl_font: "Шрифт",
+    lbl_opacity: "Прозрачность %", lbl_wm_size: "Размер WM %", lbl_corner: "Угол WM",
+    lbl_color: "Цвет WM", lbl_encoder: "Кодек GIF", lbl_on: "Вкл",
+    corner_bl: "Левый нижний", corner_br: "Правый нижний", corner_tl: "Левый верхний", corner_tr: "Правый верхний",
+    all_modes: "Все режимы",
+    mode_ws: "5 частей для витрины мастерской",
+    mode_ft: "Artwork шириной 630 px",
+    mode_sp: "Центр 506 + боковая 100",
+    acc_guest: "Войди или зарегистрируйся",
+    acc_guest_p: "Создай аккаунт, чтобы купить Pro и сохранить доступ.",
+    reg: "Регистрация", acc_user: "Твой аккаунт",
+    code_h: "Код доступа", code_p: "Купил на FunPay? Вставь код сюда.",
+    apply: "Применить код",
+    funpay_hint: "Покупка на FunPay. После оплаты получишь код — вставь его ниже.",
+    steam_h: "Загрузка в Steam",
+    about_h: "О сервисе",
+    auth_login: "Войти", auth_reg: "Регистрация",
+    auth_sub_l: "Войди, чтобы купить Pro и сохранить доступ",
+    auth_sub_r: "Создай аккаунт, чтобы купить Pro и сохранить доступ",
+    no_acc: "Нет аккаунта?", has_acc: "Уже есть аккаунт?",
+    ph_email: "Email", ph_pass: "Пароль (мин. 6)",
+    nick: "Никнейм", save_profile: "Сохранить профиль",
+    activate_pro: "Активировать Pro-код",
+    convert_h: "Конвертер", convert_p: "Выбери файл и целевой формат.",
+    hex_h: "HEX 21", hex_p: "Меняет последний байт файла на 0x21 (трюк Steam).",
+    hex_btn: "Применить HEX 21",
+    free_plan: "Free — дневной лимит", pro_plan: "Pro",
   },
   en: {
     back: "← Home",
-    nav: {process:"Process",download:"Download",preview:"Preview",steam:"Steam",da:"DeviantArt",account:"Account",about:"About"},
-    titles: {
-      process:["Process","Workshop / Featured / Split cuts, watermark and Steam ZIP"],
-      download:["Download","Sources from YouTube, TikTok, X, Reddit and Pinterest"],
-      convert:["Converter","Video ↔ GIF, images"],
-      hex:["HEX","Last byte 0x21 for Steam"],
-      preview:["Preview","How the showcase looks on a Steam profile"],
-      steam:["Steam","Guide and console code for artwork upload"],
-      da:["DeviantArt","Publishing — desktop version"],
-      account:["Account","Sign up, log in and buy Pro"],
-      about:["About","Limits, Pro and contacts"]
+    nav: {
+      process: "Process", download: "Download", convert: "Converter", hex: "HEX",
+      preview: "Preview", steam: "Steam", da: "DeviantArt", account: "Account", about: "About"
     },
-    login:"Log in", logout:"Log out", buy:"Buy Pro",
-    mode:"Mode", params:"Settings", files:"Files",
-    drop:"Drop PNG, JPG, GIF, MP4 or AVI — or click to browse",
-    run:"Process", clear:"Clear", dlzip:"Download ZIP",
-    acc_guest:"Log in or sign up",
-    acc_guest_p:"Create an account to buy Pro and keep access.",
-    reg:"Sign up", acc_user:"Your account",
-    code_h:"Access code", code_p:"Bought on FunPay? Paste the code here.",
-    apply:"Apply code",
-    funpay_hint:"Buy on FunPay. After payment you get a code — paste it below.",
-    steam_h:"Upload to Steam",
-    about_h:"About",
-    auth_login:"Log in", auth_reg:"Sign up",
-    auth_sub_l:"Log in to buy Pro and keep access", auth_sub_r:"Create an account to buy Pro and keep access",
-    ph_email:"Email", ph_pass:"Password (min 6)",
-    no_acc:"No account?", has_acc:"Already have an account?",
+    titles: {
+      process: ["Process", "Workshop / Featured / Split cuts, watermark and Steam ZIP"],
+      download: ["Download", "Sources from YouTube, TikTok, X, Reddit and Pinterest"],
+      convert: ["Converter", "Video ↔ GIF and other formats"],
+      hex: ["HEX", "Last byte 0x21 for Steam upload"],
+      preview: ["Preview", "How the showcase looks on a Steam profile"],
+      steam: ["Steam", "Guide and console code for artwork upload"],
+      da: ["DeviantArt", "Publishing — desktop version"],
+      account: ["Account", "Sign up, log in and buy Pro"],
+      about: ["About", "Limits, Pro and contacts"]
+    },
+    login: "Log in", logout: "Log out", buy: "Buy Pro",
+    mode: "Mode", params: "Settings", files: "Files",
+    drop: "Drop PNG, JPG, GIF, MP4 or AVI — or click to browse",
+    run: "Process", clear: "Clear",
+    lbl_fps: "FPS", lbl_width: "Width", lbl_wm: "Watermark", lbl_font: "Font",
+    lbl_opacity: "Opacity %", lbl_wm_size: "WM size %", lbl_corner: "WM corner",
+    lbl_color: "WM color", lbl_encoder: "GIF encoder", lbl_on: "On",
+    corner_bl: "Bottom left", corner_br: "Bottom right", corner_tl: "Top left", corner_tr: "Top right",
+    all_modes: "All modes",
+    mode_ws: "5 panels for Workshop showcase",
+    mode_ft: "Artwork 630px wide",
+    mode_sp: "Center 506 + side 100",
+    acc_guest: "Log in or sign up",
+    acc_guest_p: "Create an account to buy Pro and keep access.",
+    reg: "Sign up", acc_user: "Your account",
+    code_h: "Access code", code_p: "Bought on FunPay? Paste the code here.",
+    apply: "Apply code",
+    funpay_hint: "Buy on FunPay. After payment you get a code — paste it below.",
+    steam_h: "Upload to Steam",
+    about_h: "About",
+    auth_login: "Log in", auth_reg: "Sign up",
+    auth_sub_l: "Log in to buy Pro and keep access",
+    auth_sub_r: "Create an account to buy Pro and keep access",
+    no_acc: "No account?", has_acc: "Already have an account?",
+    ph_email: "Email", ph_pass: "Password (min 6)",
+    nick: "Nickname", save_profile: "Save profile",
+    activate_pro: "Activate Pro code",
+    convert_h: "Converter", convert_p: "Pick a file and target format.",
+    hex_h: "HEX 21", hex_p: "Sets the last byte of the file to 0x21 (Steam trick).",
+    hex_btn: "Apply HEX 21",
+    free_plan: "Free — daily limit", pro_plan: "Pro",
   }
 };
 
@@ -1260,71 +1296,94 @@ function applyAppLang(lang) {
 
   // modal
 
-  // mode descriptions
-  const modes = document.querySelectorAll('.mode span');
-  if (modes[0]) modes[0].textContent = lang==='en' ? '5 panels for Workshop showcase' : '5 частей для витрины мастерской';
-  if (modes[1]) modes[1].textContent = lang==='en' ? 'Artwork 630px wide' : 'Artwork шириной 630 px';
-  if (modes[2]) modes[2].textContent = lang==='en' ? 'Center 506 + side 100' : 'Центр 506 + боковая 100';
-  // labels
-  document.querySelectorAll('label.field').forEach(lab => {
-    const txt = lab.childNodes[0];
-    if (!txt || txt.nodeType !== 3) return;
-    const map = lang==='en' ? {
-      'Ширина':'Width','Width':'Width','Шрифт':'Font','Font':'Font',
-      'Прозрачность %':'Opacity %','Opacity %':'Opacity %',
-      'Watermark':'Watermark','FPS':'FPS','Режим':'Mode','Mode':'Mode'
-    } : {
-      'Width':'Ширина','Font':'Шрифт','Opacity %':'Прозрачность %','Mode':'Режим'
-    };
-    const v = txt.textContent.trim();
-    if (map[v]) txt.textContent = map[v];
-  });
-  const wmOn = document.querySelector('#wmEnable')?.parentElement;
-  if (wmOn) {
-    const last = [...wmOn.childNodes].filter(n=>n.nodeType===3).pop();
-    // skip
-  }
-  const dlH = document.querySelector('#tab-download h2');
-  if (dlH) dlH.textContent = lang==='en' ? 'Download from web' : 'Скачать из сети';
-  const dlP = document.querySelector('#tab-download .steps');
-  if (dlP) dlP.textContent = lang==='en'
-    ? 'YouTube · TikTok · X · Reddit · Pinterest — no third-party sites'
-    : 'YouTube · TikTok · X · Reddit · Pinterest — без сторонних сайтов';
-  const btnDl = document.getElementById('btnDl');
-  if (btnDl) btnDl.textContent = lang==='en' ? 'Download' : 'Скачать';
-  const dlLink = document.getElementById('dlLink');
-  if (dlLink) dlLink.textContent = lang==='en' ? 'Download file' : 'Скачать файл';
-  const pvH = document.querySelector('#tab-preview h2');
-  if (pvH) pvH.textContent = lang==='en' ? 'Profile preview' : 'Предпросмотр профиля';
-  const pvSteps = document.querySelector('#tab-preview .steps');
-  if (pvSteps) pvSteps.textContent = lang==='en'
-    ? 'Pick page mode → file per showcase → open in a new tab (animated GIF and MP4).'
-    : 'Режим страницы → файл на каждую витрину → открыть в новой вкладке (GIF и MP4 с анимацией).';
-  const btnPv = document.getElementById('btnPv');
-  if (btnPv) btnPv.textContent = lang==='en' ? 'Open in browser' : 'Открыть в браузере';
-  const btnAv = document.getElementById('btnPvAvatar');
-  if (btnAv) btnAv.textContent = lang==='en' ? 'Avatar' : 'Аватар';
-  const sh = document.querySelector('#tab-steam .card h2');
-  if (sh) sh.textContent = lang==='en' ? 'Upload to Steam' : 'Загрузка в Steam';
-  const sc = document.querySelector('#tab-steam .steps');
-  if (sc) sc.innerHTML = lang==='en'
-    ? '<b>1.</b> Process files and download the ZIP<br/><b>2.</b> Open the Steam artwork upload page<br/><b>3.</b> F12 → Console → paste the code → Enter<br/><b>4.</b> Workshop: part_1…5 · Featured: featured_630 · Split: center → side'
-    : '<b>1.</b> Обработай файлы и скачай ZIP<br/><b>2.</b> Открой страницу загрузки artwork в Steam<br/><b>3.</b> F12 → Console → вставь код → Enter<br/><b>4.</b> Workshop: part_1…5 · Featured: featured_630 · Split: center → side';
-  const sch = document.querySelectorAll('#tab-steam .card h2')[1];
-  if (sch) sch.textContent = lang==='en' ? 'Console code' : 'Код консоли';
-  const bcc = document.getElementById('btnCopyCode');
-  if (bcc) bcc.textContent = lang==='en' ? 'Copy' : 'Копировать';
-  const aboutP = document.querySelector('#tab-about .steps');
-  if (aboutP && aboutP.innerHTML.includes('Showcase Maker')) {
-    aboutP.innerHTML = lang==='en'
-      ? '<b>Showcase Maker WEB</b> — browser tools for Steam showcases.<br/>Free: daily file limit · Pro: unlimited (account + access code).<br/><br/>by n1t1337'
-      : '<b>Showcase Maker WEB</b> — браузерные инструменты для Steam-витрин.<br/>Free: лимит файлов · Pro: безлимит (аккаунт + код доступа).<br/><br/>by n1t1337';
-  }
-  const brandSub = document.querySelector('.brand span');
-  if (brandSub) brandSub.textContent = lang==='en' ? 'Tools' : 'Инструменты';
 
-  syncAuthUiLang(lang);
-}
+  // process cards
+  const cardHs = document.querySelectorAll('#tab-process .card > h2');
+  if (cardHs[0]) cardHs[0].textContent = t.mode;
+  if (cardHs[1]) cardHs[1].textContent = t.params;
+  if (cardHs[2]) cardHs[2].textContent = t.files;
+  const drop = document.querySelector('#dropZone .drop-text, #dropZone');
+  const dropP = document.querySelector('#dropZone p, #dropHint, .drop-hint');
+  if (dropP) dropP.textContent = t.drop;
+  const btnRun = document.getElementById('btnProcess'); if (btnRun) btnRun.textContent = t.run;
+  const btnClear = document.getElementById('btnClear'); if (btnClear) btnClear.textContent = t.clear;
+
+  // field labels by id proximity
+  const setFieldLabel = (inputId, text) => {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    const lab = el.closest('label');
+    if (!lab) return;
+    // first text node or .lbl span
+    const span = lab.querySelector('.lbl-fps, .lbl');
+    if (span) { span.textContent = text; return; }
+    for (const node of lab.childNodes) {
+      if (node.nodeType === 3 && node.textContent.trim()) {
+        node.textContent = text;
+        return;
+      }
+    }
+  };
+  setFieldLabel('fps', t.lbl_fps);
+  setFieldLabel('size', t.lbl_width);
+  setFieldLabel('wmText', t.lbl_wm);
+  setFieldLabel('wmFont', t.lbl_font);
+  setFieldLabel('wmOpacity', t.lbl_opacity);
+  setFieldLabel('wmScale', t.lbl_wm_size);
+  setFieldLabel('wmCorner', t.lbl_corner);
+  setFieldLabel('wmColor', t.lbl_color);
+  setFieldLabel('gifEncoder', t.lbl_encoder);
+
+  const corner = document.getElementById('wmCorner');
+  if (corner) {
+    const map = { bl: t.corner_bl, br: t.corner_br, tl: t.corner_tl, tr: t.corner_tr };
+    [...corner.options].forEach(o => { if (map[o.value]) o.textContent = map[o.value]; });
+  }
+  const allModes = document.getElementById('allModes');
+  if (allModes) {
+    const lab = allModes.closest('label');
+    if (lab) {
+      lab.childNodes.forEach(n => {
+        if (n.nodeType === 3 && n.textContent.trim()) n.textContent = ' ' + t.all_modes;
+      });
+    }
+  }
+  const wmEn = document.getElementById('wmEnable');
+  if (wmEn) {
+    const lab = wmEn.closest('label');
+    if (lab) {
+      lab.childNodes.forEach(n => {
+        if (n.nodeType === 3 && n.textContent.trim()) n.textContent = ' ' + t.lbl_on;
+      });
+    }
+  }
+
+  const modes = document.querySelectorAll('.mode span');
+  if (modes[0]) modes[0].textContent = t.mode_ws;
+  if (modes[1]) modes[1].textContent = t.mode_ft;
+  if (modes[2]) modes[2].textContent = t.mode_sp;
+
+  // convert / hex
+  const ch = document.querySelector('#tab-convert h2'); if (ch) ch.textContent = t.convert_h;
+  const cp = document.querySelector('#tab-convert .steps, #tab-convert p'); if (cp && t.convert_p) cp.textContent = t.convert_p;
+  const hh = document.querySelector('#tab-hex h2'); if (hh) hh.textContent = t.hex_h;
+  const hp = document.querySelector('#tab-hex .steps, #tab-hex p'); if (hp && t.hex_p) hp.textContent = t.hex_p;
+  const hb = document.getElementById('btnHex'); if (hb) hb.textContent = t.hex_btn;
+
+  // account
+  const nickLab = document.querySelector('label.field input#accNick')?.closest('label');
+  if (nickLab) {
+    for (const n of nickLab.childNodes) {
+      if (n.nodeType === 3 && n.textContent.trim()) { n.textContent = t.nick; break; }
+      if (n.nodeType === 1 && n.tagName !== 'INPUT') { n.textContent = t.nick; break; }
+    }
+  }
+  const sp = document.getElementById('accSaveProfile'); if (sp) sp.textContent = t.save_profile;
+  const lo2 = document.getElementById('accLogout2'); if (lo2) lo2.textContent = t.logout;
+  const act = document.querySelector('#accCodeBlock .steps'); if (act) act.textContent = t.activate_pro;
+  const bu2 = document.getElementById('btnUnlock2'); if (bu2) bu2.textContent = t.apply;
+
+  try { updateFpsLabel(); } catch (e) {}
 
 function syncAuthUiLang(lang) {
 
