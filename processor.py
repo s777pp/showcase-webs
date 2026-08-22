@@ -535,6 +535,38 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
 
 
 
+
+
+
+def _quantize_rgba_for_gif(im: Image.Image) -> Image.Image:
+    """Composite on black and convert to 256-color palette for GIF."""
+    im = im.convert("RGBA")
+    bg = Image.new("RGBA", im.size, (0, 0, 0, 255))
+    composed = Image.alpha_composite(bg, im)
+    rgb = composed.convert("RGB")
+    return rgb.convert("P", palette=Image.Palette.ADAPTIVE, colors=256)
+
+
+def _save_animated_gif(frames_p: list, durations: list, out_path: Path) -> None:
+    if not frames_p:
+        raise RuntimeError("no frames to save")
+    durations = [max(20, int(d or 100)) for d in durations]
+    while len(durations) < len(frames_p):
+        durations.append(100)
+    durations = durations[: len(frames_p)]
+    frames_p[0].save(
+        out_path,
+        save_all=True,
+        append_images=frames_p[1:],
+        duration=durations,
+        loop=0,
+        disposal=2,
+        optimize=False,
+    )
+    if not out_path.is_file() or out_path.stat().st_size < 64:
+        raise RuntimeError("GIF write failed (empty output)")
+
+
 def _gif_full_with_bars_workshop(
     gif_path: Path,
     out_path: Path,
@@ -546,12 +578,17 @@ def _gif_full_with_bars_workshop(
     bar_width: int = 6,
     wm_color: str = "#ffffff",
 ) -> None:
-    """Full GIF: 5 parts + black bars + watermark (all frames)."""
-    frames_out: list[Image.Image] = []
+    """Full GIF: 5 parts + black bars + watermark. Quantizes each frame immediately."""
+    frames_p: list[Image.Image] = []
     durations: list[int] = []
     with Image.open(gif_path) as im:
         n = int(getattr(im, "n_frames", 1) or 1)
-        for idx in range(n):
+        # Cap extreme GIFs to avoid OOM on small Railway instances
+        max_frames = 180
+        step = 1
+        if n > max_frames:
+            step = max(1, n // max_frames)
+        for idx in range(0, n, step):
             im.seek(idx)
             frame = im.convert("RGBA")
             fw, fh = frame.size
@@ -563,37 +600,32 @@ def _gif_full_with_bars_workshop(
                 left = i * pw
                 right = (i + 1) * pw if i < 4 else fw
                 part = frame.crop((left, 0, right, fh))
-                full.paste(part, (x, 0), part)
+                if part.mode == "RGBA":
+                    full.paste(part, (x, 0), part)
+                else:
+                    full.paste(part, (x, 0))
                 x += part.width
                 if i < 4:
                     x += bar_width
             if wm_text and float(wm_opacity or 0) > 0:
                 full = apply_watermark(
-                    full, wm_text, wm_font, float(wm_opacity),
-                    corner=wm_corner, scale=wm_scale, color=wm_color,
+                    full,
+                    str(wm_text),
+                    wm_font,
+                    float(wm_opacity),
+                    corner=wm_corner,
+                    scale=float(wm_scale or 1.0),
+                    color=wm_color or "#ffffff",
                 )
-            frames_out.append(full.convert("RGBA"))
+            frames_p.append(_quantize_rgba_for_gif(full))
             try:
                 d = int(im.info.get("duration", 100) or 100)
             except Exception:
                 d = 100
-            durations.append(max(20, d))
-    if not frames_out:
-        raise RuntimeError("GIF has no frames")
-    # Pillow animated GIF: convert to P with adaptive palette per-frame is hard;
-    # save RGBA via disposal=2 works on modern Pillow for many viewers / Steam tools.
-    first, rest = frames_out[0], frames_out[1:]
-    first.save(
-        out_path,
-        save_all=True,
-        append_images=rest,
-        duration=durations,
-        loop=0,
-        disposal=2,
-        optimize=False,
-    )
-    if not out_path.is_file() or out_path.stat().st_size < 32:
-        raise RuntimeError("full_with_bars.gif not written")
+            durations.append(max(20, d * step))
+            # free
+            del full, frame
+    _save_animated_gif(frames_p, durations, out_path)
 
 
 def _gif_full_with_bar_split(
@@ -607,11 +639,15 @@ def _gif_full_with_bar_split(
     bar_width: int = 6,
     wm_color: str = "#ffffff",
 ) -> None:
-    frames_out: list[Image.Image] = []
+    frames_p: list[Image.Image] = []
     durations: list[int] = []
     with Image.open(gif_path) as im:
         n = int(getattr(im, "n_frames", 1) or 1)
-        for idx in range(n):
+        max_frames = 180
+        step = 1
+        if n > max_frames:
+            step = max(1, n // max_frames)
+        for idx in range(0, n, step):
             im.seek(idx)
             frame = im.convert("RGBA")
             fw, fh = frame.size
@@ -622,33 +658,33 @@ def _gif_full_with_bar_split(
                 side = Image.new("RGBA", (100, fh), (0, 0, 0, 255))
             full_w = center.width + bar_width + side.width
             full = Image.new("RGBA", (full_w, fh), (0, 0, 0, 255))
-            full.paste(center, (0, 0), center)
-            full.paste(side, (center.width + bar_width, 0), side)
+            if center.mode == "RGBA":
+                full.paste(center, (0, 0), center)
+            else:
+                full.paste(center, (0, 0))
+            if side.mode == "RGBA":
+                full.paste(side, (center.width + bar_width, 0), side)
+            else:
+                full.paste(side, (center.width + bar_width, 0))
             if wm_text and float(wm_opacity or 0) > 0:
                 full = apply_watermark(
-                    full, wm_text, wm_font, float(wm_opacity),
-                    corner=wm_corner, scale=wm_scale, color=wm_color,
+                    full,
+                    str(wm_text),
+                    wm_font,
+                    float(wm_opacity),
+                    corner=wm_corner,
+                    scale=float(wm_scale or 1.0),
+                    color=wm_color or "#ffffff",
                 )
-            frames_out.append(full.convert("RGBA"))
+            frames_p.append(_quantize_rgba_for_gif(full))
             try:
                 d = int(im.info.get("duration", 100) or 100)
             except Exception:
                 d = 100
-            durations.append(max(20, d))
-    if not frames_out:
-        raise RuntimeError("GIF has no frames")
-    first, rest = frames_out[0], frames_out[1:]
-    first.save(
-        out_path,
-        save_all=True,
-        append_images=rest,
-        duration=durations,
-        loop=0,
-        disposal=2,
-        optimize=False,
-    )
-    if not out_path.is_file() or out_path.stat().st_size < 32:
-        raise RuntimeError("full_with_bars.gif not written")
+            durations.append(max(20, d * step))
+            del full, frame
+    _save_animated_gif(frames_p, durations, out_path)
+
 
 
 def process_gif_workshop(
@@ -662,6 +698,8 @@ def process_gif_workshop(
     wm_scale: float = 1.0,
 ) -> dict[str, Path]:
     """Cut GIF into 5 Steam Workshop parts + full_with_bars.gif."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg not found")
@@ -690,16 +728,21 @@ def process_gif_workshop(
     bars = out_dir / "full_with_bars.gif"
     try:
         _gif_full_with_bars_workshop(
-            gif_path, bars, wm_text, wm_font, wm_opacity, wm_corner, wm_scale, wm_color=wm_color
+            gif_path, bars, wm_text, wm_font, wm_opacity,
+            wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color,
         )
         if bars.is_file():
             result[bars.name] = bars
         else:
-            print("full_with_bars.gif workshop: file missing after save")
+            err = out_dir / "full_with_bars_ERROR.txt"
+            err.write_text("full_with_bars.gif missing after save", encoding="utf-8")
+            result[err.name] = err
     except Exception as e:
-        print("full_with_bars.gif workshop:", type(e).__name__, e)
         import traceback
         traceback.print_exc()
+        err = out_dir / "full_with_bars_ERROR.txt"
+        err.write_text(f"{type(e).__name__}: {e}\n", encoding="utf-8")
+        result[err.name] = err
     return result
 
 
@@ -755,11 +798,22 @@ def process_gif_split(
     result = {center.name: center, side.name: side, clean.name: clean}
     bars = out_dir / "full_with_bars.gif"
     try:
-        _gif_full_with_bar_split(tmp, bars, wm_text, wm_font, wm_opacity, wm_corner, wm_scale, wm_color=wm_color)
-        if bars.is_file():
+        _gif_full_with_bar_split(
+            tmp, bars, wm_text, wm_font, wm_opacity,
+            wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color,
+        )
+        if bars.is_file() and bars.stat().st_size > 64:
             result[bars.name] = bars
+        else:
+            err = out_dir / "full_with_bars_ERROR.txt"
+            err.write_text("full_with_bars.gif was not created (empty output)", encoding="utf-8")
+            result[err.name] = err
     except Exception as e:
-        print("full_with_bars.gif split:", e)
+        import traceback
+        traceback.print_exc()
+        err = out_dir / "full_with_bars_ERROR.txt"
+        err.write_text(f"{type(e).__name__}: {e}\n\n{traceback.format_exc()}", encoding="utf-8")
+        result[err.name] = err
     try:
         tmp.unlink()
     except Exception:
