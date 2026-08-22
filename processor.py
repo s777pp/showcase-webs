@@ -87,7 +87,7 @@ def _cyrillic_font_candidates() -> list:
 
 
 def load_font(key: str, size: int, text: str = "") -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    key = (key or "lap").strip()
+    key = str(key or "lap").strip()
     candidates = []
     for ext in (".ttf", ".otf"):
         candidates.append(FONTS / f"{key}{ext}")
@@ -109,7 +109,7 @@ def load_font(key: str, size: int, text: str = "") -> ImageFont.FreeTypeFont | I
 
 def wm_anchor(corner: str, w: int, h: int, tw: int, th: int, margin_ratio: float = 0.04) -> tuple[int, int]:
     """Return top-left of text box for corner: tl/tr/bl/br."""
-    c = (corner or "bl").strip().lower()
+    c = str(corner or "bl").strip().lower()
     mx = max(4, int(w * margin_ratio))
     my = max(4, int(h * margin_ratio))
     if c in ("tl", "top-left", "topleft"):
@@ -124,7 +124,7 @@ def wm_anchor(corner: str, w: int, h: int, tw: int, th: int, margin_ratio: float
 
 
 def _parse_rgb(color: str) -> tuple[int, int, int]:
-    c = (color or "#ffffff").strip()
+    c = str(color or "#ffffff").strip()
     if c.startswith("#") and len(c) == 7:
         try:
             return int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16)
@@ -402,7 +402,8 @@ def process_video_workshop(
     gif_src = out_dir / "source.gif"
     media_to_gif(src, gif_src, fps=fps, width=width, duration=duration)
     return process_gif_workshop(
-        gif_src, out_dir, wm_text, wm_font, wm_opacity, wm_corner, wm_scale
+        gif_src, out_dir, wm_text, wm_font, wm_opacity,
+        wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
     )
 
 
@@ -440,7 +441,7 @@ def process_video_split(
     media_to_gif(src, gif_src, fps=fps, width=606, duration=duration)
     return process_gif_split(
         gif_src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
-        wm_corner=wm_corner, wm_scale=wm_scale,
+        wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
     )
 
 

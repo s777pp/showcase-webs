@@ -749,14 +749,17 @@ async def api_process(
                         else:
                             if mode == "workshop":
                                 paths = proc.process_gif_workshop(
-                                    src, work, text, wm_font, opacity, color, corner, scale
+                                    src, work,
+                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                                    wm_color=color, wm_corner=corner, wm_scale=scale,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_gif_featured(src, work, fps=v_fps)
                             else:
                                 paths = proc.process_gif_split(
-                                    src, work, fps=v_fps, wm_text=text, wm_font=wm_font,
-                                    wm_opacity=opacity, wm_color=color, wm_corner=corner, wm_scale=scale,
+                                    src, work, fps=v_fps,
+                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                                    wm_color=color, wm_corner=corner, wm_scale=scale,
                                 )
                         for pname, pth in paths.items():
                             pth = Path(pth)
