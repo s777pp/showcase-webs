@@ -665,7 +665,7 @@ input[type="range"]{
       </div>
       <div class="row" style="margin-bottom:14px">
         <span class="pill" id="daStatusPill">DA: not connected</span>
-        <button class="btn" id="daLogin" data-i="da_connect" type="button">Connect</button>
+        <button class="btn" id="daLogin" data-i="da_connect" data-da-connect="1" type="button" onclick="window.daDoConnect&&window.daDoConnect();return false;">Connect</button>
         <button class="btn ghost" id="daLogout" type="button" style="display:none">Disconnect</button>
       </div>
       <div id="daConnectedBlock" style="display:none">
@@ -1894,50 +1894,72 @@ window.addEventListener('message', function (ev) {
   }
 });
 
-async function daDoConnect() {
-  const st = document.getElementById('daMsg');
+window.daDoConnect = async function daDoConnect() {
+  var st = document.getElementById('daMsg');
   function setMsg(cls, text) {
-    if (!st) return;
+    if (!st) {
+      try { alert(text); } catch (e) {}
+      return;
+    }
     st.className = 'status' + (cls ? ' ' + cls : '');
     st.textContent = text;
   }
-  const ru = (localStorage.getItem('sm_lang') === 'ru');
+  var ru = (localStorage.getItem('sm_lang') === 'ru');
+  setMsg('', ru ? 'Подключение…' : 'Connecting…');
   try {
-    const sess = localStorage.getItem('sm_session') || (state && state.session) || '';
+    var sess = '';
+    try { sess = localStorage.getItem('sm_session') || ''; } catch (e) {}
+    try { if (!sess && typeof state !== 'undefined') sess = state.session || ''; } catch (e) {}
     if (!sess) {
-      setMsg('err', ru ? 'Сначала войди в аккаунт Showcase' : 'Log in to Showcase first');
-      if (typeof openAuthModal === 'function') openAuthModal('login');
+      setMsg('err', ru ? 'Сначала войди в аккаунт Showcase (кнопка Войти сверху)' : 'Log in to Showcase first (Log in button at top)');
+      try { if (typeof openAuthModal === 'function') openAuthModal('login'); } catch (e) {}
       return;
     }
-    const cid = (document.getElementById('daClientId') && document.getElementById('daClientId').value || '').trim();
-    const sec = (document.getElementById('daClientSecret') && document.getElementById('daClientSecret').value || '').trim();
+    var cidEl = document.getElementById('daClientId');
+    var secEl = document.getElementById('daClientSecret');
+    var cid = (cidEl && cidEl.value || '').trim();
+    var sec = (secEl && secEl.value || '').trim();
     if (!cid || !sec) {
       setMsg('err', ru ? 'Введи Client ID и Client Secret' : 'Enter Client ID and Client Secret');
       return;
     }
     setMsg('', ru ? 'Сохраняю ключи…' : 'Saving keys…');
-    const sk = await fetch('/api/da/keys', {
+    var hdr = {};
+    try { hdr = headers(); } catch (e) { hdr = {}; }
+    if (sess) hdr['X-Session-Token'] = sess;
+    try {
+      var tok = localStorage.getItem('sm_token');
+      if (tok) hdr['X-Access-Token'] = tok;
+    } catch (e) {}
+    hdr['Content-Type'] = 'application/json';
+    var sk = await fetch('/api/da/keys', {
       method: 'POST',
-      headers: Object.assign({}, headers(), { 'Content-Type': 'application/json' }),
+      headers: hdr,
       body: JSON.stringify({ client_id: cid, client_secret: sec }),
       credentials: 'include',
     });
-    const sj = await sk.json().catch(function () { return {}; });
+    var sj = {};
+    try { sj = await sk.json(); } catch (e) {}
     if (!sk.ok || !sj.ok) {
-      setMsg('err', sj.msg || (ru ? 'Не сохранилось — войди в аккаунт' : 'Save failed — log in'));
-      if (sk.status === 401 && typeof openAuthModal === 'function') openAuthModal('login');
+      setMsg('err', sj.msg || (ru ? 'Ошибка сохранения (' + sk.status + ') — войди в аккаунт' : 'Save failed (' + sk.status + ') — log in'));
+      if (sk.status === 401) {
+        try { if (typeof openAuthModal === 'function') openAuthModal('login'); } catch (e) {}
+      }
       return;
     }
-    setMsg('', ru ? 'Открываю авторизацию DeviantArt…' : 'Opening DeviantArt authorization…');
-    const r = await fetch('/api/da/login', { headers: headers(), credentials: 'include' });
-    const j = await r.json().catch(function () { return {}; });
+    setMsg('', ru ? 'Открываю DeviantArt…' : 'Opening DeviantArt…');
+    var r = await fetch('/api/da/login', { headers: hdr, credentials: 'include' });
+    var j = {};
+    try { j = await r.json(); } catch (e) {}
     if (!r.ok || !j.ok) {
-      setMsg('err', j.msg || 'Error');
-      if (r.status === 401 && typeof openAuthModal === 'function') openAuthModal('login');
+      setMsg('err', j.msg || ('Error ' + r.status));
+      if (r.status === 401) {
+        try { if (typeof openAuthModal === 'function') openAuthModal('login'); } catch (e) {}
+      }
       return;
     }
     if (!j.url || String(j.url).indexOf('oauth2/authorize') < 0) {
-      setMsg('err', 'Bad OAuth URL. Check Client ID and Redirect URI.');
+      setMsg('err', 'Bad OAuth URL. Check Client ID / Redirect URI in DA app settings.');
       return;
     }
     var w = null;
@@ -1946,52 +1968,49 @@ async function daDoConnect() {
     } catch (e) {}
     if (!w || w.closed) {
       st.className = 'status err';
-      st.innerHTML = (ru ? 'Окно заблокировано. ' : 'Popup blocked. ') +
-        '<a href="' + j.url + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">' +
-        (ru ? 'Нажми сюда для авторизации' : 'Click here to authorize') + '</a>';
+      st.innerHTML = (ru ? 'Окно заблокировано браузером. ' : 'Popup blocked. ') +
+        '<a href="' + j.url + '" target="_blank" rel="noopener" style="color:#00d2ff;text-decoration:underline;font-weight:600">' +
+        (ru ? 'НАЖМИ СЮДА — авторизация DeviantArt' : 'CLICK HERE — DeviantArt authorization') + '</a>';
     } else {
       try { w.focus(); } catch (e) {}
       st.className = 'status';
-      st.innerHTML = (ru ? 'Окно открыто — разреши доступ. Если нет — ' : 'Window opened — allow access. If not — ') +
-        '<a href="' + j.url + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">' +
+      st.innerHTML = (ru ? 'Окно открыто. Разреши доступ. Или ' : 'Window opened. Allow access. Or ') +
+        '<a href="' + j.url + '" target="_blank" rel="noopener" style="color:#00d2ff;text-decoration:underline">' +
         (ru ? 'открой ссылку' : 'open link') + '</a>';
     }
     var n = 0;
     var tmr = setInterval(async function () {
       n++;
       try {
-        var stj = await fetch('/api/da/status', { headers: headers(), credentials: 'include' }).then(function (x) { return x.json(); });
+        var stj = await fetch('/api/da/status', { headers: hdr, credentials: 'include' }).then(function (x) { return x.json(); });
         if (stj && stj.da) {
           clearInterval(tmr);
           try { if (w && !w.closed) w.close(); } catch (e) {}
-          setMsg('ok', ru ? 'Подключено. Добавь файлы и загрузи.' : 'Connected. Add files and upload.');
-          refreshDa();
+          setMsg('ok', ru ? 'Подключено!' : 'Connected!');
+          try { refreshDa(); } catch (e) {}
         }
       } catch (e) {}
       if (n > 90) {
         clearInterval(tmr);
-        setMsg('err', ru ? 'Таймаут — нажми Connect снова после разрешения' : 'Timeout — click Connect again after allowing access');
+        setMsg('err', ru ? 'Таймаут — нажми Connect ещё раз после разрешения' : 'Timeout — click Connect again after allowing');
       }
     }, 2000);
   } catch (e) {
     setMsg('err', String(e && e.message ? e.message : e));
     console.error('daDoConnect', e);
   }
-}
+};
 
-function wireDaConnect() {
-  var btn = document.getElementById('daLogin');
-  if (!btn) return;
-  btn.disabled = false;
-  btn.style.pointerEvents = 'auto';
-  btn.onclick = function (e) {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
-    daDoConnect();
-  };
-}
-wireDaConnect();
-setTimeout(wireDaConnect, 400);
-setTimeout(wireDaConnect, 1200);
+// Capture-phase: works even if other handlers stopPropagation
+document.addEventListener('click', function (e) {
+  var el = e.target;
+  if (!el) return;
+  if (el.id === 'daLogin' || (el.closest && el.closest('#daLogin'))) {
+    e.preventDefault();
+    e.stopPropagation();
+    window.daDoConnect();
+  }
+}, true);
 
 document.getElementById('daLogout') && document.getElementById('daLogout').addEventListener('click', async function () {
   await fetch('/api/da/logout', { method: 'POST', headers: headers(), credentials: 'include' });
