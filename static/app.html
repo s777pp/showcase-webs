@@ -1260,8 +1260,6 @@ document.getElementById('accRegister')?.addEventListener('click', () => {
 });
 
 async function init(){
-  try { applyAppLang(appLang()); } catch(e) { console.warn(e); }
-
   // restore session after navigating from home
   state.session = localStorage.getItem('sm_session') || '';
   state.token = localStorage.getItem('sm_token') || '';
@@ -1396,7 +1394,7 @@ function refreshSteamUI() {
 
 
 /* ===== i18n ===== */
-const APP_I18N = {
+const APP_I18N = window.APP_I18N = {
   ru: {
     back: "← На главную",
     nav: {
@@ -1541,7 +1539,8 @@ function appLang() {
   return localStorage.getItem('sm_lang') || 'en';
 }
 
-function applyAppLang(lang) {
+window.applyAppLang = function applyAppLang(lang) {
+
   const pack = APP_I18N[lang] || APP_I18N.ru;
   localStorage.setItem('sm_lang', lang);
   document.documentElement.lang = lang;
@@ -1721,35 +1720,7 @@ function syncAuthUiLang(lang) {
   }
 }
 
-function toggleAppLang(ev) {
-  if (ev) {
-    try { ev.preventDefault(); } catch (e) {}
-    try { ev.stopPropagation(); } catch (e) {}
-  }
-  const cur = (localStorage.getItem('sm_lang') || 'en');
-  const next = cur === 'en' ? 'ru' : 'en';
-  try {
-    applyAppLang(next);
-  } catch (err) {
-    console.error('applyAppLang', err);
-  }
-  try { if (typeof refreshSteamUI === 'function') refreshSteamUI(); } catch (e) {}
-}
-(function wireLangBtn() {
-  function bind() {
-    const lb = document.getElementById('langBtn');
-    if (!lb || lb.dataset.langWired === '1') return;
-    lb.dataset.langWired = '1';
-    lb.type = 'button';
-    lb.style.cursor = 'pointer';
-    lb.style.pointerEvents = 'auto';
-    lb.addEventListener('click', toggleAppLang);
-  }
-  bind();
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bind);
-  }
-})();
+/* lang wired in final script */
 
 // apply after DOM / init
 
@@ -1922,7 +1893,7 @@ document.getElementById('daUpload')?.addEventListener('click', async () => {
   } catch(e) { st.className='status err'; st.textContent=String(e); }
 });
 
-setTimeout(() => applyAppLang(appLang()), 0);
+/* applyAppLang deferred to final script */
 // open DA tab from OAuth return
 if (location.hash === '#account' || location.hash === '#profile') {
   const btn = document.querySelector('#nav button[data-tab="account"]');
@@ -2093,6 +2064,59 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   }
 });
 
+</script>
+
+
+<script>
+/* ===== Language bootstrap (must be last) ===== */
+(function () {
+  function getLang() {
+    try { return localStorage.getItem("sm_lang") || "en"; } catch (e) { return "en"; }
+  }
+  function setLang(L) {
+    try { localStorage.setItem("sm_lang", L); } catch (e) {}
+  }
+  function apply() {
+    var L = getLang();
+    if (typeof window.applyAppLang === "function") {
+      try { window.applyAppLang(L); } catch (e) { console.error("applyAppLang", e); }
+    } else if (typeof applyAppLang === "function") {
+      try { applyAppLang(L); } catch (e) { console.error("applyAppLang", e); }
+    }
+    var lb = document.getElementById("langBtn");
+    if (lb) lb.textContent = L === "en" ? "RU" : "EN";
+  }
+  function toggle(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    var cur = getLang();
+    var next = cur === "en" ? "ru" : "en";
+    setLang(next);
+    apply();
+    try {
+      if (typeof refreshSteamUI === "function") refreshSteamUI();
+    } catch (err) {}
+  }
+  function bind() {
+    var lb = document.getElementById("langBtn");
+    if (!lb) return;
+    lb.onclick = toggle;
+    lb.style.cursor = "pointer";
+    lb.style.pointerEvents = "auto";
+    lb.setAttribute("type", "button");
+  }
+  function start() {
+    bind();
+    apply();
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+  // retry once after other init (meta fetch etc.)
+  setTimeout(start, 300);
+  setTimeout(start, 1000);
+})();
 </script>
 
 </body>
