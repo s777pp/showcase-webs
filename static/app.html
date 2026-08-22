@@ -316,6 +316,27 @@ input[type="range"]{
 }
 
 
+
+.steam-layout{
+  display:grid;grid-template-columns:1fr;gap:20px;align-items:start
+}
+@media(min-width:960px){
+  .steam-layout{grid-template-columns:1fr minmax(280px,380px)}
+}
+.steam-video-wrap{
+  position:sticky;top:16px;
+  border-radius:16px;overflow:hidden;
+  border:1px solid var(--border);
+  background:rgba(0,0,0,.35);
+  aspect-ratio:16/9;
+}
+.steam-video-wrap video{
+  width:100%;height:100%;display:block;object-fit:cover;background:#000
+}
+.steam-video-caption{
+  margin-top:10px;font-size:12px;color:var(--muted);text-align:center
+}
+
 .steam-block{
   margin-top:18px;
   padding-bottom:16px;
@@ -546,6 +567,8 @@ input[type="range"]{
 
   <section class="tab" id="tab-steam">
     <div class="card">
+      <div class="steam-layout">
+      <div class="steam-col">
       <h2 id="steamTitle" data-i="steam_h">Upload to Steam</h2>
       <p class="steps" id="steamDesc" style="margin-bottom:8px">
         Semi-auto: results folder → Steam page → console code → upload.
@@ -609,6 +632,18 @@ input[type="range"]{
           <li>Upload files in the order listed above</li>
         </ol>
       </div>
+      </div><!-- steam-col -->
+      <div class="steam-video-side">
+        <div class="steam-video-wrap">
+          <video id="steamGuideVideo" controls playsinline preload="metadata"
+            poster=""
+            src="/static/steam_upload_guide.mp4">
+            Your browser does not support video.
+          </video>
+        </div>
+        <p class="steam-video-caption" data-i="steam_video_cap">Video guide: how to upload to Steam</p>
+      </div>
+      </div><!-- steam-layout -->
     </div>
   </section>
 
@@ -2179,6 +2214,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       steam_open_page: "Open Steam page",
       steam_blank: "Copy blank character",
       steam_blank_ok: "Blank character copied (ㅤ)",
+      steam_video_cap: "Video guide: how to upload to Steam",
       steam_copy: "Copy code",
       steam_how: "Step-by-step",
       steam_how_1: "Run Process and download the ZIP, then unpack",
@@ -2258,6 +2294,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       steam_open_page: "Открыть страницу Steam",
       steam_blank: "Скопировать пустой символ",
       steam_blank_ok: "Пустой символ скопирован (ㅤ)",
+      steam_video_cap: "Видео-инструкция: как загружать в Steam",
       steam_copy: "Копировать код",
       steam_how: "Пошаговая инструкция",
       steam_how_1: "Обработай файлы и скачай ZIP, затем распакуй",
