@@ -402,8 +402,8 @@ input[type="range"]{
       <h2 data-i="mode">Mode</h2>
       <div class="modes">
         <button type="button" class="mode active" data-mode="workshop"><strong>Workshop</strong><span data-i="mode_ws">5 panels for Workshop showcase</span></button>
-        <button type="button" class="mode" data-mode="featured"><strong>Featured</strong><span>Artwork 630px wide</span></button>
-        <button type="button" class="mode" data-mode="split"><strong>Artwork Split</strong><span>Center 506 + side 100</span></button>
+        <button type="button" class="mode" data-mode="featured"><strong>Featured</strong><span data-i="mode_ft">Artwork 630px wide</span></button>
+        <button type="button" class="mode" data-mode="split"><strong>Artwork Split</strong><span data-i="mode_sp">Center 506 + side 100</span></button>
       </div>
     </div>
     <div class="card">
@@ -453,7 +453,7 @@ input[type="range"]{
     </div>
     <div class="card">
       <h2 data-i="files">Files</h2>
-      <div class="drop" id="drop">Drop PNG, JPG, GIF, MP4 or AVI — or click to browse</div>
+      <div class="drop" id="drop" data-i="drop">Drop PNG, JPG, GIF, MP4 or AVI — or click to browse</div>
       <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif,.avi,.mp4,.mov,.webm"/>
       <div class="files" id="fileList"></div>
       <div class="row" style="margin-top:16px">
@@ -467,12 +467,12 @@ input[type="range"]{
 
   <section class="tab" id="tab-download">
     <div class="card">
-      <h2>Download from web</h2>
+      <h2 data-i="dl_h">Download from web</h2>
       <p class="steps" style="margin-bottom:16px">YouTube · TikTok · X · Reddit · Pinterest — no third-party sites</p>
       <div class="row">
         <input id="dlUrl" placeholder="https://…" style="flex:1;min-width:220px"/>
         <select id="dlQuality"><option value="best">Best</option><option value="720">≤720p</option><option value="audio">Audio</option></select>
-        <button class="btn" id="btnDl">Download</button>
+        <button class="btn" id="btnDl" data-i="dl_btn">Download</button>
       </div>
       <div class="status" id="dlStatus"></div>
       <a class="btn" id="dlLink" style="display:none;margin-top:14px;text-decoration:none" href="#">Download file</a>
@@ -481,7 +481,7 @@ input[type="range"]{
 
   <section class="tab" id="tab-convert">
     <div class="card">
-      <h2>Converter</h2>
+      <h2 data-i="convert_h">Converter</h2>
       <p class="steps" style="margin-bottom:16px">Pick a file and the format you need — Video ↔ GIF, MP4, WEBM, PNG, JPG, WEBP.</p>
       <div class="row" style="margin-bottom:12px">
         <label class="field">Convert to
@@ -495,11 +495,11 @@ input[type="range"]{
           </select>
         </label>
       </div>
-      <div class="drop" id="cvDrop">Drop file or click to browse</div>
+      <div class="drop" id="cvDrop" data-i="cv_drop">Drop file or click to browse</div>
       <input type="file" id="cvInput" hidden accept="image/*,video/*,.gif,.mp4,.webm,.mov,.avi"/>
       <div class="files" id="cvFileList"></div>
       <div class="row" style="margin-top:16px">
-        <button class="btn" id="btnConvert" disabled>Convert</button>
+        <button class="btn" id="btnConvert" data-i="cv_btn" disabled>Convert</button>
         <a class="btn ghost" id="cvDl" style="display:none;text-decoration:none" href="#">Download</a>
       </div>
       <div class="status" id="cvStatus"></div>
@@ -508,13 +508,13 @@ input[type="range"]{
 
   <section class="tab" id="tab-hex">
     <div class="card">
-      <h2>HEX 21</h2>
+      <h2 data-i="hex_h">HEX 21</h2>
       <p class="steps" style="margin-bottom:16px">Steam trick: set last byte to <code>0x21</code> on PNG / GIF (and other files). Download ZIP with patched files.</p>
-      <div class="drop" id="hexDrop">Drop PNG, GIF or images — or click to browse</div>
+      <div class="drop" id="hexDrop" data-i="hex_drop">Drop PNG, GIF or images — or click to browse</div>
       <input type="file" id="hexInput" multiple hidden accept="image/gif,image/png,image/jpeg,image/webp,image/*,.gif,.png,.jpg,.jpeg,.webp,.mp4"/>
       <div class="files" id="hexFileList"></div>
       <div class="row" style="margin-top:16px">
-        <button class="btn" id="btnHex" disabled>Apply HEX 21</button>
+        <button class="btn" id="btnHex" data-i="hex_btn" disabled>Apply HEX 21</button>
         <a class="btn ghost" id="hexDl" style="display:none;text-decoration:none" href="#">Download ZIP</a>
       </div>
       <div class="status" id="hexStatus"></div>
@@ -523,7 +523,7 @@ input[type="range"]{
 
   <section class="tab" id="tab-preview">
     <div class="card">
-      <h2>Profile preview</h2>
+      <h2 data-i="pv_h">Profile preview</h2>
       <p class="steps" style="margin-bottom:16px">Pick page mode → file per showcase → open in a new tab (animated GIF and MP4).</p>
       <div class="row" style="margin-bottom:16px">
         <label class="field">Mode
@@ -533,20 +533,20 @@ input[type="range"]{
             <option value="split">Artwork Split</option>
           </select>
         </label>
-        <button type="button" class="btn ghost" id="btnPvAvatar" style="align-self:flex-end">Avatar</button>
+        <button type="button" class="btn ghost" id="btnPvAvatar" data-i="pv_avatar" style="align-self:flex-end">Avatar</button>
         <input type="file" id="pvAvatar" accept="image/*" style="display:none"/>
         <span id="pvAvName" style="font-size:12px;color:var(--muted);align-self:flex-end;padding-bottom:10px">—</span>
       </div>
-      <h2>Showcases</h2>
+      <h2 data-i="pv_showcases">Showcases</h2>
       <div id="pvSlots" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
-      <button class="btn" id="btnPv" type="button">Open in browser</button>
+      <button class="btn" id="btnPv" data-i="pv_open" type="button">Open in browser</button>
       <div class="status" id="pvStatus"></div>
     </div>
   </section>
 
   <section class="tab" id="tab-steam">
     <div class="card">
-      <h2 id="steamTitle">Upload to Steam</h2>
+      <h2 id="steamTitle" data-i="steam_h">Upload to Steam</h2>
       <p class="steps" id="steamDesc" style="margin-bottom:8px">
         Semi-auto: results folder → Steam page → console code → upload.
       </p>
@@ -571,14 +571,14 @@ input[type="range"]{
           After Process, download the ZIP and unpack it — those are your files.
         </p>
         <div class="row">
-          <button class="btn" type="button" id="btnSteamFolder">Open Process tab</button>
+          <button class="btn" type="button" id="btnSteamFolder" data-i="steam_open_folder">Open Process tab</button>
         </div>
       </div>
 
       <div class="steam-block">
         <h3 id="steamStep2">2. Steam upload page</h3>
         <div class="row">
-          <button class="btn" type="button" id="btnSteamPage">Open Steam page</button>
+          <button class="btn" type="button" id="btnSteamPage" data-i="steam_open_page">Open Steam page</button>
         </div>
       </div>
 
@@ -586,7 +586,7 @@ input[type="range"]{
         <h3 id="steamStep3">3. Console code (F12)</h3>
         <pre class="code" id="steamCode"></pre>
         <div class="row" style="margin-top:12px">
-          <button class="btn" type="button" id="btnCopyCode">Copy code</button>
+          <button class="btn" type="button" id="btnCopyCode" data-i="steam_copy">Copy code</button>
         </div>
         <div class="status" id="steamCopyStatus" style="margin-top:8px"></div>
       </div>
@@ -613,7 +613,7 @@ input[type="range"]{
 
 <section class="tab" id="tab-da">
     <div class="card">
-      <h2>DeviantArt</h2>
+      <h2><span data-i="da_h">DeviantArt</span></h2>
       <p class="steps" style="margin-bottom:12px">
         Like the desktop app: paste Client ID &amp; Secret from
         <a href="https://www.deviantart.com/developers" target="_blank" style="color:var(--accent)">deviantart.com/developers</a>,
@@ -629,7 +629,7 @@ input[type="range"]{
       </div>
       <div class="row" style="margin-bottom:14px">
         <span class="pill" id="daStatusPill">DA: not connected</span>
-        <button class="btn" id="daLogin" type="button">Connect</button>
+        <button class="btn" id="daLogin" data-i="da_connect" type="button">Connect</button>
         <button class="btn ghost" id="daLogout" type="button" style="display:none">Disconnect</button>
       </div>
       <div id="daConnectedBlock" style="display:none">
@@ -650,14 +650,14 @@ input[type="range"]{
   
       <section class="tab" id="tab-account">
     <div class="card" id="accGuest">
-      <h2>Account</h2>
+      <h2 data-i="account_h">Account</h2>
       <p class="steps" style="margin-bottom:16px">Log in or create an account — one profile for the whole site.</p>
       <div class="row">
-        <button class="btn" id="accLogin" type="button">Log in</button>
-        <button class="btn ghost" id="accRegister" type="button">Sign up</button>
+        <button class="btn" id="accLogin" type="button" data-i="login">Log in</button>
+        <button class="btn ghost" id="accRegister" type="button" data-i="reg">Sign up</button>
       </div>
       <div class="row" style="margin-top:14px">
-        <button class="btn-buy-key" id="btnBuyKeyGuest" type="button">Buy Key</button>
+        <button class="btn-buy-key" id="btnBuyKeyGuest" type="button" data-i="buy_key">Buy Key</button>
       </div>
     </div>
     <div class="card" id="accUser" style="display:none">
@@ -681,18 +681,18 @@ input[type="range"]{
         <span class="hint" id="accKeyHint">click to show</span>
       </div>
       <div class="row" style="margin-top:16px">
-        <button class="btn" id="accSaveProfile" type="button">Save profile</button>
+        <button class="btn" id="accSaveProfile" type="button" data-i="save_profile">Save profile</button>
         <button class="btn ghost" id="accLogout2" type="button">Log out</button>
       </div>
       <div class="status" id="accProfileStatus"></div>
       <div class="row" style="margin-top:18px">
-        <button class="btn-buy-key" id="btnBuyKeyAccount" type="button">Buy Key</button>
+        <button class="btn-buy-key" id="btnBuyKeyAccount" type="button" data-i="buy_key">Buy Key</button>
       </div>
       <div id="accCodeBlock" style="margin-top:14px">
         <p class="steps" style="margin-bottom:8px;font-size:13px">Activate Pro code</p>
         <div class="row">
           <input id="accessCode2" placeholder="SM-WEB-XXXXXX-XXXX" style="width:240px"/>
-          <button class="btn ghost" id="btnUnlock2" type="button">Apply</button>
+          <button class="btn ghost" id="btnUnlock2" type="button" data-i="apply">Apply</button>
         </div>
       </div>
     </div>
@@ -700,7 +700,7 @@ input[type="range"]{
 
   <section class="tab" id="tab-about">
     <div class="card about-card">
-      <h2>About</h2>
+      <h2 data-i="about_h">About</h2>
       <p class="steps about-text">
         <b>Showcase Maker WEB</b> — browser tools for Steam showcases.<br/>
         Free: daily file limit · Pro: unlimited (account + access code).<br/><br/>
@@ -708,10 +708,10 @@ input[type="range"]{
       </p>
       <div class="about-stack">
         <div class="socials about-socials"></div>
-        <button class="btn-buy-key" id="btnBuyKeyAbout" type="button">Buy Key</button>
+        <button class="btn-buy-key" id="btnBuyKeyAbout" type="button" data-i="buy_key">Buy Key</button>
         <div class="about-code-row">
-          <input id="accessCode" placeholder="Access code"/>
-          <button class="btn ghost" id="btnUnlock" type="button">Apply</button>
+          <input id="accessCode" placeholder="Access code" data-i-ph="ph_code"/>
+          <button class="btn ghost" id="btnUnlock" type="button" data-i="apply">Apply</button>
         </div>
       </div>
     </div>
@@ -2071,14 +2071,14 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
 
 <script>
-/* ===== i18n bootstrap (data-i + APP_I18N) ===== */
+/* ===== i18n bootstrap (full RU/EN) ===== */
 (function () {
   var DICT = {
     en: {
       nav_process: "Process", nav_download: "Download", nav_convert: "Converter", nav_hex: "HEX",
       nav_preview: "Preview", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Account", nav_about: "About",
-      login: "Log in", logout: "Log out", buy: "Buy Pro", buy_key: "Buy Key",
-      back: "← Home",
+      login: "Log in", logout: "Log out", buy: "Buy Pro", buy_key: "Buy Key", reg: "Sign up", apply: "Apply",
+      save_profile: "Save profile", back: "← Home",
       title_process: "Process", sub_process: "Workshop / Featured / Split cuts, watermark and Steam ZIP",
       title_download: "Download", sub_download: "Sources from YouTube, TikTok, X, Reddit and Pinterest",
       title_convert: "Converter", sub_convert: "Convert between video, GIF and image formats",
@@ -2089,22 +2089,73 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       title_account: "Account", sub_account: "Sign up, log in and buy Pro",
       title_about: "About", sub_about: "Limits, Pro and contacts",
       mode: "Mode", params: "Settings", files: "Files",
-      mode_ws: "5 panels for Workshop showcase",
-      mode_ft: "Artwork 630px wide",
-      mode_sp: "Center 506 + side 100",
+      mode_ws: "5 panels for Workshop showcase", mode_ft: "Artwork 630px wide", mode_sp: "Center 506 + side 100",
       run: "Process", clear: "Clear",
       drop: "Drop PNG, JPG, GIF, MP4 or AVI — or click to browse",
+      cv_drop: "Drop file or click to browse",
+      hex_drop: "Drop PNG, GIF or images — or click to browse",
       lbl_fps: "FPS", lbl_size: "Width", lbl_wm: "Watermark", lbl_font: "Font",
       lbl_op: "Opacity %", lbl_wm_size: "WM size %", lbl_corner: "WM corner",
       lbl_color: "WM color", lbl_enc: "GIF encoder",
       all_modes: "All modes", wm_on: "On",
-      corner_bl: "Bottom left", corner_br: "Bottom right", corner_tl: "Top left", corner_tr: "Top right"
+      corner_bl: "Bottom left", corner_br: "Bottom right", corner_tl: "Top left", corner_tr: "Top right",
+      about_h: "About",
+      about_body: "Showcase Maker WEB — browser tools for Steam showcases.\nFree: daily file limit · Pro: unlimited (account + access code).\n\nby n1t1337",
+      account_h: "Account",
+      account_guest: "Log in or create an account — one profile for the whole site.",
+      da_h: "DeviantArt",
+      da_body: "Like the desktop app: paste Client ID & Secret from deviantart.com/developers, click Connect, allow access in the popup. Then pick files, set titles, upload to your Sta.sh.",
+      da_redirect: "Redirect URI in your DA app must be exactly:",
+      da_connect: "Connect",
+      da_need_login: "DA: log in to Showcase account first",
+      steam_h: "Upload to Steam",
+      steam_desc: "Semi-auto: results folder → Steam page → console code → upload.",
+      steam_tip: "Tip: log into Steam in the browser first. Paste the code once on the page, then pick files.",
+      steam_pick_mode: "Showcase type",
+      steam_step1: "1. Results folder",
+      steam_step2: "2. Steam upload page",
+      steam_step3: "3. Console code (F12)",
+      steam_step4: "4. Which files to upload",
+      steam_folder_hint: "After Process, download the ZIP and unpack it — those are your files.",
+      steam_open_folder: "Open Process tab",
+      steam_open_page: "Open Steam page",
+      steam_copy: "Copy code",
+      steam_how: "Step-by-step",
+      steam_how_1: "Run Process and download the ZIP, then unpack",
+      steam_how_2: "Click «Open Steam page»",
+      steam_how_3: "Click «Copy code»",
+      steam_how_4: "On Steam: F12 → Console → Ctrl+V → Enter",
+      steam_how_5: "Upload files in the order listed above",
+      steam_files_ws: "Files: part_1 … part_5 (in order). Unzip the Process ZIP first if needed.",
+      steam_files_fa: "File: featured_630.png / featured_630.gif",
+      steam_files_split: "Files: center_506 + side_100 (center first, then side)",
+      pv_h: "Profile preview",
+      pv_body: "Pick page mode → file per showcase → open in a new tab (animated GIF and MP4).",
+      pv_mode: "Mode",
+      pv_showcases: "Showcases",
+      pv_open: "Open in browser",
+      pv_avatar: "Avatar",
+      pv_choose: "Choose",
+      pv_nofile: "no file selected",
+      hex_h: "HEX 21",
+      hex_body: "Steam trick: set last byte to 0x21 on PNG / GIF (and other files). Download ZIP with patched files.",
+      hex_btn: "Apply HEX 21",
+      convert_h: "Converter",
+      convert_body: "Pick a file and the format you need — Video ↔ GIF, MP4, WEBM, PNG, JPG, WEBP.",
+      convert_to: "Convert to",
+      cv_btn: "Convert",
+      dl_h: "Download from web",
+      dl_body: "YouTube · TikTok · X · Reddit · Pinterest — no third-party sites",
+      dl_btn: "Download",
+      dl_best: "Best",
+      ph_code: "Access code",
+      free: "Free", pro: "Pro"
     },
     ru: {
       nav_process: "Обработка", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
       nav_preview: "Предпросмотр", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе",
-      login: "Войти", logout: "Выйти", buy: "Купить Pro", buy_key: "Купить ключ",
-      back: "← На главную",
+      login: "Войти", logout: "Выйти", buy: "Купить Pro", buy_key: "Купить ключ", reg: "Регистрация", apply: "Применить",
+      save_profile: "Сохранить профиль", back: "← На главную",
       title_process: "Обработка", sub_process: "Нарезка Workshop / Featured / Split, водяной знак и ZIP для Steam",
       title_download: "Скачать", sub_download: "Исходники с YouTube, TikTok, X, Reddit и Pinterest",
       title_convert: "Конвертер", sub_convert: "Конвертация видео, GIF и изображений",
@@ -2115,16 +2166,67 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       title_account: "Аккаунт", sub_account: "Регистрация, вход и покупка Pro",
       title_about: "О сервисе", sub_about: "Лимиты, Pro и контакты",
       mode: "Режим", params: "Параметры", files: "Файлы",
-      mode_ws: "5 панелей для витрины Workshop",
-      mode_ft: "Artwork шириной 630px",
-      mode_sp: "Центр 506 + бок 100",
+      mode_ws: "5 панелей для витрины Workshop", mode_ft: "Artwork шириной 630px", mode_sp: "Центр 506 + бок 100",
       run: "Обработать", clear: "Очистить",
       drop: "Перетащи PNG, JPG, GIF, MP4 или AVI — или нажми для выбора",
+      cv_drop: "Перетащи файл или нажми для выбора",
+      hex_drop: "Перетащи PNG, GIF или изображения — или нажми для выбора",
       lbl_fps: "Кадр/с", lbl_size: "Ширина", lbl_wm: "Водяной знак", lbl_font: "Шрифт",
       lbl_op: "Прозрачность %", lbl_wm_size: "Размер WM %", lbl_corner: "Угол WM",
       lbl_color: "Цвет WM", lbl_enc: "Кодер GIF",
       all_modes: "Все режимы", wm_on: "Вкл",
-      corner_bl: "Левый низ", corner_br: "Правый низ", corner_tl: "Левый верх", corner_tr: "Правый верх"
+      corner_bl: "Левый низ", corner_br: "Правый низ", corner_tl: "Левый верх", corner_tr: "Правый верх",
+      about_h: "О сервисе",
+      about_body: "Showcase Maker WEB — браузерные инструменты для витрин Steam.\nБесплатно: дневной лимит файлов · Pro: без лимита (аккаунт + код доступа).\n\nby n1t1337",
+      account_h: "Аккаунт",
+      account_guest: "Войди или создай аккаунт — один профиль на весь сайт.",
+      da_h: "DeviantArt",
+      da_body: "Как в десктопе: вставь Client ID и Secret с deviantart.com/developers, нажми Connect, разреши доступ во всплывающем окне. Затем выбери файлы, названия и загрузи в свой Sta.sh.",
+      da_redirect: "Redirect URI в приложении DA должен быть точно:",
+      da_connect: "Подключить",
+      da_need_login: "DA: сначала войди в аккаунт Showcase",
+      steam_h: "Загрузка в Steam",
+      steam_desc: "Полуавтомат: папка с файлами → страница Steam → код в консоль → загрузка.",
+      steam_tip: "Совет: войди в Steam в браузере заранее. Код вставляется один раз на страницу, затем выбираешь файлы.",
+      steam_pick_mode: "Тип витрины",
+      steam_step1: "1. Папка с результатами",
+      steam_step2: "2. Страница загрузки Steam",
+      steam_step3: "3. Код для консоли (F12)",
+      steam_step4: "4. Какие файлы грузить",
+      steam_folder_hint: "После Process скачай ZIP и распакуй — это готовые файлы.",
+      steam_open_folder: "К вкладке Process",
+      steam_open_page: "Открыть страницу Steam",
+      steam_copy: "Копировать код",
+      steam_how: "Пошаговая инструкция",
+      steam_how_1: "Обработай файлы и скачай ZIP, затем распакуй",
+      steam_how_2: "Нажми «Открыть страницу Steam»",
+      steam_how_3: "Нажми «Копировать код»",
+      steam_how_4: "На странице Steam: F12 → Console → Ctrl+V → Enter",
+      steam_how_5: "Загрузи файлы в нужном порядке (см. список ниже)",
+      steam_files_ws: "Файлы: part_1 … part_5 (по порядку). Можно из ZIP.",
+      steam_files_fa: "Файл: featured_630.png / featured_630.gif",
+      steam_files_split: "Файлы: center_506 + side_100 (сначала центр, потом бок)",
+      pv_h: "Предпросмотр профиля",
+      pv_body: "Выбери режим страницы → файл на каждую витрину → открой в новой вкладке (GIF и MP4).",
+      pv_mode: "Режим",
+      pv_showcases: "Витрины",
+      pv_open: "Открыть в браузере",
+      pv_avatar: "Аватар",
+      pv_choose: "Выбрать",
+      pv_nofile: "файл не выбран",
+      hex_h: "HEX 21",
+      hex_body: "Трюк Steam: последний байт 0x21 у PNG / GIF (и других файлов). Скачай ZIP с пропатченными файлами.",
+      hex_btn: "Применить HEX 21",
+      convert_h: "Конвертер",
+      convert_body: "Выбери файл и нужный формат — Video ↔ GIF, MP4, WEBM, PNG, JPG, WEBP.",
+      convert_to: "Конвертировать в",
+      cv_btn: "Конвертировать",
+      dl_h: "Скачать из сети",
+      dl_body: "YouTube · TikTok · X · Reddit · Pinterest — без сторонних сайтов",
+      dl_btn: "Скачать",
+      dl_best: "Лучшее",
+      ph_code: "Код доступа",
+      free: "Free", pro: "Pro"
     }
   };
 
@@ -2135,20 +2237,41 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     try { localStorage.setItem("sm_lang", L); } catch (e) {}
   }
 
+  function setLabelFor(inputId, text) {
+    if (!text) return;
+    var el = document.getElementById(inputId);
+    if (!el) return;
+    var lab = el.closest("label");
+    if (!lab) return;
+    for (var i = 0; i < lab.childNodes.length; i++) {
+      var n = lab.childNodes[i];
+      if (n.nodeType === 3 && n.textContent.trim()) {
+        n.textContent = text + " ";
+        return;
+      }
+    }
+    var span = lab.querySelector(".lbl, .lbl-fps");
+    if (span) span.textContent = text;
+  }
+
   function applyDict(L) {
     var pack = DICT[L] || DICT.en;
     document.documentElement.lang = L;
-    // data-i elements
+
     document.querySelectorAll("[data-i]").forEach(function (el) {
       var k = el.getAttribute("data-i");
       if (k && pack[k] != null) el.textContent = pack[k];
     });
-    // nav buttons by data-tab (backup)
+    document.querySelectorAll("[data-i-ph]").forEach(function (el) {
+      var k = el.getAttribute("data-i-ph");
+      if (k && pack[k] != null) el.placeholder = pack[k];
+    });
+
     document.querySelectorAll("#nav button[data-tab]").forEach(function (btn) {
       var k = "nav_" + btn.getAttribute("data-tab");
       if (pack[k]) btn.textContent = pack[k];
     });
-    // page title for active tab
+
     var active = document.querySelector("#nav button.active");
     if (active) {
       var tab = active.getAttribute("data-tab");
@@ -2157,15 +2280,137 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       if (pt && pack["title_" + tab]) pt.textContent = pack["title_" + tab];
       if (ps && pack["sub_" + tab]) ps.textContent = pack["sub_" + tab];
     }
-    // lang button label = opposite language
+
     var lb = document.getElementById("langBtn");
     if (lb) lb.textContent = L === "en" ? "RU" : "EN";
-    // also try legacy APP_I18N if present (extra coverage)
-    if (typeof window.applyAppLang === "function") {
-      try { window.applyAppLang(L); } catch (e) { console.warn("legacy applyAppLang", e); }
+
+    // Process field labels
+    setLabelFor("fps", pack.lbl_fps);
+    setLabelFor("size", pack.lbl_size);
+    setLabelFor("wmText", pack.lbl_wm);
+    setLabelFor("wmFont", pack.lbl_font);
+    setLabelFor("wmOpacity", pack.lbl_op);
+    setLabelFor("wmScale", pack.lbl_wm_size);
+    setLabelFor("wmCorner", pack.lbl_corner);
+    setLabelFor("wmColor", pack.lbl_color);
+    setLabelFor("gifEncoder", pack.lbl_enc);
+
+    // corner options
+    var corner = document.getElementById("wmCorner");
+    if (corner) {
+      var map = { bl: pack.corner_bl, br: pack.corner_br, tl: pack.corner_tl, tr: pack.corner_tr };
+      Array.from(corner.options).forEach(function (o) {
+        if (map[o.value]) o.textContent = map[o.value];
+      });
     }
-    // steam UI
+
+    // checkboxes text nodes
+    document.querySelectorAll("label").forEach(function (lab) {
+      var inp = lab.querySelector('input[type="checkbox"]');
+      if (!inp) return;
+      if (inp.id === "wmEnable" || inp.name === "wm_enable") {
+        for (var i = 0; i < lab.childNodes.length; i++) {
+          if (lab.childNodes[i].nodeType === 3 && lab.childNodes[i].textContent.trim()) {
+            lab.childNodes[i].textContent = " " + pack.wm_on;
+          }
+        }
+      }
+      if (inp.id === "allModes" || inp.name === "all_modes") {
+        for (var j = 0; j < lab.childNodes.length; j++) {
+          if (lab.childNodes[j].nodeType === 3 && lab.childNodes[j].textContent.trim()) {
+            lab.childNodes[j].textContent = " " + pack.all_modes;
+          }
+        }
+      }
+    });
+
+    // About body
+    var aboutP = document.querySelector("#tab-about .about-text, #tab-about .steps");
+    if (aboutP && pack.about_body) {
+      aboutP.innerHTML = pack.about_body.replace(/\n/g, "<br/>");
+    }
+
+    // Account guest text
+    var accGuestP = document.querySelector("#accGuest .steps, #accGuest p.steps");
+    if (accGuestP && pack.account_guest) accGuestP.textContent = pack.account_guest;
+
+    // DA body - first steps paragraph
+    var daSteps = document.querySelector("#tab-da .card > p.steps");
+    if (daSteps && pack.da_body) {
+      // keep link if possible
+      daSteps.textContent = pack.da_body;
+    }
+
+    // Preview body
+    var pvSteps = document.querySelector("#tab-preview .card > p.steps");
+    if (pvSteps && pack.pv_body) pvSteps.textContent = pack.pv_body;
+    var pvModeLab = document.querySelector("#tab-preview label.field");
+    if (pvModeLab && pack.pv_mode) {
+      for (var pi = 0; pi < pvModeLab.childNodes.length; pi++) {
+        if (pvModeLab.childNodes[pi].nodeType === 3 && pvModeLab.childNodes[pi].textContent.trim()) {
+          pvModeLab.childNodes[pi].textContent = pack.pv_mode + " ";
+          break;
+        }
+      }
+    }
+    // Preview choose buttons
+    document.querySelectorAll("#pvSlots button").forEach(function (b) {
+      if (b.textContent === "Choose" || b.textContent === "Выбрать" || b.classList.contains("pv-pick")) {
+        b.textContent = pack.pv_choose;
+      }
+    });
+
+    // HEX body
+    var hexSteps = document.querySelector("#tab-hex .card > p.steps");
+    if (hexSteps && pack.hex_body) hexSteps.textContent = pack.hex_body;
+
+    // Convert
+    var cvSteps = document.querySelector("#tab-convert .card > p.steps");
+    if (cvSteps && pack.convert_body) cvSteps.textContent = pack.convert_body;
+    var cvLab = document.querySelector("#tab-convert label.field");
+    if (cvLab && pack.convert_to) {
+      for (var ci = 0; ci < cvLab.childNodes.length; ci++) {
+        if (cvLab.childNodes[ci].nodeType === 3 && cvLab.childNodes[ci].textContent.trim()) {
+          cvLab.childNodes[ci].textContent = pack.convert_to + " ";
+          break;
+        }
+      }
+    }
+
+    // Download
+    var dlSteps = document.querySelector("#tab-download .card > p.steps, #tab-download .card .steps");
+    if (dlSteps && pack.dl_body) dlSteps.textContent = pack.dl_body;
+    var dlSel = document.querySelector("#tab-download select");
+    if (dlSel && dlSel.options[0] && pack.dl_best) {
+      // first option often Best
+      if (/best|лучш/i.test(dlSel.options[0].textContent)) dlSel.options[0].textContent = pack.dl_best;
+    }
+
+    // Steam via refreshSteamUI + direct
+    if (pack.steam_h) {
+      var st = document.getElementById("steamTitle"); if (st) st.textContent = pack.steam_h;
+      var sd = document.getElementById("steamDesc"); if (sd) sd.textContent = pack.steam_desc;
+      var sti = document.getElementById("steamTip"); if (sti) sti.textContent = pack.steam_tip;
+      var spm = document.getElementById("steamPickModeLbl"); if (spm) spm.textContent = pack.steam_pick_mode;
+      var s1 = document.getElementById("steamStep1"); if (s1) s1.textContent = pack.steam_step1;
+      var s2 = document.getElementById("steamStep2"); if (s2) s2.textContent = pack.steam_step2;
+      var s3 = document.getElementById("steamStep3"); if (s3) s3.textContent = pack.steam_step3;
+      var s4 = document.getElementById("steamStep4"); if (s4) s4.textContent = pack.steam_step4;
+      var sfh = document.getElementById("steamFolderHint"); if (sfh) sfh.textContent = pack.steam_folder_hint;
+      var sh = document.getElementById("steamHowTitle"); if (sh) sh.textContent = pack.steam_how;
+      var how = document.getElementById("steamHowList");
+      if (how) {
+        how.innerHTML = [pack.steam_how_1, pack.steam_how_2, pack.steam_how_3, pack.steam_how_4, pack.steam_how_5]
+          .map(function (x) { return "<li>" + x + "</li>"; }).join("");
+      }
+      var mode = (document.getElementById("steamMode") || {}).value || "workshop";
+      var filesMap = { workshop: pack.steam_files_ws, featured: pack.steam_files_fa, split: pack.steam_files_split };
+      var filesEl = document.getElementById("steamFilesHint");
+      if (filesEl) filesEl.textContent = filesMap[mode] || pack.steam_files_ws;
+    }
+
     try { if (typeof refreshSteamUI === "function") refreshSteamUI(); } catch (e) {}
+    try { if (typeof window.applyAppLang === "function") window.applyAppLang(L); } catch (e) {}
   }
 
   function toggle(e) {
@@ -2189,23 +2434,22 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     applyDict(getLang());
   }
 
-  // re-apply when user switches tabs (title/sub)
   document.addEventListener("click", function (e) {
     var btn = e.target && e.target.closest && e.target.closest("#nav button[data-tab]");
-    if (btn) {
-      setTimeout(function () { applyDict(getLang()); }, 0);
-    }
+    if (btn) setTimeout(function () { applyDict(getLang()); }, 0);
+  });
+  // steam mode change
+  document.addEventListener("change", function (e) {
+    if (e.target && e.target.id === "steamMode") applyDict(getLang());
   });
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
-  } else {
-    start();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
   setTimeout(start, 200);
   setTimeout(start, 800);
 })();
 </script>
+
 
 </body>
 </html>
