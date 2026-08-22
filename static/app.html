@@ -670,13 +670,13 @@ input[type="range"]{
       </div>
       <div id="daConnectedBlock" style="display:none">
         <div class="row" style="margin-bottom:10px">
-          <button class="btn" id="daAddFiles" type="button">Add files</button>
-          <button class="btn ghost" id="daClearFiles" type="button">Clear list</button>
-          <input type="file" id="daFiles" multiple accept="image/*,.gif,video/*,.mp4,.webm" style="display:none"/>
+          <button class="btn" id="daAddFiles" type="button" onclick="window.__daPickFiles&&window.__daPickFiles();return false;">Add files</button>
+          <button class="btn ghost" id="daClearFiles" type="button" onclick="window.__daClearFiles&&window.__daClearFiles();return false;">Clear list</button>
+          <input type="file" id="daFiles" multiple accept="image/*,image/gif,image/png,image/jpeg,video/mp4,video/webm,.gif,.png,.jpg,.jpeg,.mp4,.webm" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0"/>
         </div>
         <div id="daList" class="files"></div>
         <div class="row" style="margin-top:12px">
-          <button class="btn" id="daUpload" type="button">Upload to Sta.sh</button>
+          <button class="btn" id="daUpload" type="button" onclick="window.__daUpload&&window.__daUpload();return false;">Upload to Sta.sh</button>
         </div>
       </div>
       <div class="status" id="daMsg" style="display:block;min-height:28px;margin-top:14px;font-size:13px"></div>
@@ -2810,6 +2810,168 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       e.stopPropagation();
       window.__daConnect();
     }
+
+  // --- file list for DA upload ---
+  window.__daItems = window.__daItems || [];
+
+  function renderDaListSafe() {
+    var box = document.getElementById("daList");
+    if (!box) return;
+    var items = window.__daItems || [];
+    if (!items.length) {
+      box.innerHTML = "";
+      return;
+    }
+    box.innerHTML = items.map(function (it, i) {
+      return '<div class="file-row" style="display:flex;gap:8px;align-items:center;margin:6px 0">' +
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">' +
+        (it.name || "") + "</span>" +
+        '<input class="da-title" data-i="' + i + '" value="' +
+        String(it.title || "").replace(/"/g, "&quot;") +
+        '" style="flex:1;min-width:100px" placeholder="Title"/>' +
+        '<button type="button" class="btn ghost da-rm" data-i="' + i + '" style="padding:4px 10px">×</button></div>';
+    }).join("");
+    box.querySelectorAll(".da-title").forEach(function (inp) {
+      inp.oninput = function () {
+        var i = +inp.getAttribute("data-i");
+        if (window.__daItems[i]) window.__daItems[i].title = inp.value;
+      };
+    });
+    box.querySelectorAll(".da-rm").forEach(function (btn) {
+      btn.onclick = function () {
+        window.__daItems.splice(+btn.getAttribute("data-i"), 1);
+        renderDaListSafe();
+      };
+    });
+  }
+
+  window.__daPickFiles = function () {
+    var f = document.getElementById("daFiles");
+    if (!f) {
+      // create on the fly
+      f = document.createElement("input");
+      f.type = "file";
+      f.id = "daFiles";
+      f.multiple = true;
+      f.accept = "image/*,image/gif,video/mp4,video/webm,.gif,.png,.jpg,.jpeg,.mp4,.webm";
+      f.style.cssText = "position:fixed;left:-9999px;opacity:0";
+      document.body.appendChild(f);
+      f.addEventListener("change", onDaFilesChange);
+    }
+    try {
+      f.value = "";
+      f.click();
+    } catch (e) {
+      alert("Cannot open file dialog: " + e);
+    }
+  };
+
+  function onDaFilesChange(e) {
+    var files = (e.target && e.target.files) || [];
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      window.__daItems.push({
+        file: f,
+        name: f.name,
+        title: f.name.replace(/\.[^.]+$/, "")
+      });
+    }
+    try { e.target.value = ""; } catch (err) {}
+    renderDaListSafe();
+    var st = document.getElementById("daMsg");
+    if (st) {
+      st.className = "status ok";
+      st.textContent = "Files: " + window.__daItems.length;
+    }
+  }
+
+  window.__daClearFiles = function () {
+    window.__daItems = [];
+    renderDaListSafe();
+  };
+
+  window.__daUpload = async function () {
+    var st = document.getElementById("daMsg");
+    var items = window.__daItems || [];
+    if (!items.length) {
+      if (st) { st.className = "status err"; st.textContent = "Add files first"; }
+      return;
+    }
+    if (st) { st.className = "status"; st.textContent = "Uploading…"; }
+    var fd = new FormData();
+    items.forEach(function (it) {
+      fd.append("file", it.file, it.name);
+      fd.append("title_" + it.name, it.title || it.name);
+    });
+    var hdr = {};
+    try {
+      var s = localStorage.getItem("sm_session");
+      if (s) hdr["X-Session-Token"] = s;
+      var tk = localStorage.getItem("sm_token");
+      if (tk) hdr["X-Access-Token"] = tk;
+    } catch (e) {}
+    try {
+      var r = await fetch("/api/da/upload", { method: "POST", headers: hdr, body: fd, credentials: "include" });
+      var j = await r.json();
+      if (!j.ok) {
+        if (st) {
+          st.className = "status err";
+          st.textContent = j.msg || (j.errors || []).join("; ") || "Upload failed";
+        }
+      } else {
+        if (st) {
+          st.className = "status ok";
+          st.textContent = "Uploaded " + j.uploaded + "/" + j.total + " to Sta.sh";
+        }
+      }
+    } catch (e) {
+      if (st) { st.className = "status err"; st.textContent = String(e); }
+    }
+  };
+
+  // bind file input change + buttons
+  function bindDaFiles() {
+    var inp = document.getElementById("daFiles");
+    if (inp && !inp.dataset.bound) {
+      inp.dataset.bound = "1";
+      inp.addEventListener("change", onDaFilesChange);
+    }
+    var add = document.getElementById("daAddFiles");
+    if (add) {
+      add.disabled = false;
+      add.onclick = function (e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        window.__daPickFiles();
+        return false;
+      };
+    }
+    var clr = document.getElementById("daClearFiles");
+    if (clr) {
+      clr.onclick = function (e) {
+        if (e) { e.preventDefault(); }
+        window.__daClearFiles();
+        return false;
+      };
+    }
+    var up = document.getElementById("daUpload");
+    if (up) {
+      up.onclick = function (e) {
+        if (e) { e.preventDefault(); }
+        window.__daUpload();
+        return false;
+      };
+    }
+    // sync with legacy daItems if main script has it
+    try {
+      if (typeof daItems !== "undefined" && Array.isArray(daItems)) {
+        window.__daItems = daItems;
+      }
+    } catch (e) {}
+  }
+  bindDaFiles();
+  setTimeout(bindDaFiles, 400);
+  setTimeout(bindDaFiles, 1500);
+
   }, true);
 })();
 </script>
