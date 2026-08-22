@@ -1843,7 +1843,7 @@ function renderDaList() {
 async function refreshDa() {
   try {
     const r = await fetch('/api/da/status', { headers: headers(), credentials: 'include' });
-    const j = await r.json();
+    const j = await r.json().catch(() => ({}));
     const pill = document.getElementById('daStatusPill');
     const login = document.getElementById('daLogin');
     const logout = document.getElementById('daLogout');
@@ -1852,149 +1852,211 @@ async function refreshDa() {
       const c = document.getElementById('daRedirectCode');
       if (c) c.textContent = j.redirect_hint;
     }
+    if (login) {
+      login.disabled = false;
+      login.style.pointerEvents = 'auto';
+      login.style.opacity = '1';
+      login.style.cursor = 'pointer';
+    }
     if (!pill) return;
+    const ru = (localStorage.getItem('sm_lang') === 'ru');
     if (!j.logged_in) {
-      pill.textContent = 'DA: log in to Showcase account first';
-      if (login) login.disabled = true;
+      pill.textContent = ru ? 'DA: сначала войди в аккаунт Showcase' : 'DA: log in to Showcase account first';
       if (logout) logout.style.display = 'none';
       if (block) block.style.display = 'none';
+      if (login) login.style.display = 'inline-block';
       return;
     }
-    if (login) login.disabled = false;
     const connected = !!j.da;
-    pill.textContent = connected ? 'DA: connected' : (j.has_keys ? 'DA: keys saved · not connected' : 'DA: not connected');
+    pill.textContent = connected
+      ? (ru ? 'DA: подключено' : 'DA: connected')
+      : (j.has_keys
+          ? (ru ? 'DA: ключи сохранены · не подключено' : 'DA: keys saved · not connected')
+          : (ru ? 'DA: не подключено' : 'DA: not connected'));
     if (login) login.style.display = connected ? 'none' : 'inline-block';
     if (logout) logout.style.display = connected ? 'inline-block' : 'none';
     if (block) block.style.display = connected ? 'block' : 'none';
-  } catch (e) {}
+  } catch (e) {
+    console.warn('refreshDa', e);
+  }
 }
 
-window.addEventListener('message', (ev) => {
+window.addEventListener('message', function (ev) {
   if (ev.data && ev.data.type === 'da_connected') {
     const st = document.getElementById('daMsg');
-    if (st) { st.className = 'status ok'; st.textContent = 'Connected. Add files and upload.'; }
+    if (st) {
+      st.className = 'status ok';
+      st.textContent = (localStorage.getItem('sm_lang') === 'ru')
+        ? 'Подключено. Добавь файлы и загрузи.'
+        : 'Connected. Add files and upload.';
+    }
     refreshDa();
   }
 });
 
-document.getElementById('daLogin')?.addEventListener('click', async () => {
+async function daDoConnect() {
   const st = document.getElementById('daMsg');
-  const cid = (document.getElementById('daClientId')?.value || '').trim();
-  const sec = (document.getElementById('daClientSecret')?.value || '').trim();
-  if (!cid || !sec) {
-    st.className = 'status err'; st.textContent = 'Enter Client ID and Client Secret';
-    return;
+  function setMsg(cls, text) {
+    if (!st) return;
+    st.className = 'status' + (cls ? ' ' + cls : '');
+    st.textContent = text;
   }
-  st.className = 'status'; st.textContent = 'Saving keys…';
+  const ru = (localStorage.getItem('sm_lang') === 'ru');
   try {
+    const sess = localStorage.getItem('sm_session') || (state && state.session) || '';
+    if (!sess) {
+      setMsg('err', ru ? 'Сначала войди в аккаунт Showcase' : 'Log in to Showcase first');
+      if (typeof openAuthModal === 'function') openAuthModal('login');
+      return;
+    }
+    const cid = (document.getElementById('daClientId') && document.getElementById('daClientId').value || '').trim();
+    const sec = (document.getElementById('daClientSecret') && document.getElementById('daClientSecret').value || '').trim();
+    if (!cid || !sec) {
+      setMsg('err', ru ? 'Введи Client ID и Client Secret' : 'Enter Client ID and Client Secret');
+      return;
+    }
+    setMsg('', ru ? 'Сохраняю ключи…' : 'Saving keys…');
     const sk = await fetch('/api/da/keys', {
       method: 'POST',
-      headers: { ...headers(), 'Content-Type': 'application/json' },
+      headers: Object.assign({}, headers(), { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ client_id: cid, client_secret: sec }),
       credentials: 'include',
     });
-    const sj = await sk.json();
-    if (!sj.ok) {
-      st.className = 'status err';
-      st.textContent = sj.msg || 'Save failed — are you logged into Showcase?';
+    const sj = await sk.json().catch(function () { return {}; });
+    if (!sk.ok || !sj.ok) {
+      setMsg('err', sj.msg || (ru ? 'Не сохранилось — войди в аккаунт' : 'Save failed — log in'));
+      if (sk.status === 401 && typeof openAuthModal === 'function') openAuthModal('login');
       return;
     }
-    st.textContent = 'Opening DeviantArt authorization…';
+    setMsg('', ru ? 'Открываю авторизацию DeviantArt…' : 'Opening DeviantArt authorization…');
     const r = await fetch('/api/da/login', { headers: headers(), credentials: 'include' });
-    const j = await r.json();
-    if (!j.ok) {
-      st.className = 'status err'; st.textContent = j.msg || 'Error';
+    const j = await r.json().catch(function () { return {}; });
+    if (!r.ok || !j.ok) {
+      setMsg('err', j.msg || 'Error');
+      if (r.status === 401 && typeof openAuthModal === 'function') openAuthModal('login');
       return;
     }
-    if (!j.url || j.url.indexOf('oauth2/authorize') < 0) {
+    if (!j.url || String(j.url).indexOf('oauth2/authorize') < 0) {
+      setMsg('err', 'Bad OAuth URL. Check Client ID and Redirect URI.');
+      return;
+    }
+    var w = null;
+    try {
+      w = window.open(j.url, 'da_oauth_' + Date.now(), 'width=720,height=800,scrollbars=yes,resizable=yes');
+    } catch (e) {}
+    if (!w || w.closed) {
       st.className = 'status err';
-      st.textContent = 'Bad OAuth URL. Check Client ID and Redirect URI.';
-      return;
-    }
-    // Unique window name every time — reusing "da_oauth" kept opening old DA home tab
-    const wname = 'da_oauth_' + Date.now();
-    const w = window.open(j.url, wname, 'width=720,height=800,scrollbars=yes,resizable=yes');
-    if (!w) {
-      st.innerHTML = 'Popup blocked. <a id="daAuthLink" href="' + j.url + '" target="_blank" style="color:var(--accent)">Click here to open authorization</a>';
+      st.innerHTML = (ru ? 'Окно заблокировано. ' : 'Popup blocked. ') +
+        '<a href="' + j.url + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">' +
+        (ru ? 'Нажми сюда для авторизации' : 'Click here to authorize') + '</a>';
     } else {
-      try { w.location.href = j.url; } catch(e) {}
-      st.innerHTML = 'Authorize window opened. URL must contain <b>oauth2/authorize</b>. If you see the DA feed, close it and <a id="daAuthLink" href="' + j.url + '" target="_blank" style="color:var(--accent)">open this link</a>.';
+      try { w.focus(); } catch (e) {}
+      st.className = 'status';
+      st.innerHTML = (ru ? 'Окно открыто — разреши доступ. Если нет — ' : 'Window opened — allow access. If not — ') +
+        '<a href="' + j.url + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">' +
+        (ru ? 'открой ссылку' : 'open link') + '</a>';
     }
-    let n = 0;
-    const t = setInterval(async () => {
+    var n = 0;
+    var tmr = setInterval(async function () {
       n++;
       try {
-        const stj = await fetch('/api/da/status', { headers: headers(), credentials: 'include' }).then(x => x.json());
-        if (stj.da) {
-          clearInterval(t);
-          try { if (w && !w.closed) w.close(); } catch(e) {}
-          st.className = 'status ok';
-          st.textContent = 'Connected. Add files and upload.';
+        var stj = await fetch('/api/da/status', { headers: headers(), credentials: 'include' }).then(function (x) { return x.json(); });
+        if (stj && stj.da) {
+          clearInterval(tmr);
+          try { if (w && !w.closed) w.close(); } catch (e) {}
+          setMsg('ok', ru ? 'Подключено. Добавь файлы и загрузи.' : 'Connected. Add files and upload.');
           refreshDa();
         }
-      } catch(e) {}
+      } catch (e) {}
       if (n > 90) {
-        clearInterval(t);
-        st.className = 'status err';
-        st.textContent = 'Timeout — click Connect again after allowing access on DeviantArt.';
+        clearInterval(tmr);
+        setMsg('err', ru ? 'Таймаут — нажми Connect снова после разрешения' : 'Timeout — click Connect again after allowing access');
       }
     }, 2000);
   } catch (e) {
-    st.className = 'status err'; st.textContent = String(e);
+    setMsg('err', String(e && e.message ? e.message : e));
+    console.error('daDoConnect', e);
   }
-});
+}
 
-document.getElementById('daLogout')?.addEventListener('click', async () => {
+function wireDaConnect() {
+  var btn = document.getElementById('daLogin');
+  if (!btn) return;
+  btn.disabled = false;
+  btn.style.pointerEvents = 'auto';
+  btn.onclick = function (e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    daDoConnect();
+  };
+}
+wireDaConnect();
+setTimeout(wireDaConnect, 400);
+setTimeout(wireDaConnect, 1200);
+
+document.getElementById('daLogout') && document.getElementById('daLogout').addEventListener('click', async function () {
   await fetch('/api/da/logout', { method: 'POST', headers: headers(), credentials: 'include' });
   daItems = [];
   renderDaList();
   refreshDa();
-  const st = document.getElementById('daMsg');
+  var st = document.getElementById('daMsg');
   if (st) { st.className = 'status'; st.textContent = 'Disconnected'; }
 });
 
-document.getElementById('daAddFiles')?.addEventListener('click', () => document.getElementById('daFiles')?.click());
-document.getElementById('daFiles')?.addEventListener('change', (e) => {
-  [...(e.target.files || [])].forEach(f => {
+document.getElementById('daAddFiles') && document.getElementById('daAddFiles').addEventListener('click', function () {
+  var f = document.getElementById('daFiles');
+  if (f) f.click();
+});
+document.getElementById('daFiles') && document.getElementById('daFiles').addEventListener('change', function (e) {
+  Array.prototype.forEach.call(e.target.files || [], function (f) {
     daItems.push({ file: f, name: f.name, title: f.name.replace(/\.[^.]+$/, '') });
   });
   e.target.value = '';
   renderDaList();
 });
-document.getElementById('daClearFiles')?.addEventListener('click', () => { daItems = []; renderDaList(); });
+document.getElementById('daClearFiles') && document.getElementById('daClearFiles').addEventListener('click', function () {
+  daItems = [];
+  renderDaList();
+});
 
-document.getElementById('daUpload')?.addEventListener('click', async () => {
-  const st = document.getElementById('daMsg');
-  if (!daItems.length) { st.className='status err'; st.textContent='Add files first'; return; }
-  st.className='status'; st.textContent='Uploading…';
-  const fd = new FormData();
-  daItems.forEach((it, i) => {
+document.getElementById('daUpload') && document.getElementById('daUpload').addEventListener('click', async function () {
+  var st = document.getElementById('daMsg');
+  if (!daItems.length) {
+    if (st) { st.className = 'status err'; st.textContent = 'Add files first'; }
+    return;
+  }
+  if (st) { st.className = 'status'; st.textContent = 'Uploading…'; }
+  var fd = new FormData();
+  daItems.forEach(function (it) {
     fd.append('file', it.file, it.name);
     fd.append('title_' + it.name, it.title || it.name);
   });
   try {
-    const r = await fetch('/api/da/upload', { method:'POST', headers: headers(), body: fd, credentials: 'include' });
-    const j = await r.json();
+    var r = await fetch('/api/da/upload', { method: 'POST', headers: headers(), body: fd, credentials: 'include' });
+    var j = await r.json();
     if (!j.ok) {
-      st.className='status err';
-      st.textContent = j.msg || (j.errors||[]).join('; ') || 'Upload failed';
+      if (st) {
+        st.className = 'status err';
+        st.textContent = j.msg || (j.errors || []).join('; ') || 'Upload failed';
+      }
     } else {
-      st.className='status ok';
-      st.textContent = `Uploaded ${j.uploaded}/${j.total} to Sta.sh`;
-      if (j.errors && j.errors.length) st.textContent += ' · ' + j.errors.join('; ');
+      if (st) {
+        st.className = 'status ok';
+        st.textContent = 'Uploaded ' + j.uploaded + '/' + j.total + ' to Sta.sh';
+        if (j.errors && j.errors.length) st.textContent += ' · ' + j.errors.join('; ');
+      }
     }
-  } catch(e) { st.className='status err'; st.textContent=String(e); }
+  } catch (e) {
+    if (st) { st.className = 'status err'; st.textContent = String(e); }
+  }
 });
 
-/* applyAppLang deferred to final script */
-// open DA tab from OAuth return
 if (location.hash === '#account' || location.hash === '#profile') {
-  const btn = document.querySelector('#nav button[data-tab="account"]');
-  if (btn) btn.click();
+  var btnA = document.querySelector('#nav button[data-tab="account"]');
+  if (btnA) btnA.click();
 }
 if (location.hash === '#da') {
-  const btn = document.querySelector('#nav button[data-tab="da"]');
-  if (btn) btn.click();
+  var btnD = document.querySelector('#nav button[data-tab="da"]');
+  if (btnD) btnD.click();
   refreshDa();
 }
 
