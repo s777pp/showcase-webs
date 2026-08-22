@@ -1230,91 +1230,76 @@ function appLang() {
 }
 
 function applyAppLang(lang) {
-  const t = APP_I18N[lang] || APP_I18N.ru;
+  const pack = APP_I18N[lang] || APP_I18N.ru;
   localStorage.setItem('sm_lang', lang);
   document.documentElement.lang = lang;
   const lb = document.getElementById('langBtn');
   if (lb) lb.textContent = lang === 'en' ? 'RU' : 'EN';
 
-  // nav
   document.querySelectorAll('#nav button').forEach(btn => {
     const k = btn.dataset.tab;
-    if (t.nav[k]) btn.textContent = t.nav[k];
+    if (pack.nav && pack.nav[k]) btn.textContent = pack.nav[k];
   });
 
-  // override titles global used by tab switcher
-  if (typeof titles !== 'undefined') {
-    Object.assign(titles, t.titles);
+  if (typeof titles !== 'undefined' && pack.titles) {
+    Object.assign(titles, pack.titles);
     const active = document.querySelector('#nav button.active');
     if (active) {
       const key = active.dataset.tab;
-      const pair = t.titles[key];
+      const pair = pack.titles[key];
       if (pair) {
-        document.getElementById('pageTitle').textContent = pair[0];
-        document.getElementById('pageSub').textContent = pair[1];
+        const pt = document.getElementById('pageTitle');
+        const ps = document.getElementById('pageSub');
+        if (pt) pt.textContent = pair[0];
+        if (ps) ps.textContent = pair[1];
       }
     }
   }
 
   const back = document.querySelector('a.back');
-  if (back) back.textContent = t.back;
-  const ba = document.getElementById('btnAuth'); if (ba) ba.textContent = t.login;
-  const bl = document.getElementById('btnLogout'); if (bl) bl.textContent = t.logout;
-  const bu = document.getElementById('btnUpgrade'); if (bu) bu.textContent = t.buy;
-  const ab = document.getElementById('accBuyPro_removed'); if (ab) ab.textContent = t.buy;
-  const al2 = document.getElementById('accLogout2'); if (al2) al2.textContent = t.logout;
+  if (back && pack.back) back.textContent = pack.back;
 
-  // cards headings - first h2 in process
+  const setTxt = (id, val) => {
+    const el = document.getElementById(id);
+    if (el && val != null) el.textContent = val;
+  };
+  setTxt('btnAuth', pack.login);
+  setTxt('btnLogout', pack.logout);
+  setTxt('btnUpgrade', pack.buy);
+  setTxt('accLogout2', pack.logout);
+  setTxt('btnRun', pack.run);
+  setTxt('btnClear', pack.clear);
+  setTxt('btnProcess', pack.run);
+  setTxt('dlProcess', pack.dlzip);
+  setTxt('accLogin', pack.login);
+  setTxt('accRegister', pack.reg);
+  setTxt('btnUnlock2', pack.apply);
+  setTxt('accSaveProfile', pack.save_profile);
+  setTxt('btnHex', pack.hex_btn);
+
+  // drop zone text
+  const dropEl = document.getElementById('drop');
+  if (dropEl && pack.drop) dropEl.textContent = pack.drop;
+
+  // process card titles
   const ph = document.querySelectorAll('#tab-process .card h2');
-  if (ph[0]) ph[0].textContent = t.mode;
-  if (ph[1]) ph[1].textContent = t.params;
-  if (ph[2]) ph[2].textContent = t.files;
-  const drop = document.getElementById('drop'); if (drop) drop.textContent = t.drop;
-  const br = document.getElementById('btnRun'); if (br) br.textContent = t.run;
-  const bc = document.getElementById('btnClear'); if (bc) bc.textContent = t.clear;
-  const dp = document.getElementById('dlProcess'); if (dp) dp.textContent = t.dlzip;
+  if (ph[0] && pack.mode) ph[0].textContent = pack.mode;
+  if (ph[1] && pack.params) ph[1].textContent = pack.params;
+  if (ph[2] && pack.files) ph[2].textContent = pack.files;
 
-  // account
-  const ag = document.querySelector('#accGuest h2'); if (ag) ag.textContent = t.acc_guest;
-  const agp = document.querySelector('#accGuest .steps'); if (agp) agp.textContent = t.acc_guest_p;
-  const al = document.getElementById('accLogin'); if (al) al.textContent = t.login;
-  const ar = document.getElementById('accRegister'); if (ar) ar.textContent = t.reg;
-  const au = document.querySelector('#accUser h2'); if (au) au.textContent = t.acc_user;
-  const hint = document.getElementById('accBillingHint'); if (hint) hint.textContent = t.funpay_hint;
-  const ch = document.querySelector('#tab-account .card:last-of-type h2') || document.querySelector('#accessCode2')?.closest('.card')?.querySelector('h2');
-  // code card
-  document.querySelectorAll('#tab-account .card').forEach(card => {
-    const h = card.querySelector('h2');
-    if (!h) return;
-    if (h.textContent.includes('Код') || h.textContent.includes('Access') || h.textContent.includes('код')) {
-      h.textContent = t.code_h;
-      const sp = card.querySelector('.steps');
-      if (sp) sp.textContent = t.code_p;
-    }
-  });
-  const bu2 = document.getElementById('btnUnlock2'); if (bu2) bu2.textContent = t.apply;
+  // mode descriptions
+  const modes = document.querySelectorAll('.mode span');
+  if (modes[0] && pack.mode_ws) modes[0].textContent = pack.mode_ws;
+  if (modes[1] && pack.mode_ft) modes[1].textContent = pack.mode_ft;
+  if (modes[2] && pack.mode_sp) modes[2].textContent = pack.mode_sp;
 
-  // modal
-
-
-  // process cards
-  const cardHs = document.querySelectorAll('#tab-process .card > h2');
-  if (cardHs[0]) cardHs[0].textContent = t.mode;
-  if (cardHs[1]) cardHs[1].textContent = t.params;
-  if (cardHs[2]) cardHs[2].textContent = t.files;
-  const drop = document.querySelector('#dropZone .drop-text, #dropZone');
-  const dropP = document.querySelector('#dropZone p, #dropHint, .drop-hint');
-  if (dropP) dropP.textContent = t.drop;
-  const btnRun = document.getElementById('btnProcess'); if (btnRun) btnRun.textContent = t.run;
-  const btnClear = document.getElementById('btnClear'); if (btnClear) btnClear.textContent = t.clear;
-
-  // field labels by id proximity
+  // field labels
   const setFieldLabel = (inputId, text) => {
+    if (!text) return;
     const el = document.getElementById(inputId);
     if (!el) return;
     const lab = el.closest('label');
     if (!lab) return;
-    // first text node or .lbl span
     const span = lab.querySelector('.lbl-fps, .lbl');
     if (span) { span.textContent = text; return; }
     for (const node of lab.childNodes) {
@@ -1324,67 +1309,69 @@ function applyAppLang(lang) {
       }
     }
   };
-  setFieldLabel('fps', t.lbl_fps);
-  setFieldLabel('size', t.lbl_width);
-  setFieldLabel('wmText', t.lbl_wm);
-  setFieldLabel('wmFont', t.lbl_font);
-  setFieldLabel('wmOpacity', t.lbl_opacity);
-  setFieldLabel('wmScale', t.lbl_wm_size);
-  setFieldLabel('wmCorner', t.lbl_corner);
-  setFieldLabel('wmColor', t.lbl_color);
-  setFieldLabel('gifEncoder', t.lbl_encoder);
+  setFieldLabel('fps', pack.lbl_fps);
+  setFieldLabel('size', pack.lbl_width);
+  setFieldLabel('wmText', pack.lbl_wm);
+  setFieldLabel('wmFont', pack.lbl_font);
+  setFieldLabel('wmOpacity', pack.lbl_opacity);
+  setFieldLabel('wmScale', pack.lbl_wm_size);
+  setFieldLabel('wmCorner', pack.lbl_corner);
+  setFieldLabel('wmColor', pack.lbl_color);
+  setFieldLabel('gifEncoder', pack.lbl_encoder);
 
   const corner = document.getElementById('wmCorner');
-  if (corner) {
-    const map = { bl: t.corner_bl, br: t.corner_br, tl: t.corner_tl, tr: t.corner_tr };
-    [...corner.options].forEach(o => { if (map[o.value]) o.textContent = map[o.value]; });
+  if (corner && pack.corner_bl) {
+    const map = { bl: pack.corner_bl, br: pack.corner_br, tl: pack.corner_tl, tr: pack.corner_tr };
+    Array.from(corner.options).forEach(o => { if (map[o.value]) o.textContent = map[o.value]; });
   }
+
   const allModes = document.getElementById('allModes');
-  if (allModes) {
+  if (allModes && pack.all_modes) {
     const lab = allModes.closest('label');
     if (lab) {
       lab.childNodes.forEach(n => {
-        if (n.nodeType === 3 && n.textContent.trim()) n.textContent = ' ' + t.all_modes;
+        if (n.nodeType === 3 && n.textContent.trim()) n.textContent = ' ' + pack.all_modes;
       });
     }
   }
   const wmEn = document.getElementById('wmEnable');
-  if (wmEn) {
+  if (wmEn && pack.lbl_on) {
     const lab = wmEn.closest('label');
     if (lab) {
       lab.childNodes.forEach(n => {
-        if (n.nodeType === 3 && n.textContent.trim()) n.textContent = ' ' + t.lbl_on;
+        if (n.nodeType === 3 && n.textContent.trim()) n.textContent = ' ' + pack.lbl_on;
       });
     }
   }
 
-  const modes = document.querySelectorAll('.mode span');
-  if (modes[0]) modes[0].textContent = t.mode_ws;
-  if (modes[1]) modes[1].textContent = t.mode_ft;
-  if (modes[2]) modes[2].textContent = t.mode_sp;
+  // account
+  const ag = document.querySelector('#accGuest h2'); if (ag && pack.acc_guest) ag.textContent = pack.acc_guest;
+  const agp = document.querySelector('#accGuest .steps'); if (agp && pack.acc_guest_p) agp.textContent = pack.acc_guest_p;
+  const au = document.querySelector('#accUser h2'); if (au && pack.acc_user) au.textContent = pack.acc_user;
+  const hint = document.getElementById('accBillingHint'); if (hint && pack.funpay_hint) hint.textContent = pack.funpay_hint;
+  document.querySelectorAll('#tab-account .card').forEach(card => {
+    const h = card.querySelector('h2');
+    if (!h) return;
+    const ht = h.textContent || '';
+    if (ht.includes('Код') || ht.includes('Access') || ht.includes('код') || ht.includes('code')) {
+      if (pack.code_h) h.textContent = pack.code_h;
+      const sp = card.querySelector('.steps');
+      if (sp && pack.code_p) sp.textContent = pack.code_p;
+    }
+  });
 
   // convert / hex
-  const ch = document.querySelector('#tab-convert h2'); if (ch) ch.textContent = t.convert_h;
-  const cp = document.querySelector('#tab-convert .steps, #tab-convert p'); if (cp && t.convert_p) cp.textContent = t.convert_p;
-  const hh = document.querySelector('#tab-hex h2'); if (hh) hh.textContent = t.hex_h;
-  const hp = document.querySelector('#tab-hex .steps, #tab-hex p'); if (hp && t.hex_p) hp.textContent = t.hex_p;
-  const hb = document.getElementById('btnHex'); if (hb) hb.textContent = t.hex_btn;
+  const convH = document.querySelector('#tab-convert h2'); if (convH && pack.convert_h) convH.textContent = pack.convert_h;
+  const hexH = document.querySelector('#tab-hex h2'); if (hexH && pack.hex_h) hexH.textContent = pack.hex_h;
 
-  // account
-  const nickLab = document.querySelector('label.field input#accNick')?.closest('label');
-  if (nickLab) {
-    for (const n of nickLab.childNodes) {
-      if (n.nodeType === 3 && n.textContent.trim()) { n.textContent = t.nick; break; }
-      if (n.nodeType === 1 && n.tagName !== 'INPUT') { n.textContent = t.nick; break; }
-    }
-  }
-  const sp = document.getElementById('accSaveProfile'); if (sp) sp.textContent = t.save_profile;
-  const lo2 = document.getElementById('accLogout2'); if (lo2) lo2.textContent = t.logout;
-  const act = document.querySelector('#accCodeBlock .steps'); if (act) act.textContent = t.activate_pro;
-  const bu2 = document.getElementById('btnUnlock2'); if (bu2) bu2.textContent = t.apply;
+  // auth modal placeholders
+  const ae = document.getElementById('authEmail'); if (ae && pack.ph_email) ae.placeholder = pack.ph_email;
+  const ap = document.getElementById('authPass'); if (ap && pack.ph_pass) ap.placeholder = pack.ph_pass;
 
-  try { updateFpsLabel(); } catch (e) {}
+  try { if (typeof updateFpsLabel === 'function') updateFpsLabel(); } catch (e) {}
+  try { if (typeof syncAuthUiLang === 'function') syncAuthUiLang(); } catch (e) {}
 }
+
 
 function syncAuthUiLang(lang) {
 
