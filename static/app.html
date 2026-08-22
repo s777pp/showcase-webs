@@ -665,7 +665,7 @@ input[type="range"]{
       </div>
       <div class="row" style="margin-bottom:14px">
         <span class="pill" id="daStatusPill">DA: not connected</span>
-        <button class="btn" id="daLogin" data-i="da_connect" data-da-connect="1" type="button" onclick="window.daDoConnect&&window.daDoConnect();return false;">Connect</button>
+        <button class="btn" id="daLogin" data-i="da_connect" data-da-connect="1" type="button" onclick="if(window.__daConnect){window.__daConnect();}else{alert('JS not loaded — hard refresh Ctrl+Shift+R');}return false;">Connect</button>
         <button class="btn ghost" id="daLogout" type="button" style="display:none">Disconnect</button>
       </div>
       <div id="daConnectedBlock" style="display:none">
@@ -679,7 +679,7 @@ input[type="range"]{
           <button class="btn" id="daUpload" type="button">Upload to Sta.sh</button>
         </div>
       </div>
-      <div class="status" id="daMsg"></div>
+      <div class="status" id="daMsg" style="display:block;min-height:28px;margin-top:14px;font-size:13px"></div>
     </div>
   </section>
 
@@ -2679,6 +2679,140 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 })();
 </script>
 
+
+
+<script>
+/* DeviantArt Connect — standalone */
+(function () {
+  function msg(text, cls) {
+    var st = document.getElementById("daMsg");
+    if (!st) { try { alert(text); } catch (e) {} return; }
+    st.className = "status" + (cls ? " " + cls : "");
+    st.style.display = "block";
+    st.style.minHeight = "24px";
+    st.style.marginTop = "12px";
+    st.textContent = text;
+  }
+  function sessionHeaders() {
+    var h = { "Content-Type": "application/json" };
+    try {
+      var s = localStorage.getItem("sm_session");
+      if (s) h["X-Session-Token"] = s;
+      var tk = localStorage.getItem("sm_token");
+      if (tk) h["X-Access-Token"] = tk;
+    } catch (e) {}
+    return h;
+  }
+  window.__daConnect = async function () {
+    var ru = false;
+    try { ru = localStorage.getItem("sm_lang") === "ru"; } catch (e) {}
+    msg(ru ? "Подключение…" : "Connecting…", "");
+    try {
+      var sess = null;
+      try { sess = localStorage.getItem("sm_session"); } catch (e) {}
+      if (!sess) {
+        msg(ru ? "Сначала войди в аккаунт (кнопка сверху)" : "Log in first (button at top)", "err");
+        return;
+      }
+      var cid = String((document.getElementById("daClientId") || {}).value || "").trim();
+      var sec = String((document.getElementById("daClientSecret") || {}).value || "").trim();
+      if (!cid || !sec) {
+        msg(ru ? "Введи Client ID и Client Secret" : "Enter Client ID and Client Secret", "err");
+        return;
+      }
+      msg(ru ? "Сохраняю ключи…" : "Saving keys…", "");
+      var sk = await fetch("/api/da/keys", {
+        method: "POST",
+        headers: sessionHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ client_id: cid, client_secret: sec })
+      });
+      var sj = {};
+      try { sj = await sk.json(); } catch (e) {}
+      if (!sk.ok || !sj.ok) {
+        msg(sj.msg || ((ru ? "Ошибка " : "Error ") + sk.status), "err");
+        return;
+      }
+      msg(ru ? "Открываю DeviantArt…" : "Opening DeviantArt…", "");
+      var r = await fetch("/api/da/login", { headers: sessionHeaders(), credentials: "include" });
+      var j = {};
+      try { j = await r.json(); } catch (e) {}
+      if (!r.ok || !j.ok) {
+        msg(j.msg || ((ru ? "Ошибка " : "Error ") + r.status), "err");
+        return;
+      }
+      if (!j.url) { msg("No OAuth URL", "err"); return; }
+      var w = null;
+      try { w = window.open(j.url, "da_oauth_" + Date.now(), "width=720,height=800,scrollbars=yes"); } catch (e) {}
+      var st = document.getElementById("daMsg");
+      if (!w || w.closed) {
+        if (st) {
+          st.className = "status err";
+          st.innerHTML = (ru ? "Popup заблокирован. " : "Popup blocked. ") +
+            "<a href=\"" + j.url + "\" target=\"_blank\" rel=\"noopener\" style=\"color:#00d2ff;font-weight:700;text-decoration:underline\">" +
+            (ru ? "НАЖМИ СЮДА" : "CLICK HERE") + "</a>";
+        }
+      } else {
+        try { w.focus(); } catch (e) {}
+        if (st) {
+          st.className = "status";
+          st.innerHTML = (ru ? "Разреши доступ в окне DA. Или " : "Allow access in DA window. Or ") +
+            "<a href=\"" + j.url + "\" target=\"_blank\" rel=\"noopener\" style=\"color:#00d2ff;text-decoration:underline\">" +
+            (ru ? "ссылка" : "link") + "</a>";
+        }
+      }
+      var n = 0;
+      var tmr = setInterval(async function () {
+        n++;
+        try {
+          var stj = await fetch("/api/da/status", { headers: sessionHeaders(), credentials: "include" }).then(function (x) { return x.json(); });
+          if (stj && stj.da) {
+            clearInterval(tmr);
+            try { if (w && !w.closed) w.close(); } catch (e) {}
+            msg(ru ? "Подключено!" : "Connected!", "ok");
+            var pill = document.getElementById("daStatusPill");
+            if (pill) pill.textContent = ru ? "DA: подключено" : "DA: connected";
+            var block = document.getElementById("daConnectedBlock");
+            if (block) block.style.display = "block";
+            var login = document.getElementById("daLogin");
+            if (login) login.style.display = "none";
+          }
+        } catch (e) {}
+        if (n > 90) clearInterval(tmr);
+      }, 2000);
+    } catch (e) {
+      msg(String(e && e.message ? e.message : e), "err");
+      console.error(e);
+    }
+  };
+  function bind() {
+    var btn = document.getElementById("daLogin");
+    if (!btn) return;
+    btn.disabled = false;
+    btn.removeAttribute("disabled");
+    btn.style.pointerEvents = "auto";
+    btn.style.cursor = "pointer";
+    btn.onclick = function (e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      window.__daConnect();
+      return false;
+    };
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+  else bind();
+  setTimeout(bind, 300);
+  setTimeout(bind, 1500);
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t) return;
+    if (t.id === "daLogin" || (t.closest && t.closest("#daLogin"))) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.__daConnect();
+    }
+  }, true);
+})();
+</script>
 
 </body>
 </html>
