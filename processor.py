@@ -95,7 +95,15 @@ def load_font(key: str, size: int, text: str = "") -> ImageFont.FreeTypeFont | I
         candidates.append(FONTS / f"{key.capitalize()}{ext}")
     if key.lower() == "fineday":
         candidates.insert(0, FONTS / "Fineday.ttf")
+    # User fonts
+    for extra in ("roboto", "gothic-rus", "Roboto", "Gothic-Rus"):
+        candidates.append(FONTS / f"{extra}.ttf")
+        candidates.append(FONTS / f"{extra}.otf")
     # If watermark has Cyrillic, prefer fonts that actually draw it
+    # gothic-rus / roboto first when present
+    if any("\u0400" <= ch <= "\u04FF" for ch in (text or "")):
+        for prefer in ("gothic-rus.ttf", "gothic-rus.otf", "roboto.ttf", "Roboto-Regular.ttf"):
+            candidates.insert(0, FONTS / prefer)
     if _has_cyrillic(text):
         candidates = list(_cyrillic_font_candidates()) + candidates
     for c in candidates:

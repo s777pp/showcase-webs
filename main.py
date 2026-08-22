@@ -603,7 +603,7 @@ def meta():
             {"id": "featured", "title": "Featured", "desc": "630 px Featured Artwork"},
             {"id": "split", "title": "Artwork Split", "desc": "Центр 506 + бок 100"},
         ],
-        "fonts": ["rob", "lap", "caratte", "Fineday"],
+        "fonts": ["rob", "lap", "caratte", "Fineday", "roboto", "gothic-rus"],
         "steam_code": STEAM_CONSOLE_CODE,
     }
 

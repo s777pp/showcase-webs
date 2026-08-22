@@ -315,6 +315,34 @@ input[type="range"]{
   max-width:240px;
 }
 
+
+.steam-block{
+  margin-top:18px;
+  padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+}
+.steam-block h3{
+  margin:0 0 10px;
+  font-size:14px;
+  font-weight:600;
+  color:var(--accent,#7eb8ff);
+}
+.steam-how{
+  margin:0;
+  padding-left:18px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.55;
+}
+.steam-how li{margin-bottom:4px}
+#steamCode{
+  white-space:pre-wrap;
+  word-break:break-all;
+  font-size:12px;
+  max-height:120px;
+  overflow:auto;
+}
+
 </style>
 </head>
 <body>
@@ -391,7 +419,14 @@ input[type="range"]{
           </select>
         </label>
         <label class="field">Watermark<input id="wmText" value="n1t1337"/></label>
-        <label class="field">Font<select id="wmFont"><option>lap</option><option>rob</option><option>caratte</option><option>Fineday</option></select></label>
+        <label class="field">Font<select id="wmFont">
+            <option value="lap">lap</option>
+            <option value="rob">rob</option>
+            <option value="caratte">caratte</option>
+            <option value="Fineday">Fineday</option>
+            <option value="roboto">roboto</option>
+            <option value="gothic-rus">gothic-rus</option>
+          </select></label>
         <label class="field">Opacity %<input type="range" id="wmOpacity" min="0" max="100" value="22"/></label>
         <label class="field">WM size %<input type="range" id="wmScale" min="40" max="250" value="100"/></label>
         <label class="field">WM corner
@@ -511,22 +546,72 @@ input[type="range"]{
 
   <section class="tab" id="tab-steam">
     <div class="card">
-      <h2>Upload to Steam</h2>
-      <div class="steps">
-        <b>1.</b> Process files and download the ZIP<br/>
-        <b>2.</b> Open the Steam artwork upload page<br/>
-        <b>3.</b> F12 → Console → paste the code → Enter<br/>
-        <b>4.</b> Workshop: part_1…5 · Featured: featured_630 · Split: center → side
+      <h2 id="steamTitle">Upload to Steam</h2>
+      <p class="steps" id="steamDesc" style="margin-bottom:8px">
+        Semi-auto: results folder → Steam page → console code → upload.
+      </p>
+      <p class="steps" id="steamTip" style="margin-bottom:16px;font-size:12px;opacity:.85">
+        Tip: log into Steam in the browser first. Paste the code once on the page, then pick files.
+      </p>
+
+      <div class="row" style="margin-bottom:18px;align-items:flex-end">
+        <label class="field" style="min-width:220px;flex:0 1 280px">
+          <span id="steamPickModeLbl">Showcase type</span>
+          <select id="steamMode">
+            <option value="workshop">Workshop (5 parts)</option>
+            <option value="featured">Featured Artwork</option>
+            <option value="split">Artwork Split</option>
+          </select>
+        </label>
       </div>
-    </div>
-    <div class="card">
-      <h2>Console code</h2>
-      <pre class="code" id="steamCode"></pre>
-      <button class="btn" id="btnCopyCode" type="button" style="margin-top:12px">Copy</button>
+
+      <div class="steam-block">
+        <h3 id="steamStep1">1. Results folder</h3>
+        <p class="steps" id="steamFolderHint" style="margin-bottom:10px;font-size:13px">
+          After Process, download the ZIP and unpack it — those are your files.
+        </p>
+        <div class="row">
+          <button class="btn" type="button" id="btnSteamFolder">Open Process tab</button>
+        </div>
+      </div>
+
+      <div class="steam-block">
+        <h3 id="steamStep2">2. Steam upload page</h3>
+        <div class="row">
+          <button class="btn" type="button" id="btnSteamPage">Open Steam page</button>
+        </div>
+      </div>
+
+      <div class="steam-block">
+        <h3 id="steamStep3">3. Console code (F12)</h3>
+        <pre class="code" id="steamCode"></pre>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" type="button" id="btnCopyCode">Copy code</button>
+        </div>
+        <div class="status" id="steamCopyStatus" style="margin-top:8px"></div>
+      </div>
+
+      <div class="steam-block">
+        <h3 id="steamStep4">4. Which files to upload</h3>
+        <p class="steps" id="steamFilesHint" style="margin:0;font-size:13px">
+          Files: part_1 … part_5 (in order). ZIP is fine to unpack first.
+        </p>
+      </div>
+
+      <div class="steam-block" style="border-bottom:none;padding-bottom:0">
+        <h3 id="steamHowTitle">Step-by-step</h3>
+        <ol class="steam-how" id="steamHowList">
+          <li>Run Process and download the ZIP, then unpack</li>
+          <li>Click «Open Steam page»</li>
+          <li>Click «Copy code»</li>
+          <li>On Steam: F12 → Console → Ctrl+V → Enter</li>
+          <li>Upload files in the order listed above</li>
+        </ol>
+      </div>
     </div>
   </section>
 
-        <section class="tab" id="tab-da">
+<section class="tab" id="tab-da">
     <div class="card">
       <h2>DeviantArt</h2>
       <p class="steps" style="margin-bottom:12px">
@@ -1031,9 +1116,7 @@ document.getElementById('btnPv').onclick = async () => {
   } catch(e){ st.className='status err'; st.textContent=String(e); }
 };
 
-document.getElementById('btnCopyCode').onclick = () => {
-  navigator.clipboard.writeText(document.getElementById('steamCode').textContent).then(()=>alert('Copied'));
-};
+/* steam copy wired in wireSteamTab */
 
 
 
@@ -1182,7 +1265,7 @@ async function init(){
   state.token = localStorage.getItem('sm_token') || '';
 
   const m = await fetch('/api/meta').then(r=>r.json());
-  const sc = document.getElementById('steamCode'); if (sc) sc.textContent = m.steam_code || '';
+  /* steam code from STEAM_CODES via refreshSteamUI */ try { refreshSteamUI(); } catch(e) {}
   if (m.buy_url) { const bl = document.getElementById('buyLink'); if (bl) bl.href = m.buy_url; }
   const allSocials = m.socials || [];
   const sideSocials = allSocials.filter(s => {
@@ -1203,6 +1286,112 @@ async function init(){
   }
 }
 init();
+
+
+/* ===== Steam tab (desktop-parity logic) ===== */
+const STEAM_UPLOAD_URL = "https://steamcommunity.com/sharedfiles/edititem/767/3/";
+const STEAM_CODES = {
+  workshop: "$J('[name=consumer_app_id]').val(480);$J('[name=file_type]').val(0);$J('[name=visibility]').val(0);",
+  featured: "$J('#image_width').val(1000).attr('id',''),$J('#image_height').val(1).attr('id','');",
+  split: "$J('#image_width').val(1000).attr('id',''),$J('#image_height').val(1).attr('id','');"
+};
+const STEAM_FILES = {
+  en: {
+    workshop: "Files: part_1 … part_5 (in order). Unzip the Process ZIP first if needed.",
+    featured: "File: featured_630.png / featured_630.gif",
+    split: "Files: center_506 + side_100 (center first, then side)"
+  },
+  ru: {
+    workshop: "Файлы: part_1 … part_5 (по порядку). Можно из ZIP.",
+    featured: "Файл: featured_630.png / featured_630.gif",
+    split: "Файлы: center_506 + side_100 (сначала центр, потом бок)"
+  }
+};
+const STEAM_MODE_LABELS = {
+  en: { workshop: "Workshop (5 parts)", featured: "Featured Artwork", split: "Artwork Split" },
+  ru: { workshop: "Workshop (5 частей)", featured: "Featured Artwork", split: "Artwork Split" }
+};
+
+function steamLang() {
+  return (localStorage.getItem("sm_lang") || "en");
+}
+
+function refreshSteamUI() {
+  const mode = (document.getElementById("steamMode") || {}).value || "workshop";
+  const codeEl = document.getElementById("steamCode");
+  if (codeEl) codeEl.textContent = STEAM_CODES[mode] || STEAM_CODES.workshop;
+  const L = steamLang();
+  const files = (STEAM_FILES[L] || STEAM_FILES.en)[mode];
+  const fh = document.getElementById("steamFilesHint");
+  if (fh) fh.textContent = files;
+  const sel = document.getElementById("steamMode");
+  if (sel) {
+    const labs = STEAM_MODE_LABELS[L] || STEAM_MODE_LABELS.en;
+    Array.from(sel.options).forEach(o => {
+      if (labs[o.value]) o.textContent = labs[o.value];
+    });
+  }
+  // i18n chrome
+  const pack = (typeof APP_I18N !== "undefined" && APP_I18N[L]) ? APP_I18N[L] : null;
+  if (pack) {
+    const map = [
+      ["steamTitle", pack.steam_h],
+      ["steamDesc", pack.steam_desc],
+      ["steamTip", pack.steam_tip],
+      ["steamPickModeLbl", pack.steam_pick_mode],
+      ["steamStep1", pack.steam_step1],
+      ["steamStep2", pack.steam_step2],
+      ["steamStep3", pack.steam_step3],
+      ["steamStep4", pack.steam_step4],
+      ["steamFolderHint", pack.steam_folder_hint],
+      ["btnSteamFolder", pack.steam_open_folder],
+      ["btnSteamPage", pack.steam_open_page],
+      ["btnCopyCode", pack.steam_copy],
+      ["steamHowTitle", pack.steam_how],
+    ];
+    map.forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el && val) el.textContent = val;
+    });
+    const how = document.getElementById("steamHowList");
+    if (how && pack.steam_how_items && Array.isArray(pack.steam_how_items)) {
+      how.innerHTML = pack.steam_how_items.map(x => "<li>" + x + "</li>").join("");
+    }
+  }
+}
+
+(function wireSteamTab() {
+  const modeEl = document.getElementById("steamMode");
+  if (modeEl) modeEl.addEventListener("change", refreshSteamUI);
+  const pageBtn = document.getElementById("btnSteamPage");
+  if (pageBtn) pageBtn.onclick = () => window.open(STEAM_UPLOAD_URL, "_blank", "noopener");
+  const folderBtn = document.getElementById("btnSteamFolder");
+  if (folderBtn) folderBtn.onclick = () => {
+    // Web has no local results folder — jump to Process (ZIP lives there after run)
+    const btn = document.querySelector('#nav button[data-tab="process"]');
+    if (btn) btn.click();
+    else location.hash = "process";
+  };
+  const copyBtn = document.getElementById("btnCopyCode");
+  if (copyBtn) copyBtn.onclick = async () => {
+    const code = (document.getElementById("steamCode") || {}).textContent || "";
+    const st = document.getElementById("steamCopyStatus");
+    try {
+      await navigator.clipboard.writeText(code);
+      if (st) {
+        st.className = "status ok";
+        st.textContent = steamLang() === "ru" ? "Код скопирован!" : "Code copied!";
+      }
+    } catch (e) {
+      if (st) {
+        st.className = "status err";
+        st.textContent = String(e);
+      }
+    }
+  };
+  refreshSteamUI();
+})();
+
 
 /* ===== i18n ===== */
 const APP_I18N = {
@@ -1242,6 +1431,26 @@ const APP_I18N = {
     apply: "Применить код",
     funpay_hint: "Покупка на FunPay. После оплаты получишь код — вставь его ниже.",
     steam_h: "Загрузка в Steam",
+    steam_desc: "Полуавтомат: папка с файлами → страница Steam → код в консоль → загрузка.",
+    steam_tip: "Совет: войди в Steam в браузере заранее. Код вставляется один раз на страницу, затем выбираешь файлы.",
+    steam_pick_mode: "Тип витрины",
+    steam_step1: "1. Папка с результатами",
+    steam_step2: "2. Страница загрузки Steam",
+    steam_step3: "3. Код для консоли (F12)",
+    steam_step4: "4. Какие файлы грузить",
+    steam_folder_hint: "После Process скачай ZIP и распакуй — это и есть готовые файлы. В браузере нет доступа к локальной папке как в десктопе.",
+    steam_open_folder: "К вкладке Process",
+    steam_open_page: "Открыть страницу Steam",
+    steam_copy: "Копировать код",
+    steam_how: "Пошаговая инструкция",
+    steam_how_items: [
+      "Нажми «К вкладке Process» — обработай и скачай ZIP",
+      "Нажми «Открыть страницу Steam»",
+      "Нажми «Копировать код»",
+      "На странице Steam: F12 → Console → Ctrl+V → Enter",
+      "Загрузи файлы в нужном порядке (см. список ниже)"
+    ],
+
     about_h: "О сервисе",
     auth_login: "Войти", auth_reg: "Регистрация",
     auth_sub_l: "Войди, чтобы купить Pro и сохранить доступ",
@@ -1291,6 +1500,26 @@ const APP_I18N = {
     apply: "Apply code",
     funpay_hint: "Buy on FunPay. After payment you get a code — paste it below.",
     steam_h: "Upload to Steam",
+    steam_desc: "Semi-auto: results → Steam page → console code → upload.",
+    steam_tip: "Tip: log into Steam in the browser first. Paste the code once on the page, then pick files.",
+    steam_pick_mode: "Showcase type",
+    steam_step1: "1. Results folder",
+    steam_step2: "2. Steam upload page",
+    steam_step3: "3. Console code (F12)",
+    steam_step4: "4. Which files to upload",
+    steam_folder_hint: "After Process, download the ZIP and unpack it — those are your files. The browser cannot open a local folder like the desktop app.",
+    steam_open_folder: "Go to Process tab",
+    steam_open_page: "Open Steam page",
+    steam_copy: "Copy code",
+    steam_how: "Step-by-step",
+    steam_how_items: [
+      "Open Process — run and download the ZIP, then unpack",
+      "Click «Open Steam page»",
+      "Click «Copy code»",
+      "On Steam: F12 → Console → Ctrl+V → Enter",
+      "Upload files in the order listed above"
+    ],
+
     about_h: "About",
     auth_login: "Log in", auth_reg: "Sign up",
     auth_sub_l: "Log in to buy Pro and keep access",
@@ -1453,6 +1682,7 @@ function applyAppLang(lang) {
   const ap = document.getElementById('authPass'); if (ap && pack.ph_pass) ap.placeholder = pack.ph_pass;
 
   try { if (typeof updateFpsLabel === 'function') updateFpsLabel(); } catch (e) {}
+  try { if (typeof refreshSteamUI === 'function') refreshSteamUI(); } catch (e) {}
   try { if (typeof syncAuthUiLang === 'function') syncAuthUiLang(); } catch (e) {}
 }
 
