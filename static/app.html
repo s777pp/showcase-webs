@@ -838,7 +838,7 @@ async function refreshQuota() {
   }
   if (j.email || state.session) {
     userPill.style.display = 'inline-block';
-    userPill.textContent = j.email || 'Account';
+    userPill.textContent = (j.display_name || '').trim() || j.email || 'Account';
     btnAuth.style.display = 'none'; btnOut.style.display = 'inline-block';
   } else {
     userPill.style.display = 'none';
@@ -1260,6 +1260,8 @@ document.getElementById('accRegister')?.addEventListener('click', () => {
 });
 
 async function init(){
+  try { applyAppLang(appLang()); } catch(e) { console.warn(e); }
+
   // restore session after navigating from home
   state.session = localStorage.getItem('sm_session') || '';
   state.token = localStorage.getItem('sm_token') || '';
@@ -1719,9 +1721,33 @@ function syncAuthUiLang(lang) {
   }
 }
 
-document.getElementById('langBtn')?.addEventListener('click', () => {
-  applyAppLang(appLang() === 'en' ? 'ru' : 'en');
-});
+function toggleAppLang(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  const next = (appLang() === 'en') ? 'ru' : 'en';
+  try {
+    applyAppLang(next);
+  } catch (err) {
+    console.error('applyAppLang', err);
+  }
+  // also refresh steam UI if present
+  try { if (typeof refreshSteamUI === 'function') refreshSteamUI(); } catch (e) {}
+}
+(function wireLangBtn() {
+  const lb = document.getElementById('langBtn');
+  if (lb) {
+    lb.onclick = toggleAppLang;
+    lb.style.cursor = 'pointer';
+    lb.style.pointerEvents = 'auto';
+  }
+  // capture-phase backup (in case something stops bubbling)
+  document.addEventListener('click', function (e) {
+    const t = e.target;
+    if (!t) return;
+    if (t.id === 'langBtn' || (t.closest && t.closest('#langBtn'))) {
+      toggleAppLang(e);
+    }
+  }, true);
+})();
 
 // apply after DOM / init
 

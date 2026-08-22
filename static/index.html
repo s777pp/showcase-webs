@@ -321,6 +321,26 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
   white-space:nowrap;
 }
 
+
+.nav-user-pill{
+  display:none;
+  align-items:center;
+  max-width:200px;
+  padding:8px 14px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:13px;
+  font-weight:600;
+  text-decoration:none;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.nav-user-pill:hover{background:rgba(255,255,255,.14);color:#fff}
+.nav-user-pill.visible{display:inline-flex}
+
 </style>
 </head>
 <body>
@@ -352,6 +372,7 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
     </div>
     <div class="nav-right">
       <a href="#" class="btn-shiny-nav" data-i="nav_reg" id="navReg" role="button">Sign up</a>
+      <a href="/app" class="nav-user-pill" id="navUserPill" title="Account"></a>
       <button type="button" class="lang-nav" id="langBtnNav" aria-label="Language">RU</button>
       <a class="btn-pill" href="/app" data-i="cta_tools">Open tools →</a>
     </div>
@@ -793,6 +814,7 @@ async function submitAuth() {
     }
     st.className = "status ok";
     st.textContent = authMode === "register" ? pack.auth_ok_reg : pack.auth_ok_login;
+    try { refreshHomeUser(); } catch (e) {}
     // stay on home — do not force /app
     setTimeout(function () { closeAuth(); }, 1200);
   } catch (e) {
@@ -801,8 +823,31 @@ async function submitAuth() {
   }
 }
 
+
+async function refreshHomeUser() {
+  const pill = document.getElementById("navUserPill");
+  const reg = document.getElementById("navReg");
+  if (!pill) return;
+  try {
+    const r = await fetch("/api/auth/me", { credentials: "include" });
+    const j = await r.json();
+    if (j && j.ok && j.logged_in) {
+      const label = (j.display_name || "").trim() || (j.email || "").trim() || "Account";
+      pill.textContent = label;
+      pill.title = j.email || label;
+      pill.classList.add("visible");
+      if (reg) reg.style.display = "none";
+      return;
+    }
+  } catch (e) {}
+  pill.classList.remove("visible");
+  pill.textContent = "";
+  if (reg) reg.style.display = "";
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   applyLang(getLang());
+  refreshHomeUser();
   wireLangBtn("langBtn");
   wireLangBtn("langBtnNav");
 
