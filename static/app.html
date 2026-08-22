@@ -579,9 +579,10 @@ input[type="range"]{
         <h3 id="steamStep2">2. Steam upload page</h3>
         <div class="row">
           <button class="btn" type="button" id="btnSteamPage" data-i="steam_open_page">Open Steam page</button>
+          <button class="btn ghost" type="button" id="btnCopyBlank" data-i="steam_blank">Copy blank character</button>
         </div>
+        <div class="status" id="steamBlankStatus" style="margin-top:8px"></div>
       </div>
-
       <div class="steam-block">
         <h3 id="steamStep3">3. Console code (F12)</h3>
         <pre class="code" id="steamCode"></pre>
@@ -1441,6 +1442,8 @@ const APP_I18N = window.APP_I18N = {
     steam_folder_hint: "После Process скачай ZIP и распакуй — это и есть готовые файлы. В браузере нет доступа к локальной папке как в десктопе.",
     steam_open_folder: "К вкладке Process",
     steam_open_page: "Открыть страницу Steam",
+      steam_blank: "Скопировать пустой символ",
+      steam_blank_ok: "Пустой символ скопирован (ㅤ)",
     steam_copy: "Копировать код",
     steam_how: "Пошаговая инструкция",
     steam_how_items: [
@@ -1510,6 +1513,8 @@ const APP_I18N = window.APP_I18N = {
     steam_folder_hint: "After Process, download the ZIP and unpack it — those are your files. The browser cannot open a local folder like the desktop app.",
     steam_open_folder: "Go to Process tab",
     steam_open_page: "Open Steam page",
+      steam_blank: "Copy blank character",
+      steam_blank_ok: "Blank character copied (ㅤ)",
     steam_copy: "Copy code",
     steam_how: "Step-by-step",
     steam_how_items: [
@@ -2442,6 +2447,54 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   document.addEventListener("change", function (e) {
     if (e.target && e.target.id === "steamMode") applyDict(getLang());
   });
+
+
+  // blank Hangul filler for Steam names
+  (function () {
+    function copyBlank() {
+      var ch = "\u3164"; // ㅤ
+      var st = document.getElementById("steamBlankStatus");
+      var L = getLang();
+      var pack = DICT[L] || DICT.en;
+      navigator.clipboard.writeText(ch).then(function () {
+        if (st) {
+          st.className = "status ok";
+          st.textContent = pack.steam_blank_ok || "Copied";
+        }
+      }).catch(function (e) {
+        // fallback
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = ch;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          if (st) {
+            st.className = "status ok";
+            st.textContent = pack.steam_blank_ok || "Copied";
+          }
+        } catch (err) {
+          if (st) {
+            st.className = "status err";
+            st.textContent = String(err);
+          }
+        }
+      });
+    }
+    function bindBlank() {
+      var b = document.getElementById("btnCopyBlank");
+      if (b && !b.dataset.wired) {
+        b.dataset.wired = "1";
+        b.onclick = copyBlank;
+      }
+    }
+    var _start = start;
+    start = function () {
+      _start();
+      bindBlank();
+    };
+  })();
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
