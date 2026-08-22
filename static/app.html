@@ -251,6 +251,37 @@ input[type="range"]{
 .main{max-width:1040px;padding:28px 22px 48px}
 .h-title{font-size:30px}
 
+
+/* Buy Key — cyan gradient pill (like landing Create account) */
+.btn-buy-key{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:12px 22px;
+  border-radius:999px;
+  border:1px solid rgba(164,244,253,.5);
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  text-decoration:none;
+  white-space:nowrap;
+  color:#041018 !important;
+  background-image:linear-gradient(90deg,#7ee8ff 0%,#00d2ff 25%,#A4F4FD 50%,#00d2ff 75%,#7ee8ff 100%);
+  background-size:200% auto;
+  animation:buyShiny 5s linear infinite;
+  box-shadow:0 0 24px rgba(0,210,255,.35);
+  transition:transform .15s, box-shadow .15s;
+}
+.btn-buy-key:hover{
+  transform:translateY(-1px) scale(1.02);
+  box-shadow:0 0 32px rgba(0,210,255,.5);
+}
+@keyframes buyShiny{
+  0%{background-position:0% center}
+  100%{background-position:200% center}
+}
+
 </style>
 </head>
 <body>
@@ -507,6 +538,9 @@ input[type="range"]{
         <button class="btn" id="accLogin" type="button">Log in</button>
         <button class="btn ghost" id="accRegister" type="button">Sign up</button>
       </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn-buy-key" id="btnBuyKeyGuest" type="button">Buy Key</button>
+      </div>
     </div>
     <div class="card" id="accUser" style="display:none">
       <div class="profile-hero">
@@ -533,7 +567,10 @@ input[type="range"]{
         <button class="btn ghost" id="accLogout2" type="button">Log out</button>
       </div>
       <div class="status" id="accProfileStatus"></div>
-      <div id="accCodeBlock" style="margin-top:18px">
+      <div class="row" style="margin-top:18px">
+        <button class="btn-buy-key" id="btnBuyKeyAccount" type="button">Buy Key</button>
+      </div>
+      <div id="accCodeBlock" style="margin-top:14px">
         <p class="steps" style="margin-bottom:8px;font-size:13px">Activate Pro code</p>
         <div class="row">
           <input id="accessCode2" placeholder="SM-WEB-XXXXXX-XXXX" style="width:240px"/>
@@ -552,7 +589,10 @@ input[type="range"]{
         by n1t1337
       </p>
       <div class="socials about-socials" style="justify-content:center;margin-top:16px"></div>
-      <div class="row" style="margin-top:20px">
+      <div class="row" style="margin-top:16px;align-items:center;gap:12px;flex-wrap:wrap">
+        <button class="btn-buy-key" id="btnBuyKeyAbout" type="button">Buy Key</button>
+      </div>
+      <div class="row" style="margin-top:16px">
         <input id="accessCode" placeholder="Access code" style="width:220px"/>
         <button class="btn ghost" id="btnUnlock" type="button">Apply</button>
       </div>
@@ -741,6 +781,14 @@ document.getElementById('btnLogout').onclick = async () => {
 document.getElementById('btnUpgrade').onclick = () => {
   window.open('https://funpay.com/lots/offer?id=75434891', '_blank');
 };
+function openFunPayBuy() {
+  window.open('https://funpay.com/lots/offer?id=75434891', '_blank');
+}
+['btnBuyKeyAbout','btnBuyKeyAccount','btnBuyKeyGuest','btnUpgrade'].forEach(function(id) {
+  const el = document.getElementById(id);
+  if (el) el.onclick = openFunPayBuy;
+});
+
 async function doUnlock(code, statusEl) {
   code = (code || '').trim();
   if (!code) {
@@ -1142,7 +1190,7 @@ const APP_I18N = {
       account: ["Аккаунт", "Регистрация, вход и покупка Pro"],
       about: ["О сервисе", "Лимиты, Pro и контакты"]
     },
-    login: "Войти", logout: "Выйти", buy: "Купить Pro",
+    login: "Войти", logout: "Выйти", buy: "Купить Pro", buy_key: "Купить ключ",
     mode: "Режим", params: "Параметры", files: "Файлы",
     drop: "Перетащи PNG, JPG, GIF, MP4 или AVI — или нажми для выбора",
     run: "Обработать", clear: "Очистить",
@@ -1191,7 +1239,7 @@ const APP_I18N = {
       account: ["Account", "Sign up, log in and buy Pro"],
       about: ["About", "Limits, Pro and contacts"]
     },
-    login: "Log in", logout: "Log out", buy: "Buy Pro",
+    login: "Log in", logout: "Log out", buy: "Buy Pro", buy_key: "Buy Key",
     mode: "Mode", params: "Settings", files: "Files",
     drop: "Drop PNG, JPG, GIF, MP4 or AVI — or click to browse",
     run: "Process", clear: "Clear",
@@ -1266,6 +1314,9 @@ function applyAppLang(lang) {
   setTxt('btnAuth', pack.login);
   setTxt('btnLogout', pack.logout);
   setTxt('btnUpgrade', pack.buy);
+  setTxt('btnBuyKeyAbout', pack.buy_key || pack.buy);
+  setTxt('btnBuyKeyAccount', pack.buy_key || pack.buy);
+  setTxt('btnBuyKeyGuest', pack.buy_key || pack.buy);
   setTxt('accLogout2', pack.logout);
   setTxt('btnRun', pack.run);
   setTxt('btnClear', pack.clear);
