@@ -337,6 +337,29 @@ input[type="range"]{
   margin-top:10px;font-size:12px;color:var(--muted);text-align:center
 }
 
+
+.da-progress{
+  display:none;margin-top:14px;padding:12px 14px;border-radius:12px;
+  border:1px solid var(--border);background:rgba(0,0,0,.25)
+}
+.da-progress.show{display:block}
+.da-progress .da-prog-top{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;color:var(--muted);margin-bottom:8px
+}
+.da-progress .da-prog-pct{
+  font-variant-numeric:tabular-nums;font-weight:700;color:#fff;font-size:13px
+}
+.da-progress .da-prog-track{
+  height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden
+}
+.da-progress .da-prog-fill{
+  height:100%;width:0%;border-radius:999px;
+  background:linear-gradient(90deg,#00d2ff,#3d81e3,#7b5cff);
+  transition:width .15s ease;box-shadow:0 0 12px rgba(0,210,255,.35)
+}
+.da-progress .da-prog-sub{margin-top:8px;font-size:12px;color:var(--muted)}
+
 .steam-block{
   margin-top:18px;
   padding-bottom:16px;
@@ -677,6 +700,14 @@ input[type="range"]{
         <div id="daList" class="files"></div>
         <div class="row" style="margin-top:12px">
           <button class="btn" id="daUpload" type="button" onclick="window.__daUpload&&window.__daUpload();return false;">Upload to Sta.sh</button>
+        </div>
+        <div class="da-progress" id="daProgress" aria-live="polite">
+          <div class="da-prog-top">
+            <span id="daProgLabel">Uploading…</span>
+            <span class="da-prog-pct" id="daProgPct">0%</span>
+          </div>
+          <div class="da-prog-track"><div class="da-prog-fill" id="daProgFill"></div></div>
+          <div class="da-prog-sub" id="daProgSub"></div>
         </div>
       </div>
       <div class="status" id="daMsg" style="display:block;min-height:28px;margin-top:14px;font-size:13px"></div>
@@ -2892,12 +2923,39 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
   window.__daUpload = async function () {
     var st = document.getElementById("daMsg");
+    var prog = document.getElementById("daProgress");
+    var fill = document.getElementById("daProgFill");
+    var pctEl = document.getElementById("daProgPct");
+    var label = document.getElementById("daProgLabel");
+    var sub = document.getElementById("daProgSub");
+    var upBtn = document.getElementById("daUpload");
     var items = window.__daItems || [];
+    var ru = false;
+    try { ru = localStorage.getItem("sm_lang") === "ru"; } catch (e) {}
+
+    function setProg(pct, lab, subText) {
+      pct = Math.max(0, Math.min(100, Math.round(pct)));
+      if (prog) prog.classList.add("show");
+      if (fill) fill.style.width = pct + "%";
+      if (pctEl) pctEl.textContent = pct + "%";
+      if (label && lab) label.textContent = lab;
+      if (sub) sub.textContent = subText || "";
+    }
+    function hideProgLater() {
+      setTimeout(function () {
+        if (prog) prog.classList.remove("show");
+        if (fill) fill.style.width = "0%";
+      }, 2500);
+    }
+
     if (!items.length) {
-      if (st) { st.className = "status err"; st.textContent = "Add files first"; }
+      if (st) { st.className = "status err"; st.textContent = ru ? "Сначала добавь файлы" : "Add files first"; }
       return;
     }
-    if (st) { st.className = "status"; st.textContent = "Uploading…"; }
+    if (upBtn) upBtn.disabled = true;
+    if (st) { st.className = "status"; st.textContent = ru ? "Загрузка…" : "Uploading…"; }
+    setProg(0, ru ? "Загрузка на Sta.sh…" : "Uploading to Sta.sh…", "0 / " + items.length);
+
     var fd = new FormData();
     items.forEach(function (it) {
       fd.append("file", it.file, it.name);
@@ -2910,23 +2968,60 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       var tk = localStorage.getItem("sm_token");
       if (tk) hdr["X-Access-Token"] = tk;
     } catch (e) {}
+
     try {
-      var r = await fetch("/api/da/upload", { method: "POST", headers: hdr, body: fd, credentials: "include" });
-      var j = await r.json();
-      if (!j.ok) {
-        if (st) {
-          st.className = "status err";
-          st.textContent = j.msg || (j.errors || []).join("; ") || "Upload failed";
-        }
-      } else {
-        if (st) {
-          st.className = "status ok";
-          st.textContent = "Uploaded " + j.uploaded + "/" + j.total + " to Sta.sh";
-        }
-      }
+      await new Promise(function (resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/da/upload");
+        Object.keys(hdr).forEach(function (k) { xhr.setRequestHeader(k, hdr[k]); });
+        xhr.withCredentials = true;
+
+        xhr.upload.onprogress = function (ev) {
+          if (!ev.lengthComputable) {
+            setProg(10, ru ? "Загрузка…" : "Uploading…", items.length + " file(s)");
+            return;
+          }
+          var p = (ev.loaded / ev.total) * 100;
+          var mb = (ev.loaded / 1048576).toFixed(1) + " / " + (ev.total / 1048576).toFixed(1) + " MB";
+          setProg(p, ru ? "Отправка файлов…" : "Sending files…", mb);
+        };
+        xhr.upload.onload = function () {
+          setProg(95, ru ? "Обработка на сервере…" : "Processing on server…", "");
+        };
+        xhr.onload = function () {
+          var j = {};
+          try { j = JSON.parse(xhr.responseText || "{}"); } catch (e) {}
+          if (xhr.status >= 200 && xhr.status < 300 && j.ok) {
+            setProg(100, ru ? "Готово!" : "Done!", (j.uploaded || 0) + " / " + (j.total || items.length));
+            if (st) {
+              st.className = "status ok";
+              st.textContent = (ru ? "Загружено " : "Uploaded ") + (j.uploaded || 0) + "/" + (j.total || items.length) + " → Sta.sh";
+              if (j.errors && j.errors.length) st.textContent += " · " + j.errors.join("; ");
+            }
+            hideProgLater();
+            resolve(j);
+          } else {
+            var err = (j && j.msg) || (j.errors && j.errors.join("; ")) || ("HTTP " + xhr.status);
+            setProg(0, ru ? "Ошибка" : "Error", err);
+            if (st) { st.className = "status err"; st.textContent = err; }
+            reject(new Error(err));
+          }
+        };
+        xhr.onerror = function () {
+          var err = ru ? "Сеть / ошибка загрузки" : "Network upload error";
+          setProg(0, ru ? "Ошибка" : "Error", err);
+          if (st) { st.className = "status err"; st.textContent = err; }
+          reject(new Error(err));
+        };
+        xhr.send(fd);
+      });
     } catch (e) {
-      if (st) { st.className = "status err"; st.textContent = String(e); }
+      if (st && st.className.indexOf("err") < 0) {
+        st.className = "status err";
+        st.textContent = String(e && e.message ? e.message : e);
+      }
     }
+    if (upBtn) upBtn.disabled = false;
   };
 
   // bind file input change + buttons
