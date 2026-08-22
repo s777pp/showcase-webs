@@ -1722,31 +1722,33 @@ function syncAuthUiLang(lang) {
 }
 
 function toggleAppLang(ev) {
-  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-  const next = (appLang() === 'en') ? 'ru' : 'en';
+  if (ev) {
+    try { ev.preventDefault(); } catch (e) {}
+    try { ev.stopPropagation(); } catch (e) {}
+  }
+  const cur = (localStorage.getItem('sm_lang') || 'en');
+  const next = cur === 'en' ? 'ru' : 'en';
   try {
     applyAppLang(next);
   } catch (err) {
     console.error('applyAppLang', err);
   }
-  // also refresh steam UI if present
   try { if (typeof refreshSteamUI === 'function') refreshSteamUI(); } catch (e) {}
 }
 (function wireLangBtn() {
-  const lb = document.getElementById('langBtn');
-  if (lb) {
-    lb.onclick = toggleAppLang;
+  function bind() {
+    const lb = document.getElementById('langBtn');
+    if (!lb || lb.dataset.langWired === '1') return;
+    lb.dataset.langWired = '1';
+    lb.type = 'button';
     lb.style.cursor = 'pointer';
     lb.style.pointerEvents = 'auto';
+    lb.addEventListener('click', toggleAppLang);
   }
-  // capture-phase backup (in case something stops bubbling)
-  document.addEventListener('click', function (e) {
-    const t = e.target;
-    if (!t) return;
-    if (t.id === 'langBtn' || (t.closest && t.closest('#langBtn'))) {
-      toggleAppLang(e);
-    }
-  }, true);
+  bind();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind);
+  }
 })();
 
 // apply after DOM / init
