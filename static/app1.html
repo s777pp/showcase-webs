@@ -338,28 +338,27 @@ input[type="range"]{
 }
 
 
-
-.sm-progress, .da-progress{
+.da-progress{
   display:none;margin-top:14px;padding:12px 14px;border-radius:12px;
   border:1px solid var(--border);background:rgba(0,0,0,.25)
 }
-.sm-progress.show, .da-progress.show{display:block}
-.sm-progress .sm-prog-top, .da-progress .da-prog-top{
+.da-progress.show{display:block}
+.da-progress .da-prog-top{
   display:flex;justify-content:space-between;align-items:center;
   font-size:12px;color:var(--muted);margin-bottom:8px
 }
-.sm-progress .sm-prog-pct, .da-progress .da-prog-pct{
+.da-progress .da-prog-pct{
   font-variant-numeric:tabular-nums;font-weight:700;color:#fff;font-size:13px
 }
-.sm-progress .sm-prog-track, .da-progress .da-prog-track{
+.da-progress .da-prog-track{
   height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden
 }
-.sm-progress .sm-prog-fill, .da-progress .da-prog-fill{
+.da-progress .da-prog-fill{
   height:100%;width:0%;border-radius:999px;
   background:linear-gradient(90deg,#00d2ff,#3d81e3,#7b5cff);
   transition:width .15s ease;box-shadow:0 0 12px rgba(0,210,255,.35)
 }
-.sm-progress .sm-prog-sub, .da-progress .da-prog-sub{margin-top:8px;font-size:12px;color:var(--muted)}
+.da-progress .da-prog-sub{margin-top:8px;font-size:12px;color:var(--muted)}
 
 .steam-block{
   margin-top:18px;
@@ -506,14 +505,6 @@ input[type="range"]{
         <button class="btn ghost" id="btnClear" type="button" data-i="clear">Clear</button>
         <a class="btn ghost" id="dlProcess" style="display:none;text-decoration:none" href="#">Download ZIP</a>
       </div>
-      <div class="sm-progress" id="procProgress" aria-live="polite">
-        <div class="sm-prog-top">
-          <span id="procProgLabel">Processing…</span>
-          <span class="sm-prog-pct" id="procProgPct">0%</span>
-        </div>
-        <div class="sm-prog-track"><div class="sm-prog-fill" id="procProgFill"></div></div>
-        <div class="sm-prog-sub" id="procProgSub"></div>
-      </div>
       <div class="status" id="status"></div>
     </div>
   </section>
@@ -526,14 +517,6 @@ input[type="range"]{
         <input id="dlUrl" placeholder="https://…" style="flex:1;min-width:220px"/>
         <select id="dlQuality"><option value="best">Best</option><option value="720">≤720p</option><option value="audio">Audio</option></select>
         <button class="btn" id="btnDl" data-i="dl_btn">Download</button>
-      </div>
-      <div class="sm-progress" id="dlProgress" aria-live="polite">
-        <div class="sm-prog-top">
-          <span id="dlProgressLabel">Downloading…</span>
-          <span class="sm-prog-pct" id="dlProgressPct">0%</span>
-        </div>
-        <div class="sm-prog-track"><div class="sm-prog-fill" id="dlProgressFill"></div></div>
-        <div class="sm-prog-sub" id="dlProgressSub"></div>
       </div>
       <div class="status" id="dlStatus"></div>
       <a class="btn" id="dlLink" style="display:none;margin-top:14px;text-decoration:none" href="#">Download file</a>
@@ -562,14 +545,6 @@ input[type="range"]{
       <div class="row" style="margin-top:16px">
         <button class="btn" id="btnConvert" data-i="cv_btn" disabled>Convert</button>
         <a class="btn ghost" id="cvDl" style="display:none;text-decoration:none" href="#">Download</a>
-      </div>
-      <div class="sm-progress" id="cvProgress" aria-live="polite">
-        <div class="sm-prog-top">
-          <span id="cvProgressLabel">Converting…</span>
-          <span class="sm-prog-pct" id="cvProgressPct">0%</span>
-        </div>
-        <div class="sm-prog-track"><div class="sm-prog-fill" id="cvProgressFill"></div></div>
-        <div class="sm-prog-sub" id="cvProgressSub"></div>
       </div>
       <div class="status" id="cvStatus"></div>
     </div>
@@ -609,14 +584,6 @@ input[type="range"]{
       <h2 data-i="pv_showcases">Showcases</h2>
       <div id="pvSlots" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
       <button class="btn" id="btnPv" data-i="pv_open" type="button">Open in browser</button>
-      <div class="sm-progress" id="pvProgress" aria-live="polite">
-        <div class="sm-prog-top">
-          <span id="pvProgressLabel">Building…</span>
-          <span class="sm-prog-pct" id="pvProgressPct">0%</span>
-        </div>
-        <div class="sm-prog-track"><div class="sm-prog-fill" id="pvProgressFill"></div></div>
-        <div class="sm-prog-sub" id="pvProgressSub"></div>
-      </div>
       <div class="status" id="pvStatus"></div>
     </div>
   </section>
@@ -1159,40 +1126,7 @@ document.getElementById('btnClear').onclick = () => {
 document.getElementById('btnRun').onclick = async () => {
   const st = document.getElementById('status');
   const dl = document.getElementById('dlProcess');
-  const btn = document.getElementById('btnRun');
-  const prog = document.getElementById('procProgress');
-  const fill = document.getElementById('procProgFill');
-  const pctEl = document.getElementById('procProgPct');
-  const label = document.getElementById('procProgLabel');
-  const sub = document.getElementById('procProgSub');
-  const ru = (localStorage.getItem('sm_lang') === 'ru');
-  let tickTimer = null;
-  let fakePct = 0;
-
-  function setProg(pct, lab, subText) {
-    pct = Math.max(0, Math.min(100, Math.round(pct)));
-    if (prog) prog.classList.add('show');
-    if (fill) fill.style.width = pct + '%';
-    if (pctEl) pctEl.textContent = pct + '%';
-    if (label && lab != null) label.textContent = lab;
-    if (sub) sub.textContent = subText || '';
-  }
-  function hideProgLater() {
-    setTimeout(function () {
-      if (prog) prog.classList.remove('show');
-      if (fill) fill.style.width = '0%';
-    }, 2800);
-  }
-  function stopTick() {
-    if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
-  }
-
-  st.className = 'status';
-  st.textContent = ru ? 'Обработка…' : 'Processing…';
-  dl.style.display = 'none';
-  if (btn) btn.disabled = true;
-  setProg(0, ru ? 'Подготовка…' : 'Preparing…', state.files.length + (ru ? ' файл(ов)' : ' file(s)'));
-
+  st.className='status'; st.textContent='Processing…'; dl.style.display='none';
   const fd = new FormData();
   fd.append('mode', state.mode);
   fd.append('fps', document.getElementById('fps').value);
@@ -1200,224 +1134,70 @@ document.getElementById('btnRun').onclick = async () => {
   fd.append('wm_text', document.getElementById('wmText').value);
   fd.append('wm_font', document.getElementById('wmFont').value);
   fd.append('wm_opacity', document.getElementById('wmOpacity').value);
-  fd.append('wm_enable', document.getElementById('wmEnable').checked ? '1' : '0');
-  fd.append('wm_corner', (document.getElementById('wmCorner') || {}).value || 'bl');
+  fd.append('wm_enable', document.getElementById('wmEnable').checked ? '1':'0');
+  fd.append('wm_corner', (document.getElementById('wmCorner')||{}).value || 'bl');
   const sc = document.getElementById('wmScale');
   fd.append('wm_color', document.getElementById('wmColor')?.value || '#ffffff');
   fd.append('gif_encoder', document.getElementById('gifEncoder')?.value || 'ffmpeg');
   fd.append('wm_scale', sc ? (Number(sc.value) / 100) : 1);
-  fd.append('all_modes', (document.getElementById('allModes') || {}).checked ? '1' : '0');
+  fd.append('all_modes', (document.getElementById('allModes')||{}).checked ? '1':'0');
   state.files.forEach(f => fd.append('files', f));
-
   try {
-    await new Promise(function (resolve, reject) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/process');
-      xhr.responseType = 'blob';
-      xhr.withCredentials = true;
-      try {
-        const hdr = headers();
-        Object.keys(hdr || {}).forEach(function (k) {
-          if (k.toLowerCase() === 'content-type') return;
-          xhr.setRequestHeader(k, hdr[k]);
-        });
-      } catch (e) {}
-
-      xhr.upload.onprogress = function (ev) {
-        if (!ev.lengthComputable) {
-          setProg(8, ru ? 'Отправка файлов…' : 'Uploading files…', '');
-          return;
-        }
-        // Upload = 0–55%
-        const p = (ev.loaded / ev.total) * 55;
-        const mb = (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB';
-        setProg(p, ru ? 'Отправка на сервер…' : 'Uploading to server…', mb);
-      };
-      xhr.upload.onload = function () {
-        fakePct = 55;
-        setProg(55, ru ? 'Обработка на сервере…' : 'Processing on server…', ru ? 'нарезка, watermark, ZIP…' : 'cuts, watermark, ZIP…');
-        stopTick();
-        tickTimer = setInterval(function () {
-          // creep 55 → 92 while waiting
-          if (fakePct < 92) {
-            fakePct += (92 - fakePct) * 0.04 + 0.15;
-            if (fakePct > 92) fakePct = 92;
-            setProg(fakePct, ru ? 'Обработка на сервере…' : 'Processing on server…', ru ? 'подожди, это может занять время' : 'this can take a moment');
-          }
-        }, 400);
-      };
-
-      xhr.onload = function () {
-        stopTick();
-        const ct = (xhr.getResponseHeader('content-type') || '');
-        if (xhr.status >= 200 && xhr.status < 300 && (ct.includes('application/zip') || ct.includes('application/octet-stream') || ct.includes('application/x-zip'))) {
-          setProg(100, ru ? 'Готово!' : 'Done!', ru ? 'скачивание ZIP…' : 'downloading ZIP…');
-          const blob = xhr.response;
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'showcase_' + (state.mode || 'out') + '.zip';
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-          const n = xhr.getResponseHeader('X-Processed') || '';
-          st.className = 'status ok';
-          st.textContent = n
-            ? ((ru ? 'Готово: ' : 'Done: ') + n + (ru ? ' файл(ов) — скачано' : ' file(s) — downloaded'))
-            : (ru ? 'Готово — ZIP скачан' : 'Done — ZIP downloaded');
-          dl.style.display = 'none';
-          try { refreshQuota(); } catch (e) {}
-          hideProgLater();
-          resolve();
-          return;
-        }
-        // JSON error or legacy
-        const reader = new FileReader();
-        reader.onload = function () {
-          const raw = String(reader.result || '');
-          let j;
-          try { j = JSON.parse(raw); }
-          catch (parseErr) {
-            st.className = 'status err';
-            st.textContent = (raw || ('HTTP ' + xhr.status)).slice(0, 300);
-            setProg(0, ru ? 'Ошибка' : 'Error', st.textContent.slice(0, 80));
-            reject(new Error(st.textContent));
-            return;
-          }
-          if (!j.ok) {
-            st.className = 'status err';
-            let msg = j.msg || 'Error';
-            if (j.errors && j.errors.length) msg = j.errors.join(' · ');
-            st.textContent = msg;
-            setProg(0, ru ? 'Ошибка' : 'Error', msg.slice(0, 100));
-            reject(new Error(msg));
-          } else if (j.download) {
-            setProg(100, ru ? 'Готово!' : 'Done!', '');
-            st.className = 'status ok';
-            st.textContent = (ru ? 'Готово: ' : 'Done: ') + (j.processed || '') + (ru ? ' файл(ов)' : ' file(s)');
-            dl.href = j.download;
-            dl.style.display = 'inline-block';
-            try { refreshQuota(); } catch (e) {}
-            hideProgLater();
-            resolve();
-          } else {
-            st.className = 'status err';
-            st.textContent = j.msg || 'Unknown response';
-            setProg(0, ru ? 'Ошибка' : 'Error', st.textContent);
-            reject(new Error(st.textContent));
-          }
-        };
-        reader.onerror = function () {
-          st.className = 'status err';
-          st.textContent = 'HTTP ' + xhr.status;
-          setProg(0, ru ? 'Ошибка' : 'Error', st.textContent);
-          reject(new Error(st.textContent));
-        };
-        reader.readAsText(xhr.response);
-      };
-      xhr.onerror = function () {
-        stopTick();
-        const err = ru ? 'Сеть / ошибка запроса' : 'Network error';
-        st.className = 'status err';
-        st.textContent = err;
-        setProg(0, ru ? 'Ошибка' : 'Error', err);
-        reject(new Error(err));
-      };
-      xhr.send(fd);
-    });
-  } catch (e) {
-    if (st && st.className.indexOf('err') < 0) {
-      st.className = 'status err';
-      st.textContent = String(e && e.message ? e.message : e);
+    const r = await fetch('/api/process', { method:'POST', headers: headers(), body: fd, credentials:'include' });
+    const ct = (r.headers.get('content-type') || '');
+    if (ct.includes('application/zip') || ct.includes('application/octet-stream')) {
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'showcase_' + (state.mode || 'out') + '.zip';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      const n = r.headers.get('X-Processed') || '';
+      st.className = 'status ok';
+      st.textContent = n ? ('Done: ' + n + ' file(s) — downloaded') : 'Done — downloaded';
+      dl.style.display = 'none';
+      try { refreshQuota(); } catch(e) {}
+      return;
     }
-  }
-  stopTick();
-  if (btn) btn.disabled = !state.files.length;
-  try { renderFiles(); } catch (e) {}
+    const raw = await r.text();
+    let j;
+    try { j = JSON.parse(raw); }
+    catch (parseErr) {
+      st.className = 'status err';
+      st.textContent = (raw || ('HTTP ' + r.status)).slice(0, 300);
+      return;
+    }
+    if (!j.ok) {
+      st.className = 'status err';
+      let msg = j.msg || 'Error';
+      if (j.errors && j.errors.length) msg = j.errors.join(' · ');
+      st.textContent = msg;
+    } else if (j.download) {
+      // legacy path
+      st.className = 'status ok'; st.textContent = `Done: ${j.processed} file(s)`;
+      dl.href = j.download; dl.style.display = 'inline-block'; refreshQuota();
+    } else {
+      st.className = 'status err'; st.textContent = j.msg || 'Unknown response';
+    }
+  } catch(e){ st.className='status err'; st.textContent=String(e); }
 };
 
 document.getElementById('btnDl').onclick = async () => {
   const st = document.getElementById('dlStatus');
   const link = document.getElementById('dlLink');
-  const btn = document.getElementById('btnDl');
-  const prog = document.getElementById('dlProgress');
-  const fill = document.getElementById('dlProgressFill');
-  const pctEl = document.getElementById('dlProgressPct');
-  const label = document.getElementById('dlProgressLabel');
-  const sub = document.getElementById('dlProgressSub');
-  const ru = (localStorage.getItem('sm_lang') === 'ru');
-  let tickTimer = null;
-  let fakePct = 0;
-
-  function setProg(pct, lab, subText) {
-    pct = Math.max(0, Math.min(100, Math.round(pct)));
-    if (prog) prog.classList.add('show');
-    if (fill) fill.style.width = pct + '%';
-    if (pctEl) pctEl.textContent = pct + '%';
-    if (label && lab != null) label.textContent = lab;
-    if (sub) sub.textContent = subText || '';
-  }
-  function stopTick() { if (tickTimer) { clearInterval(tickTimer); tickTimer = null; } }
-  function hideLater() {
-    setTimeout(function () {
-      if (prog) prog.classList.remove('show');
-      if (fill) fill.style.width = '0%';
-    }, 2800);
-  }
-
-  const url = (document.getElementById('dlUrl').value || '').trim();
-  if (!url) {
-    st.className = 'status err';
-    st.textContent = ru ? 'Вставь ссылку' : 'Paste a URL';
-    return;
-  }
-  st.className = 'status';
-  st.textContent = ru ? 'Скачивание…' : 'Downloading…';
-  link.style.display = 'none';
-  if (btn) btn.disabled = true;
-  setProg(5, ru ? 'Запрос…' : 'Requesting…', url.slice(0, 48));
-  fakePct = 5;
-  tickTimer = setInterval(function () {
-    if (fakePct < 88) {
-      fakePct += (88 - fakePct) * 0.05 + 0.3;
-      if (fakePct > 88) fakePct = 88;
-      setProg(fakePct, ru ? 'Скачивание с платформы…' : 'Fetching from platform…', ru ? 'yt-dlp / сеть' : 'yt-dlp / network');
-    }
-  }, 350);
-
+  st.className='status'; st.textContent='Downloading…'; link.style.display='none';
   try {
     const r = await fetch('/api/download-url', {
-      method: 'POST',
-      headers: { ...headers(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: url,
-        quality: document.getElementById('dlQuality').value
-      }),
-      credentials: 'include'
+      method:'POST', headers:{...headers(),'Content-Type':'application/json'},
+      body: JSON.stringify({ url: document.getElementById('dlUrl').value, quality: document.getElementById('dlQuality').value })
     });
-    stopTick();
     const j = await r.json();
-    if (!j.ok) {
-      st.className = 'status err';
-      st.textContent = j.msg || 'Error';
-      setProg(0, ru ? 'Ошибка' : 'Error', (j.msg || '').slice(0, 100));
-    } else {
-      setProg(100, ru ? 'Готово!' : 'Done!', j.name || '');
-      st.className = 'status ok';
-      st.textContent = j.name || (ru ? 'Готово' : 'Done');
-      link.href = j.download;
-      link.style.display = 'inline-block';
-      try { refreshQuota(); } catch (e) {}
-      hideLater();
-    }
-  } catch (e) {
-    stopTick();
-    st.className = 'status err';
-    st.textContent = String(e);
-    setProg(0, ru ? 'Ошибка' : 'Error', String(e).slice(0, 80));
-  }
-  if (btn) btn.disabled = false;
+    if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Error'; }
+    else { st.className='status ok'; st.textContent=j.name||'Done'; link.href=j.download; link.style.display='inline-block'; refreshQuota(); }
+  } catch(e){ st.className='status err'; st.textContent=String(e); }
 };
 
 const pvFiles = {};
@@ -1448,119 +1228,21 @@ document.getElementById('pvAvatar').onchange = () => {
 };
 document.getElementById('btnPv').onclick = async () => {
   const st = document.getElementById('pvStatus');
-  const btn = document.getElementById('btnPv');
-  const prog = document.getElementById('pvProgress');
-  const fill = document.getElementById('pvProgressFill');
-  const pctEl = document.getElementById('pvProgressPct');
-  const label = document.getElementById('pvProgressLabel');
-  const sub = document.getElementById('pvProgressSub');
-  const ru = (localStorage.getItem('sm_lang') === 'ru');
-  let tickTimer = null;
-  let fakePct = 0;
-
-  function setProg(pct, lab, subText) {
-    pct = Math.max(0, Math.min(100, Math.round(pct)));
-    if (prog) prog.classList.add('show');
-    if (fill) fill.style.width = pct + '%';
-    if (pctEl) pctEl.textContent = pct + '%';
-    if (label && lab != null) label.textContent = lab;
-    if (sub) sub.textContent = subText || '';
-  }
-  function stopTick() { if (tickTimer) { clearInterval(tickTimer); tickTimer = null; } }
-  function hideLater() {
-    setTimeout(function () {
-      if (prog) prog.classList.remove('show');
-      if (fill) fill.style.width = '0%';
-    }, 2500);
-  }
-
-  if (!Object.keys(pvFiles).length) {
-    st.className = 'status err';
-    st.textContent = ru ? 'Выбери хотя бы одну витрину' : 'Select at least one showcase';
-    return;
-  }
-  st.className = 'status';
-  st.textContent = ru ? 'Сборка…' : 'Building…';
-  if (btn) btn.disabled = true;
-  setProg(0, ru ? 'Подготовка…' : 'Preparing…', Object.keys(pvFiles).length + (ru ? ' слот(ов)' : ' slot(s)'));
-
+  if (!Object.keys(pvFiles).length) { st.className='status err'; st.textContent='Select at least one showcase'; return; }
+  st.className='status'; st.textContent='Building…';
   const fd = new FormData();
   fd.append('mode', document.getElementById('pvMode').value);
   const av = document.getElementById('pvAvatar').files[0];
   if (av) fd.append('avatar', av);
-  Object.entries(pvFiles).forEach(([id, file]) => fd.append('slot_' + id, file));
-
+  Object.entries(pvFiles).forEach(([id, file]) => fd.append('slot_'+id, file));
   try {
-    await new Promise(function (resolve, reject) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/preview-build');
-      xhr.withCredentials = true;
-      try {
-        const hdr = headers();
-        Object.keys(hdr || {}).forEach(function (k) {
-          if (k.toLowerCase() === 'content-type') return;
-          xhr.setRequestHeader(k, hdr[k]);
-        });
-      } catch (e) {}
-
-      xhr.upload.onprogress = function (ev) {
-        if (!ev.lengthComputable) {
-          setProg(12, ru ? 'Отправка…' : 'Uploading…', '');
-          return;
-        }
-        const p = (ev.loaded / ev.total) * 50;
-        const mb = (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB';
-        setProg(p, ru ? 'Отправка файлов…' : 'Uploading files…', mb);
-      };
-      xhr.upload.onload = function () {
-        fakePct = 50;
-        setProg(50, ru ? 'Сборка превью…' : 'Building preview…', '');
-        stopTick();
-        tickTimer = setInterval(function () {
-          if (fakePct < 90) {
-            fakePct += (90 - fakePct) * 0.06 + 0.2;
-            if (fakePct > 90) fakePct = 90;
-            setProg(fakePct, ru ? 'Сборка превью…' : 'Building preview…', ru ? 'подгонка под плашки' : 'fitting into slots');
-          }
-        }, 350);
-      };
-      xhr.onload = function () {
-        stopTick();
-        let j = {};
-        try { j = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
-        if (xhr.status >= 200 && xhr.status < 300 && j.ok) {
-          setProg(100, ru ? 'Готово!' : 'Done!', (j.applied || []).join(', '));
-          try { window.open(j.open, '_blank'); } catch (e) {}
-          st.className = 'status ok';
-          st.textContent = (ru ? 'Открыто · ' : 'Opened · ') + (j.applied || []).join(', ');
-          hideLater();
-          resolve();
-        } else {
-          const msg = j.msg || ('HTTP ' + xhr.status);
-          st.className = 'status err';
-          st.textContent = msg;
-          setProg(0, ru ? 'Ошибка' : 'Error', msg.slice(0, 100));
-          reject(new Error(msg));
-        }
-      };
-      xhr.onerror = function () {
-        stopTick();
-        const err = ru ? 'Сеть / ошибка' : 'Network error';
-        st.className = 'status err';
-        st.textContent = err;
-        setProg(0, ru ? 'Ошибка' : 'Error', err);
-        reject(new Error(err));
-      };
-      xhr.send(fd);
-    });
-  } catch (e) {
-    if (st && st.className.indexOf('err') < 0) {
-      st.className = 'status err';
-      st.textContent = String(e && e.message ? e.message : e);
-    }
-  }
-  stopTick();
-  if (btn) btn.disabled = false;
+    const r = await fetch('/api/preview-build', { method:'POST', body: fd });
+    const j = await r.json();
+    if (!j.ok) { st.className='status err'; st.textContent=j.msg||'Error'; return; }
+    window.open(j.open, '_blank');
+    st.className='status ok';
+    st.textContent = 'Opened · ' + (j.applied||[]).join(', ');
+  } catch(e){ st.className='status err'; st.textContent=String(e); }
 };
 
 /* steam copy wired in wireSteamTab */
@@ -2495,135 +2177,31 @@ document.getElementById('btnConvert')?.addEventListener('click', async () => {
   if (!cvFile) return;
   const st = document.getElementById('cvStatus');
   const dl = document.getElementById('cvDl');
-  const btn = document.getElementById('btnConvert');
-  const prog = document.getElementById('cvProgress');
-  const fill = document.getElementById('cvProgressFill');
-  const pctEl = document.getElementById('cvProgressPct');
-  const label = document.getElementById('cvProgressLabel');
-  const sub = document.getElementById('cvProgressSub');
-  const ru = (localStorage.getItem('sm_lang') === 'ru');
-  let tickTimer = null;
-  let fakePct = 0;
-
-  function setProg(pct, lab, subText) {
-    pct = Math.max(0, Math.min(100, Math.round(pct)));
-    if (prog) prog.classList.add('show');
-    if (fill) fill.style.width = pct + '%';
-    if (pctEl) pctEl.textContent = pct + '%';
-    if (label && lab != null) label.textContent = lab;
-    if (sub) sub.textContent = subText || '';
-  }
-  function stopTick() { if (tickTimer) { clearInterval(tickTimer); tickTimer = null; } }
-  function hideLater() {
-    setTimeout(function () {
-      if (prog) prog.classList.remove('show');
-      if (fill) fill.style.width = '0%';
-    }, 2800);
-  }
-
-  st.className = 'status';
-  st.textContent = ru ? 'Конвертация…' : 'Converting…';
+  st.className = 'status'; st.textContent = 'Converting…';
   dl.style.display = 'none';
-  if (btn) btn.disabled = true;
-  setProg(0, ru ? 'Подготовка…' : 'Preparing…', cvFile.name || '');
-
   const fd = new FormData();
   fd.append('file', cvFile);
   fd.append('target', document.getElementById('cvTarget').value);
-
   try {
-    await new Promise(function (resolve, reject) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/convert');
-      xhr.responseType = 'blob';
-      xhr.withCredentials = true;
-      try {
-        const hdr = headers();
-        Object.keys(hdr || {}).forEach(function (k) {
-          if (k.toLowerCase() === 'content-type') return;
-          xhr.setRequestHeader(k, hdr[k]);
-        });
-      } catch (e) {}
-
-      xhr.upload.onprogress = function (ev) {
-        if (!ev.lengthComputable) {
-          setProg(10, ru ? 'Отправка…' : 'Uploading…', '');
-          return;
-        }
-        const p = (ev.loaded / ev.total) * 45;
-        const mb = (ev.loaded / 1048576).toFixed(1) + ' / ' + (ev.total / 1048576).toFixed(1) + ' MB';
-        setProg(p, ru ? 'Отправка файла…' : 'Uploading file…', mb);
-      };
-      xhr.upload.onload = function () {
-        fakePct = 45;
-        setProg(45, ru ? 'Конвертация…' : 'Converting…', document.getElementById('cvTarget').value || '');
-        stopTick();
-        tickTimer = setInterval(function () {
-          if (fakePct < 92) {
-            fakePct += (92 - fakePct) * 0.05 + 0.25;
-            if (fakePct > 92) fakePct = 92;
-            setProg(fakePct, ru ? 'Конвертация на сервере…' : 'Converting on server…', '');
-          }
-        }, 400);
-      };
-      xhr.onload = function () {
-        stopTick();
-        const ct = (xhr.getResponseHeader('Content-Type') || '');
-        if (xhr.status >= 200 && xhr.status < 300 && !ct.includes('application/json')) {
-          setProg(100, ru ? 'Готово!' : 'Done!', '');
-          const blob = xhr.response;
-          const cd = xhr.getResponseHeader('Content-Disposition') || '';
-          let name = 'converted.bin';
-          const m = /filename="?([^";]+)"?/i.exec(cd);
-          if (m) name = m[1];
-          const url = URL.createObjectURL(blob);
-          dl.href = url;
-          dl.download = name;
-          dl.style.display = 'inline-flex';
-          dl.textContent = (ru ? 'Скачать ' : 'Download ') + name;
-          st.className = 'status ok';
-          st.textContent = ru ? 'Готово' : 'Done';
-          try { refreshQuota(); } catch (e) {}
-          hideLater();
-          resolve();
-          return;
-        }
-        const reader = new FileReader();
-        reader.onload = function () {
-          let j = {};
-          try { j = JSON.parse(String(reader.result || '{}')); } catch (e) {}
-          const msg = j.msg || ('HTTP ' + xhr.status);
-          st.className = 'status err';
-          st.textContent = msg;
-          setProg(0, ru ? 'Ошибка' : 'Error', msg.slice(0, 100));
-          reject(new Error(msg));
-        };
-        reader.onerror = function () {
-          st.className = 'status err';
-          st.textContent = 'HTTP ' + xhr.status;
-          setProg(0, ru ? 'Ошибка' : 'Error', st.textContent);
-          reject(new Error(st.textContent));
-        };
-        reader.readAsText(xhr.response);
-      };
-      xhr.onerror = function () {
-        stopTick();
-        const err = ru ? 'Сеть / ошибка' : 'Network error';
-        st.className = 'status err';
-        st.textContent = err;
-        setProg(0, ru ? 'Ошибка' : 'Error', err);
-        reject(new Error(err));
-      };
-      xhr.send(fd);
-    });
-  } catch (e) {
-    if (st && st.className.indexOf('err') < 0) {
-      st.className = 'status err';
-      st.textContent = String(e && e.message ? e.message : e);
+    const r = await fetch('/api/convert', { method: 'POST', body: fd, headers: headers(), credentials: 'include' });
+    const ct = (r.headers.get('Content-Type') || '');
+    if (!r.ok) {
+      let msg = 'Error';
+      try { const j = await r.json(); msg = j.msg || msg; } catch(e) { msg = await r.text(); }
+      st.className = 'status err'; st.textContent = msg; return;
     }
+    const blob = await r.blob();
+    const cd = r.headers.get('Content-Disposition') || '';
+    let name = 'converted.bin';
+    const m = /filename="?([^";]+)"?/i.exec(cd);
+    if (m) name = m[1];
+    const url = URL.createObjectURL(blob);
+    dl.href = url; dl.download = name; dl.style.display = 'inline-flex'; dl.textContent = 'Download ' + name;
+    st.className = 'status ok'; st.textContent = 'Done';
+    try { refreshQuota(); } catch(e) {}
+  } catch (e) {
+    st.className = 'status err'; st.textContent = String(e);
   }
-  stopTick();
-  if (btn) btn.disabled = !cvFile;
 });
 
 /* ---- HEX 21 ---- */
