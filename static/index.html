@@ -250,41 +250,75 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 .modal{position:relative}
 
 
-/* Shiny Sign up — same sweep as Revitalized */
-.btn-shiny,
-a.btn-shiny,
-#navReg,
-#ctaReg{
-  position:relative;
+
+/* Nav Sign up — gradient text like Revitalized, aligned in nav-right */
+.btn-shiny-nav,
+#navReg{
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  padding:8px 16px;
+  padding:8px 14px;
   border-radius:999px;
-  border:1px solid rgba(164,244,253,.35);
-  font-weight:700;
+  border:1px solid rgba(164,244,253,.4);
   font-size:13px;
+  font-weight:700;
   text-decoration:none;
-  color:#061018 !important;
+  white-space:nowrap;
+  line-height:1.2;
+  flex-shrink:0;
   background-image:linear-gradient(to right,#091020 0%,#0B2551 12.5%,#A4F4FD 32.5%,#00d2ff 50%,#0B2551 67.5%,#091020 87.5%,#091020 100%);
   background-size:200% auto;
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  -webkit-text-fill-color:transparent;
   animation:shiny 6s linear infinite;
-  box-shadow:0 0 20px rgba(0,210,255,.25), inset 0 1px 0 rgba(255,255,255,.35);
-  transition:transform .15s, box-shadow .15s;
-  white-space:nowrap;
+  box-shadow:0 0 0 1px rgba(0,210,255,.15), 0 0 18px rgba(0,210,255,.12);
 }
-.btn-shiny:hover,
-a.btn-shiny:hover,
-#navReg:hover,
-#ctaReg:hover{
-  transform:scale(1.03);
-  box-shadow:0 0 28px rgba(0,210,255,.4), inset 0 1px 0 rgba(255,255,255,.45);
-  color:#040a12 !important;
+.btn-shiny-nav:hover,
+#navReg:hover{
+  box-shadow:0 0 0 1px rgba(0,210,255,.35), 0 0 24px rgba(0,210,255,.25);
 }
-.btn-ghost.btn-shiny,
+
+/* Bottom CTA — filled shiny pill, always readable */
+.btn-shiny-cta,
 #ctaReg{
-  padding:12px 20px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:12px 22px;
+  border-radius:999px;
+  border:1px solid rgba(164,244,253,.5);
   font-size:14px;
+  font-weight:700;
+  text-decoration:none;
+  white-space:nowrap;
+  color:#041018 !important;
+  -webkit-text-fill-color:#041018;
+  background-image:linear-gradient(90deg,#7ee8ff 0%,#00d2ff 25%,#A4F4FD 50%,#00d2ff 75%,#7ee8ff 100%);
+  background-size:200% auto;
+  animation:shiny 5s linear infinite;
+  box-shadow:0 0 24px rgba(0,210,255,.35);
+  transition:transform .15s, box-shadow .15s;
+}
+.btn-shiny-cta:hover,
+#ctaReg:hover{
+  transform:translateY(-1px) scale(1.02);
+  box-shadow:0 0 32px rgba(0,210,255,.5);
+}
+
+.nav-right{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-shrink:0;
+}
+.nav-links{
+  align-items:center;
+}
+.nav-links a{
+  white-space:nowrap;
 }
 
 </style>
@@ -315,9 +349,9 @@ a.btn-shiny:hover,
       <a href="#features" data-i="nav_feat">Features</a>
       <a href="#pricing" data-i="nav_price">Pricing</a>
       <a href="/app" data-i="nav_tools">Tools</a>
-      <a href="#" class="btn-shiny" data-i="nav_reg" id="navReg" role="button">Sign up</a>
     </div>
     <div class="nav-right">
+      <a href="#" class="btn-shiny-nav" data-i="nav_reg" id="navReg" role="button">Sign up</a>
       <button type="button" class="lang-nav" id="langBtnNav" aria-label="Language">RU</button>
       <a class="btn-pill" href="/app" data-i="cta_tools">Open tools →</a>
     </div>
@@ -534,7 +568,7 @@ a.btn-shiny:hover,
       <p data-i="cta_p">Process, download sources, preview on a Steam template, and ship — without leaving the browser.</p>
       <div class="final-btns">
         <a class="btn-pill" href="/app" data-i="cta_open2">Open tools</a>
-        <a class="btn-ghost" href="#" class="btn-ghost btn-shiny" data-i="cta_reg" id="ctaReg" role="button">Create account →</a>
+        <a href="#" class="btn-shiny-cta" data-i="cta_reg" id="ctaReg" role="button">Create account →</a>
       </div>
     </div>
   </section>
