@@ -369,27 +369,27 @@ input[type="range"]{
           <span class="pill" id="planBadge">Free</span>
           <span class="pill" id="userPill" style="display:none"></span>
           <button class="btn ghost" id="langBtn" type="button">RU</button>
-          <button class="btn ghost" id="btnAuth" type="button">Log in</button>
-          <button class="btn" id="btnUpgrade" type="button" style="display:none">Buy Pro</button>
-          <button class="btn ghost" id="btnLogout" type="button" style="display:none">Log out</button>
+          <button class="btn ghost" id="btnAuth" type="button" data-i="login">Log in</button>
+          <button class="btn" id="btnUpgrade" type="button" style="display:none" data-i="buy">Buy Pro</button>
+          <button class="btn ghost" id="btnLogout" type="button" style="display:none" data-i="logout">Log out</button>
         </div>
       </div>
       <nav class="nav" id="nav">
-    <button data-tab="process" class="active">Process</button>
-    <button data-tab="download">Download</button>
-    <button data-tab="convert">Converter</button>
-    <button data-tab="hex">HEX</button>
-    <button data-tab="preview">Preview</button>
-    <button data-tab="steam">Steam</button>
-    <button data-tab="da">DeviantArt</button>
-    <button data-tab="account">Account</button>
-    <button data-tab="about">About</button>
+    <button data-tab="process" data-i="nav_process" class="active" data-i="run">Process</button>
+    <button data-tab="download" data-i="nav_download">Download</button>
+    <button data-tab="convert" data-i="nav_convert">Converter</button>
+    <button data-tab="hex" data-i="nav_hex">HEX</button>
+    <button data-tab="preview" data-i="nav_preview">Preview</button>
+    <button data-tab="steam" data-i="nav_steam">Steam</button>
+    <button data-tab="da" data-i="nav_da">DeviantArt</button>
+    <button data-tab="account" data-i="nav_account">Account</button>
+    <button data-tab="about" data-i="nav_about">About</button>
   </nav>
     </div>
   </header>
 
   <main class="main">
-    <a class="back" href="/">← Home</a>
+    <a class="back" href="/" data-i="back">← Home</a>
     <div class="topbar">
       <div>
         <div class="h-title" id="pageTitle">Process</div>
@@ -399,15 +399,15 @@ input[type="range"]{
 
   <section class="tab active" id="tab-process">
     <div class="card">
-      <h2>Mode</h2>
+      <h2 data-i="mode">Mode</h2>
       <div class="modes">
-        <button type="button" class="mode active" data-mode="workshop"><strong>Workshop</strong><span>5 panels for Workshop showcase</span></button>
+        <button type="button" class="mode active" data-mode="workshop"><strong>Workshop</strong><span data-i="mode_ws">5 panels for Workshop showcase</span></button>
         <button type="button" class="mode" data-mode="featured"><strong>Featured</strong><span>Artwork 630px wide</span></button>
         <button type="button" class="mode" data-mode="split"><strong>Artwork Split</strong><span>Center 506 + side 100</span></button>
       </div>
     </div>
     <div class="card">
-      <h2>Settings</h2>
+      <h2 data-i="params">Settings</h2>
       <div class="row">
         <label class="field" translate="no"><span class="lbl-fps">FPS</span><input type="number" id="fps" value="12" min="5" max="30"/></label>
         <label class="field">Width
@@ -452,13 +452,13 @@ input[type="range"]{
       </div>
     </div>
     <div class="card">
-      <h2>Files</h2>
+      <h2 data-i="files">Files</h2>
       <div class="drop" id="drop">Drop PNG, JPG, GIF, MP4 or AVI — or click to browse</div>
       <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif,.avi,.mp4,.mov,.webm"/>
       <div class="files" id="fileList"></div>
       <div class="row" style="margin-top:16px">
-        <button class="btn" id="btnRun" disabled>Process</button>
-        <button class="btn ghost" id="btnClear" type="button">Clear</button>
+        <button class="btn" id="btnRun" disabled data-i="run">Process</button>
+        <button class="btn ghost" id="btnClear" type="button" data-i="clear">Clear</button>
         <a class="btn ghost" id="dlProcess" style="display:none;text-decoration:none" href="#">Download ZIP</a>
       </div>
       <div class="status" id="status"></div>
@@ -2067,55 +2067,143 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 </script>
 
 
+
+
+
 <script>
-/* ===== Language bootstrap (must be last) ===== */
+/* ===== i18n bootstrap (data-i + APP_I18N) ===== */
 (function () {
+  var DICT = {
+    en: {
+      nav_process: "Process", nav_download: "Download", nav_convert: "Converter", nav_hex: "HEX",
+      nav_preview: "Preview", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Account", nav_about: "About",
+      login: "Log in", logout: "Log out", buy: "Buy Pro", buy_key: "Buy Key",
+      back: "← Home",
+      title_process: "Process", sub_process: "Workshop / Featured / Split cuts, watermark and Steam ZIP",
+      title_download: "Download", sub_download: "Sources from YouTube, TikTok, X, Reddit and Pinterest",
+      title_convert: "Converter", sub_convert: "Convert between video, GIF and image formats",
+      title_hex: "HEX 21", sub_hex: "Patch last byte to 0x21 for Steam",
+      title_preview: "Preview", sub_preview: "How the showcase looks on a Steam profile",
+      title_steam: "Steam", sub_steam: "Guide and console code for artwork upload",
+      title_da: "DeviantArt", sub_da: "Publishing — desktop version",
+      title_account: "Account", sub_account: "Sign up, log in and buy Pro",
+      title_about: "About", sub_about: "Limits, Pro and contacts",
+      mode: "Mode", params: "Settings", files: "Files",
+      mode_ws: "5 panels for Workshop showcase",
+      mode_ft: "Artwork 630px wide",
+      mode_sp: "Center 506 + side 100",
+      run: "Process", clear: "Clear",
+      drop: "Drop PNG, JPG, GIF, MP4 or AVI — or click to browse",
+      lbl_fps: "FPS", lbl_size: "Width", lbl_wm: "Watermark", lbl_font: "Font",
+      lbl_op: "Opacity %", lbl_wm_size: "WM size %", lbl_corner: "WM corner",
+      lbl_color: "WM color", lbl_enc: "GIF encoder",
+      all_modes: "All modes", wm_on: "On",
+      corner_bl: "Bottom left", corner_br: "Bottom right", corner_tl: "Top left", corner_tr: "Top right"
+    },
+    ru: {
+      nav_process: "Обработка", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
+      nav_preview: "Предпросмотр", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе",
+      login: "Войти", logout: "Выйти", buy: "Купить Pro", buy_key: "Купить ключ",
+      back: "← На главную",
+      title_process: "Обработка", sub_process: "Нарезка Workshop / Featured / Split, водяной знак и ZIP для Steam",
+      title_download: "Скачать", sub_download: "Исходники с YouTube, TikTok, X, Reddit и Pinterest",
+      title_convert: "Конвертер", sub_convert: "Конвертация видео, GIF и изображений",
+      title_hex: "HEX 21", sub_hex: "Последний байт 0x21 для Steam",
+      title_preview: "Предпросмотр", sub_preview: "Как витрина выглядит на странице профиля Steam",
+      title_steam: "Steam", sub_steam: "Инструкция и код консоли для загрузки artwork",
+      title_da: "DeviantArt", sub_da: "Публикация — как в десктоп-версии",
+      title_account: "Аккаунт", sub_account: "Регистрация, вход и покупка Pro",
+      title_about: "О сервисе", sub_about: "Лимиты, Pro и контакты",
+      mode: "Режим", params: "Параметры", files: "Файлы",
+      mode_ws: "5 панелей для витрины Workshop",
+      mode_ft: "Artwork шириной 630px",
+      mode_sp: "Центр 506 + бок 100",
+      run: "Обработать", clear: "Очистить",
+      drop: "Перетащи PNG, JPG, GIF, MP4 или AVI — или нажми для выбора",
+      lbl_fps: "Кадр/с", lbl_size: "Ширина", lbl_wm: "Водяной знак", lbl_font: "Шрифт",
+      lbl_op: "Прозрачность %", lbl_wm_size: "Размер WM %", lbl_corner: "Угол WM",
+      lbl_color: "Цвет WM", lbl_enc: "Кодер GIF",
+      all_modes: "Все режимы", wm_on: "Вкл",
+      corner_bl: "Левый низ", corner_br: "Правый низ", corner_tl: "Левый верх", corner_tr: "Правый верх"
+    }
+  };
+
   function getLang() {
     try { return localStorage.getItem("sm_lang") || "en"; } catch (e) { return "en"; }
   }
   function setLang(L) {
     try { localStorage.setItem("sm_lang", L); } catch (e) {}
   }
-  function apply() {
-    var L = getLang();
-    if (typeof window.applyAppLang === "function") {
-      try { window.applyAppLang(L); } catch (e) { console.error("applyAppLang", e); }
-    } else if (typeof applyAppLang === "function") {
-      try { applyAppLang(L); } catch (e) { console.error("applyAppLang", e); }
+
+  function applyDict(L) {
+    var pack = DICT[L] || DICT.en;
+    document.documentElement.lang = L;
+    // data-i elements
+    document.querySelectorAll("[data-i]").forEach(function (el) {
+      var k = el.getAttribute("data-i");
+      if (k && pack[k] != null) el.textContent = pack[k];
+    });
+    // nav buttons by data-tab (backup)
+    document.querySelectorAll("#nav button[data-tab]").forEach(function (btn) {
+      var k = "nav_" + btn.getAttribute("data-tab");
+      if (pack[k]) btn.textContent = pack[k];
+    });
+    // page title for active tab
+    var active = document.querySelector("#nav button.active");
+    if (active) {
+      var tab = active.getAttribute("data-tab");
+      var pt = document.getElementById("pageTitle");
+      var ps = document.getElementById("pageSub");
+      if (pt && pack["title_" + tab]) pt.textContent = pack["title_" + tab];
+      if (ps && pack["sub_" + tab]) ps.textContent = pack["sub_" + tab];
     }
+    // lang button label = opposite language
     var lb = document.getElementById("langBtn");
     if (lb) lb.textContent = L === "en" ? "RU" : "EN";
+    // also try legacy APP_I18N if present (extra coverage)
+    if (typeof window.applyAppLang === "function") {
+      try { window.applyAppLang(L); } catch (e) { console.warn("legacy applyAppLang", e); }
+    }
+    // steam UI
+    try { if (typeof refreshSteamUI === "function") refreshSteamUI(); } catch (e) {}
   }
+
   function toggle(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
-    var cur = getLang();
-    var next = cur === "en" ? "ru" : "en";
+    var next = getLang() === "en" ? "ru" : "en";
     setLang(next);
-    apply();
-    try {
-      if (typeof refreshSteamUI === "function") refreshSteamUI();
-    } catch (err) {}
+    applyDict(next);
   }
+
   function bind() {
     var lb = document.getElementById("langBtn");
-    if (!lb) return;
-    lb.onclick = toggle;
-    lb.style.cursor = "pointer";
-    lb.style.pointerEvents = "auto";
-    lb.setAttribute("type", "button");
+    if (lb) {
+      lb.onclick = toggle;
+      lb.style.cursor = "pointer";
+      lb.style.pointerEvents = "auto";
+    }
   }
+
   function start() {
     bind();
-    apply();
+    applyDict(getLang());
   }
+
+  // re-apply when user switches tabs (title/sub)
+  document.addEventListener("click", function (e) {
+    var btn = e.target && e.target.closest && e.target.closest("#nav button[data-tab]");
+    if (btn) {
+      setTimeout(function () { applyDict(getLang()); }, 0);
+    }
+  });
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", start);
   } else {
     start();
   }
-  // retry once after other init (meta fetch etc.)
-  setTimeout(start, 300);
-  setTimeout(start, 1000);
+  setTimeout(start, 200);
+  setTimeout(start, 800);
 })();
 </script>
 
