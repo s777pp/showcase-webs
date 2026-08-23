@@ -408,6 +408,8 @@ def process_video_workshop(
     duration: float = 12,
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
+    wm_x: float | None = None,
+    wm_y: float | None = None,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -416,6 +418,7 @@ def process_video_workshop(
     return process_gif_workshop(
         gif_src, out_dir, wm_text, wm_font, wm_opacity,
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
+        wm_x=wm_x, wm_y=wm_y,
     )
 
 
@@ -446,6 +449,8 @@ def process_video_split(
     duration: float = 12,
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
+    wm_x: float | None = None,
+    wm_y: float | None = None,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -453,7 +458,7 @@ def process_video_split(
     media_to_gif(src, gif_src, fps=fps, width=606, duration=duration)
     return process_gif_split(
         gif_src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
-        wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
+        wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale, wm_x=wm_x, wm_y=wm_y,
     )
 
 
@@ -590,6 +595,8 @@ def _gif_full_with_bars_workshop(
     wm_scale: float = 1.0,
     bar_width: int = 6,
     wm_color: str = "#ffffff",
+    wm_x: float | None = None,
+    wm_y: float | None = None,
 ) -> None:
     """Full GIF: 5 parts + black bars + watermark. Quantizes each frame immediately."""
     frames_p: list[Image.Image] = []
@@ -629,6 +636,8 @@ def _gif_full_with_bars_workshop(
                     corner=wm_corner,
                     scale=float(wm_scale or 1.0),
                     color=wm_color or "#ffffff",
+                    wx=wm_x,
+                    wy=wm_y,
                 )
             frames_p.append(_quantize_rgba_for_gif(full))
             try:
@@ -651,6 +660,8 @@ def _gif_full_with_bar_split(
     wm_scale: float = 1.0,
     bar_width: int = 6,
     wm_color: str = "#ffffff",
+    wm_x: float | None = None,
+    wm_y: float | None = None,
 ) -> None:
     frames_p: list[Image.Image] = []
     durations: list[int] = []
@@ -688,6 +699,8 @@ def _gif_full_with_bar_split(
                     corner=wm_corner,
                     scale=float(wm_scale or 1.0),
                     color=wm_color or "#ffffff",
+                    wx=wm_x,
+                    wy=wm_y,
                 )
             frames_p.append(_quantize_rgba_for_gif(full))
             try:
@@ -709,6 +722,8 @@ def process_gif_workshop(
     wm_color: str = "#ffffff",
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
+    wm_x: float | None = None,
+    wm_y: float | None = None,
 ) -> dict[str, Path]:
     """Cut GIF into 5 Steam Workshop parts + full_with_bars.gif."""
     out_dir = Path(out_dir)
@@ -743,6 +758,7 @@ def process_gif_workshop(
         _gif_full_with_bars_workshop(
             gif_path, bars, wm_text, wm_font, wm_opacity,
             wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color,
+            wm_x=wm_x, wm_y=wm_y,
         )
         if bars.is_file():
             result[bars.name] = bars
@@ -782,6 +798,8 @@ def process_gif_split(
     wm_color: str = "#ffffff",
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
+    wm_x: float | None = None,
+    wm_y: float | None = None,
 ) -> dict[str, Path]:
     ff = find_ffmpeg()
     if not ff:
@@ -813,7 +831,7 @@ def process_gif_split(
     try:
         _gif_full_with_bar_split(
             tmp, bars, wm_text, wm_font, wm_opacity,
-            wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color,
+            wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color, wm_x=wm_x, wm_y=wm_y,
         )
         if bars.is_file() and bars.stat().st_size > 64:
             result[bars.name] = bars

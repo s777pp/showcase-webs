@@ -500,7 +500,7 @@ input[type="range"]{
     </div>
     <div class="card" id="wmPreviewCard">
       <h2>Watermark preview</h2>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Добавь PNG/JPG в «Файлы», нажми «Перетащить watermark вручную» и двигай текст мышкой. Позиция сохранится при «Обработать».</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Таскай watermark мышкой; позиция применится при «Обработать».</p>
       <div id="wmCanvasWrap" style="position:relative;max-width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#111;min-height:160px;display:flex;align-items:center;justify-content:center">
         <canvas id="wmCanvas" style="max-width:100%;max-height:420px;display:none;cursor:grab;touch-action:none"></canvas>
         <div id="wmCanvasEmpty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center">Нет превью — добавь изображение и нажми кнопку ниже</div>
@@ -3610,7 +3610,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     });
   }
 
-  function firstImageFile(){
+  function firstPreviewFile(){
     try {
       const st = window.state;
       const list = (st && Array.isArray(st.files)) ? st.files : [];
@@ -3619,13 +3619,14 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
         if (!f) continue;
         const name = (f.name || '').toLowerCase();
         const type = (f.type || '').toLowerCase();
-        if (type.indexOf('gif') >= 0) continue;
         if (type.startsWith('image/')) return f;
-        if (/\.(png|jpe?g|webp|bmp)$/i.test(name)) return f;
+        if (type.startsWith('video/')) return f;
+        if (/\.(png|jpe?g|webp|bmp|gif|mp4|webm|mov|avi|mkv)$/i.test(name)) return f;
       }
     } catch(e){}
     return null;
   }
+  function firstImageFile(){ return firstPreviewFile(); }
 
   function draw(){
     if (!img || !img.naturalWidth) {
@@ -3665,22 +3666,81 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     ctx.setLineDash([]);
   }
 
-  function loadFile(file){
-    if (!file) return Promise.resolve(false);
+  function loadFromImageUrl(url, revoke){
     return new Promise(function(resolve){
-      const url = URL.createObjectURL(file);
       const im = new Image();
       im.onload = function(){
         img = im;
         ensureFont(fontKey()).then(function(){ draw(); resolve(true); });
-        URL.revokeObjectURL(url);
+        if (revoke) URL.revokeObjectURL(url);
       };
       im.onerror = function(){
-        tip('Не удалось открыть изображение');
-        URL.revokeObjectURL(url);
+        tip('Не удалось открыть кадр');
+        if (revoke) URL.revokeObjectURL(url);
         resolve(false);
       };
       im.src = url;
+    });
+  }
+  function loadVideoFirstFrame(file){
+    return new Promise(function(resolve){
+      const url = URL.createObjectURL(file);
+      const v = document.createElement('video');
+      v.muted = true;
+      v.playsInline = true;
+      v.preload = 'auto';
+      let done = false;
+      function finish(ok){
+        if (done) return;
+        done = true;
+        try { v.pause(); } catch(e){}
+        v.removeAttribute('src');
+        try { v.load(); } catch(e){}
+        URL.revokeObjectURL(url);
+        resolve(ok);
+      }
+      v.addEventListener('loadeddata', function(){
+        try {
+          // seek a tiny bit to ensure frame is painted
+          try { v.currentTime = Math.min(0.05, (v.duration || 1) * 0.01); } catch(e){}
+          setTimeout(function(){
+            try {
+              const c = document.createElement('canvas');
+              const w = v.videoWidth || 640;
+              const h = v.videoHeight || 360;
+              c.width = w; c.height = h;
+              const cx = c.getContext('2d');
+              cx.drawImage(v, 0, 0, w, h);
+              const dataUrl = c.toDataURL('image/jpeg', 0.92);
+              loadFromImageUrl(dataUrl, false).then(function(ok){
+                if (ok) tip('Превью: первый кадр видео. Таскай watermark — позиция применится ко всем кадрам.');
+                finish(ok);
+              });
+            } catch (err) {
+              tip('Не удалось взять кадр из видео');
+              finish(false);
+            }
+          }, 120);
+        } catch (e) { finish(false); }
+      });
+      v.addEventListener('error', function(){ tip('Браузер не смог открыть видео'); finish(false); });
+      v.src = url;
+      try { v.load(); } catch(e){}
+    });
+  }
+  function loadFile(file){
+    if (!file) return Promise.resolve(false);
+    const name = (file.name || '').toLowerCase();
+    const type = (file.type || '').toLowerCase();
+    const isVideo = type.startsWith('video/') || /\\.(mp4|webm|mov|avi|mkv)$/i.test(name);
+    if (isVideo) return loadVideoFirstFrame(file);
+    // gif / images — Image handles first frame of GIF
+    const url = URL.createObjectURL(file);
+    return loadFromImageUrl(url, true).then(function(ok){
+      if (ok && (type.indexOf('gif') >= 0 || name.endsWith('.gif'))) {
+        tip('Превью: первый кадр GIF. Таскай watermark — позиция применится ко всем кадрам.');
+      }
+      return ok;
     });
   }
 
