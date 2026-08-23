@@ -315,6 +315,10 @@ def quota_inc(req: Request, n: int) -> None:
 
 app = FastAPI(title="Showcase Maker Web")
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
+try:
+    app.mount("/fonts", StaticFiles(directory=str(FONTS)), name="fonts")
+except Exception:
+    pass
 
 @app.exception_handler(Exception)
 async def _unhandled(request: Request, exc: Exception):
@@ -2265,6 +2269,119 @@ async def gallery_submit(
         pass
     gid = auth_db.gallery_add(uid if user else None, title, mode, str(path), thumb)
     return {"ok": True, "id": gid, "msg": "Submitted for moderation"}
+
+
+
+@app.post("/api/gallery/publish")
+async def gallery_publish(
+    request: Request,
+    mode: str = Form("workshop"),
+    size: int = Form(750),
+    wm_text: str = Form("n1t1337"),
+    wm_font: str = Form("lap"),
+    wm_opacity: int = Form(22),
+    wm_enable: str = Form("1"),
+    wm_corner: str = Form("bl"),
+    wm_scale: float = Form(1.0),
+    wm_color: str = Form("#ffffff"),
+    wm_x: str = Form(""),
+    wm_y: str = Form(""),
+    auto_contrast: str = Form("0"),
+    title: str = Form(""),
+    file: UploadFile = File(...),
+):
+    """Build showcase preview (with/without WM) and submit to gallery as pending."""
+    from PIL import ImageOps
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in to publish"}, status_code=401)
+    mode = (mode or "workshop").lower().strip()
+    if mode not in ("workshop", "featured", "split"):
+        return JSONResponse({"ok": False, "msg": "Unknown mode"}, status_code=400)
+    raw = await file.read()
+    if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+        return JSONResponse({"ok": False, "msg": "Too large"}, status_code=400)
+    ext = Path(file.filename or "x.png").suffix.lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".bmp"):
+        return JSONResponse({"ok": False, "msg": "Only static images for gallery publish"}, status_code=400)
+
+    wm_on = wm_enable not in ("0", "false", "False", "")
+    opacity = (wm_opacity / 100.0) if wm_on else 0.0
+    text = wm_text if wm_on else ""
+    color = (wm_color or "#ffffff").strip() or "#ffffff"
+    corner = (wm_corner or "bl").strip().lower()
+    if corner not in ("tl", "tr", "bl", "br"):
+        corner = "bl"
+    try:
+        scale = max(0.4, min(2.5, float(wm_scale)))
+    except Exception:
+        scale = 1.0
+    # UI may send 40-250
+    if scale > 2.5:
+        scale = max(0.4, min(2.5, scale / 100.0))
+    wm_x_f = wm_y_f = None
+    try:
+        if str(wm_x).strip() != "" and str(wm_y).strip() != "":
+            wm_x_f = max(0.0, min(1.0, float(wm_x)))
+            wm_y_f = max(0.0, min(1.0, float(wm_y)))
+    except Exception:
+        pass
+    try:
+        size_i = int(size)
+    except Exception:
+        size_i = 750
+    if size_i not in (630, 640, 750, 800):
+        size_i = 750
+
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img.load()
+        if max(img.size) > 4096:
+            img.thumbnail((4096, 4096), Image.Resampling.LANCZOS)
+        if str(auto_contrast).lower() in ("1", "true", "yes", "on"):
+            img = ImageOps.autocontrast(img.convert("RGB"), cutoff=1)
+        img = img.convert("RGBA")
+        if mode == "workshop" and img.size[0] != size_i:
+            nh = max(1, int(img.size[1] * (size_i / max(1, img.size[0]))))
+            img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
+        if mode == "workshop":
+            parts = proc.process_image_workshop(
+                img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
+            )
+            data = parts.get("full_with_bars.png") or parts.get("full_original.png")
+        elif mode == "featured":
+            parts = proc.process_image_featured(img)
+            data = parts.get("featured_630.png") or parts.get("full_original.png")
+        else:
+            parts = proc.process_image_split(
+                img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
+            )
+            data = parts.get("full_with_bars.png") or parts.get("full_original.png")
+        if not data:
+            return JSONResponse({"ok": False, "msg": "Nothing to publish"}, status_code=400)
+
+        gdir = Path(DATA) / "gallery"
+        gdir.mkdir(parents=True, exist_ok=True)
+        uid = int(user["id"])
+        sub = gdir / f"u{uid}"
+        sub.mkdir(parents=True, exist_ok=True)
+        name = f"{int(time.time())}_{secrets.token_hex(4)}_{mode}.png"
+        path = sub / name
+        path.write_bytes(data)
+        thumb = None
+        try:
+            im = Image.open(io.BytesIO(data)).convert("RGBA")
+            im.thumbnail((400, 400))
+            tp = path.with_suffix(".thumb.png")
+            im.save(tp, "PNG")
+            thumb = str(tp)
+        except Exception:
+            pass
+        ttl = (title or "").strip() or f"{mode} showcase"
+        gid = auth_db.gallery_add(uid, ttl, mode, str(path), thumb)
+        return {"ok": True, "id": gid, "msg": "Submitted for moderation"}
+    except Exception as e:
+        return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
 
 
 @app.post("/api/gallery/mod/{item_id}")

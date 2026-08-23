@@ -522,6 +522,7 @@ input[type="range"]{
         <button class="btn" id="btnRun" disabled data-i="run">Process</button>
         <button class="btn ghost" id="btnClear" type="button" data-i="clear">Clear</button>
         <a class="btn ghost" id="dlProcess" style="display:none;text-decoration:none" href="#">Download ZIP</a>
+        <button class="btn ghost" id="btnPublishGallery" type="button" style="display:none">Опубликовать в галерею</button>
       </div>
       <div class="sm-progress" id="procProgress" aria-live="polite">
         <div class="sm-prog-top">
@@ -1176,6 +1177,7 @@ document.getElementById('btnClear').onclick = () => {
   state.files=[]; renderFiles();
   document.getElementById('status').textContent='';
   document.getElementById('dlProcess').style.display='none';
+  const _pg=document.getElementById('btnPublishGallery'); if(_pg) _pg.style.display='none';
 };
 document.getElementById('btnRun').onclick = async () => {
   const st = document.getElementById('status');
@@ -1293,6 +1295,15 @@ document.getElementById('btnRun').onclick = async () => {
             ? ((ru ? 'Готово: ' : 'Done: ') + n + (ru ? ' файл(ов) — скачано' : ' file(s) — downloaded'))
             : (ru ? 'Готово — ZIP скачан' : 'Done — ZIP downloaded');
           dl.style.display = 'none';
+          try {
+            const pg = document.getElementById('btnPublishGallery');
+            if (pg) {
+              // only for image modes with a still image in files
+              const hasImg = (state.files||[]).some(f => f && (f.type||'').startsWith('image/') && !(f.type||'').includes('gif') || (f.name&&/\.(png|jpe?g|webp|bmp)$/i.test(f.name)));
+              pg.style.display = hasImg ? 'inline-flex' : 'none';
+            }
+            window.__lastPublishReady = true;
+          } catch (e) {}
           try { refreshQuota(); } catch (e) {}
           hideProgLater();
           resolve();
@@ -1324,6 +1335,11 @@ document.getElementById('btnRun').onclick = async () => {
             st.textContent = (ru ? 'Готово: ' : 'Done: ') + (j.processed || '') + (ru ? ' файл(ов)' : ' file(s)');
             dl.href = j.download;
             dl.style.display = 'inline-block';
+            try {
+              const pg = document.getElementById('btnPublishGallery');
+              if (pg) pg.style.display = 'inline-flex';
+              window.__lastPublishReady = true;
+            } catch (e) {}
             try { refreshQuota(); } catch (e) {}
             hideProgLater();
             resolve();
@@ -3535,7 +3551,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
 
 <script>
-/* ===== Watermark manual drag preview ===== */
+/* ===== Watermark manual drag preview + gallery publish ===== */
 (function(){
   const canvas = document.getElementById('wmCanvas');
   const empty = document.getElementById('wmCanvasEmpty');
@@ -3544,7 +3560,17 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   let img = null;
   let wx = 0.04, wy = 0.88;
   let dragging = false;
-  let dragMode = false;
+  let fontReady = {};
+
+  const FONT_MAP = {
+    lap: '/fonts/lap.ttf',
+    rob: '/fonts/rob.ttf',
+    caratte: '/fonts/caratte.ttf',
+    Fineday: '/fonts/Fineday.ttf',
+    fineday: '/fonts/Fineday.ttf',
+    roboto: '/fonts/roboto.ttf',
+    'gothic-rus': '/fonts/gothic-rus.ttf'
+  };
 
   function tip(msg){
     const el = document.getElementById('wmTip');
@@ -3554,79 +3580,106 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   }
   function opacityVal(){ return (parseInt(document.getElementById('wmOpacity')?.value||'22',10)||22)/100; }
   function scaleVal(){
-    const raw = parseFloat(document.getElementById('wmScale')?.value||'100');
-    // UI is 40..250 percent
-    return Math.max(0.4, Math.min(2.5, (isNaN(raw)?100:raw)/100));
+    let raw = parseFloat(document.getElementById('wmScale')?.value||'100');
+    if (isNaN(raw)) raw = 100;
+    if (raw > 2.5) raw = raw / 100; // 40..250 UI
+    return Math.max(0.4, Math.min(2.5, raw));
   }
   function colorVal(){ return document.getElementById('wmColor')?.value || '#ffffff'; }
   function textVal(){ return document.getElementById('wmText')?.value || ''; }
   function enabled(){ return !!document.getElementById('wmEnable')?.checked; }
+  function fontKey(){ return document.getElementById('wmFont')?.value || 'lap'; }
+
+  function ensureFont(key){
+    key = key || 'lap';
+    if (fontReady[key]) return Promise.resolve(fontReady[key]);
+    const url = FONT_MAP[key];
+    if (!url || typeof FontFace === 'undefined') {
+      fontReady[key] = key;
+      return Promise.resolve(key);
+    }
+    const face = new FontFace('wm_' + key, 'url(' + url + ')');
+    return face.load().then(function(f){
+      document.fonts.add(f);
+      fontReady[key] = 'wm_' + key;
+      return fontReady[key];
+    }).catch(function(){
+      fontReady[key] = 'Mulish';
+      return 'Mulish';
+    });
+  }
 
   function firstImageFile(){
     try {
       if (window.state && Array.isArray(state.files)) {
-        for (const f of state.files) {
-          if (f && f.type && f.type.startsWith('image/') && !f.type.includes('gif')) return f;
-          if (f && f.name && /\.(png|jpe?g|webp|bmp)$/i.test(f.name)) return f;
+        for (let i = 0; i < state.files.length; i++) {
+          const f = state.files[i];
+          if (!f) continue;
+          const name = (f.name || '').toLowerCase();
+          const type = (f.type || '').toLowerCase();
+          if (type.startsWith('image/') && type.indexOf('gif') < 0) return f;
+          if (/\.(png|jpe?g|webp|bmp)$/i.test(name)) return f;
         }
       }
     } catch(e){}
-    const fi = document.getElementById('fileInput');
-    if (fi && fi.files && fi.files[0]) return fi.files[0];
     return null;
   }
 
   function draw(){
-    if (!img) {
+    if (!img || !img.naturalWidth) {
       canvas.style.display = 'none';
       if (empty) empty.style.display = 'block';
       return;
     }
-    const maxW = Math.min(920, (canvas.parentElement?.clientWidth || 600) - 4);
+    const maxW = Math.min(920, Math.max(200, (canvas.parentElement?.clientWidth || 600) - 4));
     const ratio = img.naturalWidth / img.naturalHeight;
     let w = maxW, h = Math.round(w / ratio);
     if (h > 420) { h = 420; w = Math.round(h * ratio); }
-    canvas.width = w;
-    canvas.height = h;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
     canvas.style.display = 'block';
+    canvas.style.cursor = 'grab';
     if (empty) empty.style.display = 'none';
     ctx.clearRect(0,0,w,h);
     ctx.drawImage(img, 0, 0, w, h);
     if (!enabled() || !textVal()) return;
+    const key = fontKey();
+    const family = fontReady[key] || ('wm_' + key);
     const fontSize = Math.max(12, Math.round((h / 28) * scaleVal()));
-    ctx.font = '600 ' + fontSize + 'px Mulish, system-ui, sans-serif';
+    ctx.font = '600 ' + fontSize + 'px "' + family + '", Mulish, system-ui, sans-serif';
     ctx.fillStyle = colorVal();
     ctx.globalAlpha = opacityVal();
     const tw = ctx.measureText(textVal()).width;
     const x = wx * w;
-    const y = wy * h + fontSize;
+    const y = wy * h + fontSize * 0.85;
     ctx.fillText(textVal(), x, y);
     ctx.globalAlpha = 1;
-    if (dragMode) {
-      ctx.strokeStyle = 'rgba(0,210,255,.85)';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4,3]);
-      ctx.strokeRect(x - 3, y - fontSize - 3, tw + 6, fontSize + 8);
-      ctx.setLineDash([]);
-    }
+    ctx.strokeStyle = 'rgba(0,210,255,.9)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(x - 3, y - fontSize - 2, tw + 6, fontSize + 8);
+    ctx.setLineDash([]);
   }
 
   function loadFile(file){
-    if (!file) return;
-    const okType = (file.type && file.type.startsWith('image/')) || /\.(png|jpe?g|webp|bmp)$/i.test(file.name||'');
-    if (!okType) {
-      tip('Для превью нужен PNG/JPG (не видео).');
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    const im = new Image();
-    im.onload = function(){
-      img = im;
-      draw();
-      URL.revokeObjectURL(url);
-    };
-    im.onerror = function(){ tip('Не удалось загрузить изображение'); URL.revokeObjectURL(url); };
-    im.src = url;
+    if (!file) return Promise.resolve(false);
+    return new Promise(function(resolve){
+      const url = URL.createObjectURL(file);
+      const im = new Image();
+      im.onload = function(){
+        img = im;
+        ensureFont(fontKey()).then(function(){ draw(); resolve(true); });
+        URL.revokeObjectURL(url);
+      };
+      im.onerror = function(){
+        tip('Не удалось открыть изображение');
+        URL.revokeObjectURL(url);
+        resolve(false);
+      };
+      im.src = url;
+    });
   }
 
   window.__wmLoadFromFiles = function(){
@@ -3641,23 +3694,16 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     if (ely) ely.value = wy.toFixed(4);
   }
 
-  function setDragMode(on){
-    dragMode = !!on;
-    canvas.style.cursor = dragMode ? 'grab' : 'default';
-    const btn = document.getElementById('btnWmManual');
-    if (btn) {
-      btn.textContent = dragMode ? 'Режим перетаскивания: ВКЛ (таскай текст)' : 'Перетащить watermark вручную';
-      btn.classList.toggle('ghost', !dragMode);
-    }
-    draw();
-  }
-
-  document.getElementById('btnWmManual')?.addEventListener('click', function(){
+  document.getElementById('btnWmManual')?.addEventListener('click', async function(){
     const f = firstImageFile();
-    if (!f) { alert('Сначала добавь PNG или JPG в «Файлы»'); return; }
-    loadFile(f);
-    setDragMode(true);
-    tip('Тяни watermark мышкой. Отпусти — позиция сохранится для Process.');
+    if (!f && !img) {
+      tip('Сначала добавь PNG или JPG в блок «Файлы» ниже.');
+      return;
+    }
+    if (f) await loadFile(f);
+    await ensureFont(fontKey());
+    draw();
+    tip('Таскай watermark мышкой по картинке. Позиция сохранится для «Обработать».');
   });
 
   document.getElementById('btnWmReset')?.addEventListener('click', function(){
@@ -3678,26 +3724,28 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     };
   }
   canvas.addEventListener('pointerdown', function(e){
-    if (!img || !dragMode) return;
+    if (!img) return;
+    e.preventDefault();
     dragging = true;
-    canvas.setPointerCapture(e.pointerId);
+    try { canvas.setPointerCapture(e.pointerId); } catch(err){}
     canvas.style.cursor = 'grabbing';
     const p = pointerPos(e);
     wx = Math.max(0, Math.min(0.98, p.x));
-    wy = Math.max(0, Math.min(0.95, p.y));
+    wy = Math.max(0, Math.min(0.92, p.y));
     draw();
   });
   canvas.addEventListener('pointermove', function(e){
     if (!dragging) return;
+    e.preventDefault();
     const p = pointerPos(e);
     wx = Math.max(0, Math.min(0.98, p.x));
-    wy = Math.max(0, Math.min(0.95, p.y));
+    wy = Math.max(0, Math.min(0.92, p.y));
     draw();
   });
-  function endDrag(e){
+  function endDrag(){
     if (!dragging) return;
     dragging = false;
-    canvas.style.cursor = dragMode ? 'grab' : 'default';
+    canvas.style.cursor = 'grab';
     savePos();
   }
   canvas.addEventListener('pointerup', endDrag);
@@ -3709,6 +3757,9 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     el.addEventListener('input', draw);
     el.addEventListener('change', draw);
   });
+  document.getElementById('wmFont')?.addEventListener('change', function(){
+    ensureFont(fontKey()).then(draw);
+  });
   document.getElementById('wmOpacity')?.addEventListener('input', function(){
     const v = parseInt(document.getElementById('wmOpacity').value,10);
     if (v > 45) tip('Прозрачность высокая — для незаметного watermark лучше 15–25%.');
@@ -3716,14 +3767,15 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
   document.getElementById('btnWmServerPreview')?.addEventListener('click', async function(){
     const f = firstImageFile();
-    if (!f) { alert('Добавь PNG/JPG'); return; }
+    if (!f) { tip('Добавь PNG/JPG в «Файлы»'); return; }
     const fd = new FormData();
     fd.append('file', f);
     fd.append('wm_text', textVal());
-    fd.append('wm_font', document.getElementById('wmFont')?.value || 'lap');
+    fd.append('wm_font', fontKey());
     fd.append('wm_opacity', document.getElementById('wmOpacity')?.value || '22');
     fd.append('wm_corner', document.getElementById('wmCorner')?.value || 'bl');
-    fd.append('wm_scale', String(scaleVal()));
+    let sc = scaleVal();
+    fd.append('wm_scale', String(sc));
     fd.append('wm_color', colorVal());
     fd.append('wm_x', document.getElementById('wmX')?.value || '');
     fd.append('wm_y', document.getElementById('wmY')?.value || '');
@@ -3733,7 +3785,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       const r = await fetch('/api/preview_wm', { method:'POST', body: fd, credentials:'include' });
       if (!r.ok) { tip('Ошибка превью'); return; }
       const sug = r.headers.get('X-WM-Suggestion');
-      if (sug) tip(sug); else tip('Серверное превью готово');
+      tip(sug || 'Серверное превью (точный шрифт с сервера)');
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
       const im = new Image();
@@ -3742,12 +3794,53 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     } catch (e) { tip(String(e)); }
   });
 
-  // Discord from auth modal
+  // Publish to gallery
+  document.getElementById('btnPublishGallery')?.addEventListener('click', async function(){
+    const f = firstImageFile();
+    if (!f) { alert('Нет изображения для публикации'); return; }
+    const ru = (localStorage.getItem('sm_lang') === 'ru');
+    const title = prompt(ru ? 'Название для галереи (необязательно):' : 'Gallery title (optional):', '') || '';
+    const fd = new FormData();
+    fd.append('file', f);
+    fd.append('mode', (window.state && state.mode) || 'workshop');
+    fd.append('size', document.getElementById('size')?.value || '750');
+    fd.append('wm_text', textVal());
+    fd.append('wm_font', fontKey());
+    fd.append('wm_opacity', document.getElementById('wmOpacity')?.value || '22');
+    fd.append('wm_enable', enabled() ? '1' : '0');
+    fd.append('wm_corner', document.getElementById('wmCorner')?.value || 'bl');
+    fd.append('wm_scale', String(scaleVal()));
+    fd.append('wm_color', colorVal());
+    fd.append('wm_x', document.getElementById('wmX')?.value || '');
+    fd.append('wm_y', document.getElementById('wmY')?.value || '');
+    fd.append('auto_contrast', document.getElementById('autoContrast')?.checked ? '1' : '0');
+    fd.append('title', title);
+    const btn = document.getElementById('btnPublishGallery');
+    if (btn) btn.disabled = true;
+    try {
+      const hdr = {};
+      try {
+        const s = localStorage.getItem('sm_session') || '';
+        if (s) hdr['X-Session-Token'] = s;
+      } catch(e){}
+      const r = await fetch('/api/gallery/publish', { method:'POST', body: fd, credentials:'include', headers: hdr });
+      const d = await r.json();
+      if (!r.ok || !d.ok) {
+        alert(d.msg || 'Publish failed');
+      } else {
+        alert(ru ? 'Отправлено на модерацию. После одобрения появится в /gallery' : 'Submitted for moderation.');
+      }
+    } catch (e) {
+      alert(String(e));
+    }
+    if (btn) btn.disabled = false;
+  });
+
   async function startDiscord(){
     try {
       const r = await fetch('/api/auth/discord/login');
       const d = await r.json();
-      if (!d.ok || !d.url) { alert(d.msg || 'Discord не настроен на сервере'); return; }
+      if (!d.ok || !d.url) { alert(d.msg || 'Discord не настроен'); return; }
       window.open(d.url, 'discord_oauth', 'width=520,height=720');
     } catch (e) { alert(String(e)); }
   }
@@ -3760,8 +3853,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     }
   });
 
-  // initial if files already present
-  setTimeout(function(){ window.__wmLoadFromFiles && window.__wmLoadFromFiles(); }, 500);
+  setTimeout(function(){ window.__wmLoadFromFiles && window.__wmLoadFromFiles(); }, 400);
 })();
 </script>
 
