@@ -494,6 +494,22 @@ input[type="range"]{
         </label>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="wmEnable" checked/> On</label>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="allModes"/> All modes</label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="autoContrast"/> Auto-contrast</label>
+      </div>
+      <div id="wmTip" style="display:none;margin-top:10px;font-size:12px;color:rgba(0,210,255,.9);padding:8px 12px;border-radius:10px;border:1px solid rgba(0,210,255,.25);background:rgba(0,210,255,.06)"></div>
+    </div>
+    <div class="card" id="wmPreviewCard">
+      <h2>Live watermark preview</h2>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Загрузи изображение ниже — перетащи watermark мышкой. Позиция сохранится при Process.</p>
+      <div id="wmCanvasWrap" style="position:relative;max-width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#111;min-height:120px;display:flex;align-items:center;justify-content:center">
+        <canvas id="wmCanvas" style="max-width:100%;display:block;cursor:crosshair"></canvas>
+        <div id="wmCanvasEmpty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center">Сначала добавь PNG/JPG в Files</div>
+      </div>
+      <input type="hidden" id="wmX" value=""/>
+      <input type="hidden" id="wmY" value=""/>
+      <div class="row" style="margin-top:12px">
+        <button type="button" class="btn ghost" id="btnWmReset">Сброс угла</button>
+        <button type="button" class="btn ghost" id="btnWmServerPreview">Серверное превью</button>
       </div>
     </div>
     <div class="card">
@@ -1204,6 +1220,11 @@ document.getElementById('btnRun').onclick = async () => {
   fd.append('wm_corner', (document.getElementById('wmCorner') || {}).value || 'bl');
   const sc = document.getElementById('wmScale');
   fd.append('wm_color', document.getElementById('wmColor')?.value || '#ffffff');
+  const _wx = document.getElementById('wmX')?.value;
+  const _wy = document.getElementById('wmY')?.value;
+  if (_wx) fd.append('wm_x', _wx);
+  if (_wy) fd.append('wm_y', _wy);
+  fd.append('auto_contrast', document.getElementById('autoContrast')?.checked ? '1' : '0');
   fd.append('gif_encoder', document.getElementById('gifEncoder')?.value || 'ffmpeg');
   fd.append('wm_scale', sc ? (Number(sc.value) / 100) : 1);
   fd.append('all_modes', (document.getElementById('allModes') || {}).checked ? '1' : '0');
@@ -1694,6 +1715,20 @@ document.getElementById('accSaveProfile')?.addEventListener('click', (e) => {
 });
 
 document.getElementById('accLogin')?.addEventListener('click', () => openAuthModal('login'));
+  document.getElementById('btnDiscordLogin')?.addEventListener('click', async () => {
+    try {
+      const r = await fetch('/api/auth/discord/login');
+      const d = await r.json();
+      if (!d.ok || !d.url) { alert(d.msg || 'Discord not configured'); return; }
+      window.open(d.url, 'discord_oauth', 'width=520,height=720');
+    } catch (e) { alert(String(e)); }
+  });
+  window.addEventListener('message', (ev) => {
+    if (ev.data && ev.data.type === 'discord_login' && ev.data.token) {
+      try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
+      location.reload();
+    }
+  });
 document.getElementById('accRegister')?.addEventListener('click', () => openAuthModal('register'));
 
 async function init(){
@@ -3490,6 +3525,166 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   setTimeout(bindDaFiles, 1500);
 
   }, true);
+})();
+</script>
+
+
+<script>
+/* ===== Live watermark preview (drag) ===== */
+(function(){
+  const canvas = document.getElementById('wmCanvas');
+  const empty = document.getElementById('wmCanvasEmpty');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let img = null;
+  let wx = 0.04, wy = 0.92; // relative top-left of text
+  let dragging = false;
+  let textW = 40, textH = 20;
+
+  function tip(msg){
+    const el = document.getElementById('wmTip');
+    if (!el) return;
+    if (!msg){ el.style.display='none'; el.textContent=''; return; }
+    el.style.display='block'; el.textContent = msg;
+  }
+
+  function opacityVal(){ return (parseInt(document.getElementById('wmOpacity')?.value||'22',10)||22)/100; }
+  function scaleVal(){ return (parseInt(document.getElementById('wmScale')?.value||'100',10)||100)/100; }
+  function colorVal(){ return document.getElementById('wmColor')?.value || '#ffffff'; }
+  function textVal(){ return document.getElementById('wmText')?.value || ''; }
+  function enabled(){ return !!document.getElementById('wmEnable')?.checked; }
+
+  function draw(){
+    if (!img) return;
+    const maxW = Math.min(900, canvas.parentElement.clientWidth || 600);
+    const ratio = img.width / img.height;
+    let w = maxW, h = Math.round(w / ratio);
+    if (h > 480){ h = 480; w = Math.round(h * ratio); }
+    canvas.width = w; canvas.height = h;
+    canvas.style.display = 'block';
+    if (empty) empty.style.display = 'none';
+    ctx.clearRect(0,0,w,h);
+    ctx.drawImage(img, 0, 0, w, h);
+    if (!enabled() || !textVal()) return;
+    const fontSize = Math.max(12, Math.round((h / 28) * scaleVal()));
+    ctx.font = `600 ${fontSize}px Mulish, system-ui, sans-serif`;
+    ctx.fillStyle = colorVal();
+    ctx.globalAlpha = opacityVal();
+    const metrics = ctx.measureText(textVal());
+    textW = metrics.width;
+    textH = fontSize;
+    const x = wx * w, y = wy * h + fontSize;
+    ctx.fillText(textVal(), x, y);
+    ctx.globalAlpha = 1;
+    // handle
+    ctx.strokeStyle = 'rgba(0,210,255,.8)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 2, y - fontSize - 2, textW + 4, fontSize + 6);
+  }
+
+  function loadFile(file){
+    if (!file || !file.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => { img = im; draw(); URL.revokeObjectURL(url); };
+    im.src = url;
+  }
+
+  // hook file list / drop
+  const fi = document.getElementById('fileInput');
+  fi?.addEventListener('change', () => {
+    const f = fi.files && fi.files[0];
+    if (f) loadFile(f);
+  });
+  // when state.files updated - poll lightly
+  setInterval(() => {
+    try {
+      if (window.state && state.files && state.files[0] && state.files[0] !== loadFile._last) {
+        loadFile._last = state.files[0];
+        loadFile(state.files[0]);
+      }
+    } catch(e){}
+  }, 800);
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (!img) return;
+    dragging = true;
+    canvas.setPointerCapture(e.pointerId);
+    move(e);
+  });
+  canvas.addEventListener('pointermove', (e) => { if (dragging) move(e); });
+  canvas.addEventListener('pointerup', () => { dragging = false; savePos(); });
+  function move(e){
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width;
+    const y = (e.clientY - r.top) / r.height;
+    wx = Math.max(0, Math.min(0.98, x));
+    wy = Math.max(0, Math.min(0.95, y));
+    draw();
+  }
+  function savePos(){
+    const elx = document.getElementById('wmX');
+    const ely = document.getElementById('wmY');
+    if (elx) elx.value = wx.toFixed(4);
+    if (ely) ely.value = wy.toFixed(4);
+    // disable corner when custom pos
+    const corner = document.getElementById('wmCorner');
+    if (corner) corner.dataset.custom = '1';
+  }
+  document.getElementById('btnWmReset')?.addEventListener('click', () => {
+    wx = 0.04; wy = 0.88;
+    document.getElementById('wmX').value = '';
+    document.getElementById('wmY').value = '';
+    draw();
+  });
+  ['wmText','wmOpacity','wmScale','wmColor','wmEnable','wmFont'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', draw);
+    document.getElementById(id)?.addEventListener('change', draw);
+  });
+
+  // opacity tip
+  document.getElementById('wmOpacity')?.addEventListener('input', () => {
+    const v = parseInt(document.getElementById('wmOpacity').value,10);
+    if (v > 45) tip('Прозрачность высокая — для незаметного watermark лучше 15–25%.');
+    else tip('');
+  });
+
+  document.getElementById('btnWmServerPreview')?.addEventListener('click', async () => {
+    const f = (window.state && state.files && state.files[0]) || (fi?.files && fi.files[0]);
+    if (!f) { alert('Добавь файл'); return; }
+    const fd = new FormData();
+    fd.append('file', f);
+    fd.append('wm_text', textVal());
+    fd.append('wm_font', document.getElementById('wmFont')?.value || 'lap');
+    fd.append('wm_opacity', document.getElementById('wmOpacity')?.value || '22');
+    fd.append('wm_corner', document.getElementById('wmCorner')?.value || 'bl');
+    fd.append('wm_scale', String(scaleVal()));
+    fd.append('wm_color', colorVal());
+    fd.append('wm_x', document.getElementById('wmX')?.value || '');
+    fd.append('wm_y', document.getElementById('wmY')?.value || '');
+    fd.append('auto_contrast', document.getElementById('autoContrast')?.checked ? '1' : '0');
+    const r = await fetch('/api/preview_wm', { method:'POST', body: fd });
+    if (!r.ok) { alert('Preview failed'); return; }
+    const sug = r.headers.get('X-WM-Suggestion');
+    if (sug) tip(sug);
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const im = new Image();
+    im.onload = () => { img = im; draw(); };
+    im.src = url;
+  });
+
+  // inject wm_x/y + auto_contrast into process FormData
+  const _origFetch = window.fetch;
+  // patch process builder if present - monkey by wrapping FormData append chain in run handler is hard;
+  // instead override FormData.prototype temporarily is bad.
+  // Hook btnRun click capture
+  document.getElementById('btnRun')?.addEventListener('click', () => {
+    // store on window for process code to read - patch process fd building
+  }, true);
+
+  // Patch: when process builds FormData, we intercept after - safer to patch known function
+  // Look for fd.append('wm_color'...
 })();
 </script>
 

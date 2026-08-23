@@ -627,6 +627,9 @@ async def api_process(
     wm_corner: str = Form("bl"),
     wm_scale: float = Form(1.0),
     wm_color: str = Form("#ffffff"),
+    wm_x: str = Form(""),
+    wm_y: str = Form(""),
+    auto_contrast: str = Form("0"),
     gif_encoder: str = Form("ffmpeg"),
     all_modes: str = Form("0"),
     files: list[UploadFile] = File(...),
@@ -659,6 +662,14 @@ async def api_process(
         scale = max(0.4, min(2.5, float(wm_scale)))
     except (TypeError, ValueError):
         scale = 1.0
+    wm_x_f = wm_y_f = None
+    try:
+        if str(wm_x).strip() != "" and str(wm_y).strip() != "":
+            wm_x_f = max(0.0, min(1.0, float(wm_x)))
+            wm_y_f = max(0.0, min(1.0, float(wm_y)))
+    except (TypeError, ValueError):
+        wm_x_f = wm_y_f = None
+    do_ac = str(auto_contrast).lower() in ("1", "true", "yes", "on")
     try:
         size_i = int(size)
     except (TypeError, ValueError):
@@ -704,18 +715,23 @@ async def api_process(
                         max_side = 4096
                         if max(img.size) > max_side:
                             img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+                        if do_ac:
+                            from PIL import ImageOps
+                            rgb = img.convert("RGB")
+                            rgb = ImageOps.autocontrast(rgb, cutoff=1)
+                            img = rgb
                         if mode == "workshop" and img.size[0] != size_i:
                             nh = max(1, int(img.size[1] * (size_i / max(1, img.size[0]))))
                             img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
                         if mode == "workshop":
                             parts = proc.process_image_workshop(
-                                img, text, wm_font, opacity, color, corner, scale
+                                img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
                             )
                         elif mode == "featured":
                             parts = proc.process_image_featured(img)
                         else:
                             parts = proc.process_image_split(
-                                img, text, wm_font, opacity, color, corner, scale
+                                img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
                             )
                         for pname, data in parts.items():
                             zf.writestr(f"{folder}/{pname}", data)
@@ -2101,6 +2117,259 @@ async def da_upload(request: Request):
         except Exception as e:
             errors.append(f"{name}: {type(e).__name__}: {e}")
     return {"ok": ok_n > 0, "uploaded": ok_n, "total": len(files), "errors": errors}
+
+
+
+
+
+# ====================== Watermark live preview ======================
+
+@app.post("/api/preview_wm")
+async def preview_wm(
+    request: Request,
+    wm_text: str = Form("n1t1337"),
+    wm_font: str = Form("lap"),
+    wm_opacity: int = Form(22),
+    wm_corner: str = Form("bl"),
+    wm_scale: float = Form(1.0),
+    wm_color: str = Form("#ffffff"),
+    wm_x: str = Form(""),
+    wm_y: str = Form(""),
+    auto_contrast: str = Form("0"),
+    file: UploadFile = File(...),
+):
+    """PNG preview of watermark (supports drag position wx/wy 0..1)."""
+    from PIL import ImageOps
+    raw = await file.read()
+    if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+        return JSONResponse({"ok": False, "msg": "File too large"}, status_code=400)
+    try:
+        img = Image.open(io.BytesIO(raw)).convert("RGBA")
+        if max(img.size) > 1200:
+            img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
+        suggestion = None
+        if str(auto_contrast).lower() in ("1", "true", "yes", "on"):
+            rgb = ImageOps.autocontrast(img.convert("RGB"), cutoff=1)
+            img = rgb.convert("RGBA")
+            suggestion = "Auto-contrast applied — details are clearer under the watermark."
+        opacity = max(0.0, min(1.0, float(wm_opacity) / 100.0))
+        corner = (wm_corner or "bl").strip().lower()
+        if corner not in ("tl", "tr", "bl", "br"):
+            corner = "bl"
+        try:
+            scale = max(0.4, min(2.5, float(wm_scale)))
+        except Exception:
+            scale = 1.0
+        color = (wm_color or "#ffffff").strip() or "#ffffff"
+        wx = wy = None
+        try:
+            if str(wm_x).strip() != "" and str(wm_y).strip() != "":
+                wx = max(0.0, min(1.0, float(wm_x)))
+                wy = max(0.0, min(1.0, float(wm_y)))
+        except Exception:
+            pass
+        out = proc.apply_watermark(
+            img, wm_text, wm_font, opacity, corner=corner, scale=scale, color=color, wx=wx, wy=wy
+        )
+        buf = io.BytesIO()
+        out.save(buf, format="PNG")
+        if opacity > 0.45 and not suggestion:
+            suggestion = "Opacity is high — try 15–25% so the watermark is less noticeable."
+        headers = {}
+        if suggestion:
+            headers["X-WM-Suggestion"] = suggestion.encode("latin-1", "replace").decode("latin-1")
+        from fastapi.responses import Response
+        return Response(content=buf.getvalue(), media_type="image/png", headers=headers)
+    except Exception as e:
+        return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
+
+
+# ====================== Public gallery (test) ======================
+
+@app.get("/api/gallery/list")
+def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0):
+    items = auth_db.gallery_list(status=status, limit=min(int(limit), 100), offset=max(0, int(offset)))
+    out = []
+    for it in items:
+        author = it.get("display_name") or it.get("discord_username") or (it.get("email") or "anon")
+        if isinstance(author, str) and "@" in author:
+            author = author.split("@")[0]
+        out.append({
+            "id": it["id"],
+            "title": it.get("title") or "",
+            "mode": it.get("mode") or "",
+            "author": str(author)[:24],
+            "url": f"/api/gallery/image/{it['id']}",
+            "created_at": it.get("created_at"),
+        })
+    return {"ok": True, "items": out}
+
+
+@app.get("/api/gallery/image/{item_id}")
+def gallery_image(item_id: int):
+    item = auth_db.gallery_get(item_id)
+    if not item or item.get("status") != "approved":
+        return JSONResponse({"ok": False}, status_code=404)
+    path = Path(item["image_path"])
+    if not path.is_file():
+        return JSONResponse({"ok": False}, status_code=404)
+    return FileResponse(path)
+
+
+@app.post("/api/gallery/submit")
+async def gallery_submit(
+    request: Request,
+    title: str = Form(""),
+    mode: str = Form("workshop"),
+    file: UploadFile = File(...),
+):
+    user = _auth_user(request)
+    raw = await file.read()
+    if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+        return JSONResponse({"ok": False, "msg": "Too large"}, status_code=400)
+    ext = Path(file.filename or "x.png").suffix.lower() or ".png"
+    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+        return JSONResponse({"ok": False, "msg": "Images only"}, status_code=400)
+    gdir = Path(DATA) / "gallery"
+    gdir.mkdir(parents=True, exist_ok=True)
+    uid = int(user["id"]) if user else 0
+    sub = gdir / f"u{uid}"
+    sub.mkdir(parents=True, exist_ok=True)
+    name = f"{int(time.time())}_{secrets.token_hex(4)}{ext}"
+    path = sub / name
+    path.write_bytes(raw)
+    thumb = None
+    try:
+        im = Image.open(io.BytesIO(raw)).convert("RGBA")
+        im.thumbnail((400, 400))
+        tp = path.with_suffix(".thumb.png")
+        im.save(tp, "PNG")
+        thumb = str(tp)
+    except Exception:
+        pass
+    gid = auth_db.gallery_add(uid if user else None, title, mode, str(path), thumb)
+    return {"ok": True, "id": gid, "msg": "Submitted for moderation"}
+
+
+@app.post("/api/gallery/mod/{item_id}")
+async def gallery_mod(item_id: int, request: Request):
+    secret = (os.environ.get("ADMIN_SECRET") or "").strip()
+    got = (request.headers.get("x-admin-secret") or "").strip()
+    if not secret or got != secret:
+        return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
+    body = await request.json()
+    status = str(body.get("status") or "")
+    if not auth_db.gallery_set_status(item_id, status):
+        return JSONResponse({"ok": False, "msg": "Bad status"}, status_code=400)
+    return {"ok": True, "id": item_id, "status": status}
+
+
+@app.get("/api/gallery/pending")
+async def gallery_pending(request: Request):
+    secret = (os.environ.get("ADMIN_SECRET") or "").strip()
+    got = (request.headers.get("x-admin-secret") or "").strip()
+    if not secret or got != secret:
+        return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
+    return {"ok": True, "items": auth_db.gallery_list(status="pending", limit=100)}
+
+
+@app.get("/gallery", response_class=HTMLResponse)
+def gallery_page():
+    path = STATIC / "gallery.html"
+    if path.is_file():
+        return HTMLResponse(path.read_text(encoding="utf-8"))
+    return HTMLResponse("<h1>Gallery</h1><p>Add static/gallery.html</p>")
+
+
+# ====================== Discord OAuth login ======================
+
+@app.get("/api/auth/discord/login")
+def discord_login_start(request: Request):
+    cid = (os.environ.get("DISCORD_CLIENT_ID") or "").strip()
+    secret = (os.environ.get("DISCORD_CLIENT_SECRET") or "").strip()
+    redirect = (os.environ.get("DISCORD_REDIRECT_URI") or "").strip()
+    if not redirect:
+        redirect = (os.environ.get("APP_URL") or "").rstrip("/") + "/api/auth/discord/callback"
+    if not cid or not secret:
+        return JSONResponse(
+            {"ok": False, "msg": "DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET not set on server"},
+            status_code=503,
+        )
+    from urllib.parse import urlencode
+    state = secrets.token_hex(16)
+    # store state briefly in memory
+    if not hasattr(app.state, "discord_pending"):
+        app.state.discord_pending = {}
+    app.state.discord_pending[state] = time.time()
+    q = urlencode({
+        "client_id": cid,
+        "redirect_uri": redirect,
+        "response_type": "code",
+        "scope": "identify email",
+        "state": state,
+        "prompt": "consent",
+    })
+    return {"ok": True, "url": f"https://discord.com/api/oauth2/authorize?{q}"}
+
+
+@app.get("/api/auth/discord/callback")
+async def discord_callback(request: Request, code: str = "", state: str = ""):
+    pending = getattr(app.state, "discord_pending", {})
+    if state not in pending:
+        return HTMLResponse("<h3>Discord auth failed (bad state)</h3>", status_code=400)
+    pending.pop(state, None)
+    cid = (os.environ.get("DISCORD_CLIENT_ID") or "").strip()
+    secret = (os.environ.get("DISCORD_CLIENT_SECRET") or "").strip()
+    redirect = (os.environ.get("DISCORD_REDIRECT_URI") or "").strip()
+    if not redirect:
+        redirect = (os.environ.get("APP_URL") or "").rstrip("/") + "/api/auth/discord/callback"
+    try:
+        import requests as rq
+        tok = rq.post(
+            "https://discord.com/api/oauth2/token",
+            data={
+                "client_id": cid,
+                "client_secret": secret,
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30,
+        )
+        if tok.status_code != 200:
+            return HTMLResponse(f"<h3>Token error</h3><pre>{tok.text[:400]}</pre>", status_code=400)
+        access = tok.json().get("access_token")
+        me = rq.get(
+            "https://discord.com/api/users/@me",
+            headers={"Authorization": f"Bearer {access}"},
+            timeout=20,
+        )
+        if me.status_code != 200:
+            return HTMLResponse(f"<h3>User error</h3><pre>{me.text[:400]}</pre>", status_code=400)
+        u = me.json()
+        did = str(u.get("id") or "")
+        uname = u.get("global_name") or u.get("username") or "discord"
+        email = u.get("email")
+        ok, msg, token = auth_db.register_or_login_discord(did, uname, email)
+        if not ok or not token:
+            return HTMLResponse(f"<h3>{msg}</h3>", status_code=400)
+        app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
+        resp = HTMLResponse(
+            f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>OK</title></head>
+<body style="font-family:system-ui;background:#0b0b12;color:#eee;display:grid;place-items:center;min-height:100vh;margin:0">
+<div style="text-align:center"><h1>Discord connected</h1>
+<p>You can close this window.</p>
+<a href="{app_url}/app" style="color:#7b5cff">Back to app</a></div>
+<script>
+try {{ localStorage.setItem('sm_session', {token!r}); }} catch(e) {{}}
+try {{ if (window.opener) window.opener.postMessage({{type:'discord_login', token:{token!r}}}, '*'); }} catch(e) {{}}
+setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
+</script></body></html>"""
+        )
+        return _attach_session_cookie(resp, token, request)
+    except Exception as e:
+        return HTMLResponse(f"<h3>Error</h3><pre>{e}</pre>", status_code=500)
 
 
 

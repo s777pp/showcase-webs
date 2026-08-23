@@ -80,6 +80,8 @@ def _conn() -> sqlite3.Connection:
         ("display_name", "TEXT"),
         ("avatar_path", "TEXT"),
         ("email_verified", "INTEGER DEFAULT 0"),
+        ("discord_id", "TEXT"),
+        ("discord_username", "TEXT"),
     ):
         if col not in cols:
             try:
@@ -376,3 +378,128 @@ def wipe_all_users() -> int:
     c.commit()
     c.close()
     return int(n or 0)
+
+
+# ─── Gallery ────────────────────────────────────────────────────────────────
+
+def _ensure_gallery(c: sqlite3.Connection) -> None:
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gallery (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            title TEXT,
+            mode TEXT,
+            image_path TEXT NOT NULL,
+            thumb_path TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at REAL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
+    c.commit()
+
+
+def gallery_add(user_id: int | None, title: str, mode: str, image_path: str, thumb_path: str | None = None) -> int:
+    c = _conn()
+    _ensure_gallery(c)
+    cur = c.execute(
+        "INSERT INTO gallery(user_id, title, mode, image_path, thumb_path, status, created_at) VALUES (?,?,?,?,?,'pending',?)",
+        (user_id, (title or "")[:80], mode, image_path, thumb_path, time.time()),
+    )
+    c.commit()
+    gid = cur.lastrowid
+    c.close()
+    return int(gid or 0)
+
+
+def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0) -> list[dict]:
+    c = _conn()
+    _ensure_gallery(c)
+    rows = c.execute(
+        """
+        SELECT g.id, g.title, g.mode, g.image_path, g.thumb_path, g.status, g.created_at,
+               u.display_name, u.email, u.discord_username
+        FROM gallery g LEFT JOIN users u ON u.id = g.user_id
+        WHERE g.status=?
+        ORDER BY g.created_at DESC
+        LIMIT ? OFFSET ?
+        """,
+        (status, limit, offset),
+    ).fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
+
+def gallery_set_status(item_id: int, status: str) -> bool:
+    if status not in ("pending", "approved", "rejected"):
+        return False
+    c = _conn()
+    _ensure_gallery(c)
+    c.execute("UPDATE gallery SET status=? WHERE id=?", (status, item_id))
+    c.commit()
+    n = c.total_changes
+    c.close()
+    return n > 0
+
+
+def gallery_get(item_id: int) -> dict | None:
+    c = _conn()
+    _ensure_gallery(c)
+    row = c.execute("SELECT * FROM gallery WHERE id=?", (item_id,)).fetchone()
+    c.close()
+    return dict(row) if row else None
+
+
+# ─── Discord ────────────────────────────────────────────────────────────────
+
+def user_by_discord(discord_id: str) -> dict | None:
+    if not discord_id:
+        return None
+    c = _conn()
+    row = c.execute(
+        "SELECT id, email, is_pro, pro_code, pro_until, discord_id, discord_username, display_name, avatar_path FROM users WHERE discord_id=?",
+        (str(discord_id),),
+    ).fetchone()
+    c.close()
+    if not row:
+        return None
+    return dict(row)
+
+
+def register_or_login_discord(discord_id: str, username: str, email: str | None = None) -> tuple[bool, str, str | None]:
+    """Return (ok, msg, session_token). Creates account if needed."""
+    discord_id = str(discord_id)
+    username = (username or "discord")[:40]
+    existing = user_by_discord(discord_id)
+    c = _conn()
+    if existing:
+        uid = int(existing["id"])
+        c.execute("UPDATE users SET discord_username=? WHERE id=?", (username, uid))
+        c.commit()
+    else:
+        # synthetic email if none
+        em = (email or f"discord_{discord_id}@users.local").strip().lower()
+        # unique email
+        try:
+            c.execute(
+                "INSERT INTO users(email, password_hash, is_pro, email_verified, discord_id, discord_username, display_name, created_at) VALUES (?,?,0,1,?,?,?,?)",
+                (em, _hash_pw(secrets.token_hex(16)), discord_id, username, username, time.time()),
+            )
+            c.commit()
+            uid = c.execute("SELECT id FROM users WHERE discord_id=?", (discord_id,)).fetchone()["id"]
+        except sqlite3.IntegrityError:
+            # email taken — just link if possible
+            row = c.execute("SELECT id FROM users WHERE email=?", (em,)).fetchone()
+            if not row:
+                c.close()
+                return False, "Could not create Discord account", None
+            uid = int(row["id"])
+            c.execute("UPDATE users SET discord_id=?, discord_username=? WHERE id=?", (discord_id, username, uid))
+            c.commit()
+    token = secrets.token_hex(24)
+    c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (token, uid, time.time()))
+    c.commit()
+    c.close()
+    return True, "OK", token

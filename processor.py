@@ -211,6 +211,8 @@ def process_image_workshop(
     wm_color: str = "#ffffff",
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
+    wm_x: float | None = None,
+    wm_y: float | None = None,
 ) -> dict[str, bytes]:
     img = img.convert("RGBA")
     w, h = img.size
@@ -236,7 +238,7 @@ def process_image_workshop(
         x += part.width
         if i < 4:
             x += bar
-    full = apply_watermark(full, wm_text, wm_font, wm_opacity, corner=wm_corner, scale=wm_scale, color=wm_color)
+    full = apply_watermark(full, wm_text, wm_font, wm_opacity, corner=wm_corner, scale=wm_scale, color=wm_color, wx=wm_x, wy=wm_y)
     out["full_with_bars.png"] = _png_bytes(full)
     return out
 
@@ -260,6 +262,8 @@ def process_image_split(
     wm_color: str = "#ffffff",
     wm_corner: str = "bl",
     wm_scale: float = 1.0,
+    wm_x: float | None = None,
+    wm_y: float | None = None,
 ) -> dict[str, bytes]:
     img = img.convert("RGBA")
     w, h = img.size
@@ -277,7 +281,7 @@ def process_image_split(
     full = Image.new("RGBA", (center.width + bar + side.width, nh), (0, 0, 0, 255))
     full.paste(center, (0, 0))
     full.paste(side, (center.width + bar, 0))
-    full = apply_watermark(full, wm_text, wm_font, wm_opacity, corner=wm_corner, scale=wm_scale, color=wm_color)
+    full = apply_watermark(full, wm_text, wm_font, wm_opacity, corner=wm_corner, scale=wm_scale, color=wm_color, wx=wm_x, wy=wm_y)
     out["full_with_bars.png"] = _png_bytes(full)
     return out
 
