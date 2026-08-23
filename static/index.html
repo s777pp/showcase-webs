@@ -621,6 +621,8 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 const I18N = {
   en: {
     nav_feat: "Features",
+    nav_gallery: "Gallery",
+    nav_discord: "Discord",
     nav_price: "Pricing",
     nav_tools: "Tools",
     nav_reg: "Sign up",
@@ -666,6 +668,8 @@ const I18N = {
   },
   ru: {
     nav_feat: "Возможности",
+    nav_gallery: "Галерея",
+    nav_discord: "Discord",
     nav_price: "Цены",
     nav_tools: "Инструменты",
     nav_reg: "Регистрация",
@@ -840,12 +844,16 @@ async function refreshHomeUser() {
       pill.title = j.email || label;
       pill.classList.add("visible");
       if (reg) reg.style.display = "none";
+      const disc = document.getElementById("navDiscord");
+      if (disc) disc.style.display = "none";
       return;
     }
   } catch (e) {}
   pill.classList.remove("visible");
   pill.textContent = "";
   if (reg) reg.style.display = "";
+  const disc = document.getElementById("navDiscord");
+  if (disc) disc.style.display = "";
 }
 
 document.addEventListener("DOMContentLoaded", function () {
