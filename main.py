@@ -2423,13 +2423,25 @@ def gallery_page():
 
 # ====================== Discord OAuth login ======================
 
+def _discord_redirect_uri() -> str:
+    """Build redirect URI; collapse accidental double slashes in path."""
+    redirect = (os.environ.get("DISCORD_REDIRECT_URI") or "").strip()
+    if not redirect:
+        base = (os.environ.get("APP_URL") or "").strip().rstrip("/")
+        redirect = base + "/api/auth/discord/callback"
+    if "://" in redirect:
+        scheme, rest = redirect.split("://", 1)
+        while "//" in rest:
+            rest = rest.replace("//", "/")
+        redirect = scheme + "://" + rest
+    return redirect
+
+
 @app.get("/api/auth/discord/login")
 def discord_login_start(request: Request):
     cid = (os.environ.get("DISCORD_CLIENT_ID") or "").strip()
     secret = (os.environ.get("DISCORD_CLIENT_SECRET") or "").strip()
-    redirect = (os.environ.get("DISCORD_REDIRECT_URI") or "").strip()
-    if not redirect:
-        redirect = (os.environ.get("APP_URL") or "").rstrip("/") + "/api/auth/discord/callback"
+    redirect = _discord_redirect_uri()
     if not cid or not secret:
         return JSONResponse(
             {"ok": False, "msg": "DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET not set on server"},
@@ -2460,9 +2472,7 @@ async def discord_callback(request: Request, code: str = "", state: str = ""):
     pending.pop(state, None)
     cid = (os.environ.get("DISCORD_CLIENT_ID") or "").strip()
     secret = (os.environ.get("DISCORD_CLIENT_SECRET") or "").strip()
-    redirect = (os.environ.get("DISCORD_REDIRECT_URI") or "").strip()
-    if not redirect:
-        redirect = (os.environ.get("APP_URL") or "").rstrip("/") + "/api/auth/discord/callback"
+    redirect = _discord_redirect_uri()
     try:
         import requests as rq
         tok = rq.post(
