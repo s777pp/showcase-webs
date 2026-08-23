@@ -868,6 +868,7 @@ const state = {
   session: localStorage.getItem('sm_session') || '',
   authMode: 'login'
 };
+window.state = state;
 const titles = {
   process:['Process','Workshop / Featured / Split cuts, watermark and Steam ZIP'],
   download:['Download','Sources from YouTube, TikTok, X, Reddit and Pinterest'],
@@ -3611,15 +3612,16 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
   function firstImageFile(){
     try {
-      if (window.state && Array.isArray(state.files)) {
-        for (let i = 0; i < state.files.length; i++) {
-          const f = state.files[i];
-          if (!f) continue;
-          const name = (f.name || '').toLowerCase();
-          const type = (f.type || '').toLowerCase();
-          if (type.startsWith('image/') && type.indexOf('gif') < 0) return f;
-          if (/\.(png|jpe?g|webp|bmp)$/i.test(name)) return f;
-        }
+      const st = window.state;
+      const list = (st && Array.isArray(st.files)) ? st.files : [];
+      for (let i = 0; i < list.length; i++) {
+        const f = list[i];
+        if (!f) continue;
+        const name = (f.name || '').toLowerCase();
+        const type = (f.type || '').toLowerCase();
+        if (type.indexOf('gif') >= 0) continue;
+        if (type.startsWith('image/')) return f;
+        if (/\.(png|jpe?g|webp|bmp)$/i.test(name)) return f;
       }
     } catch(e){}
     return null;
@@ -3697,7 +3699,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   document.getElementById('btnWmManual')?.addEventListener('click', async function(){
     const f = firstImageFile();
     if (!f && !img) {
-      tip('Сначала добавь PNG или JPG в блок «Файлы» ниже.');
+      tip('Файл не найден в списке. Удали и добавь PNG/JPG ещё раз.');
       return;
     }
     if (f) await loadFile(f);
@@ -3802,7 +3804,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const title = prompt(ru ? 'Название для галереи (необязательно):' : 'Gallery title (optional):', '') || '';
     const fd = new FormData();
     fd.append('file', f);
-    fd.append('mode', (window.state && state.mode) || 'workshop');
+    fd.append('mode', (window.state && window.state.mode) || 'workshop');
     fd.append('size', document.getElementById('size')?.value || '750');
     fd.append('wm_text', textVal());
     fd.append('wm_font', fontKey());
