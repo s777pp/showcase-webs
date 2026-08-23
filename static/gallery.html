@@ -6,43 +6,126 @@
 <title>Gallery · Showcase Maker</title>
 <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700&display=swap" rel="stylesheet"/>
 <style>
-:root{--bg:#0c0c0c;--border:rgba(255,255,255,.1);--muted:rgba(255,255,255,.55)}
+:root{--bg:#0c0c0c;--border:rgba(255,255,255,.1);--muted:rgba(255,255,255,.55);--ok:#28c840;--err:#ff5f57}
 *{box-sizing:border-box}body{margin:0;font-family:Mulish,system-ui,sans-serif;background:var(--bg);color:#fff;min-height:100vh}
 .wrap{max-width:1100px;margin:0 auto;padding:28px 20px}
 h1{font-size:28px;font-weight:700;letter-spacing:-.02em;margin:16px 0 8px}
-.sub{color:var(--muted);font-size:14px;margin-bottom:28px}
+.sub{color:var(--muted);font-size:14px;margin-bottom:20px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px}
-.card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.03);transition:.2s;color:inherit;text-decoration:none}
-.card:hover{border-color:rgba(0,210,255,.4);transform:translateY(-2px)}
+.card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.03)}
 .card img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;background:#111}
 .meta{padding:12px 14px;font-size:13px}
 .meta b{display:block;margin-bottom:4px}
 .meta span{color:var(--muted);font-size:12px}
+.actions{display:flex;gap:8px;padding:0 14px 14px}
+.btn{border:none;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer}
+.btn.ok{background:var(--ok);color:#000}
+.btn.err{background:var(--err);color:#fff}
+.btn.ghost{background:rgba(255,255,255,.08);color:#fff;border:1px solid var(--border)}
 a.back{color:var(--muted);font-size:13px;text-decoration:none}
 a.back:hover{color:#fff}
 .empty{color:var(--muted);padding:40px 0;text-align:center}
+.tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.tabs button{border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--muted);padding:8px 14px;cursor:pointer;font-size:13px}
+.tabs button.active{background:rgba(255,255,255,.1);color:#fff}
+.admin-badge{font-size:11px;color:#00d2ff;margin-left:8px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <a class="back" href="/app">← Tools</a>
-  <h1>Публичная галерея</h1>
-  <p class="sub">Лучшие витрины (после модерации). Тестовый раздел.</p>
+  <a class="back" href="/">← Home</a> · <a class="back" href="/app">Tools</a>
+  <h1>Публичная галерея <span class="admin-badge" id="adminBadge" style="display:none">admin</span></h1>
+  <p class="sub">Одобренные витрины пользователей. Загрузка — через Tools (или API submit).</p>
+  <div class="tabs" id="tabs">
+    <button type="button" class="active" data-tab="approved">Одобренные</button>
+  </div>
   <div class="grid" id="grid"><div class="empty">Загрузка…</div></div>
 </div>
 <script>
-fetch('/api/gallery/list').then(r=>r.json()).then(d=>{
-  const g=document.getElementById('grid');
-  const items=d.items||[];
-  if(!items.length){g.innerHTML='<div class="empty">Пока пусто.</div>';return;}
-  g.innerHTML='';
-  items.forEach(it=>{
-    const el=document.createElement('a');
-    el.className='card'; el.href=it.url; el.target='_blank';
-    el.innerHTML=`<img src="${it.url}" alt="" loading="lazy"/><div class="meta"><b>${it.title||it.mode||'Showcase'}</b><span>${it.author||''}</span></div>`;
-    g.appendChild(el);
-  });
-}).catch(()=>{document.getElementById('grid').innerHTML='<div class="empty">Ошибка загрузки</div>';});
+const headers = () => {
+  const h = {};
+  const s = localStorage.getItem('sm_session') || '';
+  if (s) h['X-Session-Token'] = s;
+  return h;
+};
+let isAdmin = false;
+
+async function checkAdmin(){
+  try {
+    const r = await fetch('/api/gallery/am_admin', { credentials:'include', headers: headers() });
+    const d = await r.json();
+    isAdmin = !!d.admin;
+    if (isAdmin) {
+      document.getElementById('adminBadge').style.display = 'inline';
+      const tabs = document.getElementById('tabs');
+      if (!document.querySelector('[data-tab="pending"]')) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.dataset.tab = 'pending'; b.textContent = 'На модерации';
+        tabs.appendChild(b);
+      }
+    }
+  } catch(e){}
+}
+
+async function load(tab){
+  const g = document.getElementById('grid');
+  g.innerHTML = '<div class="empty">Загрузка…</div>';
+  const url = tab === 'pending' ? '/api/gallery/pending' : '/api/gallery/list?status=approved';
+  try {
+    const r = await fetch(url, { credentials:'include', headers: headers() });
+    const d = await r.json();
+    if (!r.ok) { g.innerHTML = '<div class="empty">'+(d.msg||'Нет доступа')+'</div>'; return; }
+    const items = d.items || [];
+    if (!items.length) { g.innerHTML = '<div class="empty">Пока пусто</div>'; return; }
+    g.innerHTML = '';
+    items.forEach(it => {
+      const id = it.id;
+      const title = it.title || it.mode || 'Showcase';
+      const author = it.author || it.display_name || it.email || '';
+      const imgUrl = it.url || ('/api/gallery/image/' + id);
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.innerHTML = `<a href="${imgUrl}" target="_blank"><img src="${imgUrl}" alt="" loading="lazy"/></a>
+        <div class="meta"><b>${title}</b><span>${author}</span></div>`;
+      if (tab === 'pending' && isAdmin) {
+        const act = document.createElement('div');
+        act.className = 'actions';
+        act.innerHTML = `<button type="button" class="btn ok" data-a="approved">Approve</button>
+          <button type="button" class="btn err" data-a="rejected">Reject</button>`;
+        act.querySelectorAll('button').forEach(btn => {
+          btn.onclick = async () => {
+            const st = btn.dataset.a;
+            const rr = await fetch('/api/gallery/mod/' + id, {
+              method:'POST', credentials:'include',
+              headers: { ...headers(), 'Content-Type':'application/json' },
+              body: JSON.stringify({ status: st })
+            });
+            const dd = await rr.json();
+            if (!rr.ok) alert(dd.msg || 'Error');
+            else load('pending');
+          };
+        });
+        el.appendChild(act);
+      }
+      g.appendChild(el);
+    });
+  } catch(e) {
+    g.innerHTML = '<div class="empty">Ошибка загрузки</div>';
+  }
+}
+
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-tab]');
+  if (!b) return;
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  load(b.dataset.tab);
+});
+
+(async function(){
+  await checkAdmin();
+  load('approved');
+})();
 </script>
 </body>
 </html>

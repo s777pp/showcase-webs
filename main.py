@@ -211,6 +211,19 @@ def _auth_user(req: Request) -> dict | None:
         return None
     return auth_db.user_by_token(tok)
 
+def _is_gallery_admin(user: dict | None) -> bool:
+    if not user:
+        return False
+    email = (user.get("email") or "").strip().lower()
+    allowed = (os.environ.get("GALLERY_ADMIN_EMAILS") or "serhii.perepelytsia1510@gmail.com").lower()
+    emails = {e.strip() for e in allowed.split(",") if e.strip()}
+    if email in emails:
+        return True
+    secret = (os.environ.get("ADMIN_SECRET") or "").strip()
+    # also allow if already checked via header elsewhere
+    return False
+
+
 
 
 def _attach_session_cookie(resp, token: str, request: Request | None = None):
@@ -462,6 +475,7 @@ def auth_me(request: Request):
         "pro_code": user.get("pro_code") or "",
         "display_name": user.get("display_name") or "",
         "avatar_url": av_url,
+        "is_gallery_admin": _is_gallery_admin(user),
     }
 
 
@@ -2184,7 +2198,9 @@ async def preview_wm(
         return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
 
 
+
 # ====================== Public gallery (test) ======================
+
 
 @app.get("/api/gallery/list")
 def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0):
@@ -2255,7 +2271,8 @@ async def gallery_submit(
 async def gallery_mod(item_id: int, request: Request):
     secret = (os.environ.get("ADMIN_SECRET") or "").strip()
     got = (request.headers.get("x-admin-secret") or "").strip()
-    if not secret or got != secret:
+    user = _auth_user(request)
+    if not ((secret and got == secret) or _is_gallery_admin(user)):
         return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
     body = await request.json()
     status = str(body.get("status") or "")
@@ -2268,9 +2285,15 @@ async def gallery_mod(item_id: int, request: Request):
 async def gallery_pending(request: Request):
     secret = (os.environ.get("ADMIN_SECRET") or "").strip()
     got = (request.headers.get("x-admin-secret") or "").strip()
-    if not secret or got != secret:
+    user = _auth_user(request)
+    if not ((secret and got == secret) or _is_gallery_admin(user)):
         return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
     return {"ok": True, "items": auth_db.gallery_list(status="pending", limit=100)}
+
+@app.get("/api/gallery/am_admin")
+def gallery_am_admin(request: Request):
+    user = _auth_user(request)
+    return {"ok": True, "admin": _is_gallery_admin(user), "email": (user or {}).get("email")}
 
 
 @app.get("/gallery", response_class=HTMLResponse)

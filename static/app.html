@@ -499,16 +499,17 @@ input[type="range"]{
       <div id="wmTip" style="display:none;margin-top:10px;font-size:12px;color:rgba(0,210,255,.9);padding:8px 12px;border-radius:10px;border:1px solid rgba(0,210,255,.25);background:rgba(0,210,255,.06)"></div>
     </div>
     <div class="card" id="wmPreviewCard">
-      <h2>Live watermark preview</h2>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Загрузи изображение ниже — перетащи watermark мышкой. Позиция сохранится при Process.</p>
-      <div id="wmCanvasWrap" style="position:relative;max-width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#111;min-height:120px;display:flex;align-items:center;justify-content:center">
-        <canvas id="wmCanvas" style="max-width:100%;display:block;cursor:crosshair"></canvas>
-        <div id="wmCanvasEmpty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center">Сначала добавь PNG/JPG в Files</div>
+      <h2>Watermark preview</h2>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Добавь PNG/JPG в «Файлы», нажми «Перетащить watermark вручную» и двигай текст мышкой. Позиция сохранится при «Обработать».</p>
+      <div id="wmCanvasWrap" style="position:relative;max-width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#111;min-height:160px;display:flex;align-items:center;justify-content:center">
+        <canvas id="wmCanvas" style="max-width:100%;max-height:420px;display:none;cursor:grab;touch-action:none"></canvas>
+        <div id="wmCanvasEmpty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center">Нет превью — добавь изображение и нажми кнопку ниже</div>
       </div>
       <input type="hidden" id="wmX" value=""/>
       <input type="hidden" id="wmY" value=""/>
-      <div class="row" style="margin-top:12px">
-        <button type="button" class="btn ghost" id="btnWmReset">Сброс угла</button>
+      <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">
+        <button type="button" class="btn" id="btnWmManual">Перетащить watermark вручную</button>
+        <button type="button" class="btn ghost" id="btnWmReset">Сброс позиции</button>
         <button type="button" class="btn ghost" id="btnWmServerPreview">Серверное превью</button>
       </div>
     </div>
@@ -850,6 +851,10 @@ input[type="range"]{
       <input id="authEmail" type="email" placeholder="Email"/>
       <input id="authPass" type="password" placeholder="Password (min 6)"/>
       <button class="btn" id="authSubmit" type="button">Log in</button>
+      <button class="btn ghost" id="authDiscord" type="button" style="width:100%;margin-top:4px;display:inline-flex;align-items:center;justify-content:center;gap:8px">
+        <img src="/static/discord.png" alt="" width="18" height="18" style="display:block"/>
+        Continue with Discord
+      </button>
     </div>
     <div class="switch" id="authSwitch">No account? <a id="authToggle">Sign up</a></div>
   </div>
@@ -1156,7 +1161,7 @@ drop.ondragover = e => { e.preventDefault(); drop.classList.add('drag'); };
 drop.ondragleave = () => drop.classList.remove('drag');
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove('drag'); addFiles([...e.dataTransfer.files]); };
 fileInput.onchange = () => { addFiles([...fileInput.files]); fileInput.value=''; };
-function addFiles(list){ state.files.push(...list); renderFiles(); }
+function addFiles(list){ state.files.push(...list); renderFiles(); try{ window.__wmLoadFromFiles && window.__wmLoadFromFiles(); }catch(e){} }
 function renderFiles(){
   const box = document.getElementById('fileList'); box.innerHTML='';
   state.files.forEach((f,i)=>{
@@ -3530,16 +3535,16 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
 
 <script>
-/* ===== Live watermark preview (drag) ===== */
+/* ===== Watermark manual drag preview ===== */
 (function(){
   const canvas = document.getElementById('wmCanvas');
   const empty = document.getElementById('wmCanvasEmpty');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   let img = null;
-  let wx = 0.04, wy = 0.92; // relative top-left of text
+  let wx = 0.04, wy = 0.88;
   let dragging = false;
-  let textW = 40, textH = 20;
+  let dragMode = false;
 
   function tip(msg){
     const el = document.getElementById('wmTip');
@@ -3547,111 +3552,171 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     if (!msg){ el.style.display='none'; el.textContent=''; return; }
     el.style.display='block'; el.textContent = msg;
   }
-
   function opacityVal(){ return (parseInt(document.getElementById('wmOpacity')?.value||'22',10)||22)/100; }
-  function scaleVal(){ return (parseInt(document.getElementById('wmScale')?.value||'100',10)||100)/100; }
+  function scaleVal(){
+    const raw = parseFloat(document.getElementById('wmScale')?.value||'100');
+    // UI is 40..250 percent
+    return Math.max(0.4, Math.min(2.5, (isNaN(raw)?100:raw)/100));
+  }
   function colorVal(){ return document.getElementById('wmColor')?.value || '#ffffff'; }
   function textVal(){ return document.getElementById('wmText')?.value || ''; }
   function enabled(){ return !!document.getElementById('wmEnable')?.checked; }
 
+  function firstImageFile(){
+    try {
+      if (window.state && Array.isArray(state.files)) {
+        for (const f of state.files) {
+          if (f && f.type && f.type.startsWith('image/') && !f.type.includes('gif')) return f;
+          if (f && f.name && /\.(png|jpe?g|webp|bmp)$/i.test(f.name)) return f;
+        }
+      }
+    } catch(e){}
+    const fi = document.getElementById('fileInput');
+    if (fi && fi.files && fi.files[0]) return fi.files[0];
+    return null;
+  }
+
   function draw(){
-    if (!img) return;
-    const maxW = Math.min(900, canvas.parentElement.clientWidth || 600);
-    const ratio = img.width / img.height;
+    if (!img) {
+      canvas.style.display = 'none';
+      if (empty) empty.style.display = 'block';
+      return;
+    }
+    const maxW = Math.min(920, (canvas.parentElement?.clientWidth || 600) - 4);
+    const ratio = img.naturalWidth / img.naturalHeight;
     let w = maxW, h = Math.round(w / ratio);
-    if (h > 480){ h = 480; w = Math.round(h * ratio); }
-    canvas.width = w; canvas.height = h;
+    if (h > 420) { h = 420; w = Math.round(h * ratio); }
+    canvas.width = w;
+    canvas.height = h;
     canvas.style.display = 'block';
     if (empty) empty.style.display = 'none';
     ctx.clearRect(0,0,w,h);
     ctx.drawImage(img, 0, 0, w, h);
     if (!enabled() || !textVal()) return;
     const fontSize = Math.max(12, Math.round((h / 28) * scaleVal()));
-    ctx.font = `600 ${fontSize}px Mulish, system-ui, sans-serif`;
+    ctx.font = '600 ' + fontSize + 'px Mulish, system-ui, sans-serif';
     ctx.fillStyle = colorVal();
     ctx.globalAlpha = opacityVal();
-    const metrics = ctx.measureText(textVal());
-    textW = metrics.width;
-    textH = fontSize;
-    const x = wx * w, y = wy * h + fontSize;
+    const tw = ctx.measureText(textVal()).width;
+    const x = wx * w;
+    const y = wy * h + fontSize;
     ctx.fillText(textVal(), x, y);
     ctx.globalAlpha = 1;
-    // handle
-    ctx.strokeStyle = 'rgba(0,210,255,.8)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x - 2, y - fontSize - 2, textW + 4, fontSize + 6);
+    if (dragMode) {
+      ctx.strokeStyle = 'rgba(0,210,255,.85)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4,3]);
+      ctx.strokeRect(x - 3, y - fontSize - 3, tw + 6, fontSize + 8);
+      ctx.setLineDash([]);
+    }
   }
 
   function loadFile(file){
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) return;
+    const okType = (file.type && file.type.startsWith('image/')) || /\.(png|jpe?g|webp|bmp)$/i.test(file.name||'');
+    if (!okType) {
+      tip('Для превью нужен PNG/JPG (не видео).');
+      return;
+    }
     const url = URL.createObjectURL(file);
     const im = new Image();
-    im.onload = () => { img = im; draw(); URL.revokeObjectURL(url); };
+    im.onload = function(){
+      img = im;
+      draw();
+      URL.revokeObjectURL(url);
+    };
+    im.onerror = function(){ tip('Не удалось загрузить изображение'); URL.revokeObjectURL(url); };
     im.src = url;
   }
 
-  // hook file list / drop
-  const fi = document.getElementById('fileInput');
-  fi?.addEventListener('change', () => {
-    const f = fi.files && fi.files[0];
+  window.__wmLoadFromFiles = function(){
+    const f = firstImageFile();
     if (f) loadFile(f);
-  });
-  // when state.files updated - poll lightly
-  setInterval(() => {
-    try {
-      if (window.state && state.files && state.files[0] && state.files[0] !== loadFile._last) {
-        loadFile._last = state.files[0];
-        loadFile(state.files[0]);
-      }
-    } catch(e){}
-  }, 800);
+  };
 
-  canvas.addEventListener('pointerdown', (e) => {
-    if (!img) return;
-    dragging = true;
-    canvas.setPointerCapture(e.pointerId);
-    move(e);
-  });
-  canvas.addEventListener('pointermove', (e) => { if (dragging) move(e); });
-  canvas.addEventListener('pointerup', () => { dragging = false; savePos(); });
-  function move(e){
-    const r = canvas.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width;
-    const y = (e.clientY - r.top) / r.height;
-    wx = Math.max(0, Math.min(0.98, x));
-    wy = Math.max(0, Math.min(0.95, y));
-    draw();
-  }
   function savePos(){
     const elx = document.getElementById('wmX');
     const ely = document.getElementById('wmY');
     if (elx) elx.value = wx.toFixed(4);
     if (ely) ely.value = wy.toFixed(4);
-    // disable corner when custom pos
-    const corner = document.getElementById('wmCorner');
-    if (corner) corner.dataset.custom = '1';
   }
-  document.getElementById('btnWmReset')?.addEventListener('click', () => {
+
+  function setDragMode(on){
+    dragMode = !!on;
+    canvas.style.cursor = dragMode ? 'grab' : 'default';
+    const btn = document.getElementById('btnWmManual');
+    if (btn) {
+      btn.textContent = dragMode ? 'Режим перетаскивания: ВКЛ (таскай текст)' : 'Перетащить watermark вручную';
+      btn.classList.toggle('ghost', !dragMode);
+    }
+    draw();
+  }
+
+  document.getElementById('btnWmManual')?.addEventListener('click', function(){
+    const f = firstImageFile();
+    if (!f) { alert('Сначала добавь PNG или JPG в «Файлы»'); return; }
+    loadFile(f);
+    setDragMode(true);
+    tip('Тяни watermark мышкой. Отпусти — позиция сохранится для Process.');
+  });
+
+  document.getElementById('btnWmReset')?.addEventListener('click', function(){
     wx = 0.04; wy = 0.88;
-    document.getElementById('wmX').value = '';
-    document.getElementById('wmY').value = '';
+    const elx = document.getElementById('wmX');
+    const ely = document.getElementById('wmY');
+    if (elx) elx.value = '';
+    if (ely) ely.value = '';
+    draw();
+    tip('Позиция сброшена — будет использован выбранный угол WM.');
+  });
+
+  function pointerPos(e){
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - r.left) / Math.max(1, r.width),
+      y: (e.clientY - r.top) / Math.max(1, r.height)
+    };
+  }
+  canvas.addEventListener('pointerdown', function(e){
+    if (!img || !dragMode) return;
+    dragging = true;
+    canvas.setPointerCapture(e.pointerId);
+    canvas.style.cursor = 'grabbing';
+    const p = pointerPos(e);
+    wx = Math.max(0, Math.min(0.98, p.x));
+    wy = Math.max(0, Math.min(0.95, p.y));
     draw();
   });
-  ['wmText','wmOpacity','wmScale','wmColor','wmEnable','wmFont'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', draw);
-    document.getElementById(id)?.addEventListener('change', draw);
+  canvas.addEventListener('pointermove', function(e){
+    if (!dragging) return;
+    const p = pointerPos(e);
+    wx = Math.max(0, Math.min(0.98, p.x));
+    wy = Math.max(0, Math.min(0.95, p.y));
+    draw();
   });
+  function endDrag(e){
+    if (!dragging) return;
+    dragging = false;
+    canvas.style.cursor = dragMode ? 'grab' : 'default';
+    savePos();
+  }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
 
-  // opacity tip
-  document.getElementById('wmOpacity')?.addEventListener('input', () => {
+  ['wmText','wmOpacity','wmScale','wmColor','wmEnable'].forEach(function(id){
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', draw);
+    el.addEventListener('change', draw);
+  });
+  document.getElementById('wmOpacity')?.addEventListener('input', function(){
     const v = parseInt(document.getElementById('wmOpacity').value,10);
     if (v > 45) tip('Прозрачность высокая — для незаметного watermark лучше 15–25%.');
-    else tip('');
   });
 
-  document.getElementById('btnWmServerPreview')?.addEventListener('click', async () => {
-    const f = (window.state && state.files && state.files[0]) || (fi?.files && fi.files[0]);
-    if (!f) { alert('Добавь файл'); return; }
+  document.getElementById('btnWmServerPreview')?.addEventListener('click', async function(){
+    const f = firstImageFile();
+    if (!f) { alert('Добавь PNG/JPG'); return; }
     const fd = new FormData();
     fd.append('file', f);
     fd.append('wm_text', textVal());
@@ -3663,28 +3728,40 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     fd.append('wm_x', document.getElementById('wmX')?.value || '');
     fd.append('wm_y', document.getElementById('wmY')?.value || '');
     fd.append('auto_contrast', document.getElementById('autoContrast')?.checked ? '1' : '0');
-    const r = await fetch('/api/preview_wm', { method:'POST', body: fd });
-    if (!r.ok) { alert('Preview failed'); return; }
-    const sug = r.headers.get('X-WM-Suggestion');
-    if (sug) tip(sug);
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const im = new Image();
-    im.onload = () => { img = im; draw(); };
-    im.src = url;
+    tip('Серверное превью…');
+    try {
+      const r = await fetch('/api/preview_wm', { method:'POST', body: fd, credentials:'include' });
+      if (!r.ok) { tip('Ошибка превью'); return; }
+      const sug = r.headers.get('X-WM-Suggestion');
+      if (sug) tip(sug); else tip('Серверное превью готово');
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const im = new Image();
+      im.onload = function(){ img = im; draw(); };
+      im.src = url;
+    } catch (e) { tip(String(e)); }
   });
 
-  // inject wm_x/y + auto_contrast into process FormData
-  const _origFetch = window.fetch;
-  // patch process builder if present - monkey by wrapping FormData append chain in run handler is hard;
-  // instead override FormData.prototype temporarily is bad.
-  // Hook btnRun click capture
-  document.getElementById('btnRun')?.addEventListener('click', () => {
-    // store on window for process code to read - patch process fd building
-  }, true);
+  // Discord from auth modal
+  async function startDiscord(){
+    try {
+      const r = await fetch('/api/auth/discord/login');
+      const d = await r.json();
+      if (!d.ok || !d.url) { alert(d.msg || 'Discord не настроен на сервере'); return; }
+      window.open(d.url, 'discord_oauth', 'width=520,height=720');
+    } catch (e) { alert(String(e)); }
+  }
+  document.getElementById('authDiscord')?.addEventListener('click', startDiscord);
+  document.getElementById('btnDiscordLogin')?.addEventListener('click', startDiscord);
+  window.addEventListener('message', function(ev){
+    if (ev.data && ev.data.type === 'discord_login' && ev.data.token) {
+      try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
+      location.reload();
+    }
+  });
 
-  // Patch: when process builds FormData, we intercept after - safer to patch known function
-  // Look for fd.append('wm_color'...
+  // initial if files already present
+  setTimeout(function(){ window.__wmLoadFromFiles && window.__wmLoadFromFiles(); }, 500);
 })();
 </script>
 

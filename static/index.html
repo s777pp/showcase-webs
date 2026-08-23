@@ -368,10 +368,12 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
     </a>
     <div class="nav-links">
       <a href="#features" data-i="nav_feat">Features</a>
+      <a href="/gallery" data-i="nav_gallery">Gallery</a>
       <a href="#pricing" data-i="nav_price">Pricing</a>
       <a href="/app" data-i="nav_tools">Tools</a>
     </div>
     <div class="nav-right">
+      <a href="#" class="btn-ghost" data-i="nav_discord" id="navDiscord" role="button" style="margin-right:6px">Discord</a>
       <a href="#" class="btn-shiny-nav" data-i="nav_reg" id="navReg" role="button">Sign up</a>
       <a href="/app" class="nav-user-pill" id="navUserPill" title="Account"></a>
       <button type="button" class="lang-nav" id="langBtnNav" aria-label="Language">RU</button>
@@ -884,5 +886,26 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script></script>
 
+
+<script>
+(function(){
+  async function goDiscord(e){
+    if (e) e.preventDefault();
+    try {
+      const r = await fetch('/api/auth/discord/login');
+      const d = await r.json();
+      if (!d.ok || !d.url) { alert(d.msg || 'Discord not configured'); return; }
+      window.open(d.url, 'discord_oauth', 'width=520,height=720');
+    } catch (err) { alert(String(err)); }
+  }
+  document.getElementById('navDiscord')?.addEventListener('click', goDiscord);
+  window.addEventListener('message', function(ev){
+    if (ev.data && ev.data.type === 'discord_login' && ev.data.token) {
+      try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
+      location.href = '/app';
+    }
+  });
+})();
+</script>
 </body>
 </html>
