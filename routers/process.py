@@ -1,7 +1,8 @@
-"""Process uploads + watermark preview."""
+"""Process uploads + watermark preview (full video/GIF workshop path)."""
 from __future__ import annotations
 
 import io
+import shutil
 import tempfile
 import zipfile
 from pathlib import Path
@@ -13,7 +14,7 @@ from PIL import Image, ImageOps
 import processor as proc
 from config import MAX_UPLOAD_MB, FREE_LIMIT, JOBS
 from logging_config import log
-from utils import quota_state, quota_inc, validate_upload, auth_user
+from utils import quota_state, quota_inc, validate_upload
 
 router = APIRouter(tags=["process"])
 
@@ -30,7 +31,6 @@ async def preview_wm(
     auto_contrast: str = Form("0"),
     file: UploadFile = File(...),
 ):
-    """Return PNG preview of image with watermark applied (and optional auto-contrast)."""
     raw = await file.read()
     if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
         return JSONResponse({"ok": False, "msg": "File too large"}, status_code=400)
@@ -39,7 +39,6 @@ async def preview_wm(
         return JSONResponse({"ok": False, "msg": err}, status_code=400)
     try:
         img = Image.open(io.BytesIO(raw)).convert("RGBA")
-        # limit size for preview
         max_side = 1200
         if max(img.size) > max_side:
             img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
@@ -47,7 +46,6 @@ async def preview_wm(
         do_ac = str(auto_contrast).lower() in ("1", "true", "yes", "on")
         suggestion = None
         if do_ac:
-            # auto-contrast on RGB then back
             rgb = img.convert("RGB")
             rgb = ImageOps.autocontrast(rgb, cutoff=1)
             img = rgb.convert("RGBA")
@@ -70,7 +68,6 @@ async def preview_wm(
         out.convert("RGBA").save(buf, format="PNG")
         buf.seek(0)
 
-        # simple suggestion if high opacity
         if opacity > 0.45 and not suggestion:
             suggestion = "Opacity is high — try 15–25% so watermark is less noticeable."
 
@@ -195,42 +192,97 @@ async def api_process(
                                 listed.append({"name": f"{folder}/{pname}", "size": len(data)})
                         processed += 1
                     else:
-                        # video / gif path - keep original simplified logic
+                        # video or gif — full workshop/featured/split pipeline
                         src = work / f"source{ext}"
                         src.write_bytes(raw)
                         is_video = ext in (".mp4", ".mov", ".webm", ".avi", ".mkv")
                         v_fps = min(int(fps), 12)
-                        dest = work / "out.gif"
+                        v_dur = 8.0
+                        if is_video and not proc.find_ffmpeg():
+                            errors.append(f"{name}: FFmpeg not available")
+                            continue
                         try:
-                            proc.media_to_gif(src, dest, v_fps, size_i if m == "workshop" else 630, duration=8.0)
-                            data = dest.read_bytes()
-                            data = proc.apply_hex21(data)
-                            zf.writestr(f"{folder}/animated.gif", data)
-                            if len(listed) < 20:
-                                listed.append({"name": f"{folder}/animated.gif", "size": len(data)})
+                            if is_video:
+                                if m == "workshop":
+                                    paths = proc.process_video_workshop(
+                                        src, work, fps=v_fps, width=size_i,
+                                        wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                                        wm_color=color, duration=v_dur,
+                                        wm_corner=corner, wm_scale=scale,
+                                    )
+                                elif m == "featured":
+                                    paths = proc.process_video_featured(
+                                        src, work, fps=v_fps, duration=v_dur
+                                    )
+                                else:
+                                    paths = proc.process_video_split(
+                                        src, work, fps=v_fps,
+                                        wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                                        wm_color=color, duration=v_dur,
+                                        wm_corner=corner, wm_scale=scale,
+                                    )
+                            else:
+                                # .gif
+                                if m == "workshop":
+                                    paths = proc.process_gif_workshop(
+                                        src, work,
+                                        wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                                        wm_color=color, wm_corner=corner, wm_scale=scale,
+                                    )
+                                elif m == "featured":
+                                    paths = proc.process_gif_featured(src, work, fps=v_fps)
+                                else:
+                                    paths = proc.process_gif_split(
+                                        src, work, fps=v_fps,
+                                        wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                                        wm_color=color, wm_corner=corner, wm_scale=scale,
+                                    )
+                            for pname, pth in paths.items():
+                                pth = Path(pth)
+                                if not pth.is_file():
+                                    continue
+                                data = pth.read_bytes()
+                                zf.writestr(f"{folder}/{pname}", data)
+                                if len(listed) < 20:
+                                    listed.append({"name": f"{folder}/{pname}", "size": len(data)})
+                                try:
+                                    pth.unlink(missing_ok=True)
+                                except Exception:
+                                    pass
+                            try:
+                                src.unlink(missing_ok=True)
+                            except Exception:
+                                pass
                             processed += 1
                         except Exception as ve:
-                            errors.append(f"{name}/{m}: {ve}")
+                            errors.append(f"{name}/{m}: {type(ve).__name__}: {ve}")
+                            log.exception("process media %s mode %s", name, m)
             except Exception as e:
-                errors.append(f"{name}: {e}")
+                errors.append(f"{name}: {type(e).__name__}: {e}")
                 log.exception("process file %s", name)
 
         zf.close()
-        if processed:
-            quota_inc(request, processed)
-        zip_buf.seek(0)
         if processed == 0:
+            detail = "; ".join(errors) if errors else "unknown error"
             return JSONResponse(
-                {"ok": False, "msg": "Nothing processed", "errors": errors},
+                {"ok": False, "msg": f"Failed to process: {detail}", "errors": errors},
                 status_code=400,
             )
+        try:
+            quota_inc(request, processed)
+        except Exception as e:
+            log.warning("quota_inc: %s", e)
+
+        zip_bytes = zip_buf.getvalue()
+        zip_buf.close()
         return StreamingResponse(
-            zip_buf,
+            io.BytesIO(zip_bytes),
             media_type="application/zip",
             headers={
-                "Content-Disposition": "attachment; filename=showcase.zip",
+                "Content-Disposition": f'attachment; filename="showcase_{"all" if do_all else mode}.zip"',
                 "X-Processed": str(processed),
                 "X-Errors": str(len(errors)),
+                "Access-Control-Expose-Headers": "Content-Disposition, X-Processed, X-Errors",
             },
         )
     except Exception as e:
@@ -238,7 +290,6 @@ async def api_process(
         return JSONResponse({"ok": False, "msg": str(e), "errors": errors}, status_code=500)
     finally:
         try:
-            import shutil
             shutil.rmtree(job_dir, ignore_errors=True)
         except Exception:
             pass

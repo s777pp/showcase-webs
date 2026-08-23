@@ -23,7 +23,7 @@ from logging_config import log
 from utils import client_ip
 
 # routers
-from routers import auth, billing, process, meta, gallery
+from routers import auth, billing, process, meta, gallery, da
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 app = FastAPI(title="Showcase Maker Web")
@@ -37,6 +37,7 @@ app.include_router(billing.router)
 app.include_router(process.router)
 app.include_router(meta.router)
 app.include_router(gallery.router)
+app.include_router(da.router)
 
 
 @app.exception_handler(Exception)
