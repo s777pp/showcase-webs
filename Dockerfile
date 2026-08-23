@@ -5,7 +5,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     xz-utils \
-    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 # gifski (Linux x86_64) — high-quality GIF encoder
