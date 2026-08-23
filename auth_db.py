@@ -376,3 +376,118 @@ def wipe_all_users() -> int:
     c.commit()
     c.close()
     return int(n or 0)
+
+
+# ─── Usage (IP daily quota) stored in SQLite ─────────────────────────────────
+
+def _ensure_usage_table(c: sqlite3.Connection) -> None:
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS usage (
+            ip TEXT PRIMARY KEY,
+            day TEXT NOT NULL,
+            count INTEGER DEFAULT 0
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gallery (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            title TEXT,
+            mode TEXT,
+            image_path TEXT NOT NULL,
+            thumb_path TEXT,
+            status TEXT DEFAULT 'pending',  -- pending / approved / rejected
+            created_at REAL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
+    c.commit()
+
+
+def get_usage(ip: str, day: str) -> int:
+    c = _conn()
+    _ensure_usage_table(c)
+    row = c.execute("SELECT count FROM usage WHERE ip=? AND day=?", (ip, day)).fetchone()
+    c.close()
+    return int(row["count"]) if row else 0
+
+
+def inc_usage(ip: str, day: str, n: int = 1) -> int:
+    c = _conn()
+    _ensure_usage_table(c)
+    row = c.execute("SELECT count FROM usage WHERE ip=? AND day=?", (ip, day)).fetchone()
+    if row:
+        new = int(row["count"]) + n
+        c.execute("UPDATE usage SET count=? WHERE ip=? AND day=?", (new, ip, day))
+    else:
+        new = n
+        c.execute("INSERT INTO usage(ip, day, count) VALUES (?,?,?)", (ip, day, n))
+    c.commit()
+    c.close()
+    return new
+
+
+def reset_usage_if_new_day(ip: str, day: str) -> None:
+    """Remove old days for this IP (keep only current day)."""
+    c = _conn()
+    _ensure_usage_table(c)
+    c.execute("DELETE FROM usage WHERE ip=? AND day!=?", (ip, day))
+    c.commit()
+    c.close()
+
+
+# ─── Gallery ────────────────────────────────────────────────────────────────
+
+def gallery_add(user_id: int | None, title: str, mode: str, image_path: str, thumb_path: str | None = None) -> int:
+    c = _conn()
+    _ensure_usage_table(c)
+    cur = c.execute(
+        "INSERT INTO gallery(user_id, title, mode, image_path, thumb_path, status, created_at) VALUES (?,?,?,?,?,'pending',?)",
+        (user_id, (title or "")[:80], mode, image_path, thumb_path, time.time()),
+    )
+    c.commit()
+    gid = cur.lastrowid
+    c.close()
+    return int(gid or 0)
+
+
+def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0) -> list[dict]:
+    c = _conn()
+    _ensure_usage_table(c)
+    rows = c.execute(
+        """
+        SELECT g.id, g.title, g.mode, g.image_path, g.thumb_path, g.status, g.created_at,
+               u.display_name, u.email
+        FROM gallery g LEFT JOIN users u ON u.id = g.user_id
+        WHERE g.status=?
+        ORDER BY g.created_at DESC
+        LIMIT ? OFFSET ?
+        """,
+        (status, limit, offset),
+    ).fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
+
+def gallery_set_status(item_id: int, status: str) -> bool:
+    if status not in ("pending", "approved", "rejected"):
+        return False
+    c = _conn()
+    _ensure_usage_table(c)
+    c.execute("UPDATE gallery SET status=? WHERE id=?", (status, item_id))
+    c.commit()
+    n = c.total_changes
+    c.close()
+    return n > 0
+
+
+def gallery_get(item_id: int) -> dict | None:
+    c = _conn()
+    _ensure_usage_table(c)
+    row = c.execute("SELECT * FROM gallery WHERE id=?", (item_id,)).fetchone()
+    c.close()
+    return dict(row) if row else None

@@ -1,0 +1,42 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual env
+.venv/
+venv/
+env/
+ENV/
+
+# Data & runtime (keep structure, ignore contents)
+data/jobs/
+data/avatars/
+data/users.db
+data/usage.json
+data/used_codes.json
+data/access_codes.json
+!data/.gitkeep
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+tmp/
+temp/
+.sm_job_*/
+
+# Large media (optional: keep if needed for deploy)
+# static/steam_upload_guide.mp4
+# static/video/hero.mp4
+
+# Secrets
+.env
+.env.*
+!.env.example
