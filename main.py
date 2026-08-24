@@ -2614,8 +2614,29 @@ async def api_compose(
                     offset_y=oy,
                 )
                 out = tmp / "composed.gif"
-                frames_p = [proc._quantize_rgba_for_gif(f) for f in frames]
-                proc._save_animated_gif(frames_p, durs, out)
+                enc = (gif_encoder or "ffmpeg").strip().lower()
+                if enc not in ("ffmpeg", "gifski", "pillow"):
+                    enc = "ffmpeg"
+                try:
+                    fps_i = max(5, min(30, int(fps)))
+                except Exception:
+                    fps_i = 12
+                if enc == "pillow":
+                    frames_p = [proc._quantize_rgba_for_gif(f) for f in frames]
+                    proc._save_animated_gif(frames_p, durs, out)
+                else:
+                    fdir = tmp / "frames"
+                    fdir.mkdir(parents=True, exist_ok=True)
+                    for i, fr in enumerate(frames):
+                        fr.convert("RGBA").save(fdir / f"frame_{i:04d}.png")
+                    try:
+                        proc.encode_gif_from_png_sequence(fdir, out, fps=fps_i, encoder=enc)
+                    except Exception:
+                        # fallback pillow
+                        frames_p = [proc._quantize_rgba_for_gif(f) for f in frames]
+                        proc._save_animated_gif(frames_p, durs, out)
+                if not out.is_file():
+                    return JSONResponse({"ok": False, "msg": "GIF encode failed"}, status_code=500)
                 data = out.read_bytes()
                 return Response(
                     content=data,
@@ -2623,6 +2644,7 @@ async def api_compose(
                     headers={
                         "Content-Disposition": 'attachment; filename="composed.gif"',
                         "X-Compose-Type": "gif",
+                        "X-Compose-Encoder": enc,
                     },
                 )
             finally:

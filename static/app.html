@@ -582,12 +582,32 @@ input[type="range"]{
           <input type="range" id="composeOy" min="0" max="100" value="100"/>
         </label>
       </div>
-      <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+            <div class="row">
+        <label class="field">Кодек GIF (как в Обработке)
+          <select id="composeGifEncoder">
+            <option value="ffmpeg" selected>ffmpeg (palette)</option>
+            <option value="pillow">Pillow</option>
+            <option value="gifski">gifski</option>
+          </select>
+        </label>
+        <label class="field">FPS анимации
+          <input type="number" id="composeFps" value="12" min="5" max="30"/>
+        </label>
+      </div>
+<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
         <button class="btn" type="button" id="btnCompose">Совместить</button>
         <a class="btn ghost" id="composeDl" style="display:none;text-decoration:none" href="#">Скачать</a>
         <button class="btn ghost" type="button" id="btnComposeToProcess" style="display:none">В Обработку →</button>
       </div>
       <div class="status" id="composeStatus"></div>
+      <div class="sm-progress" id="composeProgress" aria-live="polite">
+        <div class="sm-prog-top">
+          <span id="composeProgLabel">Склеиваем…</span>
+          <span class="sm-prog-pct" id="composeProgPct">0%</span>
+        </div>
+        <div class="sm-prog-track"><div class="sm-prog-fill" id="composeProgFill"></div></div>
+        <div class="sm-prog-sub" id="composeProgSub"></div>
+      </div>
       <div style="margin-top:16px;border-radius:12px;border:1px solid var(--border);background:#111;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">
         <img id="composePreview" alt="" style="max-width:100%;max-height:420px;display:none"/>
         <span id="composeEmpty" style="color:var(--muted);font-size:13px;padding:24px">Превью появится после «Совместить»</span>
@@ -3990,46 +4010,102 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   const dl = document.getElementById('composeDl');
   const toProc = document.getElementById('btnComposeToProcess');
 
-  document.getElementById('btnCompose')?.addEventListener('click', async function(){
+  document.getElementById('btnCompose')?.addEventListener('click', function(){
     const bg = document.getElementById('composeBg')?.files?.[0];
     const ch = document.getElementById('composeChar')?.files?.[0];
     if (!bg || !ch) {
-      if (st) { st.className = 'status err'; st.textContent = 'Нужны оба файла: фон и персонаж'; }
+      if (st) { st.className = 'status err'; st.textContent = 'Добавь оба файла: сначала фон, потом персонажа'; }
       return;
     }
     const fd = new FormData();
     fd.append('background', bg);
     fd.append('character', ch);
     fd.append('chroma_key', document.getElementById('composeChroma')?.value || 'auto');
-    fd.append('chroma_tol', document.getElementById('composeTol')?.value || '45');
+    fd.append('chroma_tol', document.getElementById('composeTol')?.value || '55');
     fd.append('scale', String((parseInt(document.getElementById('composeScale')?.value||'100',10)||100)/100));
     fd.append('offset_x', String((parseInt(document.getElementById('composeOx')?.value||'50',10)||50)/100));
     fd.append('offset_y', String((parseInt(document.getElementById('composeOy')?.value||'100',10)||100)/100));
     fd.append('width', document.getElementById('composeWidth')?.value || '750');
-    if (st) { st.className = 'status'; st.textContent = 'Совмещение…'; }
-    try {
-      const r = await fetch('/api/compose', { method:'POST', body: fd, credentials:'include' });
-      if (!r.ok) {
-        let msg = 'Ошибка';
-        try { const j = await r.json(); msg = j.msg || msg; } catch(e){}
-        if (st) { st.className = 'status err'; st.textContent = msg; }
+    fd.append('gif_encoder', document.getElementById('composeGifEncoder')?.value || 'ffmpeg');
+    fd.append('fps', document.getElementById('composeFps')?.value || '12');
+
+    const prog = document.getElementById('composeProgress');
+    const fill = document.getElementById('composeProgFill');
+    const pctEl = document.getElementById('composeProgPct');
+    const lab = document.getElementById('composeProgLabel');
+    const sub = document.getElementById('composeProgSub');
+    const btn = document.getElementById('btnCompose');
+    let fake = 0;
+    let tick = null;
+    function setProg(pct, label, subText) {
+      pct = Math.max(0, Math.min(100, Math.round(pct)));
+      if (prog) prog.classList.add('show');
+      if (fill) fill.style.width = pct + '%';
+      if (pctEl) pctEl.textContent = pct + '%';
+      if (lab && label != null) lab.textContent = label;
+      if (sub) sub.textContent = subText || '';
+    }
+    function stopTick() { if (tick) { clearInterval(tick); tick = null; } }
+    if (btn) btn.disabled = true;
+    if (st) { st.className = 'status'; st.textContent = 'Склеиваем…'; }
+    setProg(3, 'Загрузка файлов…', bg.name + ' + ' + ch.name);
+    fake = 3;
+    tick = setInterval(function(){
+      if (fake < 90) {
+        fake += (90 - fake) * 0.04 + 0.25;
+        if (fake > 90) fake = 90;
+        const stage = fake < 25 ? 'Загрузка…' : (fake < 55 ? 'Убираем фон / хромакей…' : 'Собираем кадры и GIF…');
+        setProg(fake, stage, 'Это может занять 10–60 сек для видео');
+      }
+    }, 350);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/compose');
+    xhr.responseType = 'blob';
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = function(ev){
+      if (!ev.lengthComputable) return;
+      const up = 5 + (ev.loaded / Math.max(1, ev.total)) * 20;
+      fake = Math.max(fake, up);
+      setProg(fake, 'Загрузка на сервер…', Math.round(ev.loaded/1024) + ' KB');
+    };
+    xhr.onload = function(){
+      stopTick();
+      if (btn) btn.disabled = false;
+      const ct = (xhr.getResponseHeader('content-type') || '');
+      if (xhr.status >= 200 && xhr.status < 300 && (ct.includes('image/') || ct.includes('octet-stream') || ct.includes('gif'))) {
+        setProg(100, 'Готово!', '');
+        const blob = xhr.response;
+        lastBlob = blob;
+        lastName = ct.includes('gif') ? 'composed.gif' : 'composed.png';
+        const url = URL.createObjectURL(blob);
+        lastBlob._url = url;
+        if (prev) { prev.src = url; prev.style.display = 'block'; }
+        if (empty) empty.style.display = 'none';
+        if (dl) { dl.href = url; dl.download = lastName; dl.style.display = 'inline-flex'; }
+        if (toProc) toProc.style.display = 'inline-flex';
+        const enc = xhr.getResponseHeader('X-Compose-Encoder') || '';
+        if (st) { st.className = 'status ok'; st.textContent = 'Готово!' + (enc ? ' (' + enc + ')' : '') + ' — скачай или нарежь Workshop'; }
+        setTimeout(function(){ if (prog) prog.classList.remove('show'); }, 2500);
         return;
       }
-      const blob = await r.blob();
-      lastBlob = blob;
-      const ct = r.headers.get('content-type') || '';
-      lastName = ct.includes('gif') ? 'composed.gif' : 'composed.png';
-      if (lastBlob._url) URL.revokeObjectURL(lastBlob._url);
-      const url = URL.createObjectURL(blob);
-      lastBlob._url = url;
-      if (prev) { prev.src = url; prev.style.display = 'block'; }
-      if (empty) empty.style.display = 'none';
-      if (dl) { dl.href = url; dl.download = lastName; dl.style.display = 'inline-flex'; }
-      if (toProc) toProc.style.display = 'inline-flex';
-      if (st) { st.className = 'status ok'; st.textContent = 'Готово — можно скачать или отправить в Обработку'; }
-    } catch (e) {
-      if (st) { st.className = 'status err'; st.textContent = String(e); }
-    }
+      // error json in blob
+      const reader = new FileReader();
+      reader.onload = function(){
+        let msg = 'Ошибка';
+        try { msg = JSON.parse(String(reader.result||'')).msg || msg; } catch(e){ msg = String(reader.result||'').slice(0,200) || ('HTTP '+xhr.status); }
+        if (st) { st.className = 'status err'; st.textContent = msg; }
+        setProg(0, 'Ошибка', msg.slice(0,80));
+      };
+      reader.readAsText(xhr.response || new Blob());
+    };
+    xhr.onerror = function(){
+      stopTick();
+      if (btn) btn.disabled = false;
+      if (st) { st.className = 'status err'; st.textContent = 'Сеть / сервер недоступны'; }
+      setProg(0, 'Ошибка', '');
+    };
+    xhr.send(fd);
   });
 
   document.getElementById('btnComposeToProcess')?.addEventListener('click', async function(){
