@@ -442,11 +442,24 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 
 
 @media (max-width:767px){
-  #navDiscord, #navGoogle{
-    padding:8px 12px;font-size:12px;max-width:42vw;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
 }
+
+
+.auth-divider{
+  display:flex;align-items:center;gap:12px;margin:16px 0 12px;
+  font-size:12px;color:rgba(255,255,255,.45);text-align:center
+}
+.auth-divider::before,.auth-divider::after{
+  content:"";flex:1;height:1px;background:rgba(255,255,255,.12)
+}
+.auth-oauth{display:flex;flex-direction:column;gap:8px}
+.btn-oauth{
+  width:100%;min-height:44px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.04);color:#fff;
+  font-size:14px;font-weight:600;cursor:pointer;font-family:inherit
+}
+.btn-oauth:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.25)}
 
 </style>
 </head>
@@ -484,8 +497,6 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
         <a href="#pricing" data-i="nav_price" role="menuitem">Pricing</a>
         <a href="/app" data-i="nav_tools" role="menuitem">Tools</a>
         <div class="mm-sep"></div>
-        <a href="#" id="navDiscordMobile" data-i="nav_discord_short" role="menuitem">Discord</a>
-        <a href="#" id="navGoogleMobile" data-i="nav_google_short" role="menuitem">Google</a>
         <a href="/app" data-i="cta_tools" role="menuitem">Open tools →</a>
         <button type="button" class="mm-item" id="langBtnMobile" role="menuitem">Language: RU</button>
       </div>
@@ -497,9 +508,7 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
       <a href="/app" data-i="nav_tools">Tools</a>
     </div>
     <div class="nav-right">
-      <a href="#" class="btn-ghost" data-i="nav_discord" id="navDiscord" role="button" style="margin-right:6px">Continue with Discord</a>
-      <a href="#" class="btn-ghost" data-i="nav_google" id="navGoogle" role="button" style="margin-right:6px">Continue with Google</a>
-      <a href="#" class="btn-shiny-nav" data-i="nav_reg" id="navReg" role="button">Sign up</a>
+      <a href="#" class="btn-shiny-nav" data-i="nav_login" id="navReg" role="button">Log in</a>
       <a href="/app" class="nav-user-pill" id="navUserPill" title="Account"></a>
 
 
@@ -745,14 +754,19 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 <div class="modal-bg" id="authModal" aria-hidden="true">
   <div class="modal">
     <button type="button" class="close-x" id="authClose" aria-label="Close">×</button>
-    <h3 id="authTitle">Sign up</h3>
-    <p class="sub" id="authSub">Create an account for Pro access</p>
+    <h3 id="authTitle">Log in</h3>
+    <p class="sub" id="authSub">Log in to buy Pro and keep access</p>
     <div class="stack">
       <input id="authEmail" type="email" placeholder="Email" autocomplete="email"/>
       <input id="authPass" type="password" placeholder="Password (min 6)" autocomplete="new-password"/>
-      <button type="button" class="btn-auth" id="authSubmit">Sign up</button>
+      <button type="button" class="btn-auth" id="authSubmit">Log in</button>
     </div>
     <div class="status" id="authStatus"></div>
+    <div class="auth-divider"><span data-i="auth_or">or continue with</span></div>
+    <div class="auth-oauth">
+      <button type="button" class="btn-oauth" id="authDiscord" data-i="nav_discord">Continue with Discord</button>
+      <button type="button" class="btn-oauth" id="authGoogle" data-i="nav_google">Continue with Google</button>
+    </div>
     <div class="switch" id="authSwitch">Already have an account? <a id="authToggle">Log in</a></div>
   </div>
 </div>
@@ -771,6 +785,8 @@ const I18N = {
     nav_price: "Pricing",
     nav_tools: "Tools",
     nav_reg: "Sign up",
+    nav_login: "Log in",
+    auth_or: "or continue with",
     cta_tools: "Open tools →",
     h1a: "Steam showcases.",
     h1b: "Revitalized",
@@ -822,6 +838,8 @@ const I18N = {
     nav_price: "Цены",
     nav_tools: "Инструменты",
     nav_reg: "Регистрация",
+    nav_login: "Вход",
+    auth_or: "или войти через",
     cta_tools: "Открыть →",
     h1a: "Steam-витрины.",
     h1b: "Без рутины",
@@ -892,7 +910,7 @@ function wireLangBtn(id) {
 }
 
 /* ---- Auth on home (no redirect to /app) ---- */
-let authMode = "register"; // register | login
+let authMode = "login"; // register | login
 
 function openAuth(mode) {
   authMode = mode === "login" ? "login" : "register";
@@ -993,20 +1011,12 @@ async function refreshHomeUser() {
       pill.title = j.email || label;
       pill.classList.add("visible");
       if (reg) reg.style.display = "none";
-      const disc = document.getElementById("navDiscord");
-      if (disc) disc.style.display = "none";
-      const goo = document.getElementById("navGoogle");
-      if (goo) goo.style.display = "none";
       return;
     }
   } catch (e) {}
   pill.classList.remove("visible");
   pill.textContent = "";
   if (reg) reg.style.display = "";
-  const disc = document.getElementById("navDiscord");
-  if (disc) disc.style.display = "";
-  const goo = document.getElementById("navGoogle");
-  if (goo) goo.style.display = "";
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -1034,18 +1044,24 @@ document.addEventListener("DOMContentLoaded", function () {
       openAuth(mode);
     });
   }
-  bindOpen("navReg", "register");
+  bindOpen("navReg", "login");
   bindOpen("ctaReg", "register");
 
   // also data-i links that might not have id after i18n innerHTML — use delegation
-  document.querySelectorAll('[data-i="nav_reg"], [data-i="cta_reg"]').forEach(function (el) {
+  document.querySelectorAll('[data-i="nav_login"]').forEach(function (el) {
+    el.addEventListener("click", function (e) {
+      e.preventDefault();
+      openAuth("login");
+    });
+  });
+  document.querySelectorAll('[data-i="cta_reg"]').forEach(function (el) {
     el.addEventListener("click", function (e) {
       e.preventDefault();
       openAuth("register");
     });
   });
 });
-</script></script>
+</script>
 
 
 <script>
@@ -1061,10 +1077,8 @@ document.addEventListener("DOMContentLoaded", function () {
       window.open(d.url, winName, 'width=520,height=720');
     } catch (err) { alert(String(err)); }
   }
-  document.getElementById('navDiscord')?.addEventListener('click', function(e){ goOAuth('discord', e); });
-  document.getElementById('navGoogle')?.addEventListener('click', function(e){ goOAuth('google', e); });
-  document.getElementById('navDiscordMobile')?.addEventListener('click', function(e){ goOAuth('discord', e); });
-  document.getElementById('navGoogleMobile')?.addEventListener('click', function(e){ goOAuth('google', e); });
+  document.getElementById('authDiscord')?.addEventListener('click', function(e){ goOAuth('discord', e); });
+  document.getElementById('authGoogle')?.addEventListener('click', function(e){ goOAuth('google', e); });
   window.addEventListener('message', function(ev){
     if (!ev.data) return;
     if ((ev.data.type === 'discord_login' || ev.data.type === 'google_login') && ev.data.token) {
