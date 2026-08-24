@@ -12,11 +12,16 @@
 h1{font-size:28px;font-weight:700;letter-spacing:-.02em;margin:16px 0 8px}
 .sub{color:var(--muted);font-size:14px;margin-bottom:20px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:22px}
-.card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.03)}
-.card img{width:100%;aspect-ratio:auto;max-height:none;object-fit:contain;display:block;background:#0a0a0a;min-height:200px}
+.card{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.03);position:relative}
+.card img.shot{width:100%;aspect-ratio:auto;max-height:none;object-fit:contain;display:block;background:#0a0a0a;min-height:200px}
 .meta{padding:12px 14px;font-size:13px}
-.meta b{display:block;margin-bottom:4px}
-.meta span{color:var(--muted);font-size:12px}
+.meta b{display:block;margin-bottom:8px}
+.author{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}
+.author img,.author .ph{
+  width:28px;height:28px;border-radius:50%;object-fit:cover;background:rgba(255,255,255,.08);
+  border:1px solid var(--border);flex-shrink:0
+}
+.author .ph{display:grid;place-items:center;font-size:11px;font-weight:700;color:rgba(255,255,255,.7)}
 .actions{display:flex;gap:8px;padding:0 14px 14px}
 .btn{border:none;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer}
 .btn.ok{background:var(--ok);color:#000}
@@ -35,9 +40,9 @@ a.back:hover{color:#fff}
 <div class="wrap">
   <a class="back" href="/">← Home</a> · <a class="back" href="/app">Tools</a>
   <h1>Публичная галерея <span class="admin-badge" id="adminBadge" style="display:none">admin</span></h1>
-  <p class="sub">Одобренные витрины пользователей. Загрузка — через Tools (или API submit).</p>
+  <p class="sub">Витрины пользователей публикуются сразу. Админ может удалить любую работу.</p>
   <div class="tabs" id="tabs">
-    <button type="button" class="active" data-tab="approved">Одобренные</button>
+    <button type="button" class="active" data-tab="approved">Все работы</button>
   </div>
   <div class="grid" id="grid"><div class="empty">Загрузка…</div></div>
 </div>
@@ -50,6 +55,10 @@ const headers = () => {
 };
 let isAdmin = false;
 
+function esc(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 async function checkAdmin(){
   try {
     const r = await fetch('/api/gallery/am_admin', { credentials:'include', headers: headers() });
@@ -57,75 +66,73 @@ async function checkAdmin(){
     isAdmin = !!d.admin;
     if (isAdmin) {
       document.getElementById('adminBadge').style.display = 'inline';
-      const tabs = document.getElementById('tabs');
-      if (!document.querySelector('[data-tab="pending"]')) {
-        const b = document.createElement('button');
-        b.type = 'button'; b.dataset.tab = 'pending'; b.textContent = 'На модерации';
-        tabs.appendChild(b);
-      }
     }
   } catch(e){}
 }
 
-async function load(tab){
+async function load(){
   const g = document.getElementById('grid');
   g.innerHTML = '<div class="empty">Загрузка…</div>';
-  const url = tab === 'pending' ? '/api/gallery/pending' : '/api/gallery/list?status=approved';
   try {
-    const r = await fetch(url, { credentials:'include', headers: headers() });
+    const r = await fetch('/api/gallery/list?status=approved&limit=60', { credentials:'include', headers: headers() });
     const d = await r.json();
-    if (!r.ok) { g.innerHTML = '<div class="empty">'+(d.msg||'Нет доступа')+'</div>'; return; }
+    if (!r.ok) { g.innerHTML = '<div class="empty">'+(d.msg||'Ошибка')+'</div>'; return; }
     const items = d.items || [];
-    if (!items.length) { g.innerHTML = '<div class="empty">Пока пусто</div>'; return; }
+    if (!items.length) { g.innerHTML = '<div class="empty">Пока пусто — опубликуй первую витрину из Tools</div>'; return; }
     g.innerHTML = '';
     items.forEach(it => {
       const id = it.id;
       const title = it.title || it.mode || 'Showcase';
-      const author = it.author || it.display_name || it.email || '';
+      const author = it.author || 'anon';
       const imgUrl = it.url || ('/api/gallery/image/' + id);
+      const av = it.avatar_url || '';
+      const initial = (author || '?').trim().charAt(0).toUpperCase();
       const el = document.createElement('div');
       el.className = 'card';
-      el.innerHTML = `<a href="${imgUrl}" target="_blank"><img src="${imgUrl}" alt="" loading="lazy"/></a>
-        <div class="meta"><b>${title}</b><span>${author}</span></div>`;
-      if (tab === 'pending' && isAdmin) {
+      el.innerHTML =
+        `<a href="${imgUrl}" target="_blank" rel="noopener"><img class="shot" src="${imgUrl}" alt="" loading="lazy"/></a>
+         <div class="meta">
+           <b>${esc(title)}</b>
+           <div class="author">
+             ${av
+               ? `<img src="${esc(av)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"/>
+                  <span class="ph" style="display:none">${esc(initial)}</span>`
+               : `<span class="ph">${esc(initial)}</span>`}
+             <span>${esc(author)}</span>
+           </div>
+         </div>`;
+      if (isAdmin) {
         const act = document.createElement('div');
         act.className = 'actions';
-        act.innerHTML = `<button type="button" class="btn ok" data-a="approved">Approve</button>
-          <button type="button" class="btn err" data-a="rejected">Reject</button>`;
-        act.querySelectorAll('button').forEach(btn => {
-          btn.onclick = async () => {
-            const st = btn.dataset.a;
-            const rr = await fetch('/api/gallery/mod/' + id, {
-              method:'POST', credentials:'include',
-              headers: { ...headers(), 'Content-Type':'application/json' },
-              body: JSON.stringify({ status: st })
-            });
-            const dd = await rr.json();
-            if (!rr.ok) alert(dd.msg || 'Error');
-            else load('pending');
-          };
-        });
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn err';
+        del.textContent = 'Удалить';
+        del.onclick = async () => {
+          if (!confirm('Удалить эту работу из галереи?')) return;
+          const rr = await fetch('/api/gallery/delete/' + id, {
+            method: 'POST',
+            credentials: 'include',
+            headers: headers()
+          });
+          const dd = await rr.json().catch(()=>({}));
+          if (!rr.ok || !dd.ok) {
+            alert(dd.msg || 'Delete failed');
+            return;
+          }
+          el.remove();
+        };
+        act.appendChild(del);
         el.appendChild(act);
       }
       g.appendChild(el);
     });
-  } catch(e) {
-    g.innerHTML = '<div class="empty">Ошибка загрузки</div>';
+  } catch (e) {
+    g.innerHTML = '<div class="empty">'+esc(String(e))+'</div>';
   }
 }
 
-document.getElementById('tabs').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-tab]');
-  if (!b) return;
-  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('active'));
-  b.classList.add('active');
-  load(b.dataset.tab);
-});
-
-(async function(){
-  await checkAdmin();
-  load('approved');
-})();
+checkAdmin().then(load);
 </script>
 </body>
 </html>

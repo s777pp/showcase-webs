@@ -2226,19 +2226,11 @@ def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0):
         author = it.get("display_name") or it.get("discord_username") or (it.get("email") or "anon")
         if isinstance(author, str) and "@" in author:
             author = author.split("@")[0]
-        uid = it.get("user_id") or it.get("uid") or it.get("author_id")
-        try:
-            uid = int(uid) if uid is not None else None
-        except Exception:
-            uid = None
-        av_url = f"/api/auth/avatar/{uid}" if uid else ""
         out.append({
             "id": it["id"],
             "title": it.get("title") or "",
             "mode": it.get("mode") or "",
-            "author": str(author)[:32],
-            "user_id": uid,
-            "avatar_url": av_url,
+            "author": str(author)[:24],
             "url": f"/api/gallery/image/{it['id']}",
             "created_at": it.get("created_at"),
         })
@@ -2288,11 +2280,7 @@ async def gallery_submit(
     except Exception:
         pass
     gid = auth_db.gallery_add(uid if user else None, title, mode, str(path), thumb)
-    try:
-        auth_db.gallery_set_status(gid, "approved")
-    except Exception:
-        pass
-    return {"ok": True, "id": gid, "msg": "Published"}
+    return {"ok": True, "id": gid, "msg": "Submitted for moderation"}
 
 
 
@@ -2469,11 +2457,7 @@ async def gallery_publish(
             pass
         ttl = (title or "").strip() or f"{mode} showcase"
         gid = auth_db.gallery_add(uid, ttl, mode, str(path), thumb)
-        try:
-            auth_db.gallery_set_status(gid, "approved")
-        except Exception:
-            pass
-        return {"ok": True, "id": gid, "msg": "Published"}
+        return {"ok": True, "id": gid, "msg": "Submitted for moderation"}
     except Exception as e:
         return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
     finally:
@@ -2492,48 +2476,6 @@ async def gallery_mod(item_id: int, request: Request):
     if not auth_db.gallery_set_status(item_id, status):
         return JSONResponse({"ok": False, "msg": "Bad status"}, status_code=400)
     return {"ok": True, "id": item_id, "status": status}
-
-
-@app.delete("/api/gallery/{item_id}")
-@app.post("/api/gallery/delete/{item_id}")
-async def gallery_delete(item_id: int, request: Request):
-    """Admin (or post owner) can remove a gallery item."""
-    secret = (os.environ.get("ADMIN_SECRET") or "").strip()
-    got = (request.headers.get("x-admin-secret") or "").strip()
-    user = _auth_user(request)
-    is_admin = (secret and got == secret) or _is_gallery_admin(user)
-    item = auth_db.gallery_get(item_id)
-    if not item:
-        return JSONResponse({"ok": False, "msg": "Not found"}, status_code=404)
-    owner_id = item.get("user_id") or item.get("uid") or item.get("author_id")
-    is_owner = False
-    if user and owner_id is not None:
-        try:
-            is_owner = int(user.get("id")) == int(owner_id)
-        except Exception:
-            is_owner = False
-    if not (is_admin or is_owner):
-        return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
-    # soft-delete via status
-    try:
-        auth_db.gallery_set_status(item_id, "deleted")
-    except Exception as e:
-        return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
-    # try remove files
-    try:
-        p = Path(item.get("image_path") or "")
-        if p.is_file():
-            p.unlink(missing_ok=True)
-        thumb = item.get("thumb_path") or ""
-        if thumb:
-            Path(thumb).unlink(missing_ok=True)
-        else:
-            tp = p.with_name(p.stem + ".thumb.png") if p.suffix else None
-            if tp and tp.is_file():
-                tp.unlink(missing_ok=True)
-    except Exception:
-        pass
-    return {"ok": True, "id": item_id, "status": "deleted"}
 
 
 @app.get("/api/gallery/pending")

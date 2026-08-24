@@ -543,9 +543,9 @@ input[type="range"]{
         </label>
         <label class="field">GIF encoder
           <select id="gifEncoder" title="How GIF is encoded">
-            <option value="gifski" selected>gifski</option>
-            <option value="ffmpeg">ffmpeg (palette)</option>
+            <option value="ffmpeg" selected>ffmpeg (palette)</option>
             <option value="pillow">Pillow</option>
+            <option value="gifski">gifski</option>
           </select>
         </label>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="wmEnable" checked/> On</label>
@@ -556,15 +556,17 @@ input[type="range"]{
     </div>
     <div class="card" id="wmPreviewCard">
       <h2>Watermark preview</h2>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Таскай watermark мышкой по превью; позиция применится при «Обработать».</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Таскай watermark мышкой; позиция применится при «Обработать».</p>
       <div id="wmCanvasWrap" style="position:relative;max-width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#111;min-height:160px;display:flex;align-items:center;justify-content:center">
         <canvas id="wmCanvas" style="max-width:100%;max-height:420px;display:none;cursor:grab;touch-action:none"></canvas>
-        <div id="wmCanvasEmpty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center">Нет превью — добавь изображение в «Файлы»</div>
+        <div id="wmCanvasEmpty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center">Нет превью — добавь изображение и нажми кнопку ниже</div>
       </div>
       <input type="hidden" id="wmX" value=""/>
       <input type="hidden" id="wmY" value=""/>
       <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">
+        <button type="button" class="btn" id="btnWmManual">Перетащить watermark вручную</button>
         <button type="button" class="btn ghost" id="btnWmReset">Сброс позиции</button>
+        <button type="button" class="btn ghost" id="btnWmServerPreview">Серверное превью</button>
       </div>
     </div>
     <div class="card">
@@ -664,9 +666,9 @@ input[type="range"]{
         <div class="row">
           <label class="field"><span data-i="compose_enc_lbl">GIF codec</span>
             <select id="composeGifEncoder">
-              <option value="gifski" selected>gifski</option>
-              <option value="ffmpeg">ffmpeg (palette)</option>
+              <option value="ffmpeg" selected>ffmpeg (palette)</option>
               <option value="pillow">Pillow</option>
+              <option value="gifski">gifski</option>
             </select>
           </label>
           <label class="field"><span data-i="compose_fps_lbl">Animation FPS</span>
@@ -1423,7 +1425,7 @@ document.getElementById('btnRun').onclick = async () => {
   if (_wx) fd.append('wm_x', _wx);
   if (_wy) fd.append('wm_y', _wy);
   fd.append('auto_contrast', document.getElementById('autoContrast')?.checked ? '1' : '0');
-  fd.append('gif_encoder', document.getElementById('gifEncoder')?.value || 'gifski');
+  fd.append('gif_encoder', document.getElementById('gifEncoder')?.value || 'ffmpeg');
   fd.append('wm_scale', sc ? (Number(sc.value) / 100) : 1);
   fd.append('all_modes', (document.getElementById('allModes') || {}).checked ? '1' : '0');
   state.files.forEach(f => fd.append('files', f));
@@ -4171,8 +4173,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
         alert(d.msg || 'Publish failed');
         if (btn) btn.textContent = labelDefault;
       } else {
-        alert(ru ? 'Опубликовано в галерее: /gallery' : 'Published to gallery: /gallery');
-        if (btn) btn.textContent = ru ? 'Опубликовано ✓' : 'Published ✓';
+        alert(ru ? 'Отправлено на модерацию. После одобрения появится в /gallery' : 'Submitted for moderation.');
+        if (btn) btn.textContent = ru ? 'Отправлено ✓' : 'Submitted ✓';
         setTimeout(function(){
           if (btn) btn.textContent = labelDefault;
         }, 2500);
@@ -4587,7 +4589,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     fd.append('offset_x', String(oxVal()));
     fd.append('offset_y', String(oyVal()));
     fd.append('width', document.getElementById('composeWidth')?.value || '750');
-    fd.append('gif_encoder', document.getElementById('composeGifEncoder')?.value || 'gifski');
+    fd.append('gif_encoder', document.getElementById('composeGifEncoder')?.value || 'ffmpeg');
     fd.append('fps', document.getElementById('composeFps')?.value || '12');
 
     const prog = document.getElementById('composeProgress');
