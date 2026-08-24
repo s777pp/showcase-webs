@@ -1184,6 +1184,34 @@ def _crop_to_alpha(char: Image.Image, pad: int = 2) -> Image.Image:
     return char.crop((l, t, r, b))
 
 
+def feather_alpha(char: Image.Image, radius: float = 1.6) -> Image.Image:
+    """Soft-edge the alpha channel after chromakey (anti-alias / de-fringe).
+
+    Blurs alpha only so RGB stays sharp. Interior stays fully opaque;
+    fully transparent stays transparent — only the cut edge softens.
+    radius ~1.2–2.5 looks natural.
+    """
+    from PIL import ImageFilter, ImageMath
+
+    char = char.convert("RGBA")
+    if radius is None or float(radius) <= 0:
+        return char
+    r, g, b, a = char.split()
+    a_soft = a.filter(ImageFilter.GaussianBlur(radius=max(0.4, float(radius))))
+    try:
+        # edge = min(original, blurred); solid interior (a>250) keeps original
+        a_edge = ImageMath.eval("min(o, s)", o=a, s=a_soft).convert("L")
+        # mask of solid interior
+        a_solid_mask = a.point(lambda p: 255 if p > 250 else 0)
+        a_final = Image.composite(a, a_edge, a_solid_mask)
+        # never revive fully-transparent pixels
+        a_zero_mask = a.point(lambda p: 255 if p > 0 else 0)
+        a_final = Image.composite(a_final, Image.new("L", a.size, 0), a_zero_mask)
+    except Exception:
+        a_final = a_soft
+    return Image.merge("RGBA", (r, g, b, a_final))
+
+
 def compose_static(
     bg: Image.Image,
     char: Image.Image,
@@ -1193,9 +1221,14 @@ def compose_static(
     scale: float = 1.0,
     offset_x: float = 0.5,
     offset_y: float = 1.0,
+    feather: float = 1.6,
 ) -> Image.Image:
+    did_key = False
     if chroma_key and chroma_key not in ("none", "0", "off", ""):
         char = remove_chromakey(char, key=chroma_key, tolerance=chroma_tol)
+        did_key = True
+    if did_key and feather and float(feather) > 0:
+        char = feather_alpha(char, radius=float(feather))
     char = _crop_to_alpha(char)
     return _place_character(bg, char, scale=scale, offset_x=offset_x, offset_y=offset_y)
 
@@ -1209,12 +1242,14 @@ def compose_animated(
     scale: float = 1.0,
     offset_x: float = 0.5,
     offset_y: float = 1.0,
+    feather: float = 1.6,
     max_frames: int = 120,
 ) -> tuple[list[Image.Image], list[int]]:
     """Composite each frame of GIF/WebP onto bg. Returns RGBA frames + durations ms."""
     bg = bg.convert("RGBA")
     frames: list[Image.Image] = []
     durations: list[int] = []
+    do_key = bool(chroma_key and chroma_key not in ("none", "0", "off", ""))
     with Image.open(char_path) as im:
         n = int(getattr(im, "n_frames", 1) or 1)
         step = 1
@@ -1223,8 +1258,10 @@ def compose_animated(
         for idx in range(0, n, step):
             im.seek(idx)
             fr = im.convert("RGBA")
-            if chroma_key and chroma_key not in ("none", "0", "off", ""):
+            if do_key:
                 fr = remove_chromakey(fr, key=chroma_key, tolerance=chroma_tol)
+                if feather and float(feather) > 0:
+                    fr = feather_alpha(fr, radius=float(feather))
             fr = _crop_to_alpha(fr)
             composed = _place_character(bg, fr, scale=scale, offset_x=offset_x, offset_y=offset_y)
             frames.append(composed)
