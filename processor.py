@@ -479,13 +479,26 @@ def process_video_split(
 
 
 def find_gifski() -> Optional[str]:
+    """Locate gifski binary. Prefer system PATH (Railway/Linux), then bin/.
+
+    Note: gifski.exe is Windows-only — skipped on Linux so a local .exe
+    in bin/ never shadows a real system `gifski` on the server.
+    """
     which = shutil.which("gifski")
-    if which:
+    if which and _is_runnable(Path(which)):
         return which
+    # also accept "gifski.exe" only on Windows
+    if os.name == "nt":
+        which_exe = shutil.which("gifski.exe")
+        if which_exe and _is_runnable(Path(which_exe)):
+            return which_exe
     for name in ("gifski", "gifski.exe"):
-        p = ROOT / name
-        if p.is_file():
-            return str(p)
+        if name.endswith(".exe") and os.name != "nt":
+            continue
+        for base in (BIN, ROOT):
+            cand = base / name
+            if _is_runnable(cand):
+                return str(cand)
     return None
 
 
