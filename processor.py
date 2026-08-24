@@ -964,59 +964,130 @@ def _hex_to_rgb(s: str) -> tuple[int, int, int]:
 
 def remove_chromakey(
     img: Image.Image,
-    key: str = "green",
-    tolerance: float = 40.0,
-    softness: float = 12.0,
+    key: str = "auto",
+    tolerance: float = 55.0,
+    softness: float = 20.0,
 ) -> Image.Image:
-    """Make near-key pixels transparent. key: green|blue|red|#rrggbb|auto."""
+    """Remove backdrop. key=auto samples corners and picks green/blue/red + despill."""
+    import math
     img = img.convert("RGBA")
     w, h = img.size
-    px = img.load()
-    key = (key or "green").strip().lower()
-    if key == "auto":
-        # sample corners for dominant chroma-ish color
-        samples = [
-            px[2, 2][:3],
-            px[w - 3, 2][:3],
-            px[2, h - 3][:3],
-            px[w - 3, h - 3][:3],
-        ]
-        # pick sample with highest channel dominance
-        best = samples[0]
-        best_score = -1.0
-        for r, g, b in samples:
-            mx = max(r, g, b)
-            mn = min(r, g, b)
-            score = float(mx - mn)
-            if score > best_score:
-                best_score = score
-                best = (r, g, b)
-        kr, kg, kb = best
+    pixels = list(img.getdata())
+    key = (key or "auto").strip().lower()
+
+    def sample_corners():
+        pts = [(2, 2), (w - 3, 2), (2, h - 3), (w - 3, h - 3),
+               (w // 2, 2), (2, h // 2), (w - 3, h // 2)]
+        acc = []
+        for x, y in pts:
+            if 0 <= x < w and 0 <= y < h:
+                r, g, b, _a = pixels[y * w + x]
+                acc.append((r, g, b))
+        if not acc:
+            return (40, 200, 40), "green"
+        # average samples
+        ar = sum(c[0] for c in acc) // len(acc)
+        ag = sum(c[1] for c in acc) // len(acc)
+        ab = sum(c[2] for c in acc) // len(acc)
+        # classify dominant channel
+        if ag >= ar and ag >= ab:
+            mode = "green"
+        elif ab >= ar and ab >= ag:
+            mode = "blue"
+        else:
+            mode = "red"
+        return (ar, ag, ab), mode
+
+    despill_mode = "green"
+    if key in ("auto", "a"):
+        (kr, kg, kb), despill_mode = sample_corners()
+        key = despill_mode  # for despill branch
     elif key.startswith("#") or (len(key) == 6 and all(c in "0123456789abcdef" for c in key)):
         kr, kg, kb = _hex_to_rgb(key if key.startswith("#") else "#" + key)
+        if kg >= kr and kg >= kb:
+            despill_mode = "green"
+        elif kb >= kr and kb >= kg:
+            despill_mode = "blue"
+        else:
+            despill_mode = "red"
     elif key == "blue":
-        kr, kg, kb = 0, 0, 255
+        kr, kg, kb = 20, 40, 220
+        despill_mode = "blue"
     elif key == "red":
-        kr, kg, kb = 255, 0, 0
+        kr, kg, kb = 220, 30, 30
+        despill_mode = "red"
+    elif key in ("none", "0", "off", ""):
+        return img
     else:
-        kr, kg, kb = 0, 255, 0
+        kr, kg, kb = 40, 200, 40
+        despill_mode = "green"
 
-    tol = max(1.0, float(tolerance))
-    soft = max(0.0, float(softness))
-    out = img.copy()
-    opx = out.load()
-    for y in range(h):
-        for x in range(w):
-            r, g, b, a = px[x, y]
-            dist = ((r - kr) ** 2 + (g - kg) ** 2 + (b - kb) ** 2) ** 0.5
-            if dist <= tol:
-                opx[x, y] = (r, g, b, 0)
-            elif soft > 0 and dist < tol + soft:
-                # feather
-                t = (dist - tol) / soft
-                na = int(a * t)
-                opx[x, y] = (r, g, b, na)
+    def ycbcr(r, g, b):
+        y = 0.299 * r + 0.587 * g + 0.114 * b
+        cb = (b - y) * 0.564 + 128
+        cr = (r - y) * 0.713 + 128
+        return y, cb, cr
+
+    _, kcb, kcr = ycbcr(kr, kg, kb)
+    tol = max(8.0, float(tolerance) * 1.2)
+    soft = max(2.0, float(softness) if softness else 20.0)
+
+    out_data = []
+    alpha_map = []
+    for r, g, b, a in pixels:
+        _y, cb, cr = ycbcr(r, g, b)
+        dist = math.hypot(cb - kcb, cr - kcr)
+        if dist <= tol:
+            na = 0
+        elif dist < tol + soft:
+            t = (dist - tol) / soft
+            t = t * t * (3.0 - 2.0 * t)
+            na = int(a * t)
+        else:
+            na = a
+        if na > 0 and na < 252:
+            if despill_mode == "green":
+                avg = (r + b) * 0.5
+                if g > avg:
+                    g = int(avg + (g - avg) * (na / 255.0) * 0.3)
+            elif despill_mode == "blue":
+                avg = (r + g) * 0.5
+                if b > avg:
+                    b = int(avg + (b - avg) * (na / 255.0) * 0.3)
+            else:
+                avg = (g + b) * 0.5
+                if r > avg:
+                    r = int(avg + (r - avg) * (na / 255.0) * 0.3)
+        if despill_mode == "green" and na > 180 and g > r + 22 and g > b + 22:
+            avg = (r + b) * 0.5
+            g = int(avg * 0.5 + g * 0.5)
+        out_data.append((max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)), na))
+        alpha_map.append(na)
+
+    cleaned = out_data[:]
+    for y in range(1, h - 1):
+        for x in range(1, w - 1):
+            i = y * w + x
+            a0 = alpha_map[i]
+            n_op = n_tr = 0
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dx == 0 and dy == 0:
+                        continue
+                    aa = alpha_map[(y + dy) * w + (x + dx)]
+                    if aa > 128:
+                        n_op += 1
+                    else:
+                        n_tr += 1
+            r, g, b, a = out_data[i]
+            if a0 < 40 and n_op >= 6:
+                cleaned[i] = (r, g, b, min(255, a0 + 80))
+            elif a0 > 200 and n_tr >= 6:
+                cleaned[i] = (r, g, b, int(a0 * 0.35))
+    out = Image.new("RGBA", (w, h))
+    out.putdata(cleaned)
     return out
+
 
 
 def _place_character(
@@ -1055,7 +1126,7 @@ def compose_static(
     bg: Image.Image,
     char: Image.Image,
     *,
-    chroma_key: str = "none",
+    chroma_key: str = "auto",
     chroma_tol: float = 40.0,
     scale: float = 1.0,
     offset_x: float = 0.5,
@@ -1070,7 +1141,7 @@ def compose_animated(
     bg: Image.Image,
     char_path: Path,
     *,
-    chroma_key: str = "none",
+    chroma_key: str = "auto",
     chroma_tol: float = 40.0,
     scale: float = 1.0,
     offset_x: float = 0.5,

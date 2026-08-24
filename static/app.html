@@ -554,13 +554,10 @@ input[type="range"]{
         </label>
       </div>
       <div class="row">
-        <label class="field">Хромакей
+        <label class="field">Фон у персонажа
           <select id="composeChroma">
-            <option value="none">Нет (есть прозрачность)</option>
-            <option value="green">Зелёный</option>
-            <option value="blue">Синий</option>
-            <option value="red">Красный</option>
-            <option value="auto">Авто (углы кадра)</option>
+            <option value="auto" selected>Убрать цветной фон автоматически</option>
+            <option value="none">Уже прозрачный (не трогать)</option>
           </select>
         </label>
         <label class="field">Толерантность хромакея
@@ -4003,7 +4000,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const fd = new FormData();
     fd.append('background', bg);
     fd.append('character', ch);
-    fd.append('chroma_key', document.getElementById('composeChroma')?.value || 'none');
+    fd.append('chroma_key', document.getElementById('composeChroma')?.value || 'auto');
     fd.append('chroma_tol', document.getElementById('composeTol')?.value || '45');
     fd.append('scale', String((parseInt(document.getElementById('composeScale')?.value||'100',10)||100)/100));
     fd.append('offset_x', String((parseInt(document.getElementById('composeOx')?.value||'50',10)||50)/100));

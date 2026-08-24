@@ -2534,7 +2534,7 @@ setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
 @app.post("/api/compose")
 async def api_compose(
     request: Request,
-    chroma_key: str = Form("none"),
+    chroma_key: str = Form("auto"),
     chroma_tol: float = Form(40),
     scale: float = Form(1.0),
     offset_x: float = Form(0.5),
@@ -2564,7 +2564,7 @@ async def api_compose(
 
         ch_name = (character.filename or "char.png").lower()
         ch_ext = Path(ch_name).suffix.lower()
-        key = (chroma_key or "none").strip().lower()
+        key = (chroma_key or "auto").strip().lower()
         try:
             tol = float(chroma_tol)
         except Exception:
