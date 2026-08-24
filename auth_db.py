@@ -419,8 +419,8 @@ def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0) -> 
     _ensure_gallery(c)
     rows = c.execute(
         """
-        SELECT g.id, g.title, g.mode, g.image_path, g.thumb_path, g.status, g.created_at,
-               u.display_name, u.email, u.discord_username
+        SELECT g.id, g.user_id, g.title, g.mode, g.image_path, g.thumb_path, g.status, g.created_at,
+               u.display_name, u.email, u.discord_username, u.avatar_path
         FROM gallery g LEFT JOIN users u ON u.id = g.user_id
         WHERE g.status=?
         ORDER BY g.created_at DESC

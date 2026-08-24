@@ -445,10 +445,16 @@ async def auth_profile(request: Request):
             display_name=display_name,
             avatar_path=avatar_saved,
         )
+        av_url = f"/api/auth/avatar/{user['id']}" if (avatar_saved or user.get("avatar_path")) else ""
+        if not av_url:
+            av_dir = Path(DATA) / "avatars"
+            if av_dir.is_dir() and list(av_dir.glob(f"{user['id']}.*")):
+                av_url = f"/api/auth/avatar/{user['id']}"
         return {
             "ok": True,
             "msg": "Profile updated",
             "display_name": (display_name or "").strip()[:40],
+            "avatar_url": av_url,
         }
     except Exception as e:
         return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
@@ -459,21 +465,23 @@ def auth_avatar(user_id: int):
     c = auth_db._conn()
     row = c.execute("SELECT avatar_path FROM users WHERE id=?", (user_id,)).fetchone()
     c.close()
-    if not row or not row["avatar_path"]:
-        return JSONResponse({"ok": False}, status_code=404)
-    stored = str(row["avatar_path"])
-    path = Path(stored)
-    # resolve relative paths against DATA (new storage scheme)
-    if not path.is_file():
-        cand = Path(DATA) / stored
-        if cand.is_file():
-            path = cand
-        else:
-            # fallback: look for avatars/{id}.*
+    stored = ""
+    if row and row["avatar_path"]:
+        stored = str(row["avatar_path"]).strip()
+    path = Path(stored) if stored else None
+    # resolve relative paths against DATA
+    if path is None or not path.is_file():
+        if stored:
+            cand = Path(DATA) / stored
+            if cand.is_file():
+                path = cand
+        if path is None or not path.is_file():
             av_dir = Path(DATA) / "avatars"
-            matches = list(av_dir.glob(f"{int(user_id)}.*")) if av_dir.is_dir() else []
-            path = matches[0] if matches else path
-    if not path.is_file():
+            matches = sorted(av_dir.glob(f"{int(user_id)}.*")) if av_dir.is_dir() else []
+            # prefer image extensions
+            matches = [m for m in matches if m.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp", ".gif")] or matches
+            path = matches[0] if matches else None
+    if path is None or not path.is_file():
         return JSONResponse({"ok": False}, status_code=404)
     from fastapi.responses import FileResponse
     media = {
@@ -483,7 +491,11 @@ def auth_avatar(user_id: int):
         ".webp": "image/webp",
         ".gif": "image/gif",
     }.get(path.suffix.lower(), "application/octet-stream")
-    return FileResponse(path, media_type=media, headers={"Cache-Control": "public, max-age=3600"})
+    return FileResponse(
+        path,
+        media_type=media,
+        headers={"Cache-Control": "no-cache, max-age=0", "Access-Control-Allow-Origin": "*"},
+    )
 
 
 @app.post("/api/auth/logout")
@@ -2287,7 +2299,13 @@ def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0):
             uid = int(uid) if uid is not None else None
         except Exception:
             uid = None
-        av_url = f"/api/auth/avatar/{uid}" if uid else ""
+        # always expose avatar endpoint when we know the author — handler resolves file on disk
+        av_url = ""
+        if uid:
+            av_url = f"/api/auth/avatar/{uid}"
+        elif it.get("avatar_path"):
+            # should not happen without user_id, but keep safe
+            av_url = ""
         out.append({
             "id": it["id"],
             "title": it.get("title") or "",
