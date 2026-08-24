@@ -503,3 +503,295 @@ def register_or_login_discord(discord_id: str, username: str, email: str | None 
     c.commit()
     c.close()
     return True, "OK", token
+
+
+# ====================== Gallery social: likes / comments / notifications ======================
+
+def _ensure_social(c) -> None:
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gallery_likes (
+            item_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            created_at REAL,
+            PRIMARY KEY (item_id, user_id)
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gallery_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            parent_id INTEGER,
+            body TEXT NOT NULL,
+            created_at REAL,
+            deleted INTEGER DEFAULT 0
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            actor_id INTEGER,
+            item_id INTEGER,
+            comment_id INTEGER,
+            body TEXT,
+            is_read INTEGER DEFAULT 0,
+            created_at REAL
+        )
+        """
+    )
+    c.execute("CREATE INDEX IF NOT EXISTS idx_likes_item ON gallery_likes(item_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_comments_item ON gallery_comments(item_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read)")
+    c.commit()
+
+
+def gallery_like_counts(item_ids: list[int]) -> dict[int, int]:
+    if not item_ids:
+        return {}
+    c = _conn()
+    _ensure_social(c)
+    q = ",".join("?" * len(item_ids))
+    rows = c.execute(
+        f"SELECT item_id, COUNT(*) AS n FROM gallery_likes WHERE item_id IN ({q}) GROUP BY item_id",
+        item_ids,
+    ).fetchall()
+    c.close()
+    return {int(r["item_id"]): int(r["n"]) for r in rows}
+
+
+def gallery_user_liked(user_id: int, item_ids: list[int]) -> set[int]:
+    if not user_id or not item_ids:
+        return set()
+    c = _conn()
+    _ensure_social(c)
+    q = ",".join("?" * len(item_ids))
+    rows = c.execute(
+        f"SELECT item_id FROM gallery_likes WHERE user_id=? AND item_id IN ({q})",
+        [user_id, *item_ids],
+    ).fetchall()
+    c.close()
+    return {int(r["item_id"]) for r in rows}
+
+
+def gallery_comment_counts(item_ids: list[int]) -> dict[int, int]:
+    if not item_ids:
+        return {}
+    c = _conn()
+    _ensure_social(c)
+    q = ",".join("?" * len(item_ids))
+    rows = c.execute(
+        f"SELECT item_id, COUNT(*) AS n FROM gallery_comments WHERE deleted=0 AND item_id IN ({q}) GROUP BY item_id",
+        item_ids,
+    ).fetchall()
+    c.close()
+    return {int(r["item_id"]): int(r["n"]) for r in rows}
+
+
+def gallery_like_toggle(user_id: int, item_id: int) -> tuple[bool, int]:
+    """Toggle like. Returns (liked_now, total_count)."""
+    c = _conn()
+    _ensure_social(c)
+    _ensure_gallery(c)
+    item = c.execute("SELECT id, user_id, title FROM gallery WHERE id=?", (item_id,)).fetchone()
+    if not item:
+        c.close()
+        return False, 0
+    existing = c.execute(
+        "SELECT 1 FROM gallery_likes WHERE item_id=? AND user_id=?",
+        (item_id, user_id),
+    ).fetchone()
+    liked = False
+    if existing:
+        c.execute("DELETE FROM gallery_likes WHERE item_id=? AND user_id=?", (item_id, user_id))
+        liked = False
+    else:
+        c.execute(
+            "INSERT INTO gallery_likes(item_id, user_id, created_at) VALUES (?,?,?)",
+            (item_id, user_id, time.time()),
+        )
+        liked = True
+        owner = item["user_id"]
+        if owner and int(owner) != int(user_id):
+            actor = c.execute(
+                "SELECT display_name, email, discord_username FROM users WHERE id=?",
+                (user_id,),
+            ).fetchone()
+            name = (actor["display_name"] if actor else None) or (
+                actor["discord_username"] if actor else None
+            ) or ((actor["email"] or "someone").split("@")[0] if actor else "someone")
+            title = (item["title"] or "работу")[:40]
+            c.execute(
+                """INSERT INTO notifications(user_id, kind, actor_id, item_id, body, is_read, created_at)
+                   VALUES (?,?,?,?,?,0,?)""",
+                (int(owner), "like", user_id, item_id, f"{name} лайкнул(а) «{title}»", time.time()),
+            )
+    c.commit()
+    n = c.execute("SELECT COUNT(*) AS n FROM gallery_likes WHERE item_id=?", (item_id,)).fetchone()["n"]
+    c.close()
+    return liked, int(n)
+
+
+def gallery_add_comment(user_id: int, item_id: int, body: str, parent_id: int | None = None) -> dict | None:
+    body = (body or "").strip()[:1000]
+    if not body:
+        return None
+    c = _conn()
+    _ensure_social(c)
+    _ensure_gallery(c)
+    item = c.execute("SELECT id, user_id, title FROM gallery WHERE id=?", (item_id,)).fetchone()
+    if not item:
+        c.close()
+        return None
+    if parent_id:
+        parent = c.execute(
+            "SELECT id, user_id, item_id FROM gallery_comments WHERE id=? AND deleted=0",
+            (parent_id,),
+        ).fetchone()
+        if not parent or int(parent["item_id"]) != int(item_id):
+            c.close()
+            return None
+    cur = c.execute(
+        """INSERT INTO gallery_comments(item_id, user_id, parent_id, body, created_at, deleted)
+           VALUES (?,?,?,?,?,0)""",
+        (item_id, user_id, parent_id, body, time.time()),
+    )
+    cid = int(cur.lastrowid or 0)
+    actor = c.execute(
+        "SELECT display_name, email, discord_username FROM users WHERE id=?",
+        (user_id,),
+    ).fetchone()
+    name = (actor["display_name"] if actor else None) or (
+        actor["discord_username"] if actor else None
+    ) or ((actor["email"] or "someone").split("@")[0] if actor else "someone")
+    title = (item["title"] or "работу")[:40]
+    # notify owner
+    owner = item["user_id"]
+    if owner and int(owner) != int(user_id):
+        kind = "reply" if parent_id else "comment"
+        msg = f"{name} ответил(а) под «{title}»" if parent_id else f"{name} прокомментировал(а) «{title}»"
+        c.execute(
+            """INSERT INTO notifications(user_id, kind, actor_id, item_id, comment_id, body, is_read, created_at)
+               VALUES (?,?,?,?,?,?,0,?)""",
+            (int(owner), kind, user_id, item_id, cid, msg, time.time()),
+        )
+    # notify parent comment author on reply
+    if parent_id:
+        parent = c.execute("SELECT user_id FROM gallery_comments WHERE id=?", (parent_id,)).fetchone()
+        if parent and int(parent["user_id"]) != int(user_id) and (
+            not owner or int(parent["user_id"]) != int(owner)
+        ):
+            c.execute(
+                """INSERT INTO notifications(user_id, kind, actor_id, item_id, comment_id, body, is_read, created_at)
+                   VALUES (?,?,?,?,?,?,0,?)""",
+                (
+                    int(parent["user_id"]),
+                    "reply",
+                    user_id,
+                    item_id,
+                    cid,
+                    f"{name} ответил(а) на ваш комментарий",
+                    time.time(),
+                ),
+            )
+    c.commit()
+    row = c.execute(
+        """SELECT c.id, c.item_id, c.user_id, c.parent_id, c.body, c.created_at,
+                  u.display_name, u.email, u.discord_username
+           FROM gallery_comments c LEFT JOIN users u ON u.id = c.user_id
+           WHERE c.id=?""",
+        (cid,),
+    ).fetchone()
+    c.close()
+    return dict(row) if row else {"id": cid, "body": body, "user_id": user_id, "parent_id": parent_id}
+
+
+def gallery_list_comments(item_id: int, limit: int = 100) -> list[dict]:
+    c = _conn()
+    _ensure_social(c)
+    rows = c.execute(
+        """
+        SELECT c.id, c.item_id, c.user_id, c.parent_id, c.body, c.created_at,
+               u.display_name, u.email, u.discord_username
+        FROM gallery_comments c
+        LEFT JOIN users u ON u.id = c.user_id
+        WHERE c.item_id=? AND c.deleted=0
+        ORDER BY c.created_at ASC
+        LIMIT ?
+        """,
+        (item_id, limit),
+    ).fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
+
+def gallery_item_stats(item_id: int, viewer_id: int | None = None) -> dict:
+    c = _conn()
+    _ensure_social(c)
+    likes = c.execute("SELECT COUNT(*) AS n FROM gallery_likes WHERE item_id=?", (item_id,)).fetchone()["n"]
+    comments = c.execute(
+        "SELECT COUNT(*) AS n FROM gallery_comments WHERE item_id=? AND deleted=0", (item_id,)
+    ).fetchone()["n"]
+    liked = False
+    if viewer_id:
+        liked = bool(
+            c.execute(
+                "SELECT 1 FROM gallery_likes WHERE item_id=? AND user_id=?",
+                (item_id, viewer_id),
+            ).fetchone()
+        )
+    c.close()
+    return {"likes": int(likes), "comments": int(comments), "liked": liked}
+
+
+def notifications_list(user_id: int, limit: int = 40) -> list[dict]:
+    c = _conn()
+    _ensure_social(c)
+    rows = c.execute(
+        """
+        SELECT n.id, n.kind, n.actor_id, n.item_id, n.comment_id, n.body, n.is_read, n.created_at,
+               u.display_name, u.email, u.discord_username
+        FROM notifications n
+        LEFT JOIN users u ON u.id = n.actor_id
+        WHERE n.user_id=?
+        ORDER BY n.created_at DESC
+        LIMIT ?
+        """,
+        (user_id, limit),
+    ).fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
+
+def notifications_unread_count(user_id: int) -> int:
+    c = _conn()
+    _ensure_social(c)
+    n = c.execute(
+        "SELECT COUNT(*) AS n FROM notifications WHERE user_id=? AND is_read=0",
+        (user_id,),
+    ).fetchone()["n"]
+    c.close()
+    return int(n)
+
+
+def notifications_mark_read(user_id: int, ids: list[int] | None = None) -> int:
+    c = _conn()
+    _ensure_social(c)
+    if ids:
+        q = ",".join("?" * len(ids))
+        c.execute(
+            f"UPDATE notifications SET is_read=1 WHERE user_id=? AND id IN ({q})",
+            [user_id, *ids],
+        )
+    else:
+        c.execute("UPDATE notifications SET is_read=1 WHERE user_id=?", (user_id,))
+    c.commit()
+    n = c.total_changes
+    c.close()
+    return n

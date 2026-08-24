@@ -2280,17 +2280,28 @@ async def preview_wm(
 
 
 @app.get("/api/gallery/list")
-def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0):
+def gallery_list(request: Request, status: str = "approved", limit: int = 40, offset: int = 0):
     items = auth_db.gallery_list(status=status, limit=min(int(limit), 100), offset=max(0, int(offset)))
-    out = []
+    viewer = _auth_user(request)
+    viewer_id = int(viewer["id"]) if viewer else None
+    # filter + collect ids
+    filtered = []
     for it in items:
-        # skip soft-deleted / missing files (broken cards after delete)
         st = str(it.get("status") or "").lower()
         if st in ("deleted", "rejected", "removed"):
             continue
         img_path = it.get("image_path") or ""
         if img_path and not Path(img_path).is_file():
-            continue
+            # also try relative to DATA
+            if not (Path(DATA) / img_path).is_file():
+                continue
+        filtered.append(it)
+    ids = [int(it["id"]) for it in filtered]
+    likes_map = auth_db.gallery_like_counts(ids)
+    comments_map = auth_db.gallery_comment_counts(ids)
+    liked_set = auth_db.gallery_user_liked(viewer_id, ids) if viewer_id else set()
+    out = []
+    for it in filtered:
         author = it.get("display_name") or it.get("discord_username") or (it.get("email") or "anon")
         if isinstance(author, str) and "@" in author:
             author = author.split("@")[0]
@@ -2299,25 +2310,21 @@ def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0):
             uid = int(uid) if uid is not None else None
         except Exception:
             uid = None
-        # always expose avatar endpoint when we know the author — handler resolves file on disk
-        av_url = ""
-        if uid:
-            av_url = f"/api/auth/avatar/{uid}"
-        elif it.get("avatar_path"):
-            # should not happen without user_id, but keep safe
-            av_url = ""
+        iid = int(it["id"])
         out.append({
-            "id": it["id"],
+            "id": iid,
             "title": it.get("title") or "",
             "mode": it.get("mode") or "",
-            "author": str(author)[:32],
+            "author": str(author)[:40],
             "user_id": uid,
-            "avatar_url": av_url,
-            "url": f"/api/gallery/image/{it['id']}",
+            "avatar_url": f"/api/auth/avatar/{uid}" if uid else "",
+            "url": f"/api/gallery/image/{iid}",
             "created_at": it.get("created_at"),
+            "likes": likes_map.get(iid, 0),
+            "comments": comments_map.get(iid, 0),
+            "liked": iid in liked_set,
         })
-    return {"ok": True, "items": out}
-
+    return {"ok": True, "items": out, "logged_in": bool(viewer)}
 
 @app.get("/api/gallery/image/{item_id}")
 def gallery_image(item_id: int):
@@ -2719,6 +2726,131 @@ async def gallery_delete(item_id: int, request: Request):
             pass
 
     return {"ok": True, "id": item_id, "status": "deleted", "db": marked}
+
+
+
+
+# ====================== Gallery social API ======================
+
+@app.post("/api/gallery/{item_id}/like")
+async def gallery_like(item_id: int, request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in to like"}, status_code=401)
+    liked, total = auth_db.gallery_like_toggle(int(user["id"]), int(item_id))
+    return {"ok": True, "liked": liked, "likes": total}
+
+
+@app.get("/api/gallery/{item_id}/comments")
+def gallery_comments(item_id: int, request: Request):
+    rows = auth_db.gallery_list_comments(int(item_id))
+    viewer = _auth_user(request)
+    stats = auth_db.gallery_item_stats(int(item_id), int(viewer["id"]) if viewer else None)
+    out = []
+    for r in rows:
+        author = r.get("display_name") or r.get("discord_username") or (r.get("email") or "anon")
+        if isinstance(author, str) and "@" in author:
+            author = author.split("@")[0]
+        uid = r.get("user_id")
+        out.append({
+            "id": r["id"],
+            "parent_id": r.get("parent_id"),
+            "body": r.get("body") or "",
+            "user_id": uid,
+            "author": str(author)[:40],
+            "avatar_url": f"/api/auth/avatar/{uid}" if uid else "",
+            "created_at": r.get("created_at"),
+        })
+    return {"ok": True, "comments": out, **stats}
+
+
+@app.post("/api/gallery/{item_id}/comments")
+async def gallery_post_comment(item_id: int, request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in to comment"}, status_code=401)
+    try:
+        body_json = await request.json()
+    except Exception:
+        body_json = {}
+    body = str(body_json.get("body") or "").strip()
+    parent_id = body_json.get("parent_id")
+    try:
+        parent_id = int(parent_id) if parent_id not in (None, "", 0, "0") else None
+    except Exception:
+        parent_id = None
+    if not body:
+        return JSONResponse({"ok": False, "msg": "Empty comment"}, status_code=400)
+    row = auth_db.gallery_add_comment(int(user["id"]), int(item_id), body, parent_id)
+    if not row:
+        return JSONResponse({"ok": False, "msg": "Failed"}, status_code=400)
+    author = row.get("display_name") or row.get("discord_username") or (row.get("email") or user.get("email") or "you")
+    if isinstance(author, str) and "@" in author:
+        author = author.split("@")[0]
+    uid = row.get("user_id") or user["id"]
+    return {
+        "ok": True,
+        "comment": {
+            "id": row.get("id"),
+            "parent_id": row.get("parent_id"),
+            "body": row.get("body") or body,
+            "user_id": uid,
+            "author": str(author)[:40],
+            "avatar_url": f"/api/auth/avatar/{uid}",
+            "created_at": row.get("created_at"),
+        },
+    }
+
+
+@app.get("/api/notifications")
+def api_notifications(request: Request, limit: int = 40):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in"}, status_code=401)
+    rows = auth_db.notifications_list(int(user["id"]), limit=min(int(limit), 80))
+    unread = auth_db.notifications_unread_count(int(user["id"]))
+    out = []
+    for r in rows:
+        actor = r.get("display_name") or r.get("discord_username") or (r.get("email") or "")
+        if isinstance(actor, str) and "@" in actor:
+            actor = actor.split("@")[0]
+        aid = r.get("actor_id")
+        out.append({
+            "id": r["id"],
+            "kind": r.get("kind"),
+            "body": r.get("body") or "",
+            "item_id": r.get("item_id"),
+            "comment_id": r.get("comment_id"),
+            "is_read": bool(r.get("is_read")),
+            "created_at": r.get("created_at"),
+            "actor": str(actor)[:40],
+            "actor_avatar": f"/api/auth/avatar/{aid}" if aid else "",
+        })
+    return {"ok": True, "items": out, "unread": unread}
+
+
+@app.post("/api/notifications/read")
+async def api_notifications_read(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    ids = body.get("ids")
+    if ids is not None and not isinstance(ids, list):
+        ids = None
+    n = auth_db.notifications_mark_read(int(user["id"]), [int(x) for x in ids] if ids else None)
+    return {"ok": True, "marked": n, "unread": auth_db.notifications_unread_count(int(user["id"]))}
+
+
+@app.get("/api/notifications/unread")
+def api_notifications_unread(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return {"ok": True, "unread": 0, "logged_in": False}
+    return {"ok": True, "unread": auth_db.notifications_unread_count(int(user["id"])), "logged_in": True}
 
 
 @app.get("/api/gallery/pending")
