@@ -2313,15 +2313,9 @@ async def gallery_publish(
     raw = await file.read()
     if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
         return JSONResponse({"ok": False, "msg": "Too large"}, status_code=400)
-    fname = (file.filename or "x.png").lower()
-    ext = Path(fname).suffix.lower()
-    # sniff gif by magic if extension wrong
-    is_gif = ext in (".gif", ".webp") or raw[:6] in (b"GIF87a", b"GIF89a")
-    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif") and not is_gif:
-        return JSONResponse(
-            {"ok": False, "msg": "Images and GIF only (PNG/JPG/WEBP/GIF)"},
-            status_code=400,
-        )
+    ext = Path(file.filename or "x.png").suffix.lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".bmp"):
+        return JSONResponse({"ok": False, "msg": "Only static images for gallery publish"}, status_code=400)
 
     wm_on = wm_enable not in ("0", "false", "False", "")
     opacity = (wm_opacity / 100.0) if wm_on else 0.0
@@ -2334,6 +2328,7 @@ async def gallery_publish(
         scale = max(0.4, min(2.5, float(wm_scale)))
     except Exception:
         scale = 1.0
+    # UI may send 40-250
     if scale > 2.5:
         scale = max(0.4, min(2.5, scale / 100.0))
     wm_x_f = wm_y_f = None
@@ -2350,89 +2345,30 @@ async def gallery_publish(
     if size_i not in (630, 640, 750, 800):
         size_i = 750
 
-    import tempfile
-    work = Path(tempfile.mkdtemp(prefix="sm_gal_"))
     try:
-        data = None
-        out_ext = ".png"
-
-        if is_gif:
-            # Animated: process full GIF pipeline, keep animation in gallery
-            src = work / ("source.gif" if raw[:6] in (b"GIF87a", b"GIF89a") else f"source{ext or '.gif'}")
-            src.write_bytes(raw)
-            if mode == "workshop":
-                paths = proc.process_gif_workshop(
-                    src, work,
-                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
-                    wm_color=color, wm_corner=corner, wm_scale=scale,
-                    wm_x=wm_x_f, wm_y=wm_y_f, encoder="ffmpeg", fps=12,
-                )
-                pick = paths.get("full_with_bars.gif") or paths.get("full_original.gif")
-            elif mode == "featured":
-                paths = proc.process_gif_featured(src, work, fps=12, encoder="ffmpeg")
-                pick = paths.get("featured_630.gif") or paths.get("full_original.gif")
-            else:
-                paths = proc.process_gif_split(
-                    src, work, fps=12,
-                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
-                    wm_color=color, wm_corner=corner, wm_scale=scale,
-                    wm_x=wm_x_f, wm_y=wm_y_f, encoder="ffmpeg",
-                )
-                pick = paths.get("full_with_bars.gif") or paths.get("full_original.gif") or paths.get("center_506.gif")
-            if pick and Path(pick).is_file():
-                data = Path(pick).read_bytes()
-                out_ext = ".gif"
-            else:
-                # fallback: first frame as static
-                im = Image.open(io.BytesIO(raw))
-                im.seek(0)
-                img = im.convert("RGBA")
-                is_gif = False  # fall through to static path below using img
-                # handled in static block
-                buf = io.BytesIO()
-                if mode == "workshop":
-                    if img.size[0] != size_i:
-                        nh = max(1, int(img.size[1] * (size_i / max(1, img.size[0]))))
-                        img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
-                    parts = proc.process_image_workshop(
-                        img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
-                    )
-                    data = parts.get("full_with_bars.png") or parts.get("full_original.png")
-                elif mode == "featured":
-                    parts = proc.process_image_featured(img)
-                    data = parts.get("featured_630.png") or parts.get("full_original.png")
-                else:
-                    parts = proc.process_image_split(
-                        img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
-                    )
-                    data = parts.get("full_with_bars.png") or parts.get("full_original.png")
-                out_ext = ".png"
+        img = Image.open(io.BytesIO(raw))
+        img.load()
+        if max(img.size) > 4096:
+            img.thumbnail((4096, 4096), Image.Resampling.LANCZOS)
+        if str(auto_contrast).lower() in ("1", "true", "yes", "on"):
+            img = ImageOps.autocontrast(img.convert("RGB"), cutoff=1)
+        img = img.convert("RGBA")
+        if mode == "workshop" and img.size[0] != size_i:
+            nh = max(1, int(img.size[1] * (size_i / max(1, img.size[0]))))
+            img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
+        if mode == "workshop":
+            parts = proc.process_image_workshop(
+                img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
+            )
+            data = parts.get("full_with_bars.png") or parts.get("full_original.png")
+        elif mode == "featured":
+            parts = proc.process_image_featured(img)
+            data = parts.get("featured_630.png") or parts.get("full_original.png")
         else:
-            img = Image.open(io.BytesIO(raw))
-            img.load()
-            if max(img.size) > 4096:
-                img.thumbnail((4096, 4096), Image.Resampling.LANCZOS)
-            if str(auto_contrast).lower() in ("1", "true", "yes", "on"):
-                img = ImageOps.autocontrast(img.convert("RGB"), cutoff=1)
-            img = img.convert("RGBA")
-            if mode == "workshop" and img.size[0] != size_i:
-                nh = max(1, int(img.size[1] * (size_i / max(1, img.size[0]))))
-                img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
-            if mode == "workshop":
-                parts = proc.process_image_workshop(
-                    img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
-                )
-                data = parts.get("full_with_bars.png") or parts.get("full_original.png")
-            elif mode == "featured":
-                parts = proc.process_image_featured(img)
-                data = parts.get("featured_630.png") or parts.get("full_original.png")
-            else:
-                parts = proc.process_image_split(
-                    img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
-                )
-                data = parts.get("full_with_bars.png") or parts.get("full_original.png")
-            out_ext = ".png"
-
+            parts = proc.process_image_split(
+                img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
+            )
+            data = parts.get("full_with_bars.png") or parts.get("full_original.png")
         if not data:
             return JSONResponse({"ok": False, "msg": "Nothing to publish"}, status_code=400)
 
@@ -2441,16 +2377,14 @@ async def gallery_publish(
         uid = int(user["id"])
         sub = gdir / f"u{uid}"
         sub.mkdir(parents=True, exist_ok=True)
-        name = f"{int(time.time())}_{secrets.token_hex(4)}_{mode}{out_ext}"
+        name = f"{int(time.time())}_{secrets.token_hex(4)}_{mode}.png"
         path = sub / name
         path.write_bytes(data)
         thumb = None
         try:
-            im = Image.open(io.BytesIO(data))
-            im.seek(0)
-            im = im.convert("RGBA")
+            im = Image.open(io.BytesIO(data)).convert("RGBA")
             im.thumbnail((400, 400))
-            tp = path.with_name(path.stem + ".thumb.png")
+            tp = path.with_suffix(".thumb.png")
             im.save(tp, "PNG")
             thumb = str(tp)
         except Exception:
@@ -2460,8 +2394,6 @@ async def gallery_publish(
         return {"ok": True, "id": gid, "msg": "Submitted for moderation"}
     except Exception as e:
         return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
-    finally:
-        shutil.rmtree(work, ignore_errors=True)
 
 
 @app.post("/api/gallery/mod/{item_id}")
