@@ -2223,6 +2223,13 @@ def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0):
     items = auth_db.gallery_list(status=status, limit=min(int(limit), 100), offset=max(0, int(offset)))
     out = []
     for it in items:
+        # skip soft-deleted / missing files (broken cards after delete)
+        st = str(it.get("status") or "").lower()
+        if st in ("deleted", "rejected", "removed"):
+            continue
+        img_path = it.get("image_path") or ""
+        if img_path and not Path(img_path).is_file():
+            continue
         author = it.get("display_name") or it.get("discord_username") or (it.get("email") or "anon")
         if isinstance(author, str) and "@" in author:
             author = author.split("@")[0]
@@ -2514,12 +2521,8 @@ async def gallery_delete(item_id: int, request: Request):
             is_owner = False
     if not (is_admin or is_owner):
         return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
-    # soft-delete via status
-    try:
-        auth_db.gallery_set_status(item_id, "deleted")
-    except Exception as e:
-        return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
-    # try remove files
+
+    # Remove files first so list won't show a broken card even if DB update is partial
     try:
         p = Path(item.get("image_path") or "")
         if p.is_file():
@@ -2527,13 +2530,50 @@ async def gallery_delete(item_id: int, request: Request):
         thumb = item.get("thumb_path") or ""
         if thumb:
             Path(thumb).unlink(missing_ok=True)
-        else:
-            tp = p.with_name(p.stem + ".thumb.png") if p.suffix else None
-            if tp and tp.is_file():
+        elif p:
+            tp = p.with_name(p.stem + ".thumb.png")
+            if tp.is_file():
                 tp.unlink(missing_ok=True)
     except Exception:
         pass
-    return {"ok": True, "id": item_id, "status": "deleted"}
+
+    # Mark as not public — try several status values (auth_db may whitelist)
+    marked = False
+    for st in ("deleted", "rejected", "removed"):
+        try:
+            if auth_db.gallery_set_status(item_id, st):
+                marked = True
+                break
+        except Exception:
+            continue
+
+    # Hard delete from SQLite if status update failed
+    if not marked:
+        try:
+            conn = auth_db.connect() if hasattr(auth_db, "connect") else None
+            if conn is None and hasattr(auth_db, "get_conn"):
+                conn = auth_db.get_conn()
+            if conn is None:
+                # fallback: open DATA db the same way auth often does
+                db_path = Path(os.environ.get("DATA_DIR") or DATA) / "auth.db"
+                if not db_path.is_file():
+                    db_path = Path(DATA) / "users.db"
+                import sqlite3
+                conn = sqlite3.connect(str(db_path))
+                own = True
+            else:
+                own = False
+            try:
+                conn.execute("DELETE FROM gallery WHERE id=?", (int(item_id),))
+                conn.commit()
+                marked = True
+            finally:
+                if own:
+                    conn.close()
+        except Exception:
+            pass
+
+    return {"ok": True, "id": item_id, "status": "deleted", "db": marked}
 
 
 @app.get("/api/gallery/pending")

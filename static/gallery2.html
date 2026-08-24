@@ -110,28 +110,17 @@ async function load(){
         del.textContent = 'Удалить';
         del.onclick = async () => {
           if (!confirm('Удалить эту работу из галереи?')) return;
-          del.disabled = true;
-          del.textContent = '…';
-          try {
-            const rr = await fetch('/api/gallery/delete/' + id, {
-              method: 'POST',
-              credentials: 'include',
-              headers: headers()
-            });
-            const dd = await rr.json().catch(()=>({}));
-            if (!rr.ok || !dd.ok) {
-              alert(dd.msg || 'Delete failed');
-              del.disabled = false;
-              del.textContent = 'Удалить';
-              return;
-            }
-            el.remove();
-            load();
-          } catch (e) {
-            alert(String(e));
-            del.disabled = false;
-            del.textContent = 'Удалить';
+          const rr = await fetch('/api/gallery/delete/' + id, {
+            method: 'POST',
+            credentials: 'include',
+            headers: headers()
+          });
+          const dd = await rr.json().catch(()=>({}));
+          if (!rr.ok || !dd.ok) {
+            alert(dd.msg || 'Delete failed');
+            return;
           }
+          el.remove();
         };
         act.appendChild(del);
         el.appendChild(act);
