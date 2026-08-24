@@ -2579,10 +2579,11 @@ async def api_compose(
         except Exception:
             ox, oy = 0.5, 1.0
 
-        # animated character?
-        is_anim = ch_ext in (".gif", ".webp")
+        video_exts = (".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v")
+        is_video = ch_ext in video_exts
+        is_anim = ch_ext in (".gif", ".webp") or is_video
         n_frames = 1
-        if is_anim:
+        if ch_ext in (".gif", ".webp") and not is_video:
             try:
                 with Image.open(io.BytesIO(ch_raw)) as im:
                     n_frames = int(getattr(im, "n_frames", 1) or 1)
@@ -2591,20 +2592,27 @@ async def api_compose(
 
         from fastapi.responses import Response
 
-        if is_anim and n_frames > 1:
+        if is_video or (is_anim and n_frames > 1):
             tmp = Path(tempfile.mkdtemp(prefix="sm_compose_"))
             try:
-                cpath = tmp / f"char{ch_ext}"
+                # write original character
+                cpath = tmp / f"char{ch_ext or '.bin'}"
                 cpath.write_bytes(ch_raw)
+                gif_char = cpath
+                if is_video:
+                    gif_char = tmp / "char.gif"
+                    # convert video → gif (short clip for character loops)
+                    proc.media_to_gif(cpath, gif_char, fps=12, width=min(bg.width, 800), duration=8)
+                    if not gif_char.is_file():
+                        return JSONResponse({"ok": False, "msg": "Video→GIF failed (ffmpeg?)"}, status_code=500)
                 frames, durs = proc.compose_animated(
-                    bg, cpath,
+                    bg, gif_char,
                     chroma_key=key,
                     chroma_tol=tol,
                     scale=sc,
                     offset_x=ox,
                     offset_y=oy,
                 )
-                # quantize and save gif
                 out = tmp / "composed.gif"
                 frames_p = [proc._quantize_rgba_for_gif(f) for f in frames]
                 proc._save_animated_gif(frames_p, durs, out)
