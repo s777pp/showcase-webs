@@ -597,54 +597,53 @@ input[type="range"]{
     <div class="compose-layout">
       <!-- Left: controls -->
       <div class="card compose-controls">
-        <h2>Персонаж + фон</h2>
-        <p style="font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.5">
-          Загрузи <b>фон</b> и <b>персонажа</b> (PNG / GIF / MP4). Справа — живой превью.
-          «Совместить» делает финальный файл (с хромакеем и анимацией).
+        <h2 data-i="compose_h">Character + background</h2>
+        <p class="compose-intro" data-i="compose_intro" style="font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.5">
+          Upload a background and a character (PNG / GIF / MP4). Live preview is on the right. «Compose» builds the final file (chromakey + animation).
         </p>
 
         <div class="row">
           <div class="field" style="flex:1;min-width:160px;max-width:100%">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">1. Фон витрины</div>
+            <div data-i="compose_bg_lbl" style="font-size:12px;color:var(--muted);margin-bottom:6px">1. Showcase background</div>
             <div class="fi" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;min-width:0">
-              <span id="composeBgName" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)">файл не выбран</span>
-              <button type="button" class="btn ghost" id="btnComposeBg" style="padding:6px 14px;flex-shrink:0">Выбрать</button>
+              <span id="composeBgName" data-i-empty="compose_nofile" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)">no file selected</span>
+              <button type="button" class="btn ghost" id="btnComposeBg" data-i="compose_pick" style="padding:6px 14px;flex-shrink:0">Choose</button>
               <input type="file" id="composeBg" accept="image/png,image/jpeg,image/webp,image/bmp" style="display:none"/>
             </div>
           </div>
           <div class="field" style="flex:1;min-width:160px;max-width:100%">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">2. Персонаж</div>
+            <div data-i="compose_char_lbl" style="font-size:12px;color:var(--muted);margin-bottom:6px">2. Character</div>
             <div class="fi" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;min-width:0">
-              <span id="composeCharName" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)">файл не выбран</span>
-              <button type="button" class="btn ghost" id="btnComposeChar" style="padding:6px 14px;flex-shrink:0">Выбрать</button>
+              <span id="composeCharName" data-i-empty="compose_nofile" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)">no file selected</span>
+              <button type="button" class="btn ghost" id="btnComposeChar" data-i="compose_pick" style="padding:6px 14px;flex-shrink:0">Choose</button>
               <input type="file" id="composeChar" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,video/mp4,video/webm,video/quicktime,video/*" style="display:none"/>
             </div>
           </div>
         </div>
 
         <div class="row">
-          <label class="field">Фон у персонажа
+          <label class="field"><span data-i="compose_chroma_lbl">Character background</span>
             <select id="composeChroma">
-              <option value="auto" selected>Убрать цветной фон автоматически</option>
-              <option value="none">Уже прозрачный (не трогать)</option>
+              <option value="auto" selected data-i-opt="compose_chroma_auto">Remove colored backdrop automatically</option>
+              <option value="none" data-i-opt="compose_chroma_none">Already transparent (don't touch)</option>
             </select>
           </label>
-          <label class="field">Толерантность хромакея
+          <label class="field"><span data-i="compose_tol_lbl">Chromakey tolerance</span>
             <input type="range" id="composeTol" min="10" max="120" value="45"/>
             <span class="range-val" id="composeTolVal">45</span>
           </label>
-          <label class="field">Сглаживание краёв
+          <label class="field"><span data-i="compose_feather_lbl">Edge smoothing</span>
             <input type="range" id="composeFeather" min="0" max="40" value="16"/>
             <span class="range-val" id="composeFeatherVal">1.6</span>
           </label>
         </div>
 
         <div class="row">
-          <label class="field">Масштаб персонажа
+          <label class="field"><span data-i="compose_scale_lbl">Character scale</span>
             <input type="range" id="composeScale" min="10" max="400" value="100"/>
             <span class="range-val" id="composeScaleVal">100%</span>
           </label>
-          <label class="field">Ширина результата
+          <label class="field"><span data-i="compose_width_lbl">Output width</span>
             <select id="composeWidth">
               <option value="750" selected>750 (Workshop)</option>
               <option value="630">630 (Featured)</option>
@@ -654,38 +653,38 @@ input[type="range"]{
         </div>
 
         <div class="row">
-          <label class="field">Позиция X (0=лево → 1=право)
+          <label class="field"><span data-i="compose_ox_lbl">Position X (0=left → 1=right)</span>
             <input type="range" id="composeOx" min="0" max="100" value="50"/>
             <span class="range-val" id="composeOxVal">0.50</span>
           </label>
-          <label class="field">Позиция Y (0=верх → 1=низ)
+          <label class="field"><span data-i="compose_oy_lbl">Position Y (0=top → 1=bottom)</span>
             <input type="range" id="composeOy" min="0" max="100" value="100"/>
             <span class="range-val" id="composeOyVal">1.00</span>
           </label>
         </div>
 
         <div class="row">
-          <label class="field">Кодек GIF
+          <label class="field"><span data-i="compose_enc_lbl">GIF codec</span>
             <select id="composeGifEncoder">
               <option value="ffmpeg" selected>ffmpeg (palette)</option>
               <option value="pillow">Pillow</option>
               <option value="gifski">gifski</option>
             </select>
           </label>
-          <label class="field">FPS анимации
+          <label class="field"><span data-i="compose_fps_lbl">Animation FPS</span>
             <input type="number" id="composeFps" value="12" min="5" max="30"/>
           </label>
         </div>
 
         <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
-          <button class="btn" type="button" id="btnCompose">Совместить</button>
-          <a class="btn ghost" id="composeDl" style="display:none;text-decoration:none" href="#">Скачать</a>
-          <button class="btn ghost" type="button" id="btnComposeToProcess" style="display:none">В Обработку →</button>
+          <button class="btn" type="button" id="btnCompose" data-i="compose_btn">Compose</button>
+          <a class="btn ghost" id="composeDl" data-i="compose_dl" style="display:none;text-decoration:none" href="#">Download</a>
+          <button class="btn ghost" type="button" id="btnComposeToProcess" data-i="compose_to_process" style="display:none">To Process →</button>
         </div>
         <div class="status" id="composeStatus"></div>
         <div class="sm-progress" id="composeProgress" aria-live="polite">
           <div class="sm-prog-top">
-            <span id="composeProgLabel">Склеиваем…</span>
+            <span id="composeProgLabel" data-i="compose_prog">Compositing…</span>
             <span class="sm-prog-pct" id="composeProgPct">0%</span>
           </div>
           <div class="sm-prog-track"><div class="sm-prog-fill" id="composeProgFill"></div></div>
@@ -693,14 +692,14 @@ input[type="range"]{
         </div>
 
         <div class="compose-help" style="margin-top:16px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.25);font-size:12px;color:var(--muted);line-height:1.55">
-          <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.75);margin-bottom:8px">Как пользоваться</div>
+          <div data-i="compose_help_title" style="font-size:12px;font-weight:600;color:rgba(255,255,255,.75);margin-bottom:8px">How to use</div>
           <ol style="margin:0;padding-left:18px">
-            <li style="margin-bottom:4px"><b style="color:rgba(255,255,255,.85)">Фон витрины</b> — картинка, на которую ставится персонаж (PNG/JPG).</li>
-            <li style="margin-bottom:4px"><b style="color:rgba(255,255,255,.85)">Персонаж</b> — PNG с прозрачностью или фото/видео на зелёном, синем или красном фоне.</li>
-            <li style="margin-bottom:4px">Справа — live. <b style="color:rgba(255,255,255,.85)">Тащи персонажа</b> мышью, <b style="color:rgba(255,255,255,.85)">угол рамки</b> или колёсико — размер. Ползунки тоже работают.</li>
-            <li style="margin-bottom:4px">Если фон цветной — оставь «Убрать цветной фон автоматически». Уже вырезанный PNG — выбери «Уже прозрачный».</li>
-            <li style="margin-bottom:4px"><b style="color:rgba(255,255,255,.85)">Толерантность</b> — насколько агрессивно режется хромакей. <b style="color:rgba(255,255,255,.85)">Сглаживание</b> — мягкость края (0 = резко).</li>
-            <li style="margin-bottom:0">Нажми <b style="color:rgba(255,255,255,.85)">Совместить</b> → скачай результат или отправь <b style="color:rgba(255,255,255,.85)">В Обработку</b> для нарезки Workshop.</li>
+            <li data-i="compose_help_1" style="margin-bottom:4px">Background — image the character is placed on (PNG/JPG).</li>
+            <li data-i="compose_help_2" style="margin-bottom:4px">Character — transparent PNG, or photo/video on green, blue or red screen.</li>
+            <li data-i="compose_help_3" style="margin-bottom:4px">Live preview on the right. Drag the character, use the corner handle or mouse wheel to resize. Sliders work too.</li>
+            <li data-i="compose_help_4" style="margin-bottom:4px">Colored backdrop — leave auto remove. Pre-cut PNG — choose already transparent.</li>
+            <li data-i="compose_help_5" style="margin-bottom:4px">Tolerance — chromakey strength. Smoothing — edge softness (0 = hard).</li>
+            <li data-i="compose_help_6" style="margin-bottom:0">Press Compose → download or send To Process for Workshop slicing.</li>
           </ol>
         </div>
       </div>
@@ -715,14 +714,14 @@ input[type="range"]{
         </h3>
         <div class="compose-canvas-wrap">
           <canvas id="composeLiveCanvas" width="400" height="300"></canvas>
-          <div class="compose-empty-hint" id="composeLiveEmpty">Добавь фон и персонажа — превью обновится сразу</div>
+          <div class="compose-empty-hint" id="composeLiveEmpty" data-i="compose_live_empty">Add background and character — preview updates instantly</div>
         </div>
         <div class="compose-final-wrap" id="composeFinalWrap">
-          <img id="composePreview" alt="" title="Открыть в новой вкладке" style="cursor:pointer"/>
-          <span class="final-hint" id="composeEmpty">Финальный результат после «Совместить»</span>
+          <img id="composePreview" alt="" title="Open in new tab" style="cursor:pointer"/>
+          <span class="final-hint" id="composeEmpty" data-i="compose_final_empty">Final result after Compose</span>
         </div>
-        <p style="margin:8px 0 0;font-size:11px;color:var(--muted);text-align:center;line-height:1.4">
-          Нажми на готовое изображение — откроется в новой вкладке
+        <p data-i="compose_final_hint" style="margin:8px 0 0;font-size:11px;color:var(--muted);text-align:center;line-height:1.4">
+          Click the finished image — opens in a new tab
         </p>
       </div>
     </div>
@@ -2957,6 +2956,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       login: "Log in", logout: "Log out", buy: "Buy Pro", buy_key: "Buy Key", reg: "Sign up", apply: "Apply",
       save_profile: "Save profile", back: "← Home",
       title_process: "Process", sub_process: "Workshop / Featured / Split cuts, watermark and Steam ZIP",
+      title_compose: "Character + BG", sub_compose: "Composite character on background, then send to Process",
       title_download: "Download", sub_download: "Sources from YouTube, TikTok, X, Reddit and Pinterest",
       title_convert: "Converter", sub_convert: "Convert between video, GIF and image formats",
       title_hex: "HEX 21", sub_hex: "Patch last byte to 0x21 for Steam",
@@ -2965,6 +2965,37 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       title_da: "DeviantArt", sub_da: "Publishing — desktop version",
       title_account: "Account", sub_account: "Sign up, log in and buy Pro",
       title_about: "About", sub_about: "Limits, Pro and contacts",
+      compose_h: "Character + background",
+      compose_intro: "Upload a background and a character (PNG / GIF / MP4). Live preview is on the right. «Compose» builds the final file (chromakey + animation).",
+      compose_bg_lbl: "1. Showcase background",
+      compose_char_lbl: "2. Character",
+      compose_nofile: "no file selected",
+      compose_pick: "Choose",
+      compose_chroma_lbl: "Character background",
+      compose_chroma_auto: "Remove colored backdrop automatically",
+      compose_chroma_none: "Already transparent (don't touch)",
+      compose_tol_lbl: "Chromakey tolerance",
+      compose_feather_lbl: "Edge smoothing",
+      compose_scale_lbl: "Character scale",
+      compose_width_lbl: "Output width",
+      compose_ox_lbl: "Position X (0=left → 1=right)",
+      compose_oy_lbl: "Position Y (0=top → 1=bottom)",
+      compose_enc_lbl: "GIF codec",
+      compose_fps_lbl: "Animation FPS",
+      compose_btn: "Compose",
+      compose_dl: "Download",
+      compose_to_process: "To Process →",
+      compose_help_title: "How to use",
+      compose_help_1: "Background — image the character is placed on (PNG/JPG).",
+      compose_help_2: "Character — transparent PNG, or photo/video on green, blue or red screen.",
+      compose_help_3: "Live preview on the right. Drag the character, use the corner handle or mouse wheel to resize. Sliders work too.",
+      compose_help_4: "Colored backdrop — leave «Remove colored backdrop automatically». Pre-cut PNG — choose «Already transparent».",
+      compose_help_5: "Tolerance — how aggressive chromakey is. Smoothing — edge softness (0 = hard).",
+      compose_help_6: "Press Compose → download the result or send To Process for Workshop slicing.",
+      compose_live_empty: "Add background and character — preview updates instantly",
+      compose_final_empty: "Final result after Compose",
+      compose_final_hint: "Click the finished image — opens in a new tab",
+      compose_prog: "Compositing…",
       mode: "Mode", params: "Settings", files: "Files",
       mode_ws: "5 panels for Workshop showcase", mode_ft: "Artwork 630px wide", mode_sp: "Center 506 + side 100",
       run: "Process", clear: "Clear",
@@ -3037,6 +3068,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       login: "Войти", logout: "Выйти", buy: "Купить Pro", buy_key: "Купить ключ", reg: "Регистрация", apply: "Применить",
       save_profile: "Сохранить профиль", back: "← На главную",
       title_process: "Обработка", sub_process: "Нарезка Workshop / Featured / Split, водяной знак и ZIP для Steam",
+      title_compose: "Персонаж + фон", sub_compose: "Наложить персонажа на фон и отправить в Обработку",
       title_download: "Скачать", sub_download: "Исходники с YouTube, TikTok, X, Reddit и Pinterest",
       title_convert: "Конвертер", sub_convert: "Конвертация видео, GIF и изображений",
       title_hex: "HEX 21", sub_hex: "Последний байт 0x21 для Steam",
@@ -3045,6 +3077,37 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       title_da: "DeviantArt", sub_da: "Публикация — как в десктоп-версии",
       title_account: "Аккаунт", sub_account: "Регистрация, вход и покупка Pro",
       title_about: "О сервисе", sub_about: "Лимиты, Pro и контакты",
+      compose_h: "Персонаж + фон",
+      compose_intro: "Загрузи фон и персонажа (PNG / GIF / MP4). Справа — живой превью. «Совместить» делает финальный файл (с хромакеем и анимацией).",
+      compose_bg_lbl: "1. Фон витрины",
+      compose_char_lbl: "2. Персонаж",
+      compose_nofile: "файл не выбран",
+      compose_pick: "Выбрать",
+      compose_chroma_lbl: "Фон у персонажа",
+      compose_chroma_auto: "Убрать цветной фон автоматически",
+      compose_chroma_none: "Уже прозрачный (не трогать)",
+      compose_tol_lbl: "Толерантность хромакея",
+      compose_feather_lbl: "Сглаживание краёв",
+      compose_scale_lbl: "Масштаб персонажа",
+      compose_width_lbl: "Ширина результата",
+      compose_ox_lbl: "Позиция X (0=лево → 1=право)",
+      compose_oy_lbl: "Позиция Y (0=верх → 1=низ)",
+      compose_enc_lbl: "Кодек GIF",
+      compose_fps_lbl: "FPS анимации",
+      compose_btn: "Совместить",
+      compose_dl: "Скачать",
+      compose_to_process: "В Обработку →",
+      compose_help_title: "Как пользоваться",
+      compose_help_1: "Фон витрины — картинка, на которую ставится персонаж (PNG/JPG).",
+      compose_help_2: "Персонаж — PNG с прозрачностью или фото/видео на зелёном, синем или красном фоне.",
+      compose_help_3: "Справа — live. Тащи персонажа мышью, угол рамки или колёсико — размер. Ползунки тоже работают.",
+      compose_help_4: "Если фон цветной — оставь «Убрать цветной фон автоматически». Уже вырезанный PNG — выбери «Уже прозрачный».",
+      compose_help_5: "Толерантность — насколько агрессивно режется хромакей. Сглаживание — мягкость края (0 = резко).",
+      compose_help_6: "Нажми Совместить → скачай результат или отправь В Обработку для нарезки Workshop.",
+      compose_live_empty: "Добавь фон и персонажа — превью обновится сразу",
+      compose_final_empty: "Финальный результат после «Совместить»",
+      compose_final_hint: "Нажми на готовое изображение — откроется в новой вкладке",
+      compose_prog: "Склеиваем…",
       mode: "Режим", params: "Параметры", files: "Файлы",
       mode_ws: "5 панелей для витрины Workshop", mode_ft: "Artwork шириной 630px", mode_sp: "Центр 506 + бок 100",
       run: "Обработать", clear: "Очистить",
@@ -3148,6 +3211,18 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     document.querySelectorAll("[data-i-ph]").forEach(function (el) {
       var k = el.getAttribute("data-i-ph");
       if (k && pack[k] != null) el.placeholder = pack[k];
+    });
+    document.querySelectorAll("[data-i-opt]").forEach(function (el) {
+      var k = el.getAttribute("data-i-opt");
+      if (k && pack[k] != null) el.textContent = pack[k];
+    });
+    // compose empty file labels (only if still "empty" state)
+    ["composeBgName", "composeCharName"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var inp = id === "composeBgName" ? document.getElementById("composeBg") : document.getElementById("composeChar");
+      var hasFile = inp && inp.files && inp.files[0];
+      if (!hasFile && pack.compose_nofile) el.textContent = pack.compose_nofile;
     });
 
     document.querySelectorAll("#nav button[data-tab]").forEach(function (btn) {
