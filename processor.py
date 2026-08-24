@@ -243,15 +243,35 @@ def process_image_workshop(
     return out
 
 
-def process_image_featured(img: Image.Image) -> dict[str, bytes]:
+def process_image_featured(
+    img: Image.Image,
+    wm_text: str = "",
+    wm_font: str = "lap",
+    wm_opacity: float = 0.22,
+    wm_color: str = "#ffffff",
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
+    wm_x: float | None = None,
+    wm_y: float | None = None,
+) -> dict[str, bytes]:
     img = img.convert("RGBA")
     w, h = img.size
     nh = max(1, int(h * (630 / max(1, w))))
     img = img.resize((630, nh), Image.Resampling.LANCZOS)
-    return {
+    out = {
         "featured_630.png": apply_hex21(_png_bytes(img)),
         "full_original.png": _png_bytes(img),
     }
+    # Watermarked copy (like full_with_bars for workshop/split)
+    if wm_text and float(wm_opacity or 0) > 0:
+        wm_img = apply_watermark(
+            img, wm_text, wm_font, wm_opacity,
+            corner=wm_corner, scale=wm_scale, color=wm_color, wx=wm_x, wy=wm_y,
+        )
+        out["full_with_watermark.png"] = _png_bytes(wm_img)
+        # also alias used by gallery/process callers
+        out["full_with_bars.png"] = out["full_with_watermark.png"]
+    return out
 
 
 def process_image_split(
@@ -491,15 +511,25 @@ def process_video_featured(
     fps: int = 12,
     duration: float = 10,
     encoder: str = "ffmpeg",
+    wm_text: str = "",
+    wm_font: str = "lap",
+    wm_opacity: float = 0.22,
+    wm_color: str = "#ffffff",
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
+    wm_x: float | None = None,
+    wm_y: float | None = None,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out = out_dir / "featured_630.gif"
-    media_to_gif(src, out, fps=fps, width=630, duration=duration, encoder=encoder)
-    ensure_under_mb(out)
-    clean = out_dir / "full_original.gif"
-    shutil.copy2(out, clean)
-    return {out.name: out, clean.name: clean}
+    gif_src = out_dir / "source_featured.gif"
+    media_to_gif(src, gif_src, fps=fps, width=630, duration=duration, encoder=encoder)
+    return process_gif_featured(
+        gif_src, out_dir, fps=fps, encoder=encoder,
+        wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
+        wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
+        wm_x=wm_x, wm_y=wm_y,
+    )
 
 
 def process_video_split(
@@ -1061,11 +1091,67 @@ def process_gif_workshop(
     return result
 
 
+
+def _gif_apply_watermark(
+    gif_path: Path,
+    out_path: Path,
+    wm_text: str,
+    wm_font: str,
+    wm_opacity: float,
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
+    wm_color: str = "#ffffff",
+    wm_x: float | None = None,
+    wm_y: float | None = None,
+    encoder: str = "ffmpeg",
+    fps: int = 12,
+) -> None:
+    """Apply watermark on every frame of a GIF and re-encode."""
+    frames_p: list[Image.Image] = []
+    durations: list[int] = []
+    with Image.open(gif_path) as im:
+        n = int(getattr(im, "n_frames", 1) or 1)
+        max_frames = 180
+        step = 1
+        if n > max_frames:
+            step = max(1, n // max_frames)
+        for idx in range(0, n, step):
+            im.seek(idx)
+            frame = im.convert("RGBA")
+            if wm_text and float(wm_opacity or 0) > 0:
+                frame = apply_watermark(
+                    frame,
+                    str(wm_text),
+                    wm_font,
+                    float(wm_opacity),
+                    corner=wm_corner,
+                    scale=float(wm_scale or 1.0),
+                    color=wm_color or "#ffffff",
+                    wx=wm_x,
+                    wy=wm_y,
+                )
+            frames_p.append(_quantize_rgba_for_gif(frame))
+            try:
+                d = int(im.info.get("duration", 100) or 100)
+            except Exception:
+                d = 100
+            durations.append(max(20, d * step))
+    _save_animated_gif(frames_p, durations, out_path)
+
+
 def process_gif_featured(
     gif_path: Path,
     out_dir: Path,
     fps: int = 12,
     encoder: str = "ffmpeg",
+    wm_text: str = "",
+    wm_font: str = "lap",
+    wm_opacity: float = 0.22,
+    wm_color: str = "#ffffff",
+    wm_corner: str = "bl",
+    wm_scale: float = 1.0,
+    wm_x: float | None = None,
+    wm_y: float | None = None,
 ) -> dict[str, Path]:
     ff = find_ffmpeg()
     if not ff:
@@ -1076,7 +1162,40 @@ def process_gif_featured(
     apply_hex21_file(out)
     clean = out_dir / "full_original.gif"
     shutil.copy2(out, clean)
-    return {out.name: out, clean.name: clean}
+    result = {out.name: out, clean.name: clean}
+    # Watermarked animated copy
+    if wm_text and float(wm_opacity or 0) > 0:
+        wm_out = out_dir / "full_with_watermark.gif"
+        try:
+            _gif_apply_watermark(
+                out, wm_out, wm_text, wm_font, wm_opacity,
+                wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color,
+                wm_x=wm_x, wm_y=wm_y, encoder=encoder, fps=fps,
+            )
+            if wm_out.is_file() and wm_out.stat().st_size > 64:
+                ensure_under_mb(wm_out)
+                result[wm_out.name] = wm_out
+                result["full_with_bars.gif"] = wm_out
+            else:
+                # fallback: static first frame with WM
+                with Image.open(out) as im:
+                    im.seek(0)
+                    frame = im.convert("RGBA")
+                wm_img = apply_watermark(
+                    frame, wm_text, wm_font, wm_opacity,
+                    corner=wm_corner, scale=wm_scale, color=wm_color, wx=wm_x, wy=wm_y,
+                )
+                static = out_dir / "full_with_watermark.png"
+                static.write_bytes(_png_bytes(wm_img))
+                result[static.name] = static
+                result["full_with_bars.png"] = static
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            err = out_dir / "full_with_watermark_ERROR.txt"
+            err.write_text(f"{type(e).__name__}: {e}\n\n{traceback.format_exc()}", encoding="utf-8")
+            result[err.name] = err
+    return result
 
 
 def process_gif_split(

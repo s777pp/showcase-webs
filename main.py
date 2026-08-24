@@ -415,11 +415,28 @@ async def auth_profile(request: Request):
                     av_dir.mkdir(parents=True, exist_ok=True)
                     name = getattr(f, "filename", "") or "a.png"
                     ext = Path(name).suffix.lower()
-                    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+                    # sniff magic if extension missing/wrong
+                    head = raw[:12]
+                    if head[:6] in (b"GIF87a", b"GIF89a"):
+                        ext = ".gif"
+                    elif head[:8] == b"\x89PNG\r\n\x1a\n":
                         ext = ".png"
+                    elif head[:3] == b"\xff\xd8\xff":
+                        ext = ".jpg"
+                    elif head[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+                        ext = ".webp"
+                    elif ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+                        ext = ".png"
+                    # remove old avatar files for this user
+                    for old in av_dir.glob(f"{user['id']}.*"):
+                        try:
+                            old.unlink(missing_ok=True)
+                        except Exception:
+                            pass
                     path = av_dir / f"{user['id']}{ext}"
                     path.write_bytes(raw)
-                    avatar_saved = str(path.resolve())
+                    # store relative path so it survives DATA absolute path changes
+                    avatar_saved = f"avatars/{user['id']}{ext}"
         else:
             body = await request.json()
             display_name = str(body.get("display_name") or "")
@@ -444,11 +461,29 @@ def auth_avatar(user_id: int):
     c.close()
     if not row or not row["avatar_path"]:
         return JSONResponse({"ok": False}, status_code=404)
-    path = Path(row["avatar_path"])
+    stored = str(row["avatar_path"])
+    path = Path(stored)
+    # resolve relative paths against DATA (new storage scheme)
+    if not path.is_file():
+        cand = Path(DATA) / stored
+        if cand.is_file():
+            path = cand
+        else:
+            # fallback: look for avatars/{id}.*
+            av_dir = Path(DATA) / "avatars"
+            matches = list(av_dir.glob(f"{int(user_id)}.*")) if av_dir.is_dir() else []
+            path = matches[0] if matches else path
     if not path.is_file():
         return JSONResponse({"ok": False}, status_code=404)
     from fastapi.responses import FileResponse
-    return FileResponse(path)
+    media = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+    }.get(path.suffix.lower(), "application/octet-stream")
+    return FileResponse(path, media_type=media, headers={"Cache-Control": "public, max-age=3600"})
 
 
 @app.post("/api/auth/logout")
@@ -469,7 +504,14 @@ def auth_me(request: Request):
     if not user:
         return {"ok": False, "logged_in": False}
     av = user.get("avatar_path") or ""
-    av_url = f"/api/auth/avatar/{user['id']}" if av else ""
+    av_url = ""
+    if av:
+        av_url = f"/api/auth/avatar/{user['id']}"
+    else:
+        # fallback if path was lost but file remains on disk
+        av_dir = Path(DATA) / "avatars"
+        if av_dir.is_dir() and list(av_dir.glob(f"{user['id']}.*")):
+            av_url = f"/api/auth/avatar/{user['id']}"
     return {
         "ok": True,
         "logged_in": True,
@@ -746,7 +788,9 @@ async def api_process(
                                 img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
                             )
                         elif mode == "featured":
-                            parts = proc.process_image_featured(img)
+                            parts = proc.process_image_featured(
+                                img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
+                            )
                         else:
                             parts = proc.process_image_split(
                                 img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
@@ -780,6 +824,8 @@ async def api_process(
                             elif mode == "featured":
                                 paths = proc.process_video_featured(
                                     src, work, fps=v_fps, duration=v_dur, encoder=enc,
+                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
+                                    wm_corner=corner, wm_scale=scale, wm_x=wm_x_f, wm_y=wm_y_f,
                                 )
                             else:
                                 paths = proc.process_video_split(
@@ -799,6 +845,9 @@ async def api_process(
                             elif mode == "featured":
                                 paths = proc.process_gif_featured(
                                     src, work, fps=v_fps, encoder=enc,
+                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                                    wm_color=color, wm_corner=corner, wm_scale=scale,
+                                    wm_x=wm_x_f, wm_y=wm_y_f,
                                 )
                             else:
                                 paths = proc.process_gif_split(
@@ -2334,13 +2383,34 @@ async def gallery_publish(
         return JSONResponse({"ok": False, "msg": "Too large"}, status_code=400)
     fname = (file.filename or "x.png").lower()
     ext = Path(fname).suffix.lower()
-    # sniff gif by magic if extension wrong
-    is_gif = ext in (".gif", ".webp") or raw[:6] in (b"GIF87a", b"GIF89a")
-    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif") and not is_gif:
+    # Sniff real format by magic bytes (fixes missing/wrong extension)
+    head = raw[:16] if raw else b""
+    is_gif = ext == ".gif" or head[:6] in (b"GIF87a", b"GIF89a")
+    is_png = ext == ".png" or head[:8] == b"\x89PNG\r\n\x1a\n"
+    is_jpg = ext in (".jpg", ".jpeg") or head[:3] == b"\xff\xd8\xff"
+    is_webp = ext == ".webp" or (head[:4] == b"RIFF" and head[8:12] == b"WEBP")
+    is_bmp = ext == ".bmp" or head[:2] == b"BM"
+    is_video = ext in (".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v") or head[4:8] == b"ftyp"
+    is_image = is_gif or is_png or is_jpg or is_webp or is_bmp
+    if not is_image and not is_video:
         return JSONResponse(
             {"ok": False, "msg": "Images and GIF only (PNG/JPG/WEBP/GIF)"},
             status_code=400,
         )
+    # normalize extension from sniffed type when missing/wrong
+    if not ext or ext not in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".mp4", ".webm", ".mov", ".avi", ".mkv"):
+        if is_gif:
+            ext = ".gif"
+        elif is_png:
+            ext = ".png"
+        elif is_jpg:
+            ext = ".jpg"
+        elif is_webp:
+            ext = ".webp"
+        elif is_bmp:
+            ext = ".bmp"
+        elif is_video:
+            ext = ".mp4"
 
     wm_on = wm_enable not in ("0", "false", "False", "")
     opacity = (wm_opacity / 100.0) if wm_on else 0.0
@@ -2375,11 +2445,44 @@ async def gallery_publish(
         data = None
         out_ext = ".png"
 
-        if is_gif:
-            # Animated: process full GIF pipeline, keep animation in gallery
-            src = work / ("source.gif" if raw[:6] in (b"GIF87a", b"GIF89a") else f"source{ext or '.gif'}")
+        if is_gif or is_video:
+            # Animated / video: process full pipeline, keep animation in gallery
+            src_ext = ext if ext else (".gif" if is_gif else ".mp4")
+            if is_gif and raw[:6] in (b"GIF87a", b"GIF89a"):
+                src_ext = ".gif"
+            src = work / f"source{src_ext}"
             src.write_bytes(raw)
-            if mode == "workshop":
+            use_video = is_video or src_ext in (".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v")
+            if use_video:
+                if mode == "workshop":
+                    paths = proc.process_video_workshop(
+                        src, work, fps=12, width=size_i,
+                        wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
+                        duration=8.0, wm_corner=corner, wm_scale=scale,
+                        wm_x=wm_x_f, wm_y=wm_y_f, encoder="gifski",
+                    )
+                    pick = paths.get("full_with_bars.gif") or paths.get("full_original.gif")
+                elif mode == "featured":
+                    paths = proc.process_video_featured(
+                        src, work, fps=12, duration=8.0, encoder="gifski",
+                        wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
+                        wm_corner=corner, wm_scale=scale, wm_x=wm_x_f, wm_y=wm_y_f,
+                    )
+                    pick = (
+                        paths.get("full_with_watermark.gif")
+                        or paths.get("full_with_bars.gif")
+                        or paths.get("featured_630.gif")
+                        or paths.get("full_original.gif")
+                    )
+                else:
+                    paths = proc.process_video_split(
+                        src, work, fps=12,
+                        wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
+                        duration=8.0, wm_corner=corner, wm_scale=scale,
+                        wm_x=wm_x_f, wm_y=wm_y_f, encoder="gifski",
+                    )
+                    pick = paths.get("full_with_bars.gif") or paths.get("full_original.gif") or paths.get("center_506.gif")
+            elif mode == "workshop":
                 paths = proc.process_gif_workshop(
                     src, work,
                     wm_text=text, wm_font=wm_font, wm_opacity=opacity,
@@ -2388,8 +2491,18 @@ async def gallery_publish(
                 )
                 pick = paths.get("full_with_bars.gif") or paths.get("full_original.gif")
             elif mode == "featured":
-                paths = proc.process_gif_featured(src, work, fps=12, encoder="gifski")
-                pick = paths.get("featured_630.gif") or paths.get("full_original.gif")
+                paths = proc.process_gif_featured(
+                    src, work, fps=12, encoder="gifski",
+                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
+                    wm_color=color, wm_corner=corner, wm_scale=scale,
+                    wm_x=wm_x_f, wm_y=wm_y_f,
+                )
+                pick = (
+                    paths.get("full_with_watermark.gif")
+                    or paths.get("full_with_bars.gif")
+                    or paths.get("featured_630.gif")
+                    or paths.get("full_original.gif")
+                )
             else:
                 paths = proc.process_gif_split(
                     src, work, fps=12,
@@ -2418,8 +2531,15 @@ async def gallery_publish(
                     )
                     data = parts.get("full_with_bars.png") or parts.get("full_original.png")
                 elif mode == "featured":
-                    parts = proc.process_image_featured(img)
-                    data = parts.get("featured_630.png") or parts.get("full_original.png")
+                    parts = proc.process_image_featured(
+                        img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
+                    )
+                    data = (
+                        parts.get("full_with_watermark.png")
+                        or parts.get("full_with_bars.png")
+                        or parts.get("featured_630.png")
+                        or parts.get("full_original.png")
+                    )
                 else:
                     parts = proc.process_image_split(
                         img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
@@ -2443,8 +2563,15 @@ async def gallery_publish(
                 )
                 data = parts.get("full_with_bars.png") or parts.get("full_original.png")
             elif mode == "featured":
-                parts = proc.process_image_featured(img)
-                data = parts.get("featured_630.png") or parts.get("full_original.png")
+                parts = proc.process_image_featured(
+                    img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
+                )
+                data = (
+                    parts.get("full_with_watermark.png")
+                    or parts.get("full_with_bars.png")
+                    or parts.get("featured_630.png")
+                    or parts.get("full_original.png")
+                )
             else:
                 parts = proc.process_image_split(
                     img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
