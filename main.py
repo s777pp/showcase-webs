@@ -761,6 +761,12 @@ async def api_process(
                         is_video = ext in (".mp4", ".mov", ".webm", ".avi", ".mkv")
                         v_fps = min(int(fps), 12)
                         v_dur = 8.0
+                        enc = (gif_encoder or "ffmpeg").strip().lower()
+                        if enc not in ("ffmpeg", "gifski", "pillow"):
+                            enc = "ffmpeg"
+                        # pillow → treat as ffmpeg for process pipeline
+                        if enc == "pillow":
+                            enc = "ffmpeg"
                         if is_video:
                             if not proc.find_ffmpeg():
                                 raise RuntimeError("FFmpeg not available")
@@ -769,18 +775,18 @@ async def api_process(
                                     src, work, fps=v_fps, width=size_i,
                                     wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
                                     duration=v_dur, wm_corner=corner, wm_scale=scale,
-                                    wm_x=wm_x_f, wm_y=wm_y_f,
+                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=enc,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_video_featured(
-                                    src, work, fps=v_fps, duration=v_dur
+                                    src, work, fps=v_fps, duration=v_dur, encoder=enc,
                                 )
                             else:
                                 paths = proc.process_video_split(
                                     src, work, fps=v_fps,
                                     wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
                                     duration=v_dur, wm_corner=corner, wm_scale=scale,
-                                    wm_x=wm_x_f, wm_y=wm_y_f,
+                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=enc,
                                 )
                         else:
                             if mode == "workshop":
@@ -788,16 +794,18 @@ async def api_process(
                                     src, work,
                                     wm_text=text, wm_font=wm_font, wm_opacity=opacity,
                                     wm_color=color, wm_corner=corner, wm_scale=scale,
-                                    wm_x=wm_x_f, wm_y=wm_y_f,
+                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=enc, fps=v_fps,
                                 )
                             elif mode == "featured":
-                                paths = proc.process_gif_featured(src, work, fps=v_fps)
+                                paths = proc.process_gif_featured(
+                                    src, work, fps=v_fps, encoder=enc,
+                                )
                             else:
                                 paths = proc.process_gif_split(
                                     src, work, fps=v_fps,
                                     wm_text=text, wm_font=wm_font, wm_opacity=opacity,
                                     wm_color=color, wm_corner=corner, wm_scale=scale,
-                                    wm_x=wm_x_f, wm_y=wm_y_f,
+                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=enc,
                                 )
                         for pname, pth in paths.items():
                             pth = Path(pth)

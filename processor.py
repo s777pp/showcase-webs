@@ -318,8 +318,39 @@ def _ffmpeg_palette_vf(fps: int, width: Optional[int] = None, scale_pct: Optiona
     return ",".join(parts)
 
 
-def media_to_gif(src: Path, dest: Path, fps: int, width: int, duration: float = 12) -> None:
-    """Convert image/gif/video to high-quality GIF, then fit under Steam 5 MB."""
+def _gifski_from_frames(frames_dir: Path, dest: Path, fps: int, quality: int = 100) -> bool:
+    """Encode PNG sequence with gifski. Returns True on success."""
+    gs = find_gifski()
+    if not gs:
+        return False
+    files = sorted(frames_dir.glob("frame_*.png"))
+    if not files:
+        return False
+    fps = max(5, min(30, int(fps)))
+    quality = max(1, min(100, int(quality)))
+    try:
+        cmd = [
+            gs, "--fps", str(fps), "--quality", str(quality),
+            "-o", str(dest), *[str(f) for f in files],
+        ]
+        subprocess.run(cmd, check=True, capture_output=True)
+        return dest.is_file() and dest.stat().st_size > 50
+    except Exception:
+        return False
+
+
+def media_to_gif(
+    src: Path,
+    dest: Path,
+    fps: int,
+    width: int,
+    duration: float = 12,
+    encoder: str = "ffmpeg",
+) -> None:
+    """Convert image/gif/video to high-quality GIF, then fit under Steam 5 MB.
+
+    encoder: gifski | ffmpeg — gifski preferred when binary is available.
+    """
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg not found (install ffmpeg or put bin/ffmpeg)")
@@ -334,20 +365,15 @@ def media_to_gif(src: Path, dest: Path, fps: int, width: int, duration: float = 
         raise RuntimeError(f"source missing: {src}")
 
     duration = max(1.0, min(20.0, float(duration)))
-    vf = _ffmpeg_palette_vf(fps=fps, width=width, max_colors=256)
-    cmd = [
-        ff, "-y", "-hide_banner", "-loglevel", "error",
-        "-i", str(src),
-        "-t", str(duration),
-        "-an",
-        "-vf", vf,
-        "-loop", "0",
-        str(dest),
-    ]
+    encoder = (encoder or "ffmpeg").strip().lower()
+    want_gifski = encoder == "gifski" and bool(find_gifski())
+
+    # High-quality path: rasterize frames → gifski (or ffmpeg palette)
+    tmp = Path(tempfile.mkdtemp(prefix="sm_m2g_"))
     try:
-        _run(cmd)
-    except Exception as e1:
-        mid = dest.with_suffix(".tmp.mp4")
+        frames = tmp / "frames"
+        frames.mkdir()
+        # Extract scaled frames as PNG (source for both encoders)
         try:
             _run([
                 ff, "-y", "-hide_banner", "-loglevel", "error",
@@ -355,25 +381,47 @@ def media_to_gif(src: Path, dest: Path, fps: int, width: int, duration: float = 
                 "-t", str(duration),
                 "-an",
                 "-vf", f"fps={fps},scale={width}:-2:flags=lanczos",
+                str(frames / "frame_%04d.png"),
+            ])
+        except Exception:
+            # odd codecs: intermediate mp4
+            mid = tmp / "mid.mp4"
+            _run([
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-i", str(src),
+                "-t", str(duration),
+                "-an",
+                "-vf", f"fps={fps},scale={width}:-2:flags=lanczos",
                 "-pix_fmt", "yuv420p",
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18",
                 str(mid),
             ])
             _run([
                 ff, "-y", "-hide_banner", "-loglevel", "error",
                 "-i", str(mid),
                 "-an",
-                "-vf", _ffmpeg_palette_vf(fps=fps, max_colors=256),
+                str(frames / "frame_%04d.png"),
+            ])
+
+        if not list(frames.glob("frame_*.png")):
+            raise RuntimeError("no frames extracted for GIF")
+
+        ok = False
+        if want_gifski:
+            ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
+        if not ok:
+            # ffmpeg palette from PNG sequence
+            vf = _ffmpeg_palette_vf(fps=fps, max_colors=256)
+            _run([
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-framerate", str(fps),
+                "-i", str(frames / "frame_%04d.png"),
+                "-lavfi", vf,
                 "-loop", "0",
                 str(dest),
             ])
-        except Exception as e2:
-            raise RuntimeError(f"video→gif failed: {e1} | fallback: {e2}") from e2
-        finally:
-            try:
-                mid.unlink(missing_ok=True)
-            except Exception:
-                pass
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
     if not dest.is_file() or dest.stat().st_size < 50:
         raise RuntimeError("GIF conversion produced empty file")
@@ -424,15 +472,16 @@ def process_video_workshop(
     wm_scale: float = 1.0,
     wm_x: float | None = None,
     wm_y: float | None = None,
+    encoder: str = "ffmpeg",
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     gif_src = out_dir / "source.gif"
-    media_to_gif(src, gif_src, fps=fps, width=width, duration=duration)
+    media_to_gif(src, gif_src, fps=fps, width=width, duration=duration, encoder=encoder)
     return process_gif_workshop(
         gif_src, out_dir, wm_text, wm_font, wm_opacity,
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
-        wm_x=wm_x, wm_y=wm_y,
+        wm_x=wm_x, wm_y=wm_y, encoder=encoder,
     )
 
 
@@ -441,11 +490,12 @@ def process_video_featured(
     out_dir: Path,
     fps: int = 12,
     duration: float = 10,
+    encoder: str = "ffmpeg",
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / "featured_630.gif"
-    media_to_gif(src, out, fps=fps, width=630, duration=duration)
+    media_to_gif(src, out, fps=fps, width=630, duration=duration, encoder=encoder)
     ensure_under_mb(out)
     clean = out_dir / "full_original.gif"
     shutil.copy2(out, clean)
@@ -465,14 +515,16 @@ def process_video_split(
     wm_scale: float = 1.0,
     wm_x: float | None = None,
     wm_y: float | None = None,
+    encoder: str = "ffmpeg",
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     gif_src = out_dir / "source.gif"
-    media_to_gif(src, gif_src, fps=fps, width=606, duration=duration)
+    media_to_gif(src, gif_src, fps=fps, width=606, duration=duration, encoder=encoder)
     return process_gif_split(
         gif_src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale, wm_x=wm_x, wm_y=wm_y,
+        encoder=encoder,
     )
 
 
@@ -904,6 +956,51 @@ def _gif_full_with_bar_split(
 
 
 
+def _reencode_crop_hq(
+    src_gif: Path,
+    dest: Path,
+    crop_vf: str,
+    fps: int = 12,
+    encoder: str = "ffmpeg",
+) -> None:
+    """Crop a GIF strip and re-encode with max quality (gifski when requested)."""
+    ff = find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not found")
+    encoder = (encoder or "ffmpeg").strip().lower()
+    want_gs = encoder == "gifski" and bool(find_gifski())
+    tmp = Path(tempfile.mkdtemp(prefix="sm_crop_"))
+    try:
+        frames = tmp / "f"
+        frames.mkdir()
+        # crop → PNG sequence
+        _run([
+            ff, "-y", "-hide_banner", "-loglevel", "error",
+            "-i", str(src_gif),
+            "-an",
+            "-vf", f"{crop_vf},fps={max(5, min(24, int(fps)))}",
+            str(frames / "frame_%04d.png"),
+        ])
+        if not list(frames.glob("frame_*.png")):
+            raise RuntimeError("crop produced no frames")
+        ok = False
+        if want_gs:
+            ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
+        if not ok:
+            vf = _ffmpeg_palette_vf(fps=fps, max_colors=256)
+            _run([
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-framerate", str(max(5, min(24, int(fps)))),
+                "-i", str(frames / "frame_%04d.png"),
+                "-lavfi", vf,
+                "-loop", "0",
+                str(dest),
+            ])
+        ensure_under_mb(dest)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def process_gif_workshop(
     gif_path: Path,
     out_dir: Path,
@@ -915,6 +1012,8 @@ def process_gif_workshop(
     wm_scale: float = 1.0,
     wm_x: float | None = None,
     wm_y: float | None = None,
+    encoder: str = "ffmpeg",
+    fps: int = 12,
 ) -> dict[str, Path]:
     """Cut GIF into 5 Steam Workshop parts + full_with_bars.gif."""
     out_dir = Path(out_dir)
@@ -923,27 +1022,23 @@ def process_gif_workshop(
     if not ff:
         raise RuntimeError("FFmpeg not found")
     width, height = _probe_wh(gif_path)
-    # last part takes remainder so nothing is lost
     pw = max(1, width // 5)
     result: dict[str, Path] = {}
     for i in range(5):
         out = out_dir / f"part_{i + 1}.gif"
         x = i * pw
         w = pw if i < 4 else max(1, width - x)
-        # crop then re-palette for valid GIF
-        vf = (
-            f"crop={w}:{height}:{x}:0,"
-            f"split[s0][s1];[s0]palettegen=stats_mode=single[p];"
-            f"[s1][p]paletteuse"
+        _reencode_crop_hq(
+            gif_path, out,
+            crop_vf=f"crop={w}:{height}:{x}:0",
+            fps=fps,
+            encoder=encoder,
         )
-        _run([ff, "-y", "-i", str(gif_path), "-an", "-vf", vf, "-loop", "0", str(out)])
-        ensure_under_mb(out)
         apply_hex21_file(out)
         result[out.name] = out
     clean = out_dir / "full_original.gif"
     shutil.copy2(gif_path, clean)
     result[clean.name] = clean
-    # полная гиф с полосами + watermark
     bars = out_dir / "full_with_bars.gif"
     try:
         _gif_full_with_bars_workshop(
@@ -966,12 +1061,17 @@ def process_gif_workshop(
     return result
 
 
-def process_gif_featured(gif_path: Path, out_dir: Path, fps: int = 12) -> dict[str, Path]:
+def process_gif_featured(
+    gif_path: Path,
+    out_dir: Path,
+    fps: int = 12,
+    encoder: str = "ffmpeg",
+) -> dict[str, Path]:
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg не найден")
     out = out_dir / "featured_630.gif"
-    media_to_gif(gif_path, out, fps=fps, width=630, duration=10)
+    media_to_gif(gif_path, out, fps=fps, width=630, duration=10, encoder=encoder)
     ensure_under_mb(out)
     apply_hex21_file(out)
     clean = out_dir / "full_original.gif"
@@ -991,28 +1091,18 @@ def process_gif_split(
     wm_scale: float = 1.0,
     wm_x: float | None = None,
     wm_y: float | None = None,
+    encoder: str = "ffmpeg",
 ) -> dict[str, Path]:
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg не найден")
     tmp = out_dir / "tmp_606.gif"
-    media_to_gif(gif_path, tmp, fps=fps, width=606, duration=10)
-    probe = find_ffprobe() or ff.replace("ffmpeg", "ffprobe")
-    kw = {}
-    if os.name == "nt":
-        kw["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    info = subprocess.check_output(
-        [probe, "-v", "quiet", "-select_streams", "v:0",
-         "-show_entries", "stream=width,height", "-of", "csv=p=0", str(tmp)],
-        text=True, **kw,
-    ).strip().split(",")
-    height = int(info[1])
+    media_to_gif(gif_path, tmp, fps=fps, width=606, duration=10, encoder=encoder)
+    width, height = _probe_wh(tmp)
     center = out_dir / "center_506.gif"
     side = out_dir / "side_100.gif"
-    _run([ff, "-y", "-i", str(tmp), "-filter:v", f"crop=506:{height}:0:0", "-loop", "0", str(center)])
-    _run([ff, "-y", "-i", str(tmp), "-filter:v", f"crop=100:{height}:506:0", "-loop", "0", str(side)])
-    ensure_under_mb(center)
-    ensure_under_mb(side)
+    _reencode_crop_hq(tmp, center, crop_vf=f"crop=506:{height}:0:0", fps=fps, encoder=encoder)
+    _reencode_crop_hq(tmp, side, crop_vf=f"crop=100:{height}:506:0", fps=fps, encoder=encoder)
     apply_hex21_file(center)
     apply_hex21_file(side)
     clean = out_dir / "full_original.gif"
