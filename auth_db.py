@@ -82,6 +82,7 @@ def _conn() -> sqlite3.Connection:
         ("email_verified", "INTEGER DEFAULT 0"),
         ("discord_id", "TEXT"),
         ("discord_username", "TEXT"),
+        ("google_id", "TEXT"),
     ):
         if col not in cols:
             try:
@@ -497,6 +498,64 @@ def register_or_login_discord(discord_id: str, username: str, email: str | None 
                 return False, "Could not create Discord account", None
             uid = int(row["id"])
             c.execute("UPDATE users SET discord_id=?, discord_username=? WHERE id=?", (discord_id, username, uid))
+            c.commit()
+    token = secrets.token_hex(24)
+    c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (token, uid, time.time()))
+    c.commit()
+    c.close()
+    return True, "OK", token
+
+
+
+def user_by_google(google_id: str) -> dict | None:
+    if not google_id:
+        return None
+    c = _conn()
+    row = c.execute(
+        "SELECT id, email, is_pro, pro_code, pro_until, google_id, display_name, avatar_path FROM users WHERE google_id=?",
+        (str(google_id),),
+    ).fetchone()
+    c.close()
+    if not row:
+        return None
+    return dict(row)
+
+
+def register_or_login_google(google_id: str, email: str | None, name: str | None = None) -> tuple[bool, str, str | None]:
+    """Return (ok, msg, session_token). Creates account if needed."""
+    google_id = str(google_id)
+    name = (name or "google")[:40]
+    existing = user_by_google(google_id)
+    c = _conn()
+    if existing:
+        uid = int(existing["id"])
+        if name:
+            c.execute(
+                "UPDATE users SET display_name=COALESCE(display_name, ?) WHERE id=?",
+                (name, uid),
+            )
+            c.commit()
+    else:
+        em = (email or f"google_{google_id}@users.local").strip().lower()
+        try:
+            c.execute(
+                "INSERT INTO users(email, password_hash, is_pro, email_verified, google_id, display_name, created_at) VALUES (?,?,0,1,?,?,?)",
+                (em, _hash_pw(secrets.token_hex(16)), google_id, name, time.time()),
+            )
+            c.commit()
+            uid = c.execute("SELECT id FROM users WHERE google_id=?", (google_id,)).fetchone()["id"]
+        except sqlite3.IntegrityError:
+            row = c.execute("SELECT id FROM users WHERE email=?", (em,)).fetchone()
+            if not row:
+                c.close()
+                return False, "Could not create Google account", None
+            uid = int(row["id"])
+            c.execute("UPDATE users SET google_id=? WHERE id=?", (google_id, uid))
+            if name:
+                c.execute(
+                    "UPDATE users SET display_name=COALESCE(display_name, ?) WHERE id=?",
+                    (name, uid),
+                )
             c.commit()
     token = secrets.token_hex(24)
     c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (token, uid, time.time()))

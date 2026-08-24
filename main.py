@@ -2987,6 +2987,110 @@ setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
 
 
 
+
+
+
+# ====================== Google OAuth login ======================
+
+def _google_redirect_uri() -> str:
+    redirect = (os.environ.get("GOOGLE_REDIRECT_URI") or "").strip()
+    if not redirect:
+        base = (os.environ.get("APP_URL") or "").strip().rstrip("/")
+        redirect = base + "/api/auth/google/callback"
+    if "://" in redirect:
+        scheme, rest = redirect.split("://", 1)
+        while "//" in rest:
+            rest = rest.replace("//", "/")
+        redirect = scheme + "://" + rest
+    return redirect
+
+
+@app.get("/api/auth/google/login")
+def google_login_start(request: Request):
+    cid = (os.environ.get("GOOGLE_CLIENT_ID") or "").strip()
+    secret = (os.environ.get("GOOGLE_CLIENT_SECRET") or "").strip()
+    redirect = _google_redirect_uri()
+    if not cid or not secret:
+        return JSONResponse(
+            {"ok": False, "msg": "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set on server"},
+            status_code=503,
+        )
+    from urllib.parse import urlencode
+    state = secrets.token_hex(16)
+    if not hasattr(app.state, "google_pending"):
+        app.state.google_pending = {}
+    app.state.google_pending[state] = time.time()
+    q = urlencode({
+        "client_id": cid,
+        "redirect_uri": redirect,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "online",
+        "prompt": "select_account",
+    })
+    return {"ok": True, "url": f"https://accounts.google.com/o/oauth2/v2/auth?{q}"}
+
+
+@app.get("/api/auth/google/callback")
+async def google_callback(request: Request, code: str = "", state: str = ""):
+    pending = getattr(app.state, "google_pending", {})
+    if state not in pending:
+        return HTMLResponse("<h3>Google auth failed (bad state)</h3>", status_code=400)
+    pending.pop(state, None)
+    cid = (os.environ.get("GOOGLE_CLIENT_ID") or "").strip()
+    secret = (os.environ.get("GOOGLE_CLIENT_SECRET") or "").strip()
+    redirect = _google_redirect_uri()
+    try:
+        import requests as rq
+        tok = rq.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": cid,
+                "client_secret": secret,
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30,
+        )
+        if tok.status_code != 200:
+            return HTMLResponse(f"<h3>Token error</h3><pre>{tok.text[:400]}</pre>", status_code=400)
+        access = tok.json().get("access_token")
+        me = rq.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access}"},
+            timeout=20,
+        )
+        if me.status_code != 200:
+            return HTMLResponse(f"<h3>User error</h3><pre>{me.text[:400]}</pre>", status_code=400)
+        u = me.json()
+        gid = str(u.get("sub") or "")
+        uname = u.get("name") or (u.get("email") or "google").split("@")[0]
+        email = u.get("email")
+        ok, msg, token = auth_db.register_or_login_google(gid, email, uname)
+        if not ok or not token:
+            return HTMLResponse(f"<h3>{msg}</h3>", status_code=400)
+        app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
+        resp = HTMLResponse(
+            f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>OK</title></head>
+<body style="font-family:system-ui;background:#0b0b12;color:#eee;display:grid;place-items:center;min-height:100vh;margin:0">
+<div style="text-align:center"><h1>Google connected</h1>
+<p>You can close this window.</p>
+<a href="{app_url}/app" style="color:#7b5cff">Back to app</a></div>
+<script>
+try {{ localStorage.setItem('sm_session', {token!r}); }} catch(e) {{}}
+try {{ if (window.opener) window.opener.postMessage({{type:'google_login', token:{token!r}}}, '*'); }} catch(e) {{}}
+setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
+</script></body></html>"""
+        )
+        return _attach_session_cookie(resp, token, request)
+    except Exception as e:
+        return HTMLResponse(f"<h3>Error</h3><pre>{e}</pre>", status_code=500)
+
+
+
 # ====================== Character + background compose ======================
 
 @app.post("/api/compose")

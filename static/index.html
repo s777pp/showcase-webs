@@ -440,6 +440,14 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
   .mobile-menu{display:none !important}
 }
 
+
+@media (max-width:767px){
+  #navDiscord, #navGoogle{
+    padding:8px 12px;font-size:12px;max-width:42vw;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -476,7 +484,8 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
         <a href="#pricing" data-i="nav_price" role="menuitem">Pricing</a>
         <a href="/app" data-i="nav_tools" role="menuitem">Tools</a>
         <div class="mm-sep"></div>
-        <a href="#" id="navDiscordMobile" data-i="nav_discord" role="menuitem">Discord</a>
+        <a href="#" id="navDiscordMobile" data-i="nav_discord_short" role="menuitem">Discord</a>
+        <a href="#" id="navGoogleMobile" data-i="nav_google_short" role="menuitem">Google</a>
         <a href="/app" data-i="cta_tools" role="menuitem">Open tools →</a>
         <button type="button" class="mm-item" id="langBtnMobile" role="menuitem">Language: RU</button>
       </div>
@@ -488,7 +497,8 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
       <a href="/app" data-i="nav_tools">Tools</a>
     </div>
     <div class="nav-right">
-      <a href="#" class="btn-ghost" data-i="nav_discord" id="navDiscord" role="button" style="margin-right:6px">Discord</a>
+      <a href="#" class="btn-ghost" data-i="nav_discord" id="navDiscord" role="button" style="margin-right:6px">Continue with Discord</a>
+      <a href="#" class="btn-ghost" data-i="nav_google" id="navGoogle" role="button" style="margin-right:6px">Continue with Google</a>
       <a href="#" class="btn-shiny-nav" data-i="nav_reg" id="navReg" role="button">Sign up</a>
       <a href="/app" class="nav-user-pill" id="navUserPill" title="Account"></a>
 
@@ -751,9 +761,13 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 <script>
 const I18N = {
   en: {
+    menu_label: "Menu",
     nav_feat: "Features",
     nav_gallery: "Gallery",
-    nav_discord: "Discord",
+    nav_discord: "Continue with Discord",
+    nav_discord_short: "Discord",
+    nav_google: "Continue with Google",
+    nav_google_short: "Google",
     nav_price: "Pricing",
     nav_tools: "Tools",
     nav_reg: "Sign up",
@@ -798,9 +812,13 @@ const I18N = {
     auth_err: "Error"
   },
   ru: {
+    menu_label: "Меню",
     nav_feat: "Возможности",
     nav_gallery: "Галерея",
-    nav_discord: "Discord",
+    nav_discord: "Продолжить с Discord",
+    nav_discord_short: "Discord",
+    nav_google: "Продолжить с Google",
+    nav_google_short: "Google",
     nav_price: "Цены",
     nav_tools: "Инструменты",
     nav_reg: "Регистрация",
@@ -977,6 +995,8 @@ async function refreshHomeUser() {
       if (reg) reg.style.display = "none";
       const disc = document.getElementById("navDiscord");
       if (disc) disc.style.display = "none";
+      const goo = document.getElementById("navGoogle");
+      if (goo) goo.style.display = "none";
       return;
     }
   } catch (e) {}
@@ -985,6 +1005,8 @@ async function refreshHomeUser() {
   if (reg) reg.style.display = "";
   const disc = document.getElementById("navDiscord");
   if (disc) disc.style.display = "";
+  const goo = document.getElementById("navGoogle");
+  if (goo) goo.style.display = "";
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -1028,18 +1050,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script>
 (function(){
-  async function goDiscord(e){
+  async function goOAuth(provider, e){
     if (e) e.preventDefault();
+    const path = provider === 'google' ? '/api/auth/google/login' : '/api/auth/discord/login';
+    const winName = provider === 'google' ? 'google_oauth' : 'discord_oauth';
     try {
-      const r = await fetch('/api/auth/discord/login');
+      const r = await fetch(path);
       const d = await r.json();
-      if (!d.ok || !d.url) { alert(d.msg || 'Discord not configured'); return; }
-      window.open(d.url, 'discord_oauth', 'width=520,height=720');
+      if (!d.ok || !d.url) { alert(d.msg || (provider + ' not configured')); return; }
+      window.open(d.url, winName, 'width=520,height=720');
     } catch (err) { alert(String(err)); }
   }
-  document.getElementById('navDiscord')?.addEventListener('click', goDiscord);
+  document.getElementById('navDiscord')?.addEventListener('click', function(e){ goOAuth('discord', e); });
+  document.getElementById('navGoogle')?.addEventListener('click', function(e){ goOAuth('google', e); });
+  document.getElementById('navDiscordMobile')?.addEventListener('click', function(e){ goOAuth('discord', e); });
+  document.getElementById('navGoogleMobile')?.addEventListener('click', function(e){ goOAuth('google', e); });
   window.addEventListener('message', function(ev){
-    if (ev.data && ev.data.type === 'discord_login' && ev.data.token) {
+    if (!ev.data) return;
+    if ((ev.data.type === 'discord_login' || ev.data.type === 'google_login') && ev.data.token) {
       try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
       location.href = '/app';
     }
@@ -1169,12 +1197,7 @@ document.addEventListener("DOMContentLoaded", function () {
       btn.setAttribute('aria-expanded', 'false');
     });
   });
-  // sync discord
-  const d1 = document.getElementById('navDiscord');
-  const d2 = document.getElementById('navDiscordMobile');
-  if (d1 && d2) {
-    d2.addEventListener('click', function(e){ e.preventDefault(); d1.click(); });
-  }
+  // oauth mobile bound in goOAuth script
   // mobile lang toggles same as desktop
   const langNav = document.getElementById('langBtnNav');
   const langMob = document.getElementById('langBtnMobile');
