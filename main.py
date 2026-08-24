@@ -2527,6 +2527,122 @@ setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
 
 
 
+
+
+# ====================== Character + background compose ======================
+
+@app.post("/api/compose")
+async def api_compose(
+    request: Request,
+    chroma_key: str = Form("none"),
+    chroma_tol: float = Form(40),
+    scale: float = Form(1.0),
+    offset_x: float = Form(0.5),
+    offset_y: float = Form(1.0),
+    width: int = Form(750),
+    background: UploadFile = File(...),
+    character: UploadFile = File(...),
+):
+    """Composite character (PNG/GIF, optional chromakey) onto background. Returns PNG or GIF."""
+    import tempfile
+    bg_raw = await background.read()
+    ch_raw = await character.read()
+    if len(bg_raw) > MAX_UPLOAD_MB * 1024 * 1024 or len(ch_raw) > MAX_UPLOAD_MB * 1024 * 1024:
+        return JSONResponse({"ok": False, "msg": "File too large"}, status_code=400)
+    try:
+        size_i = int(width)
+    except Exception:
+        size_i = 750
+    if size_i not in (630, 640, 750, 800, 1920):
+        size_i = 750
+    try:
+        bg = Image.open(io.BytesIO(bg_raw)).convert("RGBA")
+        # fit background to target width (Steam workshop style)
+        if bg.width != size_i:
+            nh = max(1, int(bg.height * (size_i / max(1, bg.width))))
+            bg = bg.resize((size_i, nh), Image.Resampling.LANCZOS)
+
+        ch_name = (character.filename or "char.png").lower()
+        ch_ext = Path(ch_name).suffix.lower()
+        key = (chroma_key or "none").strip().lower()
+        try:
+            tol = float(chroma_tol)
+        except Exception:
+            tol = 40.0
+        try:
+            sc = max(0.05, min(3.0, float(scale)))
+        except Exception:
+            sc = 1.0
+        try:
+            ox = max(0.0, min(1.0, float(offset_x)))
+            oy = max(0.0, min(1.0, float(offset_y)))
+        except Exception:
+            ox, oy = 0.5, 1.0
+
+        # animated character?
+        is_anim = ch_ext in (".gif", ".webp")
+        n_frames = 1
+        if is_anim:
+            try:
+                with Image.open(io.BytesIO(ch_raw)) as im:
+                    n_frames = int(getattr(im, "n_frames", 1) or 1)
+            except Exception:
+                n_frames = 1
+
+        from fastapi.responses import Response
+
+        if is_anim and n_frames > 1:
+            tmp = Path(tempfile.mkdtemp(prefix="sm_compose_"))
+            try:
+                cpath = tmp / f"char{ch_ext}"
+                cpath.write_bytes(ch_raw)
+                frames, durs = proc.compose_animated(
+                    bg, cpath,
+                    chroma_key=key,
+                    chroma_tol=tol,
+                    scale=sc,
+                    offset_x=ox,
+                    offset_y=oy,
+                )
+                # quantize and save gif
+                out = tmp / "composed.gif"
+                frames_p = [proc._quantize_rgba_for_gif(f) for f in frames]
+                proc._save_animated_gif(frames_p, durs, out)
+                data = out.read_bytes()
+                return Response(
+                    content=data,
+                    media_type="image/gif",
+                    headers={
+                        "Content-Disposition": 'attachment; filename="composed.gif"',
+                        "X-Compose-Type": "gif",
+                    },
+                )
+            finally:
+                shutil.rmtree(tmp, ignore_errors=True)
+        else:
+            char = Image.open(io.BytesIO(ch_raw)).convert("RGBA")
+            composed = proc.compose_static(
+                bg, char,
+                chroma_key=key,
+                chroma_tol=tol,
+                scale=sc,
+                offset_x=ox,
+                offset_y=oy,
+            )
+            buf = io.BytesIO()
+            composed.save(buf, format="PNG")
+            return Response(
+                content=buf.getvalue(),
+                media_type="image/png",
+                headers={
+                    "Content-Disposition": 'attachment; filename="composed.png"',
+                    "X-Compose-Type": "png",
+                },
+            )
+    except Exception as e:
+        return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
+
+
 if __name__ == "__main__":
     import uvicorn
     print(f"\n  Showcase Maker WEB  →  http://{HOST}:{PORT}")

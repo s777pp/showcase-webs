@@ -948,3 +948,156 @@ def convert_media(
 
 def hex21_bytes(data: bytes) -> bytes:
     return apply_hex21(data)
+
+
+
+# ─── Character + background compose ─────────────────────────────────────────
+
+def _hex_to_rgb(s: str) -> tuple[int, int, int]:
+    s = (s or "").strip().lstrip("#")
+    if len(s) == 3:
+        s = "".join(c * 2 for c in s)
+    if len(s) != 6:
+        return (0, 255, 0)
+    return int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16)
+
+
+def remove_chromakey(
+    img: Image.Image,
+    key: str = "green",
+    tolerance: float = 40.0,
+    softness: float = 12.0,
+) -> Image.Image:
+    """Make near-key pixels transparent. key: green|blue|red|#rrggbb|auto."""
+    img = img.convert("RGBA")
+    w, h = img.size
+    px = img.load()
+    key = (key or "green").strip().lower()
+    if key == "auto":
+        # sample corners for dominant chroma-ish color
+        samples = [
+            px[2, 2][:3],
+            px[w - 3, 2][:3],
+            px[2, h - 3][:3],
+            px[w - 3, h - 3][:3],
+        ]
+        # pick sample with highest channel dominance
+        best = samples[0]
+        best_score = -1.0
+        for r, g, b in samples:
+            mx = max(r, g, b)
+            mn = min(r, g, b)
+            score = float(mx - mn)
+            if score > best_score:
+                best_score = score
+                best = (r, g, b)
+        kr, kg, kb = best
+    elif key.startswith("#") or (len(key) == 6 and all(c in "0123456789abcdef" for c in key)):
+        kr, kg, kb = _hex_to_rgb(key if key.startswith("#") else "#" + key)
+    elif key == "blue":
+        kr, kg, kb = 0, 0, 255
+    elif key == "red":
+        kr, kg, kb = 255, 0, 0
+    else:
+        kr, kg, kb = 0, 255, 0
+
+    tol = max(1.0, float(tolerance))
+    soft = max(0.0, float(softness))
+    out = img.copy()
+    opx = out.load()
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            dist = ((r - kr) ** 2 + (g - kg) ** 2 + (b - kb) ** 2) ** 0.5
+            if dist <= tol:
+                opx[x, y] = (r, g, b, 0)
+            elif soft > 0 and dist < tol + soft:
+                # feather
+                t = (dist - tol) / soft
+                na = int(a * t)
+                opx[x, y] = (r, g, b, na)
+    return out
+
+
+def _place_character(
+    bg: Image.Image,
+    char: Image.Image,
+    scale: float = 1.0,
+    offset_x: float = 0.5,
+    offset_y: float = 1.0,
+) -> Image.Image:
+    """Paste character on bg. offset_x/y are anchor 0..1 (0.5,1 = bottom-center)."""
+    bg = bg.convert("RGBA")
+    char = char.convert("RGBA")
+    bw, bh = bg.size
+    scale = max(0.05, min(3.0, float(scale or 1.0)))
+    # fit character height to ~85% of bg by default when scale=1
+    target_h = max(1, int(bh * 0.85 * scale))
+    ratio = target_h / max(1, char.height)
+    nw = max(1, int(char.width * ratio))
+    nh = max(1, target_h)
+    if nw > bw * 0.98:
+        ratio = (bw * 0.98) / char.width
+        nw = max(1, int(char.width * ratio))
+        nh = max(1, int(char.height * ratio))
+    char_r = char.resize((nw, nh), Image.Resampling.LANCZOS)
+    # anchor point on character: bottom-center
+    ax = int(bw * max(0.0, min(1.0, offset_x)) - nw / 2)
+    ay = int(bh * max(0.0, min(1.0, offset_y)) - nh)
+    ax = max(-nw + 1, min(bw - 1, ax))
+    ay = max(-nh + 1, min(bh - 1, ay))
+    out = bg.copy()
+    out.alpha_composite(char_r, (ax, ay))
+    return out
+
+
+def compose_static(
+    bg: Image.Image,
+    char: Image.Image,
+    *,
+    chroma_key: str = "none",
+    chroma_tol: float = 40.0,
+    scale: float = 1.0,
+    offset_x: float = 0.5,
+    offset_y: float = 1.0,
+) -> Image.Image:
+    if chroma_key and chroma_key not in ("none", "0", "off", ""):
+        char = remove_chromakey(char, key=chroma_key, tolerance=chroma_tol)
+    return _place_character(bg, char, scale=scale, offset_x=offset_x, offset_y=offset_y)
+
+
+def compose_animated(
+    bg: Image.Image,
+    char_path: Path,
+    *,
+    chroma_key: str = "none",
+    chroma_tol: float = 40.0,
+    scale: float = 1.0,
+    offset_x: float = 0.5,
+    offset_y: float = 1.0,
+    max_frames: int = 120,
+) -> tuple[list[Image.Image], list[int]]:
+    """Composite each frame of GIF/WebP onto bg. Returns RGBA frames + durations ms."""
+    bg = bg.convert("RGBA")
+    frames: list[Image.Image] = []
+    durations: list[int] = []
+    with Image.open(char_path) as im:
+        n = int(getattr(im, "n_frames", 1) or 1)
+        step = 1
+        if n > max_frames:
+            step = max(1, n // max_frames)
+        for idx in range(0, n, step):
+            im.seek(idx)
+            fr = im.convert("RGBA")
+            if chroma_key and chroma_key not in ("none", "0", "off", ""):
+                fr = remove_chromakey(fr, key=chroma_key, tolerance=chroma_tol)
+            composed = _place_character(bg, fr, scale=scale, offset_x=offset_x, offset_y=offset_y)
+            frames.append(composed)
+            try:
+                d = int(im.info.get("duration", 100) or 100)
+            except Exception:
+                d = 100
+            durations.append(max(20, d * step))
+    if not frames:
+        raise RuntimeError("No frames in character file")
+    return frames, durations

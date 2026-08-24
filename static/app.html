@@ -421,6 +421,7 @@ input[type="range"]{
       </div>
       <nav class="nav" id="nav">
     <button data-tab="process" data-i="nav_process" class="active" data-i="run">Process</button>
+    <button data-tab="compose" data-i="nav_compose">Character</button>
     <button data-tab="download" data-i="nav_download">Download</button>
     <button data-tab="convert" data-i="nav_convert">Converter</button>
     <button data-tab="hex" data-i="nav_hex">HEX</button>
@@ -533,6 +534,67 @@ input[type="range"]{
         <div class="sm-prog-sub" id="procProgSub"></div>
       </div>
       <div class="status" id="status"></div>
+    </div>
+  </section>
+
+
+  <section class="tab" id="tab-compose">
+    <div class="card">
+      <h2>Персонаж + фон</h2>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.5">
+        Загрузи <b>фон</b> (витринный фон) и <b>персонажа</b> (PNG с прозрачностью или GIF/MP4-кадр с хромакеем).
+        Совмести — скачай результат или сразу отправь во вкладку <b>Обработка</b> для нарезки Workshop.
+      </p>
+      <div class="row">
+        <label class="field">Фон (background)
+          <input type="file" id="composeBg" accept="image/png,image/jpeg,image/webp,image/bmp"/>
+        </label>
+        <label class="field">Персонаж (character)
+          <input type="file" id="composeChar" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp"/>
+        </label>
+      </div>
+      <div class="row">
+        <label class="field">Хромакей
+          <select id="composeChroma">
+            <option value="none">Нет (есть прозрачность)</option>
+            <option value="green">Зелёный</option>
+            <option value="blue">Синий</option>
+            <option value="red">Красный</option>
+            <option value="auto">Авто (углы кадра)</option>
+          </select>
+        </label>
+        <label class="field">Толерантность хромакея
+          <input type="range" id="composeTol" min="10" max="120" value="45"/>
+        </label>
+        <label class="field">Масштаб персонажа
+          <input type="range" id="composeScale" min="20" max="200" value="100"/>
+        </label>
+        <label class="field">Ширина результата
+          <select id="composeWidth">
+            <option value="750" selected>750 (Workshop)</option>
+            <option value="630">630 (Featured)</option>
+            <option value="800">800</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label class="field">Позиция X (0=лево, 1=право)
+          <input type="range" id="composeOx" min="0" max="100" value="50"/>
+        </label>
+        <label class="field">Позиция Y (0=верх, 1=низ)
+          <input type="range" id="composeOy" min="0" max="100" value="100"/>
+        </label>
+      </div>
+      <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+        <button class="btn" type="button" id="btnCompose">Совместить</button>
+        <a class="btn ghost" id="composeDl" style="display:none;text-decoration:none" href="#">Скачать</a>
+        <button class="btn ghost" type="button" id="btnComposeToProcess" style="display:none">В Обработку →</button>
+      </div>
+      <div class="status" id="composeStatus"></div>
+      <div style="margin-top:16px;border-radius:12px;border:1px solid var(--border);background:#111;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+        <img id="composePreview" alt="" style="max-width:100%;max-height:420px;display:none"/>
+        <span id="composeEmpty" style="color:var(--muted);font-size:13px;padding:24px">Превью появится после «Совместить»</span>
+      </div>
     </div>
   </section>
 
@@ -871,6 +933,7 @@ const state = {
 window.state = state;
 const titles = {
   process:['Process','Workshop / Featured / Split cuts, watermark and Steam ZIP'],
+  compose:['Character + BG','Composite character on background, then send to Process'],
   download:['Download','Sources from YouTube, TikTok, X, Reddit and Pinterest'],
   preview:['Preview','How the showcase looks on a Steam profile'],
   steam:['Steam','Guide and console code for artwork upload'],
@@ -2759,7 +2822,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 (function () {
   var DICT = {
     en: {
-      nav_process: "Process", nav_download: "Download", nav_convert: "Converter", nav_hex: "HEX",
+      nav_process: "Process", nav_compose: "Character", nav_download: "Download", nav_convert: "Converter", nav_hex: "HEX",
       nav_preview: "Preview", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Account", nav_about: "About",
       login: "Log in", logout: "Log out", buy: "Buy Pro", buy_key: "Buy Key", reg: "Sign up", apply: "Apply",
       save_profile: "Save profile", back: "← Home",
@@ -2839,7 +2902,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       free: "Free", pro: "Pro"
     },
     ru: {
-      nav_process: "Обработка", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
+      nav_process: "Обработка", nav_compose: "Персонаж", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
       nav_preview: "Предпросмотр", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе",
       login: "Войти", logout: "Выйти", buy: "Купить Pro", buy_key: "Купить ключ", reg: "Регистрация", apply: "Применить",
       save_profile: "Сохранить профиль", back: "← На главную",
@@ -3916,6 +3979,78 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   });
 
   setTimeout(function(){ window.__wmLoadFromFiles && window.__wmLoadFromFiles(); }, 400);
+})();
+</script>
+
+
+<script>
+(function(){
+  let lastBlob = null;
+  let lastName = 'composed.png';
+  const st = document.getElementById('composeStatus');
+  const prev = document.getElementById('composePreview');
+  const empty = document.getElementById('composeEmpty');
+  const dl = document.getElementById('composeDl');
+  const toProc = document.getElementById('btnComposeToProcess');
+
+  document.getElementById('btnCompose')?.addEventListener('click', async function(){
+    const bg = document.getElementById('composeBg')?.files?.[0];
+    const ch = document.getElementById('composeChar')?.files?.[0];
+    if (!bg || !ch) {
+      if (st) { st.className = 'status err'; st.textContent = 'Нужны оба файла: фон и персонаж'; }
+      return;
+    }
+    const fd = new FormData();
+    fd.append('background', bg);
+    fd.append('character', ch);
+    fd.append('chroma_key', document.getElementById('composeChroma')?.value || 'none');
+    fd.append('chroma_tol', document.getElementById('composeTol')?.value || '45');
+    fd.append('scale', String((parseInt(document.getElementById('composeScale')?.value||'100',10)||100)/100));
+    fd.append('offset_x', String((parseInt(document.getElementById('composeOx')?.value||'50',10)||50)/100));
+    fd.append('offset_y', String((parseInt(document.getElementById('composeOy')?.value||'100',10)||100)/100));
+    fd.append('width', document.getElementById('composeWidth')?.value || '750');
+    if (st) { st.className = 'status'; st.textContent = 'Совмещение…'; }
+    try {
+      const r = await fetch('/api/compose', { method:'POST', body: fd, credentials:'include' });
+      if (!r.ok) {
+        let msg = 'Ошибка';
+        try { const j = await r.json(); msg = j.msg || msg; } catch(e){}
+        if (st) { st.className = 'status err'; st.textContent = msg; }
+        return;
+      }
+      const blob = await r.blob();
+      lastBlob = blob;
+      const ct = r.headers.get('content-type') || '';
+      lastName = ct.includes('gif') ? 'composed.gif' : 'composed.png';
+      if (lastBlob._url) URL.revokeObjectURL(lastBlob._url);
+      const url = URL.createObjectURL(blob);
+      lastBlob._url = url;
+      if (prev) { prev.src = url; prev.style.display = 'block'; }
+      if (empty) empty.style.display = 'none';
+      if (dl) { dl.href = url; dl.download = lastName; dl.style.display = 'inline-flex'; }
+      if (toProc) toProc.style.display = 'inline-flex';
+      if (st) { st.className = 'status ok'; st.textContent = 'Готово — можно скачать или отправить в Обработку'; }
+    } catch (e) {
+      if (st) { st.className = 'status err'; st.textContent = String(e); }
+    }
+  });
+
+  document.getElementById('btnComposeToProcess')?.addEventListener('click', async function(){
+    if (!lastBlob) return;
+    try {
+      const file = new File([lastBlob], lastName, { type: lastBlob.type || 'image/png' });
+      if (window.state) {
+        state.files = [file];
+        try { renderFiles(); } catch(e){}
+        try { window.__wmLoadFromFiles && window.__wmLoadFromFiles(); } catch(e){}
+      }
+      const btn = document.querySelector('#nav button[data-tab="process"]');
+      if (btn) btn.click();
+      if (st) { st.className = 'status ok'; st.textContent = 'Отправлено во вкладку Обработка'; }
+    } catch (e) {
+      if (st) { st.className = 'status err'; st.textContent = String(e); }
+    }
+  });
 })();
 </script>
 
