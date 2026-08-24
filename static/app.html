@@ -691,6 +691,18 @@ input[type="range"]{
           <div class="sm-prog-track"><div class="sm-prog-fill" id="composeProgFill"></div></div>
           <div class="sm-prog-sub" id="composeProgSub"></div>
         </div>
+
+        <div class="compose-help" style="margin-top:16px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.25);font-size:12px;color:var(--muted);line-height:1.55">
+          <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.75);margin-bottom:8px">Как пользоваться</div>
+          <ol style="margin:0;padding-left:18px">
+            <li style="margin-bottom:4px"><b style="color:rgba(255,255,255,.85)">Фон витрины</b> — картинка, на которую ставится персонаж (PNG/JPG).</li>
+            <li style="margin-bottom:4px"><b style="color:rgba(255,255,255,.85)">Персонаж</b> — PNG с прозрачностью или фото/видео на зелёном, синем или красном фоне.</li>
+            <li style="margin-bottom:4px">Справа — live. <b style="color:rgba(255,255,255,.85)">Тащи персонажа</b> мышью, <b style="color:rgba(255,255,255,.85)">угол рамки</b> или колёсико — размер. Ползунки тоже работают.</li>
+            <li style="margin-bottom:4px">Если фон цветной — оставь «Убрать цветной фон автоматически». Уже вырезанный PNG — выбери «Уже прозрачный».</li>
+            <li style="margin-bottom:4px"><b style="color:rgba(255,255,255,.85)">Толерантность</b> — насколько агрессивно режется хромакей. <b style="color:rgba(255,255,255,.85)">Сглаживание</b> — мягкость края (0 = резко).</li>
+            <li style="margin-bottom:0">Нажми <b style="color:rgba(255,255,255,.85)">Совместить</b> → скачай результат или отправь <b style="color:rgba(255,255,255,.85)">В Обработку</b> для нарезки Workshop.</li>
+          </ol>
+        </div>
       </div>
 
       <!-- Right: live + final preview -->
@@ -4123,9 +4135,13 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   const liveCanvas = document.getElementById('composeLiveCanvas');
   const liveEmpty  = document.getElementById('composeLiveEmpty');
   const liveCtx    = liveCanvas ? liveCanvas.getContext('2d') : null;
-  let bgImg  = null;   // HTMLImageElement
-  let charImg = null;  // HTMLImageElement (first frame)
+  let bgImg  = null;
+  let charImg = null;
   let redrawPending = false;
+  // last placement on canvas (display px) for hit-testing
+  let lastLayout = null; // { dispScale, bw, bh, ax, ay, nw, nh, dx, dy, dw, dh }
+  let dragMode = null;   // 'move' | 'scale' | null
+  let dragStart = null;
 
   function scaleVal() {
     return Math.max(0.1, Math.min(4.0, (parseInt(document.getElementById('composeScale')?.value || '100', 10) || 100) / 100));
@@ -4138,6 +4154,22 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   }
   function targetWidth() {
     return parseInt(document.getElementById('composeWidth')?.value || '750', 10) || 750;
+  }
+
+  function setScalePct(pct) {
+    pct = Math.max(10, Math.min(400, Math.round(pct)));
+    const el = document.getElementById('composeScale');
+    if (el) el.value = String(pct);
+  }
+  function setOx(v) {
+    v = Math.max(0, Math.min(1, v));
+    const el = document.getElementById('composeOx');
+    if (el) el.value = String(Math.round(v * 100));
+  }
+  function setOy(v) {
+    v = Math.max(0, Math.min(1, v));
+    const el = document.getElementById('composeOy');
+    if (el) el.value = String(Math.round(v * 100));
   }
 
   function updateRangeLabels() {
@@ -4165,9 +4197,23 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     });
   }
 
+  function computePlacement(bw, bh) {
+    const sc = scaleVal();
+    const ox = oxVal();
+    const oy = oyVal();
+    let targetH = Math.max(1, Math.round(bh * 0.85 * sc));
+    let r = targetH / Math.max(1, charImg.naturalHeight);
+    let nw = Math.max(1, Math.round(charImg.naturalWidth * r));
+    let nh = Math.max(1, targetH);
+    let ax = Math.round(bw * ox - nw / 2);
+    let ay = Math.round(bh * oy - nh);
+    return { ax: ax, ay: ay, nw: nw, nh: nh, sc: sc, ox: ox, oy: oy };
+  }
+
   function drawLive() {
     if (!liveCanvas || !liveCtx) return;
     updateRangeLabels();
+    lastLayout = null;
 
     if (!bgImg || !bgImg.naturalWidth) {
       liveCanvas.style.display = 'none';
@@ -4176,14 +4222,14 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     }
     if (liveEmpty) liveEmpty.style.display = 'none';
     liveCanvas.style.display = 'block';
+    liveCanvas.style.cursor = 'default';
+    liveCanvas.style.touchAction = 'none';
 
-    // Fit background to target width (same logic as server)
     const tw = targetWidth();
     const ratio = bgImg.naturalHeight / bgImg.naturalWidth;
     const bw = tw;
     const bh = Math.max(1, Math.round(tw * ratio));
 
-    // Canvas display size (fit panel)
     const maxDispW = Math.min(400, (liveCanvas.parentElement?.clientWidth || 360) - 4);
     const dispScale = maxDispW / bw;
     const cw = Math.round(bw * dispScale);
@@ -4198,25 +4244,145 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
     if (!charImg || !charImg.naturalWidth) return;
 
-    // Same placement math as processor._place_character (no max-width clamp)
-    const sc = scaleVal();
-    const ox = oxVal();
-    const oy = oyVal();
-    let targetH = Math.max(1, Math.round(bh * 0.85 * sc));
-    let r = targetH / Math.max(1, charImg.naturalHeight);
-    let nw = Math.max(1, Math.round(charImg.naturalWidth * r));
-    let nh = Math.max(1, targetH);
-    // allow character larger than BG — chromakey frames are often much bigger than the subject
-    // anchor: bottom-center of character
-    let ax = Math.round(bw * ox - nw / 2);
-    let ay = Math.round(bh * oy - nh);
+    const p = computePlacement(bw, bh);
+    const dx = p.ax * dispScale;
+    const dy = p.ay * dispScale;
+    const dw = p.nw * dispScale;
+    const dh = p.nh * dispScale;
 
-    // draw scaled to canvas (overflow clips naturally)
-    liveCtx.drawImage(
-      charImg,
-      ax * dispScale, ay * dispScale,
-      nw * dispScale, nh * dispScale
-    );
+    liveCtx.drawImage(charImg, dx, dy, dw, dh);
+
+    // selection frame + scale handle (bottom-right)
+    liveCtx.save();
+    liveCtx.strokeStyle = 'rgba(0,210,255,.85)';
+    liveCtx.lineWidth = 1.5;
+    liveCtx.setLineDash([5, 4]);
+    liveCtx.strokeRect(dx + 0.5, dy + 0.5, Math.max(1, dw - 1), Math.max(1, dh - 1));
+    liveCtx.setLineDash([]);
+    const hs = 10;
+    const hx = dx + dw - hs / 2;
+    const hy = dy + dh - hs / 2;
+    liveCtx.fillStyle = 'rgba(0,210,255,.95)';
+    liveCtx.strokeStyle = 'rgba(0,0,0,.5)';
+    liveCtx.lineWidth = 1;
+    liveCtx.beginPath();
+    liveCtx.rect(hx, hy, hs, hs);
+    liveCtx.fill();
+    liveCtx.stroke();
+    // corner cue
+    liveCtx.strokeStyle = 'rgba(255,255,255,.9)';
+    liveCtx.beginPath();
+    liveCtx.moveTo(hx + 2, hy + hs - 2);
+    liveCtx.lineTo(hx + hs - 2, hy + hs - 2);
+    liveCtx.lineTo(hx + hs - 2, hy + 2);
+    liveCtx.stroke();
+    liveCtx.restore();
+
+    lastLayout = {
+      dispScale: dispScale, bw: bw, bh: bh,
+      ax: p.ax, ay: p.ay, nw: p.nw, nh: p.nh,
+      dx: dx, dy: dy, dw: dw, dh: dh,
+      hx: hx, hy: hy, hs: hs
+    };
+  }
+
+  function canvasPos(e) {
+    const r = liveCanvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - r.left) * (liveCanvas.width / Math.max(1, r.width)),
+      y: (e.clientY - r.top) * (liveCanvas.height / Math.max(1, r.height))
+    };
+  }
+
+  function hitHandle(pos, L) {
+    if (!L) return false;
+    const pad = 6;
+    return pos.x >= L.hx - pad && pos.x <= L.hx + L.hs + pad &&
+           pos.y >= L.hy - pad && pos.y <= L.hy + L.hs + pad;
+  }
+  function hitChar(pos, L) {
+    if (!L) return false;
+    return pos.x >= L.dx && pos.x <= L.dx + L.dw &&
+           pos.y >= L.dy && pos.y <= L.dy + L.dh;
+  }
+
+  if (liveCanvas) {
+    liveCanvas.addEventListener('pointerdown', function(e) {
+      if (!lastLayout || !charImg) return;
+      const pos = canvasPos(e);
+      const L = lastLayout;
+      if (hitHandle(pos, L)) {
+        dragMode = 'scale';
+        dragStart = { x: pos.x, y: pos.y, sc: scaleVal(), nw: L.nw, nh: L.nh, bw: L.bw, bh: L.bh };
+        liveCanvas.setPointerCapture(e.pointerId);
+        liveCanvas.style.cursor = 'nwse-resize';
+        e.preventDefault();
+        return;
+      }
+      if (hitChar(pos, L)) {
+        dragMode = 'move';
+        dragStart = {
+          x: pos.x, y: pos.y,
+          ox: oxVal(), oy: oyVal(),
+          dispScale: L.dispScale, bw: L.bw, bh: L.bh, nw: L.nw, nh: L.nh
+        };
+        liveCanvas.setPointerCapture(e.pointerId);
+        liveCanvas.style.cursor = 'grabbing';
+        e.preventDefault();
+      }
+    });
+
+    liveCanvas.addEventListener('pointermove', function(e) {
+      if (!lastLayout) return;
+      const pos = canvasPos(e);
+      if (!dragMode) {
+        if (hitHandle(pos, lastLayout)) liveCanvas.style.cursor = 'nwse-resize';
+        else if (hitChar(pos, lastLayout)) liveCanvas.style.cursor = 'grab';
+        else liveCanvas.style.cursor = 'default';
+        return;
+      }
+      e.preventDefault();
+      if (dragMode === 'move' && dragStart) {
+        const ddx = (pos.x - dragStart.x) / dragStart.dispScale;
+        const ddy = (pos.y - dragStart.y) / dragStart.dispScale;
+        // ox/oy are anchor fractions; character bottom-center
+        // ax = bw*ox - nw/2  →  ox = (ax + nw/2) / bw
+        const ax0 = dragStart.bw * dragStart.ox - dragStart.nw / 2;
+        const ay0 = dragStart.bh * dragStart.oy - dragStart.nh;
+        const ax1 = ax0 + ddx;
+        const ay1 = ay0 + ddy;
+        setOx((ax1 + dragStart.nw / 2) / dragStart.bw);
+        setOy((ay1 + dragStart.nh) / dragStart.bh);
+        scheduleRedraw();
+      } else if (dragMode === 'scale' && dragStart) {
+        // scale by drag distance from start (diagonal)
+        const dist = (pos.x - dragStart.x) + (pos.y - dragStart.y);
+        const factor = 1 + dist / 180;
+        const newSc = Math.max(0.1, Math.min(4.0, dragStart.sc * factor));
+        setScalePct(newSc * 100);
+        scheduleRedraw();
+      }
+    });
+
+    function endDrag(e) {
+      if (!dragMode) return;
+      dragMode = null;
+      dragStart = null;
+      try { liveCanvas.releasePointerCapture(e.pointerId); } catch (err) {}
+      liveCanvas.style.cursor = 'default';
+    }
+    liveCanvas.addEventListener('pointerup', endDrag);
+    liveCanvas.addEventListener('pointercancel', endDrag);
+
+    // wheel = scale (keep anchor)
+    liveCanvas.addEventListener('wheel', function(e) {
+      if (!charImg || !bgImg) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.06 : 0.06;
+      const newSc = Math.max(0.1, Math.min(4.0, scaleVal() + delta));
+      setScalePct(newSc * 100);
+      scheduleRedraw();
+    }, { passive: false });
   }
 
   function loadImageFromFile(file) {
