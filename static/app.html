@@ -546,12 +546,22 @@ input[type="range"]{
         Совмести — скачай результат или сразу отправь во вкладку <b>Обработка</b> для нарезки Workshop.
       </p>
       <div class="row">
-        <label class="field">Фон (background)
-          <input type="file" id="composeBg" accept="image/png,image/jpeg,image/webp,image/bmp"/>
-        </label>
-        <label class="field">Персонаж (character)
-          <input type="file" id="composeChar" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,video/mp4,video/webm,video/quicktime,video/*"/>
-        </label>
+        <div class="field" style="flex:1;min-width:200px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">1. Фон витрины</div>
+          <div class="fi" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px">
+            <span id="composeBgName" style="flex:1;font-size:13px;color:var(--muted)">файл не выбран</span>
+            <button type="button" class="btn ghost" id="btnComposeBg" style="padding:6px 14px">Выбрать</button>
+            <input type="file" id="composeBg" accept="image/png,image/jpeg,image/webp,image/bmp" style="display:none"/>
+          </div>
+        </div>
+        <div class="field" style="flex:1;min-width:200px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">2. Персонаж (фото / GIF / видео)</div>
+          <div class="fi" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px">
+            <span id="composeCharName" style="flex:1;font-size:13px;color:var(--muted)">файл не выбран</span>
+            <button type="button" class="btn ghost" id="btnComposeChar" style="padding:6px 14px">Выбрать</button>
+            <input type="file" id="composeChar" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,video/mp4,video/webm,video/quicktime,video/*" style="display:none"/>
+          </div>
+        </div>
       </div>
       <div class="row">
         <label class="field">Фон у персонажа
@@ -583,7 +593,7 @@ input[type="range"]{
         </label>
       </div>
             <div class="row">
-        <label class="field">Кодек GIF (как в Обработке)
+        <label class="field">Кодек GIF
           <select id="composeGifEncoder">
             <option value="ffmpeg" selected>ffmpeg (palette)</option>
             <option value="pillow">Pillow</option>
@@ -4009,6 +4019,26 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   const empty = document.getElementById('composeEmpty');
   const dl = document.getElementById('composeDl');
   const toProc = document.getElementById('btnComposeToProcess');
+
+  
+  document.getElementById('btnComposeBg')?.addEventListener('click', function(e){
+    e.preventDefault();
+    document.getElementById('composeBg')?.click();
+  });
+  document.getElementById('btnComposeChar')?.addEventListener('click', function(e){
+    e.preventDefault();
+    document.getElementById('composeChar')?.click();
+  });
+  document.getElementById('composeBg')?.addEventListener('change', function(){
+    const f = this.files && this.files[0];
+    const el = document.getElementById('composeBgName');
+    if (el) el.textContent = f ? f.name : 'файл не выбран';
+  });
+  document.getElementById('composeChar')?.addEventListener('change', function(){
+    const f = this.files && this.files[0];
+    const el = document.getElementById('composeCharName');
+    if (el) el.textContent = f ? f.name : 'файл не выбран';
+  });
 
   document.getElementById('btnCompose')?.addEventListener('click', function(){
     const bg = document.getElementById('composeBg')?.files?.[0];

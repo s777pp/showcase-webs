@@ -2535,11 +2535,13 @@ setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
 async def api_compose(
     request: Request,
     chroma_key: str = Form("auto"),
-    chroma_tol: float = Form(40),
+    chroma_tol: float = Form(55),
     scale: float = Form(1.0),
     offset_x: float = Form(0.5),
     offset_y: float = Form(1.0),
     width: int = Form(750),
+    gif_encoder: str = Form("ffmpeg"),
+    fps: int = Form(12),
     background: UploadFile = File(...),
     character: UploadFile = File(...),
 ):
