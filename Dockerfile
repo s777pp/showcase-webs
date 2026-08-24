@@ -7,23 +7,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# gifski (Linux x86_64) — high-quality GIF encoder
-RUN curl -fsSL -o /tmp/gifski.tar.xz \
-      "https://github.com/ImageOptim/gifski/releases/download/1.32.0/gifski-1.32.0.tar.xz" \
-    && tar -xJf /tmp/gifski.tar.xz -C /tmp \
-    && GIFSKI_BIN="$(find /tmp -type f -name gifski | head -1)" \
-    && test -n "$GIFSKI_BIN" \
-    && mv "$GIFSKI_BIN" /usr/local/bin/gifski \
-    && chmod +x /usr/local/bin/gifski \
-    && rm -rf /tmp/gifski* \
+# gifski Linux amd64 (.deb) — NOT the .tar.xz (that one is macOS → Exec format error)
+RUN curl -fsSL -o /tmp/gifski.deb \
+      "https://github.com/ImageOptim/gifski/releases/download/1.32.0/gifski_1.32.0-1_amd64.deb" \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends /tmp/gifski.deb \
+    && rm -f /tmp/gifski.deb \
+    && rm -rf /var/lib/apt/lists/* \
     && gifski --version
 
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-# ignore broken Windows binaries in bin/; use apt ffmpeg
-RUN rm -f /app/bin/ffmpeg /app/bin/ffmpeg.exe /app/bin/ffprobe /app/bin/ffprobe.exe 2>/dev/null || true
+
+# Windows binaries in bin/ do not run on Linux Railway — use apt ffmpeg + deb gifski
+RUN rm -f /app/bin/ffmpeg /app/bin/ffmpeg.exe /app/bin/ffprobe /app/bin/ffprobe.exe \
+         /app/bin/gifski.exe 2>/dev/null || true
 RUN which ffmpeg && ffmpeg -version | head -1
 RUN which gifski && gifski --version
 
