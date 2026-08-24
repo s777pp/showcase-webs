@@ -380,6 +380,66 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 .sm-notif-empty{padding:20px;text-align:center;color:rgba(255,255,255,.5);font-size:13px}
 .sm-btn-mini{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:600}
 
+
+/* ===== Mobile nav: logo opens menu ===== */
+.logo-link{position:relative}
+.logo-menu-btn{
+  display:none;align-items:center;gap:8px;background:transparent;border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;padding:6px 10px 6px 6px;cursor:pointer;color:#fff;
+}
+.logo-menu-btn img{width:28px;height:28px;border-radius:8px;display:block}
+.logo-menu-btn .chev{
+  width:16px;height:16px;opacity:.7;transition:transform .2s;
+  fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+}
+.logo-menu-btn[aria-expanded="true"] .chev{transform:rotate(180deg);opacity:1}
+.logo-menu-btn .menu-hint{font-size:11px;font-weight:600;color:rgba(255,255,255,.55);letter-spacing:.02em}
+.mobile-menu{
+  display:none;position:absolute;left:0;top:calc(100% + 10px);width:min(280px,calc(100vw - 32px));
+  background:#141414;border:1px solid rgba(255,255,255,.12);border-radius:16px;
+  box-shadow:0 24px 60px rgba(0,0,0,.55);padding:8px;z-index:90;
+}
+.mobile-menu.open{display:block}
+.mobile-menu a, .mobile-menu button.mm-item{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:12px 14px;border-radius:12px;color:rgba(255,255,255,.85);
+  font-size:14px;font-weight:600;text-decoration:none;background:transparent;border:none;cursor:pointer;
+  font-family:inherit;
+}
+.mobile-menu a:hover, .mobile-menu button.mm-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.mobile-menu .mm-sep{height:1px;background:rgba(255,255,255,.08);margin:6px 8px}
+
+@media (max-width:767px){
+  .nav{padding:12px 14px;gap:8px}
+  .logo-link{display:none}
+  .logo-menu-btn{display:inline-flex}
+  .nav-links{display:none !important}
+  .nav-right .btn-ghost,
+  .nav-right .btn-pill,
+  .nav-right .lang-nav{display:none !important}
+  .nav-right{gap:8px;margin-left:auto}
+  .nav-right .btn-shiny-nav, .nav-right #navReg{font-size:13px;padding:8px 12px}
+  .sm-bell-wrap{order:1}
+  .hero{padding:88px 16px 48px;text-align:left}
+  .hero h1{font-size:clamp(32px,10vw,48px);line-height:1.05}
+  .hero p{font-size:15px}
+  .hero-actions{flex-direction:column;align-items:stretch}
+  .hero-actions .btn-pill, .hero-actions a{width:100%;text-align:center;justify-content:center}
+  .shell{padding-left:0;padding-right:0}
+  .section, .features, .pricing, .cta, .quotes, .trust{padding-left:16px;padding-right:16px}
+  .mock{margin:0 12px;border-radius:14px}
+  .mock-body{height:auto !important}
+  .grid2{grid-template-columns:1fr !important;gap:28px}
+  .q-grid{grid-template-columns:1fr !important}
+  .c3-grid{grid-template-columns:1fr !important;transform:none !important}
+  .logo-grid{grid-template-columns:repeat(2,1fr)}
+  .sm-notif-panel{right:0;left:auto;width:min(320px,calc(100vw - 24px))}
+}
+@media (min-width:768px){
+  .logo-menu-btn{display:none !important}
+  .mobile-menu{display:none !important}
+}
+
 </style>
 </head>
 <body>
@@ -404,6 +464,23 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
     <a href="/" aria-label="Showcase Maker" class="logo-link">
       <img class="logo-mark" src="/static/icon.png" alt="Showcase Maker" width="32" height="32"/>
     </a>
+    <div style="position:relative">
+      <button type="button" class="logo-menu-btn" id="logoMenuBtn" aria-expanded="false" aria-haspopup="true" aria-controls="mobileMenu" data-i-title="menu">
+        <img src="/static/icon.png" alt=""/>
+        <span class="menu-hint" data-i="menu_label">Menu</span>
+        <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="mobile-menu" id="mobileMenu" role="menu">
+        <a href="#features" data-i="nav_feat" role="menuitem">Features</a>
+        <a href="/gallery" data-i="nav_gallery" role="menuitem">Gallery</a>
+        <a href="#pricing" data-i="nav_price" role="menuitem">Pricing</a>
+        <a href="/app" data-i="nav_tools" role="menuitem">Tools</a>
+        <div class="mm-sep"></div>
+        <a href="#" id="navDiscordMobile" data-i="nav_discord" role="menuitem">Discord</a>
+        <a href="/app" data-i="cta_tools" role="menuitem">Open tools →</a>
+        <button type="button" class="mm-item" id="langBtnMobile" role="menuitem">Language: RU</button>
+      </div>
+    </div>
     <div class="nav-links">
       <a href="#features" data-i="nav_feat">Features</a>
       <a href="/gallery" data-i="nav_gallery">Gallery</a>
@@ -414,6 +491,7 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
       <a href="#" class="btn-ghost" data-i="nav_discord" id="navDiscord" role="button" style="margin-right:6px">Discord</a>
       <a href="#" class="btn-shiny-nav" data-i="nav_reg" id="navReg" role="button">Sign up</a>
       <a href="/app" class="nav-user-pill" id="navUserPill" title="Account"></a>
+
 
       <div class="sm-bell-wrap" id="smBellWrap">
         <button type="button" class="sm-bell" id="smBtnBell" title="Notifications" aria-label="Notifications">
@@ -1063,6 +1141,57 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
+})();
+</script>
+
+
+<script>
+(function(){
+  const btn = document.getElementById('logoMenuBtn');
+  const menu = document.getElementById('mobileMenu');
+  if (!btn || !menu) return;
+  btn.addEventListener('click', function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    const open = !menu.classList.contains('open');
+    menu.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  document.addEventListener('click', function(e){
+    if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+      menu.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+  menu.querySelectorAll('a').forEach(function(a){
+    a.addEventListener('click', function(){
+      menu.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    });
+  });
+  // sync discord
+  const d1 = document.getElementById('navDiscord');
+  const d2 = document.getElementById('navDiscordMobile');
+  if (d1 && d2) {
+    d2.addEventListener('click', function(e){ e.preventDefault(); d1.click(); });
+  }
+  // mobile lang toggles same as desktop
+  const langNav = document.getElementById('langBtnNav');
+  const langMob = document.getElementById('langBtnMobile');
+  function syncLangLabel(){
+    if (!langMob) return;
+    const isRu = (document.documentElement.lang === 'ru') || (langNav && langNav.textContent.trim() === 'EN');
+    // langBtnNav shows the OTHER language you can switch to typically
+    const cur = (langNav && langNav.textContent.trim()) || 'RU';
+    // if button says RU, current is EN
+    const current = cur === 'RU' ? 'EN' : 'RU';
+    langMob.textContent = (current === 'RU' ? 'Язык: RU' : 'Language: EN');
+  }
+  if (langMob && langNav) {
+    langMob.addEventListener('click', function(){ langNav.click(); setTimeout(syncLangLabel, 50); });
+    syncLangLabel();
+    langNav.addEventListener('click', function(){ setTimeout(syncLangLabel, 50); });
+  }
 })();
 </script>
 

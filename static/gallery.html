@@ -139,6 +139,51 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
 .composer .row{display:flex;gap:8px;align-items:center;justify-content:space-between}
 .composer .hint{font-size:12px;color:var(--muted)}
 .login-hint{font-size:13px;color:var(--muted);padding:8px 0}
+
+/* View toggle */
+.view-toggle{display:inline-flex;gap:4px;margin-left:auto;border:1px solid var(--border);border-radius:12px;padding:3px;background:rgba(255,255,255,.03)}
+.view-toggle button{
+  border:none;background:transparent;color:var(--muted);width:36px;height:32px;border-radius:9px;
+  cursor:pointer;display:grid;place-items:center;padding:0;
+}
+.view-toggle button.active{background:rgba(255,255,255,.12);color:#fff}
+.view-toggle svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.grid.cols2{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid.cols1{grid-template-columns:1fr;gap:16px;max-width:720px;margin:0 auto}
+.toolbar-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.tabs{margin-bottom:0}
+
+@media (max-width:767px){
+  .topbar{padding:10px 12px;gap:8px}
+  .topbar .links a{font-size:12px}
+  .wrap{padding:16px 12px 48px}
+  h1{font-size:22px;margin:4px 0}
+  .sub{font-size:13px;margin-bottom:12px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .grid.cols1{grid-template-columns:1fr;gap:14px}
+  .card{border-radius:14px}
+  .card img.shot{min-height:140px;max-height:280px}
+  .meta{padding:10px 12px 12px}
+  .meta .title{font-size:13px;margin-bottom:8px}
+  .author img,.author .ph{width:36px;height:36px}
+  .author .name{font-size:13px}
+  .author .mode{font-size:11px}
+  .stats{font-size:12px;margin-top:8px}
+  .modal{margin:8px auto;border-radius:16px;max-height:none}
+  .modal-media{min-height:200px;max-height:45vh}
+  .modal-media img{max-height:45vh}
+  .modal-side{max-height:none}
+  .modal-head{padding:12px}
+  .modal-head img,.modal-head .ph{width:40px;height:40px}
+  .comments{min-height:120px;padding:10px 12px}
+  .composer{padding:10px 12px 14px}
+  .composer textarea{min-height:52px}
+  .notif-panel{width:min(340px,calc(100vw - 16px));right:-8px}
+}
+@media (min-width:768px){
+  .grid.cols2{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+}
+
 </style>
 </head>
 <body>
@@ -168,10 +213,20 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
 <div class="wrap">
   <h1>Публичная галерея <span class="admin-badge" id="adminBadge" style="display:none">admin</span></h1>
   <p class="sub">Работы сообщества · лайки, комментарии, шаринг</p>
-  <div class="tabs">
-    <button type="button" class="active" data-status="approved">Все работы</button>
+  <div class="toolbar-row">
+    <div class="tabs">
+      <button type="button" class="active" data-status="approved">Все работы</button>
+    </div>
+    <div class="view-toggle" role="group" aria-label="View mode">
+      <button type="button" id="viewCols2" class="active" title="2 columns" aria-label="2 columns">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/></svg>
+      </button>
+      <button type="button" id="viewCols1" title="Feed" aria-label="Single column feed">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="5" rx="1.5"/><rect x="4" y="11" width="16" height="5" rx="1.5"/><rect x="4" y="18" width="16" height="2.5" rx="1"/></svg>
+      </button>
+    </div>
   </div>
-  <div class="grid" id="g"></div>
+  <div class="grid cols2" id="g"></div>
   <div class="empty" id="empty" style="display:none">Пока нет работ</div>
 </div>
 
@@ -574,6 +629,28 @@ document.getElementById('btnAdminDel').onclick = async () => {
 };
 
 // deep link ?item=ID
+
+(function(){
+  const g = () => document.getElementById('g');
+  const b2 = document.getElementById('viewCols2');
+  const b1 = document.getElementById('viewCols1');
+  function setMode(mode){
+    const el = g();
+    if (!el) return;
+    el.classList.remove('cols1','cols2');
+    el.classList.add(mode === '1' ? 'cols1' : 'cols2');
+    if (b2) b2.classList.toggle('active', mode !== '1');
+    if (b1) b1.classList.toggle('active', mode === '1');
+    try { localStorage.setItem('sm_gallery_view', mode); } catch(e){}
+  }
+  if (b2) b2.onclick = () => setMode('2');
+  if (b1) b1.onclick = () => setMode('1');
+  let saved = '2';
+  try { saved = localStorage.getItem('sm_gallery_view') || '2'; } catch(e){}
+  // default on narrow screens: 2 cols still ok
+  setMode(saved === '1' ? '1' : '2');
+})();
+
 (async function init(){
   await checkAdmin();
   await load();
