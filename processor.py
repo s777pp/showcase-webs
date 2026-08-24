@@ -968,12 +968,31 @@ def remove_chromakey(
     tolerance: float = 55.0,
     softness: float = 20.0,
 ) -> Image.Image:
-    """Remove backdrop. key=auto samples corners and picks green/blue/red + despill."""
+    """Remove backdrop. key=auto samples corners and picks green/blue/red + despill.
+
+    If the image already has significant transparency, auto mode skips chromakey
+    so pre-cut PNGs are not destroyed.
+    """
     import math
     img = img.convert("RGBA")
     w, h = img.size
     pixels = list(img.getdata())
     key = (key or "auto").strip().lower()
+
+    # Already transparent? (e.g. cutout PNG) — don't wipe the subject in auto mode
+    if key in ("auto", "a"):
+        sample_n = min(len(pixels), 2000)
+        step = max(1, len(pixels) // sample_n)
+        transparent = 0
+        checked = 0
+        for i in range(0, len(pixels), step):
+            if pixels[i][3] < 250:
+                transparent += 1
+            checked += 1
+            if checked >= sample_n:
+                break
+        if checked and (transparent / checked) > 0.08:
+            return img
 
     def sample_corners():
         pts = [(2, 2), (w - 3, 2), (2, h - 3), (w - 3, h - 3),
@@ -981,15 +1000,16 @@ def remove_chromakey(
         acc = []
         for x, y in pts:
             if 0 <= x < w and 0 <= y < h:
-                r, g, b, _a = pixels[y * w + x]
+                r, g, b, a = pixels[y * w + x]
+                # skip fully transparent corner samples
+                if a < 16:
+                    continue
                 acc.append((r, g, b))
         if not acc:
             return (40, 200, 40), "green"
-        # average samples
         ar = sum(c[0] for c in acc) // len(acc)
         ag = sum(c[1] for c in acc) // len(acc)
         ab = sum(c[2] for c in acc) // len(acc)
-        # classify dominant channel
         if ag >= ar and ag >= ab:
             mode = "green"
         elif ab >= ar and ab >= ag:
@@ -1001,7 +1021,7 @@ def remove_chromakey(
     despill_mode = "green"
     if key in ("auto", "a"):
         (kr, kg, kb), despill_mode = sample_corners()
-        key = despill_mode  # for despill branch
+        key = despill_mode
     elif key.startswith("#") or (len(key) == 6 and all(c in "0123456789abcdef" for c in key)):
         kr, kg, kb = _hex_to_rgb(key if key.startswith("#") else "#" + key)
         if kg >= kr and kg >= kb:
@@ -1117,18 +1137,15 @@ def _place_character(
     # anchor point on character: bottom-center
     ax = int(bw * max(0.0, min(1.0, offset_x)) - nw / 2)
     ay = int(bh * max(0.0, min(1.0, offset_y)) - nh)
-    # soft clamp so at least 1px stays on canvas (paste needs overlap)
+    # soft clamp so at least 1px stays on canvas
     ax = max(-nw + 1, min(bw - 1, ax))
     ay = max(-nh + 1, min(bh - 1, ay))
     out = bg.copy()
-    # paste with alpha; crop character to visible region if it overflows
-    try:
-        out.alpha_composite(char_r, (ax, ay))
-    except Exception:
-        # fallback for older Pillow / extreme overflow: paste via mask
-        layer = Image.new("RGBA", out.size, (0, 0, 0, 0))
-        layer.paste(char_r, (ax, ay), char_r)
-        out = Image.alpha_composite(out, layer)
+    # Robust paste: always use intermediate layer so overflow / negative
+    # offsets work on every Pillow version (alpha_composite(dest=) is flaky).
+    layer = Image.new("RGBA", out.size, (0, 0, 0, 0))
+    layer.paste(char_r, (ax, ay), char_r)
+    out = Image.alpha_composite(out, layer)
     return out
 
 
