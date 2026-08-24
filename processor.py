@@ -296,8 +296,30 @@ def _run(cmd: list[str]) -> None:
 
 
 
+def _ffmpeg_palette_vf(fps: int, width: Optional[int] = None, scale_pct: Optional[int] = None,
+                       max_colors: int = 256, dither: str = "sierra2_4a") -> str:
+    """High-quality palette pipeline for ffmpeg GIF encode."""
+    fps_i = max(5, min(30, int(fps)))
+    parts = [f"fps={fps_i}"]
+    if width is not None:
+        w = max(200, min(1200, int(width)))
+        if w % 2:
+            w -= 1
+        parts.append(f"scale={w}:-2:flags=lanczos")
+    elif scale_pct is not None and int(scale_pct) < 100:
+        pct = max(40, min(100, int(scale_pct)))
+        parts.append(f"scale=iw*{pct}/100:-2:flags=lanczos")
+    colors = max(32, min(256, int(max_colors)))
+    # stats_mode=diff — better temporal palette; sierra2_4a — best looking dither in ffmpeg
+    parts.append(
+        f"split[s0][s1];[s0]palettegen=max_colors={colors}:stats_mode=diff:reserve_transparent=0[p];"
+        f"[s1][p]paletteuse=dither={dither}:diff_mode=rectangle"
+    )
+    return ",".join(parts)
+
+
 def media_to_gif(src: Path, dest: Path, fps: int, width: int, duration: float = 12) -> None:
-    """Convert image/gif/video to GIF. Robust path with fallback."""
+    """Convert image/gif/video to high-quality GIF, then fit under Steam 5 MB."""
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg not found (install ffmpeg or put bin/ffmpeg)")
@@ -312,24 +334,19 @@ def media_to_gif(src: Path, dest: Path, fps: int, width: int, duration: float = 
         raise RuntimeError(f"source missing: {src}")
 
     duration = max(1.0, min(20.0, float(duration)))
-    vf_palette = (
-        f"fps={fps},scale={width}:-2:flags=lanczos,"
-        f"split[s0][s1];[s0]palettegen=stats_mode=single[p];"
-        f"[s1][p]paletteuse=dither=bayer:bayer_scale=5"
-    )
+    vf = _ffmpeg_palette_vf(fps=fps, width=width, max_colors=256)
     cmd = [
         ff, "-y", "-hide_banner", "-loglevel", "error",
         "-i", str(src),
         "-t", str(duration),
         "-an",
-        "-vf", vf_palette,
+        "-vf", vf,
         "-loop", "0",
         str(dest),
     ]
     try:
         _run(cmd)
     except Exception as e1:
-        # Fallback: scale to intermediate mp4 then gif (handles odd codecs)
         mid = dest.with_suffix(".tmp.mp4")
         try:
             _run([
@@ -339,18 +356,14 @@ def media_to_gif(src: Path, dest: Path, fps: int, width: int, duration: float = 
                 "-an",
                 "-vf", f"fps={fps},scale={width}:-2:flags=lanczos",
                 "-pix_fmt", "yuv420p",
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
                 str(mid),
             ])
             _run([
                 ff, "-y", "-hide_banner", "-loglevel", "error",
                 "-i", str(mid),
                 "-an",
-                "-vf", (
-                    f"fps={fps},"
-                    f"split[s0][s1];[s0]palettegen=stats_mode=single[p];"
-                    f"[s1][p]paletteuse=dither=bayer:bayer_scale=5"
-                ),
+                "-vf", _ffmpeg_palette_vf(fps=fps, max_colors=256),
                 "-loop", "0",
                 str(dest),
             ])
@@ -364,6 +377,7 @@ def media_to_gif(src: Path, dest: Path, fps: int, width: int, duration: float = 
 
     if not dest.is_file() or dest.stat().st_size < 50:
         raise RuntimeError("GIF conversion produced empty file")
+    ensure_under_mb(dest)
 
 
 def _probe_wh(path: Path) -> tuple[int, int]:
@@ -480,76 +494,240 @@ def encode_gif_from_png_sequence(
     dest: Path,
     fps: int = 12,
     encoder: str = "ffmpeg",
+    quality: int = 100,
 ) -> None:
-    """encoder: ffmpeg | gifski | pillow (caller may already use pillow)."""
+    """encoder: ffmpeg | gifski | pillow. quality 1..100 used by gifski."""
     encoder = (encoder or "ffmpeg").strip().lower()
-    pattern = str(frames_dir / "frame_*.png")
     fps = max(5, min(30, int(fps or 12)))
+    quality = max(1, min(100, int(quality or 100)))
+    files = sorted(frames_dir.glob("frame_*.png"))
+    if not files:
+        raise RuntimeError("no frames for gif encode")
+
     if encoder == "gifski":
         gs = find_gifski()
-        if not gs:
-            encoder = "ffmpeg"
-        else:
-            # gifski --fps N -o out.gif frame_*.png
-            files = sorted(frames_dir.glob("frame_*.png"))
-            if not files:
-                raise RuntimeError("no frames for gifski")
-            cmd = [gs, "--fps", str(fps), "-o", str(dest), *[str(f) for f in files]]
+        if gs:
+            cmd = [
+                gs, "--fps", str(fps),
+                "--quality", str(quality),
+                "-o", str(dest),
+                *[str(f) for f in files],
+            ]
             subprocess.run(cmd, check=True, capture_output=True)
-            return
+            if dest.is_file() and dest.stat().st_size > 50:
+                return
+        encoder = "ffmpeg"
+
     if encoder == "ffmpeg":
         ff = find_ffmpeg()
         if not ff:
             raise RuntimeError("ffmpeg not found")
-        vf = (
-            f"fps={fps},"
-            f"split[s0][s1];[s0]palettegen=stats_mode=diff[p];"
-            f"[s1][p]paletteuse=dither=bayer:bayer_scale=5"
-        )
+        vf = _ffmpeg_palette_vf(fps=fps, max_colors=256)
         cmd = [
-            ff, "-y", "-framerate", str(fps), "-i", str(frames_dir / "frame_%04d.png"),
-            "-lavfi", vf, "-loop", "0", str(dest),
+            ff, "-y", "-hide_banner", "-loglevel", "error",
+            "-framerate", str(fps),
+            "-i", str(frames_dir / "frame_%04d.png"),
+            "-lavfi", vf,
+            "-loop", "0",
+            str(dest),
         ]
         subprocess.run(cmd, check=True, capture_output=True)
-        return
-    # pillow fallback: open frames and save
-    files = sorted(frames_dir.glob("frame_*.png"))
-    if not files:
-        raise RuntimeError("no frames")
+        if dest.is_file() and dest.stat().st_size > 50:
+            return
+
+    # pillow fallback
     imgs = [Image.open(f).convert("RGBA") for f in files]
+    q = [_quantize_rgba_for_gif(im) for im in imgs]
     duration = int(1000 / fps)
-    imgs[0].save(
-        dest, save_all=True, append_images=imgs[1:], duration=duration, loop=0, disposal=2
+    q[0].save(
+        dest, save_all=True, append_images=q[1:], duration=duration, loop=0, disposal=2, optimize=True
     )
 
 
+def _gif_mb(path: Path) -> float:
+    try:
+        return path.stat().st_size / (1024 * 1024)
+    except Exception:
+        return 999.0
+
+
+def _try_replace(src_tmp: Path, dest: Path) -> bool:
+    """Replace dest with tmp if tmp is smaller and valid."""
+    if not src_tmp.is_file() or src_tmp.stat().st_size < 50:
+        try:
+            src_tmp.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return False
+    if src_tmp.stat().st_size < dest.stat().st_size:
+        src_tmp.replace(dest)
+        return True
+    try:
+        src_tmp.unlink(missing_ok=True)
+    except Exception:
+        pass
+    return False
+
+
 def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
+    """Fit GIF under Steam limit while preserving as much quality as possible.
+
+    Strategy (in order):
+      1. Already under limit → done
+      2. gifski binary-search on --quality (best visual result)
+      3. Gentle ffmpeg ladder: prefer keeping resolution & fps, reduce palette/dither cost
+      4. Only then lower fps / slight downscale
+    Target: get as close as possible to max_mb without exceeding it.
+    """
+    path = Path(path)
     if not path.is_file() or path.suffix.lower() != ".gif":
         return
-    ff = find_ffmpeg()
-    if not ff:
+    if _gif_mb(path) <= max_mb:
         return
-    for fps, colors, scale in ((10, 128, 90), (8, 96, 80), (6, 64, 70)):
-        mb = path.stat().st_size / (1024 * 1024)
-        if mb <= max_mb:
-            return
-        tmp = path.with_suffix(".tmp.gif")
-        vf = (
-            f"fps={fps},scale=iw*{scale}/100:-1:flags=lanczos,"
-            f"split[s0][s1];[s0]palettegen=max_colors={colors}:stats_mode=diff[p];"
-            f"[s1][p]paletteuse=dither=bayer:bayer_scale=3"
-        )
-        try:
-            _run([ff, "-y", "-i", str(path), "-vf", vf, "-loop", "0", str(tmp)])
-            if tmp.is_file() and tmp.stat().st_size < path.stat().st_size:
-                tmp.replace(path)
-            elif tmp.is_file():
-                tmp.unlink(missing_ok=True)
-        except Exception:
+
+    ff = find_ffmpeg()
+    gs = find_gifski()
+    tmp_dir = Path(tempfile.mkdtemp(prefix="sm_gif_fit_"))
+    try:
+        # Extract frames once for gifski / re-encode paths
+        frames_dir = tmp_dir / "frames"
+        frames_dir.mkdir(parents=True, exist_ok=True)
+        extracted = False
+        if ff:
             try:
-                tmp.unlink(missing_ok=True)
+                _run([
+                    ff, "-y", "-hide_banner", "-loglevel", "error",
+                    "-i", str(path),
+                    str(frames_dir / "frame_%04d.png"),
+                ])
+                extracted = bool(list(frames_dir.glob("frame_*.png")))
+            except Exception:
+                extracted = False
+
+        # Probe fps roughly from frame count / duration
+        src_fps = 12
+        try:
+            with Image.open(path) as im:
+                n = int(getattr(im, "n_frames", 1) or 1)
+                dur = 0
+                for i in range(n):
+                    im.seek(i)
+                    dur += int(im.info.get("duration", 100) or 100)
+                if dur > 0 and n > 1:
+                    src_fps = max(5, min(24, round(n * 1000 / dur)))
+        except Exception:
+            pass
+
+        # ── 1) gifski quality binary search ─────────────────────────
+        if gs and extracted:
+            lo, hi = 40, 100
+            best = None  # (quality, path)
+            # try high quality first
+            for q in (100, 92, 85, 78, 70, 60, 50):
+                out = tmp_dir / f"gs_{q}.gif"
+                try:
+                    files = sorted(frames_dir.glob("frame_*.png"))
+                    cmd = [gs, "--fps", str(src_fps), "--quality", str(q), "-o", str(out),
+                           *[str(f) for f in files]]
+                    subprocess.run(cmd, check=True, capture_output=True)
+                    if out.is_file() and out.stat().st_size > 50:
+                        mb = _gif_mb(out)
+                        if mb <= max_mb:
+                            best = (q, out)
+                            break
+                except Exception:
+                    continue
+            if best is None:
+                # finer binary search between last fail and 40
+                for q in range(95, 39, -5):
+                    out = tmp_dir / f"gs_b_{q}.gif"
+                    try:
+                        files = sorted(frames_dir.glob("frame_*.png"))
+                        cmd = [gs, "--fps", str(src_fps), "--quality", str(q), "-o", str(out),
+                               *[str(f) for f in files]]
+                        subprocess.run(cmd, check=True, capture_output=True)
+                        if out.is_file() and 50 < out.stat().st_size and _gif_mb(out) <= max_mb:
+                            best = (q, out)
+                            break
+                    except Exception:
+                        continue
+            if best is not None:
+                best[1].replace(path)
+                return
+
+        # ── 2) ffmpeg gentle ladder (keep res/fps as long as possible) ──
+        if not ff:
+            return
+
+        # steps ordered by visual impact (lightest first)
+        # (fps_factor, scale_pct, max_colors)
+        steps = [
+            (1.00, 100, 256),
+            (1.00, 100, 224),
+            (1.00, 100, 192),
+            (0.90, 100, 256),
+            (0.90, 100, 192),
+            (1.00, 96, 256),
+            (0.85, 100, 192),
+            (1.00, 92, 224),
+            (0.80, 100, 192),
+            (1.00, 90, 192),
+            (0.75, 95, 192),
+            (1.00, 88, 160),
+            (0.70, 90, 160),
+            (0.65, 85, 128),
+            (0.55, 80, 128),
+            (0.50, 75, 96),
+            (0.45, 70, 64),
+        ]
+        for fps_f, scale_pct, colors in steps:
+            if _gif_mb(path) <= max_mb:
+                return
+            fps_i = max(5, min(24, int(round(src_fps * fps_f))))
+            tmp = tmp_dir / f"ff_{fps_i}_{scale_pct}_{colors}.gif"
+            vf = _ffmpeg_palette_vf(
+                fps=fps_i,
+                scale_pct=scale_pct if scale_pct < 100 else None,
+                max_colors=colors,
+                dither="sierra2_4a",
+            )
+            try:
+                _run([
+                    ff, "-y", "-hide_banner", "-loglevel", "error",
+                    "-i", str(path),
+                    "-an",
+                    "-vf", vf,
+                    "-loop", "0",
+                    str(tmp),
+                ])
+                if tmp.is_file() and tmp.stat().st_size > 50:
+                    if _gif_mb(tmp) <= max_mb:
+                        tmp.replace(path)
+                        return
+                    # still over — keep if smaller (progress toward limit)
+                    if tmp.stat().st_size < path.stat().st_size:
+                        tmp.replace(path)
+                    else:
+                        tmp.unlink(missing_ok=True)
+            except Exception:
+                try:
+                    tmp.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+        # last resort: very aggressive
+        if _gif_mb(path) > max_mb and ff:
+            tmp = tmp_dir / "last.gif"
+            try:
+                vf = _ffmpeg_palette_vf(fps=6, scale_pct=65, max_colors=48, dither="bayer")
+                _run([ff, "-y", "-hide_banner", "-loglevel", "error",
+                      "-i", str(path), "-vf", vf, "-loop", "0", str(tmp)])
+                if tmp.is_file() and tmp.stat().st_size > 50:
+                    tmp.replace(path)
             except Exception:
                 pass
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 

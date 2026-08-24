@@ -2645,6 +2645,10 @@ async def api_compose(
                         proc._save_animated_gif(frames_p, durs, out)
                 if not out.is_file():
                     return JSONResponse({"ok": False, "msg": "GIF encode failed"}, status_code=500)
+                try:
+                    proc.ensure_under_mb(out)
+                except Exception:
+                    pass
                 data = out.read_bytes()
                 return Response(
                     content=data,
@@ -2653,6 +2657,7 @@ async def api_compose(
                         "Content-Disposition": 'attachment; filename="composed.gif"',
                         "X-Compose-Type": "gif",
                         "X-Compose-Encoder": enc,
+                        "X-Compose-Size-MB": f"{len(data)/(1024*1024):.2f}",
                     },
                 )
             finally:
