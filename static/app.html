@@ -388,6 +388,60 @@ input[type="range"]{
   overflow:auto;
 }
 
+/* Character + BG compose layout */
+.compose-layout{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:16px;
+  align-items:start;
+}
+@media(min-width:960px){
+  .compose-layout{grid-template-columns:minmax(0,1fr) minmax(280px,400px)}
+}
+.compose-controls .range-val{
+  font-size:12px;color:var(--accent2);font-variant-numeric:tabular-nums;font-weight:600
+}
+.compose-preview-panel{
+  position:sticky;top:72px;
+  border-radius:var(--radius);
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(18,20,28,.92);
+  backdrop-filter:blur(14px);
+  padding:14px;
+  box-shadow:0 8px 32px rgba(0,0,0,.35);
+}
+.compose-preview-panel h3{
+  margin:0 0 10px;font-size:13px;font-weight:600;color:var(--muted);
+  display:flex;align-items:center;justify-content:space-between;gap:8px
+}
+.compose-preview-panel h3 span.live-dot{
+  width:7px;height:7px;border-radius:50%;background:#28c840;
+  box-shadow:0 0 8px rgba(40,200,64,.6);display:inline-block
+}
+.compose-canvas-wrap{
+  position:relative;border-radius:12px;overflow:hidden;
+  border:1px solid var(--border);background:#0a0a0a;
+  min-height:200px;display:flex;align-items:center;justify-content:center
+}
+.compose-canvas-wrap canvas{
+  max-width:100%;max-height:min(62vh,520px);display:block;width:100%;height:auto
+}
+.compose-canvas-wrap .compose-empty-hint{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:13px;padding:24px;text-align:center;pointer-events:none
+}
+.compose-final-wrap{
+  margin-top:12px;border-radius:12px;overflow:hidden;
+  border:1px solid var(--border);background:#0a0a0a;
+  min-height:80px;display:flex;align-items:center;justify-content:center
+}
+.compose-final-wrap img{
+  max-width:100%;max-height:220px;display:none
+}
+.compose-final-wrap .final-hint{
+  color:var(--muted);font-size:12px;padding:16px;text-align:center
+}
+
 </style>
 </head>
 <body>
@@ -539,88 +593,117 @@ input[type="range"]{
 
 
   <section class="tab" id="tab-compose">
-    <div class="card">
-      <h2>Персонаж + фон</h2>
-      <p style="font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.5">
-        Загрузи <b>фон</b> (витринный фон) и <b>персонажа</b> (PNG с прозрачностью, GIF или <b>MP4/WebM</b> с хромакеем).
-        Совмести — скачай результат или сразу отправь во вкладку <b>Обработка</b> для нарезки Workshop.
-      </p>
-      <div class="row">
-        <div class="field" style="flex:1;min-width:200px">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">1. Фон витрины</div>
-          <div class="fi" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px">
-            <span id="composeBgName" style="flex:1;font-size:13px;color:var(--muted)">файл не выбран</span>
-            <button type="button" class="btn ghost" id="btnComposeBg" style="padding:6px 14px">Выбрать</button>
-            <input type="file" id="composeBg" accept="image/png,image/jpeg,image/webp,image/bmp" style="display:none"/>
+    <div class="compose-layout">
+      <!-- Left: controls -->
+      <div class="card compose-controls">
+        <h2>Персонаж + фон</h2>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.5">
+          Загрузи <b>фон</b> и <b>персонажа</b> (PNG / GIF / MP4). Справа — живой превью.
+          «Совместить» делает финальный файл (с хромакеем и анимацией).
+        </p>
+
+        <div class="row">
+          <div class="field" style="flex:1;min-width:160px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">1. Фон витрины</div>
+            <div class="fi" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px">
+              <span id="composeBgName" style="flex:1;font-size:13px;color:var(--muted)">файл не выбран</span>
+              <button type="button" class="btn ghost" id="btnComposeBg" style="padding:6px 14px">Выбрать</button>
+              <input type="file" id="composeBg" accept="image/png,image/jpeg,image/webp,image/bmp" style="display:none"/>
+            </div>
+          </div>
+          <div class="field" style="flex:1;min-width:160px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">2. Персонаж</div>
+            <div class="fi" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px">
+              <span id="composeCharName" style="flex:1;font-size:13px;color:var(--muted)">файл не выбран</span>
+              <button type="button" class="btn ghost" id="btnComposeChar" style="padding:6px 14px">Выбрать</button>
+              <input type="file" id="composeChar" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,video/mp4,video/webm,video/quicktime,video/*" style="display:none"/>
+            </div>
           </div>
         </div>
-        <div class="field" style="flex:1;min-width:200px">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">2. Персонаж (фото / GIF / видео)</div>
-          <div class="fi" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px">
-            <span id="composeCharName" style="flex:1;font-size:13px;color:var(--muted)">файл не выбран</span>
-            <button type="button" class="btn ghost" id="btnComposeChar" style="padding:6px 14px">Выбрать</button>
-            <input type="file" id="composeChar" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,video/mp4,video/webm,video/quicktime,video/*" style="display:none"/>
+
+        <div class="row">
+          <label class="field">Фон у персонажа
+            <select id="composeChroma">
+              <option value="auto" selected>Убрать цветной фон автоматически</option>
+              <option value="none">Уже прозрачный (не трогать)</option>
+            </select>
+          </label>
+          <label class="field">Толерантность хромакея
+            <input type="range" id="composeTol" min="10" max="120" value="45"/>
+            <span class="range-val" id="composeTolVal">45</span>
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="field">Масштаб персонажа
+            <input type="range" id="composeScale" min="15" max="220" value="100"/>
+            <span class="range-val" id="composeScaleVal">100%</span>
+          </label>
+          <label class="field">Ширина результата
+            <select id="composeWidth">
+              <option value="750" selected>750 (Workshop)</option>
+              <option value="630">630 (Featured)</option>
+              <option value="800">800</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="field">Позиция X (0=лево → 1=право)
+            <input type="range" id="composeOx" min="0" max="100" value="50"/>
+            <span class="range-val" id="composeOxVal">0.50</span>
+          </label>
+          <label class="field">Позиция Y (0=верх → 1=низ)
+            <input type="range" id="composeOy" min="0" max="100" value="100"/>
+            <span class="range-val" id="composeOyVal">1.00</span>
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="field">Кодек GIF
+            <select id="composeGifEncoder">
+              <option value="ffmpeg" selected>ffmpeg (palette)</option>
+              <option value="pillow">Pillow</option>
+              <option value="gifski">gifski</option>
+            </select>
+          </label>
+          <label class="field">FPS анимации
+            <input type="number" id="composeFps" value="12" min="5" max="30"/>
+          </label>
+        </div>
+
+        <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+          <button class="btn" type="button" id="btnCompose">Совместить</button>
+          <a class="btn ghost" id="composeDl" style="display:none;text-decoration:none" href="#">Скачать</a>
+          <button class="btn ghost" type="button" id="btnComposeToProcess" style="display:none">В Обработку →</button>
+        </div>
+        <div class="status" id="composeStatus"></div>
+        <div class="sm-progress" id="composeProgress" aria-live="polite">
+          <div class="sm-prog-top">
+            <span id="composeProgLabel">Склеиваем…</span>
+            <span class="sm-prog-pct" id="composeProgPct">0%</span>
           </div>
+          <div class="sm-prog-track"><div class="sm-prog-fill" id="composeProgFill"></div></div>
+          <div class="sm-prog-sub" id="composeProgSub"></div>
         </div>
       </div>
-      <div class="row">
-        <label class="field">Фон у персонажа
-          <select id="composeChroma">
-            <option value="auto" selected>Убрать цветной фон автоматически</option>
-            <option value="none">Уже прозрачный (не трогать)</option>
-          </select>
-        </label>
-        <label class="field">Толерантность хромакея
-          <input type="range" id="composeTol" min="10" max="120" value="45"/>
-        </label>
-        <label class="field">Масштаб персонажа
-          <input type="range" id="composeScale" min="20" max="200" value="100"/>
-        </label>
-        <label class="field">Ширина результата
-          <select id="composeWidth">
-            <option value="750" selected>750 (Workshop)</option>
-            <option value="630">630 (Featured)</option>
-            <option value="800">800</option>
-          </select>
-        </label>
-      </div>
-      <div class="row">
-        <label class="field">Позиция X (0=лево, 1=право)
-          <input type="range" id="composeOx" min="0" max="100" value="50"/>
-        </label>
-        <label class="field">Позиция Y (0=верх, 1=низ)
-          <input type="range" id="composeOy" min="0" max="100" value="100"/>
-        </label>
-      </div>
-            <div class="row">
-        <label class="field">Кодек GIF
-          <select id="composeGifEncoder">
-            <option value="ffmpeg" selected>ffmpeg (palette)</option>
-            <option value="pillow">Pillow</option>
-            <option value="gifski">gifski</option>
-          </select>
-        </label>
-        <label class="field">FPS анимации
-          <input type="number" id="composeFps" value="12" min="5" max="30"/>
-        </label>
-      </div>
-<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
-        <button class="btn" type="button" id="btnCompose">Совместить</button>
-        <a class="btn ghost" id="composeDl" style="display:none;text-decoration:none" href="#">Скачать</a>
-        <button class="btn ghost" type="button" id="btnComposeToProcess" style="display:none">В Обработку →</button>
-      </div>
-      <div class="status" id="composeStatus"></div>
-      <div class="sm-progress" id="composeProgress" aria-live="polite">
-        <div class="sm-prog-top">
-          <span id="composeProgLabel">Склеиваем…</span>
-          <span class="sm-prog-pct" id="composeProgPct">0%</span>
+
+      <!-- Right: live + final preview -->
+      <div class="compose-preview-panel">
+        <h3>
+          <span>PREVIEW</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:500">
+            <span class="live-dot"></span> live
+          </span>
+        </h3>
+        <div class="compose-canvas-wrap">
+          <canvas id="composeLiveCanvas" width="400" height="300"></canvas>
+          <div class="compose-empty-hint" id="composeLiveEmpty">Добавь фон и персонажа — превью обновится сразу</div>
         </div>
-        <div class="sm-prog-track"><div class="sm-prog-fill" id="composeProgFill"></div></div>
-        <div class="sm-prog-sub" id="composeProgSub"></div>
-      </div>
-      <div style="margin-top:16px;border-radius:12px;border:1px solid var(--border);background:#111;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden">
-        <img id="composePreview" alt="" style="max-width:100%;max-height:420px;display:none"/>
-        <span id="composeEmpty" style="color:var(--muted);font-size:13px;padding:24px">Превью появится после «Совместить»</span>
+        <div class="compose-final-wrap" id="composeFinalWrap">
+          <img id="composePreview" alt=""/>
+          <span class="final-hint" id="composeEmpty">Финальный результат после «Совместить»</span>
+        </div>
       </div>
     </div>
   </section>
@@ -4020,7 +4103,172 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   const dl = document.getElementById('composeDl');
   const toProc = document.getElementById('btnComposeToProcess');
 
-  
+  /* ── Live canvas preview ─────────────────────────────────── */
+  const liveCanvas = document.getElementById('composeLiveCanvas');
+  const liveEmpty  = document.getElementById('composeLiveEmpty');
+  const liveCtx    = liveCanvas ? liveCanvas.getContext('2d') : null;
+  let bgImg  = null;   // HTMLImageElement
+  let charImg = null;  // HTMLImageElement (first frame)
+  let redrawPending = false;
+
+  function scaleVal() {
+    return Math.max(0.15, Math.min(2.2, (parseInt(document.getElementById('composeScale')?.value || '100', 10) || 100) / 100));
+  }
+  function oxVal() {
+    return Math.max(0, Math.min(1, (parseInt(document.getElementById('composeOx')?.value || '50', 10) || 50) / 100));
+  }
+  function oyVal() {
+    return Math.max(0, Math.min(1, (parseInt(document.getElementById('composeOy')?.value || '100', 10) || 100) / 100));
+  }
+  function targetWidth() {
+    return parseInt(document.getElementById('composeWidth')?.value || '750', 10) || 750;
+  }
+
+  function updateRangeLabels() {
+    const s = document.getElementById('composeScaleVal');
+    const ox = document.getElementById('composeOxVal');
+    const oy = document.getElementById('composeOyVal');
+    const tol = document.getElementById('composeTolVal');
+    if (s) s.textContent = Math.round(scaleVal() * 100) + '%';
+    if (ox) ox.textContent = oxVal().toFixed(2);
+    if (oy) oy.textContent = oyVal().toFixed(2);
+    if (tol) tol.textContent = document.getElementById('composeTol')?.value || '45';
+  }
+
+  function scheduleRedraw() {
+    if (redrawPending) return;
+    redrawPending = true;
+    requestAnimationFrame(function() {
+      redrawPending = false;
+      drawLive();
+    });
+  }
+
+  function drawLive() {
+    if (!liveCanvas || !liveCtx) return;
+    updateRangeLabels();
+
+    if (!bgImg || !bgImg.naturalWidth) {
+      liveCanvas.style.display = 'none';
+      if (liveEmpty) liveEmpty.style.display = 'flex';
+      return;
+    }
+    if (liveEmpty) liveEmpty.style.display = 'none';
+    liveCanvas.style.display = 'block';
+
+    // Fit background to target width (same logic as server)
+    const tw = targetWidth();
+    const ratio = bgImg.naturalHeight / bgImg.naturalWidth;
+    const bw = tw;
+    const bh = Math.max(1, Math.round(tw * ratio));
+
+    // Canvas display size (fit panel)
+    const maxDispW = Math.min(400, (liveCanvas.parentElement?.clientWidth || 360) - 4);
+    const dispScale = maxDispW / bw;
+    const cw = Math.round(bw * dispScale);
+    const ch = Math.round(bh * dispScale);
+    if (liveCanvas.width !== cw || liveCanvas.height !== ch) {
+      liveCanvas.width = cw;
+      liveCanvas.height = ch;
+    }
+
+    liveCtx.clearRect(0, 0, cw, ch);
+    liveCtx.drawImage(bgImg, 0, 0, cw, ch);
+
+    if (!charImg || !charImg.naturalWidth) return;
+
+    // Same placement math as processor._place_character
+    const sc = scaleVal();
+    const ox = oxVal();
+    const oy = oyVal();
+    let targetH = Math.max(1, Math.round(bh * 0.85 * sc));
+    let r = targetH / Math.max(1, charImg.naturalHeight);
+    let nw = Math.max(1, Math.round(charImg.naturalWidth * r));
+    let nh = Math.max(1, targetH);
+    if (nw > bw * 0.98) {
+      r = (bw * 0.98) / charImg.naturalWidth;
+      nw = Math.max(1, Math.round(charImg.naturalWidth * r));
+      nh = Math.max(1, Math.round(charImg.naturalHeight * r));
+    }
+    // anchor: bottom-center of character
+    let ax = Math.round(bw * ox - nw / 2);
+    let ay = Math.round(bh * oy - nh);
+    ax = Math.max(-nw + 1, Math.min(bw - 1, ax));
+    ay = Math.max(-nh + 1, Math.min(bh - 1, ay));
+
+    // draw scaled to canvas
+    liveCtx.drawImage(
+      charImg,
+      ax * dispScale, ay * dispScale,
+      nw * dispScale, nh * dispScale
+    );
+  }
+
+  function loadImageFromFile(file) {
+    return new Promise(function(resolve) {
+      if (!file) return resolve(null);
+      const name = (file.name || '').toLowerCase();
+      const type = (file.type || '').toLowerCase();
+      const isVideo = type.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv|m4v)$/i.test(name);
+
+      if (isVideo) {
+        const url = URL.createObjectURL(file);
+        const v = document.createElement('video');
+        v.muted = true; v.playsInline = true; v.preload = 'auto';
+        let done = false;
+        function finish(img) {
+          if (done) return;
+          done = true;
+          try { v.pause(); } catch(e){}
+          try { v.removeAttribute('src'); v.load(); } catch(e){}
+          URL.revokeObjectURL(url);
+          resolve(img);
+        }
+        v.addEventListener('loadeddata', function() {
+          try { v.currentTime = Math.min(0.05, (v.duration || 1) * 0.01); } catch(e){}
+          setTimeout(function() {
+            try {
+              const c = document.createElement('canvas');
+              c.width = v.videoWidth || 640;
+              c.height = v.videoHeight || 360;
+              c.getContext('2d').drawImage(v, 0, 0);
+              const im = new Image();
+              im.onload = function(){ finish(im); };
+              im.onerror = function(){ finish(null); };
+              im.src = c.toDataURL('image/png');
+            } catch(e) { finish(null); }
+          }, 100);
+        });
+        v.addEventListener('error', function(){ finish(null); });
+        v.src = url;
+        try { v.load(); } catch(e){}
+        return;
+      }
+
+      // image / gif — browser shows first frame of GIF
+      const url = URL.createObjectURL(file);
+      const im = new Image();
+      im.onload = function(){ URL.revokeObjectURL(url); resolve(im); };
+      im.onerror = function(){ URL.revokeObjectURL(url); resolve(null); };
+      im.src = url;
+    });
+  }
+
+  async function onBgChange() {
+    const f = document.getElementById('composeBg')?.files?.[0];
+    const el = document.getElementById('composeBgName');
+    if (el) el.textContent = f ? f.name : 'файл не выбран';
+    bgImg = f ? await loadImageFromFile(f) : null;
+    scheduleRedraw();
+  }
+  async function onCharChange() {
+    const f = document.getElementById('composeChar')?.files?.[0];
+    const el = document.getElementById('composeCharName');
+    if (el) el.textContent = f ? f.name : 'файл не выбран';
+    charImg = f ? await loadImageFromFile(f) : null;
+    scheduleRedraw();
+  }
+
   document.getElementById('btnComposeBg')?.addEventListener('click', function(e){
     e.preventDefault();
     document.getElementById('composeBg')?.click();
@@ -4029,17 +4277,21 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     e.preventDefault();
     document.getElementById('composeChar')?.click();
   });
-  document.getElementById('composeBg')?.addEventListener('change', function(){
-    const f = this.files && this.files[0];
-    const el = document.getElementById('composeBgName');
-    if (el) el.textContent = f ? f.name : 'файл не выбран';
-  });
-  document.getElementById('composeChar')?.addEventListener('change', function(){
-    const f = this.files && this.files[0];
-    const el = document.getElementById('composeCharName');
-    if (el) el.textContent = f ? f.name : 'файл не выбран';
+  document.getElementById('composeBg')?.addEventListener('change', onBgChange);
+  document.getElementById('composeChar')?.addEventListener('change', onCharChange);
+
+  // Live update on any slider / width change
+  ['composeScale','composeOx','composeOy','composeTol','composeWidth'].forEach(function(id){
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', scheduleRedraw);
+    el.addEventListener('change', scheduleRedraw);
   });
 
+  // Initial labels
+  updateRangeLabels();
+
+  /* ── Server compose (final) ──────────────────────────────── */
   document.getElementById('btnCompose')?.addEventListener('click', function(){
     const bg = document.getElementById('composeBg')?.files?.[0];
     const ch = document.getElementById('composeChar')?.files?.[0];
@@ -4052,9 +4304,9 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     fd.append('character', ch);
     fd.append('chroma_key', document.getElementById('composeChroma')?.value || 'auto');
     fd.append('chroma_tol', document.getElementById('composeTol')?.value || '55');
-    fd.append('scale', String((parseInt(document.getElementById('composeScale')?.value||'100',10)||100)/100));
-    fd.append('offset_x', String((parseInt(document.getElementById('composeOx')?.value||'50',10)||50)/100));
-    fd.append('offset_y', String((parseInt(document.getElementById('composeOy')?.value||'100',10)||100)/100));
+    fd.append('scale', String(scaleVal()));
+    fd.append('offset_x', String(oxVal()));
+    fd.append('offset_y', String(oyVal()));
     fd.append('width', document.getElementById('composeWidth')?.value || '750');
     fd.append('gif_encoder', document.getElementById('composeGifEncoder')?.value || 'ffmpeg');
     fd.append('fps', document.getElementById('composeFps')?.value || '12');
@@ -4119,7 +4371,6 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
         setTimeout(function(){ if (prog) prog.classList.remove('show'); }, 2500);
         return;
       }
-      // error json in blob
       const reader = new FileReader();
       reader.onload = function(){
         let msg = 'Ошибка';
