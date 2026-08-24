@@ -2536,6 +2536,7 @@ async def api_compose(
     request: Request,
     chroma_key: str = Form("auto"),
     chroma_tol: float = Form(55),
+    feather: float = Form(1.6),
     scale: float = Form(1.0),
     offset_x: float = Form(0.5),
     offset_y: float = Form(1.0),
@@ -2571,6 +2572,10 @@ async def api_compose(
             tol = float(chroma_tol)
         except Exception:
             tol = 40.0
+        try:
+            feather_f = max(0.0, min(4.0, float(feather)))
+        except Exception:
+            feather_f = 1.6
         try:
             sc = max(0.05, min(4.0, float(scale)))
         except Exception:
@@ -2614,6 +2619,7 @@ async def api_compose(
                     scale=sc,
                     offset_x=ox,
                     offset_y=oy,
+                    feather=feather_f,
                 )
                 out = tmp / "composed.gif"
                 enc = (gif_encoder or "ffmpeg").strip().lower()
@@ -2660,6 +2666,7 @@ async def api_compose(
                 scale=sc,
                 offset_x=ox,
                 offset_y=oy,
+                feather=feather_f,
             )
             buf = io.BytesIO()
             composed.save(buf, format="PNG")

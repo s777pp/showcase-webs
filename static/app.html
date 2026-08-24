@@ -633,6 +633,10 @@ input[type="range"]{
             <input type="range" id="composeTol" min="10" max="120" value="45"/>
             <span class="range-val" id="composeTolVal">45</span>
           </label>
+          <label class="field">Сглаживание краёв
+            <input type="range" id="composeFeather" min="0" max="40" value="16"/>
+            <span class="range-val" id="composeFeatherVal">1.6</span>
+          </label>
         </div>
 
         <div class="row">
@@ -4141,10 +4145,15 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const ox = document.getElementById('composeOxVal');
     const oy = document.getElementById('composeOyVal');
     const tol = document.getElementById('composeTolVal');
+    const fe = document.getElementById('composeFeatherVal');
     if (s) s.textContent = Math.round(scaleVal() * 100) + '%';
     if (ox) ox.textContent = oxVal().toFixed(2);
     if (oy) oy.textContent = oyVal().toFixed(2);
     if (tol) tol.textContent = document.getElementById('composeTol')?.value || '45';
+    if (fe) {
+      const raw = parseInt(document.getElementById('composeFeather')?.value || '16', 10) || 0;
+      fe.textContent = (raw / 10).toFixed(1);
+    }
   }
 
   function scheduleRedraw() {
@@ -4287,7 +4296,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   document.getElementById('composeChar')?.addEventListener('change', onCharChange);
 
   // Live update on any slider / width change
-  ['composeScale','composeOx','composeOy','composeTol','composeWidth'].forEach(function(id){
+  ['composeScale','composeOx','composeOy','composeTol','composeFeather','composeWidth'].forEach(function(id){
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', scheduleRedraw);
@@ -4310,6 +4319,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     fd.append('character', ch);
     fd.append('chroma_key', document.getElementById('composeChroma')?.value || 'auto');
     fd.append('chroma_tol', document.getElementById('composeTol')?.value || '55');
+    fd.append('feather', String(((parseInt(document.getElementById('composeFeather')?.value || '16', 10) || 0) / 10)));
     fd.append('scale', String(scaleVal()));
     fd.append('offset_x', String(oxVal()));
     fd.append('offset_y', String(oyVal()));
