@@ -1491,9 +1491,10 @@ document.getElementById('btnRun').onclick = async () => {
           try {
             const pg = document.getElementById('btnPublishGallery');
             if (pg) {
-              // only for image modes with a still image in files
-              const hasImg = (state.files||[]).some(f => f && (f.type||'').startsWith('image/') && !(f.type||'').includes('gif') || (f.name&&/\.(png|jpe?g|webp|bmp)$/i.test(f.name)));
-              pg.style.display = hasImg ? 'inline-flex' : 'none';
+              pg.style.display = 'inline-flex';
+              pg.disabled = false;
+              const ruBtn = (localStorage.getItem('sm_lang') === 'ru');
+              pg.textContent = ruBtn ? 'Опубликовать в галерею' : 'Publish to gallery';
             }
             window.__lastPublishReady = true;
           } catch (e) {}
@@ -1530,7 +1531,12 @@ document.getElementById('btnRun').onclick = async () => {
             dl.style.display = 'inline-block';
             try {
               const pg = document.getElementById('btnPublishGallery');
-              if (pg) pg.style.display = 'inline-flex';
+              if (pg) {
+                pg.style.display = 'inline-flex';
+                pg.disabled = false;
+                const ruBtn = (localStorage.getItem('sm_lang') === 'ru');
+                pg.textContent = ruBtn ? 'Опубликовать в галерею' : 'Publish to gallery';
+              }
               window.__lastPublishReady = true;
             } catch (e) {}
             try { refreshQuota(); } catch (e) {}
@@ -4127,8 +4133,11 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   // Publish to gallery
   document.getElementById('btnPublishGallery')?.addEventListener('click', async function(){
     const f = firstImageFile();
-    if (!f) { alert('Нет изображения для публикации'); return; }
     const ru = (localStorage.getItem('sm_lang') === 'ru');
+    if (!f) {
+      alert(ru ? 'Нет файла для публикации' : 'No file to publish');
+      return;
+    }
     const title = prompt(ru ? 'Название для галереи (необязательно):' : 'Gallery title (optional):', '') || '';
     const fd = new FormData();
     fd.append('file', f);
@@ -4146,7 +4155,12 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     fd.append('auto_contrast', document.getElementById('autoContrast')?.checked ? '1' : '0');
     fd.append('title', title);
     const btn = document.getElementById('btnPublishGallery');
-    if (btn) btn.disabled = true;
+    const labelDefault = ru ? 'Опубликовать в галерею' : 'Publish to gallery';
+    if (btn) {
+      btn.disabled = true;
+      btn.style.display = 'inline-flex';
+      btn.textContent = ru ? 'Отправка…' : 'Sending…';
+    }
     try {
       const hdr = {};
       try {
@@ -4154,16 +4168,26 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
         if (s) hdr['X-Session-Token'] = s;
       } catch(e){}
       const r = await fetch('/api/gallery/publish', { method:'POST', body: fd, credentials:'include', headers: hdr });
-      const d = await r.json();
+      const d = await r.json().catch(function(){ return {}; });
       if (!r.ok || !d.ok) {
         alert(d.msg || 'Publish failed');
+        if (btn) btn.textContent = labelDefault;
       } else {
         alert(ru ? 'Отправлено на модерацию. После одобрения появится в /gallery' : 'Submitted for moderation.');
+        if (btn) btn.textContent = ru ? 'Отправлено ✓' : 'Submitted ✓';
+        setTimeout(function(){
+          if (btn) btn.textContent = labelDefault;
+        }, 2500);
       }
     } catch (e) {
       alert(String(e));
+      if (btn) btn.textContent = labelDefault;
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.style.display = 'inline-flex';
+      }
     }
-    if (btn) btn.disabled = false;
   });
 
   async function startDiscord(){
