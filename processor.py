@@ -1092,6 +1092,53 @@ def process_gif_workshop(
 
 
 
+def _iter_gif_frames(im: Image.Image, max_frames: int = 180):
+    """Safely iterate GIF frames without relying on n_frames (can IndexError on odd GIFs)."""
+    frames: list[tuple[Image.Image, int]] = []
+    idx = 0
+    while True:
+        try:
+            im.seek(idx)
+        except EOFError:
+            break
+        except Exception:
+            # broken trailer / odd GIF — stop if we already have frames
+            if frames:
+                break
+            # first frame must work
+            im.seek(0)
+            frame = im.convert("RGBA")
+            try:
+                d = int(im.info.get("duration", 100) or 100)
+            except Exception:
+                d = 100
+            frames.append((frame, max(20, d)))
+            break
+        try:
+            frame = im.convert("RGBA")
+        except Exception:
+            if frames:
+                break
+            raise
+        try:
+            d = int(im.info.get("duration", 100) or 100)
+        except Exception:
+            d = 100
+        frames.append((frame, max(20, d)))
+        idx += 1
+        if idx >= 5000:  # hard safety
+            break
+    if not frames:
+        im.seek(0)
+        frame = im.convert("RGBA")
+        frames.append((frame, 100))
+    # subsample if too many frames
+    if len(frames) > max_frames:
+        step = max(1, len(frames) // max_frames)
+        frames = frames[::step]
+    return frames
+
+
 def _gif_apply_watermark(
     gif_path: Path,
     out_path: Path,
@@ -1110,32 +1157,24 @@ def _gif_apply_watermark(
     frames_p: list[Image.Image] = []
     durations: list[int] = []
     with Image.open(gif_path) as im:
-        n = int(getattr(im, "n_frames", 1) or 1)
-        max_frames = 180
-        step = 1
-        if n > max_frames:
-            step = max(1, n // max_frames)
-        for idx in range(0, n, step):
-            im.seek(idx)
-            frame = im.convert("RGBA")
-            if wm_text and float(wm_opacity or 0) > 0:
-                frame = apply_watermark(
-                    frame,
-                    str(wm_text),
-                    wm_font,
-                    float(wm_opacity),
-                    corner=wm_corner,
-                    scale=float(wm_scale or 1.0),
-                    color=wm_color or "#ffffff",
-                    wx=wm_x,
-                    wy=wm_y,
-                )
-            frames_p.append(_quantize_rgba_for_gif(frame))
-            try:
-                d = int(im.info.get("duration", 100) or 100)
-            except Exception:
-                d = 100
-            durations.append(max(20, d * step))
+        raw_frames = _iter_gif_frames(im, max_frames=180)
+    for frame, d in raw_frames:
+        if wm_text and float(wm_opacity or 0) > 0:
+            frame = apply_watermark(
+                frame,
+                str(wm_text),
+                wm_font,
+                float(wm_opacity),
+                corner=wm_corner,
+                scale=float(wm_scale or 1.0),
+                color=wm_color or "#ffffff",
+                wx=wm_x,
+                wy=wm_y,
+            )
+        frames_p.append(_quantize_rgba_for_gif(frame))
+        durations.append(d)
+    if not frames_p:
+        raise RuntimeError("no frames for watermarked GIF")
     _save_animated_gif(frames_p, durations, out_path)
 
 
