@@ -2572,7 +2572,7 @@ async def api_compose(
         except Exception:
             tol = 40.0
         try:
-            sc = max(0.05, min(3.0, float(scale)))
+            sc = max(0.05, min(4.0, float(scale)))
         except Exception:
             sc = 1.0
         try:

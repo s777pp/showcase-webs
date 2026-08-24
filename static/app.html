@@ -636,7 +636,7 @@ input[type="range"]{
 
         <div class="row">
           <label class="field">Масштаб персонажа
-            <input type="range" id="composeScale" min="15" max="220" value="100"/>
+            <input type="range" id="composeScale" min="10" max="400" value="100"/>
             <span class="range-val" id="composeScaleVal">100%</span>
           </label>
           <label class="field">Ширина результата
@@ -4112,7 +4112,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   let redrawPending = false;
 
   function scaleVal() {
-    return Math.max(0.15, Math.min(2.2, (parseInt(document.getElementById('composeScale')?.value || '100', 10) || 100) / 100));
+    return Math.max(0.1, Math.min(4.0, (parseInt(document.getElementById('composeScale')?.value || '100', 10) || 100) / 100));
   }
   function oxVal() {
     return Math.max(0, Math.min(1, (parseInt(document.getElementById('composeOx')?.value || '50', 10) || 50) / 100));
@@ -4177,7 +4177,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
     if (!charImg || !charImg.naturalWidth) return;
 
-    // Same placement math as processor._place_character
+    // Same placement math as processor._place_character (no max-width clamp)
     const sc = scaleVal();
     const ox = oxVal();
     const oy = oyVal();
@@ -4185,18 +4185,12 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     let r = targetH / Math.max(1, charImg.naturalHeight);
     let nw = Math.max(1, Math.round(charImg.naturalWidth * r));
     let nh = Math.max(1, targetH);
-    if (nw > bw * 0.98) {
-      r = (bw * 0.98) / charImg.naturalWidth;
-      nw = Math.max(1, Math.round(charImg.naturalWidth * r));
-      nh = Math.max(1, Math.round(charImg.naturalHeight * r));
-    }
+    // allow character larger than BG — chromakey frames are often much bigger than the subject
     // anchor: bottom-center of character
     let ax = Math.round(bw * ox - nw / 2);
     let ay = Math.round(bh * oy - nh);
-    ax = Math.max(-nw + 1, Math.min(bw - 1, ax));
-    ay = Math.max(-nh + 1, Math.min(bh - 1, ay));
 
-    // draw scaled to canvas
+    // draw scaled to canvas (overflow clips naturally)
     liveCtx.drawImage(
       charImg,
       ax * dispScale, ay * dispScale,

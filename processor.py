@@ -1097,28 +1097,38 @@ def _place_character(
     offset_x: float = 0.5,
     offset_y: float = 1.0,
 ) -> Image.Image:
-    """Paste character on bg. offset_x/y are anchor 0..1 (0.5,1 = bottom-center)."""
+    """Paste character on bg. offset_x/y are anchor 0..1 (0.5,1 = bottom-center).
+
+    Scale is relative to ~85% of background height. No max-width clamp —
+    chromakey sources are often much larger than the subject, so the user
+    must be able to enlarge freely (overflow is cropped to the BG).
+    """
     bg = bg.convert("RGBA")
     char = char.convert("RGBA")
     bw, bh = bg.size
-    scale = max(0.05, min(3.0, float(scale or 1.0)))
+    scale = max(0.05, min(4.0, float(scale or 1.0)))
     # fit character height to ~85% of bg by default when scale=1
     target_h = max(1, int(bh * 0.85 * scale))
     ratio = target_h / max(1, char.height)
     nw = max(1, int(char.width * ratio))
     nh = max(1, target_h)
-    if nw > bw * 0.98:
-        ratio = (bw * 0.98) / char.width
-        nw = max(1, int(char.width * ratio))
-        nh = max(1, int(char.height * ratio))
+    # no width clamp — allow character larger than background
     char_r = char.resize((nw, nh), Image.Resampling.LANCZOS)
     # anchor point on character: bottom-center
     ax = int(bw * max(0.0, min(1.0, offset_x)) - nw / 2)
     ay = int(bh * max(0.0, min(1.0, offset_y)) - nh)
+    # soft clamp so at least 1px stays on canvas (paste needs overlap)
     ax = max(-nw + 1, min(bw - 1, ax))
     ay = max(-nh + 1, min(bh - 1, ay))
     out = bg.copy()
-    out.alpha_composite(char_r, (ax, ay))
+    # paste with alpha; crop character to visible region if it overflows
+    try:
+        out.alpha_composite(char_r, (ax, ay))
+    except Exception:
+        # fallback for older Pillow / extreme overflow: paste via mask
+        layer = Image.new("RGBA", out.size, (0, 0, 0, 0))
+        layer.paste(char_r, (ax, ay), char_r)
+        out = Image.alpha_composite(out, layer)
     return out
 
 
