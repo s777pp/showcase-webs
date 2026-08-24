@@ -24,15 +24,17 @@ body{margin:0;font-family:Mulish,system-ui,sans-serif;background:var(--bg);color
 .top-right{display:flex;align-items:center;gap:10px}
 .bell-wrap{position:relative}
 .bell{
-  width:42px;height:42px;border-radius:12px;border:1px solid var(--border);
-  background:rgba(255,255,255,.05);color:#fff;cursor:pointer;
-  display:grid;place-items:center;font-size:18px;
+  width:40px;height:40px;border-radius:12px;border:1px solid var(--border);
+  background:rgba(255,255,255,.04);color:#fff;cursor:pointer;
+  display:grid;place-items:center;padding:0;
 }
-.bell:hover{border-color:rgba(0,210,255,.4)}
+.bell:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2)}
+.bell svg{width:20px;height:20px;display:block;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .bell .dot{
-  position:absolute;top:6px;right:6px;min-width:16px;height:16px;padding:0 4px;
-  border-radius:999px;background:var(--err);color:#fff;font-size:10px;font-weight:700;
-  display:none;align-items:center;justify-content:center;
+  position:absolute;top:4px;right:4px;min-width:17px;height:17px;padding:0 4px;
+  border-radius:999px;background:#ff3b30;color:#fff;font-size:10px;font-weight:800;
+  display:none;align-items:center;justify-content:center;line-height:1;
+  box-shadow:0 0 0 2px #0c0c0c;
 }
 .bell .dot.on{display:flex}
 .notif-panel{
@@ -148,7 +150,10 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
   </div>
   <div class="top-right">
     <div class="bell-wrap" id="bellWrap" style="display:none">
-      <button type="button" class="bell" id="btnBell" title="Уведомления">🔔<span class="dot" id="bellDot">0</span></button>
+      <button type="button" class="bell" id="btnBell" title="Уведомления" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>
+        <span class="dot" id="bellDot">0</span>
+      </button>
       <div class="notif-panel" id="notifPanel">
         <div class="notif-head">
           <span>Уведомления</span>
