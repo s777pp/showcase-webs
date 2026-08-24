@@ -2761,7 +2761,14 @@ def gallery_comments(item_id: int, request: Request):
             "avatar_url": f"/api/auth/avatar/{uid}" if uid else "",
             "created_at": r.get("created_at"),
         })
-    return {"ok": True, "comments": out, **stats}
+    # IMPORTANT: do not **stats after "comments" — stats also has key "comments" (int count)
+    return {
+        "ok": True,
+        "comments": out,
+        "likes": stats.get("likes", 0),
+        "liked": stats.get("liked", False),
+        "comment_count": stats.get("comments", len(out)),
+    }
 
 
 @app.post("/api/gallery/{item_id}/comments")

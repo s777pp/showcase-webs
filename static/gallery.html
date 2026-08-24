@@ -414,6 +414,7 @@ function setAuthorUI(it){
 
 function renderComments(list){
   const box = document.getElementById('comments');
+  if (!Array.isArray(list)) list = [];
   if (!list.length) {
     box.innerHTML = '<div class="empty" style="padding:12px 0">Комментариев пока нет — будьте первым</div>';
     return;
@@ -460,11 +461,13 @@ async function loadComments(itemId){
   const btn = document.getElementById('btnLike');
   btn.classList.toggle('on', liked);
   btn.innerHTML = (liked ? '♥ ' : '♡ ') + '<span id="likeCount">' + likes + '</span>';
-  renderComments(d.comments || []);
+  // comments must be an array (old bug: API overwrote list with int count)
+  const list = Array.isArray(d.comments) ? d.comments : [];
+  renderComments(list);
   if (currentItem) {
     currentItem.likes = likes;
     currentItem.liked = liked;
-    currentItem.comments = (d.comments || []).length;
+    currentItem.comments = (typeof d.comment_count === 'number') ? d.comment_count : list.length;
   }
 }
 
