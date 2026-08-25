@@ -1992,9 +1992,11 @@ async def da_upload(request: Request):
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
-    token = (user.get("da_access_token") or "").strip()
+    token = (user.get("da_access_token") or "").strip().strip('"').strip("'")
     if not token:
         return JSONResponse({"ok": False, "msg": "Connect DeviantArt first"}, status_code=401)
+    # debug length only (never log full token)
+    print(f"da_upload: user={user.get('id')} token_len={len(token)} files incoming")
 
     form = await request.form()
     items = form.multi_items() if hasattr(form, "multi_items") else list(form.items())
@@ -2034,12 +2036,18 @@ async def da_upload(request: Request):
     import requests as rq
 
     def submit_one(access: str, name: str, raw: bytes, title: str):
-        # DA prefers access_token as query param; Bearer also works for many clients
-        url = f"https://www.deviantart.com/api/v1/oauth2/stash/submit?access_token={access}"
+        """DA Sta.sh: access_token must be in form body for multipart uploads."""
+        access = (access or "").strip()
+        if not access:
+            raise ValueError("empty access_token")
         mime = _da_guess_mime(name)
+        # Token in form field + query + Bearer — DA is picky with multipart
         return rq.post(
-            url,
+            "https://www.deviantart.com/api/v1/oauth2/stash/submit",
+            params={"access_token": access},
+            headers={"Authorization": f"Bearer {access}"},
             data={
+                "access_token": access,
                 "title": title or Path(name).stem,
                 "artist_comments": "",
                 "is_mature": "0",
