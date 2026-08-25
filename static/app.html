@@ -2700,9 +2700,10 @@ document.getElementById('daUpload') && document.getElementById('daUpload').addEv
   }
   if (st) { st.className = 'status'; st.textContent = 'Uploading…'; }
   var fd = new FormData();
-  daItems.forEach(function (it) {
+  daItems.forEach(function (it, i) {
     fd.append('file', it.file, it.name);
     fd.append('title_' + it.name, it.title || it.name);
+    fd.append('title_' + i, it.title || it.name);
   });
   try {
     var r = await fetch('/api/da/upload', { method: 'POST', headers: headers(), body: fd, credentials: 'include' });
@@ -3761,9 +3762,10 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     setProg(0, ru ? "Загрузка на Sta.sh…" : "Uploading to Sta.sh…", "0 / " + items.length);
 
     var fd = new FormData();
-    items.forEach(function (it) {
+    items.forEach(function (it, i) {
       fd.append("file", it.file, it.name);
       fd.append("title_" + it.name, it.title || it.name);
+      fd.append("title_" + i, it.title || it.name);
     });
     var hdr = {};
     try {

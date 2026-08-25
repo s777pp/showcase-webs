@@ -1937,58 +1937,162 @@ async def da_logout(request: Request):
     return {"ok": True}
 
 
+
+def _da_guess_mime(name: str) -> str:
+    ext = Path(name or "").suffix.lower()
+    return {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+        ".mp4": "video/mp4",
+        ".webm": "video/webm",
+    }.get(ext, "application/octet-stream")
+
+
+def _da_refresh_token(user: dict) -> str | None:
+    """Try refresh DA access token. Returns new access token or None."""
+    refresh = (user.get("da_refresh_token") or "").strip()
+    if not refresh:
+        return None
+    cid = (user.get("da_client_id") or "").strip() or (os.environ.get("DA_CLIENT_ID") or "").strip()
+    sec = (user.get("da_client_secret") or "").strip() or (os.environ.get("DA_CLIENT_SECRET") or "").strip()
+    if not cid or not sec:
+        return None
+    try:
+        import requests as rq
+        r = rq.post(
+            "https://www.deviantart.com/oauth2/token",
+            data={
+                "grant_type": "refresh_token",
+                "client_id": cid,
+                "client_secret": sec,
+                "refresh_token": refresh,
+            },
+            timeout=30,
+        )
+        if r.status_code != 200:
+            print("da refresh fail", r.status_code, r.text[:200])
+            return None
+        data = r.json()
+        access = data.get("access_token")
+        new_refresh = data.get("refresh_token") or refresh
+        if access:
+            auth_db.set_da_tokens(int(user["id"]), access, new_refresh)
+            return access
+    except Exception as e:
+        print("da refresh error", e)
+    return None
+
+
 @app.post("/api/da/upload")
 async def da_upload(request: Request):
-    """Upload files to DeviantArt Sta.sh (same as desktop)."""
+    """Upload files to DeviantArt Sta.sh."""
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
-    token = user.get("da_access_token")
+    token = (user.get("da_access_token") or "").strip()
     if not token:
         return JSONResponse({"ok": False, "msg": "Connect DeviantArt first"}, status_code=401)
+
     form = await request.form()
-    files = []
     items = form.multi_items() if hasattr(form, "multi_items") else list(form.items())
-    titles = {}
+
+    titles: dict[str, str] = {}
     for k, v in items:
-        k = str(k)
-        if k.startswith("title_"):
-            titles[k[6:]] = str(v)
+        ks = str(k)
+        if ks.startswith("title_"):
+            titles[ks[6:]] = str(v or "")
+
+    files: list[tuple[str, bytes, str]] = []
+    idx = 0
     for k, f in items:
-        if not str(k).startswith("file"):
+        ks = str(k)
+        # accept file, file_0, files, etc.
+        if not (ks == "file" or ks.startswith("file_") or ks.startswith("files")):
             continue
-        if f is None or isinstance(f, (str, bytes)) or not hasattr(f, "read"):
+        if f is None or isinstance(f, (str, bytes, int, float)):
             continue
-        raw = await f.read()
-        name = getattr(f, "filename", None) or "file.png"
-        files.append((name, raw, titles.get(name) or Path(name).stem))
+        if not hasattr(f, "read"):
+            continue
+        try:
+            raw = await f.read()
+        except Exception:
+            raw = f.file.read() if hasattr(f, "file") else b""
+        if not raw:
+            continue
+        name = getattr(f, "filename", None) or f"file_{idx}.png"
+        name = Path(str(name)).name  # strip path
+        title = titles.get(name) or titles.get(str(idx)) or Path(name).stem
+        files.append((name, raw, (title or Path(name).stem)[:50]))
+        idx += 1
 
     if not files:
-        return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
+        return JSONResponse({"ok": False, "msg": "No files received"}, status_code=400)
 
     import requests as rq
 
+    def submit_one(access: str, name: str, raw: bytes, title: str):
+        # DA prefers access_token as query param; Bearer also works for many clients
+        url = f"https://www.deviantart.com/api/v1/oauth2/stash/submit?access_token={access}"
+        mime = _da_guess_mime(name)
+        return rq.post(
+            url,
+            data={
+                "title": title or Path(name).stem,
+                "artist_comments": "",
+                "is_mature": "0",
+            },
+            files={"file": (name, raw, mime)},
+            timeout=180,
+        )
+
     ok_n = 0
-    errors = []
+    errors: list[str] = []
+    access = token
+
     for name, raw, title in files:
         try:
-            r = rq.post(
-                "https://www.deviantart.com/api/v1/oauth2/stash/submit",
-                headers={"Authorization": f"Bearer {token}"},
-                data={"title": title, "artist_comments": "", "is_mature": "false"},
-                files={"file": (name, raw)},
-                timeout=120,
-            )
+            r = submit_one(access, name, raw, title)
+            # expired token → refresh once and retry
+            if r.status_code in (401, 403):
+                new_tok = _da_refresh_token(user)
+                if new_tok:
+                    access = new_tok
+                    user = {**user, "da_access_token": new_tok}
+                    r = submit_one(access, name, raw, title)
+                else:
+                    auth_db.set_da_tokens(int(user["id"]), None, None)
+                    errors.append(f"{name}: session expired — reconnect DeviantArt")
+                    break
             if r.status_code == 200:
-                ok_n += 1
+                try:
+                    body = r.json()
+                except Exception:
+                    body = {}
+                # DA returns {"status":"success", ...} or error object with status error
+                if isinstance(body, dict) and body.get("status") == "error":
+                    err_desc = body.get("error_description") or body.get("error") or r.text[:160]
+                    errors.append(f"{name}: {err_desc}")
+                else:
+                    ok_n += 1
             else:
-                errors.append(f"{name}: {r.status_code} {r.text[:120]}")
+                snippet = (r.text or "")[:180].replace("\n", " ")
+                errors.append(f"{name}: HTTP {r.status_code} {snippet}")
                 if r.status_code in (401, 403):
                     auth_db.set_da_tokens(int(user["id"]), None, None)
                     break
         except Exception as e:
             errors.append(f"{name}: {type(e).__name__}: {e}")
-    return {"ok": ok_n > 0, "uploaded": ok_n, "total": len(files), "errors": errors}
+
+    return {
+        "ok": ok_n > 0,
+        "uploaded": ok_n,
+        "total": len(files),
+        "errors": errors,
+        "msg": None if ok_n > 0 else (errors[0] if errors else "Upload failed"),
+    }
 
 
 
@@ -2145,72 +2249,6 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
   </script>
 </body></html>"""
     )
-
-
-@app.post("/api/da/logout")
-async def da_logout(request: Request):
-    user = _auth_user(request)
-    if not user:
-        return JSONResponse({"ok": False}, status_code=401)
-    auth_db.set_da_tokens(int(user["id"]), None, None)
-    return {"ok": True}
-
-
-@app.post("/api/da/upload")
-async def da_upload(request: Request):
-    """Upload files to DeviantArt Sta.sh (same as desktop)."""
-    user = _auth_user(request)
-    if not user:
-        return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
-    token = user.get("da_access_token")
-    if not token:
-        return JSONResponse({"ok": False, "msg": "Connect DeviantArt first"}, status_code=401)
-    form = await request.form()
-    files = []
-    items = form.multi_items() if hasattr(form, "multi_items") else list(form.items())
-    titles = {}
-    for k, v in items:
-        k = str(k)
-        if k.startswith("title_"):
-            titles[k[6:]] = str(v)
-    for k, f in items:
-        if not str(k).startswith("file"):
-            continue
-        if f is None or isinstance(f, (str, bytes)) or not hasattr(f, "read"):
-            continue
-        raw = await f.read()
-        name = getattr(f, "filename", None) or "file.png"
-        files.append((name, raw, titles.get(name) or Path(name).stem))
-
-    if not files:
-        return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
-
-    import requests as rq
-
-    ok_n = 0
-    errors = []
-    for name, raw, title in files:
-        try:
-            r = rq.post(
-                "https://www.deviantart.com/api/v1/oauth2/stash/submit",
-                headers={"Authorization": f"Bearer {token}"},
-                data={"title": title, "artist_comments": "", "is_mature": "false"},
-                files={"file": (name, raw)},
-                timeout=120,
-            )
-            if r.status_code == 200:
-                ok_n += 1
-            else:
-                errors.append(f"{name}: {r.status_code} {r.text[:120]}")
-                if r.status_code in (401, 403):
-                    auth_db.set_da_tokens(int(user["id"]), None, None)
-                    break
-        except Exception as e:
-            errors.append(f"{name}: {type(e).__name__}: {e}")
-    return {"ok": ok_n > 0, "uploaded": ok_n, "total": len(files), "errors": errors}
-
-
-
 
 
 # ====================== Watermark live preview ======================
