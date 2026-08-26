@@ -486,6 +486,9 @@ def api_profile_bg(user_id: int):
     if s in (".jpg", ".jpeg"): media = "image/jpeg"
     elif s == ".webp": media = "image/webp"
     elif s == ".gif": media = "image/gif"
+    elif s == ".mp4": media = "video/mp4"
+    elif s == ".webm": media = "video/webm"
+    elif s == ".mov": media = "video/quicktime"
     from fastapi.responses import FileResponse
     return FileResponse(path, media_type=media)
 
@@ -604,8 +607,35 @@ async def api_profile_showcase_add(request: Request):
                 dest.write_bytes(bytes(blob))
                 files_saved.append(dest.name)
 
+        VID_EXT = {".mp4", ".mov", ".webm", ".avi", ".mkv", ".m4v"}
+        GIF_EXT = {".gif"}
+        IMG_EXT = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+
+        def _ext_of(nm: str) -> str:
+            return Path(str(nm)).suffix.lower() or ".png"
+
+        def _copy_named(src: Path, row_i: int, part_name: str) -> str:
+            """Copy processor output into profile_sc with stable name …_rN_pM.ext"""
+            # part_1.gif → p1
+            m = None
+            import re as _re
+            m = _re.match(r"part_(\d+)\.", part_name, _re.I)
+            if m:
+                fname = f"{ts}_r{row_i}_p{m.group(1)}{src.suffix.lower()}"
+            elif "center" in part_name.lower():
+                fname = f"{ts}_r{row_i}_center{src.suffix.lower()}"
+            elif "side" in part_name.lower():
+                fname = f"{ts}_r{row_i}_side{src.suffix.lower()}"
+            elif "featured" in part_name.lower():
+                fname = f"{ts}_r{row_i}_featured{src.suffix.lower()}"
+            else:
+                fname = f"{ts}_r{row_i}_{src.name}"
+            dest = out_dir / fname
+            dest.write_bytes(src.read_bytes())
+            return fname
+
         if sc_type == "workshop":
-            # Up to 3 sources → each cropped into 5 real PNG parts (same as first working version)
+            # Up to 3 sources → each becomes a row of 5 parts (PNG or GIF)
             try:
                 sources = [(name0, raw0)]
                 for extra in uploads[1:3]:
@@ -619,55 +649,129 @@ async def api_profile_showcase_add(request: Request):
                 row_i = 0
                 for nm, raw in sources[:3]:
                     row_i += 1
-                    from PIL import Image as _PIL
-                    import io as _io
-                    im = _PIL.open(_io.BytesIO(raw)).convert("RGBA")
-                    w, h = im.size
-                    if w < 5:
-                        continue
-                    pw = w // 5
-                    for pi in range(5):
-                        left = pi * pw
-                        right = (pi + 1) * pw if pi < 4 else w
-                        part = im.crop((left, 0, right, h))
-                        buf = _io.BytesIO()
-                        part.save(buf, format="PNG", optimize=True)
-                        fname = f"{ts}_r{row_i}_p{pi+1}.png"
-                        dest = out_dir / fname
-                        dest.write_bytes(buf.getvalue())
-                        files_saved.append(fname)
+                    ext = _ext_of(nm)
+                    sp = tmp / f"src_{row_i}{ext}"
+                    sp.write_bytes(raw)
+                    work = tmp / f"work_{row_i}"
+                    work.mkdir(exist_ok=True)
+
+                    if ext in VID_EXT:
+                        if not proc.find_ffmpeg():
+                            raise RuntimeError("FFmpeg required for video")
+                        paths = proc.process_video_workshop(
+                            sp, work, fps=12, width=750, wm_text="", wm_opacity=0.0, duration=12,
+                        )
+                        for pname, ppath in paths.items():
+                            if not str(pname).startswith("part_"):
+                                continue
+                            if Path(ppath).is_file():
+                                files_saved.append(_copy_named(Path(ppath), row_i, pname))
+                    elif ext in GIF_EXT:
+                        if proc.find_ffmpeg():
+                            paths = proc.process_gif_workshop(
+                                sp, work, wm_text="", wm_opacity=0.0,
+                            )
+                            for pname, ppath in paths.items():
+                                if not str(pname).startswith("part_"):
+                                    continue
+                                if Path(ppath).is_file():
+                                    files_saved.append(_copy_named(Path(ppath), row_i, pname))
+                        else:
+                            # fallback: first frame PNG crop
+                            from PIL import Image as _PIL
+                            import io as _io
+                            im = _PIL.open(_io.BytesIO(raw))
+                            im.seek(0)
+                            frame = im.convert("RGBA")
+                            w, h = frame.size
+                            pw = max(1, w // 5)
+                            for pi in range(5):
+                                left = pi * pw
+                                right = (pi + 1) * pw if pi < 4 else w
+                                part = frame.crop((left, 0, right, h))
+                                buf = _io.BytesIO()
+                                part.save(buf, format="PNG")
+                                fname = f"{ts}_r{row_i}_p{pi+1}.png"
+                                (out_dir / fname).write_bytes(buf.getvalue())
+                                files_saved.append(fname)
+                    else:
+                        # static image — pure PIL 5-crop PNG
+                        from PIL import Image as _PIL
+                        import io as _io
+                        im = _PIL.open(_io.BytesIO(raw)).convert("RGBA")
+                        w, h = im.size
+                        if w < 5:
+                            continue
+                        pw = w // 5
+                        for pi in range(5):
+                            left = pi * pw
+                            right = (pi + 1) * pw if pi < 4 else w
+                            part = im.crop((left, 0, right, h))
+                            buf = _io.BytesIO()
+                            part.save(buf, format="PNG", optimize=True)
+                            fname = f"{ts}_r{row_i}_p{pi+1}.png"
+                            (out_dir / fname).write_bytes(buf.getvalue())
+                            files_saved.append(fname)
                 if not files_saved:
                     shutil.rmtree(tmp, ignore_errors=True)
-                    return JSONResponse({"ok": False, "msg": "Workshop crop produced no files"}, status_code=500)
+                    return JSONResponse({"ok": False, "msg": "Workshop produced no files"}, status_code=500)
             except Exception as e:
                 shutil.rmtree(tmp, ignore_errors=True)
                 return JSONResponse({"ok": False, "msg": f"Workshop process failed: {e}"}, status_code=500)
 
         elif sc_type == "split":
             try:
-                im = PILImage.open(src_path)
-                im0 = im.convert("RGBA")
-                if hasattr(proc, "process_image_split"):
-                    _save_dict(proc.process_image_split(im0, wm_text="", wm_opacity=0))
+                ext = _ext_of(name0)
+                work = tmp / "work_split"
+                work.mkdir(exist_ok=True)
+                if ext in VID_EXT:
+                    if not proc.find_ffmpeg():
+                        raise RuntimeError("FFmpeg required for video")
+                    paths = proc.process_video_split(src_path, work, fps=12, wm_text="", wm_opacity=0.0)
+                    for pname, ppath in paths.items():
+                        if Path(ppath).is_file() and ("center" in pname or "side" in pname or pname.startswith("part")):
+                            files_saved.append(_copy_named(Path(ppath), 1, pname))
+                elif ext in GIF_EXT and proc.find_ffmpeg():
+                    paths = proc.process_gif_split(src_path, work, fps=12, wm_text="", wm_opacity=0.0)
+                    for pname, ppath in paths.items():
+                        if Path(ppath).is_file() and ("center" in pname or "side" in pname):
+                            files_saved.append(_copy_named(Path(ppath), 1, pname))
                 else:
-                    dest = out_dir / f"{ts}_split.png"
-                    dest.write_bytes(raw0)
-                    files_saved.append(dest.name)
+                    im = PILImage.open(src_path).convert("RGBA")
+                    _save_dict(proc.process_image_split(im, wm_text="", wm_opacity=0))
+                    # rename saved to center/side labels if needed
+                    # _save_dict already used ts_ prefix
             except Exception as e:
                 shutil.rmtree(tmp, ignore_errors=True)
                 return JSONResponse({"ok": False, "msg": f"Split process failed: {e}"}, status_code=500)
 
         elif sc_type == "featured":
             try:
-                im = PILImage.open(src_path).convert("RGBA")
-                _save_dict(proc.process_image_featured(im, wm_text="", wm_opacity=0))
+                ext = _ext_of(name0)
+                work = tmp / "work_feat"
+                work.mkdir(exist_ok=True)
+                if ext in VID_EXT:
+                    if not proc.find_ffmpeg():
+                        raise RuntimeError("FFmpeg required for video")
+                    paths = proc.process_video_featured(src_path, work, fps=12, wm_text="", wm_opacity=0.0)
+                    for pname, ppath in paths.items():
+                        if Path(ppath).is_file() and ("featured" in pname or "full_original" in pname):
+                            files_saved.append(_copy_named(Path(ppath), 1, pname))
+                elif ext in GIF_EXT and proc.find_ffmpeg():
+                    paths = proc.process_gif_featured(src_path, work, fps=12, wm_text="", wm_opacity=0.0)
+                    for pname, ppath in paths.items():
+                        if Path(ppath).is_file() and ("featured" in pname or "full_original" in pname):
+                            files_saved.append(_copy_named(Path(ppath), 1, pname))
+                else:
+                    im = PILImage.open(src_path).convert("RGBA")
+                    _save_dict(proc.process_image_featured(im, wm_text="", wm_opacity=0))
             except Exception as e:
                 print("featured process", e)
                 dest = out_dir / f"{ts}_featured{src_path.suffix or '.png'}"
                 dest.write_bytes(raw0)
                 files_saved.append(dest.name)
 
-        else:  # artwork — store as-is (CSS object-fit will stretch)
+        else:  # artwork — store as-is (image/gif/video file)
             dest = out_dir / f"{ts}_art{Path(str(name0)).suffix or '.png'}"
             dest.write_bytes(raw0)
             files_saved.append(dest.name)

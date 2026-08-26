@@ -447,7 +447,7 @@ html{background:#000}
           <div><label>Visibility</label>
             <select id="edVis"><option value="public">Public</option><option value="private">Private</option></select>
           </div>
-          <div><label>Background (full image height)</label><input id="edBg" type="file" accept="image/*"/></div>
+          <div><label>Background (full image height)</label><input id="edBg" type="file" accept="image/*,video/mp4,video/webm,.gif"/></div>
         </div>
         <p class="hint">Background uses the full resolution of your file — height follows the source aspect ratio (like Steam profile backgrounds).</p>
         <div style="margin-top:12px">
@@ -469,8 +469,8 @@ html{background:#000}
         <label>Title</label>
         <input id="scTitle" placeholder="Optional"/>
         <label>Source image / GIF</label>
-        <input id="scFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple/>
-        <p class="hint" id="scHint">Workshop: select <b>up to 3 images at once</b> → each becomes a row of 5 parts (like Steam). One Workshop block on the profile. Split / Featured / Artwork: one file.</p>
+        <input id="scFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.gif" multiple/>
+        <p class="hint" id="scHint">Workshop: up to <b>3 files</b> (PNG/JPG/GIF/MP4) → each becomes a row of 5 parts (like Steam). One Workshop block on the profile. Split / Featured / Artwork: one file.</p>
         <div style="margin-top:12px">
           <button type="button" class="btn btn-blue" id="btnScUpload">Upload &amp; Add</button>
           <button type="button" class="btn btn-gray" id="btnScCancel">Cancel</button>
@@ -750,15 +750,33 @@ html{background:#000}
         var center=urls.find(function(u){return /center/i.test(u);})||urls[0];
         var side=urls.find(function(u){return /side/i.test(u);})||urls[1];
         html+='<div class="split_row">';
-        if(center) html+='<div class="center"><img src="'+center+'" alt=""/></div>';
-        if(side) html+='<div class="side"><img src="'+side+'" alt=""/></div>';
+        if(center){
+          html+='<div class="center">';
+          if(/\.mp4|\.webm|\.mov/i.test(center)) html+='<video src="'+center+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
+          else html+='<img src="'+center+'" alt=""/>';
+          html+='</div>';
+        }
+        if(side){
+          html+='<div class="side">';
+          if(/\.mp4|\.webm|\.mov/i.test(side)) html+='<video src="'+side+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
+          else html+='<img src="'+side+'" alt=""/>';
+          html+='</div>';
+        }
         html+='</div>';
       } else if(type==='featured'){
         var u=urls.find(function(x){return /featured/i.test(x);})||urls[0];
-        html+='<div class="featured_shot">'+(u?'<img src="'+u+'" alt=""/>':'')+'</div>';
+        html+='<div class="featured_shot">';
+        if(u){
+          if(/\.mp4|\.webm|\.mov/i.test(u)) html+='<video src="'+u+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
+          else html+='<img src="'+u+'" alt=""/>';
+        }
+        html+='</div>';
       } else {
         html+='<div class="artwork_grid">';
-        urls.forEach(function(u){ html+='<img src="'+u+'" alt=""/>'; });
+        urls.forEach(function(u){
+          if(/\.mp4|\.webm|\.mov/i.test(u)) html+='<video src="'+u+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
+          else html+='<img src="'+u+'" alt=""/>';
+        });
         html+='</div>';
       }
 
