@@ -469,6 +469,50 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
   .btn-oauth svg{width:18px;height:18px}
 }
 
+
+/* EchoText — motion trails behind hero headline (vanilla port of React Bits) */
+.echo-text{
+  position:relative;
+  display:inline-block;
+  white-space:nowrap;
+  line-height:0.92;
+  letter-spacing:-.03em;
+  user-select:none;
+  contain:layout style;
+  font-kerning:normal;
+  text-rendering:geometricPrecision;
+}
+.echo-text__echo{
+  position:absolute;
+  inset:0;
+  display:block;
+  pointer-events:none;
+  transform:translate3d(0,0,0);
+  transform-origin:50% 50%;
+  will-change:transform,opacity;
+  backface-visibility:hidden;
+  white-space:nowrap;
+}
+.echo-text__echo--front{
+  position:relative;
+  z-index:2;
+  opacity:1;
+  filter:none;
+  will-change:transform;
+}
+.echo-text .shiny{
+  /* keep existing gradient text design on front layer only */
+  display:inline-block;
+}
+@media (prefers-reduced-motion: reduce){
+  .echo-text__echo:not(.echo-text__echo--front){display:none}
+  .echo-text__echo--front{transform:none !important}
+}
+@media (max-width:767px){
+  .echo-text{white-space:normal;max-width:100%}
+  .echo-text__echo{white-space:normal}
+}
+
 </style>
 </head>
 <body>
@@ -540,9 +584,13 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
   </nav>
 
   <section class="hero">
-    <h1>
-      <span data-i="h1a">Steam showcases.</span><br/>
-      <span class="shiny" data-i="h1b">Revitalized</span>
+    <h1 class="hero-echo-h1">
+      <span class="echo-text" id="heroEchoA" data-echo-text data-i-key="h1a">
+        <span class="echo-text__echo echo-text__echo--front" data-i="h1a">Steam showcases.</span>
+      </span><br/>
+      <span class="echo-text" id="heroEchoB" data-echo-text data-i-key="h1b">
+        <span class="echo-text__echo echo-text__echo--front shiny" data-i="h1b">Revitalized</span>
+      </span>
     </h1>
     <p data-i="hero_p">Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool for creators.</p>
     <div class="hero-cta">
@@ -1248,6 +1296,266 @@ document.addEventListener("DOMContentLoaded", function () {
     syncLangLabel();
     langNav.addEventListener('click', function(){ setTimeout(syncLangLabel, 50); });
   }
+})();
+</script>
+
+
+<script>
+(function(){
+  var clamp = function(v, min, max){ return Math.min(Math.max(v, min), max); };
+  var directionVectors = {
+    right: { x: 1, y: 0 },
+    left: { x: -1, y: 0 },
+    up: { x: 0, y: -1 },
+    down: { x: 0, y: 1 },
+    diagonal: { x: 0.72, y: 0.72 }
+  };
+  var easing = {
+    linear: function(t){ return t; },
+    'ease-out': function(t){ return 1 - Math.pow(1 - t, 3); },
+    'ease-in-out': function(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; },
+    snappy: function(t){ return 1 - Math.pow(1 - t, 5); }
+  };
+
+  function prefersReduced(){
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; }
+  }
+  function canHoverFine(){
+    try { return window.matchMedia('(hover: hover) and (pointer: fine)').matches; } catch(e){ return false; }
+  }
+
+  /** Destroy previous instance bound to root */
+  function destroyEcho(root){
+    if (!root || !root._echoCleanup) return;
+    try { root._echoCleanup(); } catch(e){}
+    root._echoCleanup = null;
+  }
+
+  /**
+   * Mount echo layers on a root .echo-text element.
+   * Front layer must already exist: .echo-text__echo--front (keeps shiny / data-i).
+   */
+  function mountEchoText(root, opts){
+    if (!root) return;
+    destroyEcho(root);
+    opts = opts || {};
+    var echoes = prefersReduced() ? 0 : clamp(Math.round(opts.echoes != null ? opts.echoes : 10), 0, 24);
+    var lag = clamp(Number(opts.lag != null ? opts.lag : 0.24), 0.02, 0.5);
+    var offset = clamp(Number(opts.offset != null ? opts.offset : 28), 0, 120);
+    var direction = opts.direction || 'right';
+    var fade = clamp(Number(opts.fade != null ? opts.fade : 0.72), 0.1, 0.95);
+    var blur = clamp(Number(opts.blur != null ? opts.blur : 2.5), 0, 16);
+    var tint = opts.tint != null ? opts.tint : '#00d2ff';
+    var mode = opts.mode || 'both';
+    var cursorRadius = clamp(Number(opts.cursorRadius != null ? opts.cursorRadius : 320), 40, 1200);
+    var duration = Math.max(0, Number(opts.duration != null ? opts.duration : 900));
+    var easeFn = easing[opts.ease || 'ease-out'] || easing['ease-out'];
+    var color = opts.color || '#ffffff';
+
+    var front = root.querySelector('.echo-text__echo--front');
+    if (!front) return;
+    var text = (front.textContent || '').trim();
+    if (!text) return;
+
+    // remove old ghost echoes
+    root.querySelectorAll('.echo-text__echo:not(.echo-text__echo--front)').forEach(function(el){ el.remove(); });
+
+    var copyRefs = [];
+    copyRefs[0] = front;
+    front.style.transform = 'translate3d(0,0,0)';
+
+    // insert ghosts behind front (reverse DOM order so deeper are under)
+    for (var i = echoes; i >= 1; i--) {
+      var ghost = document.createElement('span');
+      ghost.className = 'echo-text__echo';
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.setAttribute('data-echo-index', String(i));
+      ghost.textContent = text;
+      if (tint) {
+        // soft cyan mix toward brand
+        ghost.style.color = tint;
+      } else {
+        ghost.style.color = color;
+      }
+      ghost.style.opacity = '0';
+      root.insertBefore(ghost, front);
+      copyRefs[i] = ghost;
+    }
+
+    if (echoes === 0) return;
+
+    var vector = directionVectors[direction] || directionVectors.right;
+    var entranceEnabled = mode === 'entrance' || mode === 'both';
+    var pointerEnabled = mode === 'pointer' || mode === 'both';
+    var positions = [];
+    for (var p = 0; p <= echoes; p++) {
+      var entranceAmount = entranceEnabled ? offset * (p + 0.35) : 0;
+      positions.push({ x: vector.x * entranceAmount, y: vector.y * entranceAmount });
+    }
+
+    var state = {
+      targetX: 0,
+      targetY: 0,
+      lastTargetX: 0,
+      lastTargetY: 0,
+      activity: entranceEnabled ? 1 : 0,
+      positions: positions,
+      startTime: performance.now()
+    };
+
+    var frameId = null;
+    var hoverOk = pointerEnabled && canHoverFine();
+
+    function handlePointerMove(event){
+      var rect = root.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      var centerX = rect.left + rect.width / 2;
+      var centerY = rect.top + rect.height / 2;
+      var deltaX = event.clientX - centerX;
+      var deltaY = event.clientY - centerY;
+      var distance = Math.hypot(deltaX, deltaY);
+      var reach = distance > 0 ? clamp(distance / cursorRadius, 0, 1) : 0;
+      var dirX = distance > 0 ? deltaX / distance : 0;
+      var dirY = distance > 0 ? deltaY / distance : 0;
+      state.targetX = dirX * reach * offset;
+      state.targetY = dirY * reach * offset * 0.72;
+      if (!frameId) frameId = requestAnimationFrame(renderFrame);
+    }
+    function handlePointerLeave(){
+      state.targetX = 0;
+      state.targetY = 0;
+    }
+
+    if (hoverOk) {
+      window.addEventListener('pointermove', handlePointerMove, { passive: true });
+      document.addEventListener('pointerleave', handlePointerLeave);
+    }
+
+    function renderFrame(now){
+      var elapsed = now - state.startTime;
+      var entranceProgress = entranceEnabled && duration > 0 ? clamp(elapsed / duration, 0, 1) : 1;
+      var easedEntrance = easeFn(entranceProgress);
+      var entranceRest = entranceEnabled ? 1 - easedEntrance : 0;
+      var targetVelocity = Math.hypot(state.targetX - state.lastTargetX, state.targetY - state.lastTargetY);
+      state.lastTargetX = state.targetX;
+      state.lastTargetY = state.targetY;
+
+      var maxSeparation = 0;
+      for (var index = 0; index <= echoes; index++) {
+        var copy = copyRefs[index];
+        var current = state.positions[index];
+        if (!copy || !current) continue;
+        var entranceAmt = entranceRest * offset * (index + 0.35);
+        var desiredX = state.targetX + vector.x * entranceAmt;
+        var desiredY = state.targetY + vector.y * entranceAmt;
+        var lerp = clamp(0.34 / (1 + index * lag * 4.2), 0.018, 0.36);
+        current.x += (desiredX - current.x) * lerp;
+        current.y += (desiredY - current.y) * lerp;
+        copy.style.transform = 'translate3d(' + current.x.toFixed(3) + 'px, ' + current.y.toFixed(3) + 'px, 0)';
+        if (index > 0) {
+          var frontPos = state.positions[0];
+          var separation = frontPos ? Math.hypot(current.x - frontPos.x, current.y - frontPos.y) : 0;
+          maxSeparation = Math.max(maxSeparation, separation);
+          var depth = echoes ? index / echoes : 0;
+          copy.style.filter = blur > 0 ? ('blur(' + (blur * depth).toFixed(2) + 'px)') : 'none';
+        }
+      }
+
+      var separationActivity = offset > 0 ? clamp(maxSeparation / (offset * 2.25), 0, 1) : 0;
+      var targetActivity = offset > 0 ? clamp(targetVelocity / (offset * 0.35), 0, 1) : 0;
+      var nextActivity = Math.max(entranceRest, separationActivity, targetActivity);
+      state.activity += (nextActivity - state.activity) * 0.18;
+
+      for (var gi = 1; gi <= echoes; gi++) {
+        var g = copyRefs[gi];
+        if (!g) continue;
+        g.style.opacity = String(Math.pow(fade, gi) * state.activity);
+      }
+
+      var stillMoving =
+        state.activity > 0.002 ||
+        Math.abs(state.targetX) > 0.01 ||
+        Math.abs(state.targetY) > 0.01 ||
+        entranceProgress < 1 ||
+        hoverOk;
+
+      if (stillMoving) {
+        frameId = requestAnimationFrame(renderFrame);
+      } else {
+        frameId = null;
+      }
+    }
+
+    frameId = requestAnimationFrame(renderFrame);
+
+    root._echoCleanup = function(){
+      if (hoverOk) {
+        window.removeEventListener('pointermove', handlePointerMove);
+        document.removeEventListener('pointerleave', handlePointerLeave);
+      }
+      if (frameId) cancelAnimationFrame(frameId);
+      frameId = null;
+    };
+  }
+
+  function syncEchoTextFromI18n(){
+    // After applyLang updates data-i front spans, rebuild ghosts with new text
+    document.querySelectorAll('[data-echo-text]').forEach(function(root){
+      var front = root.querySelector('.echo-text__echo--front');
+      if (!front) return;
+      // ghosts get same text as front
+      root.querySelectorAll('.echo-text__echo:not(.echo-text__echo--front)').forEach(function(el){
+        el.textContent = front.textContent;
+      });
+    });
+    initHeroEcho();
+  }
+
+  function initHeroEcho(){
+    var common = {
+      echoes: 10,
+      lag: 0.22,
+      offset: 28,
+      direction: 'right',
+      fade: 0.7,
+      blur: 2.5,
+      tint: '#00d2ff',
+      mode: 'both',
+      cursorRadius: 340,
+      duration: 900,
+      ease: 'ease-out',
+      color: '#ffffff'
+    };
+    mountEchoText(document.getElementById('heroEchoA'), common);
+    mountEchoText(document.getElementById('heroEchoB'), Object.assign({}, common, {
+      tint: '#A4F4FD',
+      offset: 32
+    }));
+  }
+
+  // Hook applyLang if present
+  var _applyLang = window.applyLang;
+  // applyLang is function declaration later — patch after DOM + scripts load
+  function patchApplyLang(){
+    if (typeof applyLang !== 'function') return;
+    if (applyLang._echoPatched) return;
+    var orig = applyLang;
+    window.applyLang = function(L){
+      orig(L);
+      try { syncEchoTextFromI18n(); } catch(e){}
+    };
+    window.applyLang._echoPatched = true;
+  }
+
+  function boot(){
+    patchApplyLang();
+    initHeroEcho();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+  // patch again after other scripts define applyLang
+  setTimeout(patchApplyLang, 0);
+  setTimeout(patchApplyLang, 100);
 })();
 </script>
 
