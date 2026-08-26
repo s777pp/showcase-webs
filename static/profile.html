@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Profile — Showcase Maker</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:#1b2838;color:#c7d5e0;font-family:"Motiva Sans",Arial,Helvetica,sans-serif;font-size:14px}
+a{color:#66c0f4;text-decoration:none}
+a:hover{color:#fff}
+.topbar{
+  height:40px;background:linear-gradient(to bottom,#171d25 0%,#1b2838 100%);
+  border-bottom:1px solid #000;display:flex;align-items:center;padding:0 16px;gap:16px;
+}
+.topbar a.brand{color:#c7d5e0;font-weight:700;font-size:13px;letter-spacing:.02em}
+.topbar nav{display:flex;gap:14px;flex-wrap:wrap}
+.topbar nav a{color:#b8b6b4;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.topbar nav a:hover{color:#fff}
+.topbar .right{margin-left:auto;display:flex;gap:10px;align-items:center}
+.btn-sm{
+  font-size:12px;padding:4px 12px;border-radius:2px;border:none;cursor:pointer;
+  background:linear-gradient(to bottom,#66c0f4 5%,#4a9bc7 95%);color:#fff;font-weight:600;
+}
+.btn-sm.secondary{background:linear-gradient(to bottom,#3d4450 5%,#2a3038 95%);color:#c7d5e0}
+.btn-sm:hover{filter:brightness(1.08)}
+
+.profile-page{position:relative;min-height:calc(100vh - 40px);overflow-x:hidden}
+.profile-bg{
+  position:absolute;inset:0;background-size:cover;background-position:center 20%;
+  background-repeat:no-repeat;z-index:0;pointer-events:none;
+}
+.profile-bg-overlay{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(to bottom, rgba(27,40,56,.35) 0%, rgba(27,40,56,.75) 55%, #1b2838 100%);
+}
+.profile-wrap{
+  position:relative;z-index:2;max-width:948px;margin:0 auto;padding:24px 12px 64px;
+}
+
+/* Steam header */
+.profile-header{
+  display:grid;grid-template-columns:168px 1fr auto;gap:16px;
+  background:rgba(0,0,0,.3);padding:16px;border:1px solid rgba(0,0,0,.4);
+}
+@media(max-width:700px){
+  .profile-header{grid-template-columns:1fr;justify-items:center;text-align:center}
+}
+.avatar-wrap{position:relative;width:164px;height:164px}
+.avatar-wrap img,.avatar-wrap .av-fallback{
+  width:164px;height:164px;object-fit:cover;border:1px solid #000;
+  box-shadow:0 0 5px #000;background:#1b2838;
+}
+.av-fallback{display:grid;place-items:center;font-size:48px;font-weight:700;color:#66c0f4}
+.status-dot{
+  position:absolute;right:6px;bottom:6px;width:14px;height:14px;border-radius:50%;
+  border:2px solid #1b2838;background:#8f98a0;
+}
+.status-dot.online{background:#57cbde}
+.status-dot.ingame{background:#90ba3c}
+.status-dot.offline{background:#8f98a0}
+
+.persona{min-width:0}
+.persona-name{font-size:24px;color:#fff;font-weight:300;line-height:1.2}
+.persona-state{font-size:12px;color:#57cbde;margin-top:4px}
+.persona-state.offline{color:#8f98a0}
+.persona-state.ingame{color:#90ba3c}
+.persona-loc{font-size:12px;color:#8f98a0;margin-top:2px}
+.persona-summary{
+  margin-top:10px;font-size:13px;line-height:1.45;color:#c7d5e0;
+  max-width:480px;white-space:pre-wrap;
+}
+
+.level-block{text-align:center;min-width:110px}
+.level-ring{
+  width:72px;height:72px;margin:0 auto;border-radius:50%;
+  background:conic-gradient(#c6a43d calc(var(--xp-pct,20)*1%), #3d4450 0);
+  display:grid;place-items:center;position:relative;
+}
+.level-ring::before{
+  content:"";position:absolute;inset:5px;border-radius:50%;background:#1b2838;
+}
+.level-num{position:relative;z-index:1;font-size:22px;font-weight:700;color:#fff}
+.level-label{font-size:11px;color:#8f98a0;margin-top:6px;text-transform:uppercase;letter-spacing:.06em}
+.level-xp{font-size:11px;color:#acb2b8;margin-top:2px}
+
+.actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:700px){.actions{justify-content:center}}
+
+/* content columns */
+.profile-body{
+  margin-top:12px;display:grid;grid-template-columns:1fr 308px;gap:12px;
+}
+@media(max-width:800px){.profile-body{grid-template-columns:1fr}}
+
+.panel{
+  background:rgba(0,0,0,.25);border:1px solid rgba(0,0,0,.35);
+  padding:12px 14px;margin-bottom:12px;
+}
+.panel-title{
+  font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#fff;
+  border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:6px;margin-bottom:10px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.panel-title span{color:#8f98a0;font-weight:400;text-transform:none;letter-spacing:0}
+
+.empty{
+  color:#8f98a0;font-size:13px;padding:16px 4px;text-align:center;line-height:1.5;
+}
+.empty a.btn-sm{display:inline-block;margin-top:10px}
+
+/* badges row */
+.badge-row{display:flex;gap:8px;flex-wrap:wrap}
+.badge-item{
+  width:56px;height:56px;background:#16202d;border:1px solid #000;
+  display:grid;place-items:center;font-size:10px;color:#8f98a0;
+}
+
+/* showcase slot */
+.showcase-slot{
+  background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.06);
+  padding:12px;min-height:100px;margin-bottom:10px;
+}
+.showcase-slot h4{font-size:13px;color:#fff;font-weight:400;margin-bottom:6px}
+
+/* editor */
+.editor{
+  display:none;background:#16202d;border:1px solid #000;padding:14px;margin-bottom:12px;
+}
+.editor.open{display:block}
+.editor label{display:block;font-size:11px;color:#8f98a0;margin:8px 0 3px;text-transform:uppercase;letter-spacing:.04em}
+.editor input,.editor textarea,.editor select{
+  width:100%;background:#1b2838;border:1px solid #000;color:#c7d5e0;
+  padding:7px 9px;font-size:13px;border-radius:2px;font-family:inherit;
+}
+.editor textarea{min-height:80px;resize:vertical}
+.editor .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.editor .row{grid-template-columns:1fr}}
+.editor .actions{margin-top:12px}
+.msg{font-size:12px;margin-top:8px;color:#8f98a0}
+.msg.ok{color:#90ba3c}
+.msg.err{color:#c15755}
+
+.private-gate{
+  max-width:420px;margin:80px auto;text-align:center;padding:24px;
+  background:rgba(0,0,0,.35);border:1px solid #000;
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="brand" href="/">Showcase Maker</a>
+  <nav>
+    <a href="/app">Tools</a>
+    <a href="/gallery">Gallery</a>
+    <a href="/profile" id="navMyProfile">Profile</a>
+  </nav>
+  <div class="right">
+    <a class="btn-sm secondary" href="/app" id="navTools">Open tools</a>
+    <a class="btn-sm" href="/" id="navLogin" style="display:none">Log in</a>
+  </div>
+</div>
+
+<div class="profile-page" id="profilePage">
+  <div class="profile-bg" id="profileBg"></div>
+  <div class="profile-bg-overlay" id="profileOverlay"></div>
+  <div class="profile-wrap">
+    <div id="privateGate" class="private-gate" style="display:none">
+      <p style="color:#fff;margin-bottom:8px">This profile is private.</p>
+      <a class="btn-sm" href="/">Back home</a>
+    </div>
+
+    <div id="profileMain" style="display:none">
+      <div class="profile-header">
+        <div class="avatar-wrap">
+          <img id="avImg" alt="" style="display:none"/>
+          <div class="av-fallback" id="avFallback">?</div>
+          <span class="status-dot" id="statusDot"></span>
+        </div>
+        <div class="persona">
+          <div class="persona-name" id="pName">—</div>
+          <div class="persona-state" id="pState">Online</div>
+          <div class="persona-loc" id="pLoc"></div>
+          <div class="persona-summary" id="pSummary"></div>
+          <div class="actions" id="ownerActions" style="display:none">
+            <button type="button" class="btn-sm" id="btnEdit">Edit Profile</button>
+            <a class="btn-sm secondary" href="/app">Showcase Maker</a>
+          </div>
+        </div>
+        <div class="level-block">
+          <div class="level-ring" id="levelRing" style="--xp-pct:15">
+            <span class="level-num" id="levelNum">1</span>
+          </div>
+          <div class="level-label">Level</div>
+          <div class="level-xp" id="levelXp">0 XP</div>
+        </div>
+      </div>
+
+      <div class="editor" id="editor">
+        <div class="panel-title">Edit Profile</div>
+        <div class="row">
+          <div>
+            <label>Display name</label>
+            <input id="edName" maxlength="40"/>
+          </div>
+          <div>
+            <label>Profile URL username</label>
+            <input id="edUser" maxlength="24" placeholder="unique-url"/>
+          </div>
+        </div>
+        <label>Summary</label>
+        <textarea id="edSummary" maxlength="2000"></textarea>
+        <div class="row">
+          <div>
+            <label>Location</label>
+            <input id="edLoc" maxlength="80"/>
+          </div>
+          <div>
+            <label>Status</label>
+            <select id="edStatus">
+              <option value="online">Online</option>
+              <option value="ingame">In-Game</option>
+              <option value="offline">Offline</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Level</label>
+            <input id="edLevel" type="number" min="0" max="9999"/>
+          </div>
+          <div>
+            <label>XP</label>
+            <input id="edXp" type="number" min="0"/>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Visibility</label>
+            <select id="edVis">
+              <option value="public">Public</option>
+              <option value="private">Private</option>
+            </select>
+          </div>
+          <div>
+            <label>Background image</label>
+            <input id="edBg" type="file" accept="image/png,image/jpeg,image/webp,image/gif"/>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>BG position X %</label>
+            <input id="edBgX" type="number" min="0" max="100" step="1"/>
+          </div>
+          <div>
+            <label>BG position Y %</label>
+            <input id="edBgY" type="number" min="0" max="100" step="1"/>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn-sm" id="btnSave">Save</button>
+          <button type="button" class="btn-sm secondary" id="btnCancel">Cancel</button>
+        </div>
+        <div class="msg" id="edMsg"></div>
+      </div>
+
+      <div class="profile-body">
+        <div class="col-main">
+          <div class="panel">
+            <div class="panel-title">Showcase <span>coming soon — Phase 4</span></div>
+            <div class="showcase-slot">
+              <h4>No showcases yet</h4>
+              <p class="empty" style="text-align:left;padding:4px 0">
+                Create artwork in Showcase Maker, then add it here.
+                <br/><a class="btn-sm" href="/app" style="margin-top:8px;display:inline-block">Open Showcase Maker</a>
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col-side">
+          <div class="panel">
+            <div class="panel-title">Badges <span>0</span></div>
+            <div class="badge-row">
+              <div class="badge-item">—</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">My Creations</div>
+            <p class="empty">Link to gallery &amp; tools in next phases.</p>
+            <div style="text-align:center"><a class="btn-sm secondary" href="/gallery">Gallery</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  function token(){
+    try { return localStorage.getItem('sm_session') || ''; } catch(e){ return ''; }
+  }
+  function headers(){
+    var h = {};
+    var t = token();
+    if (t) h['X-Session-Token'] = t;
+    return h;
+  }
+  function pathUsername(){
+    var parts = location.pathname.replace(/\/+$/,'').split('/');
+    // /profile or /profile/username
+    if (parts.length >= 3 && parts[1] === 'profile' && parts[2]) return parts[2];
+    return null;
+  }
+
+  var state = { profile: null, isOwner: false };
+
+  function xpPct(level, xp){
+    // simple band: each level 1000 xp visual
+    var need = 1000;
+    return Math.max(5, Math.min(100, ((xp % need) / need) * 100));
+  }
+
+  function render(p, isOwner){
+    state.profile = p;
+    state.isOwner = isOwner;
+    document.getElementById('profileMain').style.display = '';
+    document.getElementById('privateGate').style.display = 'none';
+
+    document.getElementById('pName').textContent = p.display_name || p.username || 'User';
+    var st = (p.profile_status || 'online').toLowerCase();
+    var stEl = document.getElementById('pState');
+    var dot = document.getElementById('statusDot');
+    stEl.className = 'persona-state ' + st;
+    dot.className = 'status-dot ' + st;
+    if (st === 'ingame') stEl.textContent = 'Currently In-Game';
+    else if (st === 'offline') stEl.textContent = 'Offline';
+    else stEl.textContent = 'Online';
+
+    document.getElementById('pLoc').textContent = p.profile_location || '';
+    document.getElementById('pSummary').textContent = p.profile_summary || '';
+
+    var lvl = p.profile_level || 1;
+    var xp = p.profile_xp || 0;
+    document.getElementById('levelNum').textContent = String(lvl);
+    document.getElementById('levelXp').textContent = xp + ' XP';
+    document.getElementById('levelRing').style.setProperty('--xp-pct', xpPct(lvl, xp));
+
+    var av = document.getElementById('avImg');
+    var fb = document.getElementById('avFallback');
+    if (p.avatar_url) {
+      av.src = p.avatar_url + '?t=' + Date.now();
+      av.style.display = '';
+      fb.style.display = 'none';
+    } else {
+      av.style.display = 'none';
+      fb.style.display = '';
+      fb.textContent = (p.display_name || p.username || '?').charAt(0).toUpperCase();
+    }
+
+    var bg = document.getElementById('profileBg');
+    if (p.background_url) {
+      var x = p.profile_bg_x != null ? p.profile_bg_x : 50;
+      var y = p.profile_bg_y != null ? p.profile_bg_y : 30;
+      bg.style.backgroundImage = 'url(' + p.background_url + '?t=' + Date.now() + ')';
+      bg.style.backgroundPosition = x + '% ' + y + '%';
+    } else {
+      bg.style.backgroundImage = 'none';
+      bg.style.background = '#1b2838';
+    }
+    var ov = p.profile_bg_overlay != null ? p.profile_bg_overlay : 0.5;
+    document.getElementById('profileOverlay').style.opacity = String(Math.min(1, Math.max(0.2, ov + 0.3)));
+
+    document.getElementById('ownerActions').style.display = isOwner ? '' : 'none';
+    document.title = (p.display_name || p.username || 'Profile') + ' — Showcase Maker';
+
+    // fill editor
+    document.getElementById('edName').value = p.display_name || '';
+    document.getElementById('edUser').value = p.username || p.profile_username || '';
+    document.getElementById('edSummary').value = p.profile_summary || '';
+    document.getElementById('edLoc').value = p.profile_location || '';
+    document.getElementById('edStatus').value = st === 'ingame' || st === 'offline' ? st : 'online';
+    document.getElementById('edLevel').value = lvl;
+    document.getElementById('edXp').value = xp;
+    document.getElementById('edVis').value = (p.profile_visibility || 'public');
+    document.getElementById('edBgX').value = p.profile_bg_x != null ? p.profile_bg_x : 50;
+    document.getElementById('edBgY').value = p.profile_bg_y != null ? p.profile_bg_y : 30;
+  }
+
+  async function load(){
+    var un = pathUsername();
+    var url = un ? ('/api/profile/' + encodeURIComponent(un)) : '/api/profile/me';
+    try {
+      var r = await fetch(url, { headers: headers(), credentials: 'include' });
+      var j = await r.json();
+      if (r.status === 401 && !un) {
+        document.getElementById('navLogin').style.display = '';
+        document.getElementById('privateGate').style.display = '';
+        document.getElementById('privateGate').innerHTML =
+          '<p style="color:#fff;margin-bottom:8px">Log in to view your profile.</p>' +
+          '<a class="btn-sm" href="/">Log in on home</a>';
+        return;
+      }
+      if (r.status === 403) {
+        document.getElementById('privateGate').style.display = '';
+        document.getElementById('profileMain').style.display = 'none';
+        return;
+      }
+      if (!j.ok) {
+        document.getElementById('privateGate').style.display = '';
+        document.getElementById('privateGate').innerHTML =
+          '<p style="color:#fff;margin-bottom:8px">' + (j.msg || 'Profile not found') + '</p>' +
+          '<a class="btn-sm" href="/">Home</a>';
+        return;
+      }
+      // if /profile and we have username, optionally rewrite URL
+      if (!un && j.profile && j.profile.username) {
+        history.replaceState(null, '', '/profile/' + encodeURIComponent(j.profile.username));
+      }
+      render(j.profile, !!j.is_owner);
+    } catch (e) {
+      document.getElementById('privateGate').style.display = '';
+      document.getElementById('privateGate').textContent = String(e);
+    }
+  }
+
+  document.getElementById('btnEdit').onclick = function(){
+    document.getElementById('editor').classList.add('open');
+  };
+  document.getElementById('btnCancel').onclick = function(){
+    document.getElementById('editor').classList.remove('open');
+  };
+  document.getElementById('btnSave').onclick = async function(){
+    var msg = document.getElementById('edMsg');
+    msg.className = 'msg';
+    msg.textContent = 'Saving…';
+    var fd = new FormData();
+    fd.append('display_name', document.getElementById('edName').value);
+    fd.append('profile_username', document.getElementById('edUser').value);
+    fd.append('profile_summary', document.getElementById('edSummary').value);
+    fd.append('profile_location', document.getElementById('edLoc').value);
+    fd.append('profile_status', document.getElementById('edStatus').value);
+    fd.append('profile_level', document.getElementById('edLevel').value);
+    fd.append('profile_xp', document.getElementById('edXp').value);
+    fd.append('profile_visibility', document.getElementById('edVis').value);
+    fd.append('profile_bg_x', document.getElementById('edBgX').value);
+    fd.append('profile_bg_y', document.getElementById('edBgY').value);
+    var f = document.getElementById('edBg').files[0];
+    if (f) fd.append('background', f);
+    try {
+      var r = await fetch('/api/profile/update', {
+        method: 'POST', headers: headers(), credentials: 'include', body: fd
+      });
+      var j = await r.json();
+      if (!j.ok) {
+        msg.className = 'msg err';
+        msg.textContent = j.msg || 'Error';
+        return;
+      }
+      msg.className = 'msg ok';
+      msg.textContent = 'Saved';
+      if (j.username && pathUsername() !== j.username) {
+        location.href = '/profile/' + encodeURIComponent(j.username);
+        return;
+      }
+      document.getElementById('editor').classList.remove('open');
+      load();
+    } catch (e) {
+      msg.className = 'msg err';
+      msg.textContent = String(e);
+    }
+  };
+
+  load();
+})();
+</script>
+</body>
+</html>

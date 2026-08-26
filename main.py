@@ -348,6 +348,147 @@ def app_page():
 
 
 
+
+
+@app.get("/profile", response_class=HTMLResponse)
+@app.get("/profile/", response_class=HTMLResponse)
+async def profile_me(request: Request):
+    """Owner shortcut → /profile/{username} or login prompt page."""
+    user = _auth_user(request)
+    p = Path(__file__).parent / "static" / "profile.html"
+    if not p.is_file():
+        return HTMLResponse("profile.html missing", status_code=404)
+    html = p.read_text(encoding="utf-8")
+    return HTMLResponse(html)
+
+
+@app.get("/profile/{username}", response_class=HTMLResponse)
+async def profile_public(username: str, request: Request):
+    p = Path(__file__).parent / "static" / "profile.html"
+    if not p.is_file():
+        return HTMLResponse("profile.html missing", status_code=404)
+    return HTMLResponse(p.read_text(encoding="utf-8"))
+
+
+@app.get("/api/profile/me")
+def api_profile_me(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    un = auth_db.ensure_profile_username(int(user["id"]), user.get("display_name"))
+    prof = auth_db.get_public_profile(un)
+    if not prof:
+        return JSONResponse({"ok": False, "msg": "Profile not found"}, status_code=404)
+    av = prof.get("avatar_path") or ""
+    av_url = f"/api/auth/avatar/{prof['id']}" if av else ""
+    bg = prof.get("profile_background") or ""
+    bg_url = f"/api/profile/bg/{prof['id']}" if bg else ""
+    return {
+        "ok": True,
+        "is_owner": True,
+        "profile": {
+            **{k: v for k, v in prof.items() if k != "email"},
+            "avatar_url": av_url,
+            "background_url": bg_url,
+            "username": un,
+        },
+    }
+
+
+@app.get("/api/profile/{username}")
+def api_profile_get(username: str, request: Request):
+    prof = auth_db.get_public_profile(username)
+    if not prof:
+        return JSONResponse({"ok": False, "msg": "Not found"}, status_code=404)
+    viewer = _auth_user(request)
+    is_owner = bool(viewer and int(viewer["id"]) == int(prof["id"]))
+    vis = (prof.get("profile_visibility") or "public").lower()
+    if vis == "private" and not is_owner:
+        return JSONResponse({"ok": False, "msg": "Private profile"}, status_code=403)
+    av = prof.get("avatar_path") or ""
+    av_url = f"/api/auth/avatar/{prof['id']}" if av else ""
+    bg = prof.get("profile_background") or ""
+    bg_url = f"/api/profile/bg/{prof['id']}" if bg else ""
+    return {
+        "ok": True,
+        "is_owner": is_owner,
+        "profile": {
+            **{k: v for k, v in prof.items() if k != "email"},
+            "avatar_url": av_url,
+            "background_url": bg_url,
+            "username": prof.get("profile_username"),
+        },
+    }
+
+
+@app.post("/api/profile/update")
+async def api_profile_update(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    auth_db.ensure_profile_username(int(user["id"]), user.get("display_name"))
+    ct = (request.headers.get("content-type") or "").lower()
+    fields: dict = {}
+    try:
+        if "multipart/form-data" in ct:
+            form = await request.form()
+            for key in (
+                "display_name", "profile_username", "profile_summary", "profile_location",
+                "profile_status", "profile_visibility", "profile_level", "profile_xp",
+                "profile_bg_x", "profile_bg_y", "profile_bg_scale", "profile_bg_overlay",
+            ):
+                if key in form and form.get(key) is not None:
+                    fields[key] = form.get(key)
+            bgf = form.get("background")
+            if bgf is not None and hasattr(bgf, "read"):
+                raw = await bgf.read()
+                if raw and len(raw) < 12_000_000:
+                    name = getattr(bgf, "filename", "") or "bg.png"
+                    ext = Path(str(name)).suffix.lower()
+                    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+                        ext = ".png"
+                    bg_dir = Path(DATA) / "profile_bg"
+                    bg_dir.mkdir(parents=True, exist_ok=True)
+                    # clean old
+                    for old in bg_dir.glob(f"{user['id']}.*"):
+                        try: old.unlink()
+                        except Exception: pass
+                    dest = bg_dir / f"{user['id']}{ext}"
+                    dest.write_bytes(raw)
+                    fields["profile_background"] = f"profile_bg/{user['id']}{ext}"
+        else:
+            body = await request.json()
+            if isinstance(body, dict):
+                fields = body
+    except Exception as e:
+        return JSONResponse({"ok": False, "msg": str(e)}, status_code=400)
+    ok, msg = auth_db.update_steam_profile(int(user["id"]), **fields)
+    if not ok:
+        return JSONResponse({"ok": False, "msg": msg}, status_code=400)
+    un = auth_db.ensure_profile_username(int(user["id"]))
+    return {"ok": True, "msg": msg, "username": un}
+
+
+@app.get("/api/profile/bg/{user_id}")
+def api_profile_bg(user_id: int):
+    c = auth_db._conn()
+    row = c.execute("SELECT profile_background FROM users WHERE id=?", (user_id,)).fetchone()
+    c.close()
+    if not row or not row["profile_background"]:
+        return JSONResponse({"ok": False}, status_code=404)
+    path = Path(DATA) / str(row["profile_background"])
+    if not path.is_file():
+        path = Path(DATA) / "profile_bg" / Path(str(row["profile_background"])).name
+    if not path.is_file():
+        return JSONResponse({"ok": False}, status_code=404)
+    media = "image/png"
+    s = path.suffix.lower()
+    if s in (".jpg", ".jpeg"): media = "image/jpeg"
+    elif s == ".webp": media = "image/webp"
+    elif s == ".gif": media = "image/gif"
+    from fastapi.responses import FileResponse
+    return FileResponse(path, media_type=media)
+
 @app.post("/api/auth/register")
 async def auth_register(request: Request):
     body = await request.json()

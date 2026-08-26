@@ -82,6 +82,18 @@ def _conn() -> sqlite3.Connection:
         ("email_verified", "INTEGER DEFAULT 0"),
         ("discord_id", "TEXT"),
         ("discord_username", "TEXT"),
+        ("profile_username", "TEXT"),
+        ("profile_summary", "TEXT"),
+        ("profile_background", "TEXT"),
+        ("profile_bg_x", "REAL"),
+        ("profile_bg_y", "REAL"),
+        ("profile_bg_scale", "REAL"),
+        ("profile_bg_overlay", "REAL"),
+        ("profile_level", "INTEGER"),
+        ("profile_xp", "INTEGER"),
+        ("profile_location", "TEXT"),
+        ("profile_status", "TEXT"),
+        ("profile_visibility", "TEXT"),
         ("google_id", "TEXT"),
     ):
         if col not in cols:
@@ -152,7 +164,10 @@ def user_by_token(token: str) -> Optional[dict]:
         """
         SELECT u.id, u.email, u.is_pro, u.pro_code, u.pro_until, u.stripe_customer_id,
                u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret, u.display_name, u.avatar_path,
-               COALESCE(u.email_verified, 0) AS email_verified
+               COALESCE(u.email_verified, 0) AS email_verified,
+               u.profile_username, u.profile_summary, u.profile_background,
+               u.profile_bg_x, u.profile_bg_y, u.profile_bg_scale, u.profile_bg_overlay,
+               u.profile_level, u.profile_xp, u.profile_location, u.profile_status, u.profile_visibility
         FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token=?
         """,
@@ -854,3 +869,162 @@ def notifications_mark_read(user_id: int, ids: list[int] | None = None) -> int:
     n = c.total_changes
     c.close()
     return n
+
+
+
+# ====================== Steam-style public profile ======================
+
+_RESERVED_USERNAMES = {
+    "admin", "api", "app", "static", "profile", "edit", "login", "register",
+    "gallery", "support", "help", "null", "undefined", "me", "settings",
+}
+
+
+def _slug_username(raw: str) -> str:
+    s = (raw or "").strip().lower()
+    out = []
+    for ch in s:
+        if ch.isalnum() or ch in ("_", "-"):
+            out.append(ch)
+    return "".join(out)[:24]
+
+
+def ensure_profile_username(user_id: int, preferred: str | None = None) -> str:
+    """Ensure user has a unique profile_username; return it."""
+    c = _conn()
+    row = c.execute("SELECT profile_username, display_name, email, id FROM users WHERE id=?", (user_id,)).fetchone()
+    if not row:
+        c.close()
+        return ""
+    existing = (row["profile_username"] or "").strip()
+    if existing:
+        c.close()
+        return existing
+    base = _slug_username(preferred or row["display_name"] or (row["email"] or "").split("@")[0] or f"user{user_id}")
+    if not base or base in _RESERVED_USERNAMES:
+        base = f"user{user_id}"
+    candidate = base
+    n = 0
+    while True:
+        taken = c.execute(
+            "SELECT id FROM users WHERE lower(profile_username)=? AND id!=?",
+            (candidate.lower(), user_id),
+        ).fetchone()
+        if not taken:
+            break
+        n += 1
+        candidate = f"{base}{n}"
+        if n > 999:
+            candidate = f"user{user_id}"
+            break
+    c.execute("UPDATE users SET profile_username=? WHERE id=?", (candidate, user_id))
+    c.commit()
+    c.close()
+    return candidate
+
+
+def get_public_profile(username: str) -> dict | None:
+    un = _slug_username(username)
+    if not un:
+        return None
+    c = _conn()
+    row = c.execute(
+        """
+        SELECT id, email, display_name, avatar_path, is_pro,
+               profile_username, profile_summary, profile_background,
+               profile_bg_x, profile_bg_y, profile_bg_scale, profile_bg_overlay,
+               profile_level, profile_xp, profile_location, profile_status, profile_visibility,
+               created_at
+        FROM users WHERE lower(profile_username)=?
+        """,
+        (un.lower(),),
+    ).fetchone()
+    c.close()
+    if not row:
+        return None
+    vis = (row["profile_visibility"] or "public").lower()
+    return {
+        "id": int(row["id"]),
+        "email": row["email"],
+        "display_name": row["display_name"] or row["profile_username"] or "User",
+        "avatar_path": row["avatar_path"],
+        "is_pro": bool(row["is_pro"]),
+        "profile_username": row["profile_username"],
+        "profile_summary": row["profile_summary"] or "",
+        "profile_background": row["profile_background"],
+        "profile_bg_x": float(row["profile_bg_x"] if row["profile_bg_x"] is not None else 50),
+        "profile_bg_y": float(row["profile_bg_y"] if row["profile_bg_y"] is not None else 30),
+        "profile_bg_scale": float(row["profile_bg_scale"] if row["profile_bg_scale"] is not None else 1),
+        "profile_bg_overlay": float(row["profile_bg_overlay"] if row["profile_bg_overlay"] is not None else 0.5),
+        "profile_level": int(row["profile_level"] or 1),
+        "profile_xp": int(row["profile_xp"] or 0),
+        "profile_location": row["profile_location"] or "",
+        "profile_status": (row["profile_status"] or "online").lower(),
+        "profile_visibility": vis,
+        "created_at": row["created_at"],
+    }
+
+
+def update_steam_profile(user_id: int, **fields) -> tuple[bool, str]:
+    """Update profile fields. Returns (ok, msg)."""
+    allowed = {
+        "display_name", "profile_summary", "profile_location", "profile_status",
+        "profile_visibility", "profile_level", "profile_xp",
+        "profile_bg_x", "profile_bg_y", "profile_bg_scale", "profile_bg_overlay",
+        "profile_background", "avatar_path", "profile_username",
+    }
+    c = _conn()
+    sets = []
+    vals = []
+    if "profile_username" in fields and fields["profile_username"] is not None:
+        un = _slug_username(str(fields["profile_username"]))
+        if len(un) < 3:
+            c.close()
+            return False, "Username min 3 chars"
+        if un in _RESERVED_USERNAMES:
+            c.close()
+            return False, "Username reserved"
+        taken = c.execute(
+            "SELECT id FROM users WHERE lower(profile_username)=? AND id!=?",
+            (un.lower(), user_id),
+        ).fetchone()
+        if taken:
+            c.close()
+            return False, "Username taken"
+        sets.append("profile_username=?")
+        vals.append(un)
+    for k, v in fields.items():
+        if k not in allowed or k == "profile_username":
+            continue
+        if k == "display_name":
+            v = (str(v or "").strip()[:40] or None)
+        elif k == "profile_summary":
+            v = (str(v or "").strip()[:2000])
+        elif k == "profile_location":
+            v = (str(v or "").strip()[:80])
+        elif k == "profile_status":
+            v = (str(v or "online").strip().lower()[:20])
+        elif k == "profile_visibility":
+            v = (str(v or "public").strip().lower())
+            if v not in ("public", "private", "friends"):
+                v = "public"
+        elif k in ("profile_level", "profile_xp"):
+            try:
+                v = max(0, int(v))
+            except Exception:
+                continue
+        elif k in ("profile_bg_x", "profile_bg_y", "profile_bg_scale", "profile_bg_overlay"):
+            try:
+                v = float(v)
+            except Exception:
+                continue
+        sets.append(f"{k}=?")
+        vals.append(v)
+    if not sets:
+        c.close()
+        return False, "Nothing to update"
+    vals.append(user_id)
+    c.execute(f"UPDATE users SET {', '.join(sets)} WHERE id=?", vals)
+    c.commit()
+    c.close()
+    return True, "OK"
