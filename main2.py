@@ -348,6 +348,147 @@ def app_page():
 
 
 
+
+
+@app.get("/profile", response_class=HTMLResponse)
+@app.get("/profile/", response_class=HTMLResponse)
+async def profile_me(request: Request):
+    """Owner shortcut → /profile/{username} or login prompt page."""
+    user = _auth_user(request)
+    p = Path(__file__).parent / "static" / "profile.html"
+    if not p.is_file():
+        return HTMLResponse("profile.html missing", status_code=404)
+    html = p.read_text(encoding="utf-8")
+    return HTMLResponse(html)
+
+
+@app.get("/profile/{username}", response_class=HTMLResponse)
+async def profile_public(username: str, request: Request):
+    p = Path(__file__).parent / "static" / "profile.html"
+    if not p.is_file():
+        return HTMLResponse("profile.html missing", status_code=404)
+    return HTMLResponse(p.read_text(encoding="utf-8"))
+
+
+@app.get("/api/profile/me")
+def api_profile_me(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    un = auth_db.ensure_profile_username(int(user["id"]), user.get("display_name"))
+    prof = auth_db.get_public_profile(un)
+    if not prof:
+        return JSONResponse({"ok": False, "msg": "Profile not found"}, status_code=404)
+    av = prof.get("avatar_path") or ""
+    av_url = f"/api/auth/avatar/{prof['id']}" if av else ""
+    bg = prof.get("profile_background") or ""
+    bg_url = f"/api/profile/bg/{prof['id']}" if bg else ""
+    return {
+        "ok": True,
+        "is_owner": True,
+        "profile": {
+            **{k: v for k, v in prof.items() if k != "email"},
+            "avatar_url": av_url,
+            "background_url": bg_url,
+            "username": un,
+        },
+    }
+
+
+@app.get("/api/profile/{username}")
+def api_profile_get(username: str, request: Request):
+    prof = auth_db.get_public_profile(username)
+    if not prof:
+        return JSONResponse({"ok": False, "msg": "Not found"}, status_code=404)
+    viewer = _auth_user(request)
+    is_owner = bool(viewer and int(viewer["id"]) == int(prof["id"]))
+    vis = (prof.get("profile_visibility") or "public").lower()
+    if vis == "private" and not is_owner:
+        return JSONResponse({"ok": False, "msg": "Private profile"}, status_code=403)
+    av = prof.get("avatar_path") or ""
+    av_url = f"/api/auth/avatar/{prof['id']}" if av else ""
+    bg = prof.get("profile_background") or ""
+    bg_url = f"/api/profile/bg/{prof['id']}" if bg else ""
+    return {
+        "ok": True,
+        "is_owner": is_owner,
+        "profile": {
+            **{k: v for k, v in prof.items() if k != "email"},
+            "avatar_url": av_url,
+            "background_url": bg_url,
+            "username": prof.get("profile_username"),
+        },
+    }
+
+
+@app.post("/api/profile/update")
+async def api_profile_update(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    auth_db.ensure_profile_username(int(user["id"]), user.get("display_name"))
+    ct = (request.headers.get("content-type") or "").lower()
+    fields: dict = {}
+    try:
+        if "multipart/form-data" in ct:
+            form = await request.form()
+            for key in (
+                "display_name", "profile_username", "profile_summary", "profile_location",
+                "profile_status", "profile_visibility", "profile_level", "profile_xp",
+                "profile_bg_x", "profile_bg_y", "profile_bg_scale", "profile_bg_overlay",
+            ):
+                if key in form and form.get(key) is not None:
+                    fields[key] = form.get(key)
+            bgf = form.get("background")
+            if bgf is not None and hasattr(bgf, "read"):
+                raw = await bgf.read()
+                if raw and len(raw) < 12_000_000:
+                    name = getattr(bgf, "filename", "") or "bg.png"
+                    ext = Path(str(name)).suffix.lower()
+                    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+                        ext = ".png"
+                    bg_dir = Path(DATA) / "profile_bg"
+                    bg_dir.mkdir(parents=True, exist_ok=True)
+                    # clean old
+                    for old in bg_dir.glob(f"{user['id']}.*"):
+                        try: old.unlink()
+                        except Exception: pass
+                    dest = bg_dir / f"{user['id']}{ext}"
+                    dest.write_bytes(raw)
+                    fields["profile_background"] = f"profile_bg/{user['id']}{ext}"
+        else:
+            body = await request.json()
+            if isinstance(body, dict):
+                fields = body
+    except Exception as e:
+        return JSONResponse({"ok": False, "msg": str(e)}, status_code=400)
+    ok, msg = auth_db.update_steam_profile(int(user["id"]), **fields)
+    if not ok:
+        return JSONResponse({"ok": False, "msg": msg}, status_code=400)
+    un = auth_db.ensure_profile_username(int(user["id"]))
+    return {"ok": True, "msg": msg, "username": un}
+
+
+@app.get("/api/profile/bg/{user_id}")
+def api_profile_bg(user_id: int):
+    c = auth_db._conn()
+    row = c.execute("SELECT profile_background FROM users WHERE id=?", (user_id,)).fetchone()
+    c.close()
+    if not row or not row["profile_background"]:
+        return JSONResponse({"ok": False}, status_code=404)
+    path = Path(DATA) / str(row["profile_background"])
+    if not path.is_file():
+        path = Path(DATA) / "profile_bg" / Path(str(row["profile_background"])).name
+    if not path.is_file():
+        return JSONResponse({"ok": False}, status_code=404)
+    media = "image/png"
+    s = path.suffix.lower()
+    if s in (".jpg", ".jpeg"): media = "image/jpeg"
+    elif s == ".webp": media = "image/webp"
+    elif s == ".gif": media = "image/gif"
+    from fastapi.responses import FileResponse
+    return FileResponse(path, media_type=media)
+
 @app.post("/api/auth/register")
 async def auth_register(request: Request):
     body = await request.json()
@@ -1937,58 +2078,170 @@ async def da_logout(request: Request):
     return {"ok": True}
 
 
+
+def _da_guess_mime(name: str) -> str:
+    ext = Path(name or "").suffix.lower()
+    return {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+        ".mp4": "video/mp4",
+        ".webm": "video/webm",
+    }.get(ext, "application/octet-stream")
+
+
+def _da_refresh_token(user: dict) -> str | None:
+    """Try refresh DA access token. Returns new access token or None."""
+    refresh = (user.get("da_refresh_token") or "").strip()
+    if not refresh:
+        return None
+    cid = (user.get("da_client_id") or "").strip() or (os.environ.get("DA_CLIENT_ID") or "").strip()
+    sec = (user.get("da_client_secret") or "").strip() or (os.environ.get("DA_CLIENT_SECRET") or "").strip()
+    if not cid or not sec:
+        return None
+    try:
+        import requests as rq
+        r = rq.post(
+            "https://www.deviantart.com/oauth2/token",
+            data={
+                "grant_type": "refresh_token",
+                "client_id": cid,
+                "client_secret": sec,
+                "refresh_token": refresh,
+            },
+            timeout=30,
+        )
+        if r.status_code != 200:
+            print("da refresh fail", r.status_code, r.text[:200])
+            return None
+        data = r.json()
+        access = data.get("access_token")
+        new_refresh = data.get("refresh_token") or refresh
+        if access:
+            auth_db.set_da_tokens(int(user["id"]), access, new_refresh)
+            return access
+    except Exception as e:
+        print("da refresh error", e)
+    return None
+
+
 @app.post("/api/da/upload")
 async def da_upload(request: Request):
-    """Upload files to DeviantArt Sta.sh (same as desktop)."""
+    """Upload files to DeviantArt Sta.sh."""
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
-    token = user.get("da_access_token")
+    token = (user.get("da_access_token") or "").strip().strip('"').strip("'")
     if not token:
         return JSONResponse({"ok": False, "msg": "Connect DeviantArt first"}, status_code=401)
+    # debug length only (never log full token)
+    print(f"da_upload: user={user.get('id')} token_len={len(token)} files incoming")
+
     form = await request.form()
-    files = []
     items = form.multi_items() if hasattr(form, "multi_items") else list(form.items())
-    titles = {}
+
+    titles: dict[str, str] = {}
     for k, v in items:
-        k = str(k)
-        if k.startswith("title_"):
-            titles[k[6:]] = str(v)
+        ks = str(k)
+        if ks.startswith("title_"):
+            titles[ks[6:]] = str(v or "")
+
+    files: list[tuple[str, bytes, str]] = []
+    idx = 0
     for k, f in items:
-        if not str(k).startswith("file"):
+        ks = str(k)
+        # accept file, file_0, files, etc.
+        if not (ks == "file" or ks.startswith("file_") or ks.startswith("files")):
             continue
-        if f is None or isinstance(f, (str, bytes)) or not hasattr(f, "read"):
+        if f is None or isinstance(f, (str, bytes, int, float)):
             continue
-        raw = await f.read()
-        name = getattr(f, "filename", None) or "file.png"
-        files.append((name, raw, titles.get(name) or Path(name).stem))
+        if not hasattr(f, "read"):
+            continue
+        try:
+            raw = await f.read()
+        except Exception:
+            raw = f.file.read() if hasattr(f, "file") else b""
+        if not raw:
+            continue
+        name = getattr(f, "filename", None) or f"file_{idx}.png"
+        name = Path(str(name)).name  # strip path
+        title = titles.get(name) or titles.get(str(idx)) or Path(name).stem
+        files.append((name, raw, (title or Path(name).stem)[:50]))
+        idx += 1
 
     if not files:
-        return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
+        return JSONResponse({"ok": False, "msg": "No files received"}, status_code=400)
 
     import requests as rq
 
+    def submit_one(access: str, name: str, raw: bytes, title: str):
+        """DA Sta.sh: access_token must be in form body for multipart uploads."""
+        access = (access or "").strip()
+        if not access:
+            raise ValueError("empty access_token")
+        mime = _da_guess_mime(name)
+        # Token in form field + query + Bearer — DA is picky with multipart
+        return rq.post(
+            "https://www.deviantart.com/api/v1/oauth2/stash/submit",
+            params={"access_token": access},
+            headers={"Authorization": f"Bearer {access}"},
+            data={
+                "access_token": access,
+                "title": title or Path(name).stem,
+                "artist_comments": "",
+                "is_mature": "0",
+            },
+            files={"file": (name, raw, mime)},
+            timeout=180,
+        )
+
     ok_n = 0
-    errors = []
+    errors: list[str] = []
+    access = token
+
     for name, raw, title in files:
         try:
-            r = rq.post(
-                "https://www.deviantart.com/api/v1/oauth2/stash/submit",
-                headers={"Authorization": f"Bearer {token}"},
-                data={"title": title, "artist_comments": "", "is_mature": "false"},
-                files={"file": (name, raw)},
-                timeout=120,
-            )
+            r = submit_one(access, name, raw, title)
+            # expired token → refresh once and retry
+            if r.status_code in (401, 403):
+                new_tok = _da_refresh_token(user)
+                if new_tok:
+                    access = new_tok
+                    user = {**user, "da_access_token": new_tok}
+                    r = submit_one(access, name, raw, title)
+                else:
+                    auth_db.set_da_tokens(int(user["id"]), None, None)
+                    errors.append(f"{name}: session expired — reconnect DeviantArt")
+                    break
             if r.status_code == 200:
-                ok_n += 1
+                try:
+                    body = r.json()
+                except Exception:
+                    body = {}
+                # DA returns {"status":"success", ...} or error object with status error
+                if isinstance(body, dict) and body.get("status") == "error":
+                    err_desc = body.get("error_description") or body.get("error") or r.text[:160]
+                    errors.append(f"{name}: {err_desc}")
+                else:
+                    ok_n += 1
             else:
-                errors.append(f"{name}: {r.status_code} {r.text[:120]}")
+                snippet = (r.text or "")[:180].replace("\n", " ")
+                errors.append(f"{name}: HTTP {r.status_code} {snippet}")
                 if r.status_code in (401, 403):
                     auth_db.set_da_tokens(int(user["id"]), None, None)
                     break
         except Exception as e:
             errors.append(f"{name}: {type(e).__name__}: {e}")
-    return {"ok": ok_n > 0, "uploaded": ok_n, "total": len(files), "errors": errors}
+
+    return {
+        "ok": ok_n > 0,
+        "uploaded": ok_n,
+        "total": len(files),
+        "errors": errors,
+        "msg": None if ok_n > 0 else (errors[0] if errors else "Upload failed"),
+    }
 
 
 
@@ -2145,72 +2398,6 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
   </script>
 </body></html>"""
     )
-
-
-@app.post("/api/da/logout")
-async def da_logout(request: Request):
-    user = _auth_user(request)
-    if not user:
-        return JSONResponse({"ok": False}, status_code=401)
-    auth_db.set_da_tokens(int(user["id"]), None, None)
-    return {"ok": True}
-
-
-@app.post("/api/da/upload")
-async def da_upload(request: Request):
-    """Upload files to DeviantArt Sta.sh (same as desktop)."""
-    user = _auth_user(request)
-    if not user:
-        return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
-    token = user.get("da_access_token")
-    if not token:
-        return JSONResponse({"ok": False, "msg": "Connect DeviantArt first"}, status_code=401)
-    form = await request.form()
-    files = []
-    items = form.multi_items() if hasattr(form, "multi_items") else list(form.items())
-    titles = {}
-    for k, v in items:
-        k = str(k)
-        if k.startswith("title_"):
-            titles[k[6:]] = str(v)
-    for k, f in items:
-        if not str(k).startswith("file"):
-            continue
-        if f is None or isinstance(f, (str, bytes)) or not hasattr(f, "read"):
-            continue
-        raw = await f.read()
-        name = getattr(f, "filename", None) or "file.png"
-        files.append((name, raw, titles.get(name) or Path(name).stem))
-
-    if not files:
-        return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
-
-    import requests as rq
-
-    ok_n = 0
-    errors = []
-    for name, raw, title in files:
-        try:
-            r = rq.post(
-                "https://www.deviantart.com/api/v1/oauth2/stash/submit",
-                headers={"Authorization": f"Bearer {token}"},
-                data={"title": title, "artist_comments": "", "is_mature": "false"},
-                files={"file": (name, raw)},
-                timeout=120,
-            )
-            if r.status_code == 200:
-                ok_n += 1
-            else:
-                errors.append(f"{name}: {r.status_code} {r.text[:120]}")
-                if r.status_code in (401, 403):
-                    auth_db.set_da_tokens(int(user["id"]), None, None)
-                    break
-        except Exception as e:
-            errors.append(f"{name}: {type(e).__name__}: {e}")
-    return {"ok": ok_n > 0, "uploaded": ok_n, "total": len(files), "errors": errors}
-
-
-
 
 
 # ====================== Watermark live preview ======================
@@ -2761,7 +2948,14 @@ def gallery_comments(item_id: int, request: Request):
             "avatar_url": f"/api/auth/avatar/{uid}" if uid else "",
             "created_at": r.get("created_at"),
         })
-    return {"ok": True, "comments": out, **stats}
+    # IMPORTANT: do not **stats after "comments" — stats also has key "comments" (int count)
+    return {
+        "ok": True,
+        "comments": out,
+        "likes": stats.get("likes", 0),
+        "liked": stats.get("liked", False),
+        "comment_count": stats.get("comments", len(out)),
+    }
 
 
 @app.post("/api/gallery/{item_id}/comments")
@@ -2977,6 +3171,110 @@ setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
         return HTMLResponse(f"<h3>Error</h3><pre>{e}</pre>", status_code=500)
 
 
+
+
+
+
+
+
+# ====================== Google OAuth login ======================
+
+def _google_redirect_uri() -> str:
+    redirect = (os.environ.get("GOOGLE_REDIRECT_URI") or "").strip()
+    if not redirect:
+        base = (os.environ.get("APP_URL") or "").strip().rstrip("/")
+        redirect = base + "/api/auth/google/callback"
+    if "://" in redirect:
+        scheme, rest = redirect.split("://", 1)
+        while "//" in rest:
+            rest = rest.replace("//", "/")
+        redirect = scheme + "://" + rest
+    return redirect
+
+
+@app.get("/api/auth/google/login")
+def google_login_start(request: Request):
+    cid = (os.environ.get("GOOGLE_CLIENT_ID") or "").strip()
+    secret = (os.environ.get("GOOGLE_CLIENT_SECRET") or "").strip()
+    redirect = _google_redirect_uri()
+    if not cid or not secret:
+        return JSONResponse(
+            {"ok": False, "msg": "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set on server"},
+            status_code=503,
+        )
+    from urllib.parse import urlencode
+    state = secrets.token_hex(16)
+    if not hasattr(app.state, "google_pending"):
+        app.state.google_pending = {}
+    app.state.google_pending[state] = time.time()
+    q = urlencode({
+        "client_id": cid,
+        "redirect_uri": redirect,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "online",
+        "prompt": "select_account",
+    })
+    return {"ok": True, "url": f"https://accounts.google.com/o/oauth2/v2/auth?{q}"}
+
+
+@app.get("/api/auth/google/callback")
+async def google_callback(request: Request, code: str = "", state: str = ""):
+    pending = getattr(app.state, "google_pending", {})
+    if state not in pending:
+        return HTMLResponse("<h3>Google auth failed (bad state)</h3>", status_code=400)
+    pending.pop(state, None)
+    cid = (os.environ.get("GOOGLE_CLIENT_ID") or "").strip()
+    secret = (os.environ.get("GOOGLE_CLIENT_SECRET") or "").strip()
+    redirect = _google_redirect_uri()
+    try:
+        import requests as rq
+        tok = rq.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": cid,
+                "client_secret": secret,
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30,
+        )
+        if tok.status_code != 200:
+            return HTMLResponse(f"<h3>Token error</h3><pre>{tok.text[:400]}</pre>", status_code=400)
+        access = tok.json().get("access_token")
+        me = rq.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access}"},
+            timeout=20,
+        )
+        if me.status_code != 200:
+            return HTMLResponse(f"<h3>User error</h3><pre>{me.text[:400]}</pre>", status_code=400)
+        u = me.json()
+        gid = str(u.get("sub") or "")
+        uname = u.get("name") or (u.get("email") or "google").split("@")[0]
+        email = u.get("email")
+        ok, msg, token = auth_db.register_or_login_google(gid, email, uname)
+        if not ok or not token:
+            return HTMLResponse(f"<h3>{msg}</h3>", status_code=400)
+        app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
+        resp = HTMLResponse(
+            f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>OK</title></head>
+<body style="font-family:system-ui;background:#0b0b12;color:#eee;display:grid;place-items:center;min-height:100vh;margin:0">
+<div style="text-align:center"><h1>Google connected</h1>
+<p>You can close this window.</p>
+<a href="{app_url}/app" style="color:#7b5cff">Back to app</a></div>
+<script>
+try {{ localStorage.setItem('sm_session', {token!r}); }} catch(e) {{}}
+try {{ if (window.opener) window.opener.postMessage({{type:'google_login', token:{token!r}}}, '*'); }} catch(e) {{}}
+setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
+</script></body></html>"""
+        )
+        return _attach_session_cookie(resp, token, request)
+    except Exception as e:
+        return HTMLResponse(f"<h3>Error</h3><pre>{e}</pre>", status_code=500)
 
 
 

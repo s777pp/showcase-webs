@@ -2,585 +2,220 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Steam Community :: Profile</title>
 <style>
-/* —— Steam Community Profile look (approx. community layout) —— */
-@font-face{
-  font-family:"Motiva Sans";
-  src:local("Motiva Sans"),local("Arial");
-  font-weight:200 700;
-}
 *{box-sizing:border-box;margin:0;padding:0}
-html{background:#1b2838}
-body{
-  min-height:100%;
-  background:#1b2838;
-  color:#c7d5e0;
-  font-family:"Motiva Sans",Arial,Helvetica,sans-serif;
-  font-size:14px;
-  line-height:1.4;
-  -webkit-font-smoothing:antialiased;
-}
-a{color:#ebebeb;text-decoration:none}
-a:hover{color:#fff}
-img{border:0;display:block}
+html,body{background:#1b2838;color:#c7d5e0;font-family:Arial,"Helvetica Neue",Helvetica,sans-serif;font-size:14px;min-height:100%}
+a{color:#ebebeb;text-decoration:none}a:hover{color:#fff}
+img{max-width:100%;display:block}
 
-/* ===== Global header (Steam) ===== */
-#global_header{
-  background:#171a21;
-  height:50px;
-  position:relative;
-  z-index:100;
-  box-shadow:0 0 8px rgba(0,0,0,.5);
-}
-#global_header .content{
-  width:960px;max-width:100%;
-  margin:0 auto;height:50px;
-  display:flex;align-items:center;padding:0 8px;gap:8px;
-}
-#logo_holder img{height:36px;width:auto}
-#global_header .menuitem{
-  color:#dcdedf;font-size:14px;padding:0 12px;line-height:50px;
-  text-transform:uppercase;letter-spacing:.02em;font-weight:400;
-}
+#global_header{background:#171a21;height:50px;box-shadow:0 0 8px #000}
+#global_header .content{width:960px;max-width:100%;margin:0 auto;height:50px;display:flex;align-items:center;padding:0 10px;gap:6px}
+#global_header .menuitem{color:#dcdedf;font-size:13px;text-transform:uppercase;padding:0 10px;line-height:50px}
 #global_header .menuitem:hover{color:#fff}
-#global_actions{margin-left:auto;display:flex;align-items:center;gap:10px}
-#global_actions .btn_header{
-  background:linear-gradient(to bottom,#66c0f4 5%,#3d8eb9 95%);
-  color:#fff;font-size:11px;padding:1px 12px;border-radius:2px;
-  line-height:22px;font-weight:500;border:none;cursor:pointer;
-}
-#global_actions .btn_header.dim{
-  background:linear-gradient(to bottom,#3d4450 5%,#2a3038 95%);
-  color:#c6d4df;
-}
+#global_actions{margin-left:auto;display:flex;gap:8px}
+.btn{display:inline-block;border:none;border-radius:2px;cursor:pointer;font-size:12px;line-height:24px;padding:0 14px;font-weight:600;color:#fff}
+.btn-green{background:linear-gradient(to bottom,#75b022 5%,#588a1b 95%)}
+.btn-blue{background:linear-gradient(to bottom,#66c0f4 5%,#3d8eb9 95%)}
+.btn-gray{background:linear-gradient(to bottom,#3d4450 5%,#2a3038 95%);color:#c6d4df}
+.btn:hover{filter:brightness(1.08)}
 
-/* ===== Profile page shell ===== */
-.profile_page.has_profile_background{
-  position:relative;
-  min-height:100vh;
-  padding-bottom:40px;
-}
-.profile_animated_background,
-.profile_background_image_content{
-  position:absolute;left:0;right:0;top:0;
-  height:480px; /* typical steam bg band */
-  background-size:cover;
-  background-position:center top;
-  background-repeat:no-repeat;
-  z-index:0;
-  pointer-events:none;
-}
-.profile_background_overlay_fade{
-  position:absolute;left:0;right:0;top:0;height:480px;z-index:1;pointer-events:none;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3C/svg%3E");
-  background:linear-gradient(to bottom,
-    rgba(27,40,56,0) 0%,
-    rgba(27,40,56,.55) 55%,
-    #1b2838 100%);
-}
-.profile_content{
-  position:relative;z-index:2;
-  width:948px;max-width:100%;
-  margin:0 auto;
-  padding-top:0;
-}
+.profile_page{position:relative;min-height:calc(100vh - 50px)}
+.profile_bg{position:absolute;left:0;right:0;top:0;height:420px;background-size:cover;background-position:center top;z-index:0;pointer-events:none}
+.profile_bg_fade{position:absolute;left:0;right:0;top:0;height:420px;z-index:1;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(27,40,56,0) 0%,rgba(27,40,56,.55) 60%,#1b2838 100%)}
+.profile_content{position:relative;z-index:2;width:948px;max-width:100%;margin:0 auto;padding:20px 10px 48px}
 
-/* ===== Header block ===== */
-.profile_header_bg{
-  position:relative;
-  min-height:224px;
-  padding-top:24px;
-}
-.profile_header_bg_texture{
-  background:rgba(0,0,0,.3);
-  border-radius:3px;
-  padding:24px 18px 18px;
-  min-height:192px;
-}
-.profile_header{
-  display:flex;
-  gap:18px;
-  align-items:flex-start;
-}
-.playerAvatar.profile_header_size{
-  width:164px;height:164px;flex:0 0 164px;
-  position:relative;
-}
-.playerAvatar.profile_header_size img,
-.playerAvatar .avatar_fallback{
-  width:164px;height:164px;
-  border-radius:0;
-  border:1px solid rgba(0,0,0,.7);
-  box-shadow:1px 1px 0 rgba(0,0,0,.4);
-  background:#2a475e;
-  object-fit:cover;
-}
-.playerAvatar .avatar_fallback{
-  display:grid;place-items:center;
-  font-size:56px;font-weight:200;color:#66c0f4;
-}
-.playerAvatar .profile_avatar_frame{
-  position:absolute;inset:-6px;pointer-events:none;
-  border:2px solid transparent;
-}
-.playerAvatar.online .playerAvatarAutoSizeInner,
-.playerAvatar.online img{box-shadow:0 0 0 2px #57cbde}
-.playerAvatar.offline img{box-shadow:0 0 0 2px #898989}
-.playerAvatar.in-game img{box-shadow:0 0 0 2px #90ba3c}
+.profile_header_bg{background:rgba(0,0,0,.32);border-radius:3px;padding:20px 16px;margin-bottom:12px}
+.profile_header{display:flex;gap:16px;align-items:flex-start}
+.avatar{width:164px;height:164px;flex:0 0 164px;background:#2a475e;border:1px solid #000;position:relative}
+.avatar img{width:164px;height:164px;object-fit:cover}
+.avatar .fb{width:164px;height:164px;display:grid;place-items:center;font-size:52px;color:#66c0f4;font-weight:200}
+.avatar.online img{box-shadow:0 0 0 2px #57cbde}
+.avatar.offline img{box-shadow:0 0 0 2px #898989}
+.avatar.ingame img{box-shadow:0 0 0 2px #90ba3c}
+.persona{flex:1;min-width:0}
+.persona_name{font-size:26px;font-weight:200;color:#fff;text-shadow:1px 1px 0 #000}
+.persona_state{font-size:13px;margin-top:4px;color:#57cbde}
+.persona_state.offline{color:#898989}
+.persona_state.ingame{color:#90ba3c}
+.persona_loc{font-size:12px;color:#8f98a0;margin-top:2px}
+.persona_summary{margin-top:10px;font-size:13px;line-height:1.45;color:#c6d4df;white-space:pre-wrap;max-width:520px}
+.level_block{text-align:center;min-width:100px}
+.level_badge{display:inline-block;width:34px;height:34px;line-height:34px;border-radius:50%;border:2px solid #c6a43d;background:#4c6b22;color:#fff;font-weight:700;font-size:14px}
+.level_label{font-size:12px;color:#c6d4df;margin-top:4px}
+.xp_bar{width:90px;height:6px;background:#111;border:1px solid #000;margin:6px auto 0;border-radius:2px;overflow:hidden}
+.xp_fill{height:100%;background:linear-gradient(to right,#c6a43d,#e0c35a);width:15%}
+.header_actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
 
-.profile_header_content{flex:1;min-width:0;padding-top:2px}
-.profile_header_content .persona_name{
-  font-size:26px;font-weight:200;color:#fff;line-height:1.15;
-  text-shadow:1px 1px 0 rgba(0,0,0,.5);
-  word-break:break-word;
-}
-.profile_header_content .namehistory_link{display:none}
-.profile_header_summary{
-  margin-top:6px;
-}
-.header_real_name,
-.profile_header_summary .header_real_name{
-  color:#c6d4df;font-size:14px;font-weight:400;
-}
-.profile_header_summary .header_real_name.playerNickname{color:#c6d4df}
-.profile_header_summary .playerAvatarStatus,
-.profile_header_summary .profile_in_game{
-  font-size:13px;margin-top:2px;
-}
-.profile_in_game.offline .profile_in_game_header{color:#898989}
-.profile_in_game.online .profile_in_game_header{color:#57cbde}
-.profile_in_game.in-game .profile_in_game_header{color:#90ba3c}
-.profile_in_game_name{color:#8f98a0;font-size:12px}
+.cols{display:flex;gap:12px;align-items:flex-start}
+.leftcol{flex:1;min-width:0}
+.rightcol{width:280px;flex:0 0 280px}
+@media(max-width:900px){.cols{flex-direction:column}.rightcol{width:100%}.profile_header{flex-wrap:wrap}}
 
-.profile_summary{
-  margin-top:10px;color:#c6d4df;font-size:13px;line-height:1.45;
-  max-width:520px;white-space:pre-wrap;word-break:break-word;
-}
+.module{background:rgba(0,0,0,.22);border-radius:3px;margin-bottom:12px;overflow:hidden}
+.module_h{background:rgba(255,255,255,.05);padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#ebebeb;display:flex;justify-content:space-between;align-items:center}
+.module_h .act{text-transform:none;letter-spacing:0;font-size:11px;color:#66c0f4;cursor:pointer;background:none;border:none;font-family:inherit}
+.module_b{padding:10px 12px}
+.empty{color:#8f98a0;font-size:13px;text-align:center;padding:12px 4px;line-height:1.5}
 
-.profile_header_badgeinfo{
-  flex:0 0 120px;text-align:center;padding-top:4px;
-}
-.persona_level{
-  display:inline-flex;align-items:center;gap:8px;
-  color:#c6d4df;font-size:14px;
-}
-.friendPlayerLevel{
-  display:inline-block;border-radius:50%;
-  width:36px;height:36px;line-height:36px;
-  text-align:center;font-size:15px;font-weight:700;color:#fff;
-  background:#4c6b22;
-  border:2px solid #b9a34c;
-  box-shadow:0 0 4px rgba(0,0,0,.5);
-}
-.friendPlayerLevel.lvl_0{border-color:#9b9a9a;background:#4a4a4a}
-.friendPlayerLevel.lvl_10{border-color:#c6a43d}
-.friendPlayerLevel.lvl_20{border-color:#d35400}
-.friendPlayerLevel.lvl_30{border-color:#8e44ad}
-.profile_header_badgeinfo .persona_xp_bar{
-  margin:8px auto 0;width:100px;height:6px;
-  background:#1b2838;border-radius:2px;overflow:hidden;
-  border:1px solid #000;
-}
-.profile_header_badgeinfo .persona_xp_bar_fill{
-  height:100%;background:linear-gradient(to right,#c6a43d,#e0c35a);
-  width:20%;
-}
-.profile_header_actions{margin-top:12px}
-.btn_profile_action{
-  display:inline-block;
-  background:linear-gradient(to bottom,#75b022 5%,#588a1b 95%);
-  color:#fff !important;font-size:12px;padding:0 15px;line-height:26px;
-  border-radius:2px;border:none;cursor:pointer;font-weight:500;
-}
-.btn_profile_action.gray{
-  background:linear-gradient(to bottom,#3d4450 5%,#2a3038 95%);
-  color:#c6d4df !important;
-}
-.btn_profile_action:hover{filter:brightness(1.1)}
+/* showcases */
+.sc-featured img{width:100%;height:auto;display:block;background:#000}
+.sc-workshop{display:flex;gap:4px;width:100%}
+.sc-workshop img{flex:1;min-width:0;height:auto;object-fit:cover;background:#000;border:1px solid #000}
+.sc-split{display:flex;gap:4px;flex-wrap:wrap}
+.sc-split img{max-width:100%;height:auto;background:#000;border:1px solid #000}
+.sc-artwork{display:flex;flex-wrap:wrap;gap:6px}
+.sc-artwork img{width:calc(33.33% - 4px);height:auto;object-fit:cover;background:#000;border:1px solid #000;aspect-ratio:1/1}
+.sc-item{margin-bottom:8px;position:relative}
+.sc-item .del{position:absolute;top:6px;right:6px;z-index:2;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:2px;padding:2px 8px;cursor:pointer;font-size:11px;display:none}
+.sc-item.owner .del{display:block}
 
-/* ===== Two columns ===== */
-.profile_leftcol{float:left;width:644px}
-.profile_rightcol{float:right;width:280px}
-.profile_content .clear{clear:both;height:0}
+/* editor / add panel */
+.panel{display:none;background:rgba(22,32,45,.98);border:1px solid #000;border-radius:3px;padding:14px;margin-bottom:12px}
+.panel.open{display:block}
+.panel h3{font-size:13px;color:#fff;font-weight:400;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+.panel label{display:block;font-size:11px;color:#8f98a0;margin:8px 0 3px;text-transform:uppercase}
+.panel input,.panel select,.panel textarea{width:100%;background:#1b2838;border:1px solid #000;color:#c7d5e0;padding:6px 8px;font-size:13px;border-radius:2px;font-family:inherit}
+.panel textarea{min-height:70px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.row2{grid-template-columns:1fr}}
+.msg{font-size:12px;margin-top:8px;color:#8f98a0}.msg.ok{color:#90ba3c}.msg.err{color:#c15755}
 
-/* generic showcase / module */
-.profile_customization{
-  background:rgba(0,0,0,.2);
-  border-radius:3px;
-  margin-bottom:12px;
-  padding:0 0 8px;
-  overflow:hidden;
-}
-.profile_customization_header{
-  background:rgba(255,255,255,.05);
-  padding:6px 10px;
-  font-size:11px;text-transform:uppercase;letter-spacing:.06em;
-  color:#ebebeb;font-weight:400;
-}
-.profile_customization_header .count{float:right;color:#8f98a0;text-transform:none;letter-spacing:0}
-.showcase_content_bg{
-  padding:10px 12px;
-}
-.showcase_slot_empty{
-  color:#8f98a0;font-size:13px;padding:14px 4px;text-align:center;line-height:1.5;
-}
-.showcase_slot_empty a{color:#66c0f4}
-.showcase_slot_empty a:hover{color:#fff}
+.gate{max-width:440px;margin:80px auto;text-align:center;background:rgba(0,0,0,.4);padding:28px;border:1px solid #000;border-radius:3px}
+.gate h2{color:#fff;font-weight:300;margin-bottom:10px}
 
-/* artwork showcase grid */
-.artwork_showcase_images{
-  display:flex;gap:6px;flex-wrap:wrap;
-}
-.artwork_showcase_images .slot{
-  width:206px;height:123px;background:#000;border:1px solid #000;
-  position:relative;overflow:hidden;
-}
-.artwork_showcase_images .slot.main{width:420px;height:250px}
-.artwork_showcase_images .slot img{width:100%;height:100%;object-fit:cover}
-
-/* workshop showcase */
-.workshop_showcase .stats{
-  display:flex;gap:24px;margin-top:8px;color:#8f98a0;font-size:12px;
-}
-.workshop_showcase .stats b{color:#ebebeb;font-size:18px;display:block;font-weight:300}
-
-/* favorite guide */
-.guide_preview{
-  display:flex;gap:12px;align-items:flex-start;
-}
-.guide_preview .thumb{
-  width:184px;height:69px;background:#000;flex:0 0 184px;border:1px solid #000;
-}
-.guide_preview .meta h4{color:#ebebeb;font-size:14px;font-weight:400;margin-bottom:4px}
-.guide_preview .meta .sub{color:#8f98a0;font-size:12px}
-
-/* game collector */
-.game_collector_row{display:flex;gap:4px;flex-wrap:wrap}
-.game_collector_row .g{
-  width:70px;height:70px;background:#000;border:1px solid #000;
-}
-
-/* right column modules */
-.profile_rightcol .block{
-  background:rgba(0,0,0,.2);
-  border-radius:3px;
-  margin-bottom:12px;
-  padding:10px 12px;
-}
-.profile_rightcol .block .header{
-  font-size:11px;text-transform:uppercase;letter-spacing:.06em;
-  color:#ebebeb;margin-bottom:8px;
-  display:flex;justify-content:space-between;
-}
-.profile_rightcol .block .header .count{color:#8f98a0;text-transform:none;letter-spacing:0}
-.profile_count_link{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:4px 0;color:#c6d4df;font-size:13px;
-}
-.profile_count_link:hover{color:#fff}
-.profile_count_link .total{color:#ebebeb;font-weight:400}
-
-/* friends mini */
-.friend_block{
-  display:flex;align-items:center;gap:8px;padding:4px 0;
-}
-.friend_block img{
-  width:32px;height:32px;border:1px solid #000;background:#2a475e;
-}
-.friend_block .name{font-size:12px;color:#c6d4df}
-.friend_block .state{font-size:11px;color:#898989}
-.friend_block .state.online{color:#57cbde}
-.friend_block .state.ingame{color:#90ba3c}
-
-/* badges */
-.badge_row{display:flex;gap:6px;flex-wrap:wrap}
-.badge_icon{
-  width:48px;height:48px;background:#16202d;border:1px solid #000;
-  display:grid;place-items:center;font-size:10px;color:#566677;
-}
-
-/* comments */
-.commentthread{
-  background:rgba(0,0,0,.2);border-radius:3px;padding:10px 12px;margin-top:12px;
-}
-.commentthread .header{
-  font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#ebebeb;margin-bottom:8px;
-}
-.comment_row{
-  display:flex;gap:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,.05);
-}
-.comment_row img{width:32px;height:32px;background:#2a475e;border:1px solid #000;flex:0 0 32px}
-.comment_row .author{color:#ebebeb;font-size:13px}
-.comment_row .time{color:#56707f;font-size:11px;margin-left:6px}
-.comment_row .body{color:#c6d4df;font-size:13px;margin-top:2px}
-
-/* recent activity */
-.recent_game{
-  display:flex;gap:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,.05);
-}
-.recent_game img{width:64px;height:24px;object-fit:cover;background:#000;flex:0 0 64px}
-.recent_game .name{color:#c6d4df;font-size:12px}
-.recent_game .hours{color:#8f98a0;font-size:11px}
-
-/* editor overlay panel */
-.profile_edit_panel{
-  display:none;
-  background:rgba(22,32,45,.98);
-  border:1px solid #000;
-  border-radius:3px;
-  padding:14px 16px;
-  margin:0 0 12px;
-}
-.profile_edit_panel.open{display:block}
-.profile_edit_panel h3{
-  font-size:13px;color:#fff;font-weight:400;margin-bottom:10px;
-  text-transform:uppercase;letter-spacing:.05em;
-}
-.profile_edit_panel label{
-  display:block;font-size:11px;color:#8f98a0;margin:8px 0 3px;text-transform:uppercase;
-}
-.profile_edit_panel input,
-.profile_edit_panel textarea,
-.profile_edit_panel select{
-  width:100%;background:#1b2838;border:1px solid #000;color:#c7d5e0;
-  padding:6px 8px;font-size:13px;border-radius:2px;font-family:inherit;
-}
-.profile_edit_panel textarea{min-height:72px;resize:vertical}
-.profile_edit_panel .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.profile_edit_panel .msg{font-size:12px;margin-top:8px;color:#8f98a0}
-.profile_edit_panel .msg.ok{color:#90ba3c}
-.profile_edit_panel .msg.err{color:#c15755}
-
-.private_msg{
-  width:480px;max-width:92%;margin:100px auto;text-align:center;
-  background:rgba(0,0,0,.4);padding:28px;border-radius:3px;border:1px solid #000;
-  color:#c6d4df;
-}
-.private_msg h2{color:#fff;font-weight:300;margin-bottom:10px;font-size:22px}
-
-@media(max-width:980px){
-  .profile_content{width:100%;padding:0 8px}
-  .profile_leftcol,.profile_rightcol{float:none;width:100%}
-  .profile_header{flex-wrap:wrap}
-  #global_header .content{width:100%}
-  #global_header .menuitem{display:none}
-  #global_header .menuitem.show-m{display:inline}
-}
+.count_link{display:flex;justify-content:space-between;padding:5px 0;color:#c6d4df;font-size:13px}
+.count_link:hover{color:#fff}
 </style>
 </head>
 <body>
-
 <div id="global_header">
   <div class="content">
-    <a id="logo_holder" href="/" title="Showcase Maker">
-      <img src="/static/icon.png" alt="Showcase Maker" width="36" height="36"
-           onerror="this.style.display='none'"/>
-    </a>
-    <a class="menuitem show-m" href="/">STORE</a>
-    <a class="menuitem show-m" href="/gallery">COMMUNITY</a>
-    <a class="menuitem show-m" href="/app">TOOLS</a>
-    <a class="menuitem show-m" href="/profile">PROFILE</a>
+    <a href="/" style="color:#fff;font-weight:700;margin-right:8px">SM</a>
+    <a class="menuitem" href="/">Store</a>
+    <a class="menuitem" href="/gallery">Community</a>
+    <a class="menuitem" href="/app">Tools</a>
+    <a class="menuitem" href="/profile">Profile</a>
     <div id="global_actions">
-      <a class="btn_header dim" href="/app">Open tools</a>
-      <a class="btn_header" href="/" id="hdrLogin" style="display:none">Login</a>
+      <a class="btn btn-gray" href="/app">Open tools</a>
     </div>
   </div>
 </div>
 
-<div class="profile_page has_profile_background" id="profilePage">
-  <div class="profile_animated_background" id="profileBg"></div>
-  <div class="profile_background_overlay_fade"></div>
-
+<div class="profile_page">
+  <div class="profile_bg" id="bg"></div>
+  <div class="profile_bg_fade"></div>
   <div class="profile_content">
-    <div id="privateGate" class="private_msg" style="display:none">
-      <h2>This profile is private.</h2>
-      <p id="privateText">The user has chosen to keep their profile private.</p>
-      <p style="margin-top:14px"><a class="btn_profile_action" href="/">Home</a></p>
+
+    <div id="gate" class="gate" style="display:none">
+      <h2 id="gateTitle">Loading…</h2>
+      <p id="gateText"></p>
+      <p style="margin-top:14px"><a class="btn btn-blue" href="/">Home</a></p>
     </div>
 
-    <div id="profileMain" style="display:none">
+    <div id="main" style="display:none">
       <div class="profile_header_bg">
-        <div class="profile_header_bg_texture">
-          <div class="profile_header">
-            <div class="playerAvatar profile_header_size online" id="avWrap">
-              <img id="avImg" alt="" style="display:none"/>
-              <div class="avatar_fallback" id="avFallback">?</div>
+        <div class="profile_header">
+          <div class="avatar online" id="avWrap">
+            <img id="avImg" alt="" style="display:none"/>
+            <div class="fb" id="avFb">?</div>
+          </div>
+          <div class="persona">
+            <div class="persona_name" id="pName">—</div>
+            <div class="persona_state" id="pState">Currently Online</div>
+            <div class="persona_loc" id="pLoc"></div>
+            <div class="persona_summary" id="pSummary"></div>
+            <div class="header_actions" id="ownerBtns" style="display:none">
+              <button type="button" class="btn btn-green" id="btnEdit">Edit Profile</button>
+              <button type="button" class="btn btn-blue" id="btnAddSc">Add Showcase</button>
+              <a class="btn btn-gray" href="/app">Showcase Maker</a>
             </div>
-            <div class="profile_header_content">
-              <div class="persona_name" id="pName">—</div>
-              <div class="profile_header_summary">
-                <div class="profile_in_game online" id="pStateWrap">
-                  <div class="profile_in_game_header" id="pState">Currently Online</div>
-                  <div class="profile_in_game_name" id="pLoc"></div>
-                </div>
-              </div>
-              <div class="profile_summary" id="pSummary"></div>
-              <div class="profile_header_actions" id="ownerActions" style="display:none">
-                <button type="button" class="btn_profile_action" id="btnEdit">Edit Profile</button>
-                <a class="btn_profile_action gray" href="/app" style="margin-left:6px">Showcase Maker</a>
-              </div>
-            </div>
-            <div class="profile_header_badgeinfo">
-              <div class="persona_level">Level
-                <div class="friendPlayerLevel" id="levelBadge"><span id="levelNum">1</span></div>
-              </div>
-              <div class="persona_xp_bar"><div class="persona_xp_bar_fill" id="xpFill"></div></div>
-              <div style="font-size:11px;color:#8f98a0;margin-top:4px" id="levelXp">0 XP</div>
-            </div>
+          </div>
+          <div class="level_block">
+            <div class="level_badge" id="lvl">1</div>
+            <div class="level_label">Level</div>
+            <div class="xp_bar"><div class="xp_fill" id="xpFill"></div></div>
+            <div style="font-size:11px;color:#8f98a0;margin-top:3px" id="xpTxt">0 XP</div>
           </div>
         </div>
       </div>
 
-      <!-- editor -->
-      <div class="profile_edit_panel" id="editor">
+      <div class="panel" id="editPanel">
         <h3>Edit Profile</h3>
         <div class="row2">
-          <div>
-            <label>Display name</label>
-            <input id="edName" maxlength="40"/>
-          </div>
-          <div>
-            <label>Custom URL (username)</label>
-            <input id="edUser" maxlength="24"/>
-          </div>
+          <div><label>Display name</label><input id="edName" maxlength="40"/></div>
+          <div><label>Profile URL</label><input id="edUser" maxlength="24"/></div>
         </div>
-        <label>Summary</label>
-        <textarea id="edSummary" maxlength="2000"></textarea>
+        <label>Summary</label><textarea id="edSummary" maxlength="2000"></textarea>
         <div class="row2">
-          <div>
-            <label>Location</label>
-            <input id="edLoc" maxlength="80"/>
-          </div>
-          <div>
-            <label>Status</label>
-            <select id="edStatus">
-              <option value="online">Online</option>
-              <option value="ingame">In-Game</option>
-              <option value="offline">Offline</option>
-            </select>
+          <div><label>Location</label><input id="edLoc"/></div>
+          <div><label>Status</label>
+            <select id="edStatus"><option value="online">Online</option><option value="ingame">In-Game</option><option value="offline">Offline</option></select>
           </div>
         </div>
         <div class="row2">
-          <div>
-            <label>Level</label>
-            <input id="edLevel" type="number" min="0" max="9999"/>
-          </div>
-          <div>
-            <label>XP</label>
-            <input id="edXp" type="number" min="0"/>
-          </div>
+          <div><label>Level</label><input id="edLevel" type="number" min="0"/></div>
+          <div><label>XP</label><input id="edXp" type="number" min="0"/></div>
         </div>
         <div class="row2">
-          <div>
-            <label>Visibility</label>
-            <select id="edVis">
-              <option value="public">Public</option>
-              <option value="private">Private</option>
-            </select>
+          <div><label>Visibility</label>
+            <select id="edVis"><option value="public">Public</option><option value="private">Private</option></select>
           </div>
-          <div>
-            <label>Background</label>
-            <input id="edBg" type="file" accept="image/png,image/jpeg,image/webp,image/gif"/>
-          </div>
-        </div>
-        <div class="row2">
-          <div>
-            <label>BG X %</label>
-            <input id="edBgX" type="number" min="0" max="100"/>
-          </div>
-          <div>
-            <label>BG Y %</label>
-            <input id="edBgY" type="number" min="0" max="100"/>
-          </div>
+          <div><label>Background</label><input id="edBg" type="file" accept="image/*"/></div>
         </div>
         <div style="margin-top:12px">
-          <button type="button" class="btn_profile_action" id="btnSave">Save Changes</button>
-          <button type="button" class="btn_profile_action gray" id="btnCancel" style="margin-left:6px">Cancel</button>
+          <button type="button" class="btn btn-green" id="btnSave">Save</button>
+          <button type="button" class="btn btn-gray" id="btnEditCancel">Cancel</button>
         </div>
         <div class="msg" id="edMsg"></div>
       </div>
 
-      <div class="profile_leftcol">
-        <!-- Featured Artwork -->
-        <div class="profile_customization">
-          <div class="profile_customization_header">Featured Artwork Showcase</div>
-          <div class="showcase_content_bg">
-            <div class="artwork_showcase_images">
-              <div class="slot main" style="display:grid;place-items:center;color:#566677;font-size:12px">No featured artwork</div>
+      <div class="panel" id="scPanel">
+        <h3>Add Showcase</h3>
+        <label>Type</label>
+        <select id="scType">
+          <option value="featured">Featured Artwork</option>
+          <option value="artwork">Artwork Showcase</option>
+          <option value="workshop">Workshop (auto-split ×5)</option>
+          <option value="split">Artwork Split (auto-cut)</option>
+        </select>
+        <label>Title</label>
+        <input id="scTitle" placeholder="Optional title"/>
+        <label>Upload image / GIF</label>
+        <input id="scFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"/>
+        <p style="font-size:11px;color:#8f98a0;margin-top:6px">Workshop &amp; Split are automatically cut into Steam parts from one source file. Artwork keeps aspect ratio of the source.</p>
+        <div style="margin-top:12px">
+          <button type="button" class="btn btn-blue" id="btnScUpload">Upload &amp; Add</button>
+          <button type="button" class="btn btn-gray" id="btnScCancel">Cancel</button>
+        </div>
+        <div class="msg" id="scMsg"></div>
+      </div>
+
+      <div class="cols">
+        <div class="leftcol">
+          <div class="module">
+            <div class="module_h">Showcases</div>
+            <div class="module_b" id="scList">
+              <p class="empty">No showcases yet. Click <b>Add Showcase</b> to upload Featured, Workshop or Split.</p>
             </div>
-            <p class="showcase_slot_empty" style="padding-top:8px">
-              Upload via <a href="/app">Showcase Maker</a> → Add to Profile (Phase 4)
-            </p>
           </div>
         </div>
-
-        <!-- Custom info / about -->
-        <div class="profile_customization">
-          <div class="profile_customization_header">Custom Info Box</div>
-          <div class="showcase_content_bg">
-            <div id="infoBox" style="color:#c6d4df;font-size:13px;line-height:1.5;white-space:pre-wrap">—</div>
+        <div class="rightcol">
+          <div class="module">
+            <div class="module_h">Badges</div>
+            <div class="module_b"><p class="empty">—</p></div>
           </div>
-        </div>
-
-        <!-- Workshop -->
-        <div class="profile_customization workshop_showcase">
-          <div class="profile_customization_header">Workshop Showcase</div>
-          <div class="showcase_content_bg">
-            <div class="stats">
-              <div><b id="wsSub">0</b> Submissions</div>
-              <div><b id="wsFol">0</b> Followers</div>
+          <div class="module">
+            <div class="module_h">Links</div>
+            <div class="module_b">
+              <a class="count_link" href="/app"><span>Showcase Maker</span><span>→</span></a>
+              <a class="count_link" href="/gallery"><span>Gallery</span><span>→</span></a>
             </div>
-            <p class="showcase_slot_empty">Connect workshop items in a later phase.</p>
-          </div>
-        </div>
-
-        <!-- Artwork showcase -->
-        <div class="profile_customization">
-          <div class="profile_customization_header">Artwork Showcase</div>
-          <div class="showcase_content_bg">
-            <div class="artwork_showcase_images">
-              <div class="slot"></div><div class="slot"></div><div class="slot"></div>
-            </div>
-            <p class="showcase_slot_empty">Your gallery artworks will appear here.</p>
-          </div>
-        </div>
-
-        <!-- Comments -->
-        <div class="commentthread">
-          <div class="header">Comments</div>
-          <div id="commentsList">
-            <p class="showcase_slot_empty">No comments yet.</p>
           </div>
         </div>
       </div>
-
-      <div class="profile_rightcol">
-        <div class="block">
-          <div class="header">Badges <span class="count">0</span></div>
-          <div class="badge_row">
-            <div class="badge_icon">—</div>
-          </div>
-        </div>
-        <div class="block">
-          <a class="profile_count_link" href="/gallery"><span>Inventory</span><span class="total">—</span></a>
-          <a class="profile_count_link" href="/app"><span>Screenshots</span><span class="total">—</span></a>
-          <a class="profile_count_link" href="/app"><span>Videos</span><span class="total">—</span></a>
-          <a class="profile_count_link" href="/gallery"><span>Artwork</span><span class="total">—</span></a>
-        </div>
-        <div class="block">
-          <div class="header">Recent Activity</div>
-          <div id="recentActivity">
-            <p style="color:#8f98a0;font-size:12px">No recent activity.</p>
-          </div>
-        </div>
-        <div class="block">
-          <div class="header">Groups <span class="count">0</span></div>
-          <p style="color:#8f98a0;font-size:12px">—</p>
-        </div>
-      </div>
-      <div class="clear"></div>
     </div>
   </div>
 </div>
@@ -589,117 +224,153 @@ img{border:0;display:block}
 (function(){
   function token(){ try{return localStorage.getItem('sm_session')||'';}catch(e){return '';} }
   function headers(){ var h={}; var t=token(); if(t) h['X-Session-Token']=t; return h; }
-  function pathUsername(){
-    var parts=location.pathname.replace(/\\/+$/,'').split('/');
+  function pathUser(){
+    var parts = location.pathname.replace(/\/+$/,'').split('/');
     if(parts.length>=3 && parts[1]==='profile' && parts[2]) return decodeURIComponent(parts[2]);
     return null;
   }
-  function xpPct(xp){ return Math.max(4, Math.min(100, ((xp||0)%1000)/10)); }
-  function levelClass(lvl){
-    if(lvl>=30) return 'lvl_30';
-    if(lvl>=20) return 'lvl_20';
-    if(lvl>=10) return 'lvl_10';
-    return 'lvl_0';
+
+  var state = { profile:null, isOwner:false, username:null };
+
+  function showGate(title, text){
+    document.getElementById('main').style.display='none';
+    document.getElementById('gate').style.display='';
+    document.getElementById('gateTitle').textContent=title||'Error';
+    document.getElementById('gateText').textContent=text||'';
   }
 
-  function render(p, isOwner){
-    document.getElementById('profileMain').style.display='';
-    document.getElementById('privateGate').style.display='none';
-    document.getElementById('pName').textContent = p.display_name || p.username || 'User';
+  function renderProfile(p, isOwner){
+    state.profile=p; state.isOwner=isOwner; state.username=p.username||p.profile_username;
+    document.getElementById('gate').style.display='none';
+    document.getElementById('main').style.display='';
+
+    document.getElementById('pName').textContent=p.display_name||p.username||'User';
     var st=(p.profile_status||'online').toLowerCase();
-    var wrap=document.getElementById('pStateWrap');
-    var avWrap=document.getElementById('avWrap');
-    wrap.className='profile_in_game '+st;
-    avWrap.className='playerAvatar profile_header_size '+st;
     var stEl=document.getElementById('pState');
-    if(st==='ingame') stEl.textContent='Currently In-Game';
-    else if(st==='offline') stEl.textContent='Currently Offline';
-    else stEl.textContent='Currently Online';
-    document.getElementById('pLoc').textContent = p.profile_location || '';
-    document.getElementById('pSummary').textContent = p.profile_summary || '';
-    document.getElementById('infoBox').textContent = p.profile_summary || 'No information given.';
+    var av=document.getElementById('avWrap');
+    stEl.className='persona_state '+st;
+    av.className='avatar '+st;
+    stEl.textContent = st==='ingame'?'Currently In-Game':(st==='offline'?'Currently Offline':'Currently Online');
+    document.getElementById('pLoc').textContent=p.profile_location||'';
+    document.getElementById('pSummary').textContent=p.profile_summary||'';
 
     var lvl=p.profile_level||1, xp=p.profile_xp||0;
-    document.getElementById('levelNum').textContent=String(lvl);
-    document.getElementById('levelBadge').className='friendPlayerLevel '+levelClass(lvl);
-    document.getElementById('xpFill').style.width=xpPct(xp)+'%';
-    document.getElementById('levelXp').textContent=xp+' XP';
+    document.getElementById('lvl').textContent=String(lvl);
+    document.getElementById('xpFill').style.width=Math.max(4,Math.min(100,(xp%1000)/10))+'%';
+    document.getElementById('xpTxt').textContent=xp+' XP';
 
-    var av=document.getElementById('avImg'), fb=document.getElementById('avFallback');
-    if(p.avatar_url){
-      av.src=p.avatar_url+'?t='+Date.now(); av.style.display=''; fb.style.display='none';
-    } else {
-      av.style.display='none'; fb.style.display='';
-      fb.textContent=(p.display_name||p.username||'?').charAt(0).toUpperCase();
-    }
+    var img=document.getElementById('avImg'), fb=document.getElementById('avFb');
+    if(p.avatar_url){ img.src=p.avatar_url+'?t='+Date.now(); img.style.display=''; fb.style.display='none'; }
+    else { img.style.display='none'; fb.style.display=''; fb.textContent=(p.display_name||'?').charAt(0).toUpperCase(); }
 
-    var bg=document.getElementById('profileBg');
+    var bg=document.getElementById('bg');
     if(p.background_url){
-      var x=p.profile_bg_x!=null?p.profile_bg_x:50;
-      var y=p.profile_bg_y!=null?p.profile_bg_y:20;
       bg.style.backgroundImage='url('+p.background_url+'?t='+Date.now()+')';
-      bg.style.backgroundPosition=x+'% '+y+'%';
-    } else {
-      bg.style.backgroundImage='none';
-      bg.style.background='#1b2838';
-    }
+      bg.style.backgroundPosition=(p.profile_bg_x||50)+'% '+(p.profile_bg_y||20)+'%';
+    } else { bg.style.backgroundImage='none'; }
 
-    document.getElementById('ownerActions').style.display=isOwner?'':'none';
+    document.getElementById('ownerBtns').style.display=isOwner?'':'none';
     document.title='Steam Community :: '+(p.display_name||p.username||'Profile');
 
     document.getElementById('edName').value=p.display_name||'';
-    document.getElementById('edUser').value=p.username||p.profile_username||'';
+    document.getElementById('edUser').value=p.username||'';
     document.getElementById('edSummary').value=p.profile_summary||'';
     document.getElementById('edLoc').value=p.profile_location||'';
     document.getElementById('edStatus').value=(st==='ingame'||st==='offline')?st:'online';
     document.getElementById('edLevel').value=lvl;
     document.getElementById('edXp').value=xp;
     document.getElementById('edVis').value=p.profile_visibility||'public';
-    document.getElementById('edBgX').value=p.profile_bg_x!=null?p.profile_bg_x:50;
-    document.getElementById('edBgY').value=p.profile_bg_y!=null?p.profile_bg_y:20;
+  }
+
+  function renderShowcases(list, isOwner){
+    var box=document.getElementById('scList');
+    if(!list || !list.length){
+      box.innerHTML='<p class="empty">No showcases yet.'+(isOwner?' Click <b>Add Showcase</b>.':'')+'</p>';
+      return;
+    }
+    var html='';
+    list.forEach(function(sc){
+      var type=sc.type||'artwork';
+      var urls=sc.urls||[];
+      var title=sc.title||type;
+      html+='<div class="sc-item '+(isOwner?'owner':'')+'" data-id="'+sc.id+'">';
+      html+='<div class="module_h" style="background:transparent;padding:0 0 6px">'+esc(title)+' <span style="color:#8f98a0;text-transform:none">'+esc(type)+'</span>';
+      if(isOwner) html+='<button type="button" class="del" data-id="'+sc.id+'">Remove</button>';
+      html+='</div>';
+      if(type==='workshop'){
+        // show only part_ images in a row, stretch
+        var parts=urls.filter(function(u){ return /part_/i.test(u); });
+        if(!parts.length) parts=urls;
+        html+='<div class="sc-workshop">';
+        parts.forEach(function(u){ html+='<img src="'+u+'" alt=""/>'; });
+        html+='</div>';
+      } else if(type==='split'){
+        html+='<div class="sc-split">';
+        urls.forEach(function(u){ html+='<img src="'+u+'" alt=""/>'; });
+        html+='</div>';
+      } else if(type==='featured'){
+        var u=urls.find(function(x){return /featured/i.test(x);})||urls[0];
+        html+='<div class="sc-featured">'+(u?'<img src="'+u+'" alt=""/>':'')+'</div>';
+      } else {
+        html+='<div class="sc-artwork">';
+        urls.forEach(function(u){ html+='<img src="'+u+'" alt=""/>'; });
+        html+='</div>';
+      }
+      html+='</div>';
+    });
+    box.innerHTML=html;
+    box.querySelectorAll('.del').forEach(function(btn){
+      btn.onclick=async function(){
+        if(!confirm('Remove this showcase?')) return;
+        var r=await fetch('/api/profile/showcase/delete',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},headers()),credentials:'include',body:JSON.stringify({id:+btn.dataset.id})});
+        var j=await r.json();
+        if(j.ok) loadShowcases();
+      };
+    });
+  }
+
+  function esc(s){ return String(s||'').replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);}); }
+
+  async function loadShowcases(){
+    var un=state.username||pathUser();
+    if(!un) return;
+    try{
+      var r=await fetch('/api/profile/'+encodeURIComponent(un)+'/showcases',{headers:headers(),credentials:'include'});
+      var j=await r.json();
+      if(j.ok) renderShowcases(j.showcases||[], !!j.is_owner || state.isOwner);
+    }catch(e){ console.error(e); }
   }
 
   async function load(){
-    var un=pathUsername();
+    var un=pathUser();
     var url=un?('/api/profile/'+encodeURIComponent(un)):'/api/profile/me';
     try{
       var r=await fetch(url,{headers:headers(),credentials:'include'});
-      var j=await r.json();
+      var j={};
+      try{ j=await r.json(); }catch(e){}
       if(r.status===401 && !un){
-        document.getElementById('hdrLogin').style.display='';
-        document.getElementById('privateGate').style.display='';
-        document.getElementById('privateText').textContent='Log in to view and edit your profile.';
+        showGate('Log in required','Sign in on the home page, then open Profile.');
         return;
       }
-      if(r.status===403){
-        document.getElementById('privateGate').style.display='';
-        document.getElementById('profileMain').style.display='none';
-        return;
-      }
-      if(!j.ok){
-        document.getElementById('privateGate').style.display='';
-        document.getElementById('privateText').textContent=j.msg||'Profile not found.';
-        return;
-      }
+      if(r.status===403){ showGate('Private profile','This profile is private.'); return; }
+      if(!j.ok){ showGate('Not found', j.msg||'Profile not found'); return; }
       if(!un && j.profile && j.profile.username){
         history.replaceState(null,'','/profile/'+encodeURIComponent(j.profile.username));
       }
-      render(j.profile, !!j.is_owner);
+      renderProfile(j.profile, !!j.is_owner);
+      loadShowcases();
     }catch(e){
-      document.getElementById('privateGate').style.display='';
-      document.getElementById('privateText').textContent=String(e);
+      showGate('Error', String(e));
     }
   }
 
-  document.getElementById('btnEdit').onclick=function(){
-    document.getElementById('editor').classList.add('open');
-  };
-  document.getElementById('btnCancel').onclick=function(){
-    document.getElementById('editor').classList.remove('open');
-  };
+  document.getElementById('btnEdit').onclick=function(){ document.getElementById('editPanel').classList.add('open'); document.getElementById('scPanel').classList.remove('open'); };
+  document.getElementById('btnEditCancel').onclick=function(){ document.getElementById('editPanel').classList.remove('open'); };
+  document.getElementById('btnAddSc').onclick=function(){ document.getElementById('scPanel').classList.add('open'); document.getElementById('editPanel').classList.remove('open'); };
+  document.getElementById('btnScCancel').onclick=function(){ document.getElementById('scPanel').classList.remove('open'); };
+
   document.getElementById('btnSave').onclick=async function(){
-    var msg=document.getElementById('edMsg');
-    msg.className='msg'; msg.textContent='Saving…';
+    var msg=document.getElementById('edMsg'); msg.className='msg'; msg.textContent='Saving…';
     var fd=new FormData();
     fd.append('display_name',document.getElementById('edName').value);
     fd.append('profile_username',document.getElementById('edUser').value);
@@ -709,20 +380,34 @@ img{border:0;display:block}
     fd.append('profile_level',document.getElementById('edLevel').value);
     fd.append('profile_xp',document.getElementById('edXp').value);
     fd.append('profile_visibility',document.getElementById('edVis').value);
-    fd.append('profile_bg_x',document.getElementById('edBgX').value);
-    fd.append('profile_bg_y',document.getElementById('edBgY').value);
-    var f=document.getElementById('edBg').files[0];
-    if(f) fd.append('background',f);
+    var f=document.getElementById('edBg').files[0]; if(f) fd.append('background',f);
     try{
       var r=await fetch('/api/profile/update',{method:'POST',headers:headers(),credentials:'include',body:fd});
       var j=await r.json();
       if(!j.ok){ msg.className='msg err'; msg.textContent=j.msg||'Error'; return; }
       msg.className='msg ok'; msg.textContent='Saved';
-      if(j.username && pathUsername()!==j.username){
-        location.href='/profile/'+encodeURIComponent(j.username); return;
-      }
-      document.getElementById('editor').classList.remove('open');
+      if(j.username && pathUser()!==j.username){ location.href='/profile/'+encodeURIComponent(j.username); return; }
+      document.getElementById('editPanel').classList.remove('open');
       load();
+    }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
+  };
+
+  document.getElementById('btnScUpload').onclick=async function(){
+    var msg=document.getElementById('scMsg'); msg.className='msg'; msg.textContent='Processing…';
+    var file=document.getElementById('scFile').files[0];
+    if(!file){ msg.className='msg err'; msg.textContent='Choose a file'; return; }
+    var fd=new FormData();
+    fd.append('type',document.getElementById('scType').value);
+    fd.append('title',document.getElementById('scTitle').value||document.getElementById('scType').value);
+    fd.append('file',file);
+    try{
+      var r=await fetch('/api/profile/showcase/add',{method:'POST',headers:headers(),credentials:'include',body:fd});
+      var j=await r.json();
+      if(!j.ok){ msg.className='msg err'; msg.textContent=j.msg||'Error'; return; }
+      msg.className='msg ok'; msg.textContent='Added';
+      document.getElementById('scPanel').classList.remove('open');
+      document.getElementById('scFile').value='';
+      loadShowcases();
     }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
   };
 

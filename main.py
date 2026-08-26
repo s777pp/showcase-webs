@@ -489,6 +489,205 @@ def api_profile_bg(user_id: int):
     from fastapi.responses import FileResponse
     return FileResponse(path, media_type=media)
 
+
+@app.get("/api/profile/{username}/showcases")
+def api_profile_showcases(username: str, request: Request):
+    prof = auth_db.get_public_profile(username)
+    if not prof:
+        return JSONResponse({"ok": False, "msg": "Not found"}, status_code=404)
+    viewer = _auth_user(request)
+    is_owner = bool(viewer and int(viewer["id"]) == int(prof["id"]))
+    vis = (prof.get("profile_visibility") or "public").lower()
+    if vis == "private" and not is_owner:
+        return JSONResponse({"ok": False, "msg": "Private"}, status_code=403)
+    items = auth_db.profile_showcase_list(int(prof["id"]))
+    # resolve file URLs
+    for it in items:
+        files = (it.get("data") or {}).get("files") or []
+        urls = []
+        for f in files:
+            urls.append(f"/api/profile/file/{prof['id']}/{Path(str(f)).name}")
+        it["urls"] = urls
+    return {"ok": True, "showcases": items, "is_owner": is_owner}
+
+
+@app.get("/api/profile/my-library")
+def api_profile_library(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    items = auth_db.gallery_list_for_user(int(user["id"]), 80)
+    out = []
+    for g in items:
+        out.append({
+            "id": g["id"],
+            "title": g.get("title") or "",
+            "mode": g.get("mode") or "",
+            "status": g.get("status") or "",
+            "url": f"/api/gallery/image/{g['id']}" if g.get("image_path") else "",
+        })
+    return {"ok": True, "items": out}
+
+
+@app.post("/api/profile/showcase/add")
+async def api_profile_showcase_add(request: Request):
+    """Add showcase: type=featured|artwork|workshop|split, optional file upload or gallery_id.
+    Workshop/Split: one image is auto-sliced via processor.
+    """
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    uid = int(user["id"])
+    auth_db.ensure_profile_username(uid, user.get("display_name"))
+    form = await request.form()
+    sc_type = str(form.get("type") or "featured").strip().lower()
+    if sc_type not in ("featured", "artwork", "workshop", "split"):
+        return JSONResponse({"ok": False, "msg": "Invalid type"}, status_code=400)
+    title = str(form.get("title") or sc_type)[:80]
+    out_dir = Path(DATA) / "profile_sc" / str(uid)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    import tempfile
+    import shutil
+    import processor as proc
+
+    files_saved: list[str] = []
+    # collect uploaded files
+    uploads = []
+    for k, v in form.multi_items():
+        if str(k) in ("file", "files") or str(k).startswith("file"):
+            if v is not None and hasattr(v, "read"):
+                uploads.append(v)
+
+    gallery_id = form.get("gallery_id")
+    if gallery_id and not uploads:
+        try:
+            gid = int(gallery_id)
+            g = auth_db.gallery_get(gid)
+            if g and int(g.get("user_id") or 0) == uid and g.get("image_path"):
+                src = Path(DATA) / str(g["image_path"])
+                if src.is_file():
+                    class _F:
+                        filename = src.name
+                        async def read(self, _p=src):
+                            return _p.read_bytes()
+                    uploads.append(_F())
+        except Exception as e:
+            print("gallery pull", e)
+
+    if not uploads:
+        return JSONResponse({"ok": False, "msg": "Upload a file or pick from library"}, status_code=400)
+
+    try:
+        raw0 = await uploads[0].read()
+        name0 = getattr(uploads[0], "filename", None) or "img.png"
+        tmp = Path(tempfile.mkdtemp(prefix="psc_"))
+        src_path = tmp / Path(str(name0)).name
+        src_path.write_bytes(raw0)
+        ts = str(int(time.time()))
+        work = tmp / "out"
+        work.mkdir()
+
+        from PIL import Image as PILImage
+
+        def _save_dict(out_map: dict):
+            for fname, blob in out_map.items():
+                if not isinstance(blob, (bytes, bytearray)):
+                    continue
+                if not str(fname).lower().endswith((".png", ".gif", ".jpg", ".jpeg", ".webp")):
+                    continue
+                dest = out_dir / f"{ts}_{Path(str(fname)).name}"
+                dest.write_bytes(bytes(blob))
+                files_saved.append(dest.name)
+
+        if sc_type == "workshop":
+            try:
+                im = PILImage.open(src_path)
+                if getattr(im, "is_animated", False) or src_path.suffix.lower() == ".gif":
+                    # gif path variants differ; fallback to first frame workshop
+                    im.seek(0)
+                    frame = im.convert("RGBA")
+                    _save_dict(proc.process_image_workshop(frame, wm_text="", wm_opacity=0))
+                else:
+                    _save_dict(proc.process_image_workshop(im.convert("RGBA"), wm_text="", wm_opacity=0))
+            except Exception as e:
+                shutil.rmtree(tmp, ignore_errors=True)
+                return JSONResponse({"ok": False, "msg": f"Workshop process failed: {e}"}, status_code=500)
+
+        elif sc_type == "split":
+            try:
+                im = PILImage.open(src_path)
+                im0 = im.convert("RGBA")
+                if hasattr(proc, "process_image_split"):
+                    _save_dict(proc.process_image_split(im0, wm_text="", wm_opacity=0))
+                else:
+                    dest = out_dir / f"{ts}_split.png"
+                    dest.write_bytes(raw0)
+                    files_saved.append(dest.name)
+            except Exception as e:
+                shutil.rmtree(tmp, ignore_errors=True)
+                return JSONResponse({"ok": False, "msg": f"Split process failed: {e}"}, status_code=500)
+
+        elif sc_type == "featured":
+            try:
+                im = PILImage.open(src_path).convert("RGBA")
+                _save_dict(proc.process_image_featured(im, wm_text="", wm_opacity=0))
+            except Exception as e:
+                print("featured process", e)
+                dest = out_dir / f"{ts}_featured{src_path.suffix or '.png'}"
+                dest.write_bytes(raw0)
+                files_saved.append(dest.name)
+
+        else:  # artwork — store as-is (CSS object-fit will stretch)
+            dest = out_dir / f"{ts}_art{Path(str(name0)).suffix or '.png'}"
+            dest.write_bytes(raw0)
+            files_saved.append(dest.name)
+            for extra in uploads[1:]:
+                try:
+                    raw = await extra.read()
+                    nm = getattr(extra, "filename", None) or "extra.png"
+                    d2 = out_dir / f"{ts}_{Path(str(nm)).name}"
+                    d2.write_bytes(raw)
+                    files_saved.append(d2.name)
+                except Exception:
+                    pass
+
+        shutil.rmtree(tmp, ignore_errors=True)
+    except Exception as e:
+        return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
+
+    if not files_saved:
+        return JSONResponse({"ok": False, "msg": "No output files"}, status_code=500)
+
+    sid = auth_db.profile_showcase_add(uid, sc_type, title, {"files": files_saved})
+    return {"ok": True, "id": sid, "files": files_saved, "type": sc_type}
+
+
+@app.post("/api/profile/showcase/delete")
+async def api_profile_showcase_delete(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    body = await request.json()
+    sid = int(body.get("id") or 0)
+    ok = auth_db.profile_showcase_delete(int(user["id"]), sid)
+    return {"ok": ok}
+
+
+@app.get("/api/profile/file/{user_id}/{name}")
+def api_profile_file(user_id: int, name: str):
+    name = Path(name).name
+    path = Path(DATA) / "profile_sc" / str(user_id) / name
+    if not path.is_file():
+        return JSONResponse({"ok": False}, status_code=404)
+    media = "image/png"
+    s = path.suffix.lower()
+    if s in (".jpg", ".jpeg"): media = "image/jpeg"
+    elif s == ".webp": media = "image/webp"
+    elif s == ".gif": media = "image/gif"
+    from fastapi.responses import FileResponse
+    return FileResponse(path, media_type=media)
+
+
 @app.post("/api/auth/register")
 async def auth_register(request: Request):
     body = await request.json()

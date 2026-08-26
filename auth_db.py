@@ -160,37 +160,82 @@ def user_by_token(token: str) -> Optional[dict]:
     if not token:
         return None
     c = _conn()
-    row = c.execute(
-        """
-        SELECT u.id, u.email, u.is_pro, u.pro_code, u.pro_until, u.stripe_customer_id,
-               u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret, u.display_name, u.avatar_path,
-               COALESCE(u.email_verified, 0) AS email_verified,
-               u.profile_username, u.profile_summary, u.profile_background,
-               u.profile_bg_x, u.profile_bg_y, u.profile_bg_scale, u.profile_bg_overlay,
-               u.profile_level, u.profile_xp, u.profile_location, u.profile_status, u.profile_visibility
-        FROM sessions s JOIN users u ON u.id = s.user_id
-        WHERE s.token=?
-        """,
-        (token,),
-    ).fetchone()
+    # ensure profile columns exist
+    try:
+        for col, typ in (
+            ("profile_username", "TEXT"), ("profile_summary", "TEXT"), ("profile_background", "TEXT"),
+            ("profile_bg_x", "REAL"), ("profile_bg_y", "REAL"), ("profile_bg_scale", "REAL"),
+            ("profile_bg_overlay", "REAL"), ("profile_level", "INTEGER"), ("profile_xp", "INTEGER"),
+            ("profile_location", "TEXT"), ("profile_status", "TEXT"), ("profile_visibility", "TEXT"),
+        ):
+            try:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
+                c.commit()
+            except Exception:
+                pass
+    except Exception:
+        pass
+    try:
+        row = c.execute(
+            """
+            SELECT u.id, u.email, u.is_pro, u.pro_code, u.pro_until, u.stripe_customer_id,
+                   u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret, u.display_name, u.avatar_path,
+                   COALESCE(u.email_verified, 0) AS email_verified,
+                   u.profile_username, u.profile_summary, u.profile_background,
+                   u.profile_bg_x, u.profile_bg_y, u.profile_bg_scale, u.profile_bg_overlay,
+                   u.profile_level, u.profile_xp, u.profile_location, u.profile_status, u.profile_visibility
+            FROM sessions s JOIN users u ON u.id = s.user_id
+            WHERE s.token=?
+            """,
+            (token,),
+        ).fetchone()
+    except Exception:
+        row = c.execute(
+            """
+            SELECT u.id, u.email, u.is_pro, u.pro_code, u.pro_until, u.stripe_customer_id,
+                   u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret, u.display_name, u.avatar_path,
+                   COALESCE(u.email_verified, 0) AS email_verified
+            FROM sessions s JOIN users u ON u.id = s.user_id
+            WHERE s.token=?
+            """,
+            (token,),
+        ).fetchone()
     c.close()
     if not row:
         return None
+    def _g(k, default=None):
+        try:
+            return row[k] if k in row.keys() else default
+        except Exception:
+            return default
     return {
         "id": row["id"],
         "email": row["email"],
         "is_pro": bool(row["is_pro"]),
         "pro_code": row["pro_code"],
         "pro_until": row["pro_until"],
-        "stripe_customer_id": row["stripe_customer_id"],
-        "da_access_token": row["da_access_token"],
-        "da_refresh_token": row["da_refresh_token"],
-        "da_client_id": row["da_client_id"],
-        "da_client_secret": row["da_client_secret"],
-        "display_name": row["display_name"],
-        "avatar_path": row["avatar_path"],
-        "email_verified": bool(row["email_verified"]) if "email_verified" in row.keys() else True,
+        "stripe_customer_id": _g("stripe_customer_id"),
+        "da_access_token": _g("da_access_token"),
+        "da_refresh_token": _g("da_refresh_token"),
+        "da_client_id": _g("da_client_id"),
+        "da_client_secret": _g("da_client_secret"),
+        "display_name": _g("display_name"),
+        "avatar_path": _g("avatar_path"),
+        "email_verified": bool(_g("email_verified", 0)),
+        "profile_username": _g("profile_username"),
+        "profile_summary": _g("profile_summary"),
+        "profile_background": _g("profile_background"),
+        "profile_bg_x": _g("profile_bg_x", 50),
+        "profile_bg_y": _g("profile_bg_y", 30),
+        "profile_bg_scale": _g("profile_bg_scale", 1),
+        "profile_bg_overlay": _g("profile_bg_overlay", 0.45),
+        "profile_level": _g("profile_level", 1) or 1,
+        "profile_xp": _g("profile_xp", 0) or 0,
+        "profile_location": _g("profile_location"),
+        "profile_status": _g("profile_status") or "online",
+        "profile_visibility": _g("profile_visibility") or "public",
     }
+
 
 
 def set_pro(user_id: int, pro: bool = True, code: str | None = None, until: float | None = None) -> None:
@@ -1028,3 +1073,100 @@ def update_steam_profile(user_id: int, **fields) -> tuple[bool, str]:
     c.commit()
     c.close()
     return True, "OK"
+
+
+
+def _ensure_profile_showcases(c):
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS profile_showcases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            sc_type TEXT NOT NULL,
+            title TEXT,
+            sort_order INTEGER DEFAULT 0,
+            data_json TEXT,
+            created_at REAL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
+    c.commit()
+
+
+def profile_showcase_list(user_id: int) -> list[dict]:
+    c = _conn()
+    _ensure_profile_showcases(c)
+    rows = c.execute(
+        "SELECT id, user_id, sc_type, title, sort_order, data_json, created_at FROM profile_showcases WHERE user_id=? ORDER BY sort_order ASC, id ASC",
+        (user_id,),
+    ).fetchall()
+    c.close()
+    out = []
+    for r in rows:
+        import json
+        data = {}
+        try:
+            data = json.loads(r["data_json"] or "{}")
+        except Exception:
+            data = {}
+        out.append({
+            "id": int(r["id"]),
+            "user_id": int(r["user_id"]),
+            "type": r["sc_type"],
+            "title": r["title"] or "",
+            "sort_order": int(r["sort_order"] or 0),
+            "data": data,
+            "created_at": r["created_at"],
+        })
+    return out
+
+
+def profile_showcase_add(user_id: int, sc_type: str, title: str, data: dict, sort_order: int | None = None) -> int:
+    import json
+    c = _conn()
+    _ensure_profile_showcases(c)
+    if sort_order is None:
+        row = c.execute("SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM profile_showcases WHERE user_id=?", (user_id,)).fetchone()
+        sort_order = int(row["n"])
+    cur = c.execute(
+        "INSERT INTO profile_showcases(user_id, sc_type, title, sort_order, data_json, created_at) VALUES (?,?,?,?,?,?)",
+        (user_id, sc_type, (title or "")[:80], sort_order, json.dumps(data or {}), time.time()),
+    )
+    c.commit()
+    sid = int(cur.lastrowid or 0)
+    c.close()
+    return sid
+
+
+def profile_showcase_delete(user_id: int, showcase_id: int) -> bool:
+    c = _conn()
+    _ensure_profile_showcases(c)
+    cur = c.execute("DELETE FROM profile_showcases WHERE id=? AND user_id=?", (showcase_id, user_id))
+    c.commit()
+    n = cur.rowcount
+    c.close()
+    return n > 0
+
+
+def profile_showcase_reorder(user_id: int, ordered_ids: list[int]) -> None:
+    c = _conn()
+    _ensure_profile_showcases(c)
+    for i, sid in enumerate(ordered_ids):
+        c.execute("UPDATE profile_showcases SET sort_order=? WHERE id=? AND user_id=?", (i, sid, user_id))
+    c.commit()
+    c.close()
+
+
+def gallery_list_for_user(user_id: int, limit: int = 50) -> list[dict]:
+    c = _conn()
+    _ensure_gallery(c)
+    rows = c.execute(
+        """
+        SELECT id, user_id, title, mode, image_path, thumb_path, status, created_at
+        FROM gallery WHERE user_id=? ORDER BY created_at DESC LIMIT ?
+        """,
+        (user_id, limit),
+    ).fetchall()
+    c.close()
+    return [dict(r) for r in rows]
