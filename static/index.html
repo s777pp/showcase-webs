@@ -513,6 +513,164 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
   .echo-text__echo{white-space:normal}
 }
 
+
+/* BorderGlow — edge-reactive glow (vanilla port of React Bits). Does not restyle card content. */
+.border-glow-host{
+  --edge-proximity: 0;
+  --cursor-angle: 45deg;
+  --edge-sensitivity: 28;
+  --color-sensitivity: calc(var(--edge-sensitivity) + 18);
+  --glow-padding: 36px;
+  --cone-spread: 22;
+  --fill-opacity: 0.42;
+  --glow-color: hsl(190deg 100% 70% / 100%);
+  --glow-color-60: hsl(190deg 100% 70% / 60%);
+  --glow-color-50: hsl(190deg 100% 70% / 50%);
+  --glow-color-40: hsl(190deg 100% 70% / 40%);
+  --glow-color-30: hsl(190deg 100% 70% / 30%);
+  --glow-color-20: hsl(190deg 100% 70% / 20%);
+  --glow-color-10: hsl(190deg 100% 70% / 10%);
+  --gradient-one: radial-gradient(at 80% 55%, #00d2ff 0px, transparent 50%);
+  --gradient-two: radial-gradient(at 69% 34%, #A4F4FD 0px, transparent 50%);
+  --gradient-three: radial-gradient(at 8% 6%, #3D81E3 0px, transparent 50%);
+  --gradient-four: radial-gradient(at 41% 38%, #7ee8ff 0px, transparent 50%);
+  --gradient-five: radial-gradient(at 86% 85%, #00d2ff 0px, transparent 50%);
+  --gradient-six: radial-gradient(at 82% 18%, #A4F4FD 0px, transparent 50%);
+  --gradient-seven: radial-gradient(at 51% 4%, #3D81E3 0px, transparent 50%);
+  --gradient-base: linear-gradient(#00d2ff 0 100%);
+  position: relative;
+  isolation: isolate;
+  transform: translate3d(0, 0, 0.01px);
+  overflow: visible;
+}
+.border-glow-host > .bg-mesh,
+.border-glow-host > .bg-fill,
+.border-glow-host > .edge-light{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: opacity 0.25s ease-out;
+  z-index: 0;
+}
+.border-glow-host:not(:hover):not(.sweep-active) > .bg-mesh,
+.border-glow-host:not(:hover):not(.sweep-active) > .bg-fill,
+.border-glow-host:not(:hover):not(.sweep-active) > .edge-light{
+  opacity: 0 !important;
+  transition: opacity 0.75s ease-in-out;
+}
+/* mesh border ring */
+.border-glow-host > .bg-mesh{
+  border: 1px solid transparent;
+  background:
+    linear-gradient(transparent 0 100%) padding-box,
+    var(--gradient-one) border-box,
+    var(--gradient-two) border-box,
+    var(--gradient-three) border-box,
+    var(--gradient-four) border-box,
+    var(--gradient-five) border-box,
+    var(--gradient-six) border-box,
+    var(--gradient-seven) border-box,
+    var(--gradient-base) border-box;
+  -webkit-mask:
+    linear-gradient(#fff 0 100%) padding-box,
+    linear-gradient(#fff 0 100%);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 100%) padding-box,
+    linear-gradient(#fff 0 100%);
+  mask-composite: exclude;
+  opacity: calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
+  mask-image:
+    conic-gradient(
+      from var(--cursor-angle) at center,
+      black calc(var(--cone-spread) * 1%),
+      transparent calc((var(--cone-spread) + 15) * 1%),
+      transparent calc((100 - var(--cone-spread) - 15) * 1%),
+      black calc((100 - var(--cone-spread)) * 1%)
+    );
+  -webkit-mask-image:
+    conic-gradient(
+      from var(--cursor-angle) at center,
+      black calc(var(--cone-spread) * 1%),
+      transparent calc((var(--cone-spread) + 15) * 1%),
+      transparent calc((100 - var(--cone-spread) - 15) * 1%),
+      black calc((100 - var(--cone-spread)) * 1%)
+    );
+}
+/* soft fill near edges */
+.border-glow-host > .bg-fill{
+  border: 1px solid transparent;
+  background:
+    var(--gradient-one),
+    var(--gradient-two),
+    var(--gradient-three),
+    var(--gradient-four),
+    var(--gradient-five),
+    var(--gradient-six),
+    var(--gradient-seven);
+  opacity: calc(var(--fill-opacity, 0.42) * max(0, (var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity))));
+  mix-blend-mode: soft-light;
+  mask-image:
+    conic-gradient(from var(--cursor-angle) at center, transparent 5%, black 15%, black 85%, transparent 95%);
+  -webkit-mask-image:
+    conic-gradient(from var(--cursor-angle) at center, transparent 5%, black 15%, black 85%, transparent 95%);
+}
+/* outer glow */
+.border-glow-host > .edge-light{
+  inset: calc(var(--glow-padding) * -1);
+  z-index: 1;
+  mask-image:
+    conic-gradient(
+      from var(--cursor-angle) at center, black 2.5%, transparent 10%, transparent 90%, black 97.5%
+    );
+  -webkit-mask-image:
+    conic-gradient(
+      from var(--cursor-angle) at center, black 2.5%, transparent 10%, transparent 90%, black 97.5%
+    );
+  opacity: calc(max(0, (var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity))));
+  mix-blend-mode: plus-lighter;
+}
+.border-glow-host > .edge-light::before{
+  content: "";
+  position: absolute;
+  inset: var(--glow-padding);
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px var(--glow-color),
+    inset 0 0 1px 0 var(--glow-color-60),
+    inset 0 0 3px 0 var(--glow-color-50),
+    inset 0 0 6px 0 var(--glow-color-40),
+    inset 0 0 15px 0 var(--glow-color-30),
+    inset 0 0 25px 2px var(--glow-color-20),
+    inset 0 0 50px 2px var(--glow-color-10),
+    0 0 1px 0 var(--glow-color-60),
+    0 0 3px 0 var(--glow-color-50),
+    0 0 6px 0 var(--glow-color-40),
+    0 0 15px 0 var(--glow-color-30),
+    0 0 25px 2px var(--glow-color-20),
+    0 0 50px 2px var(--glow-color-10);
+}
+/* keep card children above glow layers */
+.border-glow-host > :not(.bg-mesh):not(.bg-fill):not(.edge-light){
+  position: relative;
+  z-index: 2;
+}
+@media (prefers-reduced-motion: reduce){
+  .border-glow-host > .bg-mesh,
+  .border-glow-host > .bg-fill,
+  .border-glow-host > .edge-light{ display: none !important; }
+}
+
+.border-glow-host.final-card,
+.border-glow-host.mock-frame{
+  overflow: visible;
+}
+.border-glow-host.final-card > .glow{ /* existing inner glow stays */ }
+
+/* end BorderGlow */
+
 </style>
 </head>
 <body>
@@ -1556,6 +1714,80 @@ document.addEventListener("DOMContentLoaded", function () {
   // patch again after other scripts define applyLang
   setTimeout(patchApplyLang, 0);
   setTimeout(patchApplyLang, 100);
+})();
+</script>
+
+
+<script>
+(function(){
+  /* BorderGlow vanilla — enhance existing cards, keep their styles */
+  function prefersReduced(){
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; }
+  }
+  function getCenter(el){
+    var r = el.getBoundingClientRect();
+    return [r.width / 2, r.height / 2];
+  }
+  function getEdgeProximity(el, x, y){
+    var c = getCenter(el);
+    var dx = x - c[0], dy = y - c[1];
+    var kx = Infinity, ky = Infinity;
+    if (dx !== 0) kx = c[0] / Math.abs(dx);
+    if (dy !== 0) ky = c[1] / Math.abs(dy);
+    return Math.min(Math.max(1 / Math.min(kx, ky), 0), 1);
+  }
+  function getCursorAngle(el, x, y){
+    var c = getCenter(el);
+    var dx = x - c[0], dy = y - c[1];
+    if (dx === 0 && dy === 0) return 0;
+    var deg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+    if (deg < 0) deg += 360;
+    return deg;
+  }
+  function enhanceCard(card){
+    if (!card || card.classList.contains('border-glow-host')) return;
+    card.classList.add('border-glow-host');
+    // match host radius to computed style so glow follows rounded corners
+    try {
+      var br = getComputedStyle(card).borderRadius;
+      if (br) card.style.borderRadius = br;
+    } catch(e){}
+    ['bg-mesh','bg-fill','edge-light'].forEach(function(cls){
+      if (!card.querySelector(':scope > .' + cls)) {
+        var s = document.createElement('span');
+        s.className = cls;
+        s.setAttribute('aria-hidden', 'true');
+        card.insertBefore(s, card.firstChild);
+      }
+    });
+    card.addEventListener('pointermove', function(e){
+      var rect = card.getBoundingClientRect();
+      var x = e.clientX - rect.left;
+      var y = e.clientY - rect.top;
+      var edge = getEdgeProximity(card, x, y);
+      var angle = getCursorAngle(card, x, y);
+      card.style.setProperty('--edge-proximity', (edge * 100).toFixed(3));
+      card.style.setProperty('--cursor-angle', angle.toFixed(3) + 'deg');
+    }, { passive: true });
+    card.addEventListener('pointerleave', function(){
+      card.style.setProperty('--edge-proximity', '0');
+    });
+  }
+  function initBorderGlow(){
+    if (prefersReduced()) return;
+    var selectors = [
+      '.c3-card',
+      '.q-card',
+      '.triage-card',
+      '.final-card',
+      '.mock-frame'
+    ];
+    selectors.forEach(function(sel){
+      document.querySelectorAll(sel).forEach(enhanceCard);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initBorderGlow);
+  else initBorderGlow();
 })();
 </script>
 
