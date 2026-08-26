@@ -182,42 +182,50 @@ html{background:#000}
 .showcase_content{padding:10px 12px 12px}
 
 /* Workshop: rows of 5 equal parts, image fills height of source ratio */
-.workshop_rows{display:flex;flex-direction:column;gap:0;width:100%}
+.workshop_rows{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  width:100%;
+}
 .workshop_row{
   display:flex !important;
   flex-direction:row !important;
   width:100% !important;
-  line-height:0;
   overflow:hidden;
+  line-height:0;
+  background:#000;
 }
-.workshop_row > span{
-  flex:1 1 20% !important;
+.workshop_row .slice{
+  flex:1 1 0 !important;
   width:20% !important;
   max-width:20% !important;
   min-width:0 !important;
-  display:block !important;
   overflow:hidden !important;
   position:relative;
   border:none !important;
   outline:none !important;
-  box-shadow:1px 0 0 rgba(0,0,0,.55);
-  background-color:#000;
-  background-repeat:no-repeat;
-  /* for CSS-sliced full images */
-  background-size:500% 100%;
-  aspect-ratio:1/1.4;
+  /* thin black gap between panels like Steam */
+  box-shadow: inset -2px 0 0 #0a0a0a;
+  line-height:0;
 }
-.workshop_row > span:last-child{box-shadow:none}
-.workshop_row > span img{
+.workshop_row .slice:last-child{box-shadow:none}
+.workshop_row .slice img{
   display:block !important;
-  width:100% !important;
-  height:100% !important;
-  object-fit:cover !important;
-  object-position:center top;
+  /* image is 5x the slice width = full original width */
+  width:500% !important;
+  max-width:none !important;
+  height:auto !important;
   border:none !important;
   outline:none !important;
-  max-width:none !important;
+  position:relative;
 }
+/* shift each copy so only 1/5 of the image is visible */
+.workshop_row .slice:nth-child(1) img{margin-left:0%}
+.workshop_row .slice:nth-child(2) img{margin-left:-100%}
+.workshop_row .slice:nth-child(3) img{margin-left:-200%}
+.workshop_row .slice:nth-child(4) img{margin-left:-300%}
+.workshop_row .slice:nth-child(5) img{margin-left:-400%}
 .workshop_title_row{
   display:flex;align-items:center;gap:8px;
   padding:8px 2px 10px;
@@ -683,63 +691,60 @@ html{background:#000}
         if(avUrl) html+='<img class="ws_av" src="'+avUrl+'" alt=""/>';
         html+='<span class="ws_name">'+esc(disp)+"'s Workshop</span></div>";
 
+        // Collect one full image URL per row
         var partsOnly=urls.filter(function(u){ return /part_\d+/i.test(u); });
-        var rows={};
-        partsOnly.forEach(function(u){
-          var m=u.match(/row(\d+)_/i);
-          var ri=m?String(m[1]):'1';
-          if(!rows[ri]) rows[ri]=[];
-          rows[ri].push(u);
-        });
-        var keys=Object.keys(rows).sort(function(a,b){return (+a)-(+b);});
-
-        // Fallback: no part_ files → treat each non-full url (or all) as a full strip to CSS-slice into 5
-        if(!keys.length){
-          var fulls=urls.filter(function(u){ return !/full_with/i.test(u); });
-          if(!fulls.length) fulls=urls.slice();
-          // one row per image
-          fulls.forEach(function(u,i){ rows[String(i+1)]=['FULL:'+u]; });
-          keys=Object.keys(rows);
+        var rowSrcs=[];
+        if(partsOnly.length>=5){
+          // group parts by row, use first part's... actually for CSS strip we need FULL image
+          // Prefer full_original or any non-part
+          var fulls=urls.filter(function(u){ return /full_original|full_with|featured|_art/i.test(u) && !/part_/i.test(u); });
+          if(!fulls.length){
+            // reconstruct: if we only have parts, show them as real img cells (not CSS slice)
+            var rows={};
+            partsOnly.forEach(function(u){
+              var m=u.match(/row(\d+)/i);
+              var ri=m?m[1]:'1';
+              if(!rows[ri]) rows[ri]=[];
+              rows[ri].push(u);
+            });
+            var keys=Object.keys(rows).sort(function(a,b){return (+a)-(+b);});
+            html+='<div class="workshop_rows">';
+            keys.forEach(function(k){
+              var pts=rows[k].slice().sort(function(a,b){
+                var ma=a.match(/part_(\d+)/i),mb=b.match(/part_(\d+)/i);
+                return (ma?+ma[1]:0)-(mb?+mb[1]:0);
+              });
+              html+='<div class="workshop_row">';
+              for(var pi=0;pi<5;pi++){
+                if(pts[pi]) html+='<span class="slice"><img src="'+pts[pi]+'" style="width:100%!important;margin-left:0!important" alt=""/></span>';
+                else html+='<span class="slice"></span>';
+              }
+              html+='</div>';
+            });
+            html+='</div>';
+          } else {
+            rowSrcs=fulls.slice(0,3);
+          }
+        } else {
+          // no parts — each uploaded file URL is a full row image
+          rowSrcs=urls.filter(function(u){ return !/full_with_bars/i.test(u); });
+          if(!rowSrcs.length) rowSrcs=urls.slice();
+          // dedupe
+          rowSrcs=rowSrcs.filter(function(u,i,a){ return a.indexOf(u)===i; }).slice(0,3);
         }
 
-        html+='<div class="workshop_rows">';
-        keys.forEach(function(k){
-          var parts=rows[k].slice();
-          parts.sort(function(a,b){
-            var ma=String(a).match(/part_(\d+)/i), mb=String(b).match(/part_(\d+)/i);
-            return (ma?+ma[1]:0)-(mb?+mb[1]:0);
+        if(rowSrcs.length){
+          html+='<div class="workshop_rows">';
+          rowSrcs.forEach(function(src){
+            html+='<div class="workshop_row">';
+            // 5 slices of the SAME full image via overflow + margin
+            for(var pi=0;pi<5;pi++){
+              html+='<span class="slice"><img src="'+src+'" alt=""/></span>';
+            }
+            html+='</div>';
           });
-          html+='<div class="workshop_row">';
-          var isCssSlice = parts.length===1 && String(parts[0]).indexOf('FULL:')===0;
-          if(isCssSlice){
-            var src=String(parts[0]).replace(/^FULL:/,'');
-            for(var pi=0;pi<5;pi++){
-              var pos = (pi * 25);
-              html+='<span style="background-image:url(\''+src+'\');background-position:'+pos+'% 0;background-size:500% 100%;"></span>';
-            }
-          } else if(parts.length>=5 && !String(parts[0]).match(/^FULL:/)){
-            for(var pi=0;pi<5;pi++){
-              var u=parts[pi];
-              if(u) html+='<span><img src="'+u+'" alt=""/></span>';
-              else html+='<span></span>';
-            }
-          } else if(parts.length===1){
-            // single url without FULL prefix — still CSS slice
-            var src=String(parts[0]).replace(/^FULL:/,'');
-            for(var pi=0;pi<5;pi++){
-              var pos = (pi * 25);
-              html+='<span style="background-image:url(\''+src+'\');background-position:'+pos+'% 0;background-size:500% 100%;"></span>';
-            }
-          } else {
-            for(var pi=0;pi<5;pi++){
-              var u=parts[pi];
-              if(u) html+='<span><img src="'+u+'" alt=""/></span>';
-              else html+='<span></span>';
-            }
-          }
           html+='</div>';
-        });
-        html+='</div>';
+        }
       } else if(type==='split'){
         var center=urls.find(function(u){return /center/i.test(u);})||urls[0];
         var side=urls.find(function(u){return /side/i.test(u);})||urls[1];
