@@ -47,14 +47,38 @@ a{color:inherit}
   color:transparent;-webkit-text-fill-color:transparent;animation:shiny 6s linear infinite;
 }
 @keyframes shiny{0%{background-position:-200% center}100%{background-position:200% center}}
+/* User account dropdown */
+.nav-user-wrap{position:relative;display:none}
+.nav-user-wrap.visible{display:inline-flex;align-items:center}
 .nav-user-pill{
-  display:none;align-items:center;max-width:180px;gap:8px;
-  padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:600;
-  text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+  display:inline-flex;align-items:center;gap:6px;max-width:200px;
+  padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:600;
+  text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  cursor:pointer;font-family:inherit
 }
-.nav-user-pill.visible{display:inline-flex}
-.nav-user-pill:hover{background:rgba(255,255,255,.12)}
+.nav-user-pill:hover,.nav-user-wrap.open .nav-user-pill{background:rgba(255,255,255,.14);color:#fff}
+.nav-user-pill .chev{width:14px;height:14px;flex-shrink:0;opacity:.7;transition:transform .22s ease}
+.nav-user-wrap.open .nav-user-pill .chev{transform:rotate(180deg);opacity:1}
+.nav-user-menu{
+  position:absolute;right:0;top:calc(100% + 8px);min-width:180px;
+  background:#141414;border:1px solid rgba(255,255,255,.12);border-radius:14px;
+  padding:6px;z-index:80;box-shadow:0 16px 48px rgba(0,0,0,.55);
+  opacity:0;transform:translateY(-8px) scale(.96);pointer-events:none;
+  transition:opacity .2s ease, transform .22s cubic-bezier(.2,.8,.2,1);
+  transform-origin:top right
+}
+.nav-user-wrap.open .nav-user-menu{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+.nav-user-menu a,.nav-user-menu button{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:10px 12px;border-radius:10px;border:0;background:transparent;
+  color:rgba(255,255,255,.88);font-size:13px;font-weight:600;
+  text-decoration:none;cursor:pointer;font-family:inherit;text-align:left
+}
+.nav-user-menu a:hover,.nav-user-menu button:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-user-menu button.danger{color:#ff8b84}
+.nav-user-menu button.danger:hover{background:rgba(255,95,87,.12);color:#ff5f57}
+.nav-user-menu .sep{height:1px;background:rgba(255,255,255,.08);margin:4px 6px}
 .lang-nav{
   border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
   color:rgba(255,255,255,.8);border-radius:999px;padding:8px 12px;font-size:12px;
@@ -285,7 +309,17 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
     </div>
     <div class="nav-right">
       <a href="/app#account" class="btn-shiny-nav" id="navReg">Log in</a>
-      <a href="/profile" class="nav-user-pill" id="navUserPill" title="Profile"></a>
+      <div class="nav-user-wrap" id="navUserWrap">
+        <button type="button" class="nav-user-pill" id="navUserPill" aria-haspopup="true" aria-expanded="false">
+          <span class="nav-user-label" id="navUserLabel"></span>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+        </button>
+        <div class="nav-user-menu" id="navUserMenu" role="menu">
+          <a href="/profile" role="menuitem" id="navGoProfile">Профиль</a>
+          <div class="sep"></div>
+          <button type="button" class="danger" role="menuitem" id="navLogoutBtn">Выйти</button>
+        </div>
+      </div>
       <div class="bell-wrap" id="bellWrap" style="display:none">
         <button type="button" class="bell" id="btnBell" title="Уведомления" aria-label="Notifications">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>
@@ -793,26 +827,49 @@ document.getElementById('btnAdminDel').onclick = async () => {
       btn.setAttribute('aria-expanded', 'false');
     });
   }
+  // user dropdown
+  const wrap = document.getElementById('navUserWrap');
+  const pill = document.getElementById('navUserPill');
+  const labelEl = document.getElementById('navUserLabel');
+  const logoutBtn = document.getElementById('navLogoutBtn');
+  const goProf = document.getElementById('navGoProfile');
+  if (pill && wrap) {
+    pill.addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      const open = wrap.classList.toggle('open');
+      pill.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', function(){
+      wrap.classList.remove('open');
+      pill.setAttribute('aria-expanded','false');
+    });
+    wrap.addEventListener('click', function(e){ e.stopPropagation(); });
+  }
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async function(){
+      try { await fetch('/api/auth/logout', { method:'POST', credentials:'include', headers: headers() }); } catch(e){}
+      try { localStorage.removeItem('sm_session'); } catch(e){}
+      location.reload();
+    });
+  }
   try {
     const r = await fetch('/api/auth/me', { credentials:'include', headers: headers() });
     const d = await r.json().catch(()=>({}));
     const reg = document.getElementById('navReg');
-    const pill = document.getElementById('navUserPill');
     if (d && d.ok && d.logged_in) {
       if (reg) reg.style.display = 'none';
-      if (pill) {
-        const name = d.display_name || (d.email || '').split('@')[0] || 'Profile';
-        pill.textContent = name;
-        pill.classList.add('visible');
-        // prefer public profile username if API returns it
-        if (d.profile_username) pill.href = '/profile/' + encodeURIComponent(d.profile_username);
-        else pill.href = '/profile';
+      const name = (d.display_name || '').trim() || (d.email || '').split('@')[0] || 'Profile';
+      if (labelEl) labelEl.textContent = name;
+      if (wrap) wrap.classList.add('visible');
+      if (goProf) {
+        if (d.profile_username) goProf.href = '/profile/' + encodeURIComponent(d.profile_username);
+        else goProf.href = '/profile';
       }
       const bw = document.getElementById('bellWrap');
       if (bw) bw.style.display = '';
     } else {
       if (reg) reg.style.display = '';
-      if (pill) pill.classList.remove('visible');
+      if (wrap) wrap.classList.remove('visible','open');
     }
   } catch(e){}
 })();
