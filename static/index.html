@@ -671,6 +671,46 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 
 /* end BorderGlow */
 
+
+/* MaskedHeading / scroll reveal — rise on view (no React, no GSAP) */
+.mh-scroll{
+  overflow: hidden;
+}
+.mh-scroll .mh-line{
+  display: block;
+  overflow: hidden;
+}
+.mh-scroll .mh-word{
+  display: inline-block;
+  white-space: pre;
+  transform: translate3d(0, 1.15em, 0);
+  opacity: 0;
+  will-change: transform, opacity;
+  transition:
+    transform 1.05s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.7s ease-out;
+}
+.mh-scroll .mh-word:not(:last-child)::after{
+  content: " ";
+  white-space: pre;
+}
+.mh-scroll.is-in .mh-word{
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+}
+/* stagger via CSS variables set in JS */
+.mh-scroll .mh-word{
+  transition-delay: calc(var(--mh-i, 0) * 0.09s);
+}
+@media (prefers-reduced-motion: reduce){
+  .mh-scroll .mh-word{
+    transform: none !important;
+    opacity: 1 !important;
+    transition: none !important;
+  }
+}
+/* end MaskedHeading */
+
 </style>
 </head>
 <body>
@@ -1788,6 +1828,143 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initBorderGlow);
   else initBorderGlow();
+})();
+</script>
+
+
+<script>
+(function(){
+  /* scroll headings — rise reveal on view (vanilla MaskedHeading-style) */
+  function prefersReduced(){
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; }
+  }
+
+  function splitHeading(el){
+    if (!el || el.dataset.mhReady === '1') return;
+    // Preserve original HTML for lang re-apply
+    if (!el.dataset.mhOriginal) el.dataset.mhOriginal = el.innerHTML;
+
+    var html = el.innerHTML;
+    // Split by <br> into lines, then words
+    var parts = html.split(/<br\s*\/?>/i);
+    var wordIndex = 0;
+    var out = parts.map(function(line){
+      // strip tags for word split, keep text
+      var tmp = document.createElement('div');
+      tmp.innerHTML = line;
+      var text = (tmp.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!text) return '<span class="mh-line"></span>';
+      var words = text.split(' ').filter(Boolean);
+      var inner = words.map(function(w){
+        var i = wordIndex++;
+        return '<span class="mh-word" style="--mh-i:' + i + '">' + escapeHtml(w) + '</span>';
+      }).join('');
+      return '<span class="mh-line">' + inner + '</span>';
+    }).join('');
+    el.classList.add('mh-scroll');
+    el.innerHTML = out;
+    el.dataset.mhReady = '1';
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+    });
+  }
+
+  function resetHeading(el){
+    if (!el) return;
+    if (el.dataset.mhOriginal != null) {
+      el.innerHTML = el.dataset.mhOriginal;
+    }
+    el.classList.remove('mh-scroll', 'is-in');
+    delete el.dataset.mhReady;
+  }
+
+  var observer = null;
+
+  function observeAll(){
+    if (observer) { try { observer.disconnect(); } catch(e){} }
+    if (prefersReduced()) {
+      document.querySelectorAll('.mh-scroll').forEach(function(el){ el.classList.add('is-in'); });
+      return;
+    }
+    observer = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (en.isIntersecting) {
+          en.target.classList.add('is-in');
+          observer.unobserve(en.target);
+        }
+      });
+    }, { threshold: 0.28, rootMargin: '0px 0px -8% 0px' });
+
+    document.querySelectorAll('.mh-scroll').forEach(function(el){
+      el.classList.remove('is-in');
+      observer.observe(el);
+    });
+  }
+
+  function initScrollHeadings(){
+    var sels = [
+      'section.section h2',
+      '.final-card h2'
+    ];
+    sels.forEach(function(sel){
+      document.querySelectorAll(sel).forEach(function(el){
+        // if already split and lang changed, rebuild from original after applyLang updates text
+        if (el.dataset.mhReady === '1') {
+          // pull fresh text from data-i if present
+          var key = el.getAttribute('data-i');
+          if (key && el.dataset.mhOriginal) {
+            // after applyLang, data-i elements get new innerHTML — but we overwrote structure
+            // so original may be stale; prefer current text rebuild
+          }
+        }
+        if (el.dataset.mhReady === '1') {
+          // rebuild: get plain text lines from current words
+          var lines = [];
+          el.querySelectorAll('.mh-line').forEach(function(line){
+            var ws = [];
+            line.querySelectorAll('.mh-word').forEach(function(w){ ws.push(w.textContent); });
+            lines.push(ws.join(' '));
+          });
+          if (lines.length) el.dataset.mhOriginal = lines.join('<br/>');
+          resetHeading(el);
+        }
+        splitHeading(el);
+      });
+    });
+    observeAll();
+  }
+
+  function refreshAfterLang(){
+    document.querySelectorAll('section.section h2[data-i], .final-card h2[data-i]').forEach(function(el){
+      // applyLang already set innerHTML from pack — capture as original
+      el.dataset.mhOriginal = el.innerHTML;
+      delete el.dataset.mhReady;
+      el.classList.remove('mh-scroll', 'is-in');
+    });
+    initScrollHeadings();
+  }
+
+  function patchApplyLang(){
+    if (typeof applyLang !== 'function' || applyLang._mhPatched) return;
+    var orig = applyLang;
+    window.applyLang = function(L){
+      orig(L);
+      try { setTimeout(refreshAfterLang, 0); } catch(e){}
+    };
+    window.applyLang._mhPatched = true;
+  }
+
+  function boot(){
+    patchApplyLang();
+    initScrollHeadings();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+  setTimeout(patchApplyLang, 0);
+  setTimeout(patchApplyLang, 100);
 })();
 </script>
 
