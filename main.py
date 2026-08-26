@@ -2831,13 +2831,15 @@ def gallery_list(request: Request, status: str = "approved", limit: int = 40, of
         except Exception:
             uid = None
         iid = int(it["id"])
-        # profile username for public profile link
+        # Always ensure public profile username for registered authors
+        # so gallery → /profile/{username} works even if they never opened profile
         un = (it.get("profile_username") or "").strip()
-        if not un and uid:
+        if uid:
             try:
-                un = auth_db.ensure_profile_username(int(uid), author) or ""
+                un = auth_db.ensure_profile_username(int(uid), author) or un
             except Exception:
-                un = ""
+                if not un:
+                    un = f"user{uid}"
         out.append({
             "id": iid,
             "title": it.get("title") or "",

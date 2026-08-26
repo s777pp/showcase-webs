@@ -12,16 +12,87 @@
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:Mulish,system-ui,sans-serif;background:var(--bg);color:#fff;min-height:100vh}
-.topbar{
-  position:sticky;top:0;z-index:40;backdrop-filter:blur(12px);
-  background:rgba(12,12,12,.85);border-bottom:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:12px 20px;max-width:1400px;margin:0 auto;
+a{color:inherit}
+/* ===== Header like index.html ===== */
+.site-header{
+  position:sticky;top:0;z-index:60;
+  backdrop-filter:blur(14px);
+  background:rgba(12,12,12,.88);
+  border-bottom:1px solid var(--border);
 }
-.topbar .links{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.topbar a{color:var(--muted);font-size:13px;text-decoration:none}
-.topbar a:hover{color:#fff}
-.top-right{display:flex;align-items:center;gap:10px}
+.nav{
+  max-width:72rem;margin:0 auto;padding:16px 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px
+}
+.logo-link{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-mark{width:32px;height:32px;display:block;border-radius:8px;object-fit:cover}
+.nav-links{display:none;gap:28px;align-items:center}
+@media(min-width:768px){.nav-links{display:flex}}
+.nav-links a{color:rgba(255,255,255,.7);font-size:14px;font-weight:500;text-decoration:none;transition:color .2s;white-space:nowrap}
+.nav-links a:hover,.nav-links a.active{color:#fff}
+.nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.btn-pill{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:10px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:600;
+  text-decoration:none;white-space:nowrap
+}
+.btn-pill:hover{background:rgba(255,255,255,.14)}
+.btn-shiny-nav{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:8px 14px;border-radius:999px;border:1px solid rgba(164,244,253,.4);
+  font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;
+  background-image:linear-gradient(to right,#091020 0%,#0B2551 12.5%,#A4F4FD 32.5%,#00d2ff 50%,#0B2551 67.5%,#091020 87.5%,#091020 100%);
+  background-size:200% auto;-webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;animation:shiny 6s linear infinite;
+}
+@keyframes shiny{0%{background-position:-200% center}100%{background-position:200% center}}
+.nav-user-pill{
+  display:none;align-items:center;max-width:180px;gap:8px;
+  padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:600;
+  text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.nav-user-pill.visible{display:inline-flex}
+.nav-user-pill:hover{background:rgba(255,255,255,.12)}
+.lang-nav{
+  border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
+  color:rgba(255,255,255,.8);border-radius:999px;padding:8px 12px;font-size:12px;
+  font-weight:700;cursor:pointer;font-family:inherit
+}
+.lang-nav:hover{background:rgba(255,255,255,.1);color:#fff}
+.logo-menu-btn{
+  display:none;align-items:center;gap:8px;border:1px solid var(--border);
+  background:rgba(255,255,255,.04);color:#fff;border-radius:12px;padding:6px 10px;
+  cursor:pointer;font-family:inherit
+}
+.logo-menu-btn img{width:28px;height:28px;border-radius:8px;display:block}
+.logo-menu-btn .menu-hint{font-size:12px;font-weight:600;color:rgba(255,255,255,.6)}
+.mobile-menu{
+  display:none;position:absolute;left:0;top:48px;min-width:200px;
+  background:#141414;border:1px solid var(--border);border-radius:14px;
+  padding:8px;z-index:70;box-shadow:0 16px 40px rgba(0,0,0,.5)
+}
+.mobile-menu.open{display:block}
+.mobile-menu a,.mobile-menu button.mm-item{
+  display:block;width:100%;text-align:left;padding:10px 12px;border-radius:10px;
+  color:rgba(255,255,255,.8);text-decoration:none;border:0;background:transparent;
+  font:inherit;cursor:pointer
+}
+.mobile-menu a:hover,.mobile-menu button.mm-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.mm-sep{height:1px;background:var(--border);margin:6px 0}
+@media(max-width:767px){
+  .logo-link{display:none}
+  .logo-menu-btn{display:inline-flex}
+  .nav-links{display:none !important}
+  .nav-right .lang-nav,.nav-right .btn-pill{display:none}
+}
+/* author profile links */
+.author a.prof-link,.modal-head a.prof-link{
+  color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:10px;min-width:0
+}
+.author a.prof-link:hover .name,.modal-head a.prof-link:hover .who{color:var(--accent);text-decoration:underline}
+.author a.prof-link img,.author a.prof-link .ph{flex-shrink:0}
 .bell-wrap{position:relative}
 .bell{
   width:40px;height:40px;border-radius:12px;border:1px solid var(--border);
@@ -187,28 +258,51 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
 </style>
 </head>
 <body>
-<div class="topbar">
-  <div class="links">
-    <a href="/">← Home</a>
-    <a href="/app">Tools</a>
-    <a href="/gallery">Gallery</a>
-  </div>
-  <div class="top-right">
-    <div class="bell-wrap" id="bellWrap" style="display:none">
-      <button type="button" class="bell" id="btnBell" title="Уведомления" aria-label="Notifications">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>
-        <span class="dot" id="bellDot">0</span>
+<header class="site-header">
+  <nav class="nav">
+    <a href="/" aria-label="Showcase Maker" class="logo-link">
+      <img class="logo-mark" src="/static/icon.png" alt="Showcase Maker" width="32" height="32"/>
+    </a>
+    <div style="position:relative">
+      <button type="button" class="logo-menu-btn" id="logoMenuBtn" aria-expanded="false" aria-controls="mobileMenu">
+        <img src="/static/icon.png" alt=""/>
+        <span class="menu-hint">Menu</span>
       </button>
-      <div class="notif-panel" id="notifPanel">
-        <div class="notif-head">
-          <span>Уведомления</span>
-          <button type="button" class="btn ghost" id="btnReadAll" style="padding:4px 10px">Прочитать все</button>
-        </div>
-        <div class="notif-list" id="notifList"><div class="empty" style="padding:20px">Пока пусто</div></div>
+      <div class="mobile-menu" id="mobileMenu" role="menu">
+        <a href="/" role="menuitem">Home</a>
+        <a href="/gallery" role="menuitem">Gallery</a>
+        <a href="/profile" role="menuitem">Profile</a>
+        <a href="/app" role="menuitem">Tools</a>
+        <div class="mm-sep"></div>
+        <a href="/app" role="menuitem">Open tools →</a>
       </div>
     </div>
-  </div>
-</div>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/gallery" class="active">Gallery</a>
+      <a href="/profile">Profile</a>
+      <a href="/app">Tools</a>
+    </div>
+    <div class="nav-right">
+      <a href="/app#account" class="btn-shiny-nav" id="navReg">Log in</a>
+      <a href="/profile" class="nav-user-pill" id="navUserPill" title="Profile"></a>
+      <div class="bell-wrap" id="bellWrap" style="display:none">
+        <button type="button" class="bell" id="btnBell" title="Уведомления" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>
+          <span class="dot" id="bellDot">0</span>
+        </button>
+        <div class="notif-panel" id="notifPanel">
+          <div class="notif-head">
+            <span>Уведомления</span>
+            <button type="button" class="btn ghost" id="btnReadAll" style="padding:4px 10px">Прочитать все</button>
+          </div>
+          <div class="notif-list" id="notifList"><div class="empty" style="padding:20px">Пока пусто</div></div>
+        </div>
+      </div>
+      <a class="btn-pill" href="/app">Open tools →</a>
+    </div>
+  </nav>
+</header>
 
 <div class="wrap">
   <h1>Публичная галерея <span class="admin-badge" id="adminBadge" style="display:none">admin</span></h1>
@@ -235,12 +329,14 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
     <div class="modal-media" id="modalMedia"></div>
     <div class="modal-side">
       <div class="modal-head">
-        <span class="ph" id="mAvPh">?</span>
-        <img id="mAv" alt="" style="display:none"/>
-        <div style="min-width:0">
-          <div class="who" id="mAuthor">—</div>
-          <div class="ttl" id="mTitle">—</div>
-        </div>
+        <a class="prof-link" id="mAuthorLink" href="#" style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;text-decoration:none;color:inherit">
+          <span class="ph" id="mAvPh">?</span>
+          <img id="mAv" alt="" style="display:none"/>
+          <div style="min-width:0">
+            <div class="who" id="mAuthor">—</div>
+            <div class="ttl" id="mTitle">—</div>
+          </div>
+        </a>
         <button type="button" class="modal-close" id="mClose" title="Close">✕</button>
       </div>
       <div class="modal-actions">
@@ -384,28 +480,39 @@ document.addEventListener('click', (e) => {
   if (wrap && !wrap.contains(e.target)) document.getElementById('notifPanel').classList.remove('open');
 });
 
+function profileHref(it){
+  const un = (it && (it.username || it.profile_username) || '').trim();
+  if (un) return '/profile/' + encodeURIComponent(un);
+  if (it && it.profile_url) return it.profile_url;
+  return '';
+}
+
+function authorBlock(it){
+  const av = it.avatar_url || '';
+  const author = it.author || 'anon';
+  const initial = initialOf(author);
+  const href = profileHref(it);
+  const avHtml = av
+    ? `<img src="${esc(av)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"/><span class="ph" style="display:none">${esc(initial)}</span>`
+    : `<span class="ph">${esc(initial)}</span>`;
+  const text = `<div><div class="name">${esc(author)}</div><div class="mode">${esc(it.mode||'')}</div></div>`;
+  if (href) {
+    return `<a class="prof-link" href="${esc(href)}" data-profile-link="1">${avHtml}${text}</a>`;
+  }
+  return `${avHtml}${text}`;
+}
+
 function cardHtml(it){
   const id = it.id;
   const imgUrl = it.url || ('/api/gallery/image/' + id);
-  const av = it.avatar_url || '';
-  const author = it.author || 'anon';
   const title = it.title || it.mode || 'Showcase';
-  const initial = initialOf(author);
   const likes = it.likes || 0;
   const comments = it.comments || 0;
   return `
     <img class="shot" src="${esc(imgUrl)}" alt="" loading="lazy"/>
     <div class="meta">
       <div class="title">${esc(title)}</div>
-      <div class="author">
-        ${av
-          ? `<img src="${esc(av)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"/><span class="ph" style="display:none">${esc(initial)}</span>`
-          : `<span class="ph">${esc(initial)}</span>`}
-        <div>
-          <div class="name">${esc(author)}</div>
-          <div class="mode">${esc(it.mode||'')}</div>
-        </div>
-      </div>
+      <div class="author">${authorBlock(it)}</div>
       <div class="stats">
         <span>♡ ${likes}</span>
         <span>💬 ${comments}</span>
@@ -430,7 +537,14 @@ async function load(){
       const el = document.createElement('div');
       el.className = 'card';
       el.innerHTML = cardHtml(it);
-      el.onclick = () => openModal(it);
+      el.onclick = (ev) => {
+        // click on author/avatar → go to profile, don't open modal
+        if (ev.target.closest && ev.target.closest('[data-profile-link]')) return;
+        openModal(it);
+      };
+      el.querySelectorAll('[data-profile-link]').forEach(a => {
+        a.addEventListener('click', (ev) => { ev.stopPropagation(); });
+      });
       if (isAdmin) {
         const act = document.createElement('div');
         act.style.cssText = 'padding:0 14px 14px';
@@ -458,6 +572,19 @@ function setAuthorUI(it){
   const av = it.avatar_url || '';
   document.getElementById('mAuthor').textContent = author;
   document.getElementById('mTitle').textContent = (it.title || it.mode || 'Showcase') + (it.mode ? ' · ' + it.mode : '');
+  const link = document.getElementById('mAuthorLink');
+  const href = profileHref(it);
+  if (link) {
+    if (href) {
+      link.href = href;
+      link.style.pointerEvents = '';
+      link.setAttribute('title', 'Открыть профиль');
+    } else {
+      link.removeAttribute('href');
+      link.style.pointerEvents = 'none';
+      link.removeAttribute('title');
+    }
+  }
   const img = document.getElementById('mAv');
   const ph = document.getElementById('mAvPh');
   if (av) {
@@ -649,6 +776,45 @@ document.getElementById('btnAdminDel').onclick = async () => {
   try { saved = localStorage.getItem('sm_gallery_view') || '2'; } catch(e){}
   // default on narrow screens: 2 cols still ok
   setMode(saved === '1' ? '1' : '2');
+})();
+
+// Header: login / profile pill + mobile menu
+(async function setupNav(){
+  const btn = document.getElementById('logoMenuBtn');
+  const menu = document.getElementById('mobileMenu');
+  if (btn && menu) {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const open = menu.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+    document.addEventListener('click', () => {
+      menu.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    });
+  }
+  try {
+    const r = await fetch('/api/auth/me', { credentials:'include', headers: headers() });
+    const d = await r.json().catch(()=>({}));
+    const reg = document.getElementById('navReg');
+    const pill = document.getElementById('navUserPill');
+    if (d && d.ok && d.logged_in) {
+      if (reg) reg.style.display = 'none';
+      if (pill) {
+        const name = d.display_name || (d.email || '').split('@')[0] || 'Profile';
+        pill.textContent = name;
+        pill.classList.add('visible');
+        // prefer public profile username if API returns it
+        if (d.profile_username) pill.href = '/profile/' + encodeURIComponent(d.profile_username);
+        else pill.href = '/profile';
+      }
+      const bw = document.getElementById('bellWrap');
+      if (bw) bw.style.display = '';
+    } else {
+      if (reg) reg.style.display = '';
+      if (pill) pill.classList.remove('visible');
+    }
+  } catch(e){}
 })();
 
 (async function init(){
