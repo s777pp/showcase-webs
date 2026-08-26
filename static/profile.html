@@ -32,7 +32,8 @@ img{border:0}
   width:960px;max-width:100%;margin:0 auto;height:50px;
   display:flex;align-items:center;padding:0 12px;gap:4px;
 }
-#global_header .brand{color:#fff;font-weight:700;font-size:14px;margin-right:12px}
+#global_header .brand{color:#fff;font-weight:700;font-size:14px;margin-right:12px;display:inline-flex;align-items:center}
+#global_header .brand-logo img{display:block;width:28px;height:28px;border-radius:6px;object-fit:contain}
 #global_header .menuitem{
   color:#dcdedf;font-size:13px;text-transform:uppercase;
   padding:0 11px;line-height:50px;letter-spacing:.03em;
@@ -373,7 +374,7 @@ html{background:#000}
 <body>
 <div id="global_header">
   <div class="content">
-    <a class="brand" href="/">SM</a>
+    <a class="brand brand-logo" href="/" title="Showcase Maker"><img src="/static/icon.png" alt="Showcase Maker" width="28" height="28"/></a>
     <a class="menuitem" href="/">Store</a>
     <a class="menuitem" href="/gallery">Community</a>
     <a class="menuitem" href="/app">Tools</a>

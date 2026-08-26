@@ -2831,12 +2831,21 @@ def gallery_list(request: Request, status: str = "approved", limit: int = 40, of
         except Exception:
             uid = None
         iid = int(it["id"])
+        # profile username for public profile link
+        un = (it.get("profile_username") or "").strip()
+        if not un and uid:
+            try:
+                un = auth_db.ensure_profile_username(int(uid), author) or ""
+            except Exception:
+                un = ""
         out.append({
             "id": iid,
             "title": it.get("title") or "",
             "mode": it.get("mode") or "",
             "author": str(author)[:40],
             "user_id": uid,
+            "username": un,
+            "profile_url": f"/profile/{un}" if un else "",
             "avatar_url": f"/api/auth/avatar/{uid}" if uid else "",
             "url": f"/api/gallery/image/{iid}",
             "created_at": it.get("created_at"),
