@@ -6,138 +6,315 @@
 <title>Steam Community :: Profile</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:#1b2838;color:#c7d5e0;font-family:Arial,"Helvetica Neue",Helvetica,sans-serif;font-size:14px;min-height:100%}
-a{color:#ebebeb;text-decoration:none}a:hover{color:#fff}
-img{max-width:100%;display:block}
+html{background:#1b2838}
+body{
+  min-height:100%;
+  background:#1b2838;
+  color:#c7d5e0;
+  font-family:"Motiva Sans",Arial,"Helvetica Neue",Helvetica,sans-serif;
+  font-size:14px;
+  line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:#ebebeb;text-decoration:none}
+a:hover{color:#fff}
+img{border:0}
 
-#global_header{background:#171a21;height:50px;box-shadow:0 0 8px #000}
-#global_header .content{width:960px;max-width:100%;margin:0 auto;height:50px;display:flex;align-items:center;padding:0 10px;gap:6px}
-#global_header .menuitem{color:#dcdedf;font-size:13px;text-transform:uppercase;padding:0 10px;line-height:50px}
+/* Steam global header */
+#global_header{
+  background:#171a21;
+  height:50px;
+  position:relative;
+  z-index:50;
+  box-shadow:0 0 8px rgba(0,0,0,.6);
+}
+#global_header .content{
+  width:960px;max-width:100%;margin:0 auto;height:50px;
+  display:flex;align-items:center;padding:0 12px;gap:4px;
+}
+#global_header .brand{color:#fff;font-weight:700;font-size:14px;margin-right:12px}
+#global_header .menuitem{
+  color:#dcdedf;font-size:13px;text-transform:uppercase;
+  padding:0 11px;line-height:50px;letter-spacing:.03em;
+}
 #global_header .menuitem:hover{color:#fff}
-#global_actions{margin-left:auto;display:flex;gap:8px}
-.btn{display:inline-block;border:none;border-radius:2px;cursor:pointer;font-size:12px;line-height:24px;padding:0 14px;font-weight:600;color:#fff}
+#global_actions{margin-left:auto}
+.btn{
+  display:inline-block;border:none;border-radius:2px;cursor:pointer;
+  font-size:12px;line-height:24px;padding:0 14px;font-weight:500;
+  font-family:inherit;color:#fff;
+}
 .btn-green{background:linear-gradient(to bottom,#75b022 5%,#588a1b 95%)}
-.btn-blue{background:linear-gradient(to bottom,#66c0f4 5%,#3d8eb9 95%)}
-.btn-gray{background:linear-gradient(to bottom,#3d4450 5%,#2a3038 95%);color:#c6d4df}
-.btn:hover{filter:brightness(1.08)}
+.btn-blue{background:linear-gradient(to bottom,#66c0f4 5%,#417a9b 95%)}
+.btn-gray{background:linear-gradient(to bottom,#4a5562 5%,#313843 95%);color:#d0d8e0}
+.btn:hover{filter:brightness(1.1)}
 
+/* Page: background grows with source image height */
 .profile_page{position:relative;min-height:calc(100vh - 50px)}
-.profile_bg{position:absolute;left:0;right:0;top:0;height:420px;background-size:cover;background-position:center top;z-index:0;pointer-events:none}
-.profile_bg_fade{position:absolute;left:0;right:0;top:0;height:420px;z-index:1;pointer-events:none;
-  background:linear-gradient(to bottom,rgba(27,40,56,0) 0%,rgba(27,40,56,.55) 60%,#1b2838 100%)}
-.profile_content{position:relative;z-index:2;width:948px;max-width:100%;margin:0 auto;padding:20px 10px 48px}
+.profile_bg_wrap{
+  position:absolute;left:0;right:0;top:0;z-index:0;pointer-events:none;
+  width:100%;overflow:hidden;
+}
+.profile_bg_wrap img{
+  display:block;width:100%;height:auto;
+  /* natural aspect from source — full height of uploaded file */
+  min-height:0;
+}
+.profile_bg_wrap .fallback_bg{
+  width:100%;min-height:100vh;background:#1b2838;
+}
+/* soft bottom fade so content never hard-cuts the art */
+.profile_bg_fade{
+  position:absolute;left:0;right:0;bottom:0;height:180px;z-index:1;pointer-events:none;
+  background:linear-gradient(to bottom, rgba(27,40,56,0), #1b2838);
+}
 
-.profile_header_bg{background:rgba(0,0,0,.32);border-radius:3px;padding:20px 16px;margin-bottom:12px}
+.profile_content{
+  position:relative;z-index:2;
+  width:948px;max-width:100%;
+  margin:0 auto;
+  padding:28px 10px 60px;
+}
+
+/* Header — translucent like Steam */
+.profile_header_bg{
+  background:rgba(22,32,45,.55);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border-radius:3px;
+  padding:22px 18px 18px;
+  margin-bottom:10px;
+  border:1px solid rgba(255,255,255,.04);
+}
 .profile_header{display:flex;gap:16px;align-items:flex-start}
-.avatar{width:164px;height:164px;flex:0 0 164px;background:#2a475e;border:1px solid #000;position:relative}
-.avatar img{width:164px;height:164px;object-fit:cover}
-.avatar .fb{width:164px;height:164px;display:grid;place-items:center;font-size:52px;color:#66c0f4;font-weight:200}
-.avatar.online img{box-shadow:0 0 0 2px #57cbde}
-.avatar.offline img{box-shadow:0 0 0 2px #898989}
-.avatar.ingame img{box-shadow:0 0 0 2px #90ba3c}
-.persona{flex:1;min-width:0}
-.persona_name{font-size:26px;font-weight:200;color:#fff;text-shadow:1px 1px 0 #000}
-.persona_state{font-size:13px;margin-top:4px;color:#57cbde}
-.persona_state.offline{color:#898989}
-.persona_state.ingame{color:#90ba3c}
-.persona_loc{font-size:12px;color:#8f98a0;margin-top:2px}
-.persona_summary{margin-top:10px;font-size:13px;line-height:1.45;color:#c6d4df;white-space:pre-wrap;max-width:520px}
-.level_block{text-align:center;min-width:100px}
-.level_badge{display:inline-block;width:34px;height:34px;line-height:34px;border-radius:50%;border:2px solid #c6a43d;background:#4c6b22;color:#fff;font-weight:700;font-size:14px}
-.level_label{font-size:12px;color:#c6d4df;margin-top:4px}
-.xp_bar{width:90px;height:6px;background:#111;border:1px solid #000;margin:6px auto 0;border-radius:2px;overflow:hidden}
-.xp_fill{height:100%;background:linear-gradient(to right,#c6a43d,#e0c35a);width:15%}
-.header_actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.playerAvatar{
+  width:164px;height:164px;flex:0 0 164px;position:relative;
+  background:#1b2838;border:1px solid rgba(0,0,0,.6);
+}
+.playerAvatar img{width:164px;height:164px;object-fit:cover;display:block}
+.playerAvatar .fb{width:164px;height:164px;display:grid;place-items:center;font-size:52px;color:#66c0f4;font-weight:200}
+.playerAvatar.online img{outline:2px solid #57cbde;outline-offset:0}
+.playerAvatar.offline img{outline:2px solid #898989}
+.playerAvatar.ingame img{outline:2px solid #90ba3c}
 
-.cols{display:flex;gap:12px;align-items:flex-start}
-.leftcol{flex:1;min-width:0}
-.rightcol{width:280px;flex:0 0 280px}
-@media(max-width:900px){.cols{flex-direction:column}.rightcol{width:100%}.profile_header{flex-wrap:wrap}}
+.profile_header_content{flex:1;min-width:0;padding-top:2px}
+.persona_name{
+  font-size:24px;font-weight:300;color:#fff;
+  text-shadow:1px 1px 0 rgba(0,0,0,.6);
+}
+.profile_in_game_header{font-size:13px;margin-top:3px}
+.profile_in_game_header.online{color:#57cbde}
+.profile_in_game_header.offline{color:#898989}
+.profile_in_game_header.ingame{color:#90ba3c}
+.header_real_name{font-size:12px;color:#8f98a0;margin-top:2px}
+.profile_summary{
+  margin-top:10px;font-size:13px;line-height:1.45;color:#c6d4df;
+  white-space:pre-wrap;max-width:500px;
+}
+.profile_header_actions{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap}
 
-.module{background:rgba(0,0,0,.22);border-radius:3px;margin-bottom:12px;overflow:hidden}
-.module_h{background:rgba(255,255,255,.05);padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#ebebeb;display:flex;justify-content:space-between;align-items:center}
-.module_h .act{text-transform:none;letter-spacing:0;font-size:11px;color:#66c0f4;cursor:pointer;background:none;border:none;font-family:inherit}
-.module_b{padding:10px 12px}
-.empty{color:#8f98a0;font-size:13px;text-align:center;padding:12px 4px;line-height:1.5}
+.profile_header_badgeinfo{flex:0 0 120px;text-align:center;padding-top:4px}
+.persona_level_title{font-size:12px;color:#c6d4df;margin-bottom:4px}
+.friendPlayerLevel{
+  display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;
+  border-radius:50%;font-size:15px;font-weight:700;color:#fff;
+  background:#4c6b22;border:2px solid #b9a34c;
+}
+.xp_bar{
+  width:96px;height:6px;margin:8px auto 0;background:rgba(0,0,0,.5);
+  border:1px solid #000;border-radius:2px;overflow:hidden;
+}
+.xp_fill{height:100%;background:linear-gradient(to right,#c6a43d,#e8d070);width:10%}
+.xp_text{font-size:11px;color:#8f98a0;margin-top:3px}
 
-/* showcases */
-.sc-featured img{width:100%;height:auto;display:block;background:#000}
-.sc-workshop{display:flex;gap:4px;width:100%}
-.sc-workshop img{flex:1;min-width:0;height:auto;object-fit:cover;background:#000;border:1px solid #000}
-.sc-split{display:flex;gap:4px;flex-wrap:wrap}
-.sc-split img{max-width:100%;height:auto;background:#000;border:1px solid #000}
-.sc-artwork{display:flex;flex-wrap:wrap;gap:6px}
-.sc-artwork img{width:calc(33.33% - 4px);height:auto;object-fit:cover;background:#000;border:1px solid #000;aspect-ratio:1/1}
-.sc-item{margin-bottom:8px;position:relative}
-.sc-item .del{position:absolute;top:6px;right:6px;z-index:2;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:2px;padding:2px 8px;cursor:pointer;font-size:11px;display:none}
-.sc-item.owner .del{display:block}
+/* two columns */
+.profile_col_layout{display:flex;gap:12px;align-items:flex-start}
+.profile_leftcol{flex:1;min-width:0}
+.profile_rightcol{width:280px;flex:0 0 280px}
+@media(max-width:920px){
+  .profile_col_layout{flex-direction:column}
+  .profile_rightcol{width:100%}
+  .profile_header{flex-wrap:wrap}
+}
 
-/* editor / add panel */
-.panel{display:none;background:rgba(22,32,45,.98);border:1px solid #000;border-radius:3px;padding:14px;margin-bottom:12px}
+/* Steam translucent module */
+.profile_customization{
+  background:rgba(22,32,45,.52);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.05);
+  border-radius:3px;
+  margin-bottom:12px;
+  overflow:hidden;
+}
+.profile_customization_header{
+  padding:7px 12px;
+  font-size:11px;text-transform:uppercase;letter-spacing:.07em;
+  color:#ebebeb;
+  background:rgba(255,255,255,.04);
+  border-bottom:1px solid rgba(0,0,0,.25);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.profile_customization_header .sub{
+  text-transform:none;letter-spacing:0;color:#8f98a0;font-size:11px;
+}
+.showcase_content{padding:10px 12px 12px}
+
+/* Workshop: rows of 5 equal parts, image fills height of source ratio */
+.workshop_rows{display:flex;flex-direction:column;gap:3px}
+.workshop_row{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:2px;
+  width:100%;
+}
+.workshop_row a,.workshop_row span{
+  display:block;position:relative;overflow:hidden;background:#000;
+  border:1px solid rgba(0,0,0,.5);
+}
+.workshop_row img{
+  display:block;width:100%;height:auto;
+  /* stretch to cell width, keep source aspect within the strip */
+  object-fit:cover;object-position:center;
+  min-height:80px;
+}
+
+/* Featured — full width, natural height of processed 630-wide image scaled up */
+.featured_shot img{
+  display:block;width:100%;height:auto;
+  background:#000;border:1px solid rgba(0,0,0,.4);
+}
+
+/* Split */
+.split_row{display:flex;gap:4px;align-items:stretch}
+.split_row img{background:#000;border:1px solid #000;height:auto}
+.split_row .center{flex:506;min-width:0}
+.split_row .side{flex:100;min-width:0}
+.split_row .center img,.split_row .side img{width:100%;height:auto;object-fit:cover}
+
+/* Artwork grid */
+.artwork_grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.artwork_grid img{width:100%;height:auto;aspect-ratio:1;object-fit:cover;background:#000;border:1px solid #000}
+
+.sc_block{margin-bottom:14px;position:relative}
+.sc_block:last-child{margin-bottom:0}
+.sc_remove{
+  position:absolute;top:8px;right:10px;z-index:3;
+  background:rgba(0,0,0,.65);color:#c7d5e0;border:1px solid rgba(255,255,255,.1);
+  font-size:11px;padding:2px 8px;border-radius:2px;cursor:pointer;display:none;
+}
+.sc_block.owner .sc_remove{display:inline-block}
+.sc_remove:hover{color:#fff;background:rgba(120,30,30,.8)}
+
+.empty{
+  color:#8f98a0;font-size:13px;text-align:center;padding:18px 8px;line-height:1.5;
+}
+
+/* Right column blocks */
+.right_block{
+  background:rgba(22,32,45,.52);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.05);
+  border-radius:3px;
+  margin-bottom:12px;
+  padding:10px 12px;
+}
+.right_block .h{
+  font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#ebebeb;
+  margin-bottom:8px;
+}
+.right_block .status_line{font-size:13px;color:#898989;margin-bottom:4px}
+.right_block .status_line.online{color:#57cbde}
+.right_block .status_line.ingame{color:#90ba3c}
+.count_link{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:4px 0;font-size:13px;color:#c6d4df;
+}
+.count_link:hover{color:#fff}
+.count_link .n{color:#ebebeb}
+
+/* Editor panels */
+.panel{
+  display:none;
+  background:rgba(22,32,45,.92);
+  border:1px solid rgba(0,0,0,.5);
+  border-radius:3px;
+  padding:14px 16px;
+  margin-bottom:12px;
+}
 .panel.open{display:block}
-.panel h3{font-size:13px;color:#fff;font-weight:400;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+.panel h3{
+  font-size:12px;text-transform:uppercase;letter-spacing:.06em;
+  color:#fff;font-weight:400;margin-bottom:10px;
+}
 .panel label{display:block;font-size:11px;color:#8f98a0;margin:8px 0 3px;text-transform:uppercase}
-.panel input,.panel select,.panel textarea{width:100%;background:#1b2838;border:1px solid #000;color:#c7d5e0;padding:6px 8px;font-size:13px;border-radius:2px;font-family:inherit}
-.panel textarea{min-height:70px}
+.panel input,.panel select,.panel textarea{
+  width:100%;background:#1b2838;border:1px solid #000;color:#c7d5e0;
+  padding:6px 8px;font-size:13px;border-radius:2px;font-family:inherit;
+}
+.panel textarea{min-height:72px;resize:vertical}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:600px){.row2{grid-template-columns:1fr}}
-.msg{font-size:12px;margin-top:8px;color:#8f98a0}.msg.ok{color:#90ba3c}.msg.err{color:#c15755}
+.msg{font-size:12px;margin-top:8px;color:#8f98a0}
+.msg.ok{color:#90ba3c}.msg.err{color:#c15755}
+.hint{font-size:11px;color:#8f98a0;margin-top:6px;line-height:1.4}
 
-.gate{max-width:440px;margin:80px auto;text-align:center;background:rgba(0,0,0,.4);padding:28px;border:1px solid #000;border-radius:3px}
-.gate h2{color:#fff;font-weight:300;margin-bottom:10px}
-
-.count_link{display:flex;justify-content:space-between;padding:5px 0;color:#c6d4df;font-size:13px}
-.count_link:hover{color:#fff}
+.gate{
+  max-width:420px;margin:90px auto;text-align:center;
+  background:rgba(0,0,0,.45);padding:28px;border-radius:3px;border:1px solid #000;
+}
+.gate h2{color:#fff;font-weight:300;margin-bottom:8px}
 </style>
 </head>
 <body>
 <div id="global_header">
   <div class="content">
-    <a href="/" style="color:#fff;font-weight:700;margin-right:8px">SM</a>
+    <a class="brand" href="/">SM</a>
     <a class="menuitem" href="/">Store</a>
     <a class="menuitem" href="/gallery">Community</a>
     <a class="menuitem" href="/app">Tools</a>
     <a class="menuitem" href="/profile">Profile</a>
-    <div id="global_actions">
-      <a class="btn btn-gray" href="/app">Open tools</a>
-    </div>
+    <div id="global_actions"><a class="btn btn-gray" href="/app">Open tools</a></div>
   </div>
 </div>
 
 <div class="profile_page">
-  <div class="profile_bg" id="bg"></div>
-  <div class="profile_bg_fade"></div>
-  <div class="profile_content">
+  <div class="profile_bg_wrap" id="bgWrap">
+    <div class="fallback_bg" id="bgFallback"></div>
+  </div>
+  <div class="profile_bg_fade" id="bgFade" style="display:none"></div>
 
+  <div class="profile_content">
     <div id="gate" class="gate" style="display:none">
       <h2 id="gateTitle">Loading…</h2>
-      <p id="gateText"></p>
+      <p id="gateText" style="color:#8f98a0"></p>
       <p style="margin-top:14px"><a class="btn btn-blue" href="/">Home</a></p>
     </div>
 
     <div id="main" style="display:none">
       <div class="profile_header_bg">
         <div class="profile_header">
-          <div class="avatar online" id="avWrap">
+          <div class="playerAvatar online" id="avWrap">
             <img id="avImg" alt="" style="display:none"/>
             <div class="fb" id="avFb">?</div>
           </div>
-          <div class="persona">
+          <div class="profile_header_content">
             <div class="persona_name" id="pName">—</div>
-            <div class="persona_state" id="pState">Currently Online</div>
-            <div class="persona_loc" id="pLoc"></div>
-            <div class="persona_summary" id="pSummary"></div>
-            <div class="header_actions" id="ownerBtns" style="display:none">
+            <div class="profile_in_game_header online" id="pState">Currently Online</div>
+            <div class="header_real_name" id="pLoc"></div>
+            <div class="profile_summary" id="pSummary"></div>
+            <div class="profile_header_actions" id="ownerBtns" style="display:none">
               <button type="button" class="btn btn-green" id="btnEdit">Edit Profile</button>
               <button type="button" class="btn btn-blue" id="btnAddSc">Add Showcase</button>
               <a class="btn btn-gray" href="/app">Showcase Maker</a>
             </div>
           </div>
-          <div class="level_block">
-            <div class="level_badge" id="lvl">1</div>
-            <div class="level_label">Level</div>
+          <div class="profile_header_badgeinfo">
+            <div class="persona_level_title">Level</div>
+            <div class="friendPlayerLevel" id="lvl">1</div>
             <div class="xp_bar"><div class="xp_fill" id="xpFill"></div></div>
-            <div style="font-size:11px;color:#8f98a0;margin-top:3px" id="xpTxt">0 XP</div>
+            <div class="xp_text" id="xpTxt">0 XP</div>
           </div>
         </div>
       </div>
@@ -152,7 +329,11 @@ img{max-width:100%;display:block}
         <div class="row2">
           <div><label>Location</label><input id="edLoc"/></div>
           <div><label>Status</label>
-            <select id="edStatus"><option value="online">Online</option><option value="ingame">In-Game</option><option value="offline">Offline</option></select>
+            <select id="edStatus">
+              <option value="online">Online</option>
+              <option value="ingame">In-Game</option>
+              <option value="offline">Offline</option>
+            </select>
           </div>
         </div>
         <div class="row2">
@@ -163,8 +344,9 @@ img{max-width:100%;display:block}
           <div><label>Visibility</label>
             <select id="edVis"><option value="public">Public</option><option value="private">Private</option></select>
           </div>
-          <div><label>Background</label><input id="edBg" type="file" accept="image/*"/></div>
+          <div><label>Background (full image height)</label><input id="edBg" type="file" accept="image/*"/></div>
         </div>
+        <p class="hint">Background uses the full resolution of your file — height follows the source aspect ratio (like Steam profile backgrounds).</p>
         <div style="margin-top:12px">
           <button type="button" class="btn btn-green" id="btnSave">Save</button>
           <button type="button" class="btn btn-gray" id="btnEditCancel">Cancel</button>
@@ -178,14 +360,14 @@ img{max-width:100%;display:block}
         <select id="scType">
           <option value="featured">Featured Artwork</option>
           <option value="artwork">Artwork Showcase</option>
-          <option value="workshop">Workshop (auto-split ×5)</option>
+          <option value="workshop">Workshop Showcase (auto ×5 parts)</option>
           <option value="split">Artwork Split (auto-cut)</option>
         </select>
         <label>Title</label>
-        <input id="scTitle" placeholder="Optional title"/>
-        <label>Upload image / GIF</label>
+        <input id="scTitle" placeholder="Optional"/>
+        <label>Source image / GIF</label>
         <input id="scFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"/>
-        <p style="font-size:11px;color:#8f98a0;margin-top:6px">Workshop &amp; Split are automatically cut into Steam parts from one source file. Artwork keeps aspect ratio of the source.</p>
+        <p class="hint" id="scHint">Workshop: one file → 5 vertical parts. You can add up to <b>3</b> Workshop showcases (3 rows). Split: center + side. Featured/Artwork: sized from source.</p>
         <div style="margin-top:12px">
           <button type="button" class="btn btn-blue" id="btnScUpload">Upload &amp; Add</button>
           <button type="button" class="btn btn-gray" id="btnScCancel">Cancel</button>
@@ -193,26 +375,32 @@ img{max-width:100%;display:block}
         <div class="msg" id="scMsg"></div>
       </div>
 
-      <div class="cols">
-        <div class="leftcol">
-          <div class="module">
-            <div class="module_h">Showcases</div>
-            <div class="module_b" id="scList">
-              <p class="empty">No showcases yet. Click <b>Add Showcase</b> to upload Featured, Workshop or Split.</p>
+      <div class="profile_col_layout">
+        <div class="profile_leftcol">
+          <div class="profile_customization">
+            <div class="profile_customization_header">
+              Showcases
+              <span class="sub" id="scCount">0</span>
+            </div>
+            <div class="showcase_content" id="scList">
+              <p class="empty">No showcases yet.</p>
             </div>
           </div>
         </div>
-        <div class="rightcol">
-          <div class="module">
-            <div class="module_h">Badges</div>
-            <div class="module_b"><p class="empty">—</p></div>
+        <div class="profile_rightcol">
+          <div class="right_block">
+            <div class="status_line" id="sideStatus">Currently Online</div>
+            <div style="font-size:11px;color:#56707f" id="sideLoc"></div>
           </div>
-          <div class="module">
-            <div class="module_h">Links</div>
-            <div class="module_b">
-              <a class="count_link" href="/app"><span>Showcase Maker</span><span>→</span></a>
-              <a class="count_link" href="/gallery"><span>Gallery</span><span>→</span></a>
-            </div>
+          <div class="right_block">
+            <div class="h">Badges</div>
+            <p class="empty" style="padding:8px">—</p>
+          </div>
+          <div class="right_block">
+            <div class="h">Links</div>
+            <a class="count_link" href="/app"><span>Showcase Maker</span><span class="n">→</span></a>
+            <a class="count_link" href="/gallery"><span>Gallery</span><span class="n">→</span></a>
+            <a class="count_link" href="/app"><span>Workshop items</span><span class="n" id="wsCount">0</span></a>
           </div>
         </div>
       </div>
@@ -225,22 +413,51 @@ img{max-width:100%;display:block}
   function token(){ try{return localStorage.getItem('sm_session')||'';}catch(e){return '';} }
   function headers(){ var h={}; var t=token(); if(t) h['X-Session-Token']=t; return h; }
   function pathUser(){
-    var parts = location.pathname.replace(/\/+$/,'').split('/');
+    var parts=location.pathname.replace(/\/+$/,'').split('/');
     if(parts.length>=3 && parts[1]==='profile' && parts[2]) return decodeURIComponent(parts[2]);
     return null;
   }
+  function esc(s){
+    return String(s||'').replace(/[&<>"']/g,function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+    });
+  }
 
-  var state = { profile:null, isOwner:false, username:null };
+  var state={profile:null,isOwner:false,username:null,showcases:[]};
 
-  function showGate(title, text){
+  function showGate(title,text){
     document.getElementById('main').style.display='none';
     document.getElementById('gate').style.display='';
     document.getElementById('gateTitle').textContent=title||'Error';
     document.getElementById('gateText').textContent=text||'';
   }
 
-  function renderProfile(p, isOwner){
-    state.profile=p; state.isOwner=isOwner; state.username=p.username||p.profile_username;
+  function setBackground(url){
+    var wrap=document.getElementById('bgWrap');
+    var fade=document.getElementById('bgFade');
+    wrap.innerHTML='';
+    if(!url){
+      var d=document.createElement('div');
+      d.className='fallback_bg';
+      wrap.appendChild(d);
+      fade.style.display='none';
+      return;
+    }
+    var img=document.createElement('img');
+    img.alt='';
+    img.src=url+(url.indexOf('?')>=0?'&':'?')+'t='+Date.now();
+    img.onload=function(){
+      // height follows natural aspect of the file at full content width
+      fade.style.display='block';
+      // position fade at bottom of image
+      fade.style.top='auto';
+    };
+    wrap.appendChild(img);
+  }
+
+  function renderProfile(p,isOwner){
+    state.profile=p; state.isOwner=isOwner;
+    state.username=p.username||p.profile_username;
     document.getElementById('gate').style.display='none';
     document.getElementById('main').style.display='';
 
@@ -248,11 +465,16 @@ img{max-width:100%;display:block}
     var st=(p.profile_status||'online').toLowerCase();
     var stEl=document.getElementById('pState');
     var av=document.getElementById('avWrap');
-    stEl.className='persona_state '+st;
-    av.className='avatar '+st;
-    stEl.textContent = st==='ingame'?'Currently In-Game':(st==='offline'?'Currently Offline':'Currently Online');
+    stEl.className='profile_in_game_header '+st;
+    av.className='playerAvatar '+st;
+    stEl.textContent=st==='ingame'?'Currently In-Game':(st==='offline'?'Currently Offline':'Currently Online');
     document.getElementById('pLoc').textContent=p.profile_location||'';
     document.getElementById('pSummary').textContent=p.profile_summary||'';
+
+    var side=document.getElementById('sideStatus');
+    side.className='status_line '+st;
+    side.textContent=stEl.textContent;
+    document.getElementById('sideLoc').textContent=p.profile_location||'';
 
     var lvl=p.profile_level||1, xp=p.profile_xp||0;
     document.getElementById('lvl').textContent=String(lvl);
@@ -260,15 +482,14 @@ img{max-width:100%;display:block}
     document.getElementById('xpTxt').textContent=xp+' XP';
 
     var img=document.getElementById('avImg'), fb=document.getElementById('avFb');
-    if(p.avatar_url){ img.src=p.avatar_url+'?t='+Date.now(); img.style.display=''; fb.style.display='none'; }
-    else { img.style.display='none'; fb.style.display=''; fb.textContent=(p.display_name||'?').charAt(0).toUpperCase(); }
+    if(p.avatar_url){
+      img.src=p.avatar_url+'?t='+Date.now(); img.style.display='block'; fb.style.display='none';
+    } else {
+      img.style.display='none'; fb.style.display='grid';
+      fb.textContent=(p.display_name||'?').charAt(0).toUpperCase();
+    }
 
-    var bg=document.getElementById('bg');
-    if(p.background_url){
-      bg.style.backgroundImage='url('+p.background_url+'?t='+Date.now()+')';
-      bg.style.backgroundPosition=(p.profile_bg_x||50)+'% '+(p.profile_bg_y||20)+'%';
-    } else { bg.style.backgroundImage='none'; }
-
+    setBackground(p.background_url||'');
     document.getElementById('ownerBtns').style.display=isOwner?'':'none';
     document.title='Steam Community :: '+(p.display_name||p.username||'Profile');
 
@@ -282,54 +503,81 @@ img{max-width:100%;display:block}
     document.getElementById('edVis').value=p.profile_visibility||'public';
   }
 
-  function renderShowcases(list, isOwner){
+  function workshopCount(list){
+    return (list||[]).filter(function(s){ return s.type==='workshop'; }).length;
+  }
+
+  function renderShowcases(list,isOwner){
+    state.showcases=list||[];
     var box=document.getElementById('scList');
-    if(!list || !list.length){
-      box.innerHTML='<p class="empty">No showcases yet.'+(isOwner?' Click <b>Add Showcase</b>.':'')+'</p>';
+    document.getElementById('scCount').textContent=String(state.showcases.length);
+    document.getElementById('wsCount').textContent=String(workshopCount(state.showcases));
+
+    if(!state.showcases.length){
+      box.innerHTML='<p class="empty">No showcases yet.'+(isOwner?' Use <b>Add Showcase</b>.':'')+'</p>';
       return;
     }
+
+    // Group: each showcase is its own Steam-style block
     var html='';
-    list.forEach(function(sc){
+    state.showcases.forEach(function(sc){
       var type=sc.type||'artwork';
       var urls=sc.urls||[];
       var title=sc.title||type;
-      html+='<div class="sc-item '+(isOwner?'owner':'')+'" data-id="'+sc.id+'">';
-      html+='<div class="module_h" style="background:transparent;padding:0 0 6px">'+esc(title)+' <span style="color:#8f98a0;text-transform:none">'+esc(type)+'</span>';
-      if(isOwner) html+='<button type="button" class="del" data-id="'+sc.id+'">Remove</button>';
-      html+='</div>';
+      var label={featured:'Featured Artwork Showcase',workshop:'Workshop Showcase',split:'Artwork Split',artwork:'Artwork Showcase'}[type]||type;
+
+      html+='<div class="sc_block '+(isOwner?'owner':'')+'" data-id="'+sc.id+'">';
+      html+='<div class="profile_customization">';
+      html+='<div class="profile_customization_header">'+esc(label)+'<span class="sub">'+esc(title)+'</span></div>';
+      html+='<div class="showcase_content">';
+      if(isOwner) html+='<button type="button" class="sc_remove" data-id="'+sc.id+'">Remove</button>';
+
       if(type==='workshop'){
-        // show only part_ images in a row, stretch
         var parts=urls.filter(function(u){ return /part_/i.test(u); });
-        if(!parts.length) parts=urls;
-        html+='<div class="sc-workshop">';
-        parts.forEach(function(u){ html+='<img src="'+u+'" alt=""/>'; });
-        html+='</div>';
+        if(!parts.length) parts=urls.slice(0,5);
+        // one row of 5 (Steam workshop strip)
+        html+='<div class="workshop_rows"><div class="workshop_row">';
+        parts.slice(0,5).forEach(function(u){
+          html+='<span><img src="'+u+'" alt=""/></span>';
+        });
+        html+='</div></div>';
       } else if(type==='split'){
-        html+='<div class="sc-split">';
-        urls.forEach(function(u){ html+='<img src="'+u+'" alt=""/>'; });
+        var center=urls.find(function(u){return /center/i.test(u);})||urls[0];
+        var side=urls.find(function(u){return /side/i.test(u);})||urls[1];
+        html+='<div class="split_row">';
+        if(center) html+='<div class="center"><img src="'+center+'" alt=""/></div>';
+        if(side) html+='<div class="side"><img src="'+side+'" alt=""/></div>';
         html+='</div>';
       } else if(type==='featured'){
         var u=urls.find(function(x){return /featured/i.test(x);})||urls[0];
-        html+='<div class="sc-featured">'+(u?'<img src="'+u+'" alt=""/>':'')+'</div>';
+        html+='<div class="featured_shot">'+(u?'<img src="'+u+'" alt=""/>':'')+'</div>';
       } else {
-        html+='<div class="sc-artwork">';
+        html+='<div class="artwork_grid">';
         urls.forEach(function(u){ html+='<img src="'+u+'" alt=""/>'; });
         html+='</div>';
       }
-      html+='</div>';
+
+      html+='</div></div></div>';
     });
+
+    // If multiple workshops, also show combined 3-row view at top when >=1
+    // (each workshop is already its own block — Steam stacks them)
+
     box.innerHTML=html;
-    box.querySelectorAll('.del').forEach(function(btn){
+    box.querySelectorAll('.sc_remove').forEach(function(btn){
       btn.onclick=async function(){
         if(!confirm('Remove this showcase?')) return;
-        var r=await fetch('/api/profile/showcase/delete',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},headers()),credentials:'include',body:JSON.stringify({id:+btn.dataset.id})});
+        var r=await fetch('/api/profile/showcase/delete',{
+          method:'POST',
+          headers:Object.assign({'Content-Type':'application/json'},headers()),
+          credentials:'include',
+          body:JSON.stringify({id:+btn.dataset.id})
+        });
         var j=await r.json();
         if(j.ok) loadShowcases();
       };
     });
   }
-
-  function esc(s){ return String(s||'').replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);}); }
 
   async function loadShowcases(){
     var un=state.username||pathUser();
@@ -337,7 +585,7 @@ img{max-width:100%;display:block}
     try{
       var r=await fetch('/api/profile/'+encodeURIComponent(un)+'/showcases',{headers:headers(),credentials:'include'});
       var j=await r.json();
-      if(j.ok) renderShowcases(j.showcases||[], !!j.is_owner || state.isOwner);
+      if(j.ok) renderShowcases(j.showcases||[], !!(j.is_owner||state.isOwner));
     }catch(e){ console.error(e); }
   }
 
@@ -346,12 +594,8 @@ img{max-width:100%;display:block}
     var url=un?('/api/profile/'+encodeURIComponent(un)):'/api/profile/me';
     try{
       var r=await fetch(url,{headers:headers(),credentials:'include'});
-      var j={};
-      try{ j=await r.json(); }catch(e){}
-      if(r.status===401 && !un){
-        showGate('Log in required','Sign in on the home page, then open Profile.');
-        return;
-      }
+      var j={}; try{j=await r.json();}catch(e){}
+      if(r.status===401 && !un){ showGate('Log in required','Sign in on the home page, then open Profile.'); return; }
       if(r.status===403){ showGate('Private profile','This profile is private.'); return; }
       if(!j.ok){ showGate('Not found', j.msg||'Profile not found'); return; }
       if(!un && j.profile && j.profile.username){
@@ -359,15 +603,23 @@ img{max-width:100%;display:block}
       }
       renderProfile(j.profile, !!j.is_owner);
       loadShowcases();
-    }catch(e){
-      showGate('Error', String(e));
-    }
+    }catch(e){ showGate('Error', String(e)); }
   }
 
-  document.getElementById('btnEdit').onclick=function(){ document.getElementById('editPanel').classList.add('open'); document.getElementById('scPanel').classList.remove('open'); };
-  document.getElementById('btnEditCancel').onclick=function(){ document.getElementById('editPanel').classList.remove('open'); };
-  document.getElementById('btnAddSc').onclick=function(){ document.getElementById('scPanel').classList.add('open'); document.getElementById('editPanel').classList.remove('open'); };
-  document.getElementById('btnScCancel').onclick=function(){ document.getElementById('scPanel').classList.remove('open'); };
+  document.getElementById('btnEdit').onclick=function(){
+    document.getElementById('editPanel').classList.add('open');
+    document.getElementById('scPanel').classList.remove('open');
+  };
+  document.getElementById('btnEditCancel').onclick=function(){
+    document.getElementById('editPanel').classList.remove('open');
+  };
+  document.getElementById('btnAddSc').onclick=function(){
+    document.getElementById('scPanel').classList.add('open');
+    document.getElementById('editPanel').classList.remove('open');
+  };
+  document.getElementById('btnScCancel').onclick=function(){
+    document.getElementById('scPanel').classList.remove('open');
+  };
 
   document.getElementById('btnSave').onclick=async function(){
     var msg=document.getElementById('edMsg'); msg.className='msg'; msg.textContent='Saving…';
@@ -393,12 +645,19 @@ img{max-width:100%;display:block}
   };
 
   document.getElementById('btnScUpload').onclick=async function(){
-    var msg=document.getElementById('scMsg'); msg.className='msg'; msg.textContent='Processing…';
+    var msg=document.getElementById('scMsg');
+    var type=document.getElementById('scType').value;
+    if(type==='workshop' && workshopCount(state.showcases)>=3){
+      msg.className='msg err';
+      msg.textContent='Maximum 3 Workshop showcases (3 rows of 5). Remove one first.';
+      return;
+    }
     var file=document.getElementById('scFile').files[0];
     if(!file){ msg.className='msg err'; msg.textContent='Choose a file'; return; }
+    msg.className='msg'; msg.textContent='Processing…';
     var fd=new FormData();
-    fd.append('type',document.getElementById('scType').value);
-    fd.append('title',document.getElementById('scTitle').value||document.getElementById('scType').value);
+    fd.append('type',type);
+    fd.append('title',document.getElementById('scTitle').value||type);
     fd.append('file',file);
     try{
       var r=await fetch('/api/profile/showcase/add',{method:'POST',headers:headers(),credentials:'include',body:fd});

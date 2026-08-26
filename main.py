@@ -543,6 +543,10 @@ async def api_profile_showcase_add(request: Request):
     sc_type = str(form.get("type") or "featured").strip().lower()
     if sc_type not in ("featured", "artwork", "workshop", "split"):
         return JSONResponse({"ok": False, "msg": "Invalid type"}, status_code=400)
+    if sc_type == "workshop":
+        existing = [s for s in auth_db.profile_showcase_list(uid) if s.get("type") == "workshop"]
+        if len(existing) >= 3:
+            return JSONResponse({"ok": False, "msg": "Max 3 Workshop showcases"}, status_code=400)
     title = str(form.get("title") or sc_type)[:80]
     out_dir = Path(DATA) / "profile_sc" / str(uid)
     out_dir.mkdir(parents=True, exist_ok=True)
