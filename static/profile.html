@@ -78,13 +78,15 @@ img{border:0}
 
 /* Header — translucent like Steam */
 .profile_header_bg{
-  background:rgba(22,32,45,.55);
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-  border-radius:3px;
+  background:rgba(0,0,0,.35);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-radius:0;
   padding:22px 18px 18px;
   margin-bottom:10px;
-  border:1px solid rgba(255,255,255,.04);
+  border:none;
+  outline:none;
+  box-shadow:none;
 }
 .profile_header{display:flex;gap:16px;align-items:flex-start}
 .playerAvatar{
@@ -139,21 +141,24 @@ img{border:0}
 
 /* Steam translucent module */
 .profile_customization{
-  background:rgba(22,32,45,.52);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  border:1px solid rgba(255,255,255,.05);
-  border-radius:3px;
+  background:rgba(0,0,0,.35);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:none;
+  outline:none;
+  box-shadow:none;
+  border-radius:0;
   margin-bottom:12px;
   overflow:hidden;
 }
 .profile_customization_header{
-  padding:7px 12px;
-  font-size:11px;text-transform:uppercase;letter-spacing:.07em;
+  padding:8px 12px;
+  font-size:12px;text-transform:none;letter-spacing:0;
   color:#ebebeb;
-  background:rgba(255,255,255,.04);
-  border-bottom:1px solid rgba(0,0,0,.25);
+  background:rgba(255,255,255,.06);
+  border-bottom:none;
   display:flex;justify-content:space-between;align-items:center;
+  font-weight:400;
 }
 .profile_customization_header .sub{
   text-transform:none;letter-spacing:0;color:#8f98a0;font-size:11px;
@@ -165,24 +170,38 @@ img{border:0}
 .workshop_row{
   display:grid;
   grid-template-columns:repeat(5,1fr);
-  gap:2px;
+  gap:0;
   width:100%;
 }
 .workshop_row a,.workshop_row span{
-  display:block;position:relative;overflow:hidden;background:#000;
-  border:1px solid rgba(0,0,0,.5);
+  display:block;position:relative;overflow:hidden;background:transparent;
+  border:none;outline:none;
+  /* thin divider like Steam — only right edge */
+  box-shadow: inset -1px 0 0 rgba(0,0,0,.45);
 }
+.workshop_row span:last-child{box-shadow:none}
 .workshop_row img{
   display:block;width:100%;height:auto;
-  /* stretch to cell width, keep source aspect within the strip */
   object-fit:cover;object-position:center;
-  min-height:80px;
+  vertical-align:top;
+  border:none;outline:none;
 }
+.workshop_rows{display:flex;flex-direction:column;gap:0}
+.workshop_title_row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 2px 10px;
+}
+.workshop_title_row img.ws_av{
+  width:28px;height:28px;border-radius:2px;object-fit:cover;
+  border:none;outline:none;
+}
+.workshop_title_row .ws_name{color:#ebebeb;font-size:14px;font-weight:400}
+
 
 /* Featured — full width, natural height of processed 630-wide image scaled up */
 .featured_shot img{
   display:block;width:100%;height:auto;
-  background:#000;border:1px solid rgba(0,0,0,.4);
+  background:transparent;border:none;outline:none;
 }
 
 /* Split */
@@ -212,11 +231,13 @@ img{border:0}
 
 /* Right column blocks */
 .right_block{
-  background:rgba(22,32,45,.52);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  border:1px solid rgba(255,255,255,.05);
-  border-radius:3px;
+  background:rgba(0,0,0,.35);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:none;
+  outline:none;
+  box-shadow:none;
+  border-radius:0;
   margin-bottom:12px;
   padding:10px 12px;
 }
@@ -366,8 +387,8 @@ img{border:0}
         <label>Title</label>
         <input id="scTitle" placeholder="Optional"/>
         <label>Source image / GIF</label>
-        <input id="scFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"/>
-        <p class="hint" id="scHint">Workshop: one file → 5 vertical parts. You can add up to <b>3</b> Workshop showcases (3 rows). Split: center + side. Featured/Artwork: sized from source.</p>
+        <input id="scFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple/>
+        <p class="hint" id="scHint">Workshop: select <b>up to 3 images at once</b> → each becomes a row of 5 parts (like Steam). One Workshop block on the profile. Split / Featured / Artwork: one file.</p>
         <div style="margin-top:12px">
           <button type="button" class="btn btn-blue" id="btnScUpload">Upload &amp; Add</button>
           <button type="button" class="btn btn-gray" id="btnScCancel">Cancel</button>
@@ -525,6 +546,7 @@ img{border:0}
       var urls=sc.urls||[];
       var title=sc.title||type;
       var label={featured:'Featured Artwork Showcase',workshop:'Workshop Showcase',split:'Artwork Split',artwork:'Artwork Showcase'}[type]||type;
+      var headerRight = isOwner ? '' : '';
 
       html+='<div class="sc_block '+(isOwner?'owner':'')+'" data-id="'+sc.id+'">';
       html+='<div class="profile_customization">';
@@ -533,14 +555,41 @@ img{border:0}
       if(isOwner) html+='<button type="button" class="sc_remove" data-id="'+sc.id+'">Remove</button>';
 
       if(type==='workshop'){
-        var parts=urls.filter(function(u){ return /part_/i.test(u); });
-        if(!parts.length) parts=urls.slice(0,5);
-        // one row of 5 (Steam workshop strip)
-        html+='<div class="workshop_rows"><div class="workshop_row">';
-        parts.slice(0,5).forEach(function(u){
-          html+='<span><img src="'+u+'" alt=""/></span>';
+        // group by rowN_ from filenames in urls
+        var rows={};
+        urls.forEach(function(u){
+          var m=u.match(/row(\d+)_/i);
+          var ri=m?m[1]:'1';
+          if(!rows[ri]) rows[ri]=[];
+          if(/part_/i.test(u) || !/full_/i.test(u)) rows[ri].push(u);
         });
-        html+='</div></div>';
+        var keys=Object.keys(rows).sort();
+        if(!keys.length){
+          var parts=urls.filter(function(u){return /part_/i.test(u);});
+          if(!parts.length) parts=urls.slice(0,5);
+          rows={'1':parts}; keys=['1'];
+        }
+        var avUrl=(state.profile&&state.profile.avatar_url)||'';
+        var disp=(state.profile&&(state.profile.display_name||state.profile.username))||'Workshop';
+        html+='<div class="workshop_title_row">';
+        if(avUrl) html+='<img class="ws_av" src="'+avUrl+'" alt=""/>';
+        html+='<span class="ws_name">'+esc(disp)+"'s Workshop</span></div>";
+        html+='<div class="workshop_rows">';
+        keys.forEach(function(k){
+          var parts=rows[k].filter(function(u){return /part_/i.test(u);});
+          if(!parts.length) parts=rows[k].slice(0,5);
+          // sort part_1 .. part_5
+          parts.sort(function(a,b){
+            var ma=a.match(/part_(\d+)/i), mb=b.match(/part_(\d+)/i);
+            return (ma?+ma[1]:0)-(mb?+mb[1]:0);
+          });
+          html+='<div class="workshop_row">';
+          parts.slice(0,5).forEach(function(u){
+            html+='<span><img src="'+u+'" alt=""/></span>';
+          });
+          html+='</div>';
+        });
+        html+='</div>';
       } else if(type==='split'){
         var center=urls.find(function(u){return /center/i.test(u);})||urls[0];
         var side=urls.find(function(u){return /side/i.test(u);})||urls[1];
@@ -647,18 +696,23 @@ img{border:0}
   document.getElementById('btnScUpload').onclick=async function(){
     var msg=document.getElementById('scMsg');
     var type=document.getElementById('scType').value;
-    if(type==='workshop' && workshopCount(state.showcases)>=3){
+    if(type==='workshop' && workshopCount(state.showcases)>=1){
       msg.className='msg err';
-      msg.textContent='Maximum 3 Workshop showcases (3 rows of 5). Remove one first.';
+      msg.textContent='Workshop already on profile. Remove it first, then upload up to 3 images together.';
       return;
     }
-    var file=document.getElementById('scFile').files[0];
-    if(!file){ msg.className='msg err'; msg.textContent='Choose a file'; return; }
+    var files=document.getElementById('scFile').files;
+    if(!files || !files.length){ msg.className='msg err'; msg.textContent='Choose a file'; return; }
+    if(type==='workshop' && files.length>3){
+      msg.className='msg err'; msg.textContent='Workshop: max 3 images at once'; return;
+    }
     msg.className='msg'; msg.textContent='Processing…';
     var fd=new FormData();
     fd.append('type',type);
     fd.append('title',document.getElementById('scTitle').value||type);
-    fd.append('file',file);
+    for(var i=0;i<files.length && i<(type==='workshop'?3:1);i++){
+      fd.append('file', files[i]);
+    }
     try{
       var r=await fetch('/api/profile/showcase/add',{method:'POST',headers:headers(),credentials:'include',body:fd});
       var j=await r.json();

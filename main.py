@@ -545,8 +545,9 @@ async def api_profile_showcase_add(request: Request):
         return JSONResponse({"ok": False, "msg": "Invalid type"}, status_code=400)
     if sc_type == "workshop":
         existing = [s for s in auth_db.profile_showcase_list(uid) if s.get("type") == "workshop"]
-        if len(existing) >= 3:
-            return JSONResponse({"ok": False, "msg": "Max 3 Workshop showcases"}, status_code=400)
+        # one Workshop block on profile; it holds up to 3 rows (3 source images)
+        if len(existing) >= 1:
+            return JSONResponse({"ok": False, "msg": "Workshop showcase already exists — remove it to upload a new set (up to 3 images)"}, status_code=400)
     title = str(form.get("title") or sc_type)[:80]
     out_dir = Path(DATA) / "profile_sc" / str(uid)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -604,15 +605,38 @@ async def api_profile_showcase_add(request: Request):
                 files_saved.append(dest.name)
 
         if sc_type == "workshop":
+            # Up to 3 source images → 3 rows × 5 parts (Steam Workshop Showcase)
             try:
-                im = PILImage.open(src_path)
-                if getattr(im, "is_animated", False) or src_path.suffix.lower() == ".gif":
-                    # gif path variants differ; fallback to first frame workshop
-                    im.seek(0)
-                    frame = im.convert("RGBA")
-                    _save_dict(proc.process_image_workshop(frame, wm_text="", wm_opacity=0))
-                else:
-                    _save_dict(proc.process_image_workshop(im.convert("RGBA"), wm_text="", wm_opacity=0))
+                sources = []
+                sources.append((name0, raw0))
+                for extra in uploads[1:3]:
+                    try:
+                        raw = await extra.read()
+                        nm = getattr(extra, "filename", None) or "img.png"
+                        sources.append((nm, raw))
+                    except Exception:
+                        pass
+                row_i = 0
+                for nm, raw in sources:
+                    row_i += 1
+                    sp = tmp / f"src_{row_i}{Path(str(nm)).suffix or '.png'}"
+                    sp.write_bytes(raw)
+                    im = PILImage.open(sp)
+                    if getattr(im, "is_animated", False) or sp.suffix.lower() == ".gif":
+                        im.seek(0)
+                        frame = im.convert("RGBA")
+                        out_map = proc.process_image_workshop(frame, wm_text="", wm_opacity=0)
+                    else:
+                        out_map = proc.process_image_workshop(im.convert("RGBA"), wm_text="", wm_opacity=0)
+                    for fname, blob in out_map.items():
+                        if not isinstance(blob, (bytes, bytearray)):
+                            continue
+                        if not str(fname).lower().endswith((".png", ".gif", ".jpg", ".jpeg", ".webp")):
+                            continue
+                        # prefix row so client can group: row1_part_1.png
+                        dest = out_dir / f"{ts}_row{row_i}_{Path(str(fname)).name}"
+                        dest.write_bytes(bytes(blob))
+                        files_saved.append(dest.name)
             except Exception as e:
                 shutil.rmtree(tmp, ignore_errors=True)
                 return JSONResponse({"ok": False, "msg": f"Workshop process failed: {e}"}, status_code=500)
