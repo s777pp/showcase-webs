@@ -182,34 +182,41 @@ html{background:#000}
 .showcase_content{padding:10px 12px 12px}
 
 /* Workshop: rows of 5 equal parts, image fills height of source ratio */
-.workshop_rows{display:flex;flex-direction:column;gap:3px}
 .workshop_rows{display:flex;flex-direction:column;gap:0;width:100%}
 .workshop_row{
-  display:grid !important;
-  grid-template-columns:repeat(5,minmax(0,1fr)) !important;
-  gap:0 !important;
-  width:100%;
+  display:flex !important;
+  flex-direction:row !important;
+  width:100% !important;
   line-height:0;
+  overflow:hidden;
 }
 .workshop_row > span{
+  flex:1 1 20% !important;
+  width:20% !important;
+  max-width:20% !important;
+  min-width:0 !important;
   display:block !important;
-  width:100%;
-  min-width:0;
-  overflow:hidden;
-  border:none;outline:none;
-  box-shadow:1px 0 0 rgba(0,0,0,.5);
-  background:#000;
+  overflow:hidden !important;
+  position:relative;
+  border:none !important;
+  outline:none !important;
+  box-shadow:1px 0 0 rgba(0,0,0,.55);
+  background-color:#000;
+  background-repeat:no-repeat;
+  /* for CSS-sliced full images */
+  background-size:500% 100%;
+  aspect-ratio:1/1.4;
 }
 .workshop_row > span:last-child{box-shadow:none}
-.workshop_row img{
+.workshop_row > span img{
   display:block !important;
   width:100% !important;
-  height:auto !important;
-  max-width:100%;
-  object-fit:cover;
+  height:100% !important;
+  object-fit:cover !important;
   object-position:center top;
   border:none !important;
   outline:none !important;
+  max-width:none !important;
 }
 .workshop_title_row{
   display:flex;align-items:center;gap:8px;
@@ -314,20 +321,26 @@ html{background:#000}
   background:rgba(0,0,0,.40);
   backdrop-filter:blur(14px);
   -webkit-backdrop-filter:blur(14px);
-  padding:14px 14px 12px;
+  padding:16px 18px 18px;
 }
-.side_sub{font-size:11px;color:#56707f;margin:2px 0 12px}
-.side_sec{margin:10px 0}
-.side_label{font-size:13px;color:#c6d4df;margin-bottom:6px}
-.side_label .n{color:#ebebeb;margin-left:4px}
-.side_icons{display:flex;gap:6px;flex-wrap:wrap;min-height:20px}
+.side_sub{font-size:11px;color:#56707f;margin:4px 0 16px}
+.side_sec{margin:14px 0 12px}
+.side_label{font-size:13px;color:#c6d4df;margin-bottom:8px;letter-spacing:.01em}
+.side_label .n{color:#ebebeb;margin-left:6px;font-weight:400}
+.side_icons{display:flex;gap:8px;flex-wrap:wrap;min-height:24px;margin-bottom:4px}
 .side_icons .ic{
-  width:40px;height:40px;background:rgba(255,255,255,.06);
-  border-radius:2px;display:grid;place-items:center;
-  font-size:10px;color:#8f98a0;
+  width:48px;height:48px;background:rgba(255,255,255,.05);
+  border-radius:3px;display:grid;place-items:center;
 }
-.count_link{padding:3px 0;font-size:13px;color:#c6d4df}
+.count_link{padding:5px 0;font-size:13px;color:#c6d4df}
 .count_link .n{color:#ebebeb}
+.profile_header_badgeinfo .friendPlayerLevel{
+  width:42px;height:42px;line-height:42px;font-size:16px;
+  border:2px solid #66c0f4;background:transparent;color:#fff;
+  box-shadow:0 0 0 1px rgba(102,192,244,.3);
+}
+.persona_level_title{font-size:14px;color:rgba(255,255,255,.7);margin-bottom:6px}
+
 .friends_list .fr,.groups_list .gr{
   display:flex;align-items:center;gap:8px;padding:5px 0;
 }
@@ -579,8 +592,8 @@ html{background:#000}
     side.textContent=stEl.textContent;
     document.getElementById('sideLoc').textContent=p.profile_location||'';
 
-    var lvl=p.profile_level||1, xp=p.profile_xp||0;
-    document.getElementById('lvl').textContent=String(lvl);
+    var lvl=50, xp=p.profile_xp||0;
+    document.getElementById('lvl').textContent='50';
     document.getElementById('xpFill').style.width=Math.max(4,Math.min(100,(xp%1000)/10))+'%';
     document.getElementById('xpTxt').textContent=xp+' XP';
 
@@ -593,6 +606,33 @@ html{background:#000}
     }
 
     setBackground(p.background_url||'');
+    
+    // Steam-like fixed level 50 + sample white icons
+    document.getElementById('nBadges').textContent='80';
+    document.getElementById('nAwards').textContent='2';
+    document.getElementById('nGames').textContent='295';
+    document.getElementById('nShots').textContent='65';
+    document.getElementById('nVids').textContent='3';
+    document.getElementById('nRev').textContent='17';
+    document.getElementById('nGuides').textContent='5';
+    document.getElementById('nArt').textContent='66';
+    document.getElementById('nGroups').textContent='1';
+    document.getElementById('nFriends').textContent='27';
+    var ic = function(svg){ return '<div class="ic">'+svg+'</div>'; };
+    var white = 'stroke="#e6e6e6" fill="none" stroke-width="1.5"';
+    var badgeSvgs = [
+      '<svg width="28" height="28" viewBox="0 0 24 24"><path '+white+' d="M12 2l2.4 7.4H22l-6 4.6 2.3 7-6.3-4.6L5.7 21l2.3-7-6-4.6h7.6z"/></svg>',
+      '<svg width="28" height="28" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" '+white+'/><path '+white+' d="M12 7v5l3 2"/></svg>',
+      '<svg width="28" height="28" viewBox="0 0 24 24"><path '+white+' d="M12 3l7 4v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V7l7-4z"/></svg>',
+      '<svg width="28" height="28" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" '+white+'/><path '+white+' d="M8 12h8M12 8v8"/></svg>'
+    ];
+    var awardSvgs = [
+      '<svg width="28" height="28" viewBox="0 0 24 24"><path '+white+' d="M6 4h12v2l-2 3v3l4 4v2H4v-2l4-4V9L6 6V4z"/><path '+white+' d="M9 20h6"/></svg>',
+      '<svg width="28" height="28" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" '+white+'/><path '+white+' d="M6 20c1.5-3 4-4.5 6-4.5S16.5 17 18 20"/></svg>'
+    ];
+    document.getElementById('badgesRow').innerHTML = badgeSvgs.map(ic).join('');
+    document.getElementById('awardsRow').innerHTML = awardSvgs.map(ic).join('');
+
     document.getElementById('ownerBtns').style.display=isOwner?'':'none';
     document.title='Steam Community :: '+(p.display_name||p.username||'Profile');
 
@@ -637,7 +677,12 @@ html{background:#000}
       if(isOwner) html+='<button type="button" class="sc_remove" data-id="'+sc.id+'">Remove</button>';
 
       if(type==='workshop'){
-        // ONLY part_ files, group by row
+        var avUrl=(state.profile&&state.profile.avatar_url)||'';
+        var disp=(state.profile&&(state.profile.display_name||state.profile.username))||'Workshop';
+        html+='<div class="workshop_title_row">';
+        if(avUrl) html+='<img class="ws_av" src="'+avUrl+'" alt=""/>';
+        html+='<span class="ws_name">'+esc(disp)+"'s Workshop</span></div>";
+
         var partsOnly=urls.filter(function(u){ return /part_\d+/i.test(u); });
         var rows={};
         partsOnly.forEach(function(u){
@@ -647,36 +692,54 @@ html{background:#000}
           rows[ri].push(u);
         });
         var keys=Object.keys(rows).sort(function(a,b){return (+a)-(+b);});
-        if(!keys.length && urls.length){
-          // legacy: no part_ in name — still try to show nothing useful
-          keys=[];
-        }
-        var avUrl=(state.profile&&state.profile.avatar_url)||'';
-        var disp=(state.profile&&(state.profile.display_name||state.profile.username))||'Workshop';
-        html+='<div class="workshop_title_row">';
-        if(avUrl) html+='<img class="ws_av" src="'+avUrl+'" alt=""/>';
-        html+='<span class="ws_name">'+esc(disp)+"'s Workshop</span></div>";
+
+        // Fallback: no part_ files → treat each non-full url (or all) as a full strip to CSS-slice into 5
         if(!keys.length){
-          html+='<p class="empty">Workshop parts missing — remove and re-upload (up to 3 images).</p>';
-        } else {
-          html+='<div class="workshop_rows">';
-          keys.forEach(function(k){
-            var parts=rows[k].slice();
-            parts.sort(function(a,b){
-              var ma=a.match(/part_(\d+)/i), mb=b.match(/part_(\d+)/i);
-              return (ma?+ma[1]:0)-(mb?+mb[1]:0);
-            });
-            html+='<div class="workshop_row">';
-            // always 5 cells
+          var fulls=urls.filter(function(u){ return !/full_with/i.test(u); });
+          if(!fulls.length) fulls=urls.slice();
+          // one row per image
+          fulls.forEach(function(u,i){ rows[String(i+1)]=['FULL:'+u]; });
+          keys=Object.keys(rows);
+        }
+
+        html+='<div class="workshop_rows">';
+        keys.forEach(function(k){
+          var parts=rows[k].slice();
+          parts.sort(function(a,b){
+            var ma=String(a).match(/part_(\d+)/i), mb=String(b).match(/part_(\d+)/i);
+            return (ma?+ma[1]:0)-(mb?+mb[1]:0);
+          });
+          html+='<div class="workshop_row">';
+          var isCssSlice = parts.length===1 && String(parts[0]).indexOf('FULL:')===0;
+          if(isCssSlice){
+            var src=String(parts[0]).replace(/^FULL:/,'');
+            for(var pi=0;pi<5;pi++){
+              var pos = (pi * 25);
+              html+='<span style="background-image:url(\''+src+'\');background-position:'+pos+'% 0;background-size:500% 100%;"></span>';
+            }
+          } else if(parts.length>=5 && !String(parts[0]).match(/^FULL:/)){
             for(var pi=0;pi<5;pi++){
               var u=parts[pi];
-              if(u) html+='<span><img src="'+u+'" alt="part"/></span>';
+              if(u) html+='<span><img src="'+u+'" alt=""/></span>';
               else html+='<span></span>';
             }
-            html+='</div>';
-          });
+          } else if(parts.length===1){
+            // single url without FULL prefix — still CSS slice
+            var src=String(parts[0]).replace(/^FULL:/,'');
+            for(var pi=0;pi<5;pi++){
+              var pos = (pi * 25);
+              html+='<span style="background-image:url(\''+src+'\');background-position:'+pos+'% 0;background-size:500% 100%;"></span>';
+            }
+          } else {
+            for(var pi=0;pi<5;pi++){
+              var u=parts[pi];
+              if(u) html+='<span><img src="'+u+'" alt=""/></span>';
+              else html+='<span></span>';
+            }
+          }
           html+='</div>';
-        }
+        });
+        html+='</div>';
       } else if(type==='split'){
         var center=urls.find(function(u){return /center/i.test(u);})||urls[0];
         var side=urls.find(function(u){return /side/i.test(u);})||urls[1];
