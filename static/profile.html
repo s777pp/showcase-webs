@@ -65,9 +65,25 @@ img{border:0}
 }
 /* soft bottom fade so content never hard-cuts the art */
 .profile_bg_fade{
-  position:absolute;left:0;right:0;bottom:0;height:180px;z-index:1;pointer-events:none;
-  background:linear-gradient(to bottom, rgba(27,40,56,0), #1b2838);
+  position:absolute;left:0;right:0;bottom:0;height:280px;z-index:1;pointer-events:none;
+  background:linear-gradient(to bottom,
+    rgba(0,0,0,0) 0%,
+    rgba(0,0,0,.35) 40%,
+    rgba(0,0,0,.75) 70%,
+    #000 100%);
+  backdrop-filter:blur(0px);
 }
+.profile_bg_fade::after{
+  content:"";
+  position:absolute;left:0;right:0;bottom:0;height:140px;
+  background:linear-gradient(to bottom, transparent, #000);
+  filter:blur(20px);
+  opacity:.9;
+}
+.profile_page{background:#000}
+body{background:#000}
+html{background:#000}
+
 
 .profile_content{
   position:relative;z-index:2;
@@ -167,33 +183,40 @@ img{border:0}
 
 /* Workshop: rows of 5 equal parts, image fills height of source ratio */
 .workshop_rows{display:flex;flex-direction:column;gap:3px}
+.workshop_rows{display:flex;flex-direction:column;gap:0;width:100%}
 .workshop_row{
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:0;
+  display:grid !important;
+  grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+  gap:0 !important;
   width:100%;
+  line-height:0;
 }
-.workshop_row a,.workshop_row span{
-  display:block;position:relative;overflow:hidden;background:transparent;
+.workshop_row > span{
+  display:block !important;
+  width:100%;
+  min-width:0;
+  overflow:hidden;
   border:none;outline:none;
-  /* thin divider like Steam — only right edge */
-  box-shadow: inset -1px 0 0 rgba(0,0,0,.45);
+  box-shadow:1px 0 0 rgba(0,0,0,.5);
+  background:#000;
 }
-.workshop_row span:last-child{box-shadow:none}
+.workshop_row > span:last-child{box-shadow:none}
 .workshop_row img{
-  display:block;width:100%;height:auto;
-  object-fit:cover;object-position:center;
-  vertical-align:top;
-  border:none;outline:none;
+  display:block !important;
+  width:100% !important;
+  height:auto !important;
+  max-width:100%;
+  object-fit:cover;
+  object-position:center top;
+  border:none !important;
+  outline:none !important;
 }
-.workshop_rows{display:flex;flex-direction:column;gap:0}
 .workshop_title_row{
   display:flex;align-items:center;gap:8px;
   padding:8px 2px 10px;
 }
 .workshop_title_row img.ws_av{
   width:28px;height:28px;border-radius:2px;object-fit:cover;
-  border:none;outline:none;
 }
 .workshop_title_row .ws_name{color:#ebebeb;font-size:14px;font-weight:400}
 
@@ -286,6 +309,40 @@ img{border:0}
   background:rgba(0,0,0,.45);padding:28px;border-radius:3px;border:1px solid #000;
 }
 .gate h2{color:#fff;font-weight:300;margin-bottom:8px}
+
+.right_block.steam_side{
+  background:rgba(0,0,0,.40);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  padding:14px 14px 12px;
+}
+.side_sub{font-size:11px;color:#56707f;margin:2px 0 12px}
+.side_sec{margin:10px 0}
+.side_label{font-size:13px;color:#c6d4df;margin-bottom:6px}
+.side_label .n{color:#ebebeb;margin-left:4px}
+.side_icons{display:flex;gap:6px;flex-wrap:wrap;min-height:20px}
+.side_icons .ic{
+  width:40px;height:40px;background:rgba(255,255,255,.06);
+  border-radius:2px;display:grid;place-items:center;
+  font-size:10px;color:#8f98a0;
+}
+.count_link{padding:3px 0;font-size:13px;color:#c6d4df}
+.count_link .n{color:#ebebeb}
+.friends_list .fr,.groups_list .gr{
+  display:flex;align-items:center;gap:8px;padding:5px 0;
+}
+.friends_list .fr img,.groups_list .gr img{
+  width:32px;height:32px;border-radius:2px;object-fit:cover;background:#1b2838;
+}
+.friends_list .fr .meta,.groups_list .gr .meta{flex:1;min-width:0}
+.friends_list .fr .nm,.groups_list .gr .nm{font-size:12px;color:#c6d4df}
+.friends_list .fr .st{font-size:11px;color:#56707f}
+.friends_list .fr .st.ingame{color:#90ba3c}
+.friends_list .fr .lvl{
+  font-size:11px;color:#ebebeb;border:1px solid #c6a43d;
+  border-radius:50%;width:22px;height:22px;line-height:20px;text-align:center;
+}
+
 </style>
 </head>
 <body>
@@ -409,19 +466,43 @@ img{border:0}
           </div>
         </div>
         <div class="profile_rightcol">
-          <div class="right_block">
+          <div class="right_block steam_side">
             <div class="status_line" id="sideStatus">Currently Online</div>
-            <div style="font-size:11px;color:#56707f" id="sideLoc"></div>
-          </div>
-          <div class="right_block">
-            <div class="h">Badges</div>
-            <p class="empty" style="padding:8px">—</p>
-          </div>
-          <div class="right_block">
-            <div class="h">Links</div>
-            <a class="count_link" href="/app"><span>Showcase Maker</span><span class="n">→</span></a>
-            <a class="count_link" href="/gallery"><span>Gallery</span><span class="n">→</span></a>
-            <a class="count_link" href="/app"><span>Workshop items</span><span class="n" id="wsCount">0</span></a>
+            <div class="side_sub" id="sideLoc"></div>
+
+            <div class="side_sec">
+              <div class="side_label">Profile Awards <span class="n" id="nAwards">0</span></div>
+              <div class="side_icons" id="awardsRow"></div>
+            </div>
+
+            <div class="side_sec">
+              <div class="side_label">Badges <span class="n" id="nBadges">0</span></div>
+              <div class="side_icons" id="badgesRow"></div>
+            </div>
+
+            <a class="count_link" href="#"><span>Games</span><span class="n" id="nGames">0</span></a>
+            <a class="count_link" href="#"><span>Inventory</span><span class="n" id="nInv">—</span></a>
+            <a class="count_link" href="#"><span>Screenshots</span><span class="n" id="nShots">0</span></a>
+            <a class="count_link" href="#"><span>Videos</span><span class="n" id="nVids">0</span></a>
+            <a class="count_link" href="/app"><span>Workshop Items</span><span class="n" id="wsCount">0</span></a>
+            <a class="count_link" href="#"><span>Reviews</span><span class="n" id="nRev">0</span></a>
+            <a class="count_link" href="#"><span>Guides</span><span class="n" id="nGuides">0</span></a>
+            <a class="count_link" href="/gallery"><span>Artwork</span><span class="n" id="nArt">0</span></a>
+
+            <div class="side_sec" style="margin-top:10px">
+              <div class="side_label">Groups <span class="n" id="nGroups">0</span></div>
+              <div id="groupsList" class="groups_list"></div>
+            </div>
+
+            <div class="side_sec">
+              <div class="side_label">Friends <span class="n" id="nFriends">0</span></div>
+              <div id="friendsList" class="friends_list"></div>
+            </div>
+
+            <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px">
+              <a class="count_link" href="/app"><span>Showcase Maker</span><span class="n">→</span></a>
+              <a class="count_link" href="/gallery"><span>Gallery</span><span class="n">→</span></a>
+            </div>
           </div>
         </div>
       </div>
@@ -457,11 +538,12 @@ img{border:0}
     var wrap=document.getElementById('bgWrap');
     var fade=document.getElementById('bgFade');
     wrap.innerHTML='';
+    fade.style.display='block';
     if(!url){
       var d=document.createElement('div');
       d.className='fallback_bg';
+      d.style.background='#000';
       wrap.appendChild(d);
-      fade.style.display='none';
       return;
     }
     var img=document.createElement('img');
@@ -469,7 +551,7 @@ img{border:0}
     img.src=url+(url.indexOf('?')>=0?'&':'?')+'t='+Date.now();
     img.onload=function(){
       // height follows natural aspect of the file at full content width
-      fade.style.display='block';
+      fade.style.display='block'; fade.style.position='absolute';
       // position fade at bottom of image
       fade.style.top='auto';
     };
@@ -555,41 +637,46 @@ img{border:0}
       if(isOwner) html+='<button type="button" class="sc_remove" data-id="'+sc.id+'">Remove</button>';
 
       if(type==='workshop'){
-        // group by rowN_ from filenames in urls
+        // ONLY part_ files, group by row
+        var partsOnly=urls.filter(function(u){ return /part_\d+/i.test(u); });
         var rows={};
-        urls.forEach(function(u){
+        partsOnly.forEach(function(u){
           var m=u.match(/row(\d+)_/i);
-          var ri=m?m[1]:'1';
+          var ri=m?String(m[1]):'1';
           if(!rows[ri]) rows[ri]=[];
-          if(/part_/i.test(u) || !/full_/i.test(u)) rows[ri].push(u);
+          rows[ri].push(u);
         });
-        var keys=Object.keys(rows).sort();
-        if(!keys.length){
-          var parts=urls.filter(function(u){return /part_/i.test(u);});
-          if(!parts.length) parts=urls.slice(0,5);
-          rows={'1':parts}; keys=['1'];
+        var keys=Object.keys(rows).sort(function(a,b){return (+a)-(+b);});
+        if(!keys.length && urls.length){
+          // legacy: no part_ in name — still try to show nothing useful
+          keys=[];
         }
         var avUrl=(state.profile&&state.profile.avatar_url)||'';
         var disp=(state.profile&&(state.profile.display_name||state.profile.username))||'Workshop';
         html+='<div class="workshop_title_row">';
         if(avUrl) html+='<img class="ws_av" src="'+avUrl+'" alt=""/>';
         html+='<span class="ws_name">'+esc(disp)+"'s Workshop</span></div>";
-        html+='<div class="workshop_rows">';
-        keys.forEach(function(k){
-          var parts=rows[k].filter(function(u){return /part_/i.test(u);});
-          if(!parts.length) parts=rows[k].slice(0,5);
-          // sort part_1 .. part_5
-          parts.sort(function(a,b){
-            var ma=a.match(/part_(\d+)/i), mb=b.match(/part_(\d+)/i);
-            return (ma?+ma[1]:0)-(mb?+mb[1]:0);
-          });
-          html+='<div class="workshop_row">';
-          parts.slice(0,5).forEach(function(u){
-            html+='<span><img src="'+u+'" alt=""/></span>';
+        if(!keys.length){
+          html+='<p class="empty">Workshop parts missing — remove and re-upload (up to 3 images).</p>';
+        } else {
+          html+='<div class="workshop_rows">';
+          keys.forEach(function(k){
+            var parts=rows[k].slice();
+            parts.sort(function(a,b){
+              var ma=a.match(/part_(\d+)/i), mb=b.match(/part_(\d+)/i);
+              return (ma?+ma[1]:0)-(mb?+mb[1]:0);
+            });
+            html+='<div class="workshop_row">';
+            // always 5 cells
+            for(var pi=0;pi<5;pi++){
+              var u=parts[pi];
+              if(u) html+='<span><img src="'+u+'" alt="part"/></span>';
+              else html+='<span></span>';
+            }
+            html+='</div>';
           });
           html+='</div>';
-        });
-        html+='</div>';
+        }
       } else if(type==='split'){
         var center=urls.find(function(u){return /center/i.test(u);})||urls[0];
         var side=urls.find(function(u){return /side/i.test(u);})||urls[1];

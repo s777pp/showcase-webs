@@ -622,21 +622,39 @@ async def api_profile_showcase_add(request: Request):
                     sp = tmp / f"src_{row_i}{Path(str(nm)).suffix or '.png'}"
                     sp.write_bytes(raw)
                     im = PILImage.open(sp)
-                    if getattr(im, "is_animated", False) or sp.suffix.lower() == ".gif":
-                        im.seek(0)
-                        frame = im.convert("RGBA")
-                        out_map = proc.process_image_workshop(frame, wm_text="", wm_opacity=0)
-                    else:
-                        out_map = proc.process_image_workshop(im.convert("RGBA"), wm_text="", wm_opacity=0)
-                    for fname, blob in out_map.items():
-                        if not isinstance(blob, (bytes, bytearray)):
+                    if getattr(im, "is_animated", False) or sp.suffix.lower() in (".gif",):
+                        try:
+                            im.seek(0)
+                        except Exception:
+                            pass
+                    frame = im.convert("RGBA")
+                    out_map = proc.process_image_workshop(frame, wm_text="", wm_opacity=0.0)
+                    # ONLY store the 5 parts for profile display (Steam strip)
+                    saved_parts = 0
+                    for pi in range(1, 6):
+                        key = f"part_{pi}.png"
+                        blob = out_map.get(key)
+                        if not blob:
                             continue
-                        if not str(fname).lower().endswith((".png", ".gif", ".jpg", ".jpeg", ".webp")):
-                            continue
-                        # prefix row so client can group: row1_part_1.png
-                        dest = out_dir / f"{ts}_row{row_i}_{Path(str(fname)).name}"
+                        dest = out_dir / f"{ts}_row{row_i}_part_{pi}.png"
                         dest.write_bytes(bytes(blob))
                         files_saved.append(dest.name)
+                        saved_parts += 1
+                    if saved_parts < 5:
+                        # manual fallback crop into 5
+                        w, h = frame.size
+                        pw = max(1, w // 5)
+                        for pi in range(5):
+                            left = pi * pw
+                            right = (pi + 1) * pw if pi < 4 else w
+                            part = frame.crop((left, 0, right, h))
+                            import io
+                            buf = io.BytesIO()
+                            part.save(buf, format="PNG")
+                            dest = out_dir / f"{ts}_row{row_i}_part_{pi+1}.png"
+                            dest.write_bytes(buf.getvalue())
+                            if dest.name not in files_saved:
+                                files_saved.append(dest.name)
             except Exception as e:
                 shutil.rmtree(tmp, ignore_errors=True)
                 return JSONResponse({"ok": False, "msg": f"Workshop process failed: {e}"}, status_code=500)
