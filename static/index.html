@@ -514,161 +514,72 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 }
 
 
-/* BorderGlow — edge-reactive glow (vanilla port of React Bits). Does not restyle card content. */
+/* BorderGlow — soft contour glow only (no beam / fill) */
 .border-glow-host{
-  --edge-proximity: 0;
-  --cursor-angle: 45deg;
-  --edge-sensitivity: 28;
-  --color-sensitivity: calc(var(--edge-sensitivity) + 18);
-  --glow-padding: 36px;
-  --cone-spread: 22;
-  --fill-opacity: 0.42;
-  --glow-color: hsl(190deg 100% 70% / 100%);
-  --glow-color-60: hsl(190deg 100% 70% / 60%);
-  --glow-color-50: hsl(190deg 100% 70% / 50%);
-  --glow-color-40: hsl(190deg 100% 70% / 40%);
-  --glow-color-30: hsl(190deg 100% 70% / 30%);
-  --glow-color-20: hsl(190deg 100% 70% / 20%);
-  --glow-color-10: hsl(190deg 100% 70% / 10%);
-  --gradient-one: radial-gradient(at 80% 55%, #00d2ff 0px, transparent 50%);
-  --gradient-two: radial-gradient(at 69% 34%, #A4F4FD 0px, transparent 50%);
-  --gradient-three: radial-gradient(at 8% 6%, #3D81E3 0px, transparent 50%);
-  --gradient-four: radial-gradient(at 41% 38%, #7ee8ff 0px, transparent 50%);
-  --gradient-five: radial-gradient(at 86% 85%, #00d2ff 0px, transparent 50%);
-  --gradient-six: radial-gradient(at 82% 18%, #A4F4FD 0px, transparent 50%);
-  --gradient-seven: radial-gradient(at 51% 4%, #3D81E3 0px, transparent 50%);
-  --gradient-base: linear-gradient(#00d2ff 0 100%);
+  --glow-x: 50%;
+  --glow-y: 50%;
+  --glow-a: 0;
   position: relative;
   isolation: isolate;
-  transform: translate3d(0, 0, 0.01px);
-  overflow: visible;
 }
 .border-glow-host > .bg-mesh,
-.border-glow-host > .bg-fill,
+.border-glow-host > .bg-fill{
+  display: none !important;
+}
 .border-glow-host > .edge-light{
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--glow-a);
+  transition: opacity 0.35s ease;
+  padding: 1.5px;
+  background:
+    radial-gradient(
+      180px circle at var(--glow-x) var(--glow-y),
+      rgba(0, 210, 255, 0.85) 0%,
+      rgba(164, 244, 253, 0.35) 28%,
+      transparent 65%
+    );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  filter: blur(0.6px);
+}
+.border-glow-host > .edge-light::after{
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  background:
+    radial-gradient(
+      160px circle at var(--glow-x) var(--glow-y),
+      rgba(0, 210, 255, 0.14) 0%,
+      transparent 55%
+    );
+  filter: blur(10px);
   pointer-events: none;
-  transition: opacity 0.25s ease-out;
-  z-index: 0;
+  -webkit-mask: none;
+  mask: none;
+  padding: 0;
 }
-.border-glow-host:not(:hover):not(.sweep-active) > .bg-mesh,
-.border-glow-host:not(:hover):not(.sweep-active) > .bg-fill,
-.border-glow-host:not(:hover):not(.sweep-active) > .edge-light{
-  opacity: 0 !important;
-  transition: opacity 0.75s ease-in-out;
-}
-/* mesh border ring */
-.border-glow-host > .bg-mesh{
-  border: 1px solid transparent;
-  background:
-    linear-gradient(transparent 0 100%) padding-box,
-    var(--gradient-one) border-box,
-    var(--gradient-two) border-box,
-    var(--gradient-three) border-box,
-    var(--gradient-four) border-box,
-    var(--gradient-five) border-box,
-    var(--gradient-six) border-box,
-    var(--gradient-seven) border-box,
-    var(--gradient-base) border-box;
-  -webkit-mask:
-    linear-gradient(#fff 0 100%) padding-box,
-    linear-gradient(#fff 0 100%);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 100%) padding-box,
-    linear-gradient(#fff 0 100%);
-  mask-composite: exclude;
-  opacity: calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
-  mask-image:
-    conic-gradient(
-      from var(--cursor-angle) at center,
-      black calc(var(--cone-spread) * 1%),
-      transparent calc((var(--cone-spread) + 15) * 1%),
-      transparent calc((100 - var(--cone-spread) - 15) * 1%),
-      black calc((100 - var(--cone-spread)) * 1%)
-    );
-  -webkit-mask-image:
-    conic-gradient(
-      from var(--cursor-angle) at center,
-      black calc(var(--cone-spread) * 1%),
-      transparent calc((var(--cone-spread) + 15) * 1%),
-      transparent calc((100 - var(--cone-spread) - 15) * 1%),
-      black calc((100 - var(--cone-spread)) * 1%)
-    );
-}
-/* soft fill near edges */
-.border-glow-host > .bg-fill{
-  border: 1px solid transparent;
-  background:
-    var(--gradient-one),
-    var(--gradient-two),
-    var(--gradient-three),
-    var(--gradient-four),
-    var(--gradient-five),
-    var(--gradient-six),
-    var(--gradient-seven);
-  opacity: calc(var(--fill-opacity, 0.42) * max(0, (var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity))));
-  mix-blend-mode: soft-light;
-  mask-image:
-    conic-gradient(from var(--cursor-angle) at center, transparent 5%, black 15%, black 85%, transparent 95%);
-  -webkit-mask-image:
-    conic-gradient(from var(--cursor-angle) at center, transparent 5%, black 15%, black 85%, transparent 95%);
-}
-/* outer glow */
-.border-glow-host > .edge-light{
-  inset: calc(var(--glow-padding) * -1);
-  z-index: 1;
-  mask-image:
-    conic-gradient(
-      from var(--cursor-angle) at center, black 2.5%, transparent 10%, transparent 90%, black 97.5%
-    );
-  -webkit-mask-image:
-    conic-gradient(
-      from var(--cursor-angle) at center, black 2.5%, transparent 10%, transparent 90%, black 97.5%
-    );
-  opacity: calc(max(0, (var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity))));
-  mix-blend-mode: plus-lighter;
-}
-.border-glow-host > .edge-light::before{
-  content: "";
-  position: absolute;
-  inset: var(--glow-padding);
-  border-radius: inherit;
-  box-shadow:
-    inset 0 0 0 1px var(--glow-color),
-    inset 0 0 1px 0 var(--glow-color-60),
-    inset 0 0 3px 0 var(--glow-color-50),
-    inset 0 0 6px 0 var(--glow-color-40),
-    inset 0 0 15px 0 var(--glow-color-30),
-    inset 0 0 25px 2px var(--glow-color-20),
-    inset 0 0 50px 2px var(--glow-color-10),
-    0 0 1px 0 var(--glow-color-60),
-    0 0 3px 0 var(--glow-color-50),
-    0 0 6px 0 var(--glow-color-40),
-    0 0 15px 0 var(--glow-color-30),
-    0 0 25px 2px var(--glow-color-20),
-    0 0 50px 2px var(--glow-color-10);
-}
-/* keep card children above glow layers */
 .border-glow-host > :not(.bg-mesh):not(.bg-fill):not(.edge-light){
   position: relative;
   z-index: 2;
 }
-@media (prefers-reduced-motion: reduce){
-  .border-glow-host > .bg-mesh,
-  .border-glow-host > .bg-fill,
-  .border-glow-host > .edge-light{ display: none !important; }
-}
-
 .border-glow-host.final-card,
 .border-glow-host.mock-frame{
   overflow: visible;
 }
-.border-glow-host.final-card > .glow{ /* existing inner glow stays */ }
-
+@media (prefers-reduced-motion: reduce){
+  .border-glow-host > .edge-light{ display: none !important; }
+}
 /* end BorderGlow */
 
 
@@ -708,7 +619,108 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
     transition: none !important;
   }
 }
+
+/* Cards appear on scroll */
+.mh-card-reveal{
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+  transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+  transition-delay: var(--mh-delay, 0ms);
+}
+.mh-card-reveal.is-in{
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+@media (prefers-reduced-motion: reduce){
+  .mh-card-reveal{ opacity:1; transform:none; transition:none; }
+}
 /* end MaskedHeading */
+
+
+/* LogoLoop */
+.logoloop{
+  position: relative;
+  width: 100%;
+  margin-top: 36px;
+  overflow: hidden;
+  --logoloop-gap: 28px;
+  --logoloop-fadeColor: #0c0c0c;
+}
+.logoloop--fade::before,
+.logoloop--fade::after{
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: clamp(32px, 10%, 100px);
+  z-index: 2;
+  pointer-events: none;
+}
+.logoloop--fade::before{
+  left: 0;
+  background: linear-gradient(to right, var(--logoloop-fadeColor) 0%, transparent 100%);
+}
+.logoloop--fade::after{
+  right: 0;
+  background: linear-gradient(to left, var(--logoloop-fadeColor) 0%, transparent 100%);
+}
+.logoloop__track{
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  user-select: none;
+}
+.logoloop__list{
+  display: flex;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.logoloop__item{
+  flex: 0 0 auto;
+  margin-right: var(--logoloop-gap);
+}
+.logoloop__pill{
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.7);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+  transition: color .2s, border-color .2s, background .2s, transform .25s;
+}
+.logoloop__pill:hover{
+  color: #fff;
+  border-color: rgba(0,210,255,.45);
+  background: rgba(0,210,255,.08);
+  transform: scale(1.06);
+}
+@media (prefers-reduced-motion: reduce){
+  .logoloop__track{ transform: none !important; }
+}
+
+
+/* GlowCursor lightweight */
+.sm-glow-cursor-canvas{
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9998;
+  mix-blend-mode: screen;
+}
+@media (hover: none), (pointer: coarse){
+  .sm-glow-cursor-canvas{ display: none !important; }
+}
+@media (prefers-reduced-motion: reduce){
+  .sm-glow-cursor-canvas{ display: none !important; }
+}
 
 </style>
 </head>
@@ -908,11 +920,23 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
     </div>
   </section>
 
-  <section class="section logos">
+    <section class="section logos">
     <div class="k" data-i="trust">Built for Steam profile creators</div>
-    <div class="logo-grid">
-      <span>Workshop</span><span>Featured</span><span>Split</span><span>GIF</span>
-      <span>MP4</span><span>HEX21</span><span>Preview</span><span>FunPay</span>
+    <div class="logoloop logoloop--fade" id="formatsLoop" role="region" aria-label="Formats">
+      <div class="logoloop__track" id="formatsTrack">
+        <ul class="logoloop__list" id="formatsSeq">
+          <li class="logoloop__item"><span class="logoloop__pill">Workshop</span></li>
+          <li class="logoloop__item"><span class="logoloop__pill">Featured</span></li>
+          <li class="logoloop__item"><span class="logoloop__pill">Split</span></li>
+          <li class="logoloop__item"><span class="logoloop__pill">GIF</span></li>
+          <li class="logoloop__item"><span class="logoloop__pill">MP4</span></li>
+          <li class="logoloop__item"><span class="logoloop__pill">HEX21</span></li>
+          <li class="logoloop__item"><span class="logoloop__pill">Preview</span></li>
+          <li class="logoloop__item"><span class="logoloop__pill">FunPay</span></li>
+          <li class="logoloop__item"><span class="logoloop__pill">Watermark</span></li>
+          <li class="logoloop__item"><span class="logoloop__pill">Steam</span></li>
+        </ul>
+      </div>
     </div>
   </section>
 
@@ -1759,69 +1783,48 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script>
 (function(){
-  /* BorderGlow vanilla — enhance existing cards, keep their styles */
+  /* BorderGlow vanilla — soft contour only */
   function prefersReduced(){
     try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; }
-  }
-  function getCenter(el){
-    var r = el.getBoundingClientRect();
-    return [r.width / 2, r.height / 2];
-  }
-  function getEdgeProximity(el, x, y){
-    var c = getCenter(el);
-    var dx = x - c[0], dy = y - c[1];
-    var kx = Infinity, ky = Infinity;
-    if (dx !== 0) kx = c[0] / Math.abs(dx);
-    if (dy !== 0) ky = c[1] / Math.abs(dy);
-    return Math.min(Math.max(1 / Math.min(kx, ky), 0), 1);
-  }
-  function getCursorAngle(el, x, y){
-    var c = getCenter(el);
-    var dx = x - c[0], dy = y - c[1];
-    if (dx === 0 && dy === 0) return 0;
-    var deg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-    if (deg < 0) deg += 360;
-    return deg;
   }
   function enhanceCard(card){
     if (!card || card.classList.contains('border-glow-host')) return;
     card.classList.add('border-glow-host');
-    // match host radius to computed style so glow follows rounded corners
     try {
       var br = getComputedStyle(card).borderRadius;
       if (br) card.style.borderRadius = br;
     } catch(e){}
-    ['bg-mesh','bg-fill','edge-light'].forEach(function(cls){
-      if (!card.querySelector(':scope > .' + cls)) {
-        var s = document.createElement('span');
-        s.className = cls;
-        s.setAttribute('aria-hidden', 'true');
-        card.insertBefore(s, card.firstChild);
-      }
-    });
+    if (!card.querySelector(':scope > .edge-light')) {
+      var s = document.createElement('span');
+      s.className = 'edge-light';
+      s.setAttribute('aria-hidden', 'true');
+      card.insertBefore(s, card.firstChild);
+    }
+    card.querySelectorAll(':scope > .bg-mesh, :scope > .bg-fill').forEach(function(n){ n.remove(); });
+
     card.addEventListener('pointermove', function(e){
       var rect = card.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
       var x = e.clientX - rect.left;
       var y = e.clientY - rect.top;
-      var edge = getEdgeProximity(card, x, y);
-      var angle = getCursorAngle(card, x, y);
-      card.style.setProperty('--edge-proximity', (edge * 100).toFixed(3));
-      card.style.setProperty('--cursor-angle', angle.toFixed(3) + 'deg');
+      var px = (x / rect.width) * 100;
+      var py = (y / rect.height) * 100;
+      var dl = x, dr = rect.width - x, dt = y, db = rect.height - y;
+      var dMin = Math.min(dl, dr, dt, db);
+      var edgeZone = Math.min(rect.width, rect.height) * 0.35;
+      var near = 1 - Math.min(1, dMin / edgeZone);
+      near = near * near;
+      card.style.setProperty('--glow-x', px.toFixed(2) + '%');
+      card.style.setProperty('--glow-y', py.toFixed(2) + '%');
+      card.style.setProperty('--glow-a', near.toFixed(3));
     }, { passive: true });
     card.addEventListener('pointerleave', function(){
-      card.style.setProperty('--edge-proximity', '0');
+      card.style.setProperty('--glow-a', '0');
     });
   }
   function initBorderGlow(){
     if (prefersReduced()) return;
-    var selectors = [
-      '.c3-card',
-      '.q-card',
-      '.triage-card',
-      '.final-card',
-      '.mock-frame'
-    ];
-    selectors.forEach(function(sel){
+    ['.c3-card','.q-card','.triage-card','.final-card','.mock-frame','.subc'].forEach(function(sel){
       document.querySelectorAll(sel).forEach(enhanceCard);
     });
   }
@@ -1974,6 +1977,166 @@ document.addEventListener("DOMContentLoaded", function () {
   else boot();
   setTimeout(patchApplyLang, 0);
   setTimeout(patchApplyLang, 150);
+})();
+</script>
+
+
+<script>
+(function(){
+  function initCardReveal(){
+    var reduced = false;
+    try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+    var cards = document.querySelectorAll('.c3-card, .q-card, .triage-card, .final-card, .mock-frame, .subc');
+    cards.forEach(function(el, i){
+      el.classList.add('mh-card-reveal');
+      el.style.setProperty('--mh-delay', (i % 6) * 70 + 'ms');
+    });
+    if (reduced) {
+      cards.forEach(function(el){ el.classList.add('is-in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (en.isIntersecting) {
+          en.target.classList.add('is-in');
+          io.unobserve(en.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -6% 0px' });
+    cards.forEach(function(el){ io.observe(el); });
+  }
+
+  function initLogoLoop(){
+    var track = document.getElementById('formatsTrack');
+    var seq = document.getElementById('formatsSeq');
+    var root = document.getElementById('formatsLoop');
+    if (!track || !seq || !root) return;
+    var reduced = false;
+    try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+    for (var c = 1; c < 3; c++) {
+      var clone = seq.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.setAttribute('aria-hidden', 'true');
+      track.appendChild(clone);
+    }
+    if (reduced) return;
+    var offset = 0;
+    var speed = 55;
+    var hovering = false;
+    var last = performance.now();
+    var seqW = 0;
+    function measure(){ seqW = seq.getBoundingClientRect().width || 0; }
+    measure();
+    window.addEventListener('resize', measure);
+    root.addEventListener('mouseenter', function(){ hovering = true; });
+    root.addEventListener('mouseleave', function(){ hovering = false; });
+    function frame(now){
+      var dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      var v = hovering ? 12 : speed;
+      if (seqW > 0) {
+        offset = (offset + v * dt) % seqW;
+        track.style.transform = 'translate3d(' + (-offset) + 'px,0,0)';
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function initGlowCursor(){
+    var fine = false;
+    try { fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches; } catch(e){}
+    var reduced = false;
+    try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+    if (!fine || reduced) return;
+
+    var canvas = document.createElement('canvas');
+    canvas.className = 'sm-glow-cursor-canvas';
+    canvas.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(canvas);
+    var ctx = canvas.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    var w = 0, h = 0;
+    function resize(){
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    var N = 28;
+    var pts = [];
+    for (var i = 0; i < N; i++) pts.push({ x: -100, y: -100 });
+    var tx = -100, ty = -100, inside = false, lastMove = 0, fade = 0;
+
+    window.addEventListener('pointermove', function(e){
+      tx = e.clientX; ty = e.clientY;
+      inside = true;
+      lastMove = performance.now();
+    }, { passive: true });
+    document.addEventListener('pointerleave', function(){ inside = false; });
+
+    var last = performance.now();
+    function frame(now){
+      var dt = Math.min(3, (now - last) / 16.67);
+      last = now;
+      var head = pts[0];
+      var ease = 1 - Math.pow(1 - 0.22, dt);
+      head.x += (tx - head.x) * ease;
+      head.y += (ty - head.y) * ease;
+      for (var i = 1; i < N; i++) {
+        var c = 1 - Math.pow(1 - (0.32 + i * 0.008), dt);
+        pts[i].x += (pts[i-1].x - pts[i].x) * c;
+        pts[i].y += (pts[i-1].y - pts[i].y) * c;
+      }
+      var idle = now - lastMove > 700 || !inside;
+      var targetFade = idle ? 0 : 1;
+      fade += (targetFade - fade) * Math.min(1, 0.08 * dt);
+
+      ctx.clearRect(0, 0, w, h);
+      if (fade > 0.01) {
+        for (var j = N - 1; j >= 1; j--) {
+          var p1 = pts[j-1];
+          var t = j / N;
+          var life = Math.pow(1 - t, 0.85);
+          var width = 7 * (1 - t * 0.75);
+          var g = ctx.createRadialGradient(p1.x, p1.y, 0, p1.x, p1.y, width * 4);
+          var a = life * fade * 0.55;
+          g.addColorStop(0, 'rgba(103,232,249,' + (a * 0.9) + ')');
+          g.addColorStop(0.35, 'rgba(0,210,255,' + (a * 0.35) + ')');
+          g.addColorStop(1, 'rgba(167,139,250,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(p1.x, p1.y, width * 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        var hx = pts[0].x, hy = pts[0].y;
+        var hg = ctx.createRadialGradient(hx, hy, 0, hx, hy, 18);
+        hg.addColorStop(0, 'rgba(255,255,255,' + (0.55 * fade) + ')');
+        hg.addColorStop(0.3, 'rgba(103,232,249,' + (0.45 * fade) + ')');
+        hg.addColorStop(1, 'rgba(0,210,255,0)');
+        ctx.fillStyle = hg;
+        ctx.beginPath();
+        ctx.arc(hx, hy, 18, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function boot(){
+    initCardReveal();
+    initLogoLoop();
+    initGlowCursor();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();
 </script>
 
