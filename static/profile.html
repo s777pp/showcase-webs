@@ -481,10 +481,17 @@ html{background:#000}
             <input id="accAvatarFile" type="file" accept="image/*"/>
           </div>
         </div>
-        <p class="hint" id="accKeyRow" style="display:none">License: <code id="accKeyMasked">••••</code></p>
-        <div style="margin-top:10px">
+        <!-- Pro: masked key, click to reveal. Free: input to activate -->
+        <div id="accKeyProRow" style="display:none;margin-top:10px">
+          <label>License key</label>
+          <p class="hint" style="margin:4px 0 0">
+            <code id="accKeyMasked" style="cursor:pointer;user-select:none;letter-spacing:.04em" title="Click to show full key">••••••••••••</code>
+            <span class="hint" id="accKeyHint" style="margin-left:8px">click to show</span>
+          </p>
+        </div>
+        <div id="accKeyFreeRow" style="display:none;margin-top:10px">
           <label>Activate Pro code</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
             <input id="accCode" placeholder="SM-WEB-XXXXXX-XXXX" style="flex:1;min-width:160px"/>
             <button type="button" class="btn btn-gray" id="btnAccCode">Apply</button>
           </div>
@@ -950,10 +957,45 @@ html{background:#000}
       document.getElementById('accNick').value=j.display_name||'';
       document.getElementById('accEmail').value=j.email||'';
       document.getElementById('accPlan').value=j.is_pro?'Pro':'Free';
-      var kr=document.getElementById('accKeyRow');
-      if(j.license_key){ kr.style.display='block'; document.getElementById('accKeyMasked').textContent=j.license_key; }
+      var proRow=document.getElementById('accKeyProRow');
+      var freeRow=document.getElementById('accKeyFreeRow');
+      var fullKey=j.pro_code||j.license_key||j.access_key||j.key||'';
+      window._accFullKey=fullKey;
+      window._accKeyShown=false;
+      if(j.is_pro){
+        proRow.style.display='block';
+        freeRow.style.display='none';
+        if(fullKey){
+          var masked=fullKey.length>10?(fullKey.slice(0,4)+'••••'+fullKey.slice(-4)):'••••••••';
+          document.getElementById('accKeyMasked').textContent=masked;
+          document.getElementById('accKeyHint').textContent='click to show';
+        } else {
+          document.getElementById('accKeyMasked').textContent='Pro active';
+          document.getElementById('accKeyHint').textContent='';
+          window._accFullKey='';
+        }
+      } else {
+        proRow.style.display='none';
+        freeRow.style.display='block';
+      }
     }).catch(function(){});
   };
+  
+  document.getElementById('accKeyMasked').onclick=function(){
+    var el=document.getElementById('accKeyMasked');
+    var hint=document.getElementById('accKeyHint');
+    if(!window._accFullKey) return;
+    window._accKeyShown=!window._accKeyShown;
+    if(window._accKeyShown){
+      el.textContent=window._accFullKey;
+      if(hint) hint.textContent='click to hide';
+    } else {
+      var k=window._accFullKey;
+      el.textContent=k.length>10?(k.slice(0,4)+'••••'+k.slice(-4)):'••••••••';
+      if(hint) hint.textContent='click to show';
+    }
+  };
+
   document.getElementById('btnAccClose').onclick=function(){ document.getElementById('accPanel').classList.remove('open'); };
   document.getElementById('btnAccLogout').onclick=async function(){
     try{ await fetch('/api/auth/logout',{method:'POST',headers:headers(),credentials:'include'}); }catch(e){}
@@ -987,6 +1029,11 @@ html{background:#000}
       var j=await r.json();
       msg.className=j.ok?'msg ok':'msg err';
       msg.textContent=j.msg||(j.ok?'OK':'Error');
+      if(j.ok){
+        // switch UI to pro key view
+        var _btn=document.getElementById('btnAccount');
+        if(_btn) _btn.click();
+      }
     }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
   };
   document.getElementById('btnAccBuy').onclick=function(){

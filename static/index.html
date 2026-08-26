@@ -2147,29 +2147,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
       ctx.clearRect(0, 0, w, h);
       if (fade > 0.01) {
+        // soft motion trail only — no big cursor orb
         for (var j = N - 1; j >= 1; j--) {
           var p1 = pts[j-1];
           var t = j / N;
-          var life = Math.pow(1 - t, 0.85);
-          var width = 7 * (1 - t * 0.75);
-          var g = ctx.createRadialGradient(p1.x, p1.y, 0, p1.x, p1.y, width * 4);
-          var a = life * fade * 0.55;
-          g.addColorStop(0, 'rgba(103,232,249,' + (a * 0.9) + ')');
-          g.addColorStop(0.35, 'rgba(0,210,255,' + (a * 0.35) + ')');
+          var life = Math.pow(1 - t, 0.9);
+          var radius = 2.2 * (1 - t * 0.7); // thin trail
+          var g = ctx.createRadialGradient(p1.x, p1.y, 0, p1.x, p1.y, radius * 3.5);
+          var a = life * fade * 0.4;
+          g.addColorStop(0, 'rgba(103,232,249,' + (a * 0.75) + ')');
+          g.addColorStop(0.45, 'rgba(0,210,255,' + (a * 0.22) + ')');
           g.addColorStop(1, 'rgba(167,139,250,0)');
           ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.arc(p1.x, p1.y, width * 4, 0, Math.PI * 2);
+          ctx.arc(p1.x, p1.y, radius * 3.5, 0, Math.PI * 2);
           ctx.fill();
         }
+        // tiny tip (almost invisible)
         var hx = pts[0].x, hy = pts[0].y;
-        var hg = ctx.createRadialGradient(hx, hy, 0, hx, hy, 18);
-        hg.addColorStop(0, 'rgba(255,255,255,' + (0.55 * fade) + ')');
-        hg.addColorStop(0.3, 'rgba(103,232,249,' + (0.45 * fade) + ')');
+        var hg = ctx.createRadialGradient(hx, hy, 0, hx, hy, 4);
+        hg.addColorStop(0, 'rgba(200,245,255,' + (0.35 * fade) + ')');
         hg.addColorStop(1, 'rgba(0,210,255,0)');
         ctx.fillStyle = hg;
         ctx.beginPath();
-        ctx.arc(hx, hy, 18, 0, Math.PI * 2);
+        ctx.arc(hx, hy, 4, 0, Math.PI * 2);
         ctx.fill();
       }
       requestAnimationFrame(frame);
