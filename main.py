@@ -605,56 +605,40 @@ async def api_profile_showcase_add(request: Request):
                 files_saved.append(dest.name)
 
         if sc_type == "workshop":
-            # Up to 3 source images → 3 rows × 5 parts (Steam Workshop Showcase)
+            # Up to 3 sources → each cropped into 5 real PNG parts (same as first working version)
             try:
-                sources = []
-                sources.append((name0, raw0))
+                sources = [(name0, raw0)]
                 for extra in uploads[1:3]:
                     try:
                         raw = await extra.read()
                         nm = getattr(extra, "filename", None) or "img.png"
-                        sources.append((nm, raw))
+                        if raw:
+                            sources.append((nm, raw))
                     except Exception:
                         pass
                 row_i = 0
-                for nm, raw in sources:
+                for nm, raw in sources[:3]:
                     row_i += 1
-                    sp = tmp / f"src_{row_i}{Path(str(nm)).suffix or '.png'}"
-                    sp.write_bytes(raw)
-                    im = PILImage.open(sp)
-                    if getattr(im, "is_animated", False) or sp.suffix.lower() in (".gif",):
-                        try:
-                            im.seek(0)
-                        except Exception:
-                            pass
-                    frame = im.convert("RGBA")
-                    out_map = proc.process_image_workshop(frame, wm_text="", wm_opacity=0.0)
-                    # ONLY store the 5 parts for profile display (Steam strip)
-                    saved_parts = 0
-                    for pi in range(1, 6):
-                        key = f"part_{pi}.png"
-                        blob = out_map.get(key)
-                        if not blob:
-                            continue
-                        dest = out_dir / f"{ts}_row{row_i}_part_{pi}.png"
-                        dest.write_bytes(bytes(blob))
-                        files_saved.append(dest.name)
-                        saved_parts += 1
-                    if saved_parts < 5:
-                        # manual fallback crop into 5
-                        w, h = frame.size
-                        pw = max(1, w // 5)
-                        for pi in range(5):
-                            left = pi * pw
-                            right = (pi + 1) * pw if pi < 4 else w
-                            part = frame.crop((left, 0, right, h))
-                            import io
-                            buf = io.BytesIO()
-                            part.save(buf, format="PNG")
-                            dest = out_dir / f"{ts}_row{row_i}_part_{pi+1}.png"
-                            dest.write_bytes(buf.getvalue())
-                            if dest.name not in files_saved:
-                                files_saved.append(dest.name)
+                    from PIL import Image as _PIL
+                    import io as _io
+                    im = _PIL.open(_io.BytesIO(raw)).convert("RGBA")
+                    w, h = im.size
+                    if w < 5:
+                        continue
+                    pw = w // 5
+                    for pi in range(5):
+                        left = pi * pw
+                        right = (pi + 1) * pw if pi < 4 else w
+                        part = im.crop((left, 0, right, h))
+                        buf = _io.BytesIO()
+                        part.save(buf, format="PNG", optimize=True)
+                        fname = f"{ts}_r{row_i}_p{pi+1}.png"
+                        dest = out_dir / fname
+                        dest.write_bytes(buf.getvalue())
+                        files_saved.append(fname)
+                if not files_saved:
+                    shutil.rmtree(tmp, ignore_errors=True)
+                    return JSONResponse({"ok": False, "msg": "Workshop crop produced no files"}, status_code=500)
             except Exception as e:
                 shutil.rmtree(tmp, ignore_errors=True)
                 return JSONResponse({"ok": False, "msg": f"Workshop process failed: {e}"}, status_code=500)

@@ -65,20 +65,31 @@ img{border:0}
 }
 /* soft bottom fade so content never hard-cuts the art */
 .profile_bg_fade{
-  position:absolute;left:0;right:0;bottom:0;height:280px;z-index:1;pointer-events:none;
+  position:absolute;left:0;right:0;z-index:1;pointer-events:none;
+  height:320px;
+  bottom:0;
   background:linear-gradient(to bottom,
     rgba(0,0,0,0) 0%,
-    rgba(0,0,0,.35) 40%,
-    rgba(0,0,0,.75) 70%,
+    rgba(0,0,0,.25) 25%,
+    rgba(0,0,0,.65) 55%,
+    rgba(0,0,0,.92) 80%,
     #000 100%);
-  backdrop-filter:blur(0px);
 }
-.profile_bg_fade::after{
+.profile_bg_fade::before{
   content:"";
-  position:absolute;left:0;right:0;bottom:0;height:140px;
-  background:linear-gradient(to bottom, transparent, #000);
-  filter:blur(20px);
-  opacity:.9;
+  position:absolute;left:0;right:0;bottom:0;height:200px;
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  mask-image:linear-gradient(to bottom, transparent, #000);
+  -webkit-mask-image:linear-gradient(to bottom, transparent, #000);
+  background:rgba(0,0,0,.35);
+}
+.profile_bg_wrap{
+  position:absolute;left:0;right:0;top:0;z-index:0;pointer-events:none;
+  width:100%;
+}
+.profile_bg_wrap img{
+  display:block;width:100%;height:auto;
 }
 .profile_page{background:#000}
 body{background:#000}
@@ -185,47 +196,31 @@ html{background:#000}
 .workshop_rows{
   display:flex;
   flex-direction:column;
-  gap:3px;
+  gap:2px;
   width:100%;
 }
 .workshop_row{
   display:flex !important;
   flex-direction:row !important;
-  width:100% !important;
-  overflow:hidden;
+  width:100%;
   line-height:0;
   background:#000;
+  gap:0;
 }
-.workshop_row .slice{
+.workshop_row img{
+  display:block !important;
   flex:1 1 0 !important;
   width:20% !important;
-  max-width:20% !important;
   min-width:0 !important;
-  overflow:hidden !important;
-  position:relative;
-  border:none !important;
-  outline:none !important;
-  /* thin black gap between panels like Steam */
-  box-shadow: inset -2px 0 0 #0a0a0a;
-  line-height:0;
-}
-.workshop_row .slice:last-child{box-shadow:none}
-.workshop_row .slice img{
-  display:block !important;
-  /* image is 5x the slice width = full original width */
-  width:500% !important;
-  max-width:none !important;
   height:auto !important;
+  object-fit:cover;
+  object-position:center top;
   border:none !important;
   outline:none !important;
-  position:relative;
+  /* 2px black seam like Steam */
+  box-shadow: inset -2px 0 0 #000;
 }
-/* shift each copy so only 1/5 of the image is visible */
-.workshop_row .slice:nth-child(1) img{margin-left:0%}
-.workshop_row .slice:nth-child(2) img{margin-left:-100%}
-.workshop_row .slice:nth-child(3) img{margin-left:-200%}
-.workshop_row .slice:nth-child(4) img{margin-left:-300%}
-.workshop_row .slice:nth-child(5) img{margin-left:-400%}
+.workshop_row img:last-child{box-shadow:none}
 .workshop_title_row{
   display:flex;align-items:center;gap:8px;
   padding:8px 2px 10px;
@@ -563,18 +558,21 @@ html{background:#000}
     if(!url){
       var d=document.createElement('div');
       d.className='fallback_bg';
-      d.style.background='#000';
+      d.style.cssText='width:100%;min-height:100vh;background:#000';
       wrap.appendChild(d);
+      fade.style.top='auto';
+      fade.style.bottom='0';
       return;
     }
     var img=document.createElement('img');
     img.alt='';
     img.src=url+(url.indexOf('?')>=0?'&':'?')+'t='+Date.now();
     img.onload=function(){
-      // height follows natural aspect of the file at full content width
-      fade.style.display='block'; fade.style.position='absolute';
-      // position fade at bottom of image
-      fade.style.top='auto';
+      // pin fade to bottom of the background image
+      var h=img.offsetHeight||img.naturalHeight;
+      fade.style.top=(Math.max(0, h-320))+'px';
+      fade.style.bottom='auto';
+      fade.style.height='320px';
     };
     wrap.appendChild(img);
   }
@@ -691,55 +689,27 @@ html{background:#000}
         if(avUrl) html+='<img class="ws_av" src="'+avUrl+'" alt=""/>';
         html+='<span class="ws_name">'+esc(disp)+"'s Workshop</span></div>";
 
-        // Collect one full image URL per row
-        var partsOnly=urls.filter(function(u){ return /part_\d+/i.test(u); });
-        var rowSrcs=[];
-        if(partsOnly.length>=5){
-          // group parts by row, use first part's... actually for CSS strip we need FULL image
-          // Prefer full_original or any non-part
-          var fulls=urls.filter(function(u){ return /full_original|full_with|featured|_art/i.test(u) && !/part_/i.test(u); });
-          if(!fulls.length){
-            // reconstruct: if we only have parts, show them as real img cells (not CSS slice)
-            var rows={};
-            partsOnly.forEach(function(u){
-              var m=u.match(/row(\d+)/i);
-              var ri=m?m[1]:'1';
-              if(!rows[ri]) rows[ri]=[];
-              rows[ri].push(u);
-            });
-            var keys=Object.keys(rows).sort(function(a,b){return (+a)-(+b);});
-            html+='<div class="workshop_rows">';
-            keys.forEach(function(k){
-              var pts=rows[k].slice().sort(function(a,b){
-                var ma=a.match(/part_(\d+)/i),mb=b.match(/part_(\d+)/i);
-                return (ma?+ma[1]:0)-(mb?+mb[1]:0);
-              });
-              html+='<div class="workshop_row">';
-              for(var pi=0;pi<5;pi++){
-                if(pts[pi]) html+='<span class="slice"><img src="'+pts[pi]+'" style="width:100%!important;margin-left:0!important" alt=""/></span>';
-                else html+='<span class="slice"></span>';
-              }
-              html+='</div>';
-            });
-            html+='</div>';
-          } else {
-            rowSrcs=fulls.slice(0,3);
+        // New format: {ts}_r{row}_p{part}.png  OR legacy part_
+        var rows={};
+        urls.forEach(function(u){
+          var m=u.match(/_r(\d+)_p(\d+)/i) || u.match(/row(\d+).*part_(\d+)/i);
+          if(m){
+            var ri=m[1], pi=+m[2];
+            if(!rows[ri]) rows[ri]=[];
+            rows[ri].push({pi:pi, u:u});
           }
+        });
+        var keys=Object.keys(rows).sort(function(a,b){return (+a)-(+b);});
+        if(!keys.length){
+          html+='<p class="empty">Re-upload Workshop (Remove → Add, up to 3 images). Old files had no 5-part split.</p>';
         } else {
-          // no parts — each uploaded file URL is a full row image
-          rowSrcs=urls.filter(function(u){ return !/full_with_bars/i.test(u); });
-          if(!rowSrcs.length) rowSrcs=urls.slice();
-          // dedupe
-          rowSrcs=rowSrcs.filter(function(u,i,a){ return a.indexOf(u)===i; }).slice(0,3);
-        }
-
-        if(rowSrcs.length){
           html+='<div class="workshop_rows">';
-          rowSrcs.forEach(function(src){
+          keys.forEach(function(k){
+            var parts=rows[k].slice().sort(function(a,b){return a.pi-b.pi;});
             html+='<div class="workshop_row">';
-            // 5 slices of the SAME full image via overflow + margin
-            for(var pi=0;pi<5;pi++){
-              html+='<span class="slice"><img src="'+src+'" alt=""/></span>';
+            for(var i=0;i<5;i++){
+              var item=parts[i];
+              if(item) html+='<img src="'+item.u+'" alt="p'+(i+1)+'"/>';
             }
             html+='</div>';
           });
