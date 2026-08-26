@@ -409,6 +409,7 @@ html{background:#000}
             <div class="profile_summary" id="pSummary"></div>
             <div class="profile_header_actions" id="ownerBtns" style="display:none">
               <button type="button" class="btn btn-green" id="btnEdit">Edit Profile</button>
+              <button type="button" class="btn btn-gray" id="btnAccount">Account</button>
               <button type="button" class="btn btn-blue" id="btnAddSc">Add Showcase</button>
               <a class="btn btn-gray" href="/app">Showcase Maker</a>
             </div>
@@ -455,6 +456,46 @@ html{background:#000}
           <button type="button" class="btn btn-gray" id="btnEditCancel">Cancel</button>
         </div>
         <div class="msg" id="edMsg"></div>
+      </div>
+
+      
+      <div class="panel" id="accPanel">
+        <h3>Account</h3>
+        <div class="row2">
+          <div>
+            <label>Nickname</label>
+            <input id="accNick" maxlength="40" placeholder="Display name"/>
+          </div>
+          <div>
+            <label>Email</label>
+            <input id="accEmail" disabled style="opacity:.7"/>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Plan</label>
+            <input id="accPlan" disabled style="opacity:.7"/>
+          </div>
+          <div>
+            <label>Avatar</label>
+            <input id="accAvatarFile" type="file" accept="image/*"/>
+          </div>
+        </div>
+        <p class="hint" id="accKeyRow" style="display:none">License: <code id="accKeyMasked">••••</code></p>
+        <div style="margin-top:10px">
+          <label>Activate Pro code</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input id="accCode" placeholder="SM-WEB-XXXXXX-XXXX" style="flex:1;min-width:160px"/>
+            <button type="button" class="btn btn-gray" id="btnAccCode">Apply</button>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-green" id="btnAccSave">Save profile</button>
+          <button type="button" class="btn btn-blue" id="btnAccBuy">Buy Key</button>
+          <button type="button" class="btn btn-gray" id="btnAccLogout">Log out</button>
+          <button type="button" class="btn btn-gray" id="btnAccClose">Close</button>
+        </div>
+        <div class="msg" id="accMsg"></div>
       </div>
 
       <div class="panel" id="scPanel">
@@ -896,6 +937,62 @@ html{background:#000}
       document.getElementById('scFile').value='';
       loadShowcases();
     }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
+  };
+
+
+  var _btnAcc=document.getElementById('btnAccount'); if(_btnAcc) _btnAcc.onclick=function(){
+    document.getElementById('accPanel').classList.add('open');
+    document.getElementById('editPanel').classList.remove('open');
+    document.getElementById('scPanel').classList.remove('open');
+    // fill from /api/auth/me
+    fetch('/api/auth/me',{headers:headers(),credentials:'include'}).then(function(r){return r.json()}).then(function(j){
+      if(!j||!j.ok) return;
+      document.getElementById('accNick').value=j.display_name||'';
+      document.getElementById('accEmail').value=j.email||'';
+      document.getElementById('accPlan').value=j.is_pro?'Pro':'Free';
+      var kr=document.getElementById('accKeyRow');
+      if(j.license_key){ kr.style.display='block'; document.getElementById('accKeyMasked').textContent=j.license_key; }
+    }).catch(function(){});
+  };
+  document.getElementById('btnAccClose').onclick=function(){ document.getElementById('accPanel').classList.remove('open'); };
+  document.getElementById('btnAccLogout').onclick=async function(){
+    try{ await fetch('/api/auth/logout',{method:'POST',headers:headers(),credentials:'include'}); }catch(e){}
+    try{ localStorage.removeItem('sm_session'); }catch(e){}
+    location.href='/';
+  };
+  document.getElementById('btnAccSave').onclick=async function(){
+    var msg=document.getElementById('accMsg'); msg.className='msg'; msg.textContent='Saving…';
+    var fd=new FormData();
+    fd.append('display_name', document.getElementById('accNick').value);
+    var f=document.getElementById('accAvatarFile').files[0];
+    if(f) fd.append('avatar', f);
+    try{
+      var r=await fetch('/api/auth/profile',{method:'POST',headers:headers(),credentials:'include',body:fd});
+      if(!r.ok){
+        // fallback profile update
+        r=await fetch('/api/profile/update',{method:'POST',headers:headers(),credentials:'include',body:fd});
+      }
+      var j=await r.json();
+      if(!j.ok){ msg.className='msg err'; msg.textContent=j.msg||'Error'; return; }
+      msg.className='msg ok'; msg.textContent='Saved';
+      load();
+    }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
+  };
+  document.getElementById('btnAccCode').onclick=async function(){
+    var code=document.getElementById('accCode').value.trim();
+    var msg=document.getElementById('accMsg');
+    if(!code){ msg.className='msg err'; msg.textContent='Enter code'; return; }
+    try{
+      var r=await fetch('/api/unlock',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},headers()),credentials:'include',body:JSON.stringify({code:code})});
+      var j=await r.json();
+      msg.className=j.ok?'msg ok':'msg err';
+      msg.textContent=j.msg||(j.ok?'OK':'Error');
+    }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
+  };
+  document.getElementById('btnAccBuy').onclick=function(){
+    // same buy flow as tools if available
+    if(typeof openBuyModal==='function') openBuyModal();
+    else window.open('/app','_blank');
   };
 
   load();

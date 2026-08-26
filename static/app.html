@@ -443,44 +443,6 @@ input[type="range"]{
   color:var(--muted);font-size:12px;padding:16px;text-align:center
 }
 
-
-/* Notifications bell (logged-in only) */
-.sm-bell-wrap{position:relative;display:none}
-.sm-bell-wrap.on{display:block}
-.sm-bell{
-  width:40px;height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.04);cursor:pointer;display:grid;place-items:center;padding:0;
-  color:#fff;
-}
-.sm-bell:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.22)}
-.sm-bell svg{width:20px;height:20px;display:block;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.sm-bell .sm-dot{
-  position:absolute;top:4px;right:4px;min-width:17px;height:17px;padding:0 4px;
-  border-radius:999px;background:#ff3b30;color:#fff;font-size:10px;font-weight:800;
-  display:none;align-items:center;justify-content:center;line-height:1;
-  box-shadow:0 0 0 2px #0c0c0c;
-}
-.sm-bell .sm-dot.on{display:flex}
-.sm-notif-panel{
-  display:none;position:absolute;right:0;top:48px;width:min(360px,92vw);z-index:80;
-  background:#161616;border:1px solid rgba(255,255,255,.12);border-radius:14px;
-  box-shadow:0 20px 60px rgba(0,0,0,.55);overflow:hidden;
-}
-.sm-notif-panel.open{display:block}
-.sm-notif-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:700;color:#fff}
-.sm-notif-list{max-height:360px;overflow:auto}
-.sm-notif-item{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;color:#fff}
-.sm-notif-item:hover{background:rgba(255,255,255,.04)}
-.sm-notif-item.unread{background:rgba(255,255,255,.06)}
-.sm-notif-item .sm-ph,.sm-notif-item img{
-  width:36px;height:36px;border-radius:50%;object-fit:cover;background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.1);flex-shrink:0;display:grid;place-items:center;font-size:12px;font-weight:700
-}
-.sm-notif-item .t{font-size:13px;line-height:1.35}
-.sm-notif-item .when{font-size:11px;color:rgba(255,255,255,.5);margin-top:4px}
-.sm-notif-empty{padding:20px;text-align:center;color:rgba(255,255,255,.5);font-size:13px}
-.sm-btn-mini{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:600}
-
 </style>
 </head>
 <body>
@@ -506,21 +468,6 @@ input[type="range"]{
           <div id="trialTimer"><span>⏱</span><span id="trialClock">00:00:00</span></div>
           <span class="pill" id="planBadge">Free</span>
           <span class="pill" id="userPill" style="display:none"></span>
-
-      <div class="sm-bell-wrap" id="smBellWrap">
-        <button type="button" class="sm-bell" id="smBtnBell" title="Notifications" aria-label="Notifications">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>
-          <span class="sm-dot" id="smBellDot">0</span>
-        </button>
-        <div class="sm-notif-panel" id="smNotifPanel">
-          <div class="sm-notif-head">
-            <span>Уведомления</span>
-            <button type="button" class="sm-btn-mini" id="smBtnReadAll">Прочитать все</button>
-          </div>
-          <div class="sm-notif-list" id="smNotifList"><div class="sm-notif-empty">Пока пусто</div></div>
-        </div>
-      </div>
-
           <button class="btn ghost" id="langBtn" type="button">RU</button>
           <button class="btn ghost" id="btnAuth" type="button" data-i="login">Log in</button>
           <button class="btn" id="btnUpgrade" type="button" style="display:none" data-i="buy">Buy Pro</button>
@@ -536,7 +483,6 @@ input[type="range"]{
     <button data-tab="preview" data-i="nav_preview">Preview</button>
     <button data-tab="steam" data-i="nav_steam">Steam</button>
     <button data-tab="da" data-i="nav_da">DeviantArt</button>
-    <button data-tab="account" data-i="nav_account">Account</button>
     <button data-tab="about" data-i="nav_about">About</button>
   </nav>
     </div>
@@ -1008,55 +954,27 @@ input[type="range"]{
   </section>
 
   
-      <section class="tab" id="tab-account">
-    <div class="card" id="accGuest">
-      <h2 data-i="account_h">Account</h2>
-      <p class="steps" style="margin-bottom:16px">Log in or create an account — one profile for the whole site.</p>
-      <div class="row">
-        <button class="btn" id="accLogin" type="button" data-i="login">Log in</button>
-        <button class="btn ghost" id="accRegister" type="button" data-i="reg">Sign up</button>
-      </div>
-      <div class="row" style="margin-top:14px">
-        <button class="btn-buy-key" id="btnBuyKeyGuest" type="button" data-i="buy_key">Buy Key</button>
-      </div>
+      <!-- Account moved to /profile — hidden stubs for legacy JS -->
+  <div id="tab-account" style="display:none!important" aria-hidden="true">
+    <div id="accGuest"></div>
+    <div id="accUser" style="display:none">
+      <div id="accAvatar"></div>
+      <input type="file" id="accAvatarInput" accept="image/*" style="display:none"/>
+      <input id="accNick"/>
+      <p id="accEmailLine"></p>
+      <p id="accPlanLine"></p>
+      <span id="accProBadge" style="display:none"></span>
+      <div id="accKeyRow" style="display:none"><code id="accKeyMasked"></code><span id="accKeyHint"></span></div>
+      <button id="accSaveProfile" type="button"></button>
+      <button id="accLogout2" type="button"></button>
+      <div id="accProfileStatus"></div>
+      <button id="btnBuyKeyAccount" type="button"></button>
+      <button id="btnBuyKeyGuest" type="button"></button>
+      <button id="accLogin" type="button"></button>
+      <button id="accRegister" type="button"></button>
+      <div id="accCodeBlock"><input id="accessCode2"/><button id="btnUnlock2" type="button"></button></div>
     </div>
-    <div class="card" id="accUser" style="display:none">
-      <div class="profile-hero">
-        <div class="profile-avatar" id="accAvatar" title="Change avatar">S
-          <span class="edit-hint">Change</span>
-        </div>
-        <input type="file" id="accAvatarInput" accept="image/*" style="display:none"/>
-        <div class="profile-meta" style="flex:1;min-width:180px">
-          <label class="field" style="margin-bottom:8px">Nickname
-            <input id="accNick" placeholder="Display name" maxlength="40"/>
-          </label>
-          <p id="accEmailLine" style="margin:0;color:#9bb4c4;font-size:13px">—</p>
-          <p id="accPlanLine" style="margin:6px 0 0;color:#9bb4c4;font-size:13px">Free plan</p>
-          <span class="pro-badge" id="accProBadge" style="display:none">PRO</span>
-        </div>
-      </div>
-      <div class="key-row" id="accKeyRow" style="display:none">
-        <span class="hint">License key</span>
-        <code id="accKeyMasked" title="Click to reveal">••••••••••••</code>
-        <span class="hint" id="accKeyHint">click to show</span>
-      </div>
-      <div class="row" style="margin-top:16px">
-        <button class="btn" id="accSaveProfile" type="button" data-i="save_profile">Save profile</button>
-        <button class="btn ghost" id="accLogout2" type="button">Log out</button>
-      </div>
-      <div class="status" id="accProfileStatus"></div>
-      <div class="row" style="margin-top:18px">
-        <button class="btn-buy-key" id="btnBuyKeyAccount" type="button" data-i="buy_key">Buy Key</button>
-      </div>
-      <div id="accCodeBlock" style="margin-top:14px">
-        <p class="steps" style="margin-bottom:8px;font-size:13px">Activate Pro code</p>
-        <div class="row">
-          <input id="accessCode2" placeholder="SM-WEB-XXXXXX-XXXX" style="width:240px"/>
-          <button class="btn ghost" id="btnUnlock2" type="button" data-i="apply">Apply</button>
-        </div>
-      </div>
-    </div>
-  </section>
+  </div>
 
   <section class="tab" id="tab-about">
     <div class="card about-card">
@@ -2700,10 +2618,9 @@ document.getElementById('daUpload') && document.getElementById('daUpload').addEv
   }
   if (st) { st.className = 'status'; st.textContent = 'Uploading…'; }
   var fd = new FormData();
-  daItems.forEach(function (it, i) {
+  daItems.forEach(function (it) {
     fd.append('file', it.file, it.name);
     fd.append('title_' + it.name, it.title || it.name);
-    fd.append('title_' + i, it.title || it.name);
   });
   try {
     var r = await fetch('/api/da/upload', { method: 'POST', headers: headers(), body: fd, credentials: 'include' });
@@ -3762,10 +3679,9 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     setProg(0, ru ? "Загрузка на Sta.sh…" : "Uploading to Sta.sh…", "0 / " + items.length);
 
     var fd = new FormData();
-    items.forEach(function (it, i) {
+    items.forEach(function (it) {
       fd.append("file", it.file, it.name);
       fd.append("title_" + it.name, it.title || it.name);
-      fd.append("title_" + i, it.title || it.name);
     });
     var hdr = {};
     try {
@@ -4739,104 +4655,6 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       if (st) { st.className = 'status err'; st.textContent = String(e); }
     }
   });
-})();
-</script>
-
-
-<script>
-(function(){
-  function smHeaders(){
-    const h = {};
-    try { const s = localStorage.getItem('sm_session')||''; if (s) h['X-Session-Token']=s; } catch(e){}
-    return h;
-  }
-  function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-  function timeAgo(ts){
-    if(!ts) return '';
-    const s=Math.max(0,(Date.now()/1000)-Number(ts));
-    if(s<60) return 'только что';
-    if(s<3600) return Math.floor(s/60)+' мин';
-    if(s<86400) return Math.floor(s/3600)+' ч';
-    if(s<604800) return Math.floor(s/86400)+' д';
-    return new Date(Number(ts)*1000).toLocaleDateString();
-  }
-  async function refreshBadge(){
-    const wrap=document.getElementById('smBellWrap');
-    if(!wrap) return;
-    try{
-      const r=await fetch('/api/notifications/unread',{credentials:'include',headers:smHeaders()});
-      const d=await r.json().catch(()=>({}));
-      const logged=!!(d&&d.logged_in);
-      wrap.classList.toggle('on', logged);
-      wrap.style.display = logged ? 'block' : 'none';
-      const dot=document.getElementById('smBellDot');
-      const n=(d&&d.unread)||0;
-      if(dot){
-        if(n>0){dot.textContent=n>99?'99+':String(n);dot.classList.add('on');}
-        else{dot.classList.remove('on');}
-      }
-    }catch(e){
-      wrap.classList.remove('on');
-      wrap.style.display='none';
-    }
-  }
-  async function loadNotifs(){
-    const list=document.getElementById('smNotifList');
-    if(!list) return;
-    list.innerHTML='<div class="sm-notif-empty">Загрузка…</div>';
-    try{
-      const r=await fetch('/api/notifications?limit=40',{credentials:'include',headers:smHeaders()});
-      const d=await r.json().catch(()=>({}));
-      if(!r.ok||!d.ok){list.innerHTML='<div class="sm-notif-empty">Войдите в аккаунт</div>';return;}
-      const items=d.items||[];
-      if(!items.length){list.innerHTML='<div class="sm-notif-empty">Пока пусто</div>';return;}
-      list.innerHTML='';
-      items.forEach(it=>{
-        const el=document.createElement('div');
-        el.className='sm-notif-item'+(it.is_read?'':' unread');
-        const av=it.actor_avatar||'';
-        const ini=((it.actor||'?')+'').trim().charAt(0).toUpperCase()||'?';
-        el.innerHTML=`${av?`<img src="${esc(av)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"/><span class="sm-ph" style="display:none">${esc(ini)}</span>`:`<span class="sm-ph">${esc(ini)}</span>`}
-          <div><div class="t">${esc(it.body||'')}</div><div class="when">${esc(timeAgo(it.created_at))}</div></div>`;
-        el.onclick=async()=>{
-          try{
-            await fetch('/api/notifications/read',{method:'POST',credentials:'include',headers:{...smHeaders(),'Content-Type':'application/json'},body:JSON.stringify({ids:[it.id]})});
-          }catch(e){}
-          document.getElementById('smNotifPanel').classList.remove('open');
-          if(it.item_id) location.href='/gallery?item='+it.item_id;
-          else refreshBadge();
-        };
-        list.appendChild(el);
-      });
-    }catch(e){
-      list.innerHTML='<div class="sm-notif-empty">'+esc(String(e))+'</div>';
-    }
-  }
-  function bind(){
-    const btn=document.getElementById('smBtnBell');
-    const panel=document.getElementById('smNotifPanel');
-    const wrap=document.getElementById('smBellWrap');
-    if(!btn||!panel||!wrap) return;
-    btn.addEventListener('click',e=>{
-      e.stopPropagation();
-      const open=!panel.classList.contains('open');
-      panel.classList.toggle('open',open);
-      if(open) loadNotifs();
-    });
-    const readAll=document.getElementById('smBtnReadAll');
-    if(readAll) readAll.addEventListener('click',async e=>{
-      e.stopPropagation();
-      await fetch('/api/notifications/read',{method:'POST',credentials:'include',headers:{...smHeaders(),'Content-Type':'application/json'},body:JSON.stringify({})});
-      refreshBadge(); loadNotifs();
-    });
-    document.addEventListener('click',e=>{
-      if(!wrap.contains(e.target)) panel.classList.remove('open');
-    });
-    refreshBadge();
-    setInterval(refreshBadge, 45000);
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bind);
-  else bind();
 })();
 </script>
 
