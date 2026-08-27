@@ -1135,6 +1135,11 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
         </svg>
         <span class="oauth-label" data-i="nav_google">Continue with Google</span>
       </button>
+      <button type="button" class="btn-oauth" id="authTelegram">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#26A5E4" d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        <span class="oauth-label" data-i="nav_telegram">Continue with Telegram</span>
+      </button>
+      <div id="telegramWidgetHost" style="display:none;margin-top:4px;text-align:center"></div>
     </div>
     <div class="switch" id="authSwitch">Already have an account? <a id="authToggle">Log in</a></div>
   </div>
@@ -1152,6 +1157,8 @@ const I18N = {
     nav_discord_short: "Discord",
     nav_google: "Continue with Google",
     nav_google_short: "Google",
+    nav_telegram: "Continue with Telegram",
+    nav_telegram_short: "Telegram",
     nav_price: "Pricing",
     nav_tools: "Tools",
     nav_reg: "Sign up",
@@ -1206,6 +1213,8 @@ const I18N = {
     nav_discord_short: "Discord",
     nav_google: "Продолжить с Google",
     nav_google_short: "Google",
+    nav_telegram: "Продолжить с Telegram",
+    nav_telegram_short: "Telegram",
     nav_price: "Цены",
     nav_tools: "Инструменты",
     nav_reg: "Регистрация",
@@ -1487,9 +1496,52 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   document.getElementById('authDiscord')?.addEventListener('click', function(e){ goOAuth('discord', e); });
   document.getElementById('authGoogle')?.addEventListener('click', function(e){ goOAuth('google', e); });
+  async function startTelegram(e){
+    if (e) e.preventDefault();
+    try {
+      const r = await fetch('/api/auth/telegram/config');
+      const d = await r.json();
+      if (!d.ok || !d.bot_username) {
+        alert(d.msg || 'Telegram not configured');
+        return;
+      }
+      const host = document.getElementById('telegramWidgetHost');
+      if (!host) return;
+      host.style.display = 'block';
+      host.innerHTML = '';
+      window.onTelegramAuth = async function(user){
+        try {
+          const res = await fetch('/api/auth/telegram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(user)
+          });
+          const j = await res.json();
+          if (!j.ok || !j.token) {
+            alert(j.msg || 'Telegram auth failed');
+            return;
+          }
+          try { localStorage.setItem('sm_session', j.token); } catch(err) {}
+          location.href = '/app';
+        } catch(err) { alert(String(err)); }
+      };
+      const s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://telegram.org/js/telegram-widget.js?22';
+      s.setAttribute('data-telegram-login', d.bot_username);
+      s.setAttribute('data-size', 'large');
+      s.setAttribute('data-radius', '12');
+      s.setAttribute('data-request-access', 'write');
+      s.setAttribute('data-userpic', 'true');
+      s.setAttribute('data-onauth', 'onTelegramAuth(user)');
+      host.appendChild(s);
+    } catch(err) { alert(String(err)); }
+  }
+  document.getElementById('authTelegram')?.addEventListener('click', startTelegram);
   window.addEventListener('message', function(ev){
     if (!ev.data) return;
-    if ((ev.data.type === 'discord_login' || ev.data.type === 'google_login') && ev.data.token) {
+    if ((ev.data.type === 'discord_login' || ev.data.type === 'google_login' || ev.data.type === 'telegram_login') && ev.data.token) {
       try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
       location.href = '/app';
     }
