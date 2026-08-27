@@ -984,7 +984,7 @@ document.getElementById('btnAdminDel').onclick = async () => {
   window.openGalleryAuth = openAuth;
   document.getElementById('navReg')?.addEventListener('click', function(e){
     e.preventDefault();
-    openAuth('login');
+    if (window.smOpenAuth) smOpenAuth('login'); else if (typeof openAuth==='function') openAuth('login');
   });
   document.getElementById('authClose')?.addEventListener('click', closeAuth);
   document.getElementById('authModal')?.addEventListener('click', function(e){
@@ -1090,5 +1090,6 @@ document.getElementById('btnAdminDel').onclick = async () => {
 })();
 </script>
 
+<script src="/static/js/sm-auth.js" defer></script>
 </body>
 </html>

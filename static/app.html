@@ -663,16 +663,16 @@ input[type="range"]{
       <div id="wmTip" style="display:none;margin-top:10px;font-size:12px;color:rgba(0,210,255,.9);padding:8px 12px;border-radius:10px;border:1px solid rgba(0,210,255,.25);background:rgba(0,210,255,.06)"></div>
     </div>
     <div class="card" id="wmPreviewCard">
-      <h2>Watermark preview</h2>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Таскай watermark мышкой по превью; позиция применится при «Обработать».</p>
+      <h2 data-i="wm_prev_h">Watermark preview</h2>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 12px" data-i="wm_prev_p">Add PNG/JPG/GIF/MP4 in Files — first frame is used for video/GIF. Drag the watermark on the preview; position applies on Process.</p>
       <div id="wmCanvasWrap" style="position:relative;max-width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#111;min-height:160px;display:flex;align-items:center;justify-content:center">
         <canvas id="wmCanvas" style="max-width:100%;max-height:420px;display:none;cursor:grab;touch-action:none"></canvas>
-        <div id="wmCanvasEmpty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center">Нет превью — добавь изображение в «Файлы»</div>
+        <div id="wmCanvasEmpty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center" data-i="wm_prev_empty">No preview — add an image in Files</div>
       </div>
       <input type="hidden" id="wmX" value=""/>
       <input type="hidden" id="wmY" value=""/>
       <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">
-        <button type="button" class="btn ghost" id="btnWmReset">Сброс позиции</button>
+        <button type="button" class="btn ghost" id="btnWmReset" data-i="wm_reset">Reset position</button>
       </div>
     </div>
     <div class="card">
@@ -684,7 +684,7 @@ input[type="range"]{
         <button class="btn" id="btnRun" disabled data-i="run">Process</button>
         <button class="btn ghost" id="btnClear" type="button" data-i="clear">Clear</button>
         <a class="btn ghost" id="dlProcess" style="display:none;text-decoration:none" href="#">Download ZIP</a>
-        <button class="btn ghost" id="btnPublishGallery" type="button" style="display:none">Опубликовать в галерею</button>
+        <button class="btn ghost" id="btnPublishGallery" type="button" style="display:none" data-i="publish_gallery">Publish to gallery</button>
       </div>
       <div class="sm-progress" id="procProgress" aria-live="polite">
         <div class="sm-prog-top">
@@ -1631,6 +1631,19 @@ document.getElementById('btnColorMatch')?.addEventListener('click', function(){ 
 })();
 
 
+
+function __stageLabel(stage, ru) {
+  var s = String(stage || '');
+  if (s === 'queued' || s === 'prepare') return ru ? 'В очереди…' : 'Queued…';
+  if (s.indexOf('file:') === 0) return (ru ? 'Файл: ' : 'File: ') + s.slice(5);
+  if (s.indexOf('image:') === 0) return ru ? 'Картинка · ' + s.split(':')[1] : 'Image · ' + s.split(':')[1];
+  if (s.indexOf('gif:') === 0) return ru ? 'GIF · ' + s.split(':')[1] : 'GIF · ' + s.split(':')[1];
+  if (s.indexOf('video:') === 0) return ru ? 'Видео · ' + s.split(':')[1] : 'Video · ' + s.split(':')[1];
+  if (s === 'done') return ru ? 'Готово' : 'Done';
+  if (s === 'error') return ru ? 'Ошибка' : 'Error';
+  return s;
+}
+
 document.getElementById('btnRun').onclick = async () => {
   const st = document.getElementById('status');
   const dl = document.getElementById('dlProcess');
@@ -1692,8 +1705,8 @@ document.getElementById('btnRun').onclick = async () => {
   try {
     await new Promise(function (resolve, reject) {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/process');
-      xhr.responseType = 'blob';
+      xhr.open('POST', '/api/process/start');
+      xhr.responseType = 'json';
       xhr.withCredentials = true;
       try {
         const hdr = headers();
@@ -1748,92 +1761,70 @@ document.getElementById('btnRun').onclick = async () => {
 
       xhr.onload = function () {
         stopTick();
-        const ct = (xhr.getResponseHeader('content-type') || '');
-        if (xhr.status >= 200 && xhr.status < 300 && (ct.includes('application/zip') || ct.includes('application/octet-stream') || ct.includes('application/x-zip'))) {
-          setProg(100, ru ? 'Готово!' : 'Done!', ru ? 'скачивание ZIP…' : 'downloading ZIP…');
-          const blob = xhr.response;
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'showcase_' + (state.mode || 'out') + '.zip';
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-          const n = xhr.getResponseHeader('X-Processed') || '';
-          st.className = 'status ok';
-          st.textContent = n
-            ? ((ru ? 'Готово: ' : 'Done: ') + n + (ru ? ' файл(ов) — скачано' : ' file(s) — downloaded'))
-            : (ru ? 'Готово — ZIP скачан' : 'Done — ZIP downloaded');
-          dl.style.display = 'none';
+        if (xhr.status < 200 || xhr.status >= 300) {
+          var errMsg = ru ? 'Ошибка сервера' : 'Server error';
           try {
-            const pg = document.getElementById('btnPublishGallery');
-            if (pg) {
-              pg.style.display = 'inline-flex';
-              pg.disabled = false;
-              const ruBtn = (localStorage.getItem('sm_lang') === 'ru');
-              pg.textContent = ruBtn ? 'Опубликовать в галерею' : 'Publish to gallery';
-            }
-            window.__lastPublishReady = true;
+            var ej = typeof xhr.response === 'object' ? xhr.response : JSON.parse(xhr.responseText || '{}');
+            if (ej && ej.msg) errMsg = ej.msg;
           } catch (e) {}
-          try { refreshQuota(); } catch (e) {}
-          hideProgLater();
-          resolve();
+          reject(new Error(errMsg));
           return;
         }
-        // JSON error or legacy
-        const reader = new FileReader();
-        reader.onload = function () {
-          const raw = String(reader.result || '');
-          let j;
-          try { j = JSON.parse(raw); }
-          catch (parseErr) {
-            st.className = 'status err';
-            st.textContent = (raw || ('HTTP ' + xhr.status)).slice(0, 300);
-            setProg(0, ru ? 'Ошибка' : 'Error', st.textContent.slice(0, 80));
-            reject(new Error(st.textContent));
-            return;
-          }
-          if (!j.ok) {
-            st.className = 'status err';
-            let msg = j.msg || 'Error';
-            if (j.errors && j.errors.length) msg = j.errors.join(' · ');
-            st.textContent = msg;
-            setProg(0, ru ? 'Ошибка' : 'Error', msg.slice(0, 100));
-            reject(new Error(msg));
-          } else if (j.download) {
-            setProg(100, ru ? 'Готово!' : 'Done!', '');
-            st.className = 'status ok';
-            st.textContent = (ru ? 'Готово: ' : 'Done: ') + (j.processed || '') + (ru ? ' файл(ов)' : ' file(s)');
-            dl.href = j.download;
-            dl.style.display = 'inline-block';
-            try {
-              const pg = document.getElementById('btnPublishGallery');
-              if (pg) {
-                pg.style.display = 'inline-flex';
-                pg.disabled = false;
-                const ruBtn = (localStorage.getItem('sm_lang') === 'ru');
-                pg.textContent = ruBtn ? 'Опубликовать в галерею' : 'Publish to gallery';
+        var job = xhr.response;
+        if (!job || !job.ok || !job.job_id) {
+          var msg = (job && job.msg) || (ru ? 'Не удалось запустить задачу' : 'Could not start job');
+          reject(new Error(msg));
+          return;
+        }
+        var jid = job.job_id;
+        setProg(58, ru ? 'Задача запущена' : 'Job started', jid.slice(0, 8));
+        stopTick();
+        var pollTimer = setInterval(async function () {
+          try {
+            var pr = await fetch('/api/process/status/' + jid, { credentials: 'include', headers: headers() });
+            var stj = await pr.json();
+            if (!stj.ok) return;
+            var pct = Math.max(12, Math.min(99, Number(stj.pct) || 12));
+            setProg(pct, ru ? 'Обработка…' : 'Processing…', __stageLabel(stj.stage, ru));
+            if (stj.status === 'error') {
+              clearInterval(pollTimer);
+              reject(new Error(stj.error || (ru ? 'Ошибка обработки' : 'Process failed')));
+              return;
+            }
+            if (stj.status === 'done') {
+              clearInterval(pollTimer);
+              setProg(100, ru ? 'Готово!' : 'Done!', ru ? 'скачивание ZIP…' : 'downloading ZIP…');
+              var dr = await fetch(stj.download || ('/api/process/download/' + jid), { credentials: 'include', headers: headers() });
+              if (!dr.ok) {
+                reject(new Error(ru ? 'Не удалось скачать ZIP' : 'Download failed'));
+                return;
               }
-              window.__lastPublishReady = true;
-            } catch (e) {}
-            try { refreshQuota(); } catch (e) {}
-            hideProgLater();
-            resolve();
-          } else {
-            st.className = 'status err';
-            st.textContent = j.msg || 'Unknown response';
-            setProg(0, ru ? 'Ошибка' : 'Error', st.textContent);
-            reject(new Error(st.textContent));
+              var blob = await dr.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'showcase_' + (state.mode || 'out') + '.zip';
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+              const n = dr.headers.get('X-Processed') || '';
+              st.className = 'status ok';
+              st.textContent = n
+                ? ((ru ? 'Готово: ' : 'Done: ') + n + (ru ? ' файл(ов) — скачано' : ' file(s) — downloaded'))
+                : (ru ? 'Готово — ZIP скачан' : 'Done — ZIP downloaded');
+              dl.style.display = 'none';
+              try {
+                const pg = document.getElementById('btnPublishGallery');
+                if (pg) pg.style.display = '';
+              } catch (e) {}
+              hideProgLater();
+              resolve();
+            }
+          } catch (pe) {
+            console.warn('poll', pe);
           }
-        };
-        reader.onerror = function () {
-          st.className = 'status err';
-          st.textContent = 'HTTP ' + xhr.status;
-          setProg(0, ru ? 'Ошибка' : 'Error', st.textContent);
-          reject(new Error(st.textContent));
-        };
-        reader.readAsText(xhr.response);
+        }, 600);
       };
       xhr.onerror = function () {
         stopTick();
@@ -2394,6 +2385,7 @@ const APP_I18N = window.APP_I18N = {
     lbl_fps: "Кадр/с", lbl_width: "Ширина", lbl_wm: "Вотермарка", lbl_font: "Шрифт",
     lbl_opacity: "Прозрачность %", lbl_wm_size: "Размер WM %", lbl_corner: "Угол WM",
     lbl_color: "Цвет WM", lbl_color_match: "Цвет из картинки", lbl_encoder: "Кодек GIF", lbl_on: "Вкл",
+    wm_prev_h: "Превью watermark", wm_prev_p: "Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Таскай watermark мышкой; позиция применится при «Обработать».", wm_prev_empty: "Нет превью — добавь изображение в «Файлы»", wm_reset: "Сброс позиции", publish_gallery: "Опубликовать в галерею",
     corner_bl: "Левый нижний", corner_br: "Правый нижний", corner_tl: "Левый верхний", corner_tr: "Правый верхний",
     all_modes: "Все режимы",
     mode_ws: "5 частей для витрины мастерской",
@@ -2465,6 +2457,7 @@ const APP_I18N = window.APP_I18N = {
     lbl_fps: "FPS", lbl_width: "Width", lbl_wm: "Watermark", lbl_font: "Font",
     lbl_opacity: "Opacity %", lbl_wm_size: "WM size %", lbl_corner: "WM corner",
     lbl_color: "WM color", lbl_color_match: "Color from image", lbl_encoder: "GIF encoder", lbl_on: "On",
+    wm_prev_h: "Watermark preview", wm_prev_p: "Add PNG/JPG/GIF/MP4 in Files — first frame is used for video/GIF. Drag the watermark; position applies on Process.", wm_prev_empty: "No preview — add an image in Files", wm_reset: "Reset position", publish_gallery: "Publish to gallery",
     corner_bl: "Bottom left", corner_br: "Bottom right", corner_tl: "Top left", corner_tr: "Top right",
     all_modes: "All modes",
     mode_ws: "5 panels for Workshop showcase",
@@ -5029,5 +5022,6 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 })();
 </script>
 
+<script src="/static/js/sm-auth.js" defer></script>
 </body>
 </html>

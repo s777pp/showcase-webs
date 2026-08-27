@@ -1161,6 +1161,358 @@ $J('#image_upload').attr('multiple','multiple');
 console.log('Showcase Maker: multiple upload enabled');"""
 
 
+
+# ====================== Async process jobs (real progress) ======================
+_process_jobs: dict[str, dict] = {}
+_process_jobs_lock = __import__("threading").Lock()
+
+
+def _job_set(jid: str, **kw) -> None:
+    with _process_jobs_lock:
+        j = _process_jobs.get(jid) or {}
+        j.update(kw)
+        j["updated"] = time.time()
+        _process_jobs[jid] = j
+
+
+def _job_get(jid: str) -> dict | None:
+    with _process_jobs_lock:
+        j = _process_jobs.get(jid)
+        return dict(j) if j else None
+
+
+def _job_cleanup_old(max_age: float = 600.0) -> None:
+    now = time.time()
+    with _process_jobs_lock:
+        dead = [k for k, v in _process_jobs.items() if now - float(v.get("updated") or 0) > max_age]
+        for k in dead:
+            j = _process_jobs.pop(k, None)
+            if j and j.get("zip_path"):
+                try:
+                    Path(j["zip_path"]).unlink(missing_ok=True)
+                except Exception:
+                    pass
+            if j and j.get("job_dir"):
+                try:
+                    shutil.rmtree(j["job_dir"], ignore_errors=True)
+                except Exception:
+                    pass
+
+
+def _run_process_job(jid: str, files_data: list[tuple[str, bytes]], opts: dict) -> None:
+    """Background worker: same pipeline as /api/process, updates progress."""
+    import tempfile
+    job_dir = Path(tempfile.mkdtemp(prefix="sm_job_"))
+    _job_set(jid, status="running", pct=5, stage="prepare", job_dir=str(job_dir), error=None)
+    zip_buf = io.BytesIO()
+    processed = 0
+    errors: list[str] = []
+    listed: list[dict] = []
+    modes = opts["modes"]
+    text = opts["text"]
+    opacity = opts["opacity"]
+    color = opts["color"]
+    corner = opts["corner"]
+    scale = opts["scale"]
+    wm_x_f = opts["wm_x"]
+    wm_y_f = opts["wm_y"]
+    do_ac = opts["do_ac"]
+    size_i = opts["size_i"]
+    fps = opts["fps"]
+    enc = opts["enc"]
+    n_files = max(1, len(files_data))
+    try:
+        zf = zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED)
+        for fi, (name, raw) in enumerate(files_data):
+            base_pct = 8 + int(80 * fi / n_files)
+            _job_set(jid, pct=base_pct, stage=f"file:{name}")
+            try:
+                if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+                    errors.append(f"{name}: >{MAX_UPLOAD_MB}MB")
+                    continue
+                ext = Path(name).suffix.lower()
+                stem = Path(name).stem[:40]
+                if ext not in (
+                    ".png", ".jpg", ".jpeg", ".webp", ".bmp",
+                    ".gif", ".mp4", ".mov", ".webm", ".avi", ".mkv",
+                ):
+                    errors.append(f"{name}: unsupported format")
+                    continue
+                for mi, mode in enumerate(modes):
+                    folder = f"{stem}_{mode}"
+                    work = job_dir / folder
+                    work.mkdir(exist_ok=True)
+                    stage = "image" if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp") else (
+                        "video" if ext in (".mp4", ".mov", ".webm", ".avi", ".mkv") else "gif"
+                    )
+                    _job_set(
+                        jid,
+                        pct=min(90, base_pct + int(12 * (mi + 1) / max(1, len(modes)))),
+                        stage=f"{stage}:{mode}:{name}",
+                    )
+                    if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp"):
+                        img = Image.open(io.BytesIO(raw))
+                        img.load()
+                        max_side = 4096
+                        if max(img.size) > max_side:
+                            img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+                        if do_ac:
+                            from PIL import ImageOps
+                            rgb = img.convert("RGB")
+                            rgb = ImageOps.autocontrast(rgb, cutoff=1)
+                            img = rgb
+                        if mode == "workshop" and img.size[0] != size_i:
+                            nh = max(1, int(img.size[1] * (size_i / max(1, img.size[0]))))
+                            img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
+                        if mode == "workshop":
+                            parts = proc.process_image_workshop(
+                                img, text, opts["wm_font"], opacity, color, corner, scale, wm_x_f, wm_y_f
+                            )
+                        elif mode == "featured":
+                            parts = proc.process_image_featured(
+                                img, text, opts["wm_font"], opacity, color, corner, scale, wm_x_f, wm_y_f
+                            )
+                        else:
+                            parts = proc.process_image_split(
+                                img, text, opts["wm_font"], opacity, color, corner, scale, wm_x_f, wm_y_f
+                            )
+                        for pname, data in parts.items():
+                            zf.writestr(f"{folder}/{pname}", data)
+                            if len(listed) < 20:
+                                listed.append({"name": f"{folder}/{pname}", "size": len(data)})
+                    else:
+                        src = work / f"source{ext}"
+                        src.write_bytes(raw)
+                        is_video = ext in (".mp4", ".mov", ".webm", ".avi", ".mkv")
+                        v_fps = min(int(fps), 12)
+                        v_dur = 8.0
+                        encoder = enc
+                        if encoder == "pillow":
+                            encoder = "ffmpeg"
+                        if is_video:
+                            if not proc.find_ffmpeg():
+                                raise RuntimeError("FFmpeg not available")
+                            if mode == "workshop":
+                                paths = proc.process_video_workshop(
+                                    src, work, fps=v_fps, width=size_i,
+                                    wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity, wm_color=color,
+                                    duration=v_dur, wm_corner=corner, wm_scale=scale,
+                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
+                                )
+                            elif mode == "featured":
+                                paths = proc.process_video_featured(
+                                    src, work, fps=v_fps, duration=v_dur, encoder=encoder,
+                                    wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity, wm_color=color,
+                                    wm_corner=corner, wm_scale=scale, wm_x=wm_x_f, wm_y=wm_y_f,
+                                )
+                            else:
+                                paths = proc.process_video_split(
+                                    src, work, fps=v_fps,
+                                    wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity, wm_color=color,
+                                    duration=v_dur, wm_corner=corner, wm_scale=scale,
+                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
+                                )
+                        else:
+                            if mode == "workshop":
+                                paths = proc.process_gif_workshop(
+                                    src, work,
+                                    wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity,
+                                    wm_color=color, wm_corner=corner, wm_scale=scale,
+                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder, fps=v_fps,
+                                )
+                            elif mode == "featured":
+                                paths = proc.process_gif_featured(
+                                    src, work, fps=v_fps, encoder=encoder,
+                                    wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity,
+                                    wm_color=color, wm_corner=corner, wm_scale=scale,
+                                    wm_x=wm_x_f, wm_y=wm_y_f,
+                                )
+                            else:
+                                paths = proc.process_gif_split(
+                                    src, work, fps=v_fps,
+                                    wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity,
+                                    wm_color=color, wm_corner=corner, wm_scale=scale,
+                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
+                                )
+                        for pname, pth in paths.items():
+                            pth = Path(pth)
+                            if not pth.is_file():
+                                continue
+                            data = pth.read_bytes()
+                            zf.writestr(f"{folder}/{pname}", data)
+                            if len(listed) < 20:
+                                listed.append({"name": f"{folder}/{pname}", "size": len(data)})
+                            try:
+                                pth.unlink(missing_ok=True)
+                            except Exception:
+                                pass
+                        try:
+                            src.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                processed += 1
+            except Exception as e:
+                errors.append(f"{name}: {type(e).__name__}: {e}")
+        try:
+            zf.close()
+        except Exception:
+            pass
+        if processed == 0:
+            detail = "; ".join(errors) if errors else "unknown error"
+            _job_set(jid, status="error", pct=100, stage="error", error=f"Failed: {detail}", errors=errors)
+            shutil.rmtree(job_dir, ignore_errors=True)
+            return
+        zip_path = job_dir / "result.zip"
+        zip_path.write_bytes(zip_buf.getvalue())
+        # quota already counted on start
+        _job_set(
+            jid,
+            status="done",
+            pct=100,
+            stage="done",
+            zip_path=str(zip_path),
+            processed=processed,
+            errors=errors,
+            listed=listed,
+        )
+    except Exception as e:
+        _job_set(jid, status="error", pct=100, stage="error", error=f"{type(e).__name__}: {e}")
+        shutil.rmtree(job_dir, ignore_errors=True)
+
+
+@app.post("/api/process/start")
+async def api_process_start(
+    request: Request,
+    mode: str = Form("workshop"),
+    fps: int = Form(12),
+    size: int = Form(750),
+    wm_text: str = Form("n1t1337"),
+    wm_font: str = Form("lap"),
+    wm_opacity: int = Form(22),
+    wm_enable: str = Form("1"),
+    wm_corner: str = Form("bl"),
+    wm_scale: float = Form(1.0),
+    wm_color: str = Form("#ffffff"),
+    wm_x: str = Form(""),
+    wm_y: str = Form(""),
+    auto_contrast: str = Form("0"),
+    gif_encoder: str = Form("gifski"),
+    all_modes: str = Form("0"),
+    files: list[UploadFile] = File(...),
+):
+    """Start async job; poll /api/process/status/{id} then download."""
+    _job_cleanup_old()
+    q = quota_state(request)
+    if not q["pro"] and q["left"] <= 0:
+        return JSONResponse(
+            {"ok": False, "msg": f"Limit {FREE_LIMIT} files/day. Enter access code or buy Pro."},
+            status_code=403,
+        )
+    mode = (mode or "workshop").lower().strip()
+    if mode not in ("workshop", "featured", "split"):
+        return JSONResponse({"ok": False, "msg": "Unknown mode"}, status_code=400)
+    do_all = str(all_modes).lower() in ("1", "true", "yes", "on")
+    modes = ["workshop", "featured", "split"] if do_all else [mode]
+    wm_on = wm_enable not in ("0", "false", "False", "")
+    opacity = (wm_opacity / 100.0) if wm_on else 0.0
+    text = wm_text if wm_on else ""
+    color = (wm_color or "#ffffff").strip() or "#ffffff"
+    corner = (wm_corner or "bl").strip().lower()
+    if corner not in ("tl", "tr", "bl", "br"):
+        corner = "bl"
+    try:
+        scale = max(0.4, min(2.5, float(wm_scale)))
+    except (TypeError, ValueError):
+        scale = 1.0
+    wm_x_f = wm_y_f = None
+    try:
+        if str(wm_x).strip() != "" and str(wm_y).strip() != "":
+            wm_x_f = max(0.0, min(1.0, float(wm_x)))
+            wm_y_f = max(0.0, min(1.0, float(wm_y)))
+    except (TypeError, ValueError):
+        wm_x_f = wm_y_f = None
+    do_ac = str(auto_contrast).lower() in ("1", "true", "yes", "on")
+    try:
+        size_i = int(size)
+    except (TypeError, ValueError):
+        size_i = 750
+    if size_i not in (630, 640, 750, 800):
+        size_i = min((630, 640, 750, 800), key=lambda s: abs(s - size_i))
+    left = 999 if q["pro"] else q["left"]
+    files = files[: max(1, left)]
+    files_data: list[tuple[str, bytes]] = []
+    for uf in files:
+        name = uf.filename or "file"
+        raw = await uf.read()
+        files_data.append((name, raw))
+    if not files_data:
+        return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
+    enc = (gif_encoder or "ffmpeg").strip().lower()
+    if enc not in ("ffmpeg", "gifski", "pillow"):
+        enc = "ffmpeg"
+    jid = secrets.token_hex(12)
+    opts = {
+        "modes": modes,
+        "text": text,
+        "opacity": opacity,
+        "color": color,
+        "corner": corner,
+        "scale": scale,
+        "wm_x": wm_x_f,
+        "wm_y": wm_y_f,
+        "do_ac": do_ac,
+        "size_i": size_i,
+        "fps": fps,
+        "enc": enc,
+        "wm_font": wm_font,
+    }
+    _job_set(jid, status="queued", pct=1, stage="queued", created=time.time())
+    # count quota when job accepted
+    try:
+        quota_inc(request, len(files_data))
+    except Exception:
+        pass
+    import threading
+    threading.Thread(target=_run_process_job, args=(jid, files_data, opts), daemon=True, name=f"job-{jid[:8]}").start()
+    return {"ok": True, "job_id": jid}
+
+
+@app.get("/api/process/status/{job_id}")
+def api_process_status(job_id: str):
+    j = _job_get(job_id)
+    if not j:
+        return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
+    out = {
+        "ok": True,
+        "status": j.get("status"),
+        "pct": int(j.get("pct") or 0),
+        "stage": j.get("stage") or "",
+        "error": j.get("error"),
+        "processed": j.get("processed"),
+        "errors": j.get("errors") or [],
+    }
+    if j.get("status") == "done":
+        out["download"] = f"/api/process/download/{job_id}"
+    return out
+
+
+@app.get("/api/process/download/{job_id}")
+def api_process_download(job_id: str):
+    j = _job_get(job_id)
+    if not j or j.get("status") != "done" or not j.get("zip_path"):
+        return JSONResponse({"ok": False, "msg": "Not ready"}, status_code=404)
+    path = Path(j["zip_path"])
+    if not path.is_file():
+        return JSONResponse({"ok": False, "msg": "File gone"}, status_code=404)
+    return FileResponse(
+        path,
+        media_type="application/zip",
+        filename="showcase.zip",
+        headers={"X-Processed": str(j.get("processed") or "")},
+    )
+
+
+
 @app.post("/api/process")
 async def api_process(
     request: Request,
