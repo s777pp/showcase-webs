@@ -500,6 +500,19 @@ input[type="range"]{
 }
 .sm-buy-close:hover{background:rgba(255,255,255,.1);color:#fff}
 
+
+.sm-buy-opt.funpay .ico.ico-funpay{
+  background:#ffffff !important;
+  padding:8px 6px;
+}
+.sm-buy-opt.funpay .ico.ico-funpay img{
+  width:100%;
+  height:auto;
+  max-height:20px;
+  object-fit:contain;
+  display:block;
+}
+
 </style>
 </head>
 <body>
@@ -4720,8 +4733,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     <p class="sm-buy-sub" id="smBuySub">Choose where to buy. After payment, activate the code in your account.</p>
     <div class="sm-buy-opts">
       <a class="sm-buy-opt funpay" id="smBuyFunpay" href="https://funpay.com/lots/offer?id=75434891" target="_blank" rel="noopener">
-        <span class="ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v3H4V7zm2 5h12v7H6v-7zm3-9h6v2H9V3z" fill="#fff"/><path d="M9 14h6v2H9v-2z" fill="#fff" opacity=".85"/></svg>
+        <span class="ico ico-funpay" aria-hidden="true">
+          <img src="/static/img/funpay-logo.svg" alt="FunPay" width="28" height="12"/>
         </span>
         <span class="txt">
           <span class="t">FunPay</span>
