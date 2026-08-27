@@ -8,11 +8,14 @@ venv
 
 # secrets / runtime state — must never enter the image
 .env
-data/access_codes.json
 data/used_codes.json
 data/usage.json
 data/users.db
 data/jobs
+
+# NOTE: data/access_codes.json IS shipped in the image on purpose — it is the
+# master code list (trial codes carry "hours", which env vars cannot express).
+# It is readable by anyone with the repo or the image.
 
 *.md
 !README.md

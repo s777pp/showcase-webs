@@ -44,8 +44,13 @@ result ZIPs live on the disk of the process that produced them.
 
 ## Access codes
 
-Codes are read from `ADMIN_ACCESS_CODE`, `ACCESS_CODES`, `ACCESS_CODES_JSON` or
-`DATA_DIR/access_codes.json` on the volume. They are never committed.
+The master list is `data/access_codes.json`, committed and shipped in the image —
+trial codes carry a `hours` field that a flat env var cannot express. Env vars
+(`ADMIN_ACCESS_CODE`, `ACCESS_CODES`, `ACCESS_CODES_JSON`) add to it, and
+`DATA_DIR/access_codes.json` on the volume overrides everything.
+
+Anyone with repo or image access can read the codes — keep the repo private if
+that matters.
 
 ```bash
 python scripts/gen_access_codes.py 10 --label Pro

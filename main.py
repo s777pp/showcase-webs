@@ -54,8 +54,9 @@ if DATA is None:
 
 JOBS = DATA / "jobs"
 USAGE_FILE = DATA / "usage.json"
-# keys: env only (ACCESS_CODES / ACCESS_CODES_JSON) + optional override on volume.
-# Never shipped in the repo -- a public checkout would hand out free Pro.
+# keys: bundled file (repo) -> env -> volume override. The bundled file carries
+# per-code metadata (trial codes have "hours"), which a flat env list cannot express.
+CODES_FILE_REPO = ROOT / "data" / "access_codes.json"
 ACCESS_FILE = DATA / "access_codes.json"
 STATIC = ROOT / "static"
 TEMPLATES = ROOT / "templates"
@@ -144,10 +145,12 @@ def _da_ready():
 PRO_PRICE_LABEL = os.environ.get("PRO_PRICE_LABEL", "Pro · безлимит")
 
 # Коды доступа: снимают лимит. Источники, по возрастанию приоритета:
-#   ADMIN_ACCESS_CODE   — один админский ключ
-#   ACCESS_CODES        — список через запятую: CODE1,CODE2
-#   ACCESS_CODES_JSON   — JSON с метками: {"CODE": {"type": "unlimited", "label": "Pro"}}
-#   DATA/access_codes.json — файл на томе (не в git)
+#   ADMIN_ACCESS_CODE      — один админский ключ
+#   data/access_codes.json — файл в репозитории (основной список, с метаданными
+#                            trial-кодов: {"type": "trial", "hours": 2})
+#   ACCESS_CODES           — список через запятую: CODE1,CODE2 (только unlimited)
+#   ACCESS_CODES_JSON      — JSON с метками, для точечных добавлений
+#   DATA/access_codes.json — файл на томе, перекрывает всё остальное
 DEFAULT_CODES: dict[str, dict] = {}
 _admin_code = (os.environ.get("ADMIN_ACCESS_CODE") or "").strip().upper()
 if _admin_code:
@@ -156,6 +159,14 @@ if _admin_code:
 
 def _load_codes() -> dict:
     codes = dict(DEFAULT_CODES)
+    # bundled list first, so env entries below can override individual codes
+    if CODES_FILE_REPO.is_file():
+        try:
+            data = json.loads(CODES_FILE_REPO.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                codes.update({str(k).upper(): v for k, v in data.items()})
+        except Exception as e:
+            print("load codes", CODES_FILE_REPO, e)
     for c in os.environ.get("ACCESS_CODES", "").split(","):
         c = c.strip()
         if c:

@@ -1,9 +1,12 @@
-# secrets — access codes are sold, they must never be committed
 .env
-data/access_codes.json
-data/used_codes.json
+
+# NOTE: data/access_codes.json is intentionally COMMITTED — it is the master
+# code list and ships with the deploy. Anyone with repo access gets free Pro.
+# To stop that later: make the repo private, or untrack the file and move the
+# codes to ACCESS_CODES_JSON / the /data volume.
 
 # runtime state
+data/used_codes.json
 data/usage.json
 data/users.db
 data/auth.db

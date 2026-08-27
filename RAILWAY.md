@@ -10,32 +10,32 @@ Railway собирает **`Dockerfile`** и запускает **один се�
 
 ---
 
-## 1. Убрать утёкшие ключи (сделать до пуша)
+## 1. Коды доступа
 
-`data/access_codes.json` лежал в репозитории. Добавления в `.gitignore` **недостаточно** —
-файл уже отслеживается git, его нужно снять с учёта явно:
+Основной список — **`data/access_codes.json` в репозитории** (700 ключей: 500 `Pro`
+и 200 `Trial 2h`). Файл коммитится вместе с кодом и попадает в образ намеренно:
+у trial-кодов есть поле `"hours"`, которое плоской переменной окружения не выразить.
 
-```bash
-git rm --cached data/access_codes.json data/used_codes.json
-git add .gitignore
-git commit -m "Remove access codes from repo"
+Ничего настраивать не нужно — коды заработают сразу после деплоя.
+
+Добавить точечные ключи можно через переменные, они дополняют файл:
+
+```
+ACCESS_CODES=SM-WEB-AAAAAA-BBBB,SM-WEB-CCCCCC-DDDD          # только unlimited
+ACCESS_CODES_JSON={"SM-X":{"type":"trial","hours":2,"label":"Trial 2h"}}
+ADMIN_ACCESS_CODE=<админский ключ>
 ```
 
-Файл останется у тебя на диске, но перестанет уходить в GitHub и в Docker-образ.
+Приоритет: файл в репозитории → `ACCESS_CODES` → `ACCESS_CODES_JSON` →
+`DATA_DIR/access_codes.json` на томе (перекрывает всё).
 
-> Старые ключи (`SM-WEB-519F7C-A083`, `SM-WEB-65B30E-E422`, `SM-WEB-E34C88-6EB3`,
-> `SM-WEB-B05EA8-24B5`) и админский `SHOWCASE-WEB-PRO` **скомпрометированы**, если репозиторий
-> публичный: они лежат в истории коммитов и достаются командой `git log -p`. Их нужно
-> перевыпустить. Чистка истории (`git filter-repo` / BFG) имеет смысл только вместе с
-> перевыпуском — сами по себе форки и кеши GitHub она не лечит.
+Сгенерировать новые ключи: `python scripts/gen_access_codes.py 10 --label Pro`
 
-Сгенерировать новые:
-
-```bash
-python scripts/gen_access_codes.py 10 --label Pro
-```
-
-Скрипт печатает готовые строки `ACCESS_CODES=...` и `ACCESS_CODES_JSON=...`.
+> **Учти:** пока репозиторий публичный, все 700 ключей видны любому, кто его откроет,
+> и остаются в истории коммитов даже после удаления файла. Если это станет важно —
+> самый быстрый способ закрыть доступ: сделать репозиторий приватным в настройках
+> GitHub. Альтернатива — снять файл с учёта (`git rm --cached data/access_codes.json`),
+> перевыпустить ключи и держать их в `ACCESS_CODES_JSON` или на томе.
 
 ---
 
@@ -80,18 +80,7 @@ SECRET_KEY=<длинная случайная строка>
 APP_URL=https://<твой-домен>
 ```
 
-Ключи доступа (вместо удалённого файла):
-
-```
-ACCESS_CODES=SM-WEB-AAAAAA-BBBB,SM-WEB-CCCCCC-DDDD
-ADMIN_ACCESS_CODE=<новый админский код>
-```
-
-либо с метками одной строкой:
-
-```
-ACCESS_CODES_JSON={"SM-WEB-AAAAAA-BBBB":{"type":"unlimited","label":"Pro"}}
-```
+Коды доступа задавать **не нужно** — они едут в образе (см. раздел 1).
 
 Опционально: `REDIS_URL`, `FREE_LIMIT`, `MAX_UPLOAD_MB`, `MAX_JOBS_PER_USER`,
 OAuth (`DISCORD_*`, `GOOGLE_*`, `TELEGRAM_*`), `STRIPE_*`.
