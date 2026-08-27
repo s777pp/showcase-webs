@@ -26,8 +26,6 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
 import processor as proc
-import redis_store as rs
-
 import auth_db
 
 ROOT = Path(__file__).resolve().parent
@@ -302,12 +300,6 @@ def quota_state(req: Request) -> dict:
 
 
 def quota_inc(req: Request, n: int) -> None:
-    try:
-        ip = (req.client.host if req.client else "unknown")
-        rs.quota_inc(ip, _day(), n)
-    except Exception:
-        pass
-    # legacy file-backed path follows
     user = _auth_user(req)
     if user and auth_db.effective_pro(user):
         return
@@ -322,49 +314,7 @@ def quota_inc(req: Request, n: int) -> None:
     _save_usage(_usage)
 
 
-
-# ---- production middleware: request id + rate limits ----
-import uuid as _uuid
-from starlette.middleware.base import BaseHTTPMiddleware
-
-class RequestIdMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        rid = request.headers.get("X-Request-ID") or _uuid.uuid4().hex[:16]
-        request.state.request_id = rid
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = rid
-        return response
-
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Light Redis/local rate limits on sensitive paths."""
-    RULES = (
-        ("/api/auth/login", 20, 60),
-        ("/api/auth/register", 10, 60),
-        ("/api/process", 8, 60),
-        ("/api/process/start", 8, 60),
-        ("/api/gallery/", 60, 60),
-        ("/api/download-url", 5, 60),
-    )
-    async def dispatch(self, request, call_next):
-        path = request.url.path
-        client = (request.client.host if request.client else "unknown")
-        for prefix, limit, window in self.RULES:
-            if path.startswith(prefix) and request.method in ("POST", "PUT", "DELETE", "PATCH"):
-                ok, _left = rs.rate_limit(f"{prefix}:{client}", limit, window)
-                if not ok:
-                    from fastapi.responses import JSONResponse
-                    return JSONResponse(
-                        {"ok": False, "msg": "Too many requests. Slow down."},
-                        status_code=429,
-                    )
-                break
-        return await call_next(request)
-
-
 app = FastAPI(title="Showcase Maker Web")
-
-app.add_middleware(RateLimitMiddleware)
-app.add_middleware(RequestIdMiddleware)
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 try:
     app.mount("/fonts", StaticFiles(directory=str(FONTS)), name="fonts")
@@ -1101,31 +1051,7 @@ async def billing_webhook(request: Request):
     return {"ok": True}
 
 
-@app.get("/api/ready")
-def api_ready():
-    """Readiness: DB must answer."""
-    try:
-        auth_db._conn().execute("SELECT 1")
-        return {"ok": True}
-    except Exception:
-        from fastapi.responses import JSONResponse
-        return JSONResponse({"ok": False}, status_code=503)
-
 @app.get("/api/health")
-def api_health_prod():
-    db_ok = True
-    try:
-        auth_db._conn().execute("SELECT 1")
-    except Exception:
-        db_ok = False
-    try:
-        redis_ok = rs.redis_ok()
-    except Exception:
-        redis_ok = False
-    return {"ok": True, "db": db_ok, "redis": redis_ok, "version": "prod-opt-1"}
-
-@app.get("/api/health_legacy")
-
 def health():
     return {
         "ok": True,
@@ -1247,10 +1173,6 @@ def _job_set(jid: str, **kw) -> None:
         j.update(kw)
         j["updated"] = time.time()
         _process_jobs[jid] = j
-    try:
-        rs.job_update(jid, **kw)
-    except Exception:
-        pass
 
 
 def _job_get(jid: str) -> dict | None:
@@ -1275,37 +1197,6 @@ def _job_cleanup_old(max_age: float = 600.0) -> None:
                     shutil.rmtree(j["job_dir"], ignore_errors=True)
                 except Exception:
                     pass
-
-
-
-
-def _run_process_job_from_payload(jid: str, job: dict) -> None:
-    """Worker entry: job must contain files_data (list of [name, path]) and opts."""
-    import redis_store as _rs
-    files_data = []
-    for item in job.get("files") or []:
-        name = item.get("name") or "file"
-        path = item.get("path")
-        if path and Path(path).is_file():
-            files_data.append((name, Path(path).read_bytes()))
-    opts = job.get("opts") or {}
-    if not files_data:
-        _rs.job_update(jid, status="error", pct=100, stage="error", error="No files")
-        return
-    # Reuse existing runner if present
-    try:
-        _run_process_job(jid, files_data, opts)
-    except TypeError:
-        # if signature differs, mark error
-        _rs.job_update(jid, status="error", pct=100, stage="error", error="Worker incompatible")
-        raise
-    # Sync status from in-memory job store to redis if dual
-    try:
-        j = _job_get(jid) if "_job_get" in dir() else None
-        if j:
-            _rs.job_update(jid, **{k: j[k] for k in ("status", "pct", "stage", "error", "zip_path", "processed") if k in j})
-    except Exception:
-        pass
 
 
 def _run_process_job(jid: str, files_data: list[tuple[str, bytes]], opts: dict) -> None:
@@ -1582,42 +1473,13 @@ async def api_process_start(
     except Exception:
         pass
     import threading
-    # Prefer external worker via Redis when available; else in-process thread
-    user_key = ""
-    try:
-        u = _auth_user(request)
-        user_key = str(u.get("id") or "") if u else (request.client.host if request.client else "")
-    except Exception:
-        user_key = ""
-    if user_key and rs.job_count_user(user_key) >= int(os.environ.get("MAX_JOBS_PER_USER", "2")):
-        return JSONResponse({"ok": False, "msg": "Too many active jobs. Wait for current processing to finish."}, status_code=429)
-    # persist uploads to disk for worker
-    job_upload_dir = JOBS / jid
-    job_upload_dir.mkdir(parents=True, exist_ok=True)
-    files_meta = []
-    for name, raw in files_data:
-        safe = re.sub(r"[^a-zA-Z0-9._-]", "_", name)[:80] or "file"
-        p = job_upload_dir / safe
-        p.write_bytes(raw)
-        files_meta.append({"name": name, "path": str(p)})
-    payload = {"status": "queued", "pct": 1, "stage": "queued", "user_key": user_key, "files": files_meta, "opts": opts}
-    rs.job_create(jid, payload)
-    if rs.redis_ok() and os.environ.get("USE_EXTERNAL_WORKER", "1") not in ("0", "false", "False"):
-        # external worker will pick up
-        pass
-    else:
-        threading.Thread(target=_run_process_job, args=(jid, files_data, opts), daemon=True, name=f"job-{jid[:8]}").start()
+    threading.Thread(target=_run_process_job, args=(jid, files_data, opts), daemon=True, name=f"job-{jid[:8]}").start()
     return {"ok": True, "job_id": jid}
 
 
 @app.get("/api/process/status/{job_id}")
 def api_process_status(job_id: str):
-    j = _job_get(job_id) if "_job_get" in globals() else None
-    if not j:
-        try:
-            j = rs.job_get(job_id)
-        except Exception:
-            j = None
+    j = _job_get(job_id)
     if not j:
         return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
     out = {

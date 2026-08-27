@@ -1,8 +1,0 @@
-Lite archive (no large video/PNG templates).
-
-Missing (copy from GitHub or current Railway):
-  static/steam_upload_guide.mp4
-  static/video/hero.mp4
-  templates/steam_preview_*.png
-
-Code + Docker + worker + nginx + Redis/Postgres setup are complete.
