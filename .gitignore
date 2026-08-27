@@ -1,0 +1,25 @@
+# secrets — access codes are sold, they must never be committed
+.env
+data/access_codes.json
+data/used_codes.json
+
+# runtime state
+data/usage.json
+data/users.db
+data/auth.db
+data/jobs/
+data/gallery/
+data/avatars/
+data/profile_sc/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# local binaries / os
+bin/*.exe
+.DS_Store
+Thumbs.db

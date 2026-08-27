@@ -1,0 +1,21 @@
+.git
+.gitignore
+.DS_Store
+__pycache__
+*.pyc
+.venv
+venv
+
+# secrets / runtime state — must never enter the image
+.env
+data/access_codes.json
+data/used_codes.json
+data/usage.json
+data/users.db
+data/jobs
+
+*.md
+!README.md
+main2.py
+bin/*.exe
+docs

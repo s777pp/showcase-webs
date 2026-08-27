@@ -11,11 +11,13 @@ import hmac
 import io
 import json
 import os
+import re
 import secrets
 import shutil
 import time
 import uuid
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -26,6 +28,8 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
 import processor as proc
+import redis_store as rs
+
 import auth_db
 
 ROOT = Path(__file__).resolve().parent
@@ -50,8 +54,8 @@ if DATA is None:
 
 JOBS = DATA / "jobs"
 USAGE_FILE = DATA / "usage.json"
-# keys: from repo (shipped with deploy) + optional override on volume
-CODES_FILE_REPO = ROOT / "data" / "access_codes.json"
+# keys: env only (ACCESS_CODES / ACCESS_CODES_JSON) + optional override on volume.
+# Never shipped in the repo -- a public checkout would hand out free Pro.
 ACCESS_FILE = DATA / "access_codes.json"
 STATIC = ROOT / "static"
 TEMPLATES = ROOT / "templates"
@@ -139,12 +143,15 @@ def _da_ready():
     return bool(c["id"] and c["secret"] and c["redirect"]), c
 PRO_PRICE_LABEL = os.environ.get("PRO_PRICE_LABEL", "Pro · безлимит")
 
-# Коды доступа: снимают лимит. Можно задать env ACCESS_CODES=CODE1,CODE2
-# или файл data/access_codes.json
-DEFAULT_CODES = {
-    # Admin only — all sellable keys live in data/access_codes.json
-    "SHOWCASE-WEB-PRO": {"type": "unlimited", "label": "Pro Admin"},
-}
+# Коды доступа: снимают лимит. Источники, по возрастанию приоритета:
+#   ADMIN_ACCESS_CODE   — один админский ключ
+#   ACCESS_CODES        — список через запятую: CODE1,CODE2
+#   ACCESS_CODES_JSON   — JSON с метками: {"CODE": {"type": "unlimited", "label": "Pro"}}
+#   DATA/access_codes.json — файл на томе (не в git)
+DEFAULT_CODES: dict[str, dict] = {}
+_admin_code = (os.environ.get("ADMIN_ACCESS_CODE") or "").strip().upper()
+if _admin_code:
+    DEFAULT_CODES[_admin_code] = {"type": "unlimited", "label": "Pro Admin"}
 
 
 def _load_codes() -> dict:
@@ -153,15 +160,21 @@ def _load_codes() -> dict:
         c = c.strip()
         if c:
             codes[c.upper()] = {"type": "unlimited", "label": "Custom"}
-    # 1) bundled with app (git), 2) optional on volume
-    for path in (CODES_FILE_REPO, ACCESS_FILE):
-        if path.is_file():
-            try:
-                data = json.loads(path.read_text(encoding="utf-8"))
-                if isinstance(data, dict):
-                    codes.update({str(k).upper(): v for k, v in data.items()})
-            except Exception as e:
-                print("load codes", path, e)
+    raw = (os.environ.get("ACCESS_CODES_JSON") or "").strip()
+    if raw:
+        try:
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                codes.update({str(k).upper(): v for k, v in data.items()})
+        except Exception as e:
+            print("load ACCESS_CODES_JSON:", e)
+    if ACCESS_FILE.is_file():
+        try:
+            data = json.loads(ACCESS_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                codes.update({str(k).upper(): v for k, v in data.items()})
+        except Exception as e:
+            print("load codes", ACCESS_FILE, e)
     return codes
 
 
@@ -300,6 +313,12 @@ def quota_state(req: Request) -> dict:
 
 
 def quota_inc(req: Request, n: int) -> None:
+    try:
+        ip = (req.client.host if req.client else "unknown")
+        rs.quota_inc(ip, _day(), n)
+    except Exception:
+        pass
+    # legacy file-backed path follows
     user = _auth_user(req)
     if user and auth_db.effective_pro(user):
         return
@@ -314,7 +333,49 @@ def quota_inc(req: Request, n: int) -> None:
     _save_usage(_usage)
 
 
+
+# ---- production middleware: request id + rate limits ----
+import uuid as _uuid
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class RequestIdMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        rid = request.headers.get("X-Request-ID") or _uuid.uuid4().hex[:16]
+        request.state.request_id = rid
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = rid
+        return response
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Light Redis/local rate limits on sensitive paths."""
+    RULES = (
+        ("/api/auth/login", 20, 60),
+        ("/api/auth/register", 10, 60),
+        ("/api/process", 8, 60),
+        ("/api/process/start", 8, 60),
+        ("/api/gallery/", 60, 60),
+        ("/api/download-url", 5, 60),
+    )
+    async def dispatch(self, request, call_next):
+        path = request.url.path
+        client = (request.client.host if request.client else "unknown")
+        for prefix, limit, window in self.RULES:
+            if path.startswith(prefix) and request.method in ("POST", "PUT", "DELETE", "PATCH"):
+                ok, _left = rs.rate_limit(f"{prefix}:{client}", limit, window)
+                if not ok:
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(
+                        {"ok": False, "msg": "Too many requests. Slow down."},
+                        status_code=429,
+                    )
+                break
+        return await call_next(request)
+
+
 app = FastAPI(title="Showcase Maker Web")
+
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(RequestIdMiddleware)
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 try:
     app.mount("/fonts", StaticFiles(directory=str(FONTS)), name="fonts")
@@ -1051,7 +1112,50 @@ async def billing_webhook(request: Request):
     return {"ok": True}
 
 
+@app.get("/api/ready")
+def api_ready():
+    """Readiness: DB must answer."""
+    try:
+        auth_db._conn().execute("SELECT 1")
+        return {"ok": True}
+    except Exception:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"ok": False}, status_code=503)
+
 @app.get("/api/health")
+def api_health_prod():
+    db_ok = True
+    try:
+        auth_db._conn().execute("SELECT 1")
+    except Exception:
+        db_ok = False
+    try:
+        redis_ok = rs.redis_ok()
+    except Exception:
+        redis_ok = False
+    mode = _worker_mode()
+    return {
+        "ok": True,
+        "db": db_ok,
+        "redis": redis_ok,
+        # why Redis is down — the old endpoint only ever said "false"
+        "redis_detail": {
+            "configured": rs.configured(),
+            "ok": redis_ok,
+            "host": rs.redis_host(),
+            "error": rs.last_error(),
+        },
+        "worker": {
+            "mode": mode,
+            "external_alive": rs.worker_alive() if redis_ok else False,
+            "max_concurrent": MAX_JOB_WORKERS,
+            "queue": rs.queue_depth() if redis_ok else 0,
+        },
+        "version": "prod-opt-2",
+    }
+
+@app.get("/api/health_legacy")
+
 def health():
     return {
         "ok": True,
@@ -1166,6 +1270,27 @@ console.log('Showcase Maker: multiple upload enabled');"""
 _process_jobs: dict[str, dict] = {}
 _process_jobs_lock = __import__("threading").Lock()
 
+# Bounded pool for heavy FFmpeg/gifski work. Raw threads let N parallel GIF
+# encodes saturate the CPU and stall the API for everyone else.
+MAX_JOB_WORKERS = max(1, int(os.environ.get("MAX_JOB_WORKERS") or 2))
+_job_pool = ThreadPoolExecutor(max_workers=MAX_JOB_WORKERS, thread_name_prefix="job")
+
+
+def _worker_mode() -> str:
+    """'embedded' (default) — process in this container's pool.
+    'external'  — a separate worker.py process drains the Redis queue.
+
+    Default is embedded: on Railway there is only one service, so an enqueued
+    job would otherwise sit in the queue with nobody to pop it.
+    """
+    m = (os.environ.get("WORKER_MODE") or "").strip().lower()
+    if m in ("embedded", "external"):
+        return m
+    # back-compat: USE_EXTERNAL_WORKER=1 used to mean "an external worker exists"
+    if (os.environ.get("USE_EXTERNAL_WORKER") or "0").lower() in ("1", "true", "yes", "on"):
+        return "external"
+    return "embedded"
+
 
 def _job_set(jid: str, **kw) -> None:
     with _process_jobs_lock:
@@ -1173,12 +1298,29 @@ def _job_set(jid: str, **kw) -> None:
         j.update(kw)
         j["updated"] = time.time()
         _process_jobs[jid] = j
+    try:
+        rs.job_update(jid, **kw)  # upsert; shared source of truth
+    except Exception:
+        pass
 
 
 def _job_get(jid: str) -> dict | None:
+    """Redis first: the job may have been produced by another uvicorn worker or by
+    the external worker process, in which case this process's dict knows nothing
+    about it (or is frozen at 'queued'). Local dict is the offline fallback."""
+    try:
+        shared = rs.job_get(jid)
+    except Exception:
+        shared = None
     with _process_jobs_lock:
-        j = _process_jobs.get(jid)
-        return dict(j) if j else None
+        local = _process_jobs.get(jid)
+        local = dict(local) if local else None
+    if shared:
+        if local:
+            local.update(shared)
+            return local
+        return shared
+    return local
 
 
 def _job_cleanup_old(max_age: float = 600.0) -> None:
@@ -1197,6 +1339,32 @@ def _job_cleanup_old(max_age: float = 600.0) -> None:
                     shutil.rmtree(j["job_dir"], ignore_errors=True)
                 except Exception:
                     pass
+
+
+
+
+def _run_process_job_from_payload(jid: str, job: dict) -> None:
+    """Worker entry: job must contain files_data (list of [name, path]) and opts."""
+    import redis_store as _rs
+    files_data = []
+    for item in job.get("files") or []:
+        name = item.get("name") or "file"
+        path = item.get("path")
+        if path and Path(path).is_file():
+            files_data.append((name, Path(path).read_bytes()))
+    opts = job.get("opts") or {}
+    if not files_data:
+        _rs.job_update(jid, status="error", pct=100, stage="error", error="No files")
+        return
+    # Reuse existing runner if present
+    try:
+        _run_process_job(jid, files_data, opts)
+    except TypeError:
+        # if signature differs, mark error
+        _rs.job_update(jid, status="error", pct=100, stage="error", error="Worker incompatible")
+        raise
+    # No explicit sync needed: _run_process_job writes through _job_set, which
+    # upserts into Redis on every progress step.
 
 
 def _run_process_job(jid: str, files_data: list[tuple[str, bytes]], opts: dict) -> None:
@@ -1466,14 +1634,54 @@ async def api_process_start(
         "enc": enc,
         "wm_font": wm_font,
     }
-    _job_set(jid, status="queued", pct=1, stage="queued", created=time.time())
-    # count quota when job accepted
+    user_key = ""
+    try:
+        u = _auth_user(request)
+        user_key = str(u.get("id") or "") if u else (request.client.host if request.client else "")
+    except Exception:
+        user_key = ""
+    # Check the per-user cap BEFORE registering the job or charging quota,
+    # otherwise a rejected request still burns a free-tier slot.
+    if user_key and rs.job_count_user(user_key) >= int(os.environ.get("MAX_JOBS_PER_USER", "2")):
+        return JSONResponse(
+            {"ok": False, "msg": "Too many active jobs. Wait for current processing to finish."},
+            status_code=429,
+        )
+
+    # persist uploads to disk (the worker — embedded or external — reads them back)
+    job_upload_dir = JOBS / jid
+    job_upload_dir.mkdir(parents=True, exist_ok=True)
+    files_meta = []
+    for name, raw in files_data:
+        safe = re.sub(r"[^a-zA-Z0-9._-]", "_", name)[:80] or "file"
+        p = job_upload_dir / safe
+        p.write_bytes(raw)
+        files_meta.append({"name": name, "path": str(p)})
+
+    # Only hand the job to an external worker if one is actually alive; otherwise
+    # the entry would sit in the Redis queue forever with nobody to pop it.
+    mode = _worker_mode()
+    external = mode == "external" and rs.redis_ok() and rs.worker_alive()
+    if mode == "external" and not external:
+        print(
+            f"[job {jid[:8]}] WORKER_MODE=external but no live worker "
+            f"(redis={rs.redis_ok()} beat={rs.worker_alive()}) — running embedded",
+            flush=True,
+        )
+
+    payload = {
+        "status": "queued", "pct": 1, "stage": "queued",
+        "user_key": user_key, "files": files_meta, "opts": opts,
+        "created": time.time(),
+    }
+    rs.job_create(jid, payload, enqueue=external)
+    _job_set(jid, status="queued", pct=1, stage="queued", created=time.time(), user_key=user_key)
     try:
         quota_inc(request, len(files_data))
     except Exception:
         pass
-    import threading
-    threading.Thread(target=_run_process_job, args=(jid, files_data, opts), daemon=True, name=f"job-{jid[:8]}").start()
+    if not external:
+        _job_pool.submit(_run_process_job, jid, files_data, opts)
     return {"ok": True, "job_id": jid}
 
 
@@ -1499,11 +1707,20 @@ def api_process_status(job_id: str):
 @app.get("/api/process/download/{job_id}")
 def api_process_download(job_id: str):
     j = _job_get(job_id)
-    if not j or j.get("status") != "done" or not j.get("zip_path"):
-        return JSONResponse({"ok": False, "msg": "Not ready"}, status_code=404)
+    if not j:
+        return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
+    if j.get("status") != "done" or not j.get("zip_path"):
+        return JSONResponse(
+            {"ok": False, "msg": f"Not ready (status={j.get('status') or 'unknown'})"},
+            status_code=409,
+        )
     path = Path(j["zip_path"])
     if not path.is_file():
-        return JSONResponse({"ok": False, "msg": "File gone"}, status_code=404)
+        # Result was cleaned up, or produced on a filesystem this instance cannot see.
+        return JSONResponse(
+            {"ok": False, "msg": "Result expired or stored on another instance. Please run the job again."},
+            status_code=410,
+        )
     return FileResponse(
         path,
         media_type="application/zip",
