@@ -2489,5 +2489,19 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 
+
+<script>
+(function(){
+  try {
+    var q = new URLSearchParams(location.search);
+    if (q.get('login') === '1' || q.get('auth') === '1' || location.hash === '#login') {
+      setTimeout(function(){
+        if (typeof openAuth === 'function') openAuth('login');
+      }, 200);
+    }
+  } catch(e){}
+})();
+</script>
+
 </body>
 </html>

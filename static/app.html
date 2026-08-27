@@ -515,6 +515,14 @@ input[type="range"]{
   .site-header .btn-pill-sm{display:none}
 }
 
+
+.cm-swatch{
+  width:28px;height:28px;border-radius:8px;border:2px solid rgba(255,255,255,.2);
+  cursor:pointer;padding:0;flex-shrink:0;transition:transform .12s,border-color .12s;
+}
+.cm-swatch:hover{transform:scale(1.08);border-color:#fff}
+.cm-swatch.active{border-color:#00d2ff;box-shadow:0 0 0 2px rgba(0,210,255,.35)}
+
 </style>
 </head>
 <body>
@@ -633,6 +641,14 @@ input[type="range"]{
         <label class="field">WM color
           <input type="color" id="wmColor" value="#ffffff" style="height:36px;padding:2px;cursor:pointer"/>
         </label>
+        <div class="field" style="min-width:100%;margin-bottom:8px">
+          <span class="lbl" id="lblColorMatch">Color match</span>
+          <div id="colorMatchRow" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px">
+            <button type="button" class="btn ghost" id="btnColorMatch" style="padding:6px 12px;font-size:12px">Extract from image</button>
+            <div id="colorMatchSwatches" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+            <span id="colorMatchHint" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+        </div>
         <label class="field">GIF encoder
           <select id="gifEncoder" title="How GIF is encoded">
             <option value="gifski" selected>gifski</option>
@@ -1498,6 +1514,123 @@ document.getElementById('btnClear').onclick = () => {
   document.getElementById('dlProcess').style.display='none';
   const _pg=document.getElementById('btnPublishGallery'); if(_pg) _pg.style.display='none';
 };
+
+/* ===== Color match: dominant palette from first image ===== */
+function __rgbToHex(r,g,b){
+  return '#' + [r,g,b].map(function(x){ return ('0'+Math.max(0,Math.min(255,x|0)).toString(16)).slice(-2); }).join('');
+}
+function __extractPalette(imgEl, maxColors){
+  maxColors = maxColors || 5;
+  try {
+    var c = document.createElement('canvas');
+    var w = 64, h = 64;
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(imgEl, 0, 0, w, h);
+    var data = ctx.getImageData(0, 0, w, h).data;
+    var buckets = {};
+    for (var i = 0; i < data.length; i += 16) { // sample every 4th pixel
+      var r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+      if (a < 128) continue;
+      // skip near-black / near-white noise
+      var maxc = Math.max(r,g,b), minc = Math.min(r,g,b);
+      if (maxc < 28 || minc > 240) continue;
+      // quantize
+      var rq = (r >> 4) << 4, gq = (g >> 4) << 4, bq = (b >> 4) << 4;
+      var key = rq + ',' + gq + ',' + bq;
+      if (!buckets[key]) buckets[key] = { r: rq, g: gq, b: bq, n: 0 };
+      buckets[key].n++;
+    }
+    var list = Object.keys(buckets).map(function(k){ return buckets[k]; });
+    list.sort(function(a,b){ return b.n - a.n; });
+    // diversify: skip colors too close to already picked
+    var out = [];
+    function dist(a,b){ var dr=a.r-b.r,dg=a.g-b.g,db=a.b-b.b; return dr*dr+dg*dg+db*db; }
+    for (var j = 0; j < list.length && out.length < maxColors; j++) {
+      var cand = list[j];
+      var ok = true;
+      for (var k = 0; k < out.length; k++) {
+        if (dist(cand, out[k]) < 1800) { ok = false; break; }
+      }
+      if (ok) out.push(cand);
+    }
+    return out.map(function(c){ return __rgbToHex(c.r, c.g, c.b); });
+  } catch (e) {
+    console.warn('palette', e);
+    return [];
+  }
+}
+function __renderColorMatch(colors){
+  var host = document.getElementById('colorMatchSwatches');
+  var hint = document.getElementById('colorMatchHint');
+  var ru = (localStorage.getItem('sm_lang') === 'ru');
+  if (!host) return;
+  host.innerHTML = '';
+  if (!colors || !colors.length) {
+    if (hint) hint.textContent = ru ? 'Нет цветов — добавь картинку' : 'No colors — add an image';
+    return;
+  }
+  if (hint) hint.textContent = ru ? 'Нажми цвет → watermark' : 'Click a color → watermark';
+  var cur = (document.getElementById('wmColor') || {}).value || '';
+  colors.forEach(function(hex){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'cm-swatch' + (hex.toLowerCase() === String(cur).toLowerCase() ? ' active' : '');
+    b.style.background = hex;
+    b.title = hex;
+    b.setAttribute('data-hex', hex);
+    b.onclick = function(){
+      var inp = document.getElementById('wmColor');
+      if (inp) {
+        inp.value = hex;
+        try { inp.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){}
+        try { inp.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
+      }
+      host.querySelectorAll('.cm-swatch').forEach(function(el){ el.classList.remove('active'); });
+      b.classList.add('active');
+    };
+    host.appendChild(b);
+  });
+}
+window.__runColorMatch = function(){
+  var ru = (localStorage.getItem('sm_lang') === 'ru');
+  var hint = document.getElementById('colorMatchHint');
+  var files = (window.state && state.files) || [];
+  var imgFile = null;
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    var n = (f.name || '').toLowerCase();
+    if ((f.type || '').indexOf('image/') === 0 || /\.(png|jpe?g|webp|gif)$/.test(n)) {
+      imgFile = f; break;
+    }
+  }
+  if (!imgFile) {
+    if (hint) hint.textContent = ru ? 'Сначала добавь PNG/JPG в «Файлы»' : 'Add a PNG/JPG in Files first';
+    return;
+  }
+  if (hint) hint.textContent = ru ? 'Считаю палитру…' : 'Sampling palette…';
+  var url = URL.createObjectURL(imgFile);
+  var im = new Image();
+  im.onload = function(){
+    var colors = __extractPalette(im, 5);
+    URL.revokeObjectURL(url);
+    __renderColorMatch(colors);
+  };
+  im.onerror = function(){
+    URL.revokeObjectURL(url);
+    if (hint) hint.textContent = ru ? 'Не удалось прочитать файл' : 'Could not read file';
+  };
+  // For GIF first frame still works via browser decode
+  im.src = url;
+};
+document.getElementById('btnColorMatch')?.addEventListener('click', function(){ window.__runColorMatch(); });
+// Auto-run when files change (debounced via existing file list updates if any)
+(function(){
+  var drop = document.getElementById('fileInput');
+  if (drop) drop.addEventListener('change', function(){ setTimeout(function(){ try{ window.__runColorMatch(); }catch(e){} }, 400); });
+})();
+
+
 document.getElementById('btnRun').onclick = async () => {
   const st = document.getElementById('status');
   const dl = document.getElementById('dlProcess');
@@ -1582,16 +1715,35 @@ document.getElementById('btnRun').onclick = async () => {
       };
       xhr.upload.onload = function () {
         fakePct = 55;
-        setProg(55, ru ? 'Обработка на сервере…' : 'Processing on server…', ru ? 'нарезка, watermark, ZIP…' : 'cuts, watermark, ZIP…');
+        var hasAnim = false;
+        try {
+          (state.files || []).forEach(function(f){
+            var n = (f.name || '').toLowerCase();
+            var t = (f.type || '');
+            if (t.indexOf('video/') === 0 || /\.(gif|mp4|mov|webm|avi)$/.test(n)) hasAnim = true;
+          });
+        } catch(e){}
+        var stages = hasAnim
+          ? (ru
+            ? ['Декод кадров…', 'Нарезка слотов…', 'Watermark на кадры…', 'Сборка GIF/палитры…', 'Упаковка ZIP…']
+            : ['Decoding frames…', 'Slicing slots…', 'Watermark on frames…', 'GIF palette encode…', 'Packing ZIP…'])
+          : (ru
+            ? ['Масштаб и crop…', 'Watermark…', 'HEX21…', 'Сборка ZIP…']
+            : ['Scale & crop…', 'Watermark…', 'HEX21…', 'Packing ZIP…']);
+        var stageIdx = 0;
+        setProg(55, ru ? 'Обработка на сервере…' : 'Processing on server…', stages[0]);
         stopTick();
         tickTimer = setInterval(function () {
-          // creep 55 → 92 while waiting
           if (fakePct < 92) {
-            fakePct += (92 - fakePct) * 0.04 + 0.15;
+            fakePct += (92 - fakePct) * 0.035 + 0.12;
             if (fakePct > 92) fakePct = 92;
-            setProg(fakePct, ru ? 'Обработка на сервере…' : 'Processing on server…', ru ? 'подожди, это может занять время' : 'this can take a moment');
+            // advance stage roughly by progress
+            var span = 92 - 55;
+            var rel = (fakePct - 55) / span;
+            stageIdx = Math.min(stages.length - 1, Math.floor(rel * stages.length));
+            setProg(fakePct, ru ? 'Обработка на сервере…' : 'Processing on server…', stages[stageIdx]);
           }
-        }, 400);
+        }, 450);
       };
 
       xhr.onload = function () {
@@ -2241,7 +2393,7 @@ const APP_I18N = window.APP_I18N = {
     run: "Обработать", clear: "Очистить",
     lbl_fps: "Кадр/с", lbl_width: "Ширина", lbl_wm: "Вотермарка", lbl_font: "Шрифт",
     lbl_opacity: "Прозрачность %", lbl_wm_size: "Размер WM %", lbl_corner: "Угол WM",
-    lbl_color: "Цвет WM", lbl_encoder: "Кодек GIF", lbl_on: "Вкл",
+    lbl_color: "Цвет WM", lbl_color_match: "Цвет из картинки", lbl_encoder: "Кодек GIF", lbl_on: "Вкл",
     corner_bl: "Левый нижний", corner_br: "Правый нижний", corner_tl: "Левый верхний", corner_tr: "Правый верхний",
     all_modes: "Все режимы",
     mode_ws: "5 частей для витрины мастерской",
@@ -2312,7 +2464,7 @@ const APP_I18N = window.APP_I18N = {
     run: "Process", clear: "Clear",
     lbl_fps: "FPS", lbl_width: "Width", lbl_wm: "Watermark", lbl_font: "Font",
     lbl_opacity: "Opacity %", lbl_wm_size: "WM size %", lbl_corner: "WM corner",
-    lbl_color: "WM color", lbl_encoder: "GIF encoder", lbl_on: "On",
+    lbl_color: "WM color", lbl_color_match: "Color from image", lbl_encoder: "GIF encoder", lbl_on: "On",
     corner_bl: "Bottom left", corner_br: "Bottom right", corner_tl: "Top left", corner_tr: "Top right",
     all_modes: "All modes",
     mode_ws: "5 panels for Workshop showcase",
@@ -2458,6 +2610,7 @@ window.applyAppLang = function applyAppLang(lang) {
   setFieldLabel('wmScale', pack.lbl_wm_size);
   setFieldLabel('wmCorner', pack.lbl_corner);
   setFieldLabel('wmColor', pack.lbl_color);
+  try { var _lcm=document.getElementById('lblColorMatch'); if(_lcm && pack.lbl_color_match) _lcm.textContent=pack.lbl_color_match; var _bcm=document.getElementById('btnColorMatch'); if(_bcm) _bcm.textContent=(localStorage.getItem('sm_lang')==='ru'?'Взять из картинки':'Extract from image'); } catch(e){}
   setFieldLabel('gifEncoder', pack.lbl_encoder);
 
   const corner = document.getElementById('wmCorner');

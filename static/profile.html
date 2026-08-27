@@ -867,7 +867,7 @@ html{background:#000}
     try{
       var r=await fetch(url,{headers:headers(),credentials:'include'});
       var j={}; try{j=await r.json();}catch(e){}
-      if(r.status===401 && !un){ showGate('Log in required','Sign in on the home page, then open Profile.'); return; }
+      if(r.status===401 && !un){ showGate('Log in required','Sign in to continue.'); try{ var g=document.getElementById('gateActions'); if(g&&!g.querySelector('[data-login]')){ var a=document.createElement('a'); a.href='/?login=1'; a.className='btn-pill'; a.setAttribute('data-login','1'); a.textContent='Log in'; g.appendChild(a);} }catch(e){} return; }
       if(r.status===403){ showGate('Private profile','This profile is private.'); return; }
       if(!j.ok){ showGate('Not found', j.msg||'Profile not found'); return; }
       if(!un && j.profile && j.profile.username){
