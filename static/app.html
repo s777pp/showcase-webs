@@ -444,84 +444,61 @@ input[type="range"]{
 }
 
 
-/* ===== Site header (like index) ===== */
-.site-header{
-  position:sticky;top:0;z-index:60;
-  backdrop-filter:blur(14px);
-  background:rgba(12,12,12,.9);
-  border-bottom:1px solid rgba(255,255,255,.1);
-  margin:0 -4px 0;
+/* Buy key chooser modal */
+.sm-buy-overlay{
+  display:none;position:fixed;inset:0;z-index:10050;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;padding:20px;
 }
-.site-header .nav-main{
-  max-width:1100px;margin:0 auto;padding:14px 20px;
-  display:flex;align-items:center;justify-content:space-between;gap:14px
+.sm-buy-overlay.open{display:flex}
+.sm-buy-card{
+  width:min(400px,100%);
+  background:#12141c;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:18px;
+  padding:24px 22px 20px;
+  box-shadow:0 24px 64px rgba(0,0,0,.55);
+  color:#e8eef5;
+  font-family:inherit;
 }
-.site-header .logo-link{display:flex;align-items:center;gap:10px;text-decoration:none;color:#fff}
-.site-header .logo-mark{width:32px;height:32px;border-radius:8px;object-fit:cover;display:block}
-.site-header .nav-links{display:none;gap:22px;align-items:center}
-@media(min-width:768px){.site-header .nav-links{display:flex}}
-.site-header .nav-links a{
-  color:rgba(255,255,255,.7);font-size:13px;font-weight:500;text-decoration:none;white-space:nowrap
+.sm-buy-card h3{
+  margin:0 0 6px;font-size:18px;font-weight:700;color:#fff;text-align:center;
 }
-.site-header .nav-links a:hover,.site-header .nav-links a.active{color:#fff}
-.site-header .nav-right{display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
-.site-header .btn-pill-sm{
-  display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;
-  border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);
-  color:#fff;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap
+.sm-buy-card .sm-buy-sub{
+  margin:0 0 18px;font-size:13px;color:rgba(255,255,255,.55);text-align:center;line-height:1.4;
 }
-.site-header .btn-pill-sm:hover{background:rgba(255,255,255,.14)}
-.site-header .btn-shiny-nav{
-  display:inline-flex;align-items:center;padding:8px 12px;border-radius:999px;
-  border:1px solid rgba(164,244,253,.35);font-size:12px;font-weight:700;
-  text-decoration:none;cursor:pointer;font-family:inherit;
-  background-image:linear-gradient(to right,#091020,#0B2551,#A4F4FD,#00d2ff,#0B2551,#091020);
-  background-size:200% auto;-webkit-background-clip:text;background-clip:text;
-  color:transparent;-webkit-text-fill-color:transparent
+.sm-buy-opts{display:flex;flex-direction:column;gap:10px}
+.sm-buy-opt{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);
+  color:#fff;text-decoration:none;cursor:pointer;
+  transition:background .15s,border-color .15s,transform .15s;
 }
-/* dropdown */
-.nav-user-wrap{position:relative;display:none}
-.nav-user-wrap.visible{display:inline-flex;align-items:center}
-.nav-user-pill{
-  display:inline-flex;align-items:center;gap:6px;max-width:180px;
-  padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.15);
-  background:rgba(255,255,255,.08);color:#fff;font-size:12px;font-weight:600;
-  cursor:pointer;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+.sm-buy-opt:hover{
+  background:rgba(255,255,255,.09);
+  border-color:rgba(255,255,255,.22);
+  transform:translateY(-1px);
 }
-.nav-user-pill:hover,.nav-user-wrap.open .nav-user-pill{background:rgba(255,255,255,.14)}
-.nav-user-pill .chev{width:14px;height:14px;opacity:.7;transition:transform .22s ease;flex-shrink:0}
-.nav-user-wrap.open .nav-user-pill .chev{transform:rotate(180deg);opacity:1}
-.nav-user-menu{
-  position:absolute;right:0;top:calc(100% + 8px);min-width:180px;
-  background:#141414;border:1px solid rgba(255,255,255,.12);border-radius:14px;
-  padding:6px;z-index:90;box-shadow:0 16px 48px rgba(0,0,0,.55);
-  opacity:0;transform:translateY(-8px) scale(.96);pointer-events:none;
-  transition:opacity .2s ease, transform .22s cubic-bezier(.2,.8,.2,1);
-  transform-origin:top right
+.sm-buy-opt .ico{
+  width:42px;height:42px;border-radius:12px;flex:0 0 42px;
+  display:grid;place-items:center;
 }
-.nav-user-wrap.open .nav-user-menu{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
-.nav-user-menu a,.nav-user-menu button{
-  display:flex;width:100%;align-items:center;gap:10px;padding:10px 12px;
-  border-radius:10px;border:0;background:transparent;color:rgba(255,255,255,.88);
-  font-size:13px;font-weight:600;text-decoration:none;cursor:pointer;font-family:inherit;text-align:left
+.sm-buy-opt .ico svg{width:24px;height:24px;display:block}
+.sm-buy-opt.funpay .ico{background:linear-gradient(135deg,#ff8a3d,#e85d04)}
+.sm-buy-opt.tg .ico{background:linear-gradient(135deg,#2AABEE,#229ED9)}
+.sm-buy-opt .txt{flex:1;min-width:0}
+.sm-buy-opt .txt .t{font-size:15px;font-weight:700;display:block}
+.sm-buy-opt .txt .d{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px}
+.sm-buy-opt .arrow{opacity:.45;font-size:18px}
+.sm-buy-close{
+  display:block;width:100%;margin-top:14px;padding:10px;
+  border:none;border-radius:999px;cursor:pointer;
+  background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);
+  font-size:13px;font-weight:600;font-family:inherit;
 }
-.nav-user-menu a:hover,.nav-user-menu button:hover{background:rgba(255,255,255,.07);color:#fff}
-.nav-user-menu button.danger{color:#ff8b84}
-.nav-user-menu button.danger:hover{background:rgba(255,95,87,.12);color:#ff5f57}
-.nav-user-menu .sep{height:1px;background:rgba(255,255,255,.08);margin:4px 6px}
-.site-header .chrome-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-@media(max-width:640px){
-  .site-header .nav-links{display:none}
-  .site-header .btn-pill-sm{display:none}
-}
-
-
-.cm-swatch{
-  width:28px;height:28px;border-radius:8px;border:2px solid rgba(255,255,255,.2);
-  cursor:pointer;padding:0;flex-shrink:0;transition:transform .12s,border-color .12s;
-}
-.cm-swatch:hover{transform:scale(1.08);border-color:#fff}
-.cm-swatch.active{border-color:#00d2ff;box-shadow:0 0 0 2px rgba(0,210,255,.35)}
+.sm-buy-close:hover{background:rgba(255,255,255,.1);color:#fff}
 
 </style>
 </head>
@@ -537,44 +514,23 @@ input[type="range"]{
 
 
 <div class="shell">
-  <header class="site-header">
-    <div class="nav-main">
-      <a href="/" class="logo-link" aria-label="Showcase Maker">
-        <img class="logo-mark" src="/static/icon.png" alt=""/>
-      </a>
-      <div class="nav-links">
-        <a href="/">Home</a>
-        <a href="/gallery">Gallery</a>
-        <a href="/profile">Profile</a>
-        <a href="/app" class="active">Tools</a>
-      </div>
-      <div class="nav-right">
-        <div class="chrome-meta">
+  <header class="top-chrome">
+    <div class="top-chrome-inner">
+      <div class="brand-row">
+        <a class="brand" href="/">
+    <img src="/static/icon.png" alt=""/>
+    <div><b>Showcase Maker</b><span>Tools</span></div>
+  </a>
+        <div class="top-actions" id="chromeActions">
           <div id="trialTimer"><span>⏱</span><span id="trialClock">00:00:00</span></div>
           <span class="pill" id="planBadge">Free</span>
+          <span class="pill" id="userPill" style="display:none"></span>
+          <button class="btn ghost" id="langBtn" type="button">RU</button>
+          <button class="btn ghost" id="btnAuth" type="button" data-i="login">Log in</button>
+          <button class="btn" id="btnUpgrade" type="button" style="display:none" data-i="buy">Buy Pro</button>
+          <button class="btn ghost" id="btnLogout" type="button" style="display:none" data-i="logout">Log out</button>
         </div>
-        <button class="btn ghost" id="langBtn" type="button">RU</button>
-        <button class="btn-shiny-nav" id="btnAuth" type="button" data-i="login">Log in</button>
-        <button class="btn" id="btnUpgrade" type="button" style="display:none" data-i="buy">Buy Pro</button>
-        <div class="nav-user-wrap" id="navUserWrap">
-          <button type="button" class="nav-user-pill" id="navUserPill" aria-haspopup="true" aria-expanded="false">
-            <span class="nav-user-label" id="navUserLabel"></span>
-            <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
-          </button>
-          <div class="nav-user-menu" id="navUserMenu" role="menu">
-            <a href="/profile" role="menuitem" id="navGoProfile">Профиль</a>
-            <div class="sep"></div>
-            <button type="button" class="danger" role="menuitem" id="navLogoutBtn">Выйти</button>
-          </div>
-        </div>
-        <!-- legacy hidden for i18n/scripts -->
-        <span class="pill" id="userPill" style="display:none"></span>
-        <button class="btn ghost" id="btnLogout" type="button" style="display:none" data-i="logout">Log out</button>
       </div>
-    </div>
-  </header>
-  <header class="top-chrome" style="border:0;background:transparent;padding-top:8px">
-    <div class="top-chrome-inner">
       <nav class="nav" id="nav">
     <button data-tab="process" data-i="nav_process" class="active" data-i="run">Process</button>
     <button data-tab="compose" data-i="nav_compose">Character</button>
@@ -641,14 +597,6 @@ input[type="range"]{
         <label class="field">WM color
           <input type="color" id="wmColor" value="#ffffff" style="height:36px;padding:2px;cursor:pointer"/>
         </label>
-        <div class="field" style="min-width:100%;margin-bottom:8px">
-          <span class="lbl" id="lblColorMatch">Color match</span>
-          <div id="colorMatchRow" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px">
-            <button type="button" class="btn ghost" id="btnColorMatch" style="padding:6px 12px;font-size:12px">Extract from image</button>
-            <div id="colorMatchSwatches" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-            <span id="colorMatchHint" style="font-size:11px;color:var(--muted)"></span>
-          </div>
-        </div>
         <label class="field">GIF encoder
           <select id="gifEncoder" title="How GIF is encoded">
             <option value="gifski" selected>gifski</option>
@@ -663,16 +611,16 @@ input[type="range"]{
       <div id="wmTip" style="display:none;margin-top:10px;font-size:12px;color:rgba(0,210,255,.9);padding:8px 12px;border-radius:10px;border:1px solid rgba(0,210,255,.25);background:rgba(0,210,255,.06)"></div>
     </div>
     <div class="card" id="wmPreviewCard">
-      <h2 data-i="wm_prev_h">Watermark preview</h2>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 12px" data-i="wm_prev_p">Add PNG/JPG/GIF/MP4 in Files — first frame is used for video/GIF. Drag the watermark on the preview; position applies on Process.</p>
+      <h2>Watermark preview</h2>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Таскай watermark мышкой по превью; позиция применится при «Обработать».</p>
       <div id="wmCanvasWrap" style="position:relative;max-width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#111;min-height:160px;display:flex;align-items:center;justify-content:center">
         <canvas id="wmCanvas" style="max-width:100%;max-height:420px;display:none;cursor:grab;touch-action:none"></canvas>
-        <div id="wmCanvasEmpty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center" data-i="wm_prev_empty">No preview — add an image in Files</div>
+        <div id="wmCanvasEmpty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center">Нет превью — добавь изображение в «Файлы»</div>
       </div>
       <input type="hidden" id="wmX" value=""/>
       <input type="hidden" id="wmY" value=""/>
       <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">
-        <button type="button" class="btn ghost" id="btnWmReset" data-i="wm_reset">Reset position</button>
+        <button type="button" class="btn ghost" id="btnWmReset">Сброс позиции</button>
       </div>
     </div>
     <div class="card">
@@ -684,7 +632,7 @@ input[type="range"]{
         <button class="btn" id="btnRun" disabled data-i="run">Process</button>
         <button class="btn ghost" id="btnClear" type="button" data-i="clear">Clear</button>
         <a class="btn ghost" id="dlProcess" style="display:none;text-decoration:none" href="#">Download ZIP</a>
-        <button class="btn ghost" id="btnPublishGallery" type="button" style="display:none" data-i="publish_gallery">Publish to gallery</button>
+        <button class="btn ghost" id="btnPublishGallery" type="button" style="display:none">Опубликовать в галерею</button>
       </div>
       <div class="sm-progress" id="procProgress" aria-live="polite">
         <div class="sm-prog-top">
@@ -1125,20 +1073,6 @@ input[type="range"]{
         <img src="/static/discord.png" alt="" width="18" height="18" style="display:block"/>
         Continue with Discord
       </button>
-      <button class="btn ghost" id="authGoogle" type="button" style="width:100%;margin-top:4px;display:inline-flex;align-items:center;justify-content:center;gap:8px">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="display:block;flex-shrink:0">
-          <path fill="#EA4335" d="M12 10.2v3.6h5.1c-.2 1.2-.9 2.2-1.9 2.9l3.1 2.4c1.8-1.7 2.9-4.1 2.9-7 0-.7-.1-1.3-.2-1.9H12z"/>
-          <path fill="#34A853" d="M5.3 14.3l-.8.6-2.3 1.8C3.9 19.5 7.7 22 12 22c2.7 0 5-.9 6.7-2.4l-3.1-2.4c-.9.6-2 .9-3.6.9-2.8 0-5.1-1.9-6-4.4z"/>
-          <path fill="#4A90E2" d="M3 7.1C2.4 8.3 2 9.6 2 11s.4 2.7 1 3.9l2.3-1.8C5 12.4 4.8 11.7 4.8 11s.2-1.4.5-2z"/>
-          <path fill="#FBBC05" d="M12 4.8c1.5 0 2.8.5 3.8 1.5l2.8-2.8C16.9 1.9 14.7 1 12 1 7.7 1 3.9 3.5 2.2 7.1l3.1 2.4C6.9 6.7 9.2 4.8 12 4.8z"/>
-        </svg>
-        Continue with Google
-      </button>
-      <button class="btn ghost" id="authTelegram" type="button" style="width:100%;margin-top:4px;display:inline-flex;align-items:center;justify-content:center;gap:8px">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="display:block;flex-shrink:0"><path fill="#26A5E4" d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-        Continue with Telegram
-      </button>
-      <div id="telegramWidgetHost" style="display:none;margin-top:10px;text-align:center"></div>
     </div>
     <div class="switch" id="authSwitch">No account? <a id="authToggle">Sign up</a></div>
   </div>
@@ -1170,54 +1104,6 @@ function headers() {
   if (state.token) h['X-Access-Token'] = state.token;
   if (state.session) h['X-Session-Token'] = state.session;
   return h;
-
-
-/* Site header user dropdown */
-(function(){
-  const wrap = document.getElementById('navUserWrap');
-  const pill = document.getElementById('navUserPill');
-  const labelEl = document.getElementById('navUserLabel');
-  const logoutBtn = document.getElementById('navLogoutBtn');
-  const goProf = document.getElementById('navGoProfile');
-  if (pill && wrap) {
-    pill.addEventListener('click', function(e){
-      e.preventDefault(); e.stopPropagation();
-      const open = wrap.classList.toggle('open');
-      pill.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
-    document.addEventListener('click', function(){
-      wrap.classList.remove('open');
-      pill.setAttribute('aria-expanded','false');
-    });
-    wrap.addEventListener('click', function(e){ e.stopPropagation(); });
-  }
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async function(){
-      try { await fetch('/api/auth/logout', { method:'POST', headers: headers(), credentials:'include' }); } catch(e){}
-      try { localStorage.removeItem('sm_session'); } catch(e){}
-      location.reload();
-    });
-  }
-  window.__syncNavUser = function(j){
-    if (!wrap) return;
-    if (j && (j.ok || j.logged_in) && (j.logged_in || j.email)) {
-      const name = (j.display_name || '').trim() || (j.email || '').split('@')[0] || 'Account';
-      if (labelEl) labelEl.textContent = name;
-      wrap.classList.add('visible');
-      const btnAuth = document.getElementById('btnAuth');
-      if (btnAuth) btnAuth.style.display = 'none';
-      if (goProf) {
-        if (j.profile_username) goProf.href = '/profile/' + encodeURIComponent(j.profile_username);
-        else goProf.href = '/profile';
-      }
-    } else {
-      wrap.classList.remove('visible','open');
-      const btnAuth = document.getElementById('btnAuth');
-      if (btnAuth) btnAuth.style.display = '';
-    }
-  };
-})();
-
 }
 const fetchOpts = { credentials: 'include' };
 
@@ -1294,11 +1180,9 @@ async function refreshQuota() {
   if (j.email || state.session) {
     userPill.style.display = 'inline-block';
     userPill.textContent = (j.display_name || '').trim() || j.email || 'Account';
-    try { if (window.__syncNavUser) window.__syncNavUser(Object.assign({}, j, {logged_in:true, ok:true})); } catch(e){}
     btnAuth.style.display = 'none'; btnOut.style.display = 'inline-block';
   } else {
     userPill.style.display = 'none';
-    try { if (window.__syncNavUser) window.__syncNavUser({logged_in:false}); } catch(e){}
     btnAuth.style.display = 'inline-block'; btnOut.style.display = 'none';
     if (!j.pro) btnUp.style.display = 'none';
   }
@@ -1415,11 +1299,9 @@ document.getElementById('btnLogout').onclick = async () => {
   try { refreshAccountUI(); } catch(e) {}
   refreshQuota();
 };
-document.getElementById('btnUpgrade').onclick = () => {
-  window.open('https://funpay.com/lots/offer?id=75434891', '_blank');
-};
-function openFunPayBuy() {
-  window.open('https://funpay.com/lots/offer?id=75434891', '_blank');
+function openFunPayBuy(e) {
+  if (typeof openBuyKeyModal === 'function') openBuyKeyModal(e);
+  else window.open('https://funpay.com/lots/offer?id=75434891', '_blank');
 }
 ['btnBuyKeyAbout','btnBuyKeyAccount','btnBuyKeyGuest','btnUpgrade'].forEach(function(id) {
   const el = document.getElementById(id);
@@ -1514,207 +1396,6 @@ document.getElementById('btnClear').onclick = () => {
   document.getElementById('dlProcess').style.display='none';
   const _pg=document.getElementById('btnPublishGallery'); if(_pg) _pg.style.display='none';
 };
-
-/* ===== Color match: dominant palette from first image ===== */
-function __rgbToHex(r,g,b){
-  return '#' + [r,g,b].map(function(x){ return ('0'+Math.max(0,Math.min(255,x|0)).toString(16)).slice(-2); }).join('');
-}
-function __extractPalette(imgEl, maxColors){
-  maxColors = maxColors || 5;
-  try {
-    var c = document.createElement('canvas');
-    var w = 64, h = 64;
-    c.width = w; c.height = h;
-    var ctx = c.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(imgEl, 0, 0, w, h);
-    var data = ctx.getImageData(0, 0, w, h).data;
-    var buckets = {};
-    for (var i = 0; i < data.length; i += 16) { // sample every 4th pixel
-      var r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-      if (a < 128) continue;
-      // skip near-black / near-white noise
-      var maxc = Math.max(r,g,b), minc = Math.min(r,g,b);
-      if (maxc < 28 || minc > 240) continue;
-      // quantize
-      var rq = (r >> 4) << 4, gq = (g >> 4) << 4, bq = (b >> 4) << 4;
-      var key = rq + ',' + gq + ',' + bq;
-      if (!buckets[key]) buckets[key] = { r: rq, g: gq, b: bq, n: 0 };
-      buckets[key].n++;
-    }
-    var list = Object.keys(buckets).map(function(k){ return buckets[k]; });
-    list.sort(function(a,b){ return b.n - a.n; });
-    // diversify: skip colors too close to already picked
-    var out = [];
-    function dist(a,b){ var dr=a.r-b.r,dg=a.g-b.g,db=a.b-b.b; return dr*dr+dg*dg+db*db; }
-    for (var j = 0; j < list.length && out.length < maxColors; j++) {
-      var cand = list[j];
-      var ok = true;
-      for (var k = 0; k < out.length; k++) {
-        if (dist(cand, out[k]) < 1800) { ok = false; break; }
-      }
-      if (ok) out.push(cand);
-    }
-    return out.map(function(c){ return __rgbToHex(c.r, c.g, c.b); });
-  } catch (e) {
-    console.warn('palette', e);
-    return [];
-  }
-}
-function __renderColorMatch(colors){
-  var host = document.getElementById('colorMatchSwatches');
-  var hint = document.getElementById('colorMatchHint');
-  var ru = (localStorage.getItem('sm_lang') === 'ru');
-  if (!host) return;
-  host.innerHTML = '';
-  if (!colors || !colors.length) {
-    if (hint) hint.textContent = ru ? 'Нет цветов — добавь картинку' : 'No colors — add an image';
-    return;
-  }
-  if (hint) hint.textContent = ru ? 'Нажми цвет → watermark' : 'Click a color → watermark';
-  var cur = (document.getElementById('wmColor') || {}).value || '';
-  colors.forEach(function(hex){
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'cm-swatch' + (hex.toLowerCase() === String(cur).toLowerCase() ? ' active' : '');
-    b.style.background = hex;
-    b.title = hex;
-    b.setAttribute('data-hex', hex);
-    b.onclick = function(){
-      var inp = document.getElementById('wmColor');
-      if (inp) {
-        inp.value = hex;
-        try { inp.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){}
-        try { inp.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
-      }
-      host.querySelectorAll('.cm-swatch').forEach(function(el){ el.classList.remove('active'); });
-      b.classList.add('active');
-    };
-    host.appendChild(b);
-  });
-}
-window.__runColorMatch = function(){
-  var ru = (localStorage.getItem('sm_lang') === 'ru');
-  var hint = document.getElementById('colorMatchHint');
-  var files = (window.state && state.files) || [];
-  var mediaFile = null;
-  var kind = 'image'; // image | gif | video
-  for (var i = 0; i < files.length; i++) {
-    var f = files[i];
-    var n = (f.name || '').toLowerCase();
-    var t = (f.type || '').toLowerCase();
-    if (t.indexOf('video/') === 0 || /\.(mp4|webm|mov|avi|mkv)$/.test(n)) {
-      mediaFile = f; kind = 'video'; break;
-    }
-    if (t === 'image/gif' || /\.gif$/.test(n)) {
-      mediaFile = f; kind = 'gif'; break;
-    }
-    if (t.indexOf('image/') === 0 || /\.(png|jpe?g|webp|bmp)$/.test(n)) {
-      mediaFile = f; kind = 'image'; break;
-    }
-  }
-  if (!mediaFile) {
-    if (hint) hint.textContent = ru ? 'Сначала добавь PNG/JPG/GIF/видео в «Файлы»' : 'Add PNG/JPG/GIF/video in Files first';
-    return;
-  }
-  if (hint) hint.textContent = ru ? 'Считаю палитру…' : 'Sampling palette…';
-  var url = URL.createObjectURL(mediaFile);
-
-  function finishFromEl(el) {
-    try {
-      var colors = __extractPalette(el, 5);
-      URL.revokeObjectURL(url);
-      if (!colors || !colors.length) {
-        if (hint) hint.textContent = ru ? 'Не удалось взять цвета' : 'Could not sample colors';
-        return;
-      }
-      __renderColorMatch(colors);
-    } catch (e) {
-      URL.revokeObjectURL(url);
-      if (hint) hint.textContent = ru ? 'Ошибка палитры' : 'Palette error';
-      console.warn(e);
-    }
-  }
-
-  if (kind === 'video') {
-    var vid = document.createElement('video');
-    vid.muted = true;
-    vid.playsInline = true;
-    vid.preload = 'auto';
-    vid.src = url;
-    var done = false;
-    function grab() {
-      if (done) return;
-      if (vid.videoWidth < 2 || vid.videoHeight < 2) return;
-      done = true;
-      try { vid.pause(); } catch (e) {}
-      // draw first frame to canvas image-like element for extract
-      var c = document.createElement('canvas');
-      c.width = Math.min(320, vid.videoWidth);
-      c.height = Math.max(1, Math.round(c.width * (vid.videoHeight / vid.videoWidth)));
-      var ctx = c.getContext('2d');
-      ctx.drawImage(vid, 0, 0, c.width, c.height);
-      finishFromEl(c);
-      try { vid.removeAttribute('src'); vid.load(); } catch (e) {}
-    }
-    vid.addEventListener('loadeddata', function(){
-      try { vid.currentTime = 0.05; } catch (e) { grab(); }
-    });
-    vid.addEventListener('seeked', grab);
-    vid.addEventListener('error', function(){
-      URL.revokeObjectURL(url);
-      if (hint) hint.textContent = ru ? 'Видео не прочиталось' : 'Could not read video';
-    });
-    // timeout fallback
-    setTimeout(function(){ if (!done) grab(); }, 2500);
-    try { vid.load(); } catch (e) {}
-    return;
-  }
-
-  // image + gif (browser decodes first frame of GIF)
-  var im = new Image();
-  im.onload = function(){ finishFromEl(im); };
-  im.onerror = function(){
-    // fallback: createImageBitmap (helps some GIFs)
-    if (typeof createImageBitmap === 'function') {
-      createImageBitmap(mediaFile).then(function(bmp){
-        var c = document.createElement('canvas');
-        c.width = Math.min(320, bmp.width);
-        c.height = Math.max(1, Math.round(c.width * (bmp.height / bmp.width)));
-        c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-        try { bmp.close(); } catch (e) {}
-        finishFromEl(c);
-      }).catch(function(){
-        URL.revokeObjectURL(url);
-        if (hint) hint.textContent = ru ? 'GIF не прочитался' : 'Could not read GIF';
-      });
-    } else {
-      URL.revokeObjectURL(url);
-      if (hint) hint.textContent = ru ? 'Не удалось прочитать файл' : 'Could not read file';
-    }
-  };
-  im.src = url;
-};
-document.getElementById('btnColorMatch')?.addEventListener('click', function(){ window.__runColorMatch(); });
-// Auto-run when files change (debounced via existing file list updates if any)
-(function(){
-  var drop = document.getElementById('fileInput');
-  if (drop) drop.addEventListener('change', function(){ setTimeout(function(){ try{ window.__runColorMatch(); }catch(e){} }, 400); });
-})();
-
-
-
-function __stageLabel(stage, ru) {
-  var s = String(stage || '');
-  if (s === 'queued' || s === 'prepare') return ru ? 'В очереди…' : 'Queued…';
-  if (s.indexOf('file:') === 0) return (ru ? 'Файл: ' : 'File: ') + s.slice(5);
-  if (s.indexOf('image:') === 0) return ru ? 'Картинка · ' + s.split(':')[1] : 'Image · ' + s.split(':')[1];
-  if (s.indexOf('gif:') === 0) return ru ? 'GIF · ' + s.split(':')[1] : 'GIF · ' + s.split(':')[1];
-  if (s.indexOf('video:') === 0) return ru ? 'Видео · ' + s.split(':')[1] : 'Video · ' + s.split(':')[1];
-  if (s === 'done') return ru ? 'Готово' : 'Done';
-  if (s === 'error') return ru ? 'Ошибка' : 'Error';
-  return s;
-}
-
 document.getElementById('btnRun').onclick = async () => {
   const st = document.getElementById('status');
   const dl = document.getElementById('dlProcess');
@@ -1776,8 +1457,8 @@ document.getElementById('btnRun').onclick = async () => {
   try {
     await new Promise(function (resolve, reject) {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/process/start');
-      xhr.responseType = 'json';
+      xhr.open('POST', '/api/process');
+      xhr.responseType = 'blob';
       xhr.withCredentials = true;
       try {
         const hdr = headers();
@@ -1799,103 +1480,106 @@ document.getElementById('btnRun').onclick = async () => {
       };
       xhr.upload.onload = function () {
         fakePct = 55;
-        var hasAnim = false;
-        try {
-          (state.files || []).forEach(function(f){
-            var n = (f.name || '').toLowerCase();
-            var t = (f.type || '');
-            if (t.indexOf('video/') === 0 || /\.(gif|mp4|mov|webm|avi)$/.test(n)) hasAnim = true;
-          });
-        } catch(e){}
-        var stages = hasAnim
-          ? (ru
-            ? ['Декод кадров…', 'Нарезка слотов…', 'Watermark на кадры…', 'Сборка GIF/палитры…', 'Упаковка ZIP…']
-            : ['Decoding frames…', 'Slicing slots…', 'Watermark on frames…', 'GIF palette encode…', 'Packing ZIP…'])
-          : (ru
-            ? ['Масштаб и crop…', 'Watermark…', 'HEX21…', 'Сборка ZIP…']
-            : ['Scale & crop…', 'Watermark…', 'HEX21…', 'Packing ZIP…']);
-        var stageIdx = 0;
-        setProg(55, ru ? 'Обработка на сервере…' : 'Processing on server…', stages[0]);
+        setProg(55, ru ? 'Обработка на сервере…' : 'Processing on server…', ru ? 'нарезка, watermark, ZIP…' : 'cuts, watermark, ZIP…');
         stopTick();
         tickTimer = setInterval(function () {
+          // creep 55 → 92 while waiting
           if (fakePct < 92) {
-            fakePct += (92 - fakePct) * 0.035 + 0.12;
+            fakePct += (92 - fakePct) * 0.04 + 0.15;
             if (fakePct > 92) fakePct = 92;
-            // advance stage roughly by progress
-            var span = 92 - 55;
-            var rel = (fakePct - 55) / span;
-            stageIdx = Math.min(stages.length - 1, Math.floor(rel * stages.length));
-            setProg(fakePct, ru ? 'Обработка на сервере…' : 'Processing on server…', stages[stageIdx]);
+            setProg(fakePct, ru ? 'Обработка на сервере…' : 'Processing on server…', ru ? 'подожди, это может занять время' : 'this can take a moment');
           }
-        }, 450);
+        }, 400);
       };
 
       xhr.onload = function () {
         stopTick();
-        if (xhr.status < 200 || xhr.status >= 300) {
-          var errMsg = ru ? 'Ошибка сервера' : 'Server error';
+        const ct = (xhr.getResponseHeader('content-type') || '');
+        if (xhr.status >= 200 && xhr.status < 300 && (ct.includes('application/zip') || ct.includes('application/octet-stream') || ct.includes('application/x-zip'))) {
+          setProg(100, ru ? 'Готово!' : 'Done!', ru ? 'скачивание ZIP…' : 'downloading ZIP…');
+          const blob = xhr.response;
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'showcase_' + (state.mode || 'out') + '.zip';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+          const n = xhr.getResponseHeader('X-Processed') || '';
+          st.className = 'status ok';
+          st.textContent = n
+            ? ((ru ? 'Готово: ' : 'Done: ') + n + (ru ? ' файл(ов) — скачано' : ' file(s) — downloaded'))
+            : (ru ? 'Готово — ZIP скачан' : 'Done — ZIP downloaded');
+          dl.style.display = 'none';
           try {
-            var ej = typeof xhr.response === 'object' ? xhr.response : JSON.parse(xhr.responseText || '{}');
-            if (ej && ej.msg) errMsg = ej.msg;
+            const pg = document.getElementById('btnPublishGallery');
+            if (pg) {
+              pg.style.display = 'inline-flex';
+              pg.disabled = false;
+              const ruBtn = (localStorage.getItem('sm_lang') === 'ru');
+              pg.textContent = ruBtn ? 'Опубликовать в галерею' : 'Publish to gallery';
+            }
+            window.__lastPublishReady = true;
           } catch (e) {}
-          reject(new Error(errMsg));
+          try { refreshQuota(); } catch (e) {}
+          hideProgLater();
+          resolve();
           return;
         }
-        var job = xhr.response;
-        if (!job || !job.ok || !job.job_id) {
-          var msg = (job && job.msg) || (ru ? 'Не удалось запустить задачу' : 'Could not start job');
-          reject(new Error(msg));
-          return;
-        }
-        var jid = job.job_id;
-        setProg(58, ru ? 'Задача запущена' : 'Job started', jid.slice(0, 8));
-        stopTick();
-        var pollTimer = setInterval(async function () {
-          try {
-            var pr = await fetch('/api/process/status/' + jid, { credentials: 'include', headers: headers() });
-            var stj = await pr.json();
-            if (!stj.ok) return;
-            var pct = Math.max(12, Math.min(99, Number(stj.pct) || 12));
-            setProg(pct, ru ? 'Обработка…' : 'Processing…', __stageLabel(stj.stage, ru));
-            if (stj.status === 'error') {
-              clearInterval(pollTimer);
-              reject(new Error(stj.error || (ru ? 'Ошибка обработки' : 'Process failed')));
-              return;
-            }
-            if (stj.status === 'done') {
-              clearInterval(pollTimer);
-              setProg(100, ru ? 'Готово!' : 'Done!', ru ? 'скачивание ZIP…' : 'downloading ZIP…');
-              var dr = await fetch(stj.download || ('/api/process/download/' + jid), { credentials: 'include', headers: headers() });
-              if (!dr.ok) {
-                reject(new Error(ru ? 'Не удалось скачать ZIP' : 'Download failed'));
-                return;
-              }
-              var blob = await dr.blob();
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'showcase_' + (state.mode || 'out') + '.zip';
-              document.body.appendChild(a);
-              a.click();
-              a.remove();
-              setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-              const n = dr.headers.get('X-Processed') || '';
-              st.className = 'status ok';
-              st.textContent = n
-                ? ((ru ? 'Готово: ' : 'Done: ') + n + (ru ? ' файл(ов) — скачано' : ' file(s) — downloaded'))
-                : (ru ? 'Готово — ZIP скачан' : 'Done — ZIP downloaded');
-              dl.style.display = 'none';
-              try {
-                const pg = document.getElementById('btnPublishGallery');
-                if (pg) pg.style.display = '';
-              } catch (e) {}
-              hideProgLater();
-              resolve();
-            }
-          } catch (pe) {
-            console.warn('poll', pe);
+        // JSON error or legacy
+        const reader = new FileReader();
+        reader.onload = function () {
+          const raw = String(reader.result || '');
+          let j;
+          try { j = JSON.parse(raw); }
+          catch (parseErr) {
+            st.className = 'status err';
+            st.textContent = (raw || ('HTTP ' + xhr.status)).slice(0, 300);
+            setProg(0, ru ? 'Ошибка' : 'Error', st.textContent.slice(0, 80));
+            reject(new Error(st.textContent));
+            return;
           }
-        }, 600);
+          if (!j.ok) {
+            st.className = 'status err';
+            let msg = j.msg || 'Error';
+            if (j.errors && j.errors.length) msg = j.errors.join(' · ');
+            st.textContent = msg;
+            setProg(0, ru ? 'Ошибка' : 'Error', msg.slice(0, 100));
+            reject(new Error(msg));
+          } else if (j.download) {
+            setProg(100, ru ? 'Готово!' : 'Done!', '');
+            st.className = 'status ok';
+            st.textContent = (ru ? 'Готово: ' : 'Done: ') + (j.processed || '') + (ru ? ' файл(ов)' : ' file(s)');
+            dl.href = j.download;
+            dl.style.display = 'inline-block';
+            try {
+              const pg = document.getElementById('btnPublishGallery');
+              if (pg) {
+                pg.style.display = 'inline-flex';
+                pg.disabled = false;
+                const ruBtn = (localStorage.getItem('sm_lang') === 'ru');
+                pg.textContent = ruBtn ? 'Опубликовать в галерею' : 'Publish to gallery';
+              }
+              window.__lastPublishReady = true;
+            } catch (e) {}
+            try { refreshQuota(); } catch (e) {}
+            hideProgLater();
+            resolve();
+          } else {
+            st.className = 'status err';
+            st.textContent = j.msg || 'Unknown response';
+            setProg(0, ru ? 'Ошибка' : 'Error', st.textContent);
+            reject(new Error(st.textContent));
+          }
+        };
+        reader.onerror = function () {
+          st.className = 'status err';
+          st.textContent = 'HTTP ' + xhr.status;
+          setProg(0, ru ? 'Ошибка' : 'Error', st.textContent);
+          reject(new Error(st.textContent));
+        };
+        reader.readAsText(xhr.response);
       };
       xhr.onerror = function () {
         stopTick();
@@ -2284,11 +1968,7 @@ document.getElementById('accLogin')?.addEventListener('click', () => openAuthMod
     } catch (e) { alert(String(e)); }
   });
   window.addEventListener('message', (ev) => {
-    if (ev.data && (ev.data.type === 'discord_login' || ev.data.type === 'google_login') && ev.data.token) {
-      try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
-      location.reload();
-    }
-    if (ev.data && ev.data.type === 'telegram_login' && ev.data.token) {
+    if (ev.data && ev.data.type === 'discord_login' && ev.data.token) {
       try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
       location.reload();
     }
@@ -2455,8 +2135,7 @@ const APP_I18N = window.APP_I18N = {
     run: "Обработать", clear: "Очистить",
     lbl_fps: "Кадр/с", lbl_width: "Ширина", lbl_wm: "Вотермарка", lbl_font: "Шрифт",
     lbl_opacity: "Прозрачность %", lbl_wm_size: "Размер WM %", lbl_corner: "Угол WM",
-    lbl_color: "Цвет WM", lbl_color_match: "Цвет из картинки", lbl_encoder: "Кодек GIF", lbl_on: "Вкл",
-    wm_prev_h: "Превью watermark", wm_prev_p: "Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Таскай watermark мышкой; позиция применится при «Обработать».", wm_prev_empty: "Нет превью — добавь изображение в «Файлы»", wm_reset: "Сброс позиции", publish_gallery: "Опубликовать в галерею",
+    lbl_color: "Цвет WM", lbl_encoder: "Кодек GIF", lbl_on: "Вкл",
     corner_bl: "Левый нижний", corner_br: "Правый нижний", corner_tl: "Левый верхний", corner_tr: "Правый верхний",
     all_modes: "Все режимы",
     mode_ws: "5 частей для витрины мастерской",
@@ -2527,8 +2206,7 @@ const APP_I18N = window.APP_I18N = {
     run: "Process", clear: "Clear",
     lbl_fps: "FPS", lbl_width: "Width", lbl_wm: "Watermark", lbl_font: "Font",
     lbl_opacity: "Opacity %", lbl_wm_size: "WM size %", lbl_corner: "WM corner",
-    lbl_color: "WM color", lbl_color_match: "Color from image", lbl_encoder: "GIF encoder", lbl_on: "On",
-    wm_prev_h: "Watermark preview", wm_prev_p: "Add PNG/JPG/GIF/MP4 in Files — first frame is used for video/GIF. Drag the watermark; position applies on Process.", wm_prev_empty: "No preview — add an image in Files", wm_reset: "Reset position", publish_gallery: "Publish to gallery",
+    lbl_color: "WM color", lbl_encoder: "GIF encoder", lbl_on: "On",
     corner_bl: "Bottom left", corner_br: "Bottom right", corner_tl: "Top left", corner_tr: "Top right",
     all_modes: "All modes",
     mode_ws: "5 panels for Workshop showcase",
@@ -2674,7 +2352,6 @@ window.applyAppLang = function applyAppLang(lang) {
   setFieldLabel('wmScale', pack.lbl_wm_size);
   setFieldLabel('wmCorner', pack.lbl_corner);
   setFieldLabel('wmColor', pack.lbl_color);
-  try { var _lcm=document.getElementById('lblColorMatch'); if(_lcm && pack.lbl_color_match) _lcm.textContent=pack.lbl_color_match; var _bcm=document.getElementById('btnColorMatch'); if(_bcm) _bcm.textContent=(localStorage.getItem('sm_lang')==='ru'?'Взять из картинки':'Extract from image'); } catch(e){}
   setFieldLabel('gifEncoder', pack.lbl_encoder);
 
   const corner = document.getElementById('wmCorner');
@@ -4545,71 +4222,14 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       window.open(d.url, 'discord_oauth', 'width=520,height=720');
     } catch (e) { alert(String(e)); }
   }
-
-  async function startGoogle(){
-    try {
-      const r = await fetch('/api/auth/google/login');
-      const d = await r.json();
-      if (!d.ok || !d.url) { alert(d.msg || 'Google не настроен'); return; }
-      window.open(d.url, 'google_oauth', 'width=520,height=720');
-    } catch (e) { alert(String(e)); }
-  }
   document.getElementById('authDiscord')?.addEventListener('click', startDiscord);
-  document.getElementById('authGoogle')?.addEventListener('click', startGoogle);
   document.getElementById('btnDiscordLogin')?.addEventListener('click', startDiscord);
   window.addEventListener('message', function(ev){
-    if (ev.data && (ev.data.type === 'discord_login' || ev.data.type === 'google_login') && ev.data.token) {
-      try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
-      location.reload();
-    }
-    if (ev.data && ev.data.type === 'telegram_login' && ev.data.token) {
+    if (ev.data && ev.data.type === 'discord_login' && ev.data.token) {
       try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
       location.reload();
     }
   });
-
-  async function startTelegram(){
-    try {
-      const r = await fetch('/api/auth/telegram/config');
-      const d = await r.json();
-      if (!d.ok || !d.bot_username) {
-        alert(d.msg || 'Telegram не настроен на сервере (TELEGRAM_BOT_TOKEN)');
-        return;
-      }
-      const host = document.getElementById('telegramWidgetHost');
-      if (!host) return;
-      host.style.display = 'block';
-      host.innerHTML = '';
-      window.onTelegramAuth = async function(user){
-        try {
-          const res = await fetch('/api/auth/telegram', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(user)
-          });
-          const j = await res.json();
-          if (!j.ok || !j.token) {
-            alert(j.msg || 'Telegram auth failed');
-            return;
-          }
-          try { localStorage.setItem('sm_session', j.token); } catch(e) {}
-          location.reload();
-        } catch(e) { alert(String(e)); }
-      };
-      const s = document.createElement('script');
-      s.async = true;
-      s.src = 'https://telegram.org/js/telegram-widget.js?22';
-      s.setAttribute('data-telegram-login', d.bot_username);
-      s.setAttribute('data-size', 'large');
-      s.setAttribute('data-radius', '12');
-      s.setAttribute('data-request-access', 'write');
-      s.setAttribute('data-userpic', 'true');
-      s.setAttribute('data-onauth', 'onTelegramAuth(user)');
-      host.appendChild(s);
-    } catch(e) { alert(String(e)); }
-  }
-  document.getElementById('authTelegram')?.addEventListener('click', startTelegram);
 
   setTimeout(function(){ window.__wmLoadFromFiles && window.__wmLoadFromFiles(); }, 400);
 })();
@@ -5093,6 +4713,95 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 })();
 </script>
 
-<script src="/static/js/sm-auth.js" defer></script>
+
+<div class="sm-buy-overlay" id="smBuyOverlay" aria-hidden="true">
+  <div class="sm-buy-card" role="dialog" aria-labelledby="smBuyTitle">
+    <h3 id="smBuyTitle">Buy Pro key</h3>
+    <p class="sm-buy-sub" id="smBuySub">Choose where to buy. After payment, activate the code in your account.</p>
+    <div class="sm-buy-opts">
+      <a class="sm-buy-opt funpay" id="smBuyFunpay" href="https://funpay.com/lots/offer?id=75434891" target="_blank" rel="noopener">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v3H4V7zm2 5h12v7H6v-7zm3-9h6v2H9V3z" fill="#fff"/><path d="M9 14h6v2H9v-2z" fill="#fff" opacity=".85"/></svg>
+        </span>
+        <span class="txt">
+          <span class="t">FunPay</span>
+          <span class="d" id="smBuyFunpayD">Instant code after payment</span>
+        </span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="sm-buy-opt tg" id="smBuyTg" href="https://t.me/SteamMakerBot" target="_blank" rel="noopener">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M9.78 14.65l-.3 4.2c.43 0 .62-.18.85-.4l2.04-1.94 4.23 3.1c.78.43 1.33.2 1.54-.72l2.8-13.13h.01c.25-1.16-.42-1.61-1.18-1.33L3.3 9.7c-1.13.44-1.11 1.07-.19 1.35l4.37 1.36 10.15-6.4c.48-.29.91-.13.55.18L9.78 14.65z"/></svg>
+        </span>
+        <span class="txt">
+          <span class="t">Telegram</span>
+          <span class="d" id="smBuyTgD">Buy via bot / support</span>
+        </span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+    <button type="button" class="sm-buy-close" id="smBuyClose">Close</button>
+  </div>
+</div>
+
+<script>
+
+(function(){
+  var FUNPAY_URL = 'https://funpay.com/lots/offer?id=75434891';
+  var TG_URL = 'https://t.me/SteamMakerBot';
+
+  function i18nBuy(){
+    var lang = (localStorage.getItem('sm_lang') || document.documentElement.lang || 'en').slice(0,2).toLowerCase();
+    var ru = lang === 'ru';
+    var t = document.getElementById('smBuyTitle');
+    var s = document.getElementById('smBuySub');
+    var fd = document.getElementById('smBuyFunpayD');
+    var td = document.getElementById('smBuyTgD');
+    var c = document.getElementById('smBuyClose');
+    if (t) t.textContent = ru ? 'Купить Pro-ключ' : 'Buy Pro key';
+    if (s) s.textContent = ru
+      ? 'Выбери, где купить. После оплаты активируй код в аккаунте.'
+      : 'Choose where to buy. After payment, activate the code in your account.';
+    if (fd) fd.textContent = ru ? 'Код сразу после оплаты' : 'Instant code after payment';
+    if (td) td.textContent = ru ? 'Через бота / поддержку' : 'Buy via bot / support';
+    if (c) c.textContent = ru ? 'Закрыть' : 'Close';
+  }
+
+  window.openBuyKeyModal = function openBuyKeyModal(e){
+    if (e && e.preventDefault) e.preventDefault();
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    i18nBuy();
+    var fp = document.getElementById('smBuyFunpay');
+    var tg = document.getElementById('smBuyTg');
+    if (fp) fp.href = FUNPAY_URL;
+    if (tg) tg.href = TG_URL;
+    ov.classList.add('open');
+    ov.setAttribute('aria-hidden', 'false');
+  };
+  window.closeBuyKeyModal = function(){
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    ov.classList.remove('open');
+    ov.setAttribute('aria-hidden', 'true');
+  };
+
+  function bind(){
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    var closeBtn = document.getElementById('smBuyClose');
+    if (closeBtn) closeBtn.onclick = window.closeBuyKeyModal;
+    ov.addEventListener('click', function(ev){
+      if (ev.target === ov) window.closeBuyKeyModal();
+    });
+    document.addEventListener('keydown', function(ev){
+      if (ev.key === 'Escape') window.closeBuyKeyModal();
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+</script>
 </body>
 </html>

@@ -323,45 +323,24 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 }
 
 
-/* User account dropdown */
-.nav-user-wrap{position:relative;display:none}
-.nav-user-wrap.visible{display:inline-flex;align-items:center}
 .nav-user-pill{
-  display:inline-flex;align-items:center;gap:6px;max-width:200px;
-  padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.15);
-  background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:600;
-  text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  cursor:pointer;font-family:inherit
+  display:none;
+  align-items:center;
+  max-width:200px;
+  padding:8px 14px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:13px;
+  font-weight:600;
+  text-decoration:none;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
-.nav-user-pill:hover,.nav-user-wrap.open .nav-user-pill{background:rgba(255,255,255,.14);color:#fff}
-.nav-user-pill .chev{
-  width:14px;height:14px;flex-shrink:0;opacity:.7;
-  transition:transform .22s ease
-}
-.nav-user-wrap.open .nav-user-pill .chev{transform:rotate(180deg);opacity:1}
-.nav-user-menu{
-  position:absolute;right:0;top:calc(100% + 8px);min-width:180px;
-  background:#141414;border:1px solid rgba(255,255,255,.12);border-radius:14px;
-  padding:6px;z-index:80;
-  box-shadow:0 16px 48px rgba(0,0,0,.55);
-  opacity:0;transform:translateY(-8px) scale(.96);
-  pointer-events:none;
-  transition:opacity .2s ease, transform .22s cubic-bezier(.2,.8,.2,1);
-  transform-origin:top right;
-}
-.nav-user-wrap.open .nav-user-menu{
-  opacity:1;transform:translateY(0) scale(1);pointer-events:auto
-}
-.nav-user-menu a,.nav-user-menu button{
-  display:flex;align-items:center;gap:10px;width:100%;
-  padding:10px 12px;border-radius:10px;border:0;background:transparent;
-  color:rgba(255,255,255,.88);font-size:13px;font-weight:600;
-  text-decoration:none;cursor:pointer;font-family:inherit;text-align:left
-}
-.nav-user-menu a:hover,.nav-user-menu button:hover{background:rgba(255,255,255,.07);color:#fff}
-.nav-user-menu button.danger{color:#ff8b84}
-.nav-user-menu button.danger:hover{background:rgba(255,95,87,.12);color:#ff5f57}
-.nav-user-menu .sep{height:1px;background:rgba(255,255,255,.08);margin:4px 6px}
+.nav-user-pill:hover{background:rgba(255,255,255,.14);color:#fff}
+.nav-user-pill.visible{display:inline-flex}
 
 
 /* Notifications bell (logged-in only) */
@@ -790,6 +769,63 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
 .nav-links a.nav-split:hover .nav-ch:nth-child(odd){ transition-delay:20ms; }
 .nav-links a.nav-split:hover .nav-ch:nth-child(even){ transition-delay:40ms; }
 
+
+/* Buy key chooser modal */
+.sm-buy-overlay{
+  display:none;position:fixed;inset:0;z-index:10050;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;padding:20px;
+}
+.sm-buy-overlay.open{display:flex}
+.sm-buy-card{
+  width:min(400px,100%);
+  background:#12141c;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:18px;
+  padding:24px 22px 20px;
+  box-shadow:0 24px 64px rgba(0,0,0,.55);
+  color:#e8eef5;
+  font-family:inherit;
+}
+.sm-buy-card h3{
+  margin:0 0 6px;font-size:18px;font-weight:700;color:#fff;text-align:center;
+}
+.sm-buy-card .sm-buy-sub{
+  margin:0 0 18px;font-size:13px;color:rgba(255,255,255,.55);text-align:center;line-height:1.4;
+}
+.sm-buy-opts{display:flex;flex-direction:column;gap:10px}
+.sm-buy-opt{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);
+  color:#fff;text-decoration:none;cursor:pointer;
+  transition:background .15s,border-color .15s,transform .15s;
+}
+.sm-buy-opt:hover{
+  background:rgba(255,255,255,.09);
+  border-color:rgba(255,255,255,.22);
+  transform:translateY(-1px);
+}
+.sm-buy-opt .ico{
+  width:42px;height:42px;border-radius:12px;flex:0 0 42px;
+  display:grid;place-items:center;
+}
+.sm-buy-opt .ico svg{width:24px;height:24px;display:block}
+.sm-buy-opt.funpay .ico{background:linear-gradient(135deg,#ff8a3d,#e85d04)}
+.sm-buy-opt.tg .ico{background:linear-gradient(135deg,#2AABEE,#229ED9)}
+.sm-buy-opt .txt{flex:1;min-width:0}
+.sm-buy-opt .txt .t{font-size:15px;font-weight:700;display:block}
+.sm-buy-opt .txt .d{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px}
+.sm-buy-opt .arrow{opacity:.45;font-size:18px}
+.sm-buy-close{
+  display:block;width:100%;margin-top:14px;padding:10px;
+  border:none;border-radius:999px;cursor:pointer;
+  background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);
+  font-size:13px;font-weight:600;font-family:inherit;
+}
+.sm-buy-close:hover{background:rgba(255,255,255,.1);color:#fff}
+
 </style>
 </head>
 <body>
@@ -840,18 +876,7 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
     </div>
     <div class="nav-right">
       <a href="#" class="btn-shiny-nav" data-i="nav_login" id="navReg" role="button">Log in</a>
-            <div class="nav-user-wrap" id="navUserWrap">
-        <button type="button" class="nav-user-pill" id="navUserPill" aria-haspopup="true" aria-expanded="false">
-          <span class="nav-user-label" id="navUserLabel"></span>
-          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
-        </button>
-        <div class="nav-user-menu" id="navUserMenu" role="menu">
-          <a href="/profile" role="menuitem" id="navGoProfile">Профиль</a>
-          <div class="sep"></div>
-          <button type="button" class="danger" role="menuitem" id="navLogoutBtn">Выйти</button>
-        </div>
-      </div>
-
+      <a href="/profile" class="nav-user-pill" id="navUserPill" title="Profile"></a>
 
 
       <div class="sm-bell-wrap" id="smBellWrap">
@@ -1076,7 +1101,7 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
           <li><span class="c3-check">✓</span> Account-bound access code</li>
           <li><span class="c3-check">✓</span> Priority-ready pipeline</li>
         </ul>
-        <a class="c3-btn" href="https://funpay.com/lots/offer?id=75434891" target="_blank" rel="noopener" data-i="buy_fp">Buy on FunPay</a>
+        <a class="c3-btn" href="#" role="button" data-buy-key="1" data-i="buy_fp">Buy on FunPay</a>
       </div>
       <div class="c3-card c3-card-pro">
         <div class="c3-tier-small">Desktop</div>
@@ -1088,7 +1113,7 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
           <li><span class="c3-check">✓</span> License key system</li>
           <li><span class="c3-check">✓</span> Auto-update ready</li>
         </ul>
-        <a class="c3-btn" href="https://funpay.com/lots/offer?id=75434891" target="_blank" rel="noopener" data-i="get_desk">Get desktop</a>
+        <a class="c3-btn" href="#" role="button" data-buy-key="1" data-i="get_desk">Get desktop</a>
       </div>
     </div>
   </section>
@@ -1135,11 +1160,6 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
         </svg>
         <span class="oauth-label" data-i="nav_google">Continue with Google</span>
       </button>
-      <button type="button" class="btn-oauth" id="authTelegram">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#26A5E4" d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-        <span class="oauth-label" data-i="nav_telegram">Continue with Telegram</span>
-      </button>
-      <div id="telegramWidgetHost" style="display:none;margin-top:4px;text-align:center"></div>
     </div>
     <div class="switch" id="authSwitch">Already have an account? <a id="authToggle">Log in</a></div>
   </div>
@@ -1157,8 +1177,6 @@ const I18N = {
     nav_discord_short: "Discord",
     nav_google: "Continue with Google",
     nav_google_short: "Google",
-    nav_telegram: "Continue with Telegram",
-    nav_telegram_short: "Telegram",
     nav_price: "Pricing",
     nav_tools: "Tools",
     nav_reg: "Sign up",
@@ -1213,8 +1231,6 @@ const I18N = {
     nav_discord_short: "Discord",
     nav_google: "Продолжить с Google",
     nav_google_short: "Google",
-    nav_telegram: "Продолжить с Telegram",
-    nav_telegram_short: "Telegram",
     nav_price: "Цены",
     nav_tools: "Инструменты",
     nav_reg: "Регистрация",
@@ -1379,65 +1395,28 @@ async function submitAuth() {
 
 
 async function refreshHomeUser() {
-  const wrap = document.getElementById("navUserWrap");
   const pill = document.getElementById("navUserPill");
-  const labelEl = document.getElementById("navUserLabel");
   const reg = document.getElementById("navReg");
-  const goProf = document.getElementById("navGoProfile");
-  if (!wrap || !pill) return;
+  if (!pill) return;
   try {
     const r = await fetch("/api/auth/me", { credentials: "include" });
     const j = await r.json();
     if (j && j.ok && j.logged_in) {
       const label = (j.display_name || "").trim() || (j.email || "").trim() || "Account";
-      if (labelEl) labelEl.textContent = label;
-      else pill.textContent = label;
+      pill.textContent = label;
       pill.title = j.email || label;
-      wrap.classList.add("visible");
+      pill.classList.add("visible");
       if (reg) reg.style.display = "none";
-      if (goProf) {
-        if (j.profile_username) goProf.href = "/profile/" + encodeURIComponent(j.profile_username);
-        else goProf.href = "/profile";
-      }
       return;
     }
   } catch (e) {}
-  wrap.classList.remove("visible", "open");
-  if (labelEl) labelEl.textContent = "";
+  pill.classList.remove("visible");
+  pill.textContent = "";
   if (reg) reg.style.display = "";
-}
-
-function wireUserMenu() {
-  const wrap = document.getElementById("navUserWrap");
-  const pill = document.getElementById("navUserPill");
-  const logoutBtn = document.getElementById("navLogoutBtn");
-  if (!wrap || !pill) return;
-  pill.addEventListener("click", function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    const open = wrap.classList.toggle("open");
-    pill.setAttribute("aria-expanded", open ? "true" : "false");
-  });
-  document.addEventListener("click", function () {
-    wrap.classList.remove("open");
-    pill.setAttribute("aria-expanded", "false");
-  });
-  wrap.addEventListener("click", function (e) { e.stopPropagation(); });
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", async function () {
-      try {
-        await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-      } catch (e) {}
-      try { localStorage.removeItem("sm_session"); } catch (e) {}
-      try { document.cookie = "sm_session=; path=/; max-age=0"; } catch (e) {}
-      location.reload();
-    });
-  }
 }
 
 document.addEventListener("DOMContentLoaded", function () {
   applyLang(getLang());
-  wireUserMenu();
   refreshHomeUser();
   wireLangBtn("langBtn");
   wireLangBtn("langBtnNav");
@@ -1496,52 +1475,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   document.getElementById('authDiscord')?.addEventListener('click', function(e){ goOAuth('discord', e); });
   document.getElementById('authGoogle')?.addEventListener('click', function(e){ goOAuth('google', e); });
-  async function startTelegram(e){
-    if (e) e.preventDefault();
-    try {
-      const r = await fetch('/api/auth/telegram/config');
-      const d = await r.json();
-      if (!d.ok || !d.bot_username) {
-        alert(d.msg || 'Telegram not configured');
-        return;
-      }
-      const host = document.getElementById('telegramWidgetHost');
-      if (!host) return;
-      host.style.display = 'block';
-      host.innerHTML = '';
-      window.onTelegramAuth = async function(user){
-        try {
-          const res = await fetch('/api/auth/telegram', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(user)
-          });
-          const j = await res.json();
-          if (!j.ok || !j.token) {
-            alert(j.msg || 'Telegram auth failed');
-            return;
-          }
-          try { localStorage.setItem('sm_session', j.token); } catch(err) {}
-          location.href = '/app';
-        } catch(err) { alert(String(err)); }
-      };
-      const s = document.createElement('script');
-      s.async = true;
-      s.src = 'https://telegram.org/js/telegram-widget.js?22';
-      s.setAttribute('data-telegram-login', d.bot_username);
-      s.setAttribute('data-size', 'large');
-      s.setAttribute('data-radius', '12');
-      s.setAttribute('data-request-access', 'write');
-      s.setAttribute('data-userpic', 'true');
-      s.setAttribute('data-onauth', 'onTelegramAuth(user)');
-      host.appendChild(s);
-    } catch(err) { alert(String(err)); }
-  }
-  document.getElementById('authTelegram')?.addEventListener('click', startTelegram);
   window.addEventListener('message', function(ev){
     if (!ev.data) return;
-    if ((ev.data.type === 'discord_login' || ev.data.type === 'google_login' || ev.data.type === 'telegram_login') && ev.data.token) {
+    if ((ev.data.type === 'discord_login' || ev.data.type === 'google_login') && ev.data.token) {
       try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
       location.href = '/app';
     }
@@ -2489,20 +2425,102 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 
+<div class="sm-buy-overlay" id="smBuyOverlay" aria-hidden="true">
+  <div class="sm-buy-card" role="dialog" aria-labelledby="smBuyTitle">
+    <h3 id="smBuyTitle">Buy Pro key</h3>
+    <p class="sm-buy-sub" id="smBuySub">Choose where to buy. After payment, activate the code in your account.</p>
+    <div class="sm-buy-opts">
+      <a class="sm-buy-opt funpay" id="smBuyFunpay" href="https://funpay.com/lots/offer?id=75434891" target="_blank" rel="noopener">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v3H4V7zm2 5h12v7H6v-7zm3-9h6v2H9V3z" fill="#fff"/><path d="M9 14h6v2H9v-2z" fill="#fff" opacity=".85"/></svg>
+        </span>
+        <span class="txt">
+          <span class="t">FunPay</span>
+          <span class="d" id="smBuyFunpayD">Instant code after payment</span>
+        </span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="sm-buy-opt tg" id="smBuyTg" href="https://t.me/SteamMakerBot" target="_blank" rel="noopener">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M9.78 14.65l-.3 4.2c.43 0 .62-.18.85-.4l2.04-1.94 4.23 3.1c.78.43 1.33.2 1.54-.72l2.8-13.13h.01c.25-1.16-.42-1.61-1.18-1.33L3.3 9.7c-1.13.44-1.11 1.07-.19 1.35l4.37 1.36 10.15-6.4c.48-.29.91-.13.55.18L9.78 14.65z"/></svg>
+        </span>
+        <span class="txt">
+          <span class="t">Telegram</span>
+          <span class="d" id="smBuyTgD">Buy via bot / support</span>
+        </span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+    <button type="button" class="sm-buy-close" id="smBuyClose">Close</button>
+  </div>
+</div>
 
 <script>
-(function(){
-  try {
-    var q = new URLSearchParams(location.search);
-    if (q.get('login') === '1' || q.get('auth') === '1' || location.hash === '#login') {
-      setTimeout(function(){
-        if (typeof openAuth === 'function') openAuth('login');
-      }, 200);
-    }
-  } catch(e){}
-})();
-</script>
 
-<script src="/static/js/sm-auth.js" defer></script>
+(function(){
+  var FUNPAY_URL = 'https://funpay.com/lots/offer?id=75434891';
+  var TG_URL = 'https://t.me/SteamMakerBot';
+
+  function i18nBuy(){
+    var lang = (localStorage.getItem('sm_lang') || document.documentElement.lang || 'en').slice(0,2).toLowerCase();
+    var ru = lang === 'ru';
+    var t = document.getElementById('smBuyTitle');
+    var s = document.getElementById('smBuySub');
+    var fd = document.getElementById('smBuyFunpayD');
+    var td = document.getElementById('smBuyTgD');
+    var c = document.getElementById('smBuyClose');
+    if (t) t.textContent = ru ? 'Купить Pro-ключ' : 'Buy Pro key';
+    if (s) s.textContent = ru
+      ? 'Выбери, где купить. После оплаты активируй код в аккаунте.'
+      : 'Choose where to buy. After payment, activate the code in your account.';
+    if (fd) fd.textContent = ru ? 'Код сразу после оплаты' : 'Instant code after payment';
+    if (td) td.textContent = ru ? 'Через бота / поддержку' : 'Buy via bot / support';
+    if (c) c.textContent = ru ? 'Закрыть' : 'Close';
+  }
+
+  window.openBuyKeyModal = function openBuyKeyModal(e){
+    if (e && e.preventDefault) e.preventDefault();
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    i18nBuy();
+    var fp = document.getElementById('smBuyFunpay');
+    var tg = document.getElementById('smBuyTg');
+    if (fp) fp.href = FUNPAY_URL;
+    if (tg) tg.href = TG_URL;
+    ov.classList.add('open');
+    ov.setAttribute('aria-hidden', 'false');
+  };
+  window.closeBuyKeyModal = function(){
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    ov.classList.remove('open');
+    ov.setAttribute('aria-hidden', 'true');
+  };
+
+  function bind(){
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    var closeBtn = document.getElementById('smBuyClose');
+    if (closeBtn) closeBtn.onclick = window.closeBuyKeyModal;
+    ov.addEventListener('click', function(ev){
+      if (ev.target === ov) window.closeBuyKeyModal();
+    });
+    document.addEventListener('keydown', function(ev){
+      if (ev.key === 'Escape') window.closeBuyKeyModal();
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+</script>
+<script>
+document.querySelectorAll('[data-buy-key]').forEach(function(a){
+  a.addEventListener('click', function(e){
+    e.preventDefault();
+    if (typeof openBuyKeyModal==='function') openBuyKeyModal(e);
+  });
+});
+</script>
 </body>
 </html>

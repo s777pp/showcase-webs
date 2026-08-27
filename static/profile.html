@@ -369,6 +369,63 @@ html{background:#000}
   border-radius:50%;width:22px;height:22px;line-height:20px;text-align:center;
 }
 
+
+/* Buy key chooser modal */
+.sm-buy-overlay{
+  display:none;position:fixed;inset:0;z-index:10050;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;padding:20px;
+}
+.sm-buy-overlay.open{display:flex}
+.sm-buy-card{
+  width:min(400px,100%);
+  background:#12141c;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:18px;
+  padding:24px 22px 20px;
+  box-shadow:0 24px 64px rgba(0,0,0,.55);
+  color:#e8eef5;
+  font-family:inherit;
+}
+.sm-buy-card h3{
+  margin:0 0 6px;font-size:18px;font-weight:700;color:#fff;text-align:center;
+}
+.sm-buy-card .sm-buy-sub{
+  margin:0 0 18px;font-size:13px;color:rgba(255,255,255,.55);text-align:center;line-height:1.4;
+}
+.sm-buy-opts{display:flex;flex-direction:column;gap:10px}
+.sm-buy-opt{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);
+  color:#fff;text-decoration:none;cursor:pointer;
+  transition:background .15s,border-color .15s,transform .15s;
+}
+.sm-buy-opt:hover{
+  background:rgba(255,255,255,.09);
+  border-color:rgba(255,255,255,.22);
+  transform:translateY(-1px);
+}
+.sm-buy-opt .ico{
+  width:42px;height:42px;border-radius:12px;flex:0 0 42px;
+  display:grid;place-items:center;
+}
+.sm-buy-opt .ico svg{width:24px;height:24px;display:block}
+.sm-buy-opt.funpay .ico{background:linear-gradient(135deg,#ff8a3d,#e85d04)}
+.sm-buy-opt.tg .ico{background:linear-gradient(135deg,#2AABEE,#229ED9)}
+.sm-buy-opt .txt{flex:1;min-width:0}
+.sm-buy-opt .txt .t{font-size:15px;font-weight:700;display:block}
+.sm-buy-opt .txt .d{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px}
+.sm-buy-opt .arrow{opacity:.45;font-size:18px}
+.sm-buy-close{
+  display:block;width:100%;margin-top:14px;padding:10px;
+  border:none;border-radius:999px;cursor:pointer;
+  background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);
+  font-size:13px;font-weight:600;font-family:inherit;
+}
+.sm-buy-close:hover{background:rgba(255,255,255,.1);color:#fff}
+
 </style>
 </head>
 <body>
@@ -867,7 +924,7 @@ html{background:#000}
     try{
       var r=await fetch(url,{headers:headers(),credentials:'include'});
       var j={}; try{j=await r.json();}catch(e){}
-      if(r.status===401 && !un){ showGate('Log in required','Sign in to continue.'); try{ var g=document.getElementById('gateActions'); if(g&&!g.querySelector('[data-login]')){ var a=document.createElement('a'); a.href='/?login=1'; a.className='btn-pill'; a.setAttribute('data-login','1'); a.textContent='Log in'; g.appendChild(a);} }catch(e){} return; }
+      if(r.status===401 && !un){ showGate('Log in required','Sign in on the home page, then open Profile.'); return; }
       if(r.status===403){ showGate('Private profile','This profile is private.'); return; }
       if(!j.ok){ showGate('Not found', j.msg||'Profile not found'); return; }
       if(!un && j.profile && j.profile.username){
@@ -1037,15 +1094,103 @@ html{background:#000}
       }
     }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
   };
-  document.getElementById('btnAccBuy').onclick=function(){
-    // same buy flow as tools if available
-    if(typeof openBuyModal==='function') openBuyModal();
-    else window.open('/app','_blank');
+  document.getElementById('btnAccBuy').onclick=function(e){
+    if(typeof openBuyKeyModal==='function') openBuyKeyModal(e);
+    else window.open('https://funpay.com/lots/offer?id=75434891','_blank');
   };
 
   load();
 })();
 </script>
-<script src="/static/js/sm-auth.js" defer></script>
+
+<div class="sm-buy-overlay" id="smBuyOverlay" aria-hidden="true">
+  <div class="sm-buy-card" role="dialog" aria-labelledby="smBuyTitle">
+    <h3 id="smBuyTitle">Buy Pro key</h3>
+    <p class="sm-buy-sub" id="smBuySub">Choose where to buy. After payment, activate the code in your account.</p>
+    <div class="sm-buy-opts">
+      <a class="sm-buy-opt funpay" id="smBuyFunpay" href="https://funpay.com/lots/offer?id=75434891" target="_blank" rel="noopener">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v3H4V7zm2 5h12v7H6v-7zm3-9h6v2H9V3z" fill="#fff"/><path d="M9 14h6v2H9v-2z" fill="#fff" opacity=".85"/></svg>
+        </span>
+        <span class="txt">
+          <span class="t">FunPay</span>
+          <span class="d" id="smBuyFunpayD">Instant code after payment</span>
+        </span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="sm-buy-opt tg" id="smBuyTg" href="https://t.me/SteamMakerBot" target="_blank" rel="noopener">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M9.78 14.65l-.3 4.2c.43 0 .62-.18.85-.4l2.04-1.94 4.23 3.1c.78.43 1.33.2 1.54-.72l2.8-13.13h.01c.25-1.16-.42-1.61-1.18-1.33L3.3 9.7c-1.13.44-1.11 1.07-.19 1.35l4.37 1.36 10.15-6.4c.48-.29.91-.13.55.18L9.78 14.65z"/></svg>
+        </span>
+        <span class="txt">
+          <span class="t">Telegram</span>
+          <span class="d" id="smBuyTgD">Buy via bot / support</span>
+        </span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+    <button type="button" class="sm-buy-close" id="smBuyClose">Close</button>
+  </div>
+</div>
+
+<script>
+
+(function(){
+  var FUNPAY_URL = 'https://funpay.com/lots/offer?id=75434891';
+  var TG_URL = 'https://t.me/SteamMakerBot';
+
+  function i18nBuy(){
+    var lang = (localStorage.getItem('sm_lang') || document.documentElement.lang || 'en').slice(0,2).toLowerCase();
+    var ru = lang === 'ru';
+    var t = document.getElementById('smBuyTitle');
+    var s = document.getElementById('smBuySub');
+    var fd = document.getElementById('smBuyFunpayD');
+    var td = document.getElementById('smBuyTgD');
+    var c = document.getElementById('smBuyClose');
+    if (t) t.textContent = ru ? 'Купить Pro-ключ' : 'Buy Pro key';
+    if (s) s.textContent = ru
+      ? 'Выбери, где купить. После оплаты активируй код в аккаунте.'
+      : 'Choose where to buy. After payment, activate the code in your account.';
+    if (fd) fd.textContent = ru ? 'Код сразу после оплаты' : 'Instant code after payment';
+    if (td) td.textContent = ru ? 'Через бота / поддержку' : 'Buy via bot / support';
+    if (c) c.textContent = ru ? 'Закрыть' : 'Close';
+  }
+
+  window.openBuyKeyModal = function openBuyKeyModal(e){
+    if (e && e.preventDefault) e.preventDefault();
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    i18nBuy();
+    var fp = document.getElementById('smBuyFunpay');
+    var tg = document.getElementById('smBuyTg');
+    if (fp) fp.href = FUNPAY_URL;
+    if (tg) tg.href = TG_URL;
+    ov.classList.add('open');
+    ov.setAttribute('aria-hidden', 'false');
+  };
+  window.closeBuyKeyModal = function(){
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    ov.classList.remove('open');
+    ov.setAttribute('aria-hidden', 'true');
+  };
+
+  function bind(){
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    var closeBtn = document.getElementById('smBuyClose');
+    if (closeBtn) closeBtn.onclick = window.closeBuyKeyModal;
+    ov.addEventListener('click', function(ev){
+      if (ev.target === ov) window.closeBuyKeyModal();
+    });
+    document.addEventListener('keydown', function(ev){
+      if (ev.key === 'Escape') window.closeBuyKeyModal();
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+</script>
 </body>
 </html>
