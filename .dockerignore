@@ -1,0 +1,11 @@
+.git
+.DS_Store
+__pycache__
+*.pyc
+.env
+data/users.db
+data/jobs
+*.md
+main2.py
+bin/*.exe
+docs

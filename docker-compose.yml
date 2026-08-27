@@ -1,0 +1,107 @@
+# Production-oriented stack for SteamShowcase
+# Usage: cp .env.example .env && docker compose up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-showcase}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-showcase_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-showcase}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/schema_pg.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-showcase}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [internal]
+
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATA_DIR: /data
+      DATABASE_URL: ${DATABASE_URL:-}
+      REDIS_URL: redis://redis:6379/0
+      USE_EXTERNAL_WORKER: "1"
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
+      MAX_JOBS_PER_USER: ${MAX_JOBS_PER_USER:-2}
+      FREE_LIMIT: ${FREE_LIMIT:-5}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-40}
+      APP_URL: ${APP_URL:-http://localhost}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    volumes:
+      - appdata:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+    # exposed only via nginx
+    expose:
+      - "8080"
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: ["python", "worker.py"]
+    environment:
+      DATA_DIR: /data
+      REDIS_URL: redis://redis:6379/0
+      USE_EXTERNAL_WORKER: "1"
+      MAX_JOB_WORKERS: ${MAX_JOB_WORKERS:-2}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-40}
+    volumes:
+      - appdata:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_started
+    networks: [internal]
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static:/var/www/static:ro
+    depends_on:
+      - app
+    networks: [internal]
+
+volumes:
+  pgdata:
+  redisdata:
+  appdata:
+
+networks:
+  internal:
+    driver: bridge
