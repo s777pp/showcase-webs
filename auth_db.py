@@ -95,6 +95,8 @@ def _conn() -> sqlite3.Connection:
         ("profile_status", "TEXT"),
         ("profile_visibility", "TEXT"),
         ("google_id", "TEXT"),
+        ("telegram_id", "TEXT"),
+        ("telegram_username", "TEXT"),
     ):
         if col not in cols:
             try:
@@ -625,6 +627,74 @@ def register_or_login_google(google_id: str, email: str | None, name: str | None
 
 
 # ====================== Gallery social: likes / comments / notifications ======================
+
+# ─── Telegram ───────────────────────────────────────────────────────────────
+
+def user_by_telegram(telegram_id: str) -> dict | None:
+    if not telegram_id:
+        return None
+    c = _conn()
+    row = c.execute(
+        "SELECT id, email, is_pro, pro_code, pro_until, telegram_id, telegram_username, display_name, avatar_path FROM users WHERE telegram_id=?",
+        (str(telegram_id),),
+    ).fetchone()
+    c.close()
+    return dict(row) if row else None
+
+
+def register_or_login_telegram(
+    telegram_id: str,
+    username: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    photo_url: str | None = None,
+) -> tuple[bool, str, str | None]:
+    """Return (ok, msg, session_token). Creates account if needed."""
+    telegram_id = str(telegram_id)
+    uname = (username or first_name or "telegram")[:40]
+    display = " ".join(x for x in [(first_name or "").strip(), (last_name or "").strip()] if x)[:40] or uname
+    existing = user_by_telegram(telegram_id)
+    c = _conn()
+    if existing:
+        uid = int(existing["id"])
+        c.execute(
+            "UPDATE users SET telegram_username=?, display_name=COALESCE(display_name, ?) WHERE id=?",
+            (uname, display, uid),
+        )
+        c.commit()
+    else:
+        em = f"tg_{telegram_id}@users.local"
+        try:
+            c.execute(
+                """INSERT INTO users(
+                    email, password_hash, is_pro, email_verified,
+                    telegram_id, telegram_username, display_name, created_at
+                ) VALUES (?,?,0,1,?,?,?,?)""",
+                (em, _hash_pw(secrets.token_hex(16)), telegram_id, uname, display, time.time()),
+            )
+            c.commit()
+            uid = c.execute("SELECT id FROM users WHERE telegram_id=?", (telegram_id,)).fetchone()["id"]
+        except sqlite3.IntegrityError:
+            row = c.execute("SELECT id FROM users WHERE email=?", (em,)).fetchone()
+            if not row:
+                c.close()
+                return False, "Could not create Telegram account", None
+            uid = int(row["id"])
+            c.execute(
+                "UPDATE users SET telegram_id=?, telegram_username=?, display_name=COALESCE(display_name, ?) WHERE id=?",
+                (telegram_id, uname, display, uid),
+            )
+            c.commit()
+    token = secrets.token_hex(24)
+    c.execute(
+        "INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)",
+        (token, uid, time.time()),
+    )
+    c.commit()
+    c.close()
+    return True, "OK", token
+
+
 
 def _ensure_social(c) -> None:
     c.execute(

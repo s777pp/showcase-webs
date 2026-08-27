@@ -7,6 +7,7 @@ URL:     http://127.0.0.1:8080
 from __future__ import annotations
 
 import hashlib
+import hmac
 import io
 import json
 import os
@@ -3619,6 +3620,111 @@ setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
         return _attach_session_cookie(resp, token, request)
     except Exception as e:
         return HTMLResponse(f"<h3>Error</h3><pre>{e}</pre>", status_code=500)
+
+
+
+
+# ====================== Telegram Login Widget ======================
+
+def _telegram_bot_token() -> str:
+    return (os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
+
+
+def _telegram_bot_username() -> str:
+    return (os.environ.get("TELEGRAM_BOT_USERNAME") or "SteamMakerBot").strip().lstrip("@")
+
+
+def _verify_telegram_login(data: dict) -> bool:
+    """Official HMAC-SHA256 check: https://core.telegram.org/widgets/login"""
+    token = _telegram_bot_token()
+    if not token or "hash" not in data:
+        return False
+    received = str(data.get("hash") or "")
+    check = {k: str(v) for k, v in data.items() if k != "hash" and v is not None and str(v) != ""}
+    data_check_string = "\n".join(f"{k}={check[k]}" for k in sorted(check.keys()))
+    secret_key = hashlib.sha256(token.encode("utf-8")).digest()
+    calculated = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+    if not secrets.compare_digest(calculated, received):
+        return False
+    try:
+        auth_date = int(check.get("auth_date") or 0)
+    except (TypeError, ValueError):
+        return False
+    if abs(int(time.time()) - auth_date) > 86400:
+        return False
+    return True
+
+
+@app.get("/api/auth/telegram/config")
+def telegram_config():
+    uname = _telegram_bot_username()
+    ready = bool(_telegram_bot_token() and uname)
+    return {
+        "ok": ready,
+        "bot_username": uname if ready else "",
+        "msg": None if ready else "TELEGRAM_BOT_TOKEN / TELEGRAM_BOT_USERNAME not set",
+    }
+
+
+@app.post("/api/auth/telegram")
+async def telegram_auth(request: Request):
+    """Receive Login Widget payload, verify hash, create session."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"ok": False, "msg": "Bad payload"}, status_code=400)
+    if not _telegram_bot_token():
+        return JSONResponse({"ok": False, "msg": "Telegram auth not configured"}, status_code=503)
+    if not _verify_telegram_login(body):
+        return JSONResponse({"ok": False, "msg": "Invalid Telegram signature"}, status_code=401)
+    tid = str(body.get("id") or "")
+    if not tid:
+        return JSONResponse({"ok": False, "msg": "Missing Telegram id"}, status_code=400)
+    ok, msg, token = auth_db.register_or_login_telegram(
+        telegram_id=tid,
+        username=body.get("username"),
+        first_name=body.get("first_name"),
+        last_name=body.get("last_name"),
+        photo_url=body.get("photo_url"),
+    )
+    if not ok or not token:
+        return JSONResponse({"ok": False, "msg": msg or "Auth failed"}, status_code=400)
+    resp = JSONResponse({"ok": True, "token": token, "msg": "OK"})
+    return _attach_session_cookie(resp, token, request)
+
+
+@app.get("/api/auth/telegram/callback")
+async def telegram_callback(request: Request):
+    """Fallback: widget redirect with query params."""
+    data = dict(request.query_params)
+    if not _verify_telegram_login(data):
+        return HTMLResponse("<h3>Telegram auth failed</h3>", status_code=400)
+    tid = str(data.get("id") or "")
+    ok, msg, token = auth_db.register_or_login_telegram(
+        telegram_id=tid,
+        username=data.get("username"),
+        first_name=data.get("first_name"),
+        last_name=data.get("last_name"),
+        photo_url=data.get("photo_url"),
+    )
+    if not ok or not token:
+        return HTMLResponse(f"<h3>{msg}</h3>", status_code=400)
+    app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
+    resp = HTMLResponse(
+        f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>OK</title></head>
+<body style="font-family:system-ui;background:#0b0b12;color:#eee;display:grid;place-items:center;min-height:100vh;margin:0">
+<div style="text-align:center"><h1>Telegram connected</h1>
+<p>You can close this window.</p>
+<a href="{app_url}/app" style="color:#7b5cff">Back to app</a></div>
+<script>
+try {{ localStorage.setItem('sm_session', {token!r}); }} catch(e) {{}}
+try {{ if (window.opener) window.opener.postMessage({{type:'telegram_login', token:{token!r}}}, '*'); }} catch(e) {{}}
+setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
+</script></body></html>"""
+    )
+    return _attach_session_cookie(resp, token, request)
 
 
 

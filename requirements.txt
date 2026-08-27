@@ -8,3 +8,4 @@ requests>=2.31.0
 stripe>=8.0.0
 passlib[bcrypt]>=1.7.4
 bcrypt<4.1
+python-telegram-bot==20.*
