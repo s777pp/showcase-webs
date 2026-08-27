@@ -1596,31 +1596,102 @@ window.__runColorMatch = function(){
   var ru = (localStorage.getItem('sm_lang') === 'ru');
   var hint = document.getElementById('colorMatchHint');
   var files = (window.state && state.files) || [];
-  var imgFile = null;
+  var mediaFile = null;
+  var kind = 'image'; // image | gif | video
   for (var i = 0; i < files.length; i++) {
     var f = files[i];
     var n = (f.name || '').toLowerCase();
-    if ((f.type || '').indexOf('image/') === 0 || /\.(png|jpe?g|webp|gif)$/.test(n)) {
-      imgFile = f; break;
+    var t = (f.type || '').toLowerCase();
+    if (t.indexOf('video/') === 0 || /\.(mp4|webm|mov|avi|mkv)$/.test(n)) {
+      mediaFile = f; kind = 'video'; break;
+    }
+    if (t === 'image/gif' || /\.gif$/.test(n)) {
+      mediaFile = f; kind = 'gif'; break;
+    }
+    if (t.indexOf('image/') === 0 || /\.(png|jpe?g|webp|bmp)$/.test(n)) {
+      mediaFile = f; kind = 'image'; break;
     }
   }
-  if (!imgFile) {
-    if (hint) hint.textContent = ru ? 'Сначала добавь PNG/JPG в «Файлы»' : 'Add a PNG/JPG in Files first';
+  if (!mediaFile) {
+    if (hint) hint.textContent = ru ? 'Сначала добавь PNG/JPG/GIF/видео в «Файлы»' : 'Add PNG/JPG/GIF/video in Files first';
     return;
   }
   if (hint) hint.textContent = ru ? 'Считаю палитру…' : 'Sampling palette…';
-  var url = URL.createObjectURL(imgFile);
+  var url = URL.createObjectURL(mediaFile);
+
+  function finishFromEl(el) {
+    try {
+      var colors = __extractPalette(el, 5);
+      URL.revokeObjectURL(url);
+      if (!colors || !colors.length) {
+        if (hint) hint.textContent = ru ? 'Не удалось взять цвета' : 'Could not sample colors';
+        return;
+      }
+      __renderColorMatch(colors);
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      if (hint) hint.textContent = ru ? 'Ошибка палитры' : 'Palette error';
+      console.warn(e);
+    }
+  }
+
+  if (kind === 'video') {
+    var vid = document.createElement('video');
+    vid.muted = true;
+    vid.playsInline = true;
+    vid.preload = 'auto';
+    vid.src = url;
+    var done = false;
+    function grab() {
+      if (done) return;
+      if (vid.videoWidth < 2 || vid.videoHeight < 2) return;
+      done = true;
+      try { vid.pause(); } catch (e) {}
+      // draw first frame to canvas image-like element for extract
+      var c = document.createElement('canvas');
+      c.width = Math.min(320, vid.videoWidth);
+      c.height = Math.max(1, Math.round(c.width * (vid.videoHeight / vid.videoWidth)));
+      var ctx = c.getContext('2d');
+      ctx.drawImage(vid, 0, 0, c.width, c.height);
+      finishFromEl(c);
+      try { vid.removeAttribute('src'); vid.load(); } catch (e) {}
+    }
+    vid.addEventListener('loadeddata', function(){
+      try { vid.currentTime = 0.05; } catch (e) { grab(); }
+    });
+    vid.addEventListener('seeked', grab);
+    vid.addEventListener('error', function(){
+      URL.revokeObjectURL(url);
+      if (hint) hint.textContent = ru ? 'Видео не прочиталось' : 'Could not read video';
+    });
+    // timeout fallback
+    setTimeout(function(){ if (!done) grab(); }, 2500);
+    try { vid.load(); } catch (e) {}
+    return;
+  }
+
+  // image + gif (browser decodes first frame of GIF)
   var im = new Image();
-  im.onload = function(){
-    var colors = __extractPalette(im, 5);
-    URL.revokeObjectURL(url);
-    __renderColorMatch(colors);
-  };
+  im.onload = function(){ finishFromEl(im); };
   im.onerror = function(){
-    URL.revokeObjectURL(url);
-    if (hint) hint.textContent = ru ? 'Не удалось прочитать файл' : 'Could not read file';
+    // fallback: createImageBitmap (helps some GIFs)
+    if (typeof createImageBitmap === 'function') {
+      createImageBitmap(mediaFile).then(function(bmp){
+        var c = document.createElement('canvas');
+        c.width = Math.min(320, bmp.width);
+        c.height = Math.max(1, Math.round(c.width * (bmp.height / bmp.width)));
+        c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+        try { bmp.close(); } catch (e) {}
+        finishFromEl(c);
+      }).catch(function(){
+        URL.revokeObjectURL(url);
+        if (hint) hint.textContent = ru ? 'GIF не прочитался' : 'Could not read GIF';
+      });
+    } else {
+      URL.revokeObjectURL(url);
+      if (hint) hint.textContent = ru ? 'Не удалось прочитать файл' : 'Could not read file';
+    }
   };
-  // For GIF first frame still works via browser decode
   im.src = url;
 };
 document.getElementById('btnColorMatch')?.addEventListener('click', function(){ window.__runColorMatch(); });
