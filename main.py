@@ -1144,6 +1144,16 @@ def api_health_prod():
         db_writable = True
     except Exception as e:
         db_write_error = f"{type(e).__name__}: {e}"
+    ff = None
+    gs = None
+    try:
+        ff = proc.find_ffmpeg()
+    except Exception:
+        ff = None
+    try:
+        gs = proc.find_gifski() if hasattr(proc, "find_gifski") else None
+    except Exception:
+        gs = None
     return {
         "ok": True,
         "db": db_ok,
@@ -1169,15 +1179,24 @@ def api_health_prod():
             "max_concurrent": MAX_JOB_WORKERS,
             "queue": rs.queue_depth() if redis_ok else 0,
         },
+        "ffmpeg": bool(ff),
+        "gifski": bool(gs),
+        "ffmpeg_path": ff or None,
+        "gifski_path": gs or None,
         "version": "prod-opt-2",
     }
 
 @app.get("/api/health_legacy")
 
 def health():
+    ff = proc.find_ffmpeg()
+    gs = proc.find_gifski() if hasattr(proc, "find_gifski") else None
     return {
         "ok": True,
-        "ffmpeg": bool(proc.find_ffmpeg()),
+        "ffmpeg": bool(ff),
+        "gifski": bool(gs),
+        "ffmpeg_path": ff or None,
+        "gifski_path": gs or None,
         "fonts": [f.name for f in FONTS.glob("*.ttf")] if FONTS.is_dir() else [],
         "templates": [f.name for f in TEMPLATES.glob("*.png")] if TEMPLATES.is_dir() else [],
     }

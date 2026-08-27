@@ -26,3 +26,10 @@ venv/
 bin/*.exe
 .DS_Store
 Thumbs.db
+.tmpvol/users.db
+.tmpvol/srv.log
+.tmpvol/got.png
+.tmpvol/cj
+.tmpvol/avatars/1.png
+.tmpvol/av.png
+.tmpro/users.db
