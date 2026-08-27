@@ -279,6 +279,31 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
   .grid.cols2{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
 }
 
+
+/* Auth modal (login) — separate from gallery item modal */
+.auth-modal-bg{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.65);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:20px}
+.auth-modal-bg.open{display:flex}
+.auth-modal{position:relative;width:100%;max-width:400px;border-radius:20px;border:1px solid rgba(255,255,255,.12);background:rgba(14,16,20,.95);padding:28px 24px;box-shadow:0 24px 80px rgba(0,0,0,.5);color:#fff}
+.auth-modal h3{margin:0 0 6px;font-size:20px;font-weight:600}
+.auth-modal .sub{margin:0 0 16px;font-size:13px;color:var(--muted)}
+.auth-modal input{width:100%;margin-bottom:10px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font:inherit}
+.auth-modal .btn-auth{width:100%;min-height:44px;border-radius:999px;border:none;background:#fff;color:#0c0c0c;font-weight:600;cursor:pointer;font-size:14px;font-family:inherit}
+.auth-modal .btn-auth:hover{opacity:.92}
+.auth-modal .close-x{position:absolute;top:14px;right:16px;background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;line-height:1}
+.auth-modal .switch{margin-top:14px;font-size:13px;color:var(--muted);text-align:center}
+.auth-modal .switch a{color:#fff;text-decoration:underline;cursor:pointer}
+.auth-modal .status{font-size:13px;min-height:18px;margin:8px 0;color:var(--muted)}
+.auth-modal .status.err{color:#ff6b6b}
+.auth-modal .status.ok{color:#3ddc84}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:16px 0 12px;font-size:12px;color:rgba(255,255,255,.45);text-align:center}
+.auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.12)}
+.auth-oauth{display:flex;flex-direction:column;gap:8px}
+.btn-oauth{width:100%;min-height:46px;border-radius:999px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:0 16px}
+.btn-oauth:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.25)}
+.btn-oauth svg{width:20px;height:20px;flex-shrink:0;display:block}
+.btn-oauth .oauth-label{line-height:1.2}
+#navReg{cursor:pointer;border:none;font-family:inherit}
+
 </style>
 </head>
 <body>
@@ -308,7 +333,7 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
       <a href="/app">Tools</a>
     </div>
     <div class="nav-right">
-      <a href="/app#account" class="btn-shiny-nav" id="navReg">Log in</a>
+      <button type="button" class="btn-shiny-nav" id="navReg">Log in</button>
       <div class="nav-user-wrap" id="navUserWrap">
         <button type="button" class="nav-user-pill" id="navUserPill" aria-haspopup="true" aria-expanded="false">
           <span class="nav-user-label" id="navUserLabel"></span>
@@ -381,7 +406,7 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
       </div>
       <div class="comments" id="comments"></div>
       <div class="composer" id="composer">
-        <div class="login-hint" id="loginHint" style="display:none">Войдите в аккаунт, чтобы лайкать и комментировать — <a href="/app#account" style="color:var(--accent)">Tools → Account</a></div>
+        <div class="login-hint" id="loginHint" style="display:none">Войдите в аккаунт, чтобы лайкать и комментировать — <a href="#" id="loginHintLink" style="color:var(--accent)">Войти</a></div>
         <textarea id="cmtBody" placeholder="Написать комментарий…" maxlength="1000"></textarea>
         <div class="row">
           <span class="hint" id="replyHint"></span>
@@ -885,5 +910,185 @@ document.getElementById('btnAdminDel').onclick = async () => {
   else if (itemId) openModal({ id: Number(itemId), title:'', author:'', avatar_url:'', url:'/api/gallery/image/'+itemId, likes:0, comments:0, liked:false });
 })();
 </script>
+
+<div class="auth-modal-bg" id="authModal" aria-hidden="true">
+  <div class="auth-modal">
+    <button type="button" class="close-x" id="authClose" aria-label="Close">×</button>
+    <h3 id="authTitle">Log in</h3>
+    <p class="sub" id="authSub">Log in to buy Pro and keep access</p>
+    <div class="stack">
+      <input id="authEmail" type="email" placeholder="Email" autocomplete="email"/>
+      <input id="authPass" type="password" placeholder="Password (min 6)" autocomplete="current-password"/>
+      <button type="button" class="btn-auth" id="authSubmit">Log in</button>
+    </div>
+    <div class="status" id="authStatus"></div>
+    <div class="auth-divider"><span>or continue with</span></div>
+    <div class="auth-oauth">
+      <button type="button" class="btn-oauth" id="authDiscord">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#5865F2" d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515.07.07 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.74 19.74 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.1 13.1 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+        <span class="oauth-label">Continue with Discord</span>
+      </button>
+      <button type="button" class="btn-oauth" id="authGoogle">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#EA4335" d="M12 10.2v3.6h5.1c-.2 1.2-.9 2.2-1.9 2.9l3.1 2.4c1.8-1.7 2.9-4.1 2.9-7 0-.7-.1-1.3-.2-1.9H12z"/>
+          <path fill="#34A853" d="M5.3 14.3l-.8.6-2.3 1.8C3.9 19.5 7.7 22 12 22c2.7 0 5-.9 6.7-2.4l-3.1-2.4c-.9.6-2 .9-3.6.9-2.8 0-5.1-1.9-6-4.4z"/>
+          <path fill="#4A90E2" d="M3 7.1C2.4 8.3 2 9.6 2 11s.4 2.7 1 3.9l2.3-1.8C5 12.4 4.8 11.7 4.8 11s.2-1.4.5-2z"/>
+          <path fill="#FBBC05" d="M12 4.8c1.5 0 2.8.5 3.8 1.5l2.8-2.8C16.9 1.9 14.7 1 12 1 7.7 1 3.9 3.5 2.2 7.1l3.1 2.4C6.9 6.7 9.2 4.8 12 4.8z"/>
+        </svg>
+        <span class="oauth-label">Continue with Google</span>
+      </button>
+      <button type="button" class="btn-oauth" id="authTelegram">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#26A5E4" d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        <span class="oauth-label">Continue with Telegram</span>
+      </button>
+      <div id="telegramWidgetHost" style="display:none;margin-top:4px;text-align:center"></div>
+    </div>
+    <div class="switch" id="authSwitch">No account? <a id="authToggle">Sign up</a></div>
+  </div>
+</div>
+
+
+<script>
+(function(){
+  let authMode = 'login';
+  function openAuth(mode){
+    authMode = mode === 'register' ? 'register' : 'login';
+    const modal = document.getElementById('authModal');
+    const title = document.getElementById('authTitle');
+    const sub = document.getElementById('authSub');
+    const submit = document.getElementById('authSubmit');
+    const sw = document.getElementById('authSwitch');
+    const st = document.getElementById('authStatus');
+    if (st) { st.className = 'status'; st.textContent = ''; }
+    const reg = authMode === 'register';
+    if (title) title.textContent = reg ? 'Sign up' : 'Log in';
+    if (sub) sub.textContent = reg ? 'Create an account to buy Pro and keep access' : 'Log in to buy Pro and keep access';
+    if (submit) submit.textContent = reg ? 'Create account' : 'Log in';
+    if (sw) sw.innerHTML = reg
+      ? 'Already have an account? <a id="authToggle">Log in</a>'
+      : 'No account? <a id="authToggle">Sign up</a>';
+    const tog = document.getElementById('authToggle');
+    if (tog) tog.onclick = function(e){ e.preventDefault(); openAuth(reg ? 'login' : 'register'); };
+    if (modal) {
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+  }
+  function closeAuth(){
+    const modal = document.getElementById('authModal');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+  }
+  window.openGalleryAuth = openAuth;
+  document.getElementById('navReg')?.addEventListener('click', function(e){
+    e.preventDefault();
+    openAuth('login');
+  });
+  document.getElementById('authClose')?.addEventListener('click', closeAuth);
+  document.getElementById('authModal')?.addEventListener('click', function(e){
+    if (e.target === this) closeAuth();
+  });
+  document.getElementById('loginHintLink')?.addEventListener('click', function(e){
+    e.preventDefault();
+    openAuth('login');
+  });
+  // re-bind toggle when switch is rebuilt
+  document.getElementById('authSwitch')?.addEventListener('click', function(e){
+    if (e.target && e.target.id === 'authToggle') {
+      e.preventDefault();
+      openAuth(authMode === 'register' ? 'login' : 'register');
+    }
+  });
+  document.getElementById('authSubmit')?.addEventListener('click', async function(){
+    const email = (document.getElementById('authEmail')?.value || '').trim();
+    const password = document.getElementById('authPass')?.value || '';
+    const st = document.getElementById('authStatus');
+    const path = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+    try {
+      const r = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
+      });
+      const j = await r.json();
+      if (!j.ok) {
+        if (st) { st.className = 'status err'; st.textContent = j.msg || 'Error'; }
+        return;
+      }
+      if (j.token) {
+        try { localStorage.setItem('sm_session', j.token); } catch(e) {}
+      }
+      location.reload();
+    } catch (err) {
+      if (st) { st.className = 'status err'; st.textContent = String(err); }
+    }
+  });
+  async function goOAuth(provider){
+    const path = provider === 'google' ? '/api/auth/google/login' : '/api/auth/discord/login';
+    const winName = provider === 'google' ? 'google_oauth' : 'discord_oauth';
+    try {
+      const r = await fetch(path);
+      const d = await r.json();
+      if (!d.ok || !d.url) { alert(d.msg || (provider + ' not configured')); return; }
+      window.open(d.url, winName, 'width=520,height=720');
+    } catch (err) { alert(String(err)); }
+  }
+  document.getElementById('authDiscord')?.addEventListener('click', function(){ goOAuth('discord'); });
+  document.getElementById('authGoogle')?.addEventListener('click', function(){ goOAuth('google'); });
+  async function startTelegram(){
+    try {
+      const r = await fetch('/api/auth/telegram/config');
+      const d = await r.json();
+      if (!d.ok || !d.bot_username) {
+        alert(d.msg || 'Telegram not configured');
+        return;
+      }
+      const host = document.getElementById('telegramWidgetHost');
+      if (!host) return;
+      host.style.display = 'block';
+      host.innerHTML = '';
+      window.onTelegramAuth = async function(user){
+        try {
+          const res = await fetch('/api/auth/telegram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(user)
+          });
+          const j = await res.json();
+          if (!j.ok || !j.token) {
+            alert(j.msg || 'Telegram auth failed');
+            return;
+          }
+          try { localStorage.setItem('sm_session', j.token); } catch(e) {}
+          location.reload();
+        } catch(e) { alert(String(e)); }
+      };
+      const s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://telegram.org/js/telegram-widget.js?22';
+      s.setAttribute('data-telegram-login', d.bot_username);
+      s.setAttribute('data-size', 'large');
+      s.setAttribute('data-radius', '12');
+      s.setAttribute('data-request-access', 'write');
+      s.setAttribute('data-userpic', 'true');
+      s.setAttribute('data-onauth', 'onTelegramAuth(user)');
+      host.appendChild(s);
+    } catch(e) { alert(String(e)); }
+  }
+  document.getElementById('authTelegram')?.addEventListener('click', startTelegram);
+  window.addEventListener('message', function(ev){
+    if (!ev.data) return;
+    if ((ev.data.type === 'discord_login' || ev.data.type === 'google_login' || ev.data.type === 'telegram_login') && ev.data.token) {
+      try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
+      location.reload();
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
