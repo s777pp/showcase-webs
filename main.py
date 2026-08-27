@@ -33,24 +33,11 @@ import redis_store as rs
 import auth_db
 
 ROOT = Path(__file__).resolve().parent
-_data_candidates = []
-if os.environ.get("DATA_DIR"):
-    _data_candidates.append(Path(os.environ["DATA_DIR"]))
-_data_candidates.extend([ROOT / "data", Path("/tmp/showcase_data")])
-DATA = None
-for _c in _data_candidates:
-    try:
-        _c.mkdir(parents=True, exist_ok=True)
-        _t = _c / ".write_test"
-        _t.write_text("ok", encoding="utf-8")
-        _t.unlink(missing_ok=True)
-        DATA = _c
-        break
-    except Exception:
-        continue
-if DATA is None:
-    DATA = Path("/tmp/showcase_data")
-    DATA.mkdir(parents=True, exist_ok=True)
+# Single source of truth, shared with auth_db. Previously each module resolved
+# DATA on its own: main.py silently fell back to a writable directory while
+# auth_db stayed on the volume, so avatar FILES were saved while the matching DB
+# write failed with "attempt to write a readonly database".
+DATA = auth_db.DATA
 
 JOBS = DATA / "jobs"
 USAGE_FILE = DATA / "usage.json"
@@ -1145,9 +1132,29 @@ def api_health_prod():
     except Exception:
         redis_ok = False
     mode = _worker_mode()
+    # writability, not just readability: a readonly volume still answers SELECT 1,
+    # which is why the old db:true hid the "readonly database" failure entirely.
+    db_writable = False
+    db_write_error = None
+    try:
+        c = auth_db._conn()
+        c.execute("CREATE TABLE IF NOT EXISTS _health_probe (id INTEGER PRIMARY KEY)")
+        c.commit()
+        c.close()
+        db_writable = True
+    except Exception as e:
+        db_write_error = f"{type(e).__name__}: {e}"
     return {
         "ok": True,
         "db": db_ok,
+        "storage": {
+            "dir": str(DATA),
+            "writable": auth_db.DATA_WRITABLE,
+            "error": auth_db.DATA_ERROR,
+            "db_path": str(auth_db.DB),
+            "db_writable": db_writable,
+            "db_write_error": db_write_error,
+        },
         "redis": redis_ok,
         # why Redis is down — the old endpoint only ever said "false"
         "redis_detail": {

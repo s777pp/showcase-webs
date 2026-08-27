@@ -10,9 +10,54 @@ from pathlib import Path
 from typing import Optional
 
 ROOT = Path(__file__).resolve().parent
-DATA = Path(os.environ.get("DATA_DIR") or (ROOT / "data"))
-DATA.mkdir(parents=True, exist_ok=True)
+
+
+def _probe(p: Path) -> Optional[str]:
+    """Return None if p is writable, else the reason why not."""
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+        t = p / ".write_test"
+        t.write_text("ok", encoding="utf-8")
+        t.unlink(missing_ok=True)
+        return None
+    except Exception as e:
+        return f"{type(e).__name__}: {e}"
+
+
+def _resolve_data() -> tuple[Path, bool, Optional[str]]:
+    """Single source of truth for the data directory — main.py imports this too.
+
+    When DATA_DIR is set explicitly (production/volume) we NEVER silently move
+    elsewhere: a fallback would split the DB away from the media files, or open a
+    second empty users.db and look like every account vanished. We surface the
+    error instead, and /api/health reports it.
+    """
+    want = os.environ.get("DATA_DIR")
+    if want:
+        p = Path(want)
+        return p, _probe(p) is None, _probe(p)
+    for c in (ROOT / "data", Path("/tmp/showcase_data")):
+        if _probe(c) is None:
+            return c, True, None
+    p = ROOT / "data"
+    return p, False, _probe(p)
+
+
+DATA, DATA_WRITABLE, DATA_ERROR = _resolve_data()
+try:
+    DATA.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
 DB = DATA / "users.db"
+
+if not DATA_WRITABLE:
+    print(
+        f"[storage] FATAL: {DATA} is not writable ({DATA_ERROR}). "
+        f"Uploads and DB writes will fail with 'readonly database'. "
+        f"On Railway this means the volume is owned by root while the app runs as a "
+        f"non-root user — see RAILWAY.md.",
+        flush=True,
+    )
 
 
 def _conn() -> sqlite3.Connection:

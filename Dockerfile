@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     xz-utils \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # gifski Linux amd64
@@ -41,11 +42,15 @@ ENV UVICORN_WORKERS=1
 ENV WORKER_MODE=embedded
 ENV MAX_JOB_WORKERS=2
 
-# non-root
+# non-root. The container STARTS as root so the entrypoint can chown the mounted
+# volume, then drops to appuser via gosu — a build-time chown does not survive a
+# runtime volume mount.
 RUN useradd -m -u 10001 appuser && mkdir -p /data && chown -R appuser:appuser /app /data
-USER appuser
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 8080
 
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 # default: API (override command for worker)
 CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080} --workers ${UVICORN_WORKERS:-1} --timeout-keep-alive 30

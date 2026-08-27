@@ -1,0 +1,6 @@
+# Shell scripts must keep LF endings: core.autocrlf=true on Windows would rewrite
+# them to CRLF, and a CRLF shebang makes Linux fail with "no such file or directory".
+*.sh text eol=lf
+docker-entrypoint.sh text eol=lf
+Dockerfile text eol=lf
+*.py text eol=lf
