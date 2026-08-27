@@ -386,7 +386,6 @@ def media_to_gif(
 
     duration = max(1.0, min(20.0, float(duration)))
     encoder = (encoder or "ffmpeg").strip().lower()
-    want_gifski = encoder == "gifski" and bool(find_gifski())
 
     # High-quality path: rasterize frames → gifski (or ffmpeg palette)
     tmp = Path(tempfile.mkdtemp(prefix="sm_m2g_"))
@@ -426,10 +425,13 @@ def media_to_gif(
         if not list(frames.glob("frame_*.png")):
             raise RuntimeError("no frames extracted for GIF")
 
-        ok = False
-        if want_gifski:
+        if encoder == "gifski":
+            if not find_gifski():
+                raise RuntimeError("gifski selected but binary not found")
             ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
-        if not ok:
+            if not ok:
+                raise RuntimeError("gifski encode failed (no fallback to ffmpeg when gifski is selected)")
+        else:
             # ffmpeg palette from PNG sequence
             vf = _ffmpeg_palette_vf(fps=fps, max_colors=256)
             _run([
@@ -601,17 +603,21 @@ def encode_gif_from_png_sequence(
 
     if encoder == "gifski":
         gs = find_gifski()
-        if gs:
-            cmd = [
-                gs, "--fps", str(fps),
-                "--quality", str(quality),
-                "-o", str(dest),
-                *[str(f) for f in files],
-            ]
+        if not gs:
+            raise RuntimeError("gifski selected but binary not found")
+        cmd = [
+            gs, "--fps", str(fps),
+            "--quality", str(quality),
+            "-o", str(dest),
+            *[str(f) for f in files],
+        ]
+        try:
             subprocess.run(cmd, check=True, capture_output=True)
-            if dest.is_file() and dest.stat().st_size > 50:
-                return
-        encoder = "ffmpeg"
+        except Exception as e:
+            raise RuntimeError(f"gifski encode failed (no ffmpeg fallback): {e}") from e
+        if dest.is_file() and dest.stat().st_size > 50:
+            return
+        raise RuntimeError("gifski encode produced empty file (no ffmpeg fallback)")
 
     if encoder == "ffmpeg":
         ff = find_ffmpeg()
@@ -998,7 +1004,6 @@ def _reencode_crop_hq(
     if not ff:
         raise RuntimeError("FFmpeg not found")
     encoder = (encoder or "ffmpeg").strip().lower()
-    want_gs = encoder == "gifski" and bool(find_gifski())
     tmp = Path(tempfile.mkdtemp(prefix="sm_crop_"))
     try:
         frames = tmp / "f"
@@ -1013,10 +1018,13 @@ def _reencode_crop_hq(
         ])
         if not list(frames.glob("frame_*.png")):
             raise RuntimeError("crop produced no frames")
-        ok = False
-        if want_gs:
+        if encoder == "gifski":
+            if not find_gifski():
+                raise RuntimeError("gifski selected but binary not found")
             ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
-        if not ok:
+            if not ok:
+                raise RuntimeError("gifski crop-encode failed (no ffmpeg fallback)")
+        else:
             vf = _ffmpeg_palette_vf(fps=fps, max_colors=256)
             _run([
                 ff, "-y", "-hide_banner", "-loglevel", "error",
