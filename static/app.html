@@ -1086,6 +1086,11 @@ input[type="range"]{
         <img src="/static/discord.png" alt="" width="18" height="18" style="display:block"/>
         Continue with Discord
       </button>
+      <button class="btn ghost" id="authTelegram" type="button" style="width:100%;margin-top:6px;display:inline-flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#2AABEE" d="M9.78 14.65l-.3 4.2c.43 0 .62-.18.85-.4l2.04-1.94 4.23 3.1c.78.43 1.33.2 1.54-.72l2.8-13.13h.01c.25-1.16-.42-1.61-1.18-1.33L3.3 9.7c-1.13.44-1.11 1.07-.19 1.35l4.37 1.36 10.15-6.4c.48-.29.91-.13.55.18L9.78 14.65z"/></svg>
+        Continue with Telegram
+      </button>
+      <div id="tgWidgetHost" style="display:none;margin-top:10px;text-align:center"></div>
     </div>
     <div class="switch" id="authSwitch">No account? <a id="authToggle">Sign up</a></div>
   </div>
@@ -1981,7 +1986,7 @@ document.getElementById('accLogin')?.addEventListener('click', () => openAuthMod
     } catch (e) { alert(String(e)); }
   });
   window.addEventListener('message', (ev) => {
-    if (ev.data && ev.data.type === 'discord_login' && ev.data.token) {
+    if (ev.data && (ev.data.type === 'discord_login' || ev.data.type === 'telegram_login') && ev.data.token) {
       try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
       location.reload();
     }
@@ -4237,8 +4242,44 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   }
   document.getElementById('authDiscord')?.addEventListener('click', startDiscord);
   document.getElementById('btnDiscordLogin')?.addEventListener('click', startDiscord);
+
+  document.getElementById('authTelegram')?.addEventListener('click', async function(){
+    try {
+      const r = await fetch('/api/auth/telegram/config');
+      const d = await r.json();
+      if (!d.ok || !d.bot_username) { alert(d.msg || 'Telegram not configured'); return; }
+      const host = document.getElementById('tgWidgetHost');
+      if (!host) return;
+      host.style.display = 'block';
+      host.innerHTML = '';
+      window.onTelegramAuth = async function(user){
+        try {
+          const res = await fetch('/api/auth/telegram', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify(user)
+          });
+          const j = await res.json();
+          if (!j.ok || !j.token) { alert(j.msg || 'Telegram auth failed'); return; }
+          try { localStorage.setItem('sm_session', j.token); } catch(e){}
+          location.reload();
+        } catch(e) { alert(String(e)); }
+      };
+      const s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://telegram.org/js/telegram-widget.js?22';
+      s.setAttribute('data-telegram-login', d.bot_username);
+      s.setAttribute('data-size', 'large');
+      s.setAttribute('data-radius', '12');
+      s.setAttribute('data-request-access', 'write');
+      s.setAttribute('data-userpic', 'true');
+      s.setAttribute('data-onauth', 'onTelegramAuth(user)');
+      host.appendChild(s);
+    } catch(e) { alert(String(e)); }
+  });
   window.addEventListener('message', function(ev){
-    if (ev.data && ev.data.type === 'discord_login' && ev.data.token) {
+    if (ev.data && (ev.data.type === 'discord_login' || ev.data.type === 'telegram_login') && ev.data.token) {
       try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
       location.reload();
     }

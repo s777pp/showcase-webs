@@ -1173,6 +1173,11 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
         </svg>
         <span class="oauth-label" data-i="nav_google">Continue with Google</span>
       </button>
+      <button type="button" class="btn-oauth" id="authTelegram">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#2AABEE" d="M9.78 14.65l-.3 4.2c.43 0 .62-.18.85-.4l2.04-1.94 4.23 3.1c.78.43 1.33.2 1.54-.72l2.8-13.13h.01c.25-1.16-.42-1.61-1.18-1.33L3.3 9.7c-1.13.44-1.11 1.07-.19 1.35l4.37 1.36 10.15-6.4c.48-.29.91-.13.55.18L9.78 14.65z"/></svg>
+        <span class="oauth-label" data-i="nav_telegram">Continue with Telegram</span>
+      </button>
+      <div id="tgWidgetHost" style="display:none;margin-top:8px;text-align:center"></div>
     </div>
     <div class="switch" id="authSwitch">Already have an account? <a id="authToggle">Log in</a></div>
   </div>
@@ -1190,6 +1195,8 @@ const I18N = {
     nav_discord_short: "Discord",
     nav_google: "Continue with Google",
     nav_google_short: "Google",
+    nav_telegram: "Continue with Telegram",
+    nav_telegram_short: "Telegram",
     nav_price: "Pricing",
     nav_tools: "Tools",
     nav_reg: "Sign up",
@@ -1244,6 +1251,8 @@ const I18N = {
     nav_discord_short: "Discord",
     nav_google: "Продолжить с Google",
     nav_google_short: "Google",
+    nav_telegram: "Продолжить с Telegram",
+    nav_telegram_short: "Telegram",
     nav_price: "Цены",
     nav_tools: "Инструменты",
     nav_reg: "Регистрация",
@@ -1488,9 +1497,43 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   document.getElementById('authDiscord')?.addEventListener('click', function(e){ goOAuth('discord', e); });
   document.getElementById('authGoogle')?.addEventListener('click', function(e){ goOAuth('google', e); });
+  document.getElementById('authTelegram')?.addEventListener('click', async function(){
+    try {
+      var r = await fetch('/api/auth/telegram/config');
+      var d = await r.json();
+      if (!d.ok || !d.bot_username) { alert(d.msg || 'Telegram not configured'); return; }
+      var host = document.getElementById('tgWidgetHost');
+      host.style.display = 'block';
+      host.innerHTML = '';
+      window.onTelegramAuth = async function(user){
+        try {
+          var res = await fetch('/api/auth/telegram', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify(user)
+          });
+          var j = await res.json();
+          if (!j.ok || !j.token) { alert(j.msg || 'Telegram auth failed'); return; }
+          try { localStorage.setItem('sm_session', j.token); } catch(e){}
+          location.reload();
+        } catch(e) { alert(String(e)); }
+      };
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://telegram.org/js/telegram-widget.js?22';
+      s.setAttribute('data-telegram-login', d.bot_username);
+      s.setAttribute('data-size', 'large');
+      s.setAttribute('data-radius', '12');
+      s.setAttribute('data-request-access', 'write');
+      s.setAttribute('data-userpic', 'true');
+      s.setAttribute('data-onauth', 'onTelegramAuth(user)');
+      host.appendChild(s);
+    } catch(e) { alert(String(e)); }
+  });
   window.addEventListener('message', function(ev){
     if (!ev.data) return;
-    if ((ev.data.type === 'discord_login' || ev.data.type === 'google_login') && ev.data.token) {
+    if ((ev.data.type === 'discord_login' || ev.data.type === 'google_login' || ev.data.type === 'telegram_login') && ev.data.token) {
       try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
       location.href = '/app';
     }
