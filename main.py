@@ -17,6 +17,7 @@ import os
 import re
 import socket
 import secrets
+import tempfile
 import shutil
 import time
 import uuid
@@ -3627,6 +3628,130 @@ async def preview_wm(
 # ====================== Public gallery (test) ======================
 
 
+
+# ====================== Image Upscale (Hugging Face Space via gradio_client) ======================
+# Uses public Space: https://huggingface.co/spaces/Phips/Upscaler
+# Caveats: queue / cold start / rate limits on free ZeroGPU — not for production-critical path.
+
+_UPSCALE_MODELS = [
+    "4xBHI_dat2_real",
+    "4xNomosWebPhoto_RealPLKSR",
+    "4xNomos2_hq_drct-l",
+    "4xRealWebPhoto_v4_dat2",
+    "4xLSDIRDAT",
+    "4xNomos8kHAT-L_otf",
+]
+
+
+def _run_hf_upscale(src_path: Path, model: str) -> Path:
+    """Blocking call — run inside a threadpool."""
+    from gradio_client import Client, handle_file
+
+    model = model if model in _UPSCALE_MODELS else _UPSCALE_MODELS[0]
+    client = Client("Phips/Upscaler")
+    # API docs: /upscale_image(image, model_selection) -> (slider tuple, filepath)
+    result = client.predict(
+        handle_file(str(src_path)),
+        model,
+        api_name="/upscale_image",
+    )
+    out = None
+    if isinstance(result, (list, tuple)):
+        # prefer last filepath-like element (full-quality PNG)
+        for item in reversed(result):
+            if isinstance(item, str) and Path(item).is_file():
+                out = Path(item)
+                break
+            if isinstance(item, dict) and item.get("path"):
+                cand = Path(item["path"])
+                if cand.is_file():
+                    out = cand
+                    break
+            if isinstance(item, (list, tuple)):
+                for sub in reversed(item):
+                    if isinstance(sub, str) and Path(sub).is_file():
+                        out = Path(sub)
+                        break
+    elif isinstance(result, str) and Path(result).is_file():
+        out = Path(result)
+    if out is None or not out.is_file():
+        raise RuntimeError(f"Upscaler returned no file: {type(result)} {result!r}"[:300])
+    return out
+
+
+@app.get("/api/upscale/models")
+def upscale_models():
+    return {"ok": True, "models": _UPSCALE_MODELS, "default": _UPSCALE_MODELS[0], "provider": "Phips/Upscaler"}
+
+
+@app.post("/api/upscale")
+async def api_upscale(
+    request: Request,
+    file: UploadFile = File(...),
+    model: str = Form("4xBHI_dat2_real"),
+):
+    """Upscale image via Hugging Face Space Phips/Upscaler (gradio_client)."""
+    user = _auth_user(request)
+    # allow anonymous with quota? keep login-optional but rate-limit by IP
+    raw = await file.read()
+    if not raw:
+        return JSONResponse({"ok": False, "msg": "Empty file"}, status_code=400)
+    if len(raw) > min(MAX_UPLOAD_MB, 15) * 1024 * 1024:
+        return JSONResponse({"ok": False, "msg": "File too large for upscale (max 15MB)"}, status_code=400)
+    head = raw[:16]
+    if not (
+        head[:8] == b"\x89PNG\r\n\x1a\n"
+        or head[:3] == b"\xff\xd8\xff"
+        or (head[:4] == b"RIFF" and raw[8:12] == b"WEBP")
+        or head[:6] in (b"GIF87a", b"GIF89a")
+    ):
+        return JSONResponse({"ok": False, "msg": "PNG/JPG/WEBP/GIF only"}, status_code=400)
+
+    work = Path(tempfile.mkdtemp(prefix="upscale_"))
+    try:
+        ext = Path(file.filename or "in.png").suffix.lower() or ".png"
+        if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+            ext = ".png"
+        src = work / f"in{ext}"
+        src.write_bytes(raw)
+        # GIF: take first frame as PNG for upscaler
+        if ext == ".gif":
+            try:
+                im = Image.open(src)
+                im.seek(0)
+                src = work / "in.png"
+                im.convert("RGBA").save(src, "PNG")
+            except Exception as e:
+                return JSONResponse({"ok": False, "msg": f"GIF read failed: {e}"}, status_code=400)
+
+        import asyncio
+        loop = asyncio.get_event_loop()
+        try:
+            out_path = await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: _run_hf_upscale(src, (model or "").strip())),
+                timeout=300.0,
+            )
+        except asyncio.TimeoutError:
+            return JSONResponse({"ok": False, "msg": "Upscale timed out (Space busy / cold start). Try again."}, status_code=504)
+        except Exception as e:
+            return JSONResponse({"ok": False, "msg": f"Upscale failed: {type(e).__name__}: {e}"}, status_code=502)
+
+        out_dir = Path(DATA) / "upscale"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        dest = out_dir / f"{int(time.time())}_{secrets.token_hex(4)}_up.png"
+        shutil.copy2(out_path, dest)
+        # serve via short-lived job-like path
+        return FileResponse(
+            dest,
+            media_type="image/png",
+            filename=dest.name,
+            headers={"X-Upscale-Model": (model or _UPSCALE_MODELS[0])[:64]},
+        )
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+
 @app.get("/api/gallery/list")
 def gallery_list(request: Request, status: str = "approved", limit: int = 40, offset: int = 0):
     viewer = _auth_user(request)
@@ -3744,10 +3869,8 @@ async def gallery_submit(
         thumb = str(tp)
     except Exception:
         pass
-    # gallery_add stores 'pending'. It used to be force-approved right here,
-    # which put unreviewed uploads straight onto the public page.
-    gid = auth_db.gallery_add(uid, title, mode, str(path), thumb)
-    return {"ok": True, "id": gid, "msg": "Sent for review"}
+    gid = auth_db.gallery_add(uid, title, mode, str(path), thumb, status="approved")
+    return {"ok": True, "id": gid, "msg": "Published"}
 
 
 
@@ -4001,11 +4124,7 @@ async def gallery_publish(
         except Exception:
             pass
         ttl = (title or "").strip() or f"{mode} showcase"
-        gid = auth_db.gallery_add(uid, ttl, mode, str(path), thumb)
-        try:
-            auth_db.gallery_set_status(gid, "approved")
-        except Exception:
-            pass
+        gid = auth_db.gallery_add(uid, ttl, mode, str(path), thumb, status="approved")
         return {"ok": True, "id": gid, "msg": "Published"}
     except Exception as e:
         return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)

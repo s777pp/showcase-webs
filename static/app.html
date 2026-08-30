@@ -549,6 +549,7 @@ input[type="range"]{
     <button data-tab="compose" data-i="nav_compose">Character</button>
     <button data-tab="download" data-i="nav_download">Download</button>
     <button data-tab="convert" data-i="nav_convert">Converter</button>
+    <button data-tab="upscale" data-i="nav_upscale">Upscale</button>
     <button data-tab="hex" data-i="nav_hex">HEX</button>
     <button data-tab="preview" data-i="nav_preview">Preview</button>
     <button data-tab="steam" data-i="nav_steam">Steam</button>
@@ -851,7 +852,40 @@ input[type="range"]{
     </div>
   </section>
 
-  <section class="tab" id="tab-hex">
+  
+  <section class="tab" id="tab-upscale">
+    <div class="card">
+      <h2>Upscale</h2>
+      <p class="h-sub" style="margin:0 0 12px">Увеличение картинки через Hugging Face Space <code>Phips/Upscaler</code>. Может занять 30–180 сек (очередь / cold start).</p>
+      <div class="row" style="flex-wrap:wrap;gap:12px;align-items:flex-end">
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+          Файл
+          <input type="file" id="upscaleFile" accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif"/>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+          Модель
+          <select id="upscaleModel" style="min-width:220px">
+            <option value="4xBHI_dat2_real">4xBHI_dat2_real (default)</option>
+            <option value="4xNomosWebPhoto_RealPLKSR">4xNomosWebPhoto_RealPLKSR</option>
+            <option value="4xNomos2_hq_drct-l">4xNomos2_hq_drct-l</option>
+            <option value="4xRealWebPhoto_v4_dat2">4xRealWebPhoto_v4_dat2</option>
+            <option value="4xLSDIRDAT">4xLSDIRDAT</option>
+            <option value="4xNomos8kHAT-L_otf">4xNomos8kHAT-L_otf</option>
+          </select>
+        </label>
+        <button class="btn" type="button" id="btnUpscale">Upscale</button>
+      </div>
+      <div id="upscaleStatus" class="status" style="margin-top:12px"></div>
+      <div id="upscalePreview" style="margin-top:14px;display:none">
+        <img id="upscaleImg" alt="upscaled" style="max-width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.1)"/>
+        <div style="margin-top:10px">
+          <a class="btn" id="upscaleDownload" download="upscaled.png" href="#">Скачать PNG</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<section class="tab" id="tab-hex">
     <div class="card">
       <h2 data-i="hex_h">HEX 21</h2>
       <p class="steps" style="margin-bottom:16px">Steam trick: set last byte to <code>0x21</code> on PNG / GIF (and other files). Download ZIP with patched files.</p>
@@ -4854,6 +4888,46 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
+})();
+
+
+/* ---- Upscale (HF Space) ---- */
+(function(){
+  const btn = document.getElementById('btnUpscale');
+  if (!btn) return;
+  const st = document.getElementById('upscaleStatus');
+  const prev = document.getElementById('upscalePreview');
+  const img = document.getElementById('upscaleImg');
+  const dl = document.getElementById('upscaleDownload');
+  btn.addEventListener('click', async function(){
+    const f = document.getElementById('upscaleFile')?.files?.[0];
+    const model = document.getElementById('upscaleModel')?.value || '4xBHI_dat2_real';
+    if (!f) { if (st) st.textContent = 'Выбери файл'; return; }
+    btn.disabled = true;
+    if (st) st.textContent = 'Upscale… это может занять 1–3 минуты (очередь Space)';
+    if (prev) prev.style.display = 'none';
+    try {
+      const fd = new FormData();
+      fd.append('file', f);
+      fd.append('model', model);
+      const r = await fetch('/api/upscale', { method:'POST', body: fd, credentials:'include', headers: (typeof headers==='function'?headers():{}) });
+      if (!r.ok) {
+        let msg = 'Upscale failed';
+        try { const j = await r.json(); msg = j.msg || msg; } catch(e){}
+        throw new Error(msg);
+      }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      if (img) img.src = url;
+      if (dl) { dl.href = url; dl.download = 'upscaled_' + model + '.png'; }
+      if (prev) prev.style.display = 'block';
+      if (st) st.textContent = 'Готово';
+    } catch (e) {
+      if (st) st.textContent = String(e.message || e);
+    } finally {
+      btn.disabled = false;
+    }
+  });
 })();
 
 </script>
