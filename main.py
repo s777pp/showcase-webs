@@ -3663,7 +3663,7 @@ async def preview_wm(
 # the user's supplied Hugging Face Space. Endpoint names are discovered at runtime
 # from the Gradio API schema instead of being hard-coded, so the integration survives
 # UI/API changes in the Space.
-HF_VIDEO_SPACE = (os.environ.get("HF_VIDEO_UPSCALE_SPACE") or "babaTEEpe/upscale").strip()
+HF_VIDEO_SPACE = (os.environ.get("HF_VIDEO_UPSCALE_SPACE") or "kramp/video-upscaler").strip()
 HF_IMAGE_SPACE = (os.environ.get("HF_IMAGE_UPSCALE_SPACE") or "Phips/Upscaler").strip()
 HF_IMAGE_FALLBACK_SPACE = (os.environ.get("HF_IMAGE_UPSCALE_FALLBACK_SPACE") or "").strip()
 HF_TOKEN = (os.environ.get("HF_TOKEN") or "").strip()
@@ -4044,119 +4044,278 @@ def _hf_wait_sse(url: str, headers: dict, timeout: int = 900):
     raise RuntimeError("HF job ended without a complete event")
 
 
-def _hf_call_direct(src_path: Path, *, space: str, kind: str) -> Path:
-    """Call current Gradio v2 REST API without relying on the legacy /config route."""
-    import requests as _requests
-    import json as _json
-    from urllib.parse import quote as _quote, urlsplit
+def _kramp_video_endpoint(space: str, headers: dict) -> tuple[str, dict | None]:
+    """Resolve Kramp's Gradio endpoint. The current Space names it from
+    start_upscaler; fall back to /gradio_api/info if the endpoint name changes."""
+    preferred = "/start_upscaler"
+    try:
+        origin, info, _ = _hf_direct_info(space)
+        for name, meta in _hf_info_endpoints(info):
+            nm = str(name or "")
+            txt = (nm + " " + str(meta.get("description") or "") + " " + str(meta.get("display_name") or "")).lower()
+            if "start_upscaler" in nm.lower() or ("upscal" in txt and "video" in txt):
+                return nm if nm.startswith("/") else "/" + nm.lstrip("/"), meta
+    except Exception:
+        pass
+    return preferred, None
 
-    origin, info, call_prefix = _hf_direct_info(space)
-    endpoint_name, meta = _hf_select_direct_endpoint(info, kind)
-    params = _param_list(meta)
-    headers = {"User-Agent": "ShowcaseMaker/1.0"}
+
+def _hf_call_kramp_video(src_path: Path, *, space: str) -> Path:
+    """Call kramp/video-upscaler using the current Gradio REST/SSE API.
+
+    The public Space's current function is start_upscaler(video_file,
+    upscaler_name, as_gif, speed_factor, half_precision, tile, tile_overlap,
+    upscaler_factor, workers). It is ZeroGPU-bound and limits each submitted
+    clip to 90 frames and 1024x1024, so the caller chunks longer videos and
+    normalizes each chunk before submission.
+    """
+    import requests as _requests
+    from urllib.parse import quote as _quote
+
+    origin = _hf_public_origin(space)
+    headers = {"User-Agent": "ShowcaseMaker/1.2"}
     if HF_TOKEN:
         headers["Authorization"] = f"Bearer {HF_TOKEN}"
 
     file_value = _hf_direct_upload(origin, src_path, headers)
-    payload = {}
+    endpoint, _meta = _kramp_video_endpoint(space, headers)
+    endpoint_path = endpoint.lstrip("/")
+    call_url = f"{origin}/gradio_api/call/{endpoint_path}"
+
+    # Current Space defaults/choices from its source: R-ESRGAN AnimeVideo,
+    # MP4 output, normal speed, FP16, tiling disabled on ZeroGPU, overlap 8,
+    # factor 1.5. We expose a stable quality-first default via ENV and keep
+    # workers conservative because the remote GPU is the limiting resource.
+    try:
+        factor = float(os.environ.get("HF_VIDEO_UPSCALE_FACTOR", "2.0"))
+    except Exception:
+        factor = 2.0
+    factor = max(1.1, min(4.0, factor))
+    try:
+        workers = int(os.environ.get("HF_VIDEO_UPSCALE_WORKERS", "8"))
+    except Exception:
+        workers = 8
+    workers = max(2, min(64, workers))
+
+    data = [
+        file_value,
+        os.environ.get("HF_VIDEO_UPSCALER_MODEL", "R-ESRGAN AnimeVideo"),
+        False,      # as_gif — we always keep the upscaled MP4 and create GIF locally
+        1.0,       # speed_factor
+        True,      # half_precision
+        0,         # tile (disabled/automatic on ZeroGPU)
+        8,         # tile overlap
+        factor,    # upscaler_factor
+        workers,   # remote worker threads
+    ]
+
+    r = _requests.post(
+        call_url,
+        headers={**headers, "Content-Type": "application/json"},
+        json={"data": data},
+        timeout=90,
+    )
+    if not r.ok:
+        raise RuntimeError(f"HF video submit failed: HTTP {r.status_code}: {r.text[:700]}")
+    try:
+        start_result = r.json()
+    except Exception as e:
+        raise RuntimeError(f"HF video submit returned invalid JSON: {r.text[:500]}") from e
+    event_id = start_result.get("event_id") if isinstance(start_result, dict) else None
+    if not event_id:
+        raise RuntimeError(f"HF video submit returned no event_id: {start_result!r}"[:1200])
+
+    result = _hf_wait_sse(f"{call_url}/{event_id}", headers, timeout=1800)
+    result = _hf_result_payload(result)
+
+    def find_remote(v):
+        if isinstance(v, dict):
+            u = v.get("url")
+            if isinstance(u, str) and u.startswith(("http://", "https://")):
+                return u, v.get("orig_name") or "upscaled.mp4"
+            p = v.get("path")
+            if isinstance(p, str) and p:
+                return ("path", p), v.get("orig_name") or Path(p).name or "upscaled.mp4"
+            for k in ("data", "output", "value", "files", "video"):
+                if k in v:
+                    got = find_remote(v[k])
+                    if got:
+                        return got
+        if isinstance(v, (list, tuple)):
+            for item in reversed(v):
+                got = find_remote(item)
+                if got:
+                    return got
+        return None
+
+    found = find_remote(result)
+    if not found:
+        raise RuntimeError(f"HF video endpoint returned no downloadable file: {result!r}"[:1800])
+    loc, name = found
+    if isinstance(loc, tuple) and loc[0] == "path":
+        remote_path = str(loc[1])
+        url = f"{origin}/gradio_api/file={_quote(remote_path, safe='/:,') }"
+    else:
+        url = loc
+    rr = _requests.get(url, headers=headers, timeout=600)
+    if not rr.ok:
+        raise RuntimeError(f"HF output download failed: HTTP {rr.status_code}: {rr.text[:700]}")
+    ext = Path(str(name)).suffix.lower()
+    if ext not in (".mp4", ".avi", ".mov", ".webm", ".mkv"):
+        ext = ".mp4"
+    out_dir = Path(tempfile.mkdtemp(prefix="hf_kramp_out_"))
+    out = out_dir / f"output{ext}"
+    out.write_bytes(rr.content)
+    if out.stat().st_size < 1024:
+        raise RuntimeError("HF video output is empty")
+    return out
+
+
+def _prepare_kramp_chunk(src: Path, dest: Path, start: float, frames: int, max_w: int = 1024, max_h: int = 1024) -> None:
+    """Create a <=90-frame MP4 accepted by the ZeroGPU Space."""
+    ff = proc.find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not available")
+    info = proc.probe_media(src)
+    w = int(info.get("width") or 0)
+    h = int(info.get("height") or 0)
+    if w <= 0 or h <= 0:
+        raise RuntimeError("Could not determine input video dimensions")
+    scale = min(1.0, max_w / w, max_h / h)
+    nw = max(2, int(w * scale) // 2 * 2)
+    nh = max(2, int(h * scale) // 2 * 2)
+    fps = float(info.get("fps") or 30.0)
+    fps = max(1.0, min(60.0, fps))
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        ff, "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(src), "-ss", f"{max(0.0, start):.6f}",
+        "-frames:v", str(max(1, min(90, int(frames)))),
+        "-an", "-vf", f"scale={nw}:{nh}:flags=lanczos",
+        "-r", f"{fps:.6f}", "-c:v", "libx264", "-preset", "veryfast",
+        "-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+        str(dest),
+    ]
+    proc._run(cmd)
+    if not dest.is_file() or dest.stat().st_size < 1024:
+        raise RuntimeError("Failed to prepare video chunk for the upscaler")
+
+
+def _normalize_video_for_concat(src: Path, dest: Path, fps: float | None = None) -> None:
+    ff = proc.find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not available")
+    fps = max(1.0, min(60.0, float(fps or 24.0)))
+    proc._run([
+        ff, "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(src), "-an",
+        "-r", f"{fps:.6f}",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+        "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+        str(dest),
+    ])
+    if not dest.is_file() or dest.stat().st_size < 1024:
+        raise RuntimeError("Failed to normalize upscaled chunk")
+
+
+def _concat_upscaled_chunks(chunks: list[Path], dest: Path) -> None:
+    ff = proc.find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not available")
+    if not chunks:
+        raise RuntimeError("No upscaled chunks")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if len(chunks) == 1:
+        shutil.copy2(chunks[0], dest)
+        return
+    work = Path(tempfile.mkdtemp(prefix="kramp_concat_"))
+    try:
+        list_file = work / "concat.txt"
+        with list_file.open("w", encoding="utf-8") as fh:
+            for p in chunks:
+                fh.write("file '" + str(Path(p).resolve()).replace("'", "'\\''") + "'\n")
+        try:
+            proc._run([
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-f", "concat", "-safe", "0", "-i", str(list_file),
+                "-c", "copy", "-movflags", "+faststart", str(dest),
+            ])
+        except Exception:
+            # Fallback: filter concat and re-encode if time bases/codecs differ.
+            inputs = []
+            for p in chunks:
+                inputs += ["-i", str(p)]
+            n = len(chunks)
+            concat_inputs = "".join(f"[{i}:v:0]" for i in range(n))
+            proc._run([
+                ff, "-y", "-hide_banner", "-loglevel", "error", *inputs,
+                "-filter_complex", f"{concat_inputs}concat=n={n}:v=1:a=0[v]",
+                "-map", "[v]", "-c:v", "libx264", "-preset", "veryfast",
+                "-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(dest),
+            ])
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    if not dest.is_file() or dest.stat().st_size < 1024:
+        raise RuntimeError("Failed to concatenate upscaled chunks")
+
+
+def _hf_call_direct(src_path: Path, *, space: str, kind: str) -> Path:
+    """Call a Gradio Space through the modern REST/SSE API."""
+    if kind == "video":
+        # The kramp Space is intentionally handled by a dedicated implementation
+        # because ZeroGPU limits each request to 90 frames / 1024px.
+        return _hf_call_kramp_video(src_path, space=space)
+    return _hf_call_direct_generic(src_path, space=space, kind=kind)
+
+
+def _hf_call_direct_generic(src_path: Path, *, space: str, kind: str) -> Path:
+    """Generic modern Gradio REST call used only as an image fallback."""
+    import requests as _requests
+    from urllib.parse import quote as _quote
+
+    origin, info, call_prefix = _hf_direct_info(space)
+    endpoint_name, meta = _hf_select_direct_endpoint(info, kind)
+    params = _param_list(meta)
+    headers = {"User-Agent": "ShowcaseMaker/1.1"}
+    if HF_TOKEN:
+        headers["Authorization"] = f"Bearer {HF_TOKEN}"
+    file_value = _hf_direct_upload(origin, src_path, headers)
+    payload = []
     file_used = False
     for p in params:
-        pname = str(p.get("parameter_name") or p.get("name") or "").strip()
-        if not pname:
-            continue
         txt = _param_text(p)
-        is_file = any(x in txt for x in ("video", "image", "file", "filepath", "media")) and (
-            "input" in txt or "upload" in txt or "source" in txt or "file" in txt or "media" in txt
-        )
-        if is_file and not file_used:
-            payload[pname] = file_value
+        if any(x in txt for x in ("video", "image", "file", "filepath", "media")) and not file_used:
+            payload.append(file_value)
             file_used = True
             continue
         default = _default_or_example(p)
         if default is not None:
-            payload[pname] = default
+            payload.append(default)
             continue
         guessed = _guess_scalar(p, kind)
         if guessed is None:
-            # Only skip optional-looking parameters. Required scalar inputs are a hard failure.
-            optional = bool(p.get("optional") or p.get("parameter_has_default") is False and p.get("default_value") is None)
-            if optional:
-                continue
             raise RuntimeError(f"Required unsupported Space input: {txt}")
-        # Do not invent a model selection for the dedicated video Space unless it explicitly asks for one.
-        payload[pname] = guessed
-
+        payload.append(guessed)
     if not file_used:
-        raise RuntimeError(f"No file input found for HF video endpoint {endpoint_name}")
-
-    # agents.md provides the exact call prefix, e.g. /gradio_api/call/v2/.
+        raise RuntimeError(f"No file input found for HF endpoint {endpoint_name}")
     endpoint_path = str(endpoint_name).lstrip("/")
     if "{endpoint}" in call_prefix:
         call_url = call_prefix.replace("{endpoint}", endpoint_path)
     else:
         call_url = call_prefix.rstrip("/") + "/" + endpoint_path
-    r = _requests.post(call_url, headers={**headers, "Content-Type": "application/json"}, json=payload, timeout=60)
+    r = _requests.post(call_url, headers={**headers, "Content-Type": "application/json"}, json={"data": payload}, timeout=90)
     if not r.ok:
-        # Some Gradio deployments still expect the legacy data-array shape.
-        fallback = _requests.post(
-            call_url,
-            headers={**headers, "Content-Type": "application/json"},
-            json={"data": [payload.get(str(p.get("parameter_name") or p.get("name"))) for p in params]},
-            timeout=60,
-        )
-        if not fallback.ok:
-            raise RuntimeError(f"HF upscale submit failed: HTTP {r.status_code}: {r.text[:300]}")
-        r = fallback
-    start = r.json()
-    event_id = start.get("event_id") if isinstance(start, dict) else None
+        raise RuntimeError(f"HF submit failed: HTTP {r.status_code}: {r.text[:500]}")
+    start_result = r.json()
+    event_id = start_result.get("event_id") if isinstance(start_result, dict) else None
     if not event_id:
-        raise RuntimeError(f"HF upscale submit returned no event_id: {start!r}")
-
-    poll_url = call_url.rstrip("/") + "/" + str(event_id)
-    result = _hf_wait_sse(poll_url, headers, timeout=900)
+        raise RuntimeError(f"HF submit returned no event_id: {start_result!r}")
+    result = _hf_wait_sse(call_url.rstrip("/") + "/" + str(event_id), headers, timeout=1800)
     result = _hf_result_payload(result)
     output = _extract_hf_file(result)
     if output and output.is_file():
         return output
-
-    # REST returns FileData with a remote path/URL; download it locally.
-    def find_remote(v):
-        if isinstance(v, dict):
-            if isinstance(v.get("url"), str) and v["url"].startswith(("http://", "https://")):
-                return v["url"], v.get("orig_name") or "output.mp4"
-            if isinstance(v.get("path"), str) and v["path"]:
-                return ("path", v["path"]), v.get("orig_name") or Path(v["path"]).name or "output.mp4"
-            for k in ("data", "output", "value", "files"):
-                if k in v:
-                    found = find_remote(v[k])
-                    if found:
-                        return found
-        if isinstance(v, (list, tuple)):
-            for item in reversed(v):
-                found = find_remote(item)
-                if found:
-                    return found
-        return None
-
-    found = find_remote(result)
-    if not found:
-        raise RuntimeError(f"HF video endpoint returned no downloadable file: {result!r}"[:1000])
-    loc, name = found
-    if isinstance(loc, tuple) and loc[0] == "path":
-        remote_path = loc[1]
-        url = f"{origin}/gradio_api/file={_quote(remote_path, safe='/,:') }"
-    else:
-        url = loc
-    rr = _requests.get(url, headers=headers, timeout=120)
-    if not rr.ok:
-        raise RuntimeError(f"HF output download failed: HTTP {rr.status_code}: {rr.text[:300]}")
-    suffix = Path(str(name)).suffix.lower() or (".mp4" if kind == "video" else ".png")
-    local = Path(tempfile.mkdtemp(prefix="hf_out_")) / f"output{suffix}"
-    local.write_bytes(rr.content)
-    if local.stat().st_size < 50:
-        raise RuntimeError("HF output download was empty")
-    return local
-
+    raise RuntimeError(f"HF image endpoint returned no local output: {result!r}"[:1200])
 
 def _hf_call_auto(src_path: Path, *, kind: str, requested_model: str = "auto") -> tuple[Path, str, str]:
     """Call a Gradio Space using its live API schema.
@@ -4327,21 +4486,63 @@ def _run_upscale_job(jid: str, source_path: Path, owner_id: int) -> None:
 
         _job_set(jid, pct=12, stage="upscale", media_type=kind, duration=duration,
                  width=info.get("width"), height=info.get("height"), owner_id=owner_id)
-        hf_out, space, selected_model = _hf_call_auto(source_for_model if kind == "image" else source_path, kind=kind)
-        _job_set(jid, pct=72, stage="save", space=space, model=selected_model)
 
         if kind == "image":
+            hf_out, space, selected_model = _hf_call_auto(source_for_model, kind="image")
+            _job_set(jid, pct=72, stage="save", space=space, model=selected_model)
             dest = work_root / "upscaled.png"
-            # Normalize the result to PNG only when it is not already a supported image file.
             shutil.copy2(hf_out, dest)
             outputs = [dest.name]
             _job_set(jid, pct=100, status="done", stage="done", outputs=outputs,
                      files={"image": dest.name}, model=selected_model, space=space)
             return
 
-        # Always expose a browser-friendly MP4. Preserve original audio when present.
+        # Video: kramp/Video Upscaler runs on ZeroGPU and currently accepts no more
+        # than 90 frames and 1024x1024 per request. Split an <=8s source into
+        # <=90-frame chunks, upscale each, then concatenate before restoring audio.
+        space = HF_VIDEO_SPACE
+        selected_model = os.environ.get("HF_VIDEO_UPSCALER_MODEL", "R-ESRGAN AnimeVideo")
+        raw_fps = float(info.get("fps") or 30.0)
+        fps = max(1.0, min(60.0, raw_fps))
+        total_frames = max(1, int(round(duration * fps)))
+        chunk_max = 90
+        n_chunks = max(1, (total_frames + chunk_max - 1) // chunk_max)
+        chunk_source_dir = work_root / "chunks_in"
+        chunk_output_dir = work_root / "chunks_out"
+        chunk_source_dir.mkdir(parents=True, exist_ok=True)
+        chunk_output_dir.mkdir(parents=True, exist_ok=True)
+        normalized_chunks: list[Path] = []
+
+        for idx in range(n_chunks):
+            start_frame = idx * chunk_max
+            frames = min(chunk_max, total_frames - start_frame)
+            start_sec = start_frame / fps
+            _job_set(
+                jid, pct=14 + int(48 * idx / max(1, n_chunks)),
+                stage=f"upscale_chunk:{idx + 1}/{n_chunks}",
+                space=space, model=selected_model,
+            )
+            chunk_in = chunk_source_dir / f"chunk_{idx:03d}.mp4"
+            _prepare_kramp_chunk(source_path, chunk_in, start_sec, frames)
+            hf_out = _hf_call_kramp_video(chunk_in, space=space)
+            chunk_norm = chunk_output_dir / f"chunk_{idx:03d}.mp4"
+            remote_info = None
+            try:
+                remote_info = proc.probe_media(hf_out)
+            except Exception:
+                remote_info = None
+            _normalize_video_for_concat(hf_out, chunk_norm, fps=float((remote_info or {}).get("fps") or fps))
+            normalized_chunks.append(chunk_norm)
+            try:
+                shutil.rmtree(Path(hf_out).parent, ignore_errors=True)
+            except Exception:
+                pass
+
+        video_raw = work_root / "upscaled_no_audio.mp4"
+        _job_set(jid, pct=68, stage="merge", space=space, model=selected_model)
+        _concat_upscaled_chunks(normalized_chunks, video_raw)
         video_out = work_root / "upscaled.mp4"
-        proc.finalize_upscaled_video(hf_out, source_path, video_out, max_duration=UPSCALE_VIDEO_MAX_SEC)
+        proc.finalize_upscaled_video(video_raw, source_path, video_out, max_duration=UPSCALE_VIDEO_MAX_SEC)
         _job_set(jid, pct=84, stage="gif")
         gif_out = work_root / "upscaled.gif"
         gif_fps = int(os.environ.get("UPSCALE_GIF_FPS", "12"))

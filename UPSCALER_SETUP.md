@@ -1,48 +1,45 @@
-# Smart Upscale patch
+# Smart Upscale
 
-Заменить в репозитории:
-- `main.py`
-- `processor.py`
-- `worker.py`
-- `app.html`
+The Upscale tool now supports:
 
-`requirements.txt` и `redis_store.py` уже совместимы с патчем и менять их не требуется.
+- Images: automatic model selection using the existing image Space.
+- Video: up to 8 seconds, processed through `kramp/video-upscaler`.
+- Long videos are split into chunks of at most 90 frames because the ZeroGPU Space enforces that per-request limit.
+- Inputs are normalized to MP4 and max 1024x1024 before the remote video call, matching the Space's ZeroGPU constraints.
+- The upscaled chunks are merged, the original audio is restored when present, and a GIF is generated automatically from the final upscaled video.
+- The UI exposes both `Download Video` and `Download GIF`.
 
-## ENV
+## Environment
 
 ```env
-HF_VIDEO_UPSCALE_SPACE=babaTEEpe/upscale
-# existing image Space; can be changed if needed
+HF_VIDEO_UPSCALE_SPACE=kramp/video-upscaler
 HF_IMAGE_UPSCALE_SPACE=Phips/Upscaler
-# optional fallback image Space
-HF_IMAGE_UPSCALE_FALLBACK_SPACE=
-# optional HF token for better access/rate limits
-HF_TOKEN=
-
+HF_TOKEN=hf_...
 UPSCALE_VIDEO_MAX_SEC=8
 UPSCALE_VIDEO_MAX_MB=100
 UPSCALE_VIDEO_MAX_PIXELS=8294400
+HF_VIDEO_UPSCALE_FACTOR=2.0
+HF_VIDEO_UPSCALER_MODEL=R-ESRGAN AnimeVideo
+HF_VIDEO_UPSCALE_WORKERS=8
 UPSCALE_GIF_FPS=12
 UPSCALE_GIF_WIDTH=750
 MAX_UPSCALE_JOBS_PER_USER=1
 UPSCALE_JOB_TTL=86400
 ```
 
-## Что теперь работает
+`HF_TOKEN` is recommended for public ZeroGPU Spaces because authenticated requests use the token owner's quota rather than the shared anonymous pool.
 
-- фото: automatic image-model selection;
-- видео: MP4/WEBM/MOV/MKV/AVI/M4V;
-- видео не длиннее 8 секунд;
-- асинхронная job через существующий Redis/worker;
-- video upscale через `babaTEEpe/upscale`;
-- после upscale автоматическая GIF-конвертация;
-- скачивание upscaled video и GIF отдельно;
-- видео preview до/после;
-- аудио исходного видео сохраняется в итоговом MP4, если оно было;
-- результат живёт 24 часа и затем удаляется cleanup-процессом.
+## Deployment
 
-## Важно про модель
+For the current project architecture, keep `worker.py` enabled in external mode when possible:
 
-Для видео supplied Space `babaTEEpe/upscale` используется как основной provider. Endpoint и его параметры определяются через Gradio `view_api()` в runtime. Если Space изменит endpoint name, код не требует ручной правки имени endpoint.
+```env
+WORKER_MODE=external
+MAX_JOB_WORKERS=2
+```
 
-Для изображений по умолчанию сохраняется существующий image Space `Phips/Upscaler`, но выбор модели скрыт от пользователя и выполняется автоматически.
+The API creates an `upscale` job, Redis stores the status, and the worker performs the CPU/FFmpeg + Hugging Face work.
+
+## Important
+
+The video Space currently accepts only short clips per ZeroGPU request. The application therefore chunks an 8-second upload into several requests when necessary. This preserves the full video duration instead of silently reducing the frame rate.
