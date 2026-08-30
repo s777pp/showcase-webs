@@ -3877,6 +3877,287 @@ def _extract_hf_file(value) -> Optional[Path]:
     return None
 
 
+def _hf_public_origin(space: str) -> str:
+    """Return the public Space origin without requiring Gradio's /config endpoint."""
+    import re as _re
+    if space.startswith("http://") or space.startswith("https://"):
+        return space.rstrip("/")
+    owner, repo = (space.split("/", 1) + [""])[:2]
+    if not owner or not repo:
+        raise RuntimeError(f"Invalid Hugging Face Space id: {space}")
+    # Standard HF Space subdomain transformation: owner-repo.hf.space.
+    return f"https://{owner}-{repo}.hf.space"
+
+
+def _hf_direct_info(space: str) -> tuple[str, dict, str]:
+    """Fetch modern Gradio API info directly, bypassing the legacy /config endpoint.
+
+    Returns (origin, info, call_prefix). The Space may be Gradio 6+, where gradio_client
+    can fail if the legacy /config route is unavailable. HF documents /gradio_api/info and
+    /gradio_api/call/... as the current API surface.
+    """
+    import requests as _requests
+    import re as _re
+
+    origin = _hf_public_origin(space)
+    headers = {"User-Agent": "ShowcaseMaker/1.0"}
+    if HF_TOKEN:
+        headers["Authorization"] = f"Bearer {HF_TOKEN}"
+
+    # agents.md is the most explicit source for current API routing on HF Spaces.
+    call_prefix = f"{origin}/gradio_api/call/"
+    try:
+        ar = _requests.get(f"https://huggingface.co/spaces/{space}/agents.md", headers=headers, timeout=20)
+        if ar.ok:
+            m = _re.search(r"Call endpoint:\s*POST\s+(https?://[^\\s]+)", ar.text)
+            if m:
+                tpl = m.group(1).rstrip("`")
+                if "{endpoint}" in tpl:
+                    call_prefix = tpl.split("{endpoint}", 1)[0]
+                else:
+                    # Exact endpoint; caller may append nothing and use the selected path separately.
+                    call_prefix = tpl.rsplit("/", 1)[0] + "/"
+    except Exception:
+        pass
+
+    last = None
+    for url in (f"{origin}/gradio_api/info", f"{origin}/gradio_api/openapi.json"):
+        try:
+            r = _requests.get(url, headers=headers, timeout=25)
+            if r.ok:
+                return origin, r.json(), call_prefix
+            last = f"HTTP {r.status_code}: {r.text[:200]}"
+        except Exception as e:
+            last = f"{type(e).__name__}: {e}"
+    raise RuntimeError(f"Could not read modern Gradio API for {space}: {last or 'unknown error'}")
+
+
+def _hf_info_endpoints(info: dict) -> list[tuple[str, dict]]:
+    out: list[tuple[str, dict]] = []
+    named = info.get("named_endpoints") if isinstance(info, dict) else None
+    if isinstance(named, dict):
+        for key, meta in named.items():
+            if isinstance(meta, dict):
+                out.append((str(key), meta))
+    unnamed = info.get("unnamed_endpoints") if isinstance(info, dict) else None
+    if isinstance(unnamed, dict):
+        for key, meta in unnamed.items():
+            if isinstance(meta, dict):
+                out.append((str(key), meta))
+    return out
+
+
+def _hf_select_direct_endpoint(info: dict, kind: str) -> tuple[str, dict]:
+    candidates = []
+    for name, meta in _hf_info_endpoints(info):
+        text = (name + " " + str(meta.get("description") or "") + " " + str(meta.get("display_name") or "")).lower()
+        params = _param_list(meta)
+        ptxt = " ".join(_param_text(p) for p in params)
+        score = 0
+        if "upscal" in text:
+            score += 15
+        if kind == "video":
+            if "video" in text:
+                score += 15
+            if "video" in ptxt:
+                score += 10
+            if "image" in text and "video" not in text:
+                score -= 10
+        else:
+            if "image" in text:
+                score += 12
+            if "image" in ptxt:
+                score += 8
+            if "video" in text and "image" not in text:
+                score -= 10
+        if any(any(x in _param_text(p) for x in ("file", "video", "image", "media", "filepath")) for p in params):
+            score += 5
+        candidates.append((score, name, meta))
+    if not candidates:
+        raise RuntimeError(f"No API endpoints exposed by {kind} upscale Space")
+    candidates.sort(reverse=True, key=lambda x: x[0])
+    if candidates[0][0] < 10:
+        raise RuntimeError(f"No confident {kind} upscale endpoint in Space API")
+    return candidates[0][1], candidates[0][2]
+
+
+def _hf_direct_upload(origin: str, src_path: Path, headers: dict) -> dict:
+    import requests as _requests
+    with Path(src_path).open("rb") as fh:
+        r = _requests.post(
+            f"{origin}/gradio_api/upload",
+            headers=headers,
+            files={"files": (Path(src_path).name, fh, "application/octet-stream")},
+            timeout=120,
+        )
+    if not r.ok:
+        raise RuntimeError(f"HF file upload failed: HTTP {r.status_code}: {r.text[:300]}")
+    value = r.json()
+    path = value[0] if isinstance(value, list) and value else value
+    if isinstance(path, dict):
+        path = path.get("path") or path.get("url")
+    if not path:
+        raise RuntimeError("HF file upload returned no path")
+    return {"path": str(path), "meta": {"_type": "gradio.FileData"}, "orig_name": Path(src_path).name}
+
+
+def _hf_result_payload(raw_result):
+    if isinstance(raw_result, dict) and "data" in raw_result and len(raw_result) == 1:
+        return raw_result["data"]
+    return raw_result
+
+
+def _hf_wait_sse(url: str, headers: dict, timeout: int = 900):
+    import requests as _requests
+    import json as _json
+    with _requests.get(url, headers=headers, stream=True, timeout=timeout) as r:
+        if not r.ok:
+            raise RuntimeError(f"HF job poll failed: HTTP {r.status_code}: {r.text[:300]}")
+        event = None
+        data_lines = []
+        for raw_line in r.iter_lines(decode_unicode=True):
+            if raw_line is None:
+                continue
+            line = raw_line.strip()
+            if not line:
+                if event == "complete" and data_lines:
+                    payload = "\n".join(data_lines)
+                    try:
+                        return _json.loads(payload)
+                    except Exception:
+                        return payload
+                if event in ("error", "failure") and data_lines:
+                    payload = "\n".join(data_lines)
+                    raise RuntimeError(payload[:1000])
+                event, data_lines = None, []
+                continue
+            if line.startswith("event:"):
+                event = line[6:].strip()
+            elif line.startswith("data:"):
+                data_lines.append(line[5:].strip())
+        if event == "complete" and data_lines:
+            payload = "\n".join(data_lines)
+            try:
+                return _json.loads(payload)
+            except Exception:
+                return payload
+    raise RuntimeError("HF job ended without a complete event")
+
+
+def _hf_call_direct(src_path: Path, *, space: str, kind: str) -> Path:
+    """Call current Gradio v2 REST API without relying on the legacy /config route."""
+    import requests as _requests
+    import json as _json
+    from urllib.parse import quote as _quote, urlsplit
+
+    origin, info, call_prefix = _hf_direct_info(space)
+    endpoint_name, meta = _hf_select_direct_endpoint(info, kind)
+    params = _param_list(meta)
+    headers = {"User-Agent": "ShowcaseMaker/1.0"}
+    if HF_TOKEN:
+        headers["Authorization"] = f"Bearer {HF_TOKEN}"
+
+    file_value = _hf_direct_upload(origin, src_path, headers)
+    payload = {}
+    file_used = False
+    for p in params:
+        pname = str(p.get("parameter_name") or p.get("name") or "").strip()
+        if not pname:
+            continue
+        txt = _param_text(p)
+        is_file = any(x in txt for x in ("video", "image", "file", "filepath", "media")) and (
+            "input" in txt or "upload" in txt or "source" in txt or "file" in txt or "media" in txt
+        )
+        if is_file and not file_used:
+            payload[pname] = file_value
+            file_used = True
+            continue
+        default = _default_or_example(p)
+        if default is not None:
+            payload[pname] = default
+            continue
+        guessed = _guess_scalar(p, kind)
+        if guessed is None:
+            # Only skip optional-looking parameters. Required scalar inputs are a hard failure.
+            optional = bool(p.get("optional") or p.get("parameter_has_default") is False and p.get("default_value") is None)
+            if optional:
+                continue
+            raise RuntimeError(f"Required unsupported Space input: {txt}")
+        # Do not invent a model selection for the dedicated video Space unless it explicitly asks for one.
+        payload[pname] = guessed
+
+    if not file_used:
+        raise RuntimeError(f"No file input found for HF video endpoint {endpoint_name}")
+
+    # agents.md provides the exact call prefix, e.g. /gradio_api/call/v2/.
+    endpoint_path = str(endpoint_name).lstrip("/")
+    if "{endpoint}" in call_prefix:
+        call_url = call_prefix.replace("{endpoint}", endpoint_path)
+    else:
+        call_url = call_prefix.rstrip("/") + "/" + endpoint_path
+    r = _requests.post(call_url, headers={**headers, "Content-Type": "application/json"}, json=payload, timeout=60)
+    if not r.ok:
+        # Some Gradio deployments still expect the legacy data-array shape.
+        fallback = _requests.post(
+            call_url,
+            headers={**headers, "Content-Type": "application/json"},
+            json={"data": [payload.get(str(p.get("parameter_name") or p.get("name"))) for p in params]},
+            timeout=60,
+        )
+        if not fallback.ok:
+            raise RuntimeError(f"HF upscale submit failed: HTTP {r.status_code}: {r.text[:300]}")
+        r = fallback
+    start = r.json()
+    event_id = start.get("event_id") if isinstance(start, dict) else None
+    if not event_id:
+        raise RuntimeError(f"HF upscale submit returned no event_id: {start!r}")
+
+    poll_url = call_url.rstrip("/") + "/" + str(event_id)
+    result = _hf_wait_sse(poll_url, headers, timeout=900)
+    result = _hf_result_payload(result)
+    output = _extract_hf_file(result)
+    if output and output.is_file():
+        return output
+
+    # REST returns FileData with a remote path/URL; download it locally.
+    def find_remote(v):
+        if isinstance(v, dict):
+            if isinstance(v.get("url"), str) and v["url"].startswith(("http://", "https://")):
+                return v["url"], v.get("orig_name") or "output.mp4"
+            if isinstance(v.get("path"), str) and v["path"]:
+                return ("path", v["path"]), v.get("orig_name") or Path(v["path"]).name or "output.mp4"
+            for k in ("data", "output", "value", "files"):
+                if k in v:
+                    found = find_remote(v[k])
+                    if found:
+                        return found
+        if isinstance(v, (list, tuple)):
+            for item in reversed(v):
+                found = find_remote(item)
+                if found:
+                    return found
+        return None
+
+    found = find_remote(result)
+    if not found:
+        raise RuntimeError(f"HF video endpoint returned no downloadable file: {result!r}"[:1000])
+    loc, name = found
+    if isinstance(loc, tuple) and loc[0] == "path":
+        remote_path = loc[1]
+        url = f"{origin}/gradio_api/file={_quote(remote_path, safe='/,:') }"
+    else:
+        url = loc
+    rr = _requests.get(url, headers=headers, timeout=120)
+    if not rr.ok:
+        raise RuntimeError(f"HF output download failed: HTTP {rr.status_code}: {rr.text[:300]}")
+    suffix = Path(str(name)).suffix.lower() or (".mp4" if kind == "video" else ".png")
+    local = Path(tempfile.mkdtemp(prefix="hf_out_")) / f"output{suffix}"
+    local.write_bytes(rr.content)
+    if local.stat().st_size < 50:
+        raise RuntimeError("HF output download was empty")
+    return local
+
+
 def _hf_call_auto(src_path: Path, *, kind: str, requested_model: str = "auto") -> tuple[Path, str, str]:
     """Call a Gradio Space using its live API schema.
 
@@ -3891,6 +4172,9 @@ def _hf_call_auto(src_path: Path, *, kind: str, requested_model: str = "auto") -
 
     for space in spaces:
         try:
+            if kind == "video":
+                output = _hf_call_direct(src_path, space=space, kind="video")
+                return output, space, "Automatic Video Upscaler"
             client, schema = _hf_schema(space)
             api_name, meta = _choose_hf_endpoint(schema, kind)
             params = _param_list(meta)
