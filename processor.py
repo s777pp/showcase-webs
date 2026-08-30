@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -478,6 +479,100 @@ def _probe_wh(path: Path) -> tuple[int, int]:
     if len(out) < 2:
         raise RuntimeError(f"ffprobe bad output: {out!r}")
     return int(out[0]), int(out[1])
+
+
+
+def probe_media(path: Path) -> dict:
+    """Return reliable media metadata using ffprobe JSON."""
+    path = Path(path)
+    if not path.is_file():
+        raise RuntimeError(f"source missing: {path}")
+    probe = find_ffprobe()
+    if not probe:
+        raise RuntimeError("ffprobe not available")
+    kw = {}
+    if os.name == "nt":
+        kw["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    cmd = [
+        probe, "-v", "error",
+        "-show_entries",
+        "format=duration,format_name,size:stream=index,codec_type,codec_name,width,height,avg_frame_rate,r_frame_rate,duration,channels",
+        "-of", "json", str(path),
+    ]
+    try:
+        raw = subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT, **kw)
+        data = json.loads(raw or "{}")
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"ffprobe failed: {(e.output or '')[-500:]}") from e
+    except Exception as e:
+        raise RuntimeError(f"ffprobe parse failed: {e}") from e
+
+    streams = data.get("streams") or []
+    fmt = data.get("format") or {}
+    video = next((s for s in streams if s.get("codec_type") == "video"), None)
+    audio = next((s for s in streams if s.get("codec_type") == "audio"), None)
+
+    def _num(v):
+        try:
+            return float(v)
+        except Exception:
+            return 0.0
+
+    def _fps(v):
+        if not v or v in ("0/0", "N/A"):
+            return 0.0
+        try:
+            a, b = str(v).split("/", 1)
+            return float(a) / float(b) if float(b) else 0.0
+        except Exception:
+            return _num(v)
+
+    duration = _num((video or {}).get("duration")) or _num(fmt.get("duration"))
+    return {
+        "duration": duration,
+        "width": int((video or {}).get("width") or 0),
+        "height": int((video or {}).get("height") or 0),
+        "fps": _fps((video or {}).get("avg_frame_rate") or (video or {}).get("r_frame_rate")),
+        "codec": str((video or {}).get("codec_name") or ""),
+        "container": str(fmt.get("format_name") or ""),
+        "size": int(_num(fmt.get("size")) or path.stat().st_size),
+        "has_video": bool(video),
+        "has_audio": bool(audio),
+    }
+
+
+def finalize_upscaled_video(
+    upscaled_path: Path,
+    original_path: Path,
+    dest: Path,
+    max_duration: float = 8.0,
+) -> Path:
+    """Create a browser-friendly MP4 from an upscaled video and preserve source audio."""
+    ff = find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not available")
+    upscaled_path = Path(upscaled_path)
+    original_path = Path(original_path)
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    duration = max(1.0, min(8.0, float(max_duration or 8.0)))
+    cmd = [
+        ff, "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(upscaled_path),
+        "-i", str(original_path),
+        "-map", "0:v:0", "-map", "1:a:0?",
+        "-t", str(duration),
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        "-shortest",
+        str(dest),
+    ]
+    _run(cmd)
+    if not dest.is_file() or dest.stat().st_size < 1024:
+        raise RuntimeError("upscaled video finalization failed")
+    return dest
 
 
 def process_video_workshop(
