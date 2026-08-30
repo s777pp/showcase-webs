@@ -115,6 +115,7 @@ body.carousel-mode .stage{display:block}
   transform-style:preserve-3d;
   will-change:transform;
   cursor:pointer;
+  pointer-events:auto;
 }
 .layer{position:absolute;inset:0;border-radius:16px;overflow:hidden;pointer-events:none}
 .layer-mid{background:#141414;border:1px solid rgba(255,255,255,.08)}
@@ -200,7 +201,7 @@ body.feed-mode .hint{display:none}
 
 /* ===== Modal ===== */
 .modal-bg{
-  display:none;position:fixed;inset:0;z-index:200;
+  display:none;position:fixed;inset:0;z-index:9999;
   background:rgba(0,0,0,.75);backdrop-filter:blur(12px);
   align-items:flex-start;justify-content:center;
   padding:40px 16px;overflow-y:auto;
@@ -309,7 +310,6 @@ body.feed-mode .hint{display:none}
       <a href="/app">Tools</a>
     </div>
     <div class="nav-right">
-      <a class="btn-shiny-nav" href="/app">Open tools</a>
       <a class="btn-pill" href="/app">Open tools →</a>
     </div>
   </nav>
@@ -503,11 +503,28 @@ body.feed-mode .hint{display:none}
         card.appendChild(layer);
       });
 
-      // pause only when hovering THIS card
-      card.addEventListener('mouseenter', () => { paused = true; });
-      card.addEventListener('mouseleave', () => { if (!dragging) paused = false; });
-      card.addEventListener('click', (e) => {
-        if (Math.abs((e.clientX || 0) - dragStartX) > 6) return; // was a drag
+      // Invisible hit layer — 3D cards with pointer-events:none children don't receive clicks otherwise
+      const hit = document.createElement('div');
+      hit.className = 'card-hit';
+      hit.style.cssText = 'position:absolute;inset:0;z-index:20;border-radius:16px;cursor:pointer;pointer-events:auto;background:transparent;transform:translateZ(2px);';
+      card.appendChild(hit);
+
+      hit.addEventListener('mouseenter', () => { paused = true; });
+      hit.addEventListener('mouseleave', () => { if (!dragging) paused = false; });
+      hit.addEventListener('pointerup', (e) => {
+        if (e.button != null && e.button !== 0) return;
+        const moved = Math.hypot((e.clientX || 0) - dragStartX, (e.clientY || 0) - (window._dragStartY || 0));
+        if (moved > 10) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openModal(item);
+      });
+      // also click as fallback
+      hit.addEventListener('click', (e) => {
+        const moved = Math.hypot((e.clientX || 0) - dragStartX, (e.clientY || 0) - (window._dragStartY || 0));
+        if (moved > 10) return;
+        e.preventDefault();
+        e.stopPropagation();
         openModal(item);
       });
 
@@ -652,17 +669,26 @@ body.feed-mode .hint{display:none}
   }, { passive: false });
 
   // drag
+  let dragMoved = false;
+  window._dragStartY = 0;
   stage.addEventListener('pointerdown', (e) => {
     if (viewMode !== 'carousel') return;
     dragging = true;
+    dragMoved = false;
     paused = true;
     dragStartX = e.clientX;
+    window._dragStartY = e.clientY;
     dragStartProgress = progress;
-    stage.setPointerCapture(e.pointerId);
+    // do NOT capture pointer immediately — otherwise card click never fires
   });
   stage.addEventListener('pointermove', (e) => {
     if (!dragging) return;
     const dx = e.clientX - dragStartX;
+    const dy = e.clientY - (window._dragStartY || 0);
+    if (Math.hypot(dx, dy) > 6) {
+      dragMoved = true;
+      try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    }
     progress = dragStartProgress - dx * 0.0045;
   });
   stage.addEventListener('pointerup', () => {
