@@ -103,31 +103,6 @@ def _cleanup_old_jobs(max_age_sec: float = 120.0) -> int:
     return removed
 
 
-def _cleanup_old_upscale_jobs(max_age_sec: float = 24 * 3600.0) -> int:
-    """Remove completed/failed upscale job folders after a day.
-
-    Upscale outputs live outside JOBS because the generic 2-minute job cleaner
-    is intentionally aggressive for normal Process jobs. Keeping these files
-    for 24h gives users time to download the video/GIF result.
-    """
-    root = DATA / "upscale_jobs"
-    if not root.is_dir():
-        return 0
-    now = time.time()
-    removed = 0
-    try:
-        for p in root.iterdir():
-            try:
-                if p.is_dir() and now - p.stat().st_mtime > max_age_sec:
-                    shutil.rmtree(p, ignore_errors=True)
-                    removed += 1
-            except Exception:
-                continue
-    except Exception:
-        pass
-    return removed
-
-
 def _cleanup_loop():
     import time as _time
     while True:
@@ -135,9 +110,6 @@ def _cleanup_loop():
             n = _cleanup_old_jobs(120.0)
             if n:
                 print(f"cleanup: removed {n} old job(s)")
-            u = _cleanup_old_upscale_jobs()
-            if u:
-                print(f"cleanup: removed {u} old upscale job(s)")
         except Exception as e:
             print("cleanup loop:", e)
         _time.sleep(30)
@@ -573,7 +545,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/process/start", 8, 60),
         ("/api/gallery/", 60, 60),
         ("/api/download-url", 5, 60),
-        ("/api/upscale/start", 3, 60),
     )
     async def dispatch(self, request, call_next):
         path = request.url.path
@@ -3658,930 +3629,155 @@ async def preview_wm(
 
 
 
-# ====================== Smart Upscale (image + video) ======================
-# Images keep the existing high-quality image upscaler as a fallback; videos use
-# the user's supplied Hugging Face Space. Endpoint names are discovered at runtime
-# from the Gradio API schema instead of being hard-coded, so the integration survives
-# UI/API changes in the Space.
-HF_VIDEO_SPACE = (os.environ.get("HF_VIDEO_UPSCALE_SPACE") or "Nick088/Real-ESRGAN_Pytorch").strip()
-HF_IMAGE_SPACE = (os.environ.get("HF_IMAGE_UPSCALE_SPACE") or "Phips/Upscaler").strip()
-HF_IMAGE_FALLBACK_SPACE = (os.environ.get("HF_IMAGE_UPSCALE_FALLBACK_SPACE") or "").strip()
-HF_TOKEN = (os.environ.get("HF_TOKEN") or "").strip()
-UPSCALE_VIDEO_MAX_SEC = min(8.0, max(1.0, float(os.environ.get("UPSCALE_VIDEO_MAX_SEC", "8"))))
-UPSCALE_IMAGE_MAX_MB = max(1, int(os.environ.get("UPSCALE_IMAGE_MAX_MB", "15")))
-UPSCALE_VIDEO_MAX_MB = max(10, int(os.environ.get("UPSCALE_VIDEO_MAX_MB", "100")))
-UPSCALE_VIDEO_MAX_PIXELS = max(640 * 360, int(os.environ.get("UPSCALE_VIDEO_MAX_PIXELS", str(3840 * 2160))))
-UPSCALE_JOB_TTL = max(3600, int(os.environ.get("UPSCALE_JOB_TTL", str(24 * 3600))))
+# ====================== Image Upscale (Hugging Face Space via gradio_client) ======================
+# Uses public Space: https://huggingface.co/spaces/Phips/Upscaler
+# Caveats: queue / cold start / rate limits on free ZeroGPU — not for production-critical path.
 
-_HF_SCHEMA_CACHE: dict[str, dict] = {}
-_HF_SCHEMA_LOCK = __import__("threading").Lock()
-_HF_SCHEMA_TTL = 300.0
-
-
-def _hf_client(space: str):
-    from gradio_client import Client
-    kwargs = {"verbose": False}
-    if HF_TOKEN:
-        kwargs["token"] = HF_TOKEN
-    return Client(space, **kwargs)
-
-
-def _hf_schema(space: str) -> tuple[object, dict]:
-    now = time.time()
-    with _HF_SCHEMA_LOCK:
-        cached = _HF_SCHEMA_CACHE.get(space)
-        if cached and now - float(cached.get("ts", 0)) < _HF_SCHEMA_TTL:
-            return cached["client"], cached["schema"]
-    client = _hf_client(space)
-    # Gradio exposes the named API schema through view_api().
-    schema = client.view_api(return_format="dict", all_endpoints=True) or {}
-    with _HF_SCHEMA_LOCK:
-        _HF_SCHEMA_CACHE[space] = {"ts": now, "client": client, "schema": schema}
-    return client, schema
+# Labels are UI-facing; keys must match Space dropdown values.
+_UPSCALE_MODELS = [
+    # Faster / illustration-friendly first
+    "4xBHI_dat2_real",
+    "4xNomosWebPhoto_RealPLKSR",
+    "4xNomos2_hq_drct-l",
+    "4xRealWebPhoto_v4_dat2",
+    "4xNomosUni_rgt_multijpg",
+    "4xLSDIRDAT",
+    "4xNomos8kHAT-L_otf",
+    "4xNomosUniDAT_otf",
+]
+_UPSCALE_MODEL_META = {
+    "4xBHI_dat2_real": {"label": "Anime / art · fast", "group": "anime"},
+    "4xNomosWebPhoto_RealPLKSR": {"label": "Photo · balanced", "group": "photo"},
+    "4xNomos2_hq_drct-l": {"label": "General HQ", "group": "general"},
+    "4xRealWebPhoto_v4_dat2": {"label": "Photo v4", "group": "photo"},
+    "4xNomosUni_rgt_multijpg": {"label": "Universal / jpg", "group": "general"},
+    "4xLSDIRDAT": {"label": "Detail (slower)", "group": "general"},
+    "4xNomos8kHAT-L_otf": {"label": "8k HAT (slow)", "group": "slow"},
+    "4xNomosUniDAT_otf": {"label": "Uni DAT (slow)", "group": "slow"},
+}
 
 
-def _hf_endpoint_items(schema: dict) -> list[tuple[str, dict]]:
-    named = schema.get("named_endpoints") or {}
-    items: list[tuple[str, dict]] = []
-    if isinstance(named, dict):
-        for key, meta in named.items():
-            if isinstance(meta, dict):
-                api = str(meta.get("api_name") or key or "")
-                items.append((api, meta))
-    # Some Gradio apps expose unnamed endpoints. Keep their fn_index so we can
-    # submit by function index when no api_name exists.
-    unnamed = schema.get("unnamed_endpoints") or {}
-    if isinstance(unnamed, dict):
-        for key, meta in unnamed.items():
-            if not isinstance(meta, dict):
-                continue
-            fn_index = meta.get("fn_index")
-            if fn_index is None:
-                try:
-                    fn_index = int(key)
-                except Exception:
-                    fn_index = None
-            if fn_index is not None:
-                items.append((f"__unnamed_{fn_index}", {**meta, "fn_index": int(fn_index)}))
-    return items
-
-
-def _param_list(meta: dict) -> list[dict]:
-    params = meta.get("parameters") or meta.get("inputs") or []
-    return [p for p in params if isinstance(p, dict)] if isinstance(params, list) else []
-
-
-def _param_text(p: dict) -> str:
-    vals = []
-    for k in ("parameter_name", "name", "label", "component", "type", "python_type", "type_description"):
-        v = p.get(k)
-        if v is not None:
-            vals.append(str(v))
-    return " ".join(vals).lower()
-
-
-def _choose_hf_endpoint(schema: dict, kind: str) -> tuple[str, dict]:
-    """Pick the most likely image/video upscale endpoint from Gradio's schema."""
-    candidates = []
-    for api, meta in _hf_endpoint_items(schema):
-        text = (api + " " + str(meta.get("description") or "")).lower()
-        params = _param_list(meta)
-        ptxt = " ".join(_param_text(p) for p in params)
-        score = 0
-        if "upscal" in text:
-            score += 12
-        if kind == "video":
-            if "video" in text:
-                score += 12
-            if "video" in ptxt:
-                score += 10
-            if any(x in ptxt for x in ("videoinput", "video file", "filepath", "file")):
-                score += 4
-            if "image" in text and "video" not in ptxt:
-                score -= 8
-        else:
-            if "image" in text:
-                score += 10
-            if any(x in ptxt for x in ("image", "imageinput")):
-                score += 8
-            if "video" in text and "image" not in ptxt:
-                score -= 8
-        # Strongly prefer endpoints with a file-like parameter.
-        if any(any(x in _param_text(p) for x in ("image", "video", "file", "filepath", "media")) for p in params):
-            score += 3
-        if api.startswith("/") or api.startswith("__unnamed_"):
-            candidates.append((score, api, meta))
-    if not candidates:
-        raise RuntimeError(f"No suitable {kind} endpoint found in Hugging Face Space API")
-    candidates.sort(key=lambda x: x[0], reverse=True)
-    score, api, meta = candidates[0]
-    if score < 8:
-        raise RuntimeError(f"No confident {kind} upscale endpoint found (best={api!r})")
-    return api, meta
-
-
-def _default_or_example(p: dict):
-    if p.get("parameter_has_default"):
-        return p.get("default_value")
-    if "default_value" in p and p.get("default_value") is not None:
-        return p.get("default_value")
-    if "example_input" in p and p.get("example_input") is not None:
-        return p.get("example_input")
-    if "example" in p and p.get("example") is not None:
-        return p.get("example")
-    return None
-
-
-def _guess_scalar(p: dict, kind: str):
-    txt = _param_text(p)
-    val = _default_or_example(p)
-    if val is not None:
-        return val
-    # Common Gradio slider metadata.
-    lo = p.get("minimum", p.get("min"))
-    hi = p.get("maximum", p.get("max"))
-    if lo is not None and hi is not None:
-        try:
-            return (float(lo) + float(hi)) / 2
-        except Exception:
-            pass
-    if any(x in txt for x in ("scale", "factor", "upscale")):
-        return 4
-    if "fps" in txt:
-        return 12
-    if any(x in txt for x in ("denoise", "strength", "noise")):
-        return 0.3
-    if "tile" in txt:
-        return 0
-    if "face" in txt or "face restoration" in txt:
-        return False
-    if "bool" in str(p.get("python_type") or "").lower() or "checkbox" in txt:
-        return False
-    if any(x in txt for x in ("prompt", "negative prompt", "caption", "description")):
-        return ""
-    # Required model-like strings are resolved separately.
-    if "str" in str(p.get("python_type") or "").lower() or "dropdown" in txt or "radio" in txt:
-        return ""
-    return None
-
-
-def _auto_image_model(src: Path) -> str:
-    """Automatic model selection for the existing Phips image Space.
-
-    The image Space exposes several fixed model names. We use a small deterministic
-    heuristic rather than asking the user to pick a model every time.
-    """
-    ext = src.suffix.lower()
-    if ext in (".jpg", ".jpeg"):
-        return "4xNomosWebPhoto_RealPLKSR"
-    try:
-        with Image.open(src) as im:
-            if "A" in im.getbands():
-                alpha = im.getchannel("A")
-                lo, hi = alpha.getextrema()
-                if lo < 255:
-                    return "4xBHI_dat2_real"
-    except Exception:
-        pass
-    if ext in (".webp", ".png"):
-        return "4xNomos2_hq_drct-l"
-    return "4xBHI_dat2_real"
-
-
-def _is_file_value(value) -> bool:
-    if isinstance(value, str):
-        return Path(value).is_file()
-    if isinstance(value, dict):
-        p = value.get("path")
-        return isinstance(p, str) and Path(p).is_file()
-    return False
-
-
-def _extract_hf_file(value) -> Optional[Path]:
-    """Recursively find a local Gradio file output."""
-    if _is_file_value(value):
-        if isinstance(value, dict):
-            return Path(value["path"])
-        return Path(value)
-    if isinstance(value, (list, tuple)):
-        for item in reversed(value):
-            p = _extract_hf_file(item)
-            if p:
-                return p
-    if isinstance(value, dict):
-        for key in ("path", "value", "files", "data", "output"):
-            if key in value:
-                p = _extract_hf_file(value[key])
-                if p:
-                    return p
-    return None
-
-
-def _hf_public_origin(space: str) -> str:
-    """Return the public Space origin without requiring Gradio's /config endpoint."""
-    import re as _re
-    if space.startswith("http://") or space.startswith("https://"):
-        return space.rstrip("/")
-    owner, repo = (space.split("/", 1) + [""])[:2]
-    if not owner or not repo:
-        raise RuntimeError(f"Invalid Hugging Face Space id: {space}")
-    # Standard HF Space subdomain transformation: owner-repo.hf.space.
-    return f"https://{owner}-{repo}.hf.space"
-
-
-def _hf_direct_info(space: str) -> tuple[str, dict, str]:
-    """Fetch modern Gradio API info directly, bypassing the legacy /config endpoint.
-
-    Returns (origin, info, call_prefix). The Space may be Gradio 6+, where gradio_client
-    can fail if the legacy /config route is unavailable. HF documents /gradio_api/info and
-    /gradio_api/call/... as the current API surface.
-    """
-    import requests as _requests
-    import re as _re
-
-    origin = _hf_public_origin(space)
-    headers = {"User-Agent": "ShowcaseMaker/1.0"}
-    if HF_TOKEN:
-        headers["Authorization"] = f"Bearer {HF_TOKEN}"
-
-    # agents.md is the most explicit source for current API routing on HF Spaces.
-    call_prefix = f"{origin}/gradio_api/call/"
-    try:
-        ar = _requests.get(f"https://huggingface.co/spaces/{space}/agents.md", headers=headers, timeout=20)
-        if ar.ok:
-            m = _re.search(r"Call endpoint:\s*POST\s+(https?://[^\\s]+)", ar.text)
-            if m:
-                tpl = m.group(1).rstrip("`")
-                if "{endpoint}" in tpl:
-                    call_prefix = tpl.split("{endpoint}", 1)[0]
-                else:
-                    # Exact endpoint; caller may append nothing and use the selected path separately.
-                    call_prefix = tpl.rsplit("/", 1)[0] + "/"
-    except Exception:
-        pass
-
-    last = None
-    for url in (f"{origin}/gradio_api/info", f"{origin}/gradio_api/openapi.json"):
-        try:
-            r = _requests.get(url, headers=headers, timeout=25)
-            if r.ok:
-                return origin, r.json(), call_prefix
-            last = f"HTTP {r.status_code}: {r.text[:200]}"
-        except Exception as e:
-            last = f"{type(e).__name__}: {e}"
-    raise RuntimeError(f"Could not read modern Gradio API for {space}: {last or 'unknown error'}")
-
-
-def _hf_info_endpoints(info: dict) -> list[tuple[str, dict]]:
-    out: list[tuple[str, dict]] = []
-    named = info.get("named_endpoints") if isinstance(info, dict) else None
-    if isinstance(named, dict):
-        for key, meta in named.items():
-            if isinstance(meta, dict):
-                out.append((str(key), meta))
-    unnamed = info.get("unnamed_endpoints") if isinstance(info, dict) else None
-    if isinstance(unnamed, dict):
-        for key, meta in unnamed.items():
-            if isinstance(meta, dict):
-                out.append((str(key), meta))
-    return out
-
-
-def _hf_select_direct_endpoint(info: dict, kind: str) -> tuple[str, dict]:
-    candidates = []
-    for name, meta in _hf_info_endpoints(info):
-        text = (name + " " + str(meta.get("description") or "") + " " + str(meta.get("display_name") or "")).lower()
-        params = _param_list(meta)
-        ptxt = " ".join(_param_text(p) for p in params)
-        score = 0
-        if "upscal" in text:
-            score += 15
-        if kind == "video":
-            if "video" in text:
-                score += 15
-            if "video" in ptxt:
-                score += 10
-            if "image" in text and "video" not in text:
-                score -= 10
-        else:
-            if "image" in text:
-                score += 12
-            if "image" in ptxt:
-                score += 8
-            if "video" in text and "image" not in text:
-                score -= 10
-        if any(any(x in _param_text(p) for x in ("file", "video", "image", "media", "filepath")) for p in params):
-            score += 5
-        candidates.append((score, name, meta))
-    if not candidates:
-        raise RuntimeError(f"No API endpoints exposed by {kind} upscale Space")
-    candidates.sort(reverse=True, key=lambda x: x[0])
-    if candidates[0][0] < 10:
-        raise RuntimeError(f"No confident {kind} upscale endpoint in Space API")
-    return candidates[0][1], candidates[0][2]
-
-
-def _hf_direct_upload(origin: str, src_path: Path, headers: dict) -> dict:
-    import requests as _requests
-    with Path(src_path).open("rb") as fh:
-        r = _requests.post(
-            f"{origin}/gradio_api/upload",
-            headers=headers,
-            files={"files": (Path(src_path).name, fh, "application/octet-stream")},
-            timeout=120,
-        )
-    if not r.ok:
-        raise RuntimeError(f"HF file upload failed: HTTP {r.status_code}: {r.text[:300]}")
-    value = r.json()
-    path = value[0] if isinstance(value, list) and value else value
-    if isinstance(path, dict):
-        path = path.get("path") or path.get("url")
-    if not path:
-        raise RuntimeError("HF file upload returned no path")
-    return {"path": str(path), "meta": {"_type": "gradio.FileData"}, "orig_name": Path(src_path).name}
-
-
-def _hf_result_payload(raw_result):
-    if isinstance(raw_result, dict) and "data" in raw_result and len(raw_result) == 1:
-        return raw_result["data"]
-    return raw_result
-
-
-def _hf_wait_sse(url: str, headers: dict, timeout: int = 900):
-    import requests as _requests
-    import json as _json
-    with _requests.get(url, headers=headers, stream=True, timeout=timeout) as r:
-        if not r.ok:
-            raise RuntimeError(f"HF job poll failed: HTTP {r.status_code}: {r.text[:300]}")
-        event = None
-        data_lines = []
-        for raw_line in r.iter_lines(decode_unicode=True):
-            if raw_line is None:
-                continue
-            line = raw_line.strip()
-            if not line:
-                if event == "complete" and data_lines:
-                    payload = "\n".join(data_lines)
-                    try:
-                        return _json.loads(payload)
-                    except Exception:
-                        return payload
-                if event in ("error", "failure") and data_lines:
-                    payload = "\n".join(data_lines)
-                    raise RuntimeError(payload[:1000])
-                event, data_lines = None, []
-                continue
-            if line.startswith("event:"):
-                event = line[6:].strip()
-            elif line.startswith("data:"):
-                data_lines.append(line[5:].strip())
-        if event == "complete" and data_lines:
-            payload = "\n".join(data_lines)
-            try:
-                return _json.loads(payload)
-            except Exception:
-                return payload
-    raise RuntimeError("HF job ended without a complete event")
-
-
-
-def _nick_video_model(src_path: Path) -> str:
-    """Choose a conservative Real-ESRGAN scale automatically for video."""
-    forced = (os.environ.get("HF_VIDEO_MODEL") or os.environ.get("HF_VIDEO_UPSCALER_MODEL") or "").strip()
-    if forced in {"2x", "4x", "8x"}:
-        return forced
-    try:
-        info = proc.probe_media(src_path)
-        w = int(info.get("width") or 0)
-        h = int(info.get("height") or 0)
-        short = min(w, h)
-        long_side = max(w, h)
-        # Keep output sizes sane and ZeroGPU-friendly: 4x for small clips,
-        # 2x for HD+ input. 8x is intentionally reserved for explicit ENV.
-        if long_side <= 640 and short <= 480:
-            return "4x"
-        return "2x"
-    except Exception:
-        return "2x"
-
-
-def _hf_call_nick_video(src_path: Path, *, space: str) -> Path:
-    """Call Nick088/Real-ESRGAN_Pytorch's video Gradio endpoint.
-
-    The Space exposes a TabbedInterface with the video function ``inference_video``
-    and a radio parameter of 2x/4x/8x.  Use Gradio's file wrapper so the uploaded
-    video arrives as the Video component expects.
-    """
+def _run_hf_upscale(src_path: Path, model: str) -> Path:
+    """Blocking call — run inside a threadpool."""
     from gradio_client import Client, handle_file
 
-    model = _nick_video_model(src_path)
-    try:
-        timeout = float(os.environ.get("HF_VIDEO_TIMEOUT", "1200"))
-    except Exception:
-        timeout = 1200.0
-
-    last = None
-    for attempt in range(2):
-        try:
-            kwargs = {"hf_token": HF_TOKEN} if HF_TOKEN else {}
-            client = Client(space, **kwargs)
-            result = client.predict(
-                handle_file(str(src_path)),
-                model,
-                api_name="/inference_video",
-            )
-            out = _extract_hf_file(result)
-            if out and out.is_file() and out.stat().st_size >= 1024:
-                return out
-            raise RuntimeError(f"Nick video Space returned no output file: {result!r}")
-        except Exception as e:
-            last = e
-            if attempt == 0:
-                time.sleep(3.0)
-    raise RuntimeError(f"Hugging Face video upscale failed: {type(last).__name__}: {last}")
-
-
-def _prepare_nick_video(src: Path, dest: Path) -> dict:
-    """Normalize video for Nick's Real-ESRGAN video Space.
-
-    Keep duration <= configured limit, strip exotic codecs, and cap the longest
-    side to a practical size for free ZeroGPU. Audio is restored later from the
-    original source.
-    """
-    ff = proc.find_ffmpeg()
-    if not ff:
-        raise RuntimeError("FFmpeg not available")
-    info = proc.probe_media(src)
-    w = int(info.get("width") or 0)
-    h = int(info.get("height") or 0)
-    fps = float(info.get("fps") or 30.0)
-    duration = float(info.get("duration") or 0.0)
-    if w <= 0 or h <= 0 or duration <= 0:
-        raise RuntimeError("Invalid video metadata")
-    max_long = int(os.environ.get("HF_VIDEO_MAX_INPUT_LONG", "1280"))
-    scale = min(1.0, max_long / max(w, h))
-    nw = max(2, int(w * scale) // 2 * 2)
-    nh = max(2, int(h * scale) // 2 * 2)
-    fps = max(12.0, min(30.0, fps))
-    duration = min(UPSCALE_VIDEO_MAX_SEC, duration)
-    proc._run([
-        ff, "-y", "-hide_banner", "-loglevel", "error",
-        "-i", str(src), "-t", f"{duration:.6f}", "-an",
-        "-vf", f"scale={nw}:{nh}:flags=lanczos",
-        "-r", f"{fps:.6f}", "-c:v", "libx264", "-preset", "veryfast",
-        "-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-        str(dest),
-    ])
-    if not dest.is_file() or dest.stat().st_size < 1024:
-        raise RuntimeError("Failed to prepare video for Real-ESRGAN")
-    return {"width": nw, "height": nh, "fps": fps, "duration": duration}
-
-
-def _restore_video_audio(src_original: Path, src_upscaled: Path, dest: Path) -> None:
-    """Put the original audio back onto the upscaled video when present."""
-    ff = proc.find_ffmpeg()
-    if not ff:
-        raise RuntimeError("FFmpeg not available")
-    try:
-        proc._run([
-            ff, "-y", "-hide_banner", "-loglevel", "error",
-            "-i", str(src_upscaled), "-i", str(src_original),
-            "-map", "0:v:0", "-map", "1:a:0?",
-            "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
-            "-shortest", "-movflags", "+faststart", str(dest),
-        ])
-    except Exception:
-        shutil.copy2(src_upscaled, dest)
-    if not dest.is_file() or dest.stat().st_size < 1024:
-        raise RuntimeError("Failed to finalize upscaled video")
-
-
-def _hf_call_direct(src_path: Path, *, space: str, kind: str) -> Path:
-    """Call a Gradio Space through the modern REST/SSE API."""
-    if kind == "video":
-        # Nick088 exposes a dedicated video endpoint.
-        return _hf_call_nick_video(src_path, space=space)
-    return _hf_call_direct_generic(src_path, space=space, kind=kind)
-
-
-def _hf_call_direct_generic(src_path: Path, *, space: str, kind: str) -> Path:
-    """Generic modern Gradio REST call used only as an image fallback."""
-    import requests as _requests
-    from urllib.parse import quote as _quote
-
-    origin, info, call_prefix = _hf_direct_info(space)
-    endpoint_name, meta = _hf_select_direct_endpoint(info, kind)
-    params = _param_list(meta)
-    headers = {"User-Agent": "ShowcaseMaker/1.1"}
-    if HF_TOKEN:
-        headers["Authorization"] = f"Bearer {HF_TOKEN}"
-    file_value = _hf_direct_upload(origin, src_path, headers)
-    payload = []
-    file_used = False
-    for p in params:
-        txt = _param_text(p)
-        if any(x in txt for x in ("video", "image", "file", "filepath", "media")) and not file_used:
-            payload.append(file_value)
-            file_used = True
-            continue
-        default = _default_or_example(p)
-        if default is not None:
-            payload.append(default)
-            continue
-        guessed = _guess_scalar(p, kind)
-        if guessed is None:
-            raise RuntimeError(f"Required unsupported Space input: {txt}")
-        payload.append(guessed)
-    if not file_used:
-        raise RuntimeError(f"No file input found for HF endpoint {endpoint_name}")
-    endpoint_path = str(endpoint_name).lstrip("/")
-    if "{endpoint}" in call_prefix:
-        call_url = call_prefix.replace("{endpoint}", endpoint_path)
-    else:
-        call_url = call_prefix.rstrip("/") + "/" + endpoint_path
-    r = _requests.post(call_url, headers={**headers, "Content-Type": "application/json"}, json={"data": payload}, timeout=90)
-    if not r.ok:
-        raise RuntimeError(f"HF submit failed: HTTP {r.status_code}: {r.text[:500]}")
-    start_result = r.json()
-    event_id = start_result.get("event_id") if isinstance(start_result, dict) else None
-    if not event_id:
-        raise RuntimeError(f"HF submit returned no event_id: {start_result!r}")
-    result = _hf_wait_sse(call_url.rstrip("/") + "/" + str(event_id), headers, timeout=1800)
-    result = _hf_result_payload(result)
-    output = _extract_hf_file(result)
-    if output and output.is_file():
-        return output
-    raise RuntimeError(f"HF image endpoint returned no local output: {result!r}"[:1200])
-
-def _hf_call_auto(src_path: Path, *, kind: str, requested_model: str = "auto") -> tuple[Path, str, str]:
-    """Call a Gradio Space using its live API schema.
-
-    Returns (local_output_path, space, selected_model_label).
-    """
-    from gradio_client import handle_file
-
-    spaces = [HF_VIDEO_SPACE] if kind == "video" else [HF_IMAGE_SPACE]
-    if kind == "image" and HF_IMAGE_FALLBACK_SPACE and HF_IMAGE_FALLBACK_SPACE not in spaces:
-        spaces.append(HF_IMAGE_FALLBACK_SPACE)
-    last_error = None
-
-    for space in spaces:
-        try:
-            if kind == "video":
-                output = _hf_call_direct(src_path, space=space, kind="video")
-                return output, space, "Automatic Video Upscaler"
-            client, schema = _hf_schema(space)
-            api_name, meta = _choose_hf_endpoint(schema, kind)
-            params = _param_list(meta)
-            auto_model = (requested_model or "auto").strip()
-            if kind == "image" and auto_model.lower() == "auto":
-                auto_model = _auto_image_model(src_path)
-            if kind == "video":
-                auto_model = (os.environ.get("HF_VIDEO_MODEL") or auto_model or "auto").strip()
-
-            args = []
-            file_used = False
-            selected_model = auto_model
-            for p in params:
-                txt = _param_text(p)
-                default = _default_or_example(p)
-                component = str(p.get("component") or "").lower()
-                looks_file = any(x in txt for x in ("image", "video", "file", "filepath", "media")) and (
-                    any(x in txt for x in ("input", "upload", "source", "file", "media")) or
-                    component in ("image", "video", "file") or "filepath" in txt
-                )
-                is_model = "model" in txt or "model_selection" in txt or "checkpoint" in txt
-
-                if looks_file and not file_used:
-                    # A video endpoint may have a Video component; image endpoint an Image component.
-                    args.append(handle_file(str(src_path)))
-                    file_used = True
-                    continue
-
-                if is_model:
-                    chosen = os.environ.get("HF_VIDEO_MODEL" if kind == "video" else "HF_IMAGE_MODEL", "").strip()
-                    if chosen:
-                        selected_model = chosen
-                    elif auto_model.lower() != "auto":
-                        selected_model = auto_model
-                    elif default is not None:
-                        selected_model = default
-                    else:
-                        scalar = _guess_scalar(p, kind)
-                        selected_model = scalar if scalar not in (None, "") else ""
-                    args.append(selected_model)
-                    continue
-
-                if default is not None:
-                    args.append(default)
-                    continue
-                guessed = _guess_scalar(p, kind)
-                if guessed is None:
-                    raise RuntimeError(f"Required unsupported Space input: {_param_text(p)}")
-                args.append(guessed)
-
-            if not file_used:
-                raise RuntimeError(f"No file input detected for endpoint {api_name}")
-
-            result = None
-            last_call_error = None
-            for attempt in range(2):
-                try:
-                    if api_name.startswith("__unnamed_"):
-                        gr_job = client.submit(*args, fn_index=int(meta["fn_index"]))
-                    else:
-                        gr_job = client.submit(*args, api_name=api_name)
-                    result = gr_job.result()
-                    last_call_error = None
-                    break
-                except Exception as call_exc:
-                    last_call_error = call_exc
-                    if attempt == 0:
-                        time.sleep(2.0)
-            if last_call_error is not None:
-                raise last_call_error
-            output = _extract_hf_file(result)
-            if not output or not output.is_file():
-                raise RuntimeError(f"Space returned no local output file: {result!r}"[:600])
-            label = selected_model if selected_model not in (None, "", "auto") else "Automatic"
-            return output, space, str(label)
-        except Exception as e:
-            last_error = e
-            continue
-
-    raise RuntimeError(f"Hugging Face upscale failed: {type(last_error).__name__}: {last_error}")
-
-
-def _upscale_source_is_video(path: Path) -> bool:
-    return path.suffix.lower() in {".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v"}
-
-
-def _save_upload_stream(upload: UploadFile, dest: Path, max_bytes: int) -> int:
-    """Stream UploadFile to disk without reading the whole file into RAM."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    upload.file.seek(0)
-    total = 0
-    with dest.open("wb") as out_f:
-        while True:
-            chunk = upload.file.read(1024 * 1024)
-            if not chunk:
+    model = model if model in _UPSCALE_MODELS else _UPSCALE_MODELS[0]
+    client = Client("Phips/Upscaler")
+    # API docs: /upscale_image(image, model_selection) -> (slider tuple, filepath)
+    result = client.predict(
+        handle_file(str(src_path)),
+        model,
+        api_name="/upscale_image",
+    )
+    out = None
+    if isinstance(result, (list, tuple)):
+        # prefer last filepath-like element (full-quality PNG)
+        for item in reversed(result):
+            if isinstance(item, str) and Path(item).is_file():
+                out = Path(item)
                 break
-            total += len(chunk)
-            if total > max_bytes:
-                raise ValueError("File too large")
-            out_f.write(chunk)
-    return total
-
-
-def _upscale_owner_ok(request: Request, job: dict) -> bool:
-    user = _auth_user(request)
-    if not user:
-        return False
-    owner = job.get("owner_id")
-    return owner is None or int(owner) == int(user.get("id") or 0)
-
-
-def _run_upscale_job(jid: str, source_path: Path, owner_id: int) -> None:
-    """Background job: image/video → upscaled output; video also → GIF."""
-    work_root = DATA / "upscale_jobs" / jid
-    work_root.mkdir(parents=True, exist_ok=True)
-    source_path = Path(source_path)
-    try:
-        _job_set(jid, kind="upscale", status="running", pct=5, stage="analyze")
-        if not source_path.is_file():
-            raise RuntimeError("Source file is missing")
-        info = proc.probe_media(source_path)
-        is_video = bool(info.get("has_video")) and _upscale_source_is_video(source_path)
-        if is_video:
-            duration = float(info.get("duration") or 0)
-            if duration <= 0:
-                raise RuntimeError("Could not determine video duration")
-            if duration > UPSCALE_VIDEO_MAX_SEC + 0.05:
-                raise RuntimeError(f"Video is longer than {UPSCALE_VIDEO_MAX_SEC:g} seconds")
-            pixels = int(info.get("width") or 0) * int(info.get("height") or 0)
-            if pixels > UPSCALE_VIDEO_MAX_PIXELS:
-                raise RuntimeError("Video resolution is too large")
-            if not info.get("has_video"):
-                raise RuntimeError("No video stream found")
-            kind = "video"
-        else:
-            if source_path.suffix.lower() == ".gif":
-                # Preserve existing semantics: image models receive the first frame.
-                with Image.open(source_path) as im:
-                    im.seek(0)
-                    static_path = work_root / "input_frame.png"
-                    im.convert("RGBA").save(static_path, "PNG")
-                source_for_model = static_path
-            else:
-                source_for_model = source_path
-            kind = "image"
-            if info.get("width") and info.get("height"):
-                if int(info["width"]) * int(info["height"]) > Image.MAX_IMAGE_PIXELS:
-                    raise RuntimeError("Image is too large")
-            duration = 0.0
-
-        _job_set(jid, pct=12, stage="upscale", media_type=kind, duration=duration,
-                 width=info.get("width"), height=info.get("height"), owner_id=owner_id)
-
-        if kind == "image":
-            hf_out, space, selected_model = _hf_call_auto(source_for_model, kind="image")
-            _job_set(jid, pct=72, stage="save", space=space, model=selected_model)
-            dest = work_root / "upscaled.png"
-            shutil.copy2(hf_out, dest)
-            outputs = [dest.name]
-            _job_set(jid, pct=100, status="done", stage="done", outputs=outputs,
-                     files={"image": dest.name}, model=selected_model, space=space)
-            return
-
-        # Video: Nick088/Real-ESRGAN_Pytorch provides a dedicated video endpoint.
-        # Keep the input conservative for ZeroGPU and restore the source audio afterwards.
-        space = HF_VIDEO_SPACE
-        selected_model = _nick_video_model(source_path)
-        _job_set(jid, pct=20, stage="prepare_video", space=space, model=selected_model)
-        prepared = work_root / "input_for_hf.mp4"
-        prep_info = _prepare_nick_video(source_path, prepared)
-        _job_set(jid, pct=30, stage="upscale", space=space, model=selected_model,
-                 width=prep_info["width"], height=prep_info["height"], fps=prep_info["fps"])
-        hf_out = _hf_call_nick_video(prepared, space=space)
-        video_no_audio = work_root / "upscaled_no_audio.mp4"
-        shutil.copy2(hf_out, video_no_audio)
-        video_out = work_root / "upscaled.mp4"
-        _job_set(jid, pct=68, stage="audio", space=space, model=selected_model)
-        _restore_video_audio(source_path, video_no_audio, video_out)
-        _job_set(jid, pct=84, stage="gif")
-        gif_out = work_root / "upscaled.gif"
-        gif_fps = int(os.environ.get("UPSCALE_GIF_FPS", "12"))
-        gif_width = int(os.environ.get("UPSCALE_GIF_WIDTH", "750"))
-        gif_encoder = (os.environ.get("UPSCALE_GIF_ENCODER") or ("gifski" if proc.find_gifski() else "ffmpeg")).strip().lower()
-        if gif_encoder not in ("gifski", "ffmpeg"):
-            gif_encoder = "gifski" if proc.find_gifski() else "ffmpeg"
-        proc.media_to_gif(video_out, gif_out, fps=gif_fps, width=gif_width,
-                          duration=UPSCALE_VIDEO_MAX_SEC, encoder=gif_encoder)
-        outputs = [video_out.name, gif_out.name]
-        _job_set(jid, pct=100, status="done", stage="done", outputs=outputs,
-                 files={"video": video_out.name, "gif": gif_out.name},
-                 model=selected_model, space=space, duration=duration,
-                 width=info.get("width"), height=info.get("height"))
-    except Exception as e:
-        LOGGER.exception("upscale job failed jid=%s", jid)
-        _job_set(jid, status="error", pct=100, stage="error",
-                 error=f"{type(e).__name__}: {e}", owner_id=owner_id)
-
-
-def _run_upscale_job_from_payload(jid: str, job: dict) -> None:
-    source = Path(str(job.get("source_path") or ""))
-    owner_id = int(job.get("owner_id") or 0)
-    _run_upscale_job(jid, source, owner_id)
+            if isinstance(item, dict) and item.get("path"):
+                cand = Path(item["path"])
+                if cand.is_file():
+                    out = cand
+                    break
+            if isinstance(item, (list, tuple)):
+                for sub in reversed(item):
+                    if isinstance(sub, str) and Path(sub).is_file():
+                        out = Path(sub)
+                        break
+    elif isinstance(result, str) and Path(result).is_file():
+        out = Path(result)
+    if out is None or not out.is_file():
+        raise RuntimeError(f"Upscaler returned no file: {type(result)} {result!r}"[:300])
+    return out
 
 
 @app.get("/api/upscale/models")
 def upscale_models():
     return {
         "ok": True,
-        "mode": "auto",
-        "video_space": HF_VIDEO_SPACE,
-        "image_space": HF_IMAGE_SPACE,
-        "message": "Model selection is automatic. Videos use the configured Video Upscaler Space; images use the image upscaler with a deterministic automatic model heuristic.",
+        "models": [
+            {"id": m, "label": (_UPSCALE_MODEL_META.get(m) or {}).get("label") or m,
+             "group": (_UPSCALE_MODEL_META.get(m) or {}).get("group") or "general"}
+            for m in _UPSCALE_MODELS
+        ],
+        "default": _UPSCALE_MODELS[0],
     }
 
 
-@app.post("/api/upscale/start")
-async def api_upscale_start(request: Request, file: UploadFile = File(...)):
+@app.post("/api/upscale")
+async def api_upscale(
+    request: Request,
+    file: UploadFile = File(...),
+    model: str = Form("4xBHI_dat2_real"),
+):
+    """Upscale image via external Space (Pro only)."""
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
     if not auth_db.effective_pro(user):
-        return JSONResponse({"ok": False, "msg": "Upscale is available for Pro subscribers", "code": "pro"}, status_code=403)
+        return JSONResponse(
+            {"ok": False, "msg": "Upscale is available for Pro subscribers", "code": "pro"},
+            status_code=403,
+        )
+    raw = await file.read()
+    if not raw:
+        return JSONResponse({"ok": False, "msg": "Empty file"}, status_code=400)
+    if len(raw) > min(MAX_UPLOAD_MB, 15) * 1024 * 1024:
+        return JSONResponse({"ok": False, "msg": "File too large for upscale (max 15MB)"}, status_code=400)
+    head = raw[:16]
+    if not (
+        head[:8] == b"\x89PNG\r\n\x1a\n"
+        or head[:3] == b"\xff\xd8\xff"
+        or (head[:4] == b"RIFF" and raw[8:12] == b"WEBP")
+        or head[:6] in (b"GIF87a", b"GIF89a")
+    ):
+        return JSONResponse({"ok": False, "msg": "PNG/JPG/WEBP/GIF only"}, status_code=400)
 
-    uid = int(user["id"])
-    if rs.job_count_user(str(uid), statuses=("queued", "running")) >= int(os.environ.get("MAX_UPSCALE_JOBS_PER_USER", "1")):
-        return JSONResponse({"ok": False, "msg": "An upscale job is already running. Wait for it to finish."}, status_code=429)
-
-    filename = Path(file.filename or "upload").name
-    ext = Path(filename).suffix.lower()
-    allowed = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v"}
-    if ext not in allowed:
-        return JSONResponse({"ok": False, "msg": "Supported formats: PNG, JPG, WEBP, GIF, MP4, WEBM, MOV, MKV, AVI"}, status_code=400)
-
-    max_bytes = (UPSCALE_VIDEO_MAX_MB if ext in {".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v"} else UPSCALE_IMAGE_MAX_MB) * 1024 * 1024
-    jid = secrets.token_hex(12)
-    root = DATA / "upscale_jobs" / jid
-    root.mkdir(parents=True, exist_ok=True)
-    safe_ext = ext if ext in allowed else ".bin"
-    src = root / f"input{safe_ext}"
+    work = Path(tempfile.mkdtemp(prefix="upscale_"))
     try:
-        total = _save_upload_stream(file, src, max_bytes=max_bytes)
-        if total <= 0:
-            raise ValueError("Empty file")
-        if _upscale_source_is_video(src):
-            info = proc.probe_media(src)
-            duration = float(info.get("duration") or 0)
-            if not info.get("has_video"):
-                raise ValueError("No video stream found")
-            if duration <= 0:
-                raise ValueError("Could not determine video duration")
-            if duration > UPSCALE_VIDEO_MAX_SEC + 0.05:
-                raise ValueError(f"Video is longer than {UPSCALE_VIDEO_MAX_SEC:g} seconds")
-            pixels = int(info.get("width") or 0) * int(info.get("height") or 0)
-            if pixels > UPSCALE_VIDEO_MAX_PIXELS:
-                raise ValueError("Video resolution is too large")
-            detected = {"kind": "video", "duration": duration, "width": info.get("width"), "height": info.get("height"), "fps": info.get("fps")}
-        else:
-            if src.suffix.lower() == ".gif":
-                with Image.open(src) as im:
-                    im.verify()
-            else:
-                with Image.open(src) as im:
-                    im.verify()
-            detected = {"kind": "image"}
-    except Exception as e:
-        shutil.rmtree(root, ignore_errors=True)
-        return JSONResponse({"ok": False, "msg": str(e)}, status_code=400)
+        ext = Path(file.filename or "in.png").suffix.lower() or ".png"
+        if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+            ext = ".png"
+        src = work / f"in{ext}"
+        src.write_bytes(raw)
+        # GIF: take first frame as PNG for upscaler
+        if ext == ".gif":
+            try:
+                im = Image.open(src)
+                im.seek(0)
+                src = work / "in.png"
+                im.convert("RGBA").save(src, "PNG")
+            except Exception as e:
+                return JSONResponse({"ok": False, "msg": f"GIF read failed: {e}"}, status_code=400)
 
-    user_key = str(uid)
-    mode = _worker_mode()
-    external = mode == "external" and rs.redis_ok() and rs.worker_alive()
-    payload = {
-        "kind": "upscale",
-        "status": "queued",
-        "pct": 1,
-        "stage": "queued",
-        "user_key": user_key,
-        "owner_id": uid,
-        "source_path": str(src),
-        "original_name": filename,
-        "created": time.time(),
-        "detected": detected,
-    }
-    rs.job_create(jid, payload, enqueue=external)
-    _job_set(jid, **payload)
-    if not external:
-        _job_pool.submit(_run_upscale_job_from_payload, jid, payload)
-    return {"ok": True, "job_id": jid, "kind": detected["kind"], "detected": detected}
+        import asyncio
+        loop = asyncio.get_event_loop()
+        try:
+            out_path = await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: _run_hf_upscale(src, (model or "").strip())),
+                timeout=300.0,
+            )
+        except asyncio.TimeoutError:
+            return JSONResponse({"ok": False, "msg": "Upscale timed out (Space busy / cold start). Try again."}, status_code=504)
+        except Exception as e:
+            return JSONResponse({"ok": False, "msg": f"Upscale failed: {type(e).__name__}: {e}"}, status_code=502)
 
+        out_dir = Path(DATA) / "upscale"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        dest = out_dir / f"{int(time.time())}_{secrets.token_hex(4)}_up.png"
+        shutil.copy2(out_path, dest)
+        # serve via short-lived job-like path
+        return FileResponse(
+            dest,
+            media_type="image/png",
+            filename=dest.name,
+            headers={"X-Upscale-Model": (model or _UPSCALE_MODELS[0])[:64]},
+        )
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
-@app.get("/api/upscale/status/{job_id}")
-def api_upscale_status(job_id: str, request: Request):
-    job = _job_get(job_id)
-    if not job:
-        return JSONResponse({"ok": False, "msg": "Upscale job not found"}, status_code=404)
-    if not _upscale_owner_ok(request, job):
-        return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
-    out = {
-        "ok": True,
-        "job_id": job_id,
-        "status": job.get("status"),
-        "pct": int(job.get("pct") or 0),
-        "stage": job.get("stage") or "",
-        "error": job.get("error"),
-        "media_type": job.get("media_type") or (job.get("detected") or {}).get("kind"),
-        "duration": job.get("duration") or (job.get("detected") or {}).get("duration"),
-        "width": job.get("width") or (job.get("detected") or {}).get("width"),
-        "height": job.get("height") or (job.get("detected") or {}).get("height"),
-        "fps": job.get("fps") or (job.get("detected") or {}).get("fps"),
-        "model": job.get("model") or "Automatic",
-        "space": job.get("space") or "",
-    }
-    if job.get("status") == "done":
-        files = job.get("files") or {}
-        out["files"] = {
-            key: f"/api/upscale/file/{job_id}/{Path(str(name)).name}"
-            for key, name in files.items()
-            if name
-        }
-    return out
-
-
-@app.get("/api/upscale/file/{job_id}/{name}")
-def api_upscale_file(job_id: str, name: str, request: Request, download: int = 0):
-    job = _job_get(job_id)
-    if not job:
-        return JSONResponse({"ok": False, "msg": "Upscale job not found"}, status_code=404)
-    if not _upscale_owner_ok(request, job):
-        return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
-    allowed = {Path(str(v)).name for v in (job.get("files") or {}).values() if v}
-    clean = Path(name).name
-    if clean not in allowed:
-        return JSONResponse({"ok": False, "msg": "File not found"}, status_code=404)
-    path = DATA / "upscale_jobs" / job_id / clean
-    if not path.is_file():
-        return JSONResponse({"ok": False, "msg": "Result expired"}, status_code=410)
-    ext = path.suffix.lower()
-    media = {
-        ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
-        ".gif": "image/gif", ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
-    }.get(ext, "application/octet-stream")
-    headers = {"Cache-Control": "private, max-age=3600"}
-    if download:
-        headers["Content-Disposition"] = f'attachment; filename="{clean}"'
-        return FileResponse(path, media_type=media, headers=headers, filename=clean)
-    return FileResponse(path, media_type=media, headers=headers)
-
-
-@app.post("/api/upscale")
-async def api_upscale_compat(request: Request, file: UploadFile = File(...), model: str = Form("auto")):
-    """Compatibility wrapper: start the new asynchronous smart-upscale job."""
-    return await api_upscale_start(request, file)
 
 
 @app.get("/api/gallery/list")

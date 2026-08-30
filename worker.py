@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Heavy job worker: FFmpeg / gifski / Pillow / Hugging Face upscale jobs from the Redis queue.
+"""Heavy job worker: FFmpeg / gifski / Pillow process jobs from the Redis queue.
 
   REDIS_URL=redis://redis:6379/0 WORKER_MODE=external python worker.py
 
@@ -42,11 +42,9 @@ def _process_one(jid: str) -> None:
         return
     rs.job_update(jid, status="running", pct=5, stage="prepare")
     try:
-        from main import _run_upscale_job_from_payload, _run_process_job_from_payload
-        if str(job.get("kind") or "process") == "upscale":
-            _run_upscale_job_from_payload(jid, job)
-        else:
-            _run_process_job_from_payload(jid, job)
+        from main import _run_process_job_from_payload
+
+        _run_process_job_from_payload(jid, job)
     except Exception as e:
         traceback.print_exc()
         rs.job_update(jid, status="error", pct=100, stage="error", error=f"{type(e).__name__}: {e}")
