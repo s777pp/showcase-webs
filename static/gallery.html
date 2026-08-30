@@ -333,7 +333,7 @@ body.feed-mode .hint{display:none}
   <div class="feed-grid" id="feedGrid"></div>
 </div>
 
-<div class="hint" id="hint">Кликни по карточке · крути колёсиком / тяни · пауза при наведении на карточку</div>
+<div class="hint" id="hint">Кликни по карточке · колёсико или перетаскивание · пауза при наведении</div>
 
 <!-- Modal -->
 <div class="modal-bg" id="modalBg">
@@ -563,9 +563,6 @@ body.feed-mode .hint{display:none}
       progress += 0.0014;
     }
 
-    mouse.x += (mouse.targetX - mouse.x) * 0.08;
-    mouse.y += (mouse.targetY - mouse.y) * 0.08;
-
     const w = window.innerWidth;
     const { cardW } = metrics;
     const roundedIndex = Math.round(progress);
@@ -625,15 +622,10 @@ body.feed-mode .hint{display:none}
         rot = rotStart + e * (rotEnd3 - rotStart);
       }
 
-      const center = Math.max(0, 1 - absOffset);
-      const tiltY = mouse.x * 12 * center;
-      const tiltX = -mouse.y * 8 * center;
-
       card.style.zIndex = String(Math.round(z));
       card.style.transform =
         `translateX(${x.toFixed(2)}px) translateZ(${z.toFixed(2)}px) ` +
-        `rotateY(${(-sign * rot + tiltY).toFixed(2)}deg) ` +
-        `rotateX(${tiltX.toFixed(2)}deg)`;
+        `rotateY(${(-sign * rot).toFixed(2)}deg)`;
     }
 
     raf = requestAnimationFrame(renderLoop);
@@ -649,17 +641,6 @@ body.feed-mode .hint{display:none}
     raf = 0;
   }
 
-  // mouse parallax (doesn't pause scroll)
-  window.addEventListener('mousemove', (e) => {
-    const rx = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
-    const ry = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
-    mouse.targetX = Math.max(-1, Math.min(1, rx));
-    mouse.targetY = Math.max(-1, Math.min(1, ry));
-  });
-  document.addEventListener('mouseleave', () => {
-    mouse.targetX = 0;
-    mouse.targetY = 0;
-  });
 
   // wheel → horizontal progress
   stage.addEventListener('wheel', (e) => {
