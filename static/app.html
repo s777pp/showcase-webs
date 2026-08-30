@@ -912,7 +912,7 @@ input[type="range"]{
   <section class="tab" id="tab-upscale">
     <div class="card">
       <h2>Upscale</h2>
-      <p class="h-sub" id="upscaleDesc" style="margin:0 0 14px">Автоматический апскейл фото и видео. Видео — до 8 секунд. После апскейла автоматически создаётся GIF; оригинальное аудио сохраняется в видео.</p>
+      <p class="h-sub" id="upscaleDesc" style="margin:0 0 14px">Автоматический апскейл фото и видео. Видео — до 8 секунд. Автоматический Real-ESRGAN апскейл, затем GIF; оригинальное аудио сохраняется в видео.</p>
 
       <div id="upscaleLock" class="upscale-lock" style="display:none">
         <div class="lock-ico" aria-hidden="true">🔒</div>
@@ -5123,7 +5123,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
         return;
       }
       if (mediaInfo) mediaInfo.textContent = `${info.duration.toFixed(2)} s · ${info.width}×${info.height}`;
-      if (autoMode) autoMode.textContent = 'Auto · Video Upscaler';
+      if (autoMode) autoMode.textContent = 'Auto · Video · Real-ESRGAN';
       if (st) { st.className='status'; st.textContent='Видео готово к апскейлу'; }
       return;
     }
