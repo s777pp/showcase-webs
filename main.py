@@ -3633,14 +3633,28 @@ async def preview_wm(
 # Uses public Space: https://huggingface.co/spaces/Phips/Upscaler
 # Caveats: queue / cold start / rate limits on free ZeroGPU — not for production-critical path.
 
+# Labels are UI-facing; keys must match Space dropdown values.
 _UPSCALE_MODELS = [
+    # Faster / illustration-friendly first
     "4xBHI_dat2_real",
     "4xNomosWebPhoto_RealPLKSR",
     "4xNomos2_hq_drct-l",
     "4xRealWebPhoto_v4_dat2",
+    "4xNomosUni_rgt_multijpg",
     "4xLSDIRDAT",
     "4xNomos8kHAT-L_otf",
+    "4xNomosUniDAT_otf",
 ]
+_UPSCALE_MODEL_META = {
+    "4xBHI_dat2_real": {"label": "Anime / art · fast", "group": "anime"},
+    "4xNomosWebPhoto_RealPLKSR": {"label": "Photo · balanced", "group": "photo"},
+    "4xNomos2_hq_drct-l": {"label": "General HQ", "group": "general"},
+    "4xRealWebPhoto_v4_dat2": {"label": "Photo v4", "group": "photo"},
+    "4xNomosUni_rgt_multijpg": {"label": "Universal / jpg", "group": "general"},
+    "4xLSDIRDAT": {"label": "Detail (slower)", "group": "general"},
+    "4xNomos8kHAT-L_otf": {"label": "8k HAT (slow)", "group": "slow"},
+    "4xNomosUniDAT_otf": {"label": "Uni DAT (slow)", "group": "slow"},
+}
 
 
 def _run_hf_upscale(src_path: Path, model: str) -> Path:
@@ -3681,7 +3695,15 @@ def _run_hf_upscale(src_path: Path, model: str) -> Path:
 
 @app.get("/api/upscale/models")
 def upscale_models():
-    return {"ok": True, "models": _UPSCALE_MODELS, "default": _UPSCALE_MODELS[0], "provider": "Phips/Upscaler"}
+    return {
+        "ok": True,
+        "models": [
+            {"id": m, "label": (_UPSCALE_MODEL_META.get(m) or {}).get("label") or m,
+             "group": (_UPSCALE_MODEL_META.get(m) or {}).get("group") or "general"}
+            for m in _UPSCALE_MODELS
+        ],
+        "default": _UPSCALE_MODELS[0],
+    }
 
 
 @app.post("/api/upscale")
@@ -3690,9 +3712,15 @@ async def api_upscale(
     file: UploadFile = File(...),
     model: str = Form("4xBHI_dat2_real"),
 ):
-    """Upscale image via Hugging Face Space Phips/Upscaler (gradio_client)."""
+    """Upscale image via external Space (Pro only)."""
     user = _auth_user(request)
-    # allow anonymous with quota? keep login-optional but rate-limit by IP
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
+    if not auth_db.effective_pro(user):
+        return JSONResponse(
+            {"ok": False, "msg": "Upscale is available for Pro subscribers", "code": "pro"},
+            status_code=403,
+        )
     raw = await file.read()
     if not raw:
         return JSONResponse({"ok": False, "msg": "Empty file"}, status_code=400)

@@ -105,6 +105,61 @@ label.field input:focus,label.field select:focus,input:focus,select:focus{border
   color:rgba(255,255,255,.7);font-size:13px;cursor:pointer;transition:.15s;background:rgba(0,0,0,.3)
 }
 .drop:hover,.drop.drag{border-color:rgba(0,210,255,.5);color:#fff;background:rgba(0,210,255,.04)}
+
+/* Upscale tab */
+.upscale-lock{
+  position:relative;border:1px solid var(--border);border-radius:16px;
+  background:rgba(0,0,0,.35);padding:48px 24px;text-align:center;
+  min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px
+}
+.upscale-lock .lock-ico{font-size:36px;line-height:1;opacity:.9}
+.upscale-lock h3{margin:0;font-size:18px;font-weight:800}
+.upscale-lock p{margin:0;color:var(--muted);font-size:14px;max-width:360px;line-height:1.45}
+.upscale-prog{
+  display:none;margin-top:14px;height:8px;border-radius:999px;
+  background:rgba(255,255,255,.08);overflow:hidden;position:relative
+}
+.upscale-prog.on{display:block}
+.upscale-prog > i{
+  position:absolute;left:0;top:0;bottom:0;width:30%;
+  background:linear-gradient(90deg,transparent,#00d2ff,transparent);
+  animation:upscan 1.2s ease-in-out infinite;
+  border-radius:999px
+}
+@keyframes upscan{0%{left:-30%}100%{left:100%}}
+.upscale-prog-label{display:none;margin-top:8px;font-size:12px;color:var(--muted)}
+.upscale-prog-label.on{display:block}
+.compare-wrap{
+  position:relative;width:100%;max-width:900px;margin:14px auto 0;
+  border-radius:14px;overflow:hidden;border:1px solid var(--border);
+  background:#0a0a0a;user-select:none;touch-action:none
+}
+.compare-wrap img{display:block;width:100%;height:auto;vertical-align:top;pointer-events:none}
+.compare-after{
+  position:absolute;inset:0;overflow:hidden;width:50%
+}
+.compare-after img{position:absolute;left:0;top:0;height:100%;width:auto;max-width:none;min-width:100%}
+.compare-handle{
+  position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;
+  background:#00d2ff;box-shadow:0 0 12px rgba(0,210,255,.55);cursor:ew-resize;z-index:3
+}
+.compare-handle::before{
+  content:"";position:absolute;top:50%;left:50%;width:36px;height:36px;margin:-18px 0 0 -18px;
+  border-radius:50%;border:2px solid #00d2ff;background:rgba(12,12,12,.85);
+  box-shadow:0 0 16px rgba(0,210,255,.35)
+}
+.compare-handle::after{
+  content:"↔";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:14px;color:#00d2ff;font-weight:800
+}
+.compare-label{
+  position:absolute;top:10px;z-index:4;padding:4px 10px;border-radius:999px;
+  font-size:11px;font-weight:700;background:rgba(0,0,0,.55);color:#fff;letter-spacing:.02em
+}
+.compare-label.before{left:10px}
+.compare-label.after{right:10px}
+.upscale-file-name{font-size:12px;color:var(--muted);margin-top:8px;min-height:18px}
+
 .files{display:flex;flex-direction:column;gap:8px;margin:12px 0}
 .fi{
   display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;
@@ -856,30 +911,51 @@ input[type="range"]{
   <section class="tab" id="tab-upscale">
     <div class="card">
       <h2>Upscale</h2>
-      <p class="h-sub" style="margin:0 0 12px">Увеличение картинки через Hugging Face Space <code>Phips/Upscaler</code>. Может занять 30–180 сек (очередь / cold start).</p>
-      <div class="row" style="flex-wrap:wrap;gap:12px;align-items:flex-end">
-        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">
-          Файл
-          <input type="file" id="upscaleFile" accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif"/>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">
-          Модель
-          <select id="upscaleModel" style="min-width:220px">
-            <option value="4xBHI_dat2_real">4xBHI_dat2_real (default)</option>
-            <option value="4xNomosWebPhoto_RealPLKSR">4xNomosWebPhoto_RealPLKSR</option>
-            <option value="4xNomos2_hq_drct-l">4xNomos2_hq_drct-l</option>
-            <option value="4xRealWebPhoto_v4_dat2">4xRealWebPhoto_v4_dat2</option>
-            <option value="4xLSDIRDAT">4xLSDIRDAT</option>
-            <option value="4xNomos8kHAT-L_otf">4xNomos8kHAT-L_otf</option>
-          </select>
-        </label>
-        <button class="btn" type="button" id="btnUpscale">Upscale</button>
+      <p class="h-sub" id="upscaleDesc" style="margin:0 0 14px">Увеличивает разрешение изображения с сохранением деталей. Обычно занимает 1–3 минуты.</p>
+
+      <div id="upscaleLock" class="upscale-lock" style="display:none">
+        <div class="lock-ico" aria-hidden="true">🔒</div>
+        <h3>Только для Pro</h3>
+        <p>Upscale доступен подписчикам Pro. Оформи подписку или активируй ключ доступа.</p>
+        <button type="button" class="btn" id="upscaleBuyPro">Get Pro</button>
       </div>
-      <div id="upscaleStatus" class="status" style="margin-top:12px"></div>
-      <div id="upscalePreview" style="margin-top:14px;display:none">
-        <img id="upscaleImg" alt="upscaled" style="max-width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.1)"/>
-        <div style="margin-top:10px">
-          <a class="btn" id="upscaleDownload" download="upscaled.png" href="#">Скачать PNG</a>
+
+      <div id="upscalePanel">
+        <div class="drop" id="upscaleDrop">Перетащи изображение сюда или нажми, чтобы выбрать</div>
+        <input type="file" id="upscaleFile" hidden accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif"/>
+        <div class="upscale-file-name" id="upscaleFileName"></div>
+        <div class="row" style="flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:14px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+            Модель
+            <select id="upscaleModel" style="min-width:240px">
+              <option value="4xBHI_dat2_real">Anime / art · fast</option>
+              <option value="4xNomosWebPhoto_RealPLKSR">Photo · balanced</option>
+              <option value="4xNomos2_hq_drct-l">General HQ</option>
+              <option value="4xRealWebPhoto_v4_dat2">Photo v4</option>
+              <option value="4xNomosUni_rgt_multijpg">Universal / jpg</option>
+              <option value="4xLSDIRDAT">Detail (slower)</option>
+              <option value="4xNomos8kHAT-L_otf">8k HAT (slow)</option>
+              <option value="4xNomosUniDAT_otf">Uni DAT (slow)</option>
+            </select>
+          </label>
+          <button class="btn" type="button" id="btnUpscale">Upscale</button>
+        </div>
+        <div class="upscale-prog" id="upscaleProg"><i></i></div>
+        <div class="upscale-prog-label" id="upscaleProgLabel">Обработка… 1–3 мин</div>
+        <div id="upscaleStatus" class="status" style="margin-top:10px"></div>
+        <div id="upscalePreview" style="display:none">
+          <div class="compare-wrap" id="upscaleCompare">
+            <img id="upscaleBefore" alt="before"/>
+            <div class="compare-after" id="upscaleAfterClip">
+              <img id="upscaleAfter" alt="after"/>
+            </div>
+            <div class="compare-handle" id="upscaleHandle"></div>
+            <span class="compare-label before">До</span>
+            <span class="compare-label after">После</span>
+          </div>
+          <div style="margin-top:12px">
+            <a class="btn" id="upscaleDownload" download="upscaled.png" href="#">Скачать PNG</a>
+          </div>
         </div>
       </div>
     </div>
@@ -4891,40 +4967,177 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 })();
 
 
-/* ---- Upscale (HF Space) ---- */
+
+/* ---- Upscale ---- */
 (function(){
   const btn = document.getElementById('btnUpscale');
-  if (!btn) return;
+  const drop = document.getElementById('upscaleDrop');
+  const fileInp = document.getElementById('upscaleFile');
+  const fileName = document.getElementById('upscaleFileName');
   const st = document.getElementById('upscaleStatus');
   const prev = document.getElementById('upscalePreview');
-  const img = document.getElementById('upscaleImg');
-  const dl = document.getElementById('upscaleDownload');
-  btn.addEventListener('click', async function(){
-    const f = document.getElementById('upscaleFile')?.files?.[0];
-    const model = document.getElementById('upscaleModel')?.value || '4xBHI_dat2_real';
-    if (!f) { if (st) st.textContent = 'Выбери файл'; return; }
-    btn.disabled = true;
-    if (st) st.textContent = 'Upscale… это может занять 1–3 минуты (очередь Space)';
-    if (prev) prev.style.display = 'none';
+  const prog = document.getElementById('upscaleProg');
+  const progLbl = document.getElementById('upscaleProgLabel');
+  const lock = document.getElementById('upscaleLock');
+  const panel = document.getElementById('upscalePanel');
+  const buy = document.getElementById('upscaleBuyPro');
+  if (!btn || !fileInp) return;
+
+  let beforeUrl = null;
+  let afterUrl = null;
+  let selectedFile = null;
+
+  function setProg(on, text){
+    if (prog) prog.classList.toggle('on', !!on);
+    if (progLbl) {
+      progLbl.classList.toggle('on', !!on);
+      if (text) progLbl.textContent = text;
+    }
+  }
+
+  function isPro(){
     try {
+      // refreshQuota stores nothing global — read badge
+      const b = document.getElementById('planBadge');
+      const t = (b && b.textContent || '').toLowerCase();
+      return t === 'pro' || t === 'trial' || (b && b.classList.contains('pro'));
+    } catch(e){ return false; }
+  }
+
+  function syncLock(){
+    const pro = isPro();
+    if (lock) lock.style.display = pro ? 'none' : 'flex';
+    if (panel) panel.style.display = pro ? '' : 'none';
+  }
+
+  // re-check when quota refreshes
+  const _rq = window.refreshQuota;
+  if (typeof refreshQuota === 'function' && !refreshQuota._upscalePatched) {
+    const orig = refreshQuota;
+    window.refreshQuota = async function(){
+      const r = await orig.apply(this, arguments);
+      try { syncLock(); } catch(e){}
+      return r;
+    };
+    window.refreshQuota._upscalePatched = true;
+  }
+  setTimeout(syncLock, 300);
+  setInterval(syncLock, 4000);
+
+  if (buy) {
+    buy.onclick = function(){
+      const b = document.getElementById('btnUpgrade');
+      if (b) b.click();
+      else if (typeof window.openBuyKeyModal === 'function') window.openBuyKeyModal();
+      else location.href = '/#pricing';
+    };
+  }
+
+  function setFile(f){
+    if (!f) return;
+    selectedFile = f;
+    if (fileName) fileName.textContent = f.name + ' · ' + Math.round(f.size/1024) + ' KB';
+    if (beforeUrl) URL.revokeObjectURL(beforeUrl);
+    beforeUrl = URL.createObjectURL(f);
+  }
+
+  if (drop) {
+    drop.addEventListener('click', () => fileInp.click());
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+    drop.addEventListener('drop', (e) => {
+      e.preventDefault(); drop.classList.remove('drag');
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) setFile(f);
+    });
+  }
+  fileInp.addEventListener('change', () => {
+    const f = fileInp.files && fileInp.files[0];
+    if (f) setFile(f);
+  });
+
+  // before/after slider
+  const wrap = document.getElementById('upscaleCompare');
+  const clip = document.getElementById('upscaleAfterClip');
+  const handle = document.getElementById('upscaleHandle');
+  const imgBefore = document.getElementById('upscaleBefore');
+  const imgAfter = document.getElementById('upscaleAfter');
+
+  function setSplit(pct){
+    pct = Math.max(2, Math.min(98, pct));
+    if (clip) clip.style.width = pct + '%';
+    if (handle) handle.style.left = pct + '%';
+  }
+  function bindCompare(){
+    if (!wrap) return;
+    let drag = false;
+    function pos(e){
+      const r = wrap.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+      setSplit((x / r.width) * 100);
+    }
+    wrap.addEventListener('pointerdown', (e) => { drag = true; wrap.setPointerCapture(e.pointerId); pos(e); });
+    wrap.addEventListener('pointermove', (e) => { if (drag) pos(e); });
+    wrap.addEventListener('pointerup', () => { drag = false; });
+    wrap.addEventListener('pointercancel', () => { drag = false; });
+  }
+  bindCompare();
+  setSplit(50);
+
+  function fitAfterImage(){
+    if (!imgBefore || !imgAfter || !wrap) return;
+    // after image should match before display width
+    const w = imgBefore.clientWidth || wrap.clientWidth;
+    if (w > 0) {
+      imgAfter.style.width = w + 'px';
+      imgAfter.style.height = 'auto';
+      imgAfter.style.maxWidth = 'none';
+    }
+  }
+  if (imgBefore) imgBefore.addEventListener('load', fitAfterImage);
+  if (imgAfter) imgAfter.addEventListener('load', fitAfterImage);
+  window.addEventListener('resize', fitAfterImage);
+
+  btn.addEventListener('click', async function(){
+    if (!isPro()) { syncLock(); return; }
+    const f = selectedFile || (fileInp.files && fileInp.files[0]);
+    const model = document.getElementById('upscaleModel')?.value || '4xBHI_dat2_real';
+    if (!f) { if (st) st.textContent = 'Выбери изображение'; return; }
+    btn.disabled = true;
+    if (st) st.textContent = '';
+    if (prev) prev.style.display = 'none';
+    setProg(true, 'Увеличение… обычно 1–3 минуты');
+    try {
+      if (!beforeUrl) beforeUrl = URL.createObjectURL(f);
       const fd = new FormData();
       fd.append('file', f);
       fd.append('model', model);
-      const r = await fetch('/api/upscale', { method:'POST', body: fd, credentials:'include', headers: (typeof headers==='function'?headers():{}) });
+      const r = await fetch('/api/upscale', {
+        method: 'POST', body: fd, credentials: 'include',
+        headers: (typeof headers === 'function' ? headers() : {})
+      });
       if (!r.ok) {
         let msg = 'Upscale failed';
-        try { const j = await r.json(); msg = j.msg || msg; } catch(e){}
+        let code = '';
+        try { const j = await r.json(); msg = j.msg || msg; code = j.code || ''; } catch(e){}
+        if (code === 'pro' || r.status === 403) { syncLock(); }
         throw new Error(msg);
       }
       const blob = await r.blob();
-      const url = URL.createObjectURL(blob);
-      if (img) img.src = url;
-      if (dl) { dl.href = url; dl.download = 'upscaled_' + model + '.png'; }
+      if (afterUrl) URL.revokeObjectURL(afterUrl);
+      afterUrl = URL.createObjectURL(blob);
+      if (imgBefore) imgBefore.src = beforeUrl;
+      if (imgAfter) imgAfter.src = afterUrl;
+      const dl = document.getElementById('upscaleDownload');
+      if (dl) { dl.href = afterUrl; dl.download = 'upscaled_' + model + '.png'; }
       if (prev) prev.style.display = 'block';
-      if (st) st.textContent = 'Готово';
+      setSplit(50);
+      setTimeout(fitAfterImage, 50);
+      if (st) st.textContent = 'Готово — двигай ползунок, чтобы сравнить до/после';
     } catch (e) {
       if (st) st.textContent = String(e.message || e);
     } finally {
+      setProg(false);
       btn.disabled = false;
     }
   });
