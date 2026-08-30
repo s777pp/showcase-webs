@@ -53,4 +53,8 @@ EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 # default: API (override command for worker)
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080} --workers ${UVICORN_WORKERS:-1} --timeout-keep-alive 30
+# --proxy-headers + --forwarded-allow-ips: behind Railway's edge (or the compose
+# Nginx) the socket peer is the proxy, so without this every client shares one
+# rate-limit bucket and request.client.host is useless. TRUSTED_PROXY_HOPS in
+# main.py decides how much of X-Forwarded-For is trustworthy.
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080} --workers ${UVICORN_WORKERS:-1} --timeout-keep-alive 30 --proxy-headers --forwarded-allow-ips='*'

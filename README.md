@@ -56,6 +56,27 @@ that matters.
 python scripts/gen_access_codes.py 10 --label Pro
 ```
 
+## Security notes
+
+- **Behind a proxy set `TRUSTED_PROXY_HOPS`** to the number of proxies that
+  append to `X-Forwarded-For` (1 on Railway, 1 with the compose Nginx, 2 with
+  Cloudflare in front). Quota and rate limits read the header from the right
+  using this count, so the client cannot forge its own address. Run uvicorn
+  with `--proxy-headers` (the Dockerfile does).
+- **`ADMIN_SECRET`** guards `/api/admin/*` and gallery moderation, compared in
+  constant time. Unset means denied, never allowed.
+- **Gallery uploads require login and land as `pending`.** Only a moderator
+  (`ADMIN_SECRET` header or `GALLERY_ADMIN_EMAILS`) can approve them or list
+  anything other than the approved feed.
+- **Stripe webhooks need `STRIPE_WEBHOOK_SECRET`** — without it the endpoint
+  answers 503 instead of trusting an unsigned event.
+- **Avatars and profile backgrounds resolve inside `DATA_DIR` only**, and the
+  client cannot set those columns; they are written by the server on upload.
+- **`/api/download-url` rejects private, loopback and link-local addresses**
+  so it cannot be used to reach the platform's internal network.
+- Session cookies are `HttpOnly`; unhandled errors log in full and return only
+  a request id.
+
 ## Architecture (production)
 
 - **FastAPI** — HTTP API, auth, gallery, profile

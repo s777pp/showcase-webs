@@ -8,19 +8,25 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import html
 import io
+import ipaddress
 import json
+import logging
 import os
 import re
+import socket
 import secrets
 import shutil
 import time
 import uuid
+import warnings
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
@@ -31,6 +37,19 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+
+logging.basicConfig(
+    level=getattr(logging, (os.environ.get("LOG_LEVEL") or "INFO").upper(), logging.INFO),
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+LOGGER = logging.getLogger("sm")
+
+# Pillow decompression-bomb guard. A 3 KB PNG can declare 200000x200000 pixels;
+# decoding it allocates tens of GB and takes the container down. Pillow only
+# WARNS above this limit and raises above 2x it, so promote the warning to an
+# error and let the handler above turn it into a 400.
+Image.MAX_IMAGE_PIXELS = int(os.environ.get("MAX_IMAGE_PIXELS", "100000000"))
+warnings.simplefilter("error", Image.DecompressionBombWarning)
 
 ROOT = Path(__file__).resolve().parent
 # Single source of truth, shared with auth_db. Previously each module resolved
@@ -200,11 +219,76 @@ def _day() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
+# How many proxies in front of us append to X-Forwarded-For.
+#   1 — Railway edge, or the single Nginx from docker-compose (default)
+#   0 — app exposed directly, no proxy: trust only the socket address
+#   2 — Cloudflare in front of Nginx
+TRUSTED_PROXY_HOPS = int(os.environ.get("TRUSTED_PROXY_HOPS", "1"))
+
+
 def _ip(req: Request) -> str:
-    xff = req.headers.get("x-forwarded-for")
-    if xff:
-        return xff.split(",")[0].strip()
-    return req.client.host if req.client else "unknown"
+    """Client IP used for quota and rate limits.
+
+    X-Forwarded-For is attacker controlled on the LEFT: a client sends
+    "9.9.9.9" and the proxy appends the real address, so reading entry [0]
+    let anyone reset their free daily quota just by varying the header. Only
+    the last TRUSTED_PROXY_HOPS entries are written by infrastructure we
+    trust, so count from the RIGHT instead — the attacker can prepend junk
+    but cannot remove what our own proxy appended.
+    """
+    hops = TRUSTED_PROXY_HOPS
+    if hops > 0:
+        xff = req.headers.get("x-forwarded-for") or ""
+        parts = [p.strip() for p in xff.split(",") if p.strip()]
+        if parts:
+            return parts[-hops] if len(parts) >= hops else parts[0]
+    return (req.client.host if req.client else None) or "unknown"
+
+
+def _safe_data_path(stored: str, *, subdir: str = "") -> Optional[Path]:
+    """Resolve a DB-stored relative path inside DATA, or None if it escapes.
+
+    Guards the avatar / profile-background readers: those paths used to be
+    written straight into Path(...), so an absolute value ("/data/users.db")
+    or a traversal ("../../etc/passwd") stored in the row turned a public
+    image endpoint into arbitrary file read.
+    """
+    s = (stored or "").strip().replace("\\", "/")
+    if not s:
+        return None
+    base = Path(DATA).resolve()
+    candidate = (base / subdir / s) if subdir else (base / s)
+    try:
+        resolved = candidate.resolve()
+    except (OSError, ValueError):
+        return None
+    if resolved != base and base not in resolved.parents:
+        return None
+    return resolved if resolved.is_file() else None
+
+
+# Profile columns a user may set themselves. Deliberately excludes avatar_path
+# and profile_background: those are file locations the server writes after an
+# upload, never values the client gets to choose.
+PROFILE_EDITABLE_FIELDS = (
+    "display_name", "profile_username", "profile_summary", "profile_location",
+    "profile_status", "profile_visibility", "profile_level", "profile_xp",
+    "profile_bg_x", "profile_bg_y", "profile_bg_scale", "profile_bg_overlay",
+)
+
+
+def _admin_ok(req: Request) -> bool:
+    """Constant-time check of X-Admin-Secret against ADMIN_SECRET.
+
+    Plain `got != secret` short-circuits on the first differing byte, which
+    leaks the secret one character at a time to anyone who can measure response
+    time. Absent/empty ADMIN_SECRET denies rather than allows.
+    """
+    secret = (os.environ.get("ADMIN_SECRET") or "").strip()
+    got = (req.headers.get("x-admin-secret") or "").strip()
+    if not secret or not got:
+        return False
+    return secrets.compare_digest(secret, got)
 
 
 def _session(req: Request) -> dict:
@@ -223,17 +307,70 @@ def _auth_user(req: Request) -> dict | None:
         return None
     return auth_db.user_by_token(tok)
 
+# Moderator list. Kept in env so the deploy owns it; the address that used to be
+# hardcoded here as a fallback is now just the default value of that variable.
+GALLERY_ADMIN_EMAILS = os.environ.get(
+    "GALLERY_ADMIN_EMAILS", "serhii.perepelytsia1510@gmail.com"
+)
+
+
 def _is_gallery_admin(user: dict | None) -> bool:
     if not user:
         return False
     email = (user.get("email") or "").strip().lower()
-    allowed = (os.environ.get("GALLERY_ADMIN_EMAILS") or "serhii.perepelytsia1510@gmail.com").lower()
-    emails = {e.strip() for e in allowed.split(",") if e.strip()}
-    if email in emails:
-        return True
-    secret = (os.environ.get("ADMIN_SECRET") or "").strip()
-    # also allow if already checked via header elsewhere
-    return False
+    emails = {e.strip() for e in GALLERY_ADMIN_EMAILS.lower().split(",") if e.strip()}
+    return bool(email) and email in emails
+
+
+def _esc_html(s) -> str:
+    """Escape text before it goes into an HTML error page.
+
+    The OAuth callbacks interpolated provider responses and exception text
+    straight into markup, so anything an attacker could steer into an error
+    message became script on our own origin.
+    """
+    return html.escape(str(s), quote=True)
+
+
+def _check_public_url(url: str) -> tuple[bool, str]:
+    """Allow only http(s) URLs that resolve to a public address.
+
+    /api/download-url hands whatever the caller sends to yt-dlp and requests.
+    With no check, "http://169.254.169.254/latest/meta-data/" or an address on
+    the platform's internal network was fetched by the server and handed back
+    through /api/job-file — a read primitive into infrastructure the client
+    cannot reach directly. Every resolved address must be public: a name that
+    answers with one public and one private A record is rejected too.
+
+    Redirects are still followed by the libraries below, so this closes the
+    front door rather than every path; keep egress locked down as well.
+    """
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False, "Bad URL"
+    if parsed.scheme not in ("http", "https"):
+        return False, "Only http(s) links are supported"
+    host = parsed.hostname or ""
+    if not host:
+        return False, "Bad URL: no host"
+    try:
+        infos = socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80),
+                                   proto=socket.IPPROTO_TCP)
+    except socket.gaierror:
+        return False, "Host not found"
+    if not infos:
+        return False, "Host not found"
+    for info in infos:
+        addr = info[4][0]
+        try:
+            ip = ipaddress.ip_address(addr)
+        except ValueError:
+            return False, "Bad address"
+        if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+                or ip.is_multicast or ip.is_unspecified):
+            return False, "This address is not allowed"
+    return True, ""
 
 
 
@@ -250,7 +387,12 @@ def _attach_session_cookie(resp, token: str, request: Request | None = None):
         value=token,
         max_age=60 * 60 * 24 * 90,
         path="/",
-        httponly=False,  # allow JS fallback read if needed
+        # HttpOnly: script on the page cannot read this cookie, so an XSS that
+        # gets code onto a page still cannot walk off with the session. Every
+        # login path (password, Discord, Google, Telegram) sets the cookie
+        # server-side, so nothing depends on the JS `document.cookie = ...`
+        # writes in the frontend — the browser simply ignores those now.
+        httponly=True,
         samesite="lax",
         secure=secure,
     )
@@ -312,8 +454,9 @@ def quota_state(req: Request) -> dict:
 
 def quota_inc(req: Request, n: int) -> None:
     try:
-        ip = (req.client.host if req.client else "unknown")
-        rs.quota_inc(ip, _day(), n)
+        # Must match the IP that quota_state reads, or the Redis counter and
+        # the file counter disagree about who spent what.
+        rs.quota_inc(_ip(req), _day(), n)
     except Exception:
         pass
     # legacy file-backed path follows
@@ -344,11 +487,59 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         response.headers["X-Request-ID"] = rid
         return response
 
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Baseline security headers.
+
+    docker-compose sets these in Nginx, but Railway runs the app with nothing
+    in front of it, so in production nobody was sending them at all.
+
+    The CSP is deliberately loose on inline script/style — the pages are HTML
+    monoliths with inline handlers everywhere, and a strict policy would blank
+    the whole UI. It still pins where scripts, frames and connections may come
+    from, which is what stops an injected <script src> from calling out.
+    """
+    CSP = "; ".join((
+        "default-src 'self'",
+        # 'unsafe-inline'/'unsafe-eval' are required by the current inline JS.
+        # telegram.org is the login widget, injected at runtime by sm-auth.js.
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com data:",
+        "img-src 'self' data: blob: https:",
+        "media-src 'self' data: blob: https:",
+        "connect-src 'self' https:",
+        "frame-src https://telegram.org https://oauth.telegram.org",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'self'",
+    ))
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        h = response.headers
+        h.setdefault("X-Content-Type-Options", "nosniff")
+        h.setdefault("X-Frame-Options", "SAMEORIGIN")
+        h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        h.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+        h.setdefault("Content-Security-Policy", self.CSP)
+        proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "").lower()
+        if proto == "https":
+            h.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return response
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Light Redis/local rate limits on sensitive paths."""
     RULES = (
         ("/api/auth/login", 20, 60),
         ("/api/auth/register", 10, 60),
+        # Guessing an access code was unlimited before: /api/unlock was simply
+        # not on this list, so a script could try codes as fast as it liked.
+        ("/api/unlock", 10, 60),
+        # Wiping every account should not be reachable at machine speed even
+        # with a leaked secret.
+        ("/api/admin/", 5, 60),
         ("/api/process", 8, 60),
         ("/api/process/start", 8, 60),
         ("/api/gallery/", 60, 60),
@@ -356,7 +547,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     )
     async def dispatch(self, request, call_next):
         path = request.url.path
-        client = (request.client.host if request.client else "unknown")
+        # Same IP source as the quota. This used to read request.client.host
+        # directly, which behind a proxy is the PROXY's address — so every user
+        # shared one bucket and a single client could lock login for everyone.
+        client = _ip(request)
         for prefix, limit, window in self.RULES:
             if path.startswith(prefix) and request.method in ("POST", "PUT", "DELETE", "PATCH"):
                 ok, _left = rs.rate_limit(f"{prefix}:{client}", limit, window)
@@ -372,6 +566,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 app = FastAPI(title="Showcase Maker Web")
 
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(RequestIdMiddleware)
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
@@ -382,10 +577,20 @@ except Exception:
 
 @app.exception_handler(Exception)
 async def _unhandled(request: Request, exc: Exception):
-    import traceback
-    traceback.print_exc()
+    # Full detail to the logs, nothing to the client. Echoing str(exc) leaked
+    # filesystem paths, SQL fragments and library internals to anyone who could
+    # trigger an error. The request id ties a user report to the log line.
+    rid = getattr(request.state, "request_id", "-")
+    LOGGER.exception("unhandled error rid=%s path=%s", rid, request.url.path)
+    # A too-large image is a client mistake, not a server fault — keep the 400
+    # so the UI can still explain it.
+    if isinstance(exc, (Image.DecompressionBombError, Image.DecompressionBombWarning)):
+        return JSONResponse(
+            {"ok": False, "msg": "Image is too large", "request_id": rid},
+            status_code=400,
+        )
     return JSONResponse(
-        {"ok": False, "msg": f"{type(exc).__name__}: {exc}", "errors": [str(exc)]},
+        {"ok": False, "msg": "Internal error", "request_id": rid},
         status_code=500,
     )
 
@@ -492,11 +697,7 @@ async def api_profile_update(request: Request):
     try:
         if "multipart/form-data" in ct:
             form = await request.form()
-            for key in (
-                "display_name", "profile_username", "profile_summary", "profile_location",
-                "profile_status", "profile_visibility", "profile_level", "profile_xp",
-                "profile_bg_x", "profile_bg_y", "profile_bg_scale", "profile_bg_overlay",
-            ):
+            for key in PROFILE_EDITABLE_FIELDS:
                 if key in form and form.get(key) is not None:
                     fields[key] = form.get(key)
             bgf = form.get("background")
@@ -519,7 +720,12 @@ async def api_profile_update(request: Request):
         else:
             body = await request.json()
             if isinstance(body, dict):
-                fields = body
+                # Same whitelist as the multipart branch. This used to be
+                # `fields = body`, which handed the caller every column
+                # update_steam_profile accepts — including avatar_path and
+                # profile_background, i.e. arbitrary file read via the image
+                # endpoints that serve them.
+                fields = {k: body[k] for k in PROFILE_EDITABLE_FIELDS if k in body}
     except Exception as e:
         return JSONResponse({"ok": False, "msg": str(e)}, status_code=400)
     ok, msg = auth_db.update_steam_profile(int(user["id"]), **fields)
@@ -536,10 +742,12 @@ def api_profile_bg(user_id: int):
     c.close()
     if not row or not row["profile_background"]:
         return JSONResponse({"ok": False}, status_code=404)
-    path = Path(DATA) / str(row["profile_background"])
-    if not path.is_file():
-        path = Path(DATA) / "profile_bg" / Path(str(row["profile_background"])).name
-    if not path.is_file():
+    stored = str(row["profile_background"])
+    # Containment check: "../../etc/passwd" stored here used to escape DATA.
+    path = _safe_data_path(stored)
+    if path is None:
+        path = _safe_data_path(Path(stored).name, subdir="profile_bg")
+    if path is None:
         return JSONResponse({"ok": False}, status_code=404)
     media = "image/png"
     s = path.suffix.lower()
@@ -920,9 +1128,7 @@ async def auth_login(request: Request):
 @app.post("/api/admin/wipe-users")
 async def admin_wipe_users(request: Request):
     """Delete all accounts. Requires header X-Admin-Secret = ADMIN_SECRET env."""
-    secret = (os.environ.get("ADMIN_SECRET") or "").strip()
-    got = (request.headers.get("x-admin-secret") or "").strip()
-    if not secret or got != secret:
+    if not _admin_ok(request):
         return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
     n = auth_db.wipe_all_users()
     return JSONResponse({"ok": True, "deleted": n})
@@ -1002,19 +1208,15 @@ def auth_avatar(user_id: int):
     stored = ""
     if row and row["avatar_path"]:
         stored = str(row["avatar_path"]).strip()
-    path = Path(stored) if stored else None
-    # resolve relative paths against DATA
-    if path is None or not path.is_file():
-        if stored:
-            cand = Path(DATA) / stored
-            if cand.is_file():
-                path = cand
-        if path is None or not path.is_file():
-            av_dir = Path(DATA) / "avatars"
-            matches = sorted(av_dir.glob(f"{int(user_id)}.*")) if av_dir.is_dir() else []
-            # prefer image extensions
-            matches = [m for m in matches if m.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp", ".gif")] or matches
-            path = matches[0] if matches else None
+    # Always resolve INSIDE DATA. The stored value was once used as an absolute
+    # path, which made this public endpoint read any file on the box.
+    path = _safe_data_path(stored) if stored else None
+    if path is None:
+        av_dir = Path(DATA) / "avatars"
+        matches = sorted(av_dir.glob(f"{int(user_id)}.*")) if av_dir.is_dir() else []
+        # prefer image extensions
+        matches = [m for m in matches if m.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp", ".gif")] or matches
+        path = matches[0] if matches else None
     if path is None or not path.is_file():
         return JSONResponse({"ok": False}, status_code=404)
     from fastapi.responses import FileResponse
@@ -1087,17 +1289,23 @@ async def billing_webhook(request: Request):
     """Stripe webhook: checkout.session.completed → is_pro=1."""
     if not STRIPE_SECRET:
         return JSONResponse({"ok": False}, status_code=503)
+    # No signing secret means no way to tell Stripe from anyone else. The old
+    # fallback parsed the body unverified, so a hand-written POST claiming
+    # checkout.session.completed granted Pro to any user_id. Fail closed.
+    if not STRIPE_WEBHOOK_SECRET:
+        LOGGER.error("billing webhook: STRIPE_WEBHOOK_SECRET unset, refusing unverified event")
+        return JSONResponse(
+            {"ok": False, "msg": "Webhook not configured"}, status_code=503
+        )
     import stripe
     stripe.api_key = STRIPE_SECRET
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
     try:
-        if STRIPE_WEBHOOK_SECRET:
-            event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
-        else:
-            event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
+        event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
     except Exception as e:
-        return JSONResponse({"ok": False, "msg": str(e)}, status_code=400)
+        LOGGER.warning("billing webhook rejected: %s", e)
+        return JSONResponse({"ok": False, "msg": "Invalid signature"}, status_code=400)
 
     if event.get("type") == "checkout.session.completed":
         session = event["data"]["object"]
@@ -1674,7 +1882,10 @@ async def api_process_start(
     user_key = ""
     try:
         u = _auth_user(request)
-        user_key = str(u.get("id") or "") if u else (request.client.host if request.client else "")
+        # Anonymous callers are keyed by IP. Using request.client.host here
+        # meant the proxy's address behind Railway, so every logged-out user
+        # shared one MAX_JOBS_PER_USER budget and blocked each other.
+        user_key = str(u.get("id") or "") if u else _ip(request)
     except Exception:
         user_key = ""
     # Check the per-user cap BEFORE registering the job or charging quota,
@@ -2317,6 +2528,10 @@ async def download_url(request: Request):
     quality = str(body.get("quality") or "best")
     if not url.startswith("http"):
         return JSONResponse({"ok": False, "msg": "Нужна ссылка http(s)"}, status_code=400)
+    url_ok, url_err = _check_public_url(url)
+    if not url_ok:
+        LOGGER.warning("download-url rejected %s: %s", url[:200], url_err)
+        return JSONResponse({"ok": False, "msg": url_err}, status_code=400)
 
     job_id = uuid.uuid4().hex[:12]
     out_dir = JOBS / job_id
@@ -2385,6 +2600,11 @@ async def download_url(request: Request):
                             candidates.append(u)
                 for vu in candidates[:8]:
                     try:
+                        # Candidates are scraped out of a remote page, so they
+                        # are attacker-influenced just like the original input.
+                        cand_ok, _cand_err = _check_public_url(vu)
+                        if not cand_ok:
+                            continue
                         rr = _req.get(
                             vu, headers={**headers, "Referer": "https://www.pinterest.com/"},
                             timeout=60, stream=True,
@@ -3311,15 +3531,16 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
             timeout=30,
         )
         if r.status_code != 200:
-            return HTMLResponse(f"<h3>Token error</h3><pre>{r.text[:500]}</pre>", status_code=400)
+            return HTMLResponse(f"<h3>Token error</h3><pre>{_esc_html(r.text[:500])}</pre>", status_code=400)
         data = r.json()
         auth_db.set_da_tokens(
             int(pend["user_id"]),
             data.get("access_token"),
             data.get("refresh_token"),
         )
-    except Exception as e:
-        return HTMLResponse(f"<h3>Error</h3><pre>{e}</pre>", status_code=500)
+    except Exception:
+        LOGGER.exception("oauth callback failed")
+        return HTMLResponse("<h3>Error</h3><p>Sign-in failed. Please try again.</p>", status_code=500)
     app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
     # Same idea as desktop localhost page: "Success! You can close this window."
     return HTMLResponse(
@@ -3408,9 +3629,15 @@ async def preview_wm(
 
 @app.get("/api/gallery/list")
 def gallery_list(request: Request, status: str = "approved", limit: int = 40, offset: int = 0):
-    items = auth_db.gallery_list(status=status, limit=min(int(limit), 100), offset=max(0, int(offset)))
     viewer = _auth_user(request)
     viewer_id = int(viewer["id"]) if viewer else None
+    # `status` arrives from the query string. Letting anyone pass
+    # status=pending published the un-moderated queue to the whole internet and
+    # made the admin-only /api/gallery/pending pointless. Only a moderator may
+    # ask for anything other than the approved feed.
+    if status != "approved" and not (_admin_ok(request) or _is_gallery_admin(viewer)):
+        status = "approved"
+    items = auth_db.gallery_list(status=status, limit=min(int(limit), 100), offset=max(0, int(offset)))
     # filter + collect ids
     filtered = []
     for it in items:
@@ -3482,16 +3709,27 @@ async def gallery_submit(
     mode: str = Form("workshop"),
     file: UploadFile = File(...),
 ):
+    # Was anonymous (uid 0), so anyone could fill the disk and the public feed
+    # without an account. /api/gallery/publish — the endpoint the UI actually
+    # uses — has always required login; this one was the way around it.
     user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in to publish"}, status_code=401)
     raw = await file.read()
     if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
         return JSONResponse({"ok": False, "msg": "Too large"}, status_code=400)
     ext = Path(file.filename or "x.png").suffix.lower() or ".png"
     if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
         return JSONResponse({"ok": False, "msg": "Images only"}, status_code=400)
+    # Trust the bytes, not the filename: verify() parses the header, so a
+    # renamed archive or script no longer lands in the gallery directory.
+    try:
+        Image.open(io.BytesIO(raw)).verify()
+    except Exception:
+        return JSONResponse({"ok": False, "msg": "Not a valid image"}, status_code=400)
     gdir = Path(DATA) / "gallery"
     gdir.mkdir(parents=True, exist_ok=True)
-    uid = int(user["id"]) if user else 0
+    uid = int(user["id"])
     sub = gdir / f"u{uid}"
     sub.mkdir(parents=True, exist_ok=True)
     name = f"{int(time.time())}_{secrets.token_hex(4)}{ext}"
@@ -3506,12 +3744,10 @@ async def gallery_submit(
         thumb = str(tp)
     except Exception:
         pass
-    gid = auth_db.gallery_add(uid if user else None, title, mode, str(path), thumb)
-    try:
-        auth_db.gallery_set_status(gid, "approved")
-    except Exception:
-        pass
-    return {"ok": True, "id": gid, "msg": "Published"}
+    # gallery_add stores 'pending'. It used to be force-approved right here,
+    # which put unreviewed uploads straight onto the public page.
+    gid = auth_db.gallery_add(uid, title, mode, str(path), thumb)
+    return {"ok": True, "id": gid, "msg": "Sent for review"}
 
 
 
@@ -3779,10 +4015,8 @@ async def gallery_publish(
 
 @app.post("/api/gallery/mod/{item_id}")
 async def gallery_mod(item_id: int, request: Request):
-    secret = (os.environ.get("ADMIN_SECRET") or "").strip()
-    got = (request.headers.get("x-admin-secret") or "").strip()
     user = _auth_user(request)
-    if not ((secret and got == secret) or _is_gallery_admin(user)):
+    if not (_admin_ok(request) or _is_gallery_admin(user)):
         return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
     body = await request.json()
     status = str(body.get("status") or "")
@@ -3795,10 +4029,8 @@ async def gallery_mod(item_id: int, request: Request):
 @app.post("/api/gallery/delete/{item_id}")
 async def gallery_delete(item_id: int, request: Request):
     """Admin (or post owner) can remove a gallery item."""
-    secret = (os.environ.get("ADMIN_SECRET") or "").strip()
-    got = (request.headers.get("x-admin-secret") or "").strip()
     user = _auth_user(request)
-    is_admin = (secret and got == secret) or _is_gallery_admin(user)
+    is_admin = _admin_ok(request) or _is_gallery_admin(user)
     item = auth_db.gallery_get(item_id)
     if not item:
         return JSONResponse({"ok": False, "msg": "Not found"}, status_code=404)
@@ -4000,10 +4232,8 @@ def api_notifications_unread(request: Request):
 
 @app.get("/api/gallery/pending")
 async def gallery_pending(request: Request):
-    secret = (os.environ.get("ADMIN_SECRET") or "").strip()
-    got = (request.headers.get("x-admin-secret") or "").strip()
     user = _auth_user(request)
-    if not ((secret and got == secret) or _is_gallery_admin(user)):
+    if not (_admin_ok(request) or _is_gallery_admin(user)):
         return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
     return {"ok": True, "items": auth_db.gallery_list(status="pending", limit=100)}
 
@@ -4088,7 +4318,7 @@ async def discord_callback(request: Request, code: str = "", state: str = ""):
             timeout=30,
         )
         if tok.status_code != 200:
-            return HTMLResponse(f"<h3>Token error</h3><pre>{tok.text[:400]}</pre>", status_code=400)
+            return HTMLResponse(f"<h3>Token error</h3><pre>{_esc_html(tok.text[:400])}</pre>", status_code=400)
         access = tok.json().get("access_token")
         me = rq.get(
             "https://discord.com/api/users/@me",
@@ -4096,14 +4326,14 @@ async def discord_callback(request: Request, code: str = "", state: str = ""):
             timeout=20,
         )
         if me.status_code != 200:
-            return HTMLResponse(f"<h3>User error</h3><pre>{me.text[:400]}</pre>", status_code=400)
+            return HTMLResponse(f"<h3>User error</h3><pre>{_esc_html(me.text[:400])}</pre>", status_code=400)
         u = me.json()
         did = str(u.get("id") or "")
         uname = u.get("global_name") or u.get("username") or "discord"
         email = u.get("email")
         ok, msg, token = auth_db.register_or_login_discord(did, uname, email)
         if not ok or not token:
-            return HTMLResponse(f"<h3>{msg}</h3>", status_code=400)
+            return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
         app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
         resp = HTMLResponse(
             f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>OK</title></head>
@@ -4118,8 +4348,9 @@ setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
 </script></body></html>"""
         )
         return _attach_session_cookie(resp, token, request)
-    except Exception as e:
-        return HTMLResponse(f"<h3>Error</h3><pre>{e}</pre>", status_code=500)
+    except Exception:
+        LOGGER.exception("oauth callback failed")
+        return HTMLResponse("<h3>Error</h3><p>Sign-in failed. Please try again.</p>", status_code=500)
 
 
 
@@ -4194,7 +4425,7 @@ async def google_callback(request: Request, code: str = "", state: str = ""):
             timeout=30,
         )
         if tok.status_code != 200:
-            return HTMLResponse(f"<h3>Token error</h3><pre>{tok.text[:400]}</pre>", status_code=400)
+            return HTMLResponse(f"<h3>Token error</h3><pre>{_esc_html(tok.text[:400])}</pre>", status_code=400)
         access = tok.json().get("access_token")
         me = rq.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
@@ -4202,14 +4433,14 @@ async def google_callback(request: Request, code: str = "", state: str = ""):
             timeout=20,
         )
         if me.status_code != 200:
-            return HTMLResponse(f"<h3>User error</h3><pre>{me.text[:400]}</pre>", status_code=400)
+            return HTMLResponse(f"<h3>User error</h3><pre>{_esc_html(me.text[:400])}</pre>", status_code=400)
         u = me.json()
         gid = str(u.get("sub") or "")
         uname = u.get("name") or (u.get("email") or "google").split("@")[0]
         email = u.get("email")
         ok, msg, token = auth_db.register_or_login_google(gid, email, uname)
         if not ok or not token:
-            return HTMLResponse(f"<h3>{msg}</h3>", status_code=400)
+            return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
         app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
         resp = HTMLResponse(
             f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>OK</title></head>
@@ -4224,8 +4455,9 @@ setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
 </script></body></html>"""
         )
         return _attach_session_cookie(resp, token, request)
-    except Exception as e:
-        return HTMLResponse(f"<h3>Error</h3><pre>{e}</pre>", status_code=500)
+    except Exception:
+        LOGGER.exception("oauth callback failed")
+        return HTMLResponse("<h3>Error</h3><p>Sign-in failed. Please try again.</p>", status_code=500)
 
 
 
@@ -4316,7 +4548,7 @@ async def telegram_callback(request: Request):
         photo_url=data.get("photo_url"),
     )
     if not ok or not token:
-        return HTMLResponse(f"<h3>{msg}</h3>", status_code=400)
+        return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
     app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
     resp = HTMLResponse(
         f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>OK</title></head>

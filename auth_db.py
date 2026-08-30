@@ -1178,6 +1178,18 @@ def update_steam_profile(user_id: int, **fields) -> tuple[bool, str]:
                 v = float(v)
             except Exception:
                 continue
+        elif k in ("avatar_path", "profile_background"):
+            # File locations, always written by the server as a path relative to
+            # DATA. Reject anything absolute or containing traversal: the readers
+            # in main.py serve these columns as images, so a value like
+            # "/data/users.db" or "../../etc/passwd" would turn a public avatar
+            # URL into arbitrary file read. Callers store e.g. "avatars/7.png".
+            if v is None:
+                continue
+            s = str(v).strip().replace("\\", "/")
+            if not s or s.startswith("/") or ".." in s.split("/") or ":" in s[:3]:
+                continue
+            v = s
         sets.append(f"{k}=?")
         vals.append(v)
     if not sets:
