@@ -613,6 +613,20 @@ def app_page():
     return HTMLResponse(path.read_text(encoding="utf-8"))
 
 
+@app.get("/mockup", response_class=HTMLResponse)
+def mockup_page():
+    """Isolated interactive Steam profile mockup."""
+    path = STATIC / "mockup.html"
+    return HTMLResponse(path.read_text(encoding="utf-8"))
+
+
+@app.get("/builder", response_class=HTMLResponse)
+def builder_page():
+    """Isolated profile artwork builder."""
+    path = STATIC / "builder.html"
+    return HTMLResponse(path.read_text(encoding="utf-8"))
+
+
 
 
 
