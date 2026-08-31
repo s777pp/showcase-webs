@@ -30,7 +30,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
@@ -4441,6 +4441,56 @@ def gallery_page():
 
 
 # ====================== Discord OAuth login ======================
+
+# ====================== Steam OpenID login ======================
+
+@app.get("/api/auth/steam/login")
+def steam_login_start(request: Request):
+    from urllib.parse import urlencode
+    base = (os.environ.get("APP_URL") or str(request.base_url)).rstrip("/")
+    state = secrets.token_hex(16)
+    if not hasattr(app.state, "steam_pending"):
+        app.state.steam_pending = {}
+    app.state.steam_pending[state] = time.time()
+    return_to = f"{base}/api/auth/steam/callback?state={state}"
+    q = urlencode({
+        "openid.ns": "http://specs.openid.net/auth/2.0",
+        "openid.mode": "checkid_setup",
+        "openid.return_to": return_to,
+        "openid.realm": base + "/",
+        "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
+        "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
+    })
+    return RedirectResponse("https://steamcommunity.com/openid/login?" + q, status_code=302)
+
+
+@app.get("/api/auth/steam/callback")
+def steam_login_callback(request: Request, state: str = ""):
+    pending = getattr(app.state, "steam_pending", {})
+    created = pending.pop(state, None)
+    if not created or time.time() - created > 900:
+        return HTMLResponse("<h3>Steam auth failed (expired state)</h3>", status_code=400)
+    params = dict(request.query_params)
+    verify = {k: v for k, v in params.items() if k.startswith("openid.")}
+    verify["openid.mode"] = "check_authentication"
+    try:
+        import requests as rq
+        check = rq.post("https://steamcommunity.com/openid/login", data=verify, timeout=20)
+        if "is_valid:true" not in check.text:
+            return HTMLResponse("<h3>Steam verification failed</h3>", status_code=400)
+        claimed = params.get("openid.claimed_id", "")
+        match = re.search(r"/openid/id/(\d+)$", claimed)
+        if not match:
+            return HTMLResponse("<h3>Steam ID missing</h3>", status_code=400)
+        steam_id = match.group(1)
+        ok, msg, token = auth_db.register_or_login_steam(steam_id)
+        if not ok or not token:
+            return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
+        resp = RedirectResponse("/profile", status_code=302)
+        return _attach_session_cookie(resp, token, request)
+    except Exception:
+        LOGGER.exception("steam openid callback failed")
+        return HTMLResponse("<h3>Steam sign-in failed</h3>", status_code=500)
 
 def _discord_redirect_uri() -> str:
     """Build redirect URI; collapse accidental double slashes in path."""

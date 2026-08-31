@@ -20,6 +20,7 @@ from typing import Any, Optional
 from urllib.parse import quote
 
 import requests
+import xml.etree.ElementTree as ET
 
 LOGGER = logging.getLogger("sm.steam")
 
@@ -40,6 +41,7 @@ APP_SEARCH = "https://steamcommunity.com/actions/SearchApps/{q}"
 TTL_BG = 6 * 3600
 TTL_ACH = 24 * 3600
 TTL_APPS = 24 * 3600
+TTL_PROFILE = 15 * 60
 
 _LOCK = threading.Lock()
 _MEM: dict[str, tuple[float, Any]] = {}
@@ -129,7 +131,7 @@ def _icon_url(icon: str, size: str = "360fx360f") -> str:
     return f"https://community.cloudflare.steamstatic.com/economy/image/{icon}/{size}"
 
 
-def backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24) -> dict:
+def backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24, asset: str = "background") -> dict:
     """Search Steam Market for profile backgrounds.
 
     `kind` filters static vs animated. Animated backgrounds are a distinct
@@ -139,14 +141,24 @@ def backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24) 
     page = max(0, int(page))
     count = max(1, min(50, int(count)))
     kind = (kind or "all").lower()
+    asset = (asset or "background").lower()
+    if asset not in ("background", "avatar", "frame"):
+        asset = "background"
     q = (q or "").strip()
 
-    key = f"bg:{kind}:{q.lower()}:{page}:{count}"
+    key = f"asset2:{asset}:{kind}:{q.lower()}:{page}:{count}"
     cached = _get(key)
     if cached is not None:
         return cached
 
-    if kind == "animated":
+    if asset == "avatar":
+        item_class = "tag_item_class_11"
+    elif asset == "frame":
+        item_class = "tag_item_class_14"
+    else:
+        item_class = "tag_item_class_3"
+
+    if kind == "animated" and asset == "background":
         tag = "Animated Profile Background"
     elif kind == "static":
         tag = "Profile Background"
@@ -162,7 +174,7 @@ def backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24) 
         "sort_dir": "desc",
         "appid": 753,
         "norender": 1,
-        "category_753_item_class[]": "tag_item_class_3",  # profile backgrounds
+        "category_753_item_class[]": item_class,
     }
     if tag:
         params["category_753_Type[]"] = f"tag_{tag.replace(' ', '_')}"
@@ -203,6 +215,7 @@ def backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24) 
                     if hash_name
                     else ""
                 ),
+                "asset": asset,
             }
         )
 
@@ -214,6 +227,67 @@ def backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24) 
     }
     _put(key, out, TTL_BG)
     return out
+
+
+def profile(url: str) -> dict:
+    """Load the public part of a Steam profile without a Web API key."""
+    raw = (url or "").strip().rstrip("/")
+    m = re.match(r"^https?://steamcommunity\.com/(id|profiles)/([^/?#]+)$", raw, re.I)
+    if not m:
+        return {"ok": False, "msg": "Enter a public steamcommunity.com profile URL"}
+    canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
+    key = f"profile2:{canonical.lower()}"
+    cached = _get(key)
+    if cached is not None:
+        return cached
+    r = _fetch(canonical + "/?xml=1")
+    if r is None:
+        return {"ok": False, "msg": "Steam profile is unavailable or private"}
+    try:
+        root = ET.fromstring(r.content)
+        def txt(name: str) -> str:
+            node = root.find(name)
+            return (node.text or "").strip() if node is not None else ""
+        if root.tag == "response" or txt("error"):
+            return {"ok": False, "msg": txt("error") or "Steam profile is private"}
+        groups = []
+        for group in root.findall("./groups/group")[:6]:
+            groups.append({
+                "name": (group.findtext("groupName") or "").strip(),
+                "avatar": (group.findtext("avatarMedium") or "").strip(),
+            })
+        page = _fetch(canonical)
+        page_html = page.text if page is not None else ""
+        level_match = re.search(r'friendPlayerLevelNum[^>]*>\s*(\d+)', page_html, re.I)
+        bg_match = re.search(r'profile_page[^>]+style="[^"]*background-image:\s*url\([\'\"]?([^\)\'\"]+)', page_html, re.I)
+        counts = [int(x.replace(',', '')) for x in re.findall(r'profile_count_link_total[^>]*>\s*([\d,]+)', page_html, re.I)]
+        summary = unescape(txt("summary"))
+        summary = re.sub(r"<br\s*/?>", "\n", summary, flags=re.I)
+        summary = _clean(summary)
+        out = {
+            "ok": True,
+            "profile": {
+                "url": canonical,
+                "steamid": txt("steamID64"),
+                "name": txt("steamID"),
+                "avatar": txt("avatarFull") or txt("avatarMedium"),
+                "headline": txt("headline"),
+                "summary": summary,
+                "location": txt("location"),
+                "realname": txt("realname"),
+                "status": txt("onlineState"),
+                "member_since": txt("memberSince"),
+                "groups": groups,
+                "level": int(level_match.group(1)) if level_match else None,
+                "background": unescape(bg_match.group(1)) if bg_match else "",
+                "stats": counts[:6],
+            },
+        }
+        _put(key, out, TTL_PROFILE)
+        return out
+    except Exception as e:
+        LOGGER.warning("steam profile parse failed: %s", e)
+        return {"ok": False, "msg": "Steam returned an unexpected profile page"}
 
 
 # --------------------------------------------------------------------------

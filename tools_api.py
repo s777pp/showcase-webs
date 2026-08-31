@@ -21,7 +21,7 @@ from typing import Any, Callable, Optional
 import requests
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageSequence
 
 import processor as proc
 import steam_catalog
@@ -204,8 +204,8 @@ async def optimizer(
 # Steam catalog
 # ==========================================================================
 @router.get("/steam/backgrounds")
-def steam_backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24):
-    return steam_catalog.backgrounds(q=q, page=page, kind=kind, count=count)
+def steam_backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24, asset: str = "background"):
+    return steam_catalog.backgrounds(q=q, page=page, kind=kind, count=count, asset=asset)
 
 
 @router.get("/steam/achievements/{appid}")
@@ -216,6 +216,11 @@ def steam_achievements(appid: str):
 @router.get("/steam/apps")
 def steam_apps(q: str = "", limit: int = 24):
     return steam_catalog.apps(q, limit=limit)
+
+
+@router.get("/steam/profile")
+def steam_profile(url: str = ""):
+    return steam_catalog.profile(url)
 
 
 @router.get("/steam/proxy-image")
@@ -492,8 +497,10 @@ async def builder_render(
 
     # ---- background -------------------------------------------------------
     bg_raw: bytes = b""
+    bg_ext = ""
     if background is not None:
         bg_raw = await background.read()
+        bg_ext = Path(background.filename or "background.png").suffix.lower()
     elif background_url:
         from urllib.parse import urlparse
 
@@ -513,25 +520,46 @@ async def builder_render(
     if len(bg_raw) > _max_mb() * 1024 * 1024:
         return _err(f"Background too large (max {_max_mb()} MB)")
 
+    VIDEO_EXT = (".mp4", ".webm", ".mov", ".m4v", ".avi", ".mkv")
+    if bg_ext in VIDEO_EXT:
+        work_bg = Path(tempfile.mkdtemp(prefix="sm_bg_"))
+        try:
+            src_bg = work_bg / f"source{bg_ext}"
+            gif_bg = work_bg / "background.gif"
+            src_bg.write_bytes(bg_raw)
+            proc.media_to_gif(src_bg, gif_bg, fps=int(_scene_float(sc, "fps", 12, 5, 30)), width=min(int(_scene_float(sc, "width", 750, 100, 4000)), 1000), duration=8)
+            bg_raw = gif_bg.read_bytes()
+            bg_ext = ".gif"
+        except Exception as e:
+            return _err(f"Unreadable video background: {type(e).__name__}: {e}")
+        finally:
+            shutil.rmtree(work_bg, ignore_errors=True)
+
     try:
-        bg = Image.open(io.BytesIO(bg_raw)).convert("RGBA")
+        bg_source = Image.open(io.BytesIO(bg_raw))
     except Exception as e:
         return _err(f"Unreadable background: {type(e).__name__}")
 
     width = int(_scene_float(sc, "width", 750, 100, 4000))
-    if bg.width != width:
-        nh = max(1, int(bg.height * (width / max(1, bg.width))))
-        bg = bg.resize((width, nh), Image.Resampling.LANCZOS)
-
     blur = _scene_float(sc, "bgBlur", 0, 0, 40)
-    if blur > 0:
-        bg = bg.filter(ImageFilter.GaussianBlur(blur))
-
     dim = _scene_float(sc, "bgDim", 0, 0, 100)
-    if dim > 0:
-        overlay = Image.new("RGBA", bg.size, (0, 0, 0, int(255 * dim / 100)))
-        bg = Image.alpha_composite(bg, overlay)
-
+    bg_frames, bg_durations = [], []
+    for i, frame in enumerate(ImageSequence.Iterator(bg_source)):
+        if i >= 240:
+            break
+        fr = frame.convert("RGBA")
+        if fr.width != width:
+            nh = max(1, int(fr.height * (width / max(1, fr.width))))
+            fr = fr.resize((width, nh), Image.Resampling.LANCZOS)
+        if blur > 0:
+            fr = fr.filter(ImageFilter.GaussianBlur(blur))
+        if dim > 0:
+            fr = Image.alpha_composite(fr, Image.new("RGBA", fr.size, (0, 0, 0, int(255 * dim / 100))))
+        bg_frames.append(fr)
+        bg_durations.append(max(20, int(frame.info.get("duration", 100))))
+    if not bg_frames:
+        return _err("Background contains no frames")
+    bg = bg_frames[0]
     out = bg
 
     # ---- character --------------------------------------------------------
@@ -539,7 +567,6 @@ async def builder_render(
     # animated paths reuse exactly the helpers /api/compose uses, so a cutout
     # made here is identical to the one the Character tab produces.
     ANIM_EXT = (".gif", ".webp")
-    VIDEO_EXT = (".mp4", ".webm", ".mov", ".m4v", ".avi", ".mkv")
 
     ch_raw = b""
     ch_ext = ""
@@ -606,6 +633,31 @@ async def builder_render(
         except Exception as e:
             LOGGER.exception("builder animated render failed")
             return _err(f"{type(e).__name__}: {e}", 500)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+
+    if len(bg_frames) > 1:
+        static_char = None
+        if ch_raw:
+            try:
+                static_char = Image.open(io.BytesIO(ch_raw)).convert("RGBA")
+            except Exception as e:
+                return _err(f"Unreadable character: {type(e).__name__}")
+        finished = []
+        for fr in bg_frames:
+            if static_char is not None:
+                fr = proc.compose_static(fr, static_char, chroma_key=chroma or "none", chroma_tol=tol, scale=c_scale, offset_x=c_x, offset_y=c_y, feather=feather)
+            fr = _draw_text_layer(fr, sc)
+            fr = _draw_vignette(fr, _scene_float(sc, "vignette", 0, 0, 100))
+            fr = _draw_frame(fr, sc)
+            fr = _apply_wm(fr, q, wm_enable, wm_text, wm_font, wm_opacity, wm_corner, wm_scale, wm_color, wm_x, wm_y)
+            finished.append(fr)
+        work = Path(tempfile.mkdtemp(prefix="sm_bg_out_"))
+        try:
+            gif_out = work / "out.gif"
+            proc._save_animated_gif(finished, bg_durations, gif_out)
+            proc.ensure_under_mb(gif_out, max_mb=5.0)
+            return Response(content=gif_out.read_bytes(), media_type="image/gif", headers={"Content-Disposition": 'attachment; filename="showcase.gif"'})
         finally:
             shutil.rmtree(work, ignore_errors=True)
 

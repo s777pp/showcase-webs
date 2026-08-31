@@ -104,6 +104,11 @@ function AuthCard({ t, onDone }: { t: T; onDone: () => void }) {
         </div>
 
         <div className="grid gap-2">
+          <a href="/api/auth/steam/login">
+            <Button variant="outline" className="w-full">
+              Steam
+            </Button>
+          </a>
           <a href="/api/auth/discord/login">
             <Button variant="outline" className="w-full">
               Discord

@@ -1,6 +1,6 @@
-/** Landing page — VANGUARD hero layout, brand gradient instead of the video. */
+/** Landing page — cinematic video hero with a readable brand overlay. */
 import React, { useState } from 'react';
-import { ArrowUpRight, Award, Crown, X, Languages } from 'lucide-react';
+import { ArrowUpRight, Award, Crown, X, Languages, Puzzle, Download } from 'lucide-react';
 import { GradientField } from '../ui';
 import { go, TOOLS } from '../routes';
 import type { Lang, T } from '../i18n';
@@ -25,6 +25,17 @@ export function Home({
 
   return (
     <main className="relative h-[100svh] min-h-[680px] overflow-hidden bg-ink text-white">
+      <video
+        className="absolute inset-0 h-full w-full object-cover opacity-45"
+        src="/static/video/hero.mp4"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        aria-hidden="true"
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,7,11,.96)_0%,rgba(5,7,11,.68)_48%,rgba(5,7,11,.34)_100%)]" />
       <GradientField intense />
 
       {/* ---------------- navbar ---------------- */}
@@ -186,6 +197,18 @@ export function Home({
           </div>
         </div>
       </section>
+
+      <aside className="glass absolute right-[5vw] top-1/2 z-10 hidden w-[360px] -translate-y-1/2 rounded-[28px] p-6 xl:block">
+        <div className="mb-5 flex items-center gap-4">
+          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-black"><Puzzle size={26} /></div>
+          <div><div className="text-[10px] uppercase tracking-[.25em] text-cyan">Browser extension</div><h2 className="mt-1 text-xl font-semibold">Showcase Helper</h2></div>
+        </div>
+        <p className="text-sm leading-relaxed text-white/55">{lang === 'ru' ? 'Инструменты витрин всегда под рукой: подготовка файлов, предпросмотр и быстрая загрузка в Steam.' : 'Showcase tools are always one click away: prepare files, preview and upload to Steam faster.'}</p>
+        <a href="/static/downloads/SteamShowcase-Helper-v0.9.zip" download className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-xs font-semibold uppercase tracking-widest text-black transition hover:bg-cyan">
+          <Download size={14} />{lang === 'ru' ? 'Скачать расширение' : 'Download extension'}
+        </a>
+        <p className="mt-3 text-center text-[10px] text-white/30">Chrome · Chromium · v0.9</p>
+      </aside>
 
       {/* Quick tool strip along the bottom on large screens. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 hidden justify-center pb-6 lg:flex">

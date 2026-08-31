@@ -27,6 +27,24 @@ import type { T } from '../i18n';
 
 type Tab = 'bg' | 'char' | 'text' | 'frame' | 'fx';
 
+const SHOWCASE_SIZES = [
+  { value: 750, label: 'Workshop — 5 × 150 px (750 px)' },
+  { value: 630, label: 'Featured Artwork — 630 px' },
+  { value: 606, label: 'Artwork — 506 + 100 px' },
+  { value: 640, label: 'Profile crop — 640 px' },
+  { value: 800, label: 'Wide — 800 px' },
+  { value: 1920, label: 'Source — 1920 px' },
+];
+
+const FRAME_PRESETS = [
+  { id: 'none', name: 'Без рамки', style: 'none', width: 0, color: '#ffffff' },
+  { id: 'steam', name: 'Steam glass', style: 'inset', width: 3, color: '#66c0f4' },
+  { id: 'neon', name: 'Neon cyan', style: 'glow', width: 5, color: '#00d2ff' },
+  { id: 'violet', name: 'Violet glow', style: 'glow', width: 7, color: '#8b5cf6' },
+  { id: 'clean', name: 'Clean white', style: 'solid', width: 2, color: '#ffffff' },
+  { id: 'dark', name: 'Dark inset', style: 'inset', width: 10, color: '#111827' },
+];
+
 export type Scene = {
   width: number;
   chromaKey: string;
@@ -223,9 +241,9 @@ export function Builder({ t, isPro }: { t: T; isPro: boolean }) {
             )}
             <Field label={t('size')}>
               <Select value={s.width} onChange={(e) => set({ width: Number(e.target.value) })}>
-                {[630, 640, 750, 800, 1920].map((v) => (
-                  <option key={v} value={v}>
-                    {v} px
+                {SHOWCASE_SIZES.map((v) => (
+                  <option key={v.value} value={v.value}>
+                    {v.label}
                   </option>
                 ))}
               </Select>
@@ -309,6 +327,18 @@ export function Builder({ t, isPro }: { t: T; isPro: boolean }) {
 
         {tab === 'frame' && (
           <div className="grid gap-4">
+            <div className="grid grid-cols-2 gap-2">
+              {FRAME_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => set({ frameStyle: preset.style, frameWidth: preset.width || 1, frameColor: preset.color })}
+                  className={`rounded-xl border p-3 text-left text-[11px] transition ${s.frameStyle === preset.style && s.frameColor === preset.color ? 'border-cyan/60 bg-cyan/10' : 'border-white/10 bg-black/20 hover:border-white/25'}`}
+                >
+                  <span className="mb-2 block h-8 rounded-md bg-black/50" style={{ border: `${Math.max(1, Math.min(preset.width, 4))}px solid ${preset.color}`, boxShadow: preset.style === 'glow' ? `0 0 10px ${preset.color}` : undefined }} />
+                  {preset.name}
+                </button>
+              ))}
+            </div>
             <Field label={t('layer_frame')}>
               <Select value={s.frameStyle} onChange={(e) => set({ frameStyle: e.target.value })}>
                 <option value="none">—</option>
@@ -390,20 +420,11 @@ export function Builder({ t, isPro }: { t: T; isPro: boolean }) {
             <div className="absolute inset-0 bg-black" style={{ opacity: s.bgDim / 100 }} />
           )}
 
-          {charObj && (
-            <img
-              src={charObj}
-              alt=""
-              className="absolute origin-bottom"
-              style={{
-                left: `${s.charX * 100}%`,
-                top: `${s.charY * 100}%`,
-                transform: `translate(-50%,-100%) scale(${s.charScale}) rotate(${s.charRotate}deg)`,
-                maxHeight: '100%',
-                opacity: s.charOpacity / 100,
-              }}
-            />
-          )}
+          {charObj && (char?.type.startsWith('video') ? (
+            <video src={charObj} autoPlay muted loop playsInline className="absolute origin-bottom" style={{ left: `${s.charX * 100}%`, top: `${s.charY * 100}%`, transform: `translate(-50%,-100%) scale(${s.charScale}) rotate(${s.charRotate}deg)`, maxHeight: '100%', maxWidth: '100%', opacity: s.charOpacity / 100 }} />
+          ) : (
+            <img src={charObj} alt="" className="absolute origin-bottom" style={{ left: `${s.charX * 100}%`, top: `${s.charY * 100}%`, transform: `translate(-50%,-100%) scale(${s.charScale}) rotate(${s.charRotate}deg)`, maxHeight: '100%', opacity: s.charOpacity / 100 }} />
+          ))}
 
           {s.text && (
             <div

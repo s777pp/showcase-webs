@@ -16,6 +16,7 @@ type Bg = {
 };
 
 export function Backgrounds({ t }: { t: T }) {
+  const [asset, setAsset] = useState('background');
   const [q, setQ] = useState('');
   const [kind, setKind] = useState('all');
   const [page, setPage] = useState(0);
@@ -24,11 +25,11 @@ export function Backgrounds({ t }: { t: T }) {
   const [err, setErr] = useState('');
   const [total, setTotal] = useState(0);
 
-  async function load(next = 0, query = q, k = kind) {
+  async function load(next = 0, query = q, k = kind, a = asset) {
     setBusy(true);
     setErr('');
     try {
-      const r = await api.backgrounds(query, next, k);
+      const r = await api.backgrounds(query, next, k, 24, a);
       setItems(r.items || []);
       setTotal(Number(r.total || 0));
       setPage(next);
@@ -59,6 +60,9 @@ export function Backgrounds({ t }: { t: T }) {
   return (
     <div>
       <Panel className="mb-5">
+        <div className="mb-4 flex flex-wrap gap-2">
+          {[['background','Фоны'],['avatar','Аватары'],['frame','Рамки аватара']].map(([id,label]) => <button key={id} onClick={() => { setAsset(id); load(0, q, kind, id); }} className={`rounded-full px-4 py-2 text-xs uppercase tracking-wider ${asset === id ? 'bg-white text-black' : 'bg-white/5 text-white/50'}`}>{label}</button>)}
+        </div>
         <div className="grid gap-3 sm:grid-cols-[1fr_180px_auto] sm:items-end">
           <Field label={t('bg_search')}>
             <div className="relative">
@@ -72,7 +76,7 @@ export function Backgrounds({ t }: { t: T }) {
               />
             </div>
           </Field>
-          <Field label={t('bg_kind')}>
+          {asset === 'background' && <Field label={t('bg_kind')}>
             <Select
               value={kind}
               onChange={(e) => {
@@ -84,7 +88,7 @@ export function Backgrounds({ t }: { t: T }) {
               <option value="static">{t('bg_static')}</option>
               <option value="animated">{t('bg_animated')}</option>
             </Select>
-          </Field>
+          </Field>}
           <Button onClick={() => load(0)} busy={busy}>
             {t('search')}
           </Button>
@@ -126,10 +130,10 @@ export function Backgrounds({ t }: { t: T }) {
                 {b.game && <p className="mt-1 truncate text-[11px] text-white/40">{b.game}</p>}
                 <div className="mt-4 flex items-center justify-between gap-2">
                   <button
-                    onClick={() => useInBuilder(b)}
+                    onClick={() => asset === 'background' ? useInBuilder(b) : window.open(b.market_url || '', '_blank', 'noopener')}
                     className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] uppercase tracking-wider text-white/80 transition hover:bg-cyan hover:text-black"
                   >
-                    {t('bg_use')}
+                    {asset === 'background' ? t('bg_use') : t('bg_open')}
                   </button>
                   {b.market_url && (
                     <a

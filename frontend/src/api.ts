@@ -102,16 +102,18 @@ export const api = {
   // ---------- new tools (added to main.py alongside the originals) ----------
   optimize: (fd: FormData) => fetch('/api/optimizer', { method: 'POST', body: fd }),
   builderRender: (fd: FormData) => fetch('/api/builder/render', { method: 'POST', body: fd }),
-  backgrounds: (q: string, page = 0, kind = 'all', count = 24) =>
+  backgrounds: (q: string, page = 0, kind = 'all', count = 24, asset = 'background') =>
     fetch(
       `/api/steam/backgrounds?q=${encodeURIComponent(q)}&page=${page}&kind=${encodeURIComponent(
         kind,
-      )}&count=${count}`,
+      )}&count=${count}&asset=${encodeURIComponent(asset)}`,
     ).then((r) => j<any>(r)),
   achievements: (appid: string) =>
     fetch(`/api/steam/achievements/${encodeURIComponent(appid)}`).then((r) => j<any>(r)),
   steamApps: (q: string) =>
     fetch(`/api/steam/apps?q=${encodeURIComponent(q)}`).then((r) => j<any>(r)),
+  steamProfile: (url: string) =>
+    fetch(`/api/steam/profile?url=${encodeURIComponent(url)}`).then((r) => j<any>(r)),
   projects: () => fetch('/api/projects').then((r) => j<any>(r)),
   projectSave: (body: any) =>
     fetch('/api/projects', {
