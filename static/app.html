@@ -57,9 +57,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   color:var(--muted);cursor:pointer;transition:.15s
 }
 .nav button:hover{background:rgba(255,255,255,.05);color:#fff}
-.nav button.active{
-  background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.1)
-}
+.nav button.active{background:transparent;color:#fff;border-color:transparent}
 
 /* MAIN CENTERED */
 .main{
@@ -832,24 +830,29 @@ input[type="range"]{
 #nav {
   position: relative;
   isolation: isolate;
+  align-items: center;
+  padding-bottom: 8px;
 }
 
 #nav .sm-nav-indicator {
   position: absolute;
   z-index: 0;
-  top: 4px;
+  top: 1px;
   left: 0;
-  height: calc(100% - 8px);
+  height: 38px;
   width: 72px;
-  border: 1px solid rgba(255,255,255,.22);
-  border-radius: 999px;
-  background: rgba(255,255,255,.055);
-  box-shadow: 0 10px 34px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.06);
-  transform: translate3d(0,0,0) scale(.98);
+  border: 1px solid rgba(255,255,255,.20);
+  border-radius: 12px;
+  background: rgba(255,255,255,.075);
+  box-shadow: 0 6px 24px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.035);
+  transform: translate3d(0,0,0);
   transform-origin: 50% 50%;
   opacity: 0;
   pointer-events: none;
-  transition: transform .38s cubic-bezier(.22,1,.36,1), width .38s cubic-bezier(.22,1,.36,1), opacity .2s ease;
+  transition:
+    transform .34s cubic-bezier(.22,1,.36,1),
+    width .34s cubic-bezier(.22,1,.36,1),
+    opacity .16s ease;
 }
 
 #nav .sm-nav-indicator.is-visible { opacity: 1; }
@@ -857,33 +860,24 @@ input[type="range"]{
 #nav > button {
   position: relative;
   z-index: 1;
-  transition: color .2s ease, transform .28s cubic-bezier(.22,1,.36,1);
+  min-height: 38px;
+  padding: 0 15px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent !important;
+  color: rgba(255,255,255,.58);
+  transition: color .2s ease, transform .22s cubic-bezier(.22,1,.36,1);
 }
 
 #nav > button:hover {
   transform: translateY(-1px);
+  color: rgba(255,255,255,.92);
 }
 
 #nav > button.active {
   color: #fff;
+  border-color: transparent !important;
 }
-
-#nav > button::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 4px;
-  width: 0;
-  height: 1px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.62);
-  transform: translateX(-50%);
-  transition: width .3s cubic-bezier(.22,1,.36,1);
-  pointer-events: none;
-}
-
-#nav > button:hover::after,
-#nav > button.active::after { width: 18px; }
 
 /* Keep the visual system consistent with the reference on touch devices. */
 @media (max-width: 760px) {
