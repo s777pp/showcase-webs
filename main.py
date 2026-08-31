@@ -453,6 +453,35 @@ def quota_state(req: Request) -> dict:
     }
 
 
+SERVICE_WM_TEXT = (os.environ.get("SERVICE_WM_TEXT") or "Showcase Maker").strip() or "Showcase Maker"
+
+
+def _forced_wm(q: dict, wm_enable, wm_text, wm_opacity) -> dict:
+    """Apply the free-plan watermark policy.
+
+    Pro keeps full control, including switching the mark off. Free always gets
+    the service mark: the client can ask for its own text, which is appended
+    rather than replaced so people can still sign their work, but it cannot
+    disable the mark or fade it out of visibility.
+    """
+    on = str(wm_enable) not in ("0", "false", "False", "")
+    try:
+        opacity = int(wm_opacity)
+    except (TypeError, ValueError):
+        opacity = 22
+    text = str(wm_text or "").strip()
+
+    if q.get("pro"):
+        return {"on": on, "text": text, "opacity": opacity}
+
+    service = SERVICE_WM_TEXT
+    if text and text.lower() != service.lower():
+        text = f"{text} · {service}"
+    else:
+        text = service
+    return {"on": True, "text": text, "opacity": max(18, min(60, opacity))}
+
+
 def quota_inc(req: Request, n: int) -> None:
     try:
         # Must match the IP that quota_state reads, or the Redis counter and
@@ -597,41 +626,13 @@ async def _unhandled(request: Request, exc: Exception):
 
 
 
-def _react_frontend() -> HTMLResponse:
-    path = STATIC / "react" / "index.html"
-    if not path.is_file():
-        path = STATIC / "index.html"
-    return HTMLResponse(path.read_text(encoding="utf-8"))
-
-
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return _react_frontend()
-
-
-@app.get("/app", response_class=HTMLResponse)
-def app_page():
-    return _react_frontend()
-
-
-@app.get("/mockup", response_class=HTMLResponse)
-def mockup_page():
-    return _react_frontend()
-
-
-@app.get("/builder", response_class=HTMLResponse)
-def builder_page():
-    return _react_frontend()
-
-
-@app.get("/workshop", response_class=HTMLResponse)
-@app.get("/optimizer", response_class=HTMLResponse)
-@app.get("/backgrounds", response_class=HTMLResponse)
-@app.get("/achievements", response_class=HTMLResponse)
-@app.get("/billing", response_class=HTMLResponse)
-@app.get("/faq", response_class=HTMLResponse)
-def react_tool_pages():
-    return _react_frontend()
+    """Landing — React build when present, legacy static page otherwise."""
+    react = STATIC / "react" / "index.html"
+    if react.is_file():
+        return HTMLResponse(react.read_text(encoding="utf-8"))
+    return HTMLResponse((STATIC / "index.html").read_text(encoding="utf-8"))
 
 
 
@@ -640,12 +641,25 @@ def react_tool_pages():
 @app.get("/profile", response_class=HTMLResponse)
 @app.get("/profile/", response_class=HTMLResponse)
 async def profile_me(request: Request):
-    return _react_frontend()
+    """Account page. Served by the SPA so login/register share its session."""
+    react = STATIC / "react" / "index.html"
+    if react.is_file():
+        return HTMLResponse(react.read_text(encoding="utf-8"))
+    p = STATIC / "profile.html"
+    if not p.is_file():
+        return HTMLResponse("profile.html missing", status_code=404)
+    return HTMLResponse(p.read_text(encoding="utf-8"))
 
 
 @app.get("/profile/{username}", response_class=HTMLResponse)
 async def profile_public(username: str, request: Request):
-    return _react_frontend()
+    react = STATIC / "react" / "index.html"
+    if react.is_file():
+        return HTMLResponse(react.read_text(encoding="utf-8"))
+    p = STATIC / "profile.html"
+    if not p.is_file():
+        return HTMLResponse("profile.html missing", status_code=404)
+    return HTMLResponse(p.read_text(encoding="utf-8"))
 
 
 @app.get("/api/profile/me")
@@ -1286,64 +1300,6 @@ def auth_me(request: Request):
     }
 
 
-def _require_pro_user(request: Request):
-    user = _auth_user(request)
-    if not user:
-        return None, JSONResponse({"ok": False, "msg": "Authentication required"}, status_code=401)
-    if not auth_db.effective_pro(user):
-        return None, JSONResponse({"ok": False, "msg": "Projects are available with Pro"}, status_code=403)
-    return user, None
-
-
-@app.get("/api/projects")
-def api_projects(request: Request):
-    user, error = _require_pro_user(request)
-    if error:
-        return error
-    return {"ok": True, "items": auth_db.project_list(int(user["id"]))}
-
-
-@app.get("/api/projects/{project_id}")
-def api_project_get(project_id: int, request: Request):
-    user, error = _require_pro_user(request)
-    if error:
-        return error
-    item = auth_db.project_get(int(user["id"]), project_id)
-    if not item:
-        return JSONResponse({"ok": False, "msg": "Project not found"}, status_code=404)
-    return {"ok": True, "project": item}
-
-
-@app.post("/api/projects")
-async def api_project_save(request: Request):
-    user, error = _require_pro_user(request)
-    if error:
-        return error
-    body = await request.json()
-    state = body.get("state") if isinstance(body, dict) else None
-    if not isinstance(state, dict):
-        return JSONResponse({"ok": False, "msg": "Invalid project state"}, status_code=400)
-    try:
-        pid = auth_db.project_save(
-            int(user["id"]),
-            str(body.get("name") or "Untitled project"),
-            str(body.get("project_type") or "builder"),
-            state,
-            int(body["id"]) if body.get("id") else None,
-        )
-        return {"ok": True, "id": pid}
-    except ValueError as exc:
-        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
-
-
-@app.delete("/api/projects/{project_id}")
-def api_project_delete(project_id: int, request: Request):
-    user, error = _require_pro_user(request)
-    if error:
-        return error
-    return {"ok": auth_db.project_delete(int(user["id"]), project_id)}
-
-
 @app.post("/api/billing/checkout")
 async def billing_checkout(request: Request):
     """Покупка Pro — редирект на FunPay (ключ активируется на сайте)."""
@@ -1573,102 +1529,6 @@ def meta():
         "fonts": ["rob", "lap", "caratte", "Fineday", "roboto", "gothic-rus"],
         "steam_code": STEAM_CONSOLE_CODE,
     }
-
-
-_STEAM_BG_CACHE: dict[str, tuple[float, dict]] = {}
-_STEAM_ACH_CACHE: dict[int, tuple[float, dict]] = {}
-
-
-@app.get("/api/steam/backgrounds")
-def api_steam_backgrounds(q: str = "", page: int = 0, count: int = 24):
-    """Public Steam Community Market background search; no private key required."""
-    import requests
-
-    query = (q or "").strip()[:80]
-    size = max(1, min(50, int(count)))
-    start = max(0, int(page)) * size
-    cache_key = f"{query.lower()}:{start}:{size}"
-    cached = _STEAM_BG_CACHE.get(cache_key)
-    if cached and time.time() - cached[0] < 900:
-        return cached[1]
-    params = {
-        "query": query, "start": start, "count": size,
-        "search_descriptions": 0, "sort_column": "popular", "sort_dir": "desc",
-        "appid": 753, "category_753_item_class[]": "tag_item_class_3", "norender": 1,
-    }
-    try:
-        response = requests.get(
-            "https://steamcommunity.com/market/search/render/",
-            params=params,
-            headers={"User-Agent": "ShowcaseMaker/1.0"},
-            timeout=12,
-        )
-        response.raise_for_status()
-        raw = response.json()
-        items = []
-        for row in raw.get("results") or []:
-            asset = row.get("asset_description") or {}
-            icon = asset.get("icon_url_large") or asset.get("icon_url") or ""
-            name = row.get("name") or asset.get("name") or "Steam Background"
-            market_hash = row.get("hash_name") or asset.get("market_hash_name") or name
-            items.append({
-                "name": name,
-                "game": row.get("app_name") or "Steam",
-                "image": f"https://community.fastly.steamstatic.com/economy/image/{icon}/600x340" if icon else "",
-                "market_url": "https://steamcommunity.com/market/listings/753/" + requests.utils.quote(market_hash, safe=""),
-                "price": row.get("sell_price_text") or "",
-            })
-        payload = {"ok": True, "items": items, "total": int(raw.get("total_count") or len(items)), "page": max(0, int(page))}
-        _STEAM_BG_CACHE[cache_key] = (time.time(), payload)
-        return payload
-    except Exception as exc:
-        LOGGER.warning("steam background search failed: %s", exc)
-        return JSONResponse({"ok": False, "msg": "Steam catalog is temporarily unavailable", "items": []}, status_code=502)
-
-
-@app.get("/api/steam/achievements/{appid}")
-def api_steam_achievements(appid: int):
-    """Read the public global-achievement page without a Steam Web API key."""
-    import requests
-
-    appid = int(appid)
-    if appid <= 0:
-        return JSONResponse({"ok": False, "msg": "Invalid AppID"}, status_code=400)
-    cached = _STEAM_ACH_CACHE.get(appid)
-    if cached and time.time() - cached[0] < 3600:
-        return cached[1]
-    try:
-        response = requests.get(
-            f"https://steamcommunity.com/stats/{appid}/achievements/",
-            headers={"User-Agent": "ShowcaseMaker/1.0", "Accept-Language": "en-US,en;q=0.8"},
-            timeout=12,
-        )
-        response.raise_for_status()
-        source = response.text
-        rows = re.findall(r'<div class="achieveRow[^>]*>(.*?)<div style="clear: both;"></div>', source, re.S | re.I)
-        items = []
-        for row in rows:
-            image_match = re.search(r'<img[^>]+src="([^"]+)"', row, re.I)
-            name_match = re.search(r'<h3>(.*?)</h3>', row, re.S | re.I)
-            desc_match = re.search(r'<h5>(.*?)</h5>', row, re.S | re.I)
-            percent_match = re.search(r'class="achievePercent">\s*([^<]+)', row, re.I)
-            if not image_match or not name_match:
-                continue
-            clean = lambda value: html.unescape(re.sub(r"<[^>]+>", "", value or "")).strip()
-            items.append({
-                "name": clean(name_match.group(1)),
-                "description": clean(desc_match.group(1) if desc_match else ""),
-                "image": image_match.group(1),
-                "percent": clean(percent_match.group(1) if percent_match else ""),
-            })
-        if not items:
-            return JSONResponse({"ok": False, "msg": "Achievements are unavailable for this AppID", "items": []}, status_code=404)
-        payload = {"ok": True, "appid": appid, "items": items}
-        _STEAM_ACH_CACHE[appid] = (time.time(), payload)
-        return payload
-    except Exception as exc:
-        LOGGER.warning("steam achievements failed appid=%s: %s", appid, exc)
-        return JSONResponse({"ok": False, "msg": "Steam achievements are temporarily unavailable", "items": []}, status_code=502)
 
 
 STEAM_CONSOLE_CODE = r"""// Вставь в консоль Steam (F12 → Console) на странице загрузки
@@ -1993,7 +1853,10 @@ async def api_process_start(
         return JSONResponse({"ok": False, "msg": "Unknown mode"}, status_code=400)
     do_all = str(all_modes).lower() in ("1", "true", "yes", "on")
     modes = ["workshop", "featured", "split"] if do_all else [mode]
-    wm_on = wm_enable not in ("0", "false", "False", "")
+    # Free accounts always carry the service mark. The client could previously
+    # send wm_enable=0 and strip it, so the decision is made here, not there.
+    _wmp = _forced_wm(quota_state(request), wm_enable, wm_text, wm_opacity)
+    wm_on, wm_text, wm_opacity = _wmp["on"], _wmp["text"], _wmp["opacity"]
     opacity = (wm_opacity / 100.0) if wm_on else 0.0
     text = wm_text if wm_on else ""
     color = (wm_color or "#ffffff").strip() or "#ffffff"
@@ -2182,7 +2045,10 @@ async def api_process(
     do_all = str(all_modes).lower() in ("1", "true", "yes", "on")
     modes = ["workshop", "featured", "split"] if do_all else [mode]
 
-    wm_on = wm_enable not in ("0", "false", "False", "")
+    # Free accounts always carry the service mark. The client could previously
+    # send wm_enable=0 and strip it, so the decision is made here, not there.
+    _wmp = _forced_wm(quota_state(request), wm_enable, wm_text, wm_opacity)
+    wm_on, wm_text, wm_opacity = _wmp["on"], _wmp["text"], _wmp["opacity"]
     opacity = (wm_opacity / 100.0) if wm_on else 0.0
     text = wm_text if wm_on else ""
     color = (wm_color or "#ffffff").strip() or "#ffffff"
@@ -2612,48 +2478,6 @@ async def api_convert(
             shutil.rmtree(work, ignore_errors=True)
         except Exception:
             pass
-
-
-@app.post("/api/optimizer")
-async def api_optimizer(
-    request: Request,
-    target_mb: float = Form(5.0),
-    file: UploadFile = File(...),
-):
-    """Compress a GIF to a requested Steam-friendly size."""
-    import tempfile
-
-    q = quota_state(request)
-    if not q["pro"] and q["left"] <= 0:
-        return JSONResponse({"ok": False, "msg": f"Limit {FREE_LIMIT} files/day."}, status_code=403)
-    name = file.filename or "animation.gif"
-    if Path(name).suffix.lower() != ".gif":
-        return JSONResponse({"ok": False, "msg": "GIF file required"}, status_code=400)
-    raw = await file.read()
-    if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
-        return JSONResponse({"ok": False, "msg": f"File >{MAX_UPLOAD_MB}MB"}, status_code=400)
-    limit = max(0.5, min(20.0 if q["pro"] else 5.0, float(target_mb or 5.0)))
-    work = Path(tempfile.mkdtemp(prefix="sm_opt_"))
-    try:
-        out = work / "optimized.gif"
-        out.write_bytes(raw)
-        proc.ensure_under_mb(out, max_mb=limit)
-        data = out.read_bytes()
-        quota_inc(request, 1)
-        return StreamingResponse(
-            io.BytesIO(data),
-            media_type="image/gif",
-            headers={
-                "Content-Disposition": 'attachment; filename="optimized.gif"',
-                "X-Original-Bytes": str(len(raw)),
-                "X-Result-Bytes": str(len(data)),
-                "Access-Control-Expose-Headers": "Content-Disposition,X-Original-Bytes,X-Result-Bytes",
-            },
-        )
-    except Exception as exc:
-        return JSONResponse({"ok": False, "msg": f"{type(exc).__name__}: {exc}"[:400]}, status_code=400)
-    finally:
-        shutil.rmtree(work, ignore_errors=True)
 
 
 @app.post("/api/hex21")
@@ -3800,6 +3624,10 @@ async def preview_wm(
             rgb = ImageOps.autocontrast(img.convert("RGB"), cutoff=1)
             img = rgb.convert("RGBA")
             suggestion = "Auto-contrast applied — details are clearer under the watermark."
+        # Preview must show what the export will actually produce, so the same
+        # free-plan policy applies here as in the processing endpoints.
+        _wmp = _forced_wm(quota_state(request), "1", wm_text, wm_opacity)
+        wm_text, wm_opacity = _wmp["text"], _wmp["opacity"]
         opacity = max(0.0, min(1.0, float(wm_opacity) / 100.0))
         corner = (wm_corner or "bl").strip().lower()
         if corner not in ("tl", "tr", "bl", "br"):
@@ -4170,7 +3998,10 @@ async def gallery_publish(
         elif is_video:
             ext = ".mp4"
 
-    wm_on = wm_enable not in ("0", "false", "False", "")
+    # Free accounts always carry the service mark. The client could previously
+    # send wm_enable=0 and strip it, so the decision is made here, not there.
+    _wmp = _forced_wm(quota_state(request), wm_enable, wm_text, wm_opacity)
+    wm_on, wm_text, wm_opacity = _wmp["on"], _wmp["text"], _wmp["opacity"]
     opacity = (wm_opacity / 100.0) if wm_on else 0.0
     text = wm_text if wm_on else ""
     color = (wm_color or "#ffffff").strip() or "#ffffff"
@@ -4600,7 +4431,13 @@ def gallery_am_admin(request: Request):
 
 @app.get("/gallery", response_class=HTMLResponse)
 def gallery_page():
-    return _react_frontend()
+    react = STATIC / "react" / "index.html"
+    if react.is_file():
+        return HTMLResponse(react.read_text(encoding="utf-8"))
+    path = STATIC / "gallery.html"
+    if path.is_file():
+        return HTMLResponse(path.read_text(encoding="utf-8"))
+    return HTMLResponse("<h1>Gallery</h1><p>Add static/gallery.html</p>")
 
 
 # ====================== Discord OAuth login ======================
@@ -5074,6 +4911,78 @@ async def api_compose(
             )
     except Exception as e:
         return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
+
+
+# ===========================================================================
+# React frontend (frontend/ → static/react) + the newer tool endpoints
+# ===========================================================================
+REACT_DIR = STATIC / "react"
+REACT_INDEX = REACT_DIR / "index.html"
+
+# Every client-side route the SPA owns. Anything not listed here (and not an
+# /api or /static path) keeps its existing server-rendered handler.
+SPA_ROUTES = [
+    "/app", "/builder", "/process", "/mockup", "/backgrounds", "/optimizer",
+    "/achievements", "/converter", "/upscale", "/hex", "/download",
+    "/steam", "/deviantart", "/billing", "/faq",
+    "/legal/terms", "/legal/privacy", "/legal/dmca",
+]
+
+
+def _spa_or(fallback: Path) -> HTMLResponse:
+    """Serve the built SPA when it exists, else the legacy static page."""
+    if REACT_INDEX.is_file():
+        return HTMLResponse(REACT_INDEX.read_text(encoding="utf-8"))
+    if fallback.is_file():
+        return HTMLResponse(fallback.read_text(encoding="utf-8"))
+    return HTMLResponse("Frontend is not built. Run: cd frontend && npm install && npm run build", status_code=503)
+
+
+if REACT_DIR.is_dir():
+    # Hashed bundles live under /assets in the Vite output.
+    try:
+        app.mount("/assets", StaticFiles(directory=str(REACT_DIR / "assets")), name="react_assets")
+    except Exception as e:
+        LOGGER.warning("react assets mount failed: %s", e)
+
+
+def _register_spa_routes() -> None:
+    for path in SPA_ROUTES:
+        async def _handler(request: Request, _p=path):
+            return _spa_or(STATIC / "app.html")
+
+        app.add_api_route(path, _handler, methods=["GET"], response_class=HTMLResponse,
+                          include_in_schema=False)
+
+
+_register_spa_routes()
+
+# The legacy vanilla pages stay reachable while the React build settles in.
+@app.get("/legacy", response_class=HTMLResponse, include_in_schema=False)
+def legacy_landing():
+    return HTMLResponse((STATIC / "index.html").read_text(encoding="utf-8"))
+
+
+@app.get("/legacy/app", response_class=HTMLResponse, include_in_schema=False)
+def legacy_app():
+    return HTMLResponse((STATIC / "app.html").read_text(encoding="utf-8"))
+
+
+try:
+    import tools_api
+
+    tools_api.init(
+        quota_state=quota_state,
+        auth_user=_auth_user,
+        DATA=DATA,
+        JOBS=JOBS,
+        MAX_UPLOAD_MB=MAX_UPLOAD_MB,
+        FREE_LIMIT=FREE_LIMIT,
+    )
+    app.include_router(tools_api.router)
+    LOGGER.info("tools_api mounted")
+except Exception as e:  # never take the whole app down over an optional module
+    LOGGER.exception("tools_api not mounted: %s", e)
 
 
 if __name__ == "__main__":

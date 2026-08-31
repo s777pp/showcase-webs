@@ -22,3 +22,8 @@ data/jobs
 main2.py
 bin/*.exe
 docs
+
+# Frontend: only node_modules is excluded. The sources ARE needed in the build
+# context because the `frontend` stage compiles them; the runtime stage takes
+# just the compiled output (static/react), so nothing extra ships in the image.
+frontend/node_modules

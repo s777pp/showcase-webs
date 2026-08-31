@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell($dirs = 'bin','data','docs','fonts','nginx','scripts','sql','static','templates'; foreach \\($d in $dirs\\) { $p = \"A:\\\\claud\\\\$d\"; $items = Get-ChildItem -Force -Recurse $p -ErrorAction SilentlyContinue; $files = @\\($items | Where-Object { -not $_.PSIsContainer }\\); $size = \\($files | Measure-Object Length -Sum\\).Sum; \"=== $d : $\\($files.Count\\) files, $\\([math]::Round\\($size/1MB,2\\)\\) MB ===\"; $items | Select-Object -First 25 | ForEach-Object { \"  \" + $_.FullName.Substring\\(9\\) }; if \\($items.Count -gt 25\\) { \"  ... +$\\($items.Count - 25\\) more\" } })"
+      "PowerShell($dirs = 'bin','data','docs','fonts','nginx','scripts','sql','static','templates'; foreach \\($d in $dirs\\) { $p = \"A:\\\\claud\\\\$d\"; $items = Get-ChildItem -Force -Recurse $p -ErrorAction SilentlyContinue; $files = @\\($items | Where-Object { -not $_.PSIsContainer }\\); $size = \\($files | Measure-Object Length -Sum\\).Sum; \"=== $d : $\\($files.Count\\) files, $\\([math]::Round\\($size/1MB,2\\)\\) MB ===\"; $items | Select-Object -First 25 | ForEach-Object { \"  \" + $_.FullName.Substring\\(9\\) }; if \\($items.Count -gt 25\\) { \"  ... +$\\($items.Count - 25\\) more\" } })",
+      "mcp__codebase-memory-mcp__list_projects"
     ]
   }
 }
