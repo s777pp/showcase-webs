@@ -597,34 +597,41 @@ async def _unhandled(request: Request, exc: Exception):
 
 
 
-@app.get("/", response_class=HTMLResponse)
-def index():
-    """Лендинг (как kant.tools)."""
-    path = STATIC / "index.html"
-    return HTMLResponse(path.read_text(encoding="utf-8"))
-
-
-@app.get("/app", response_class=HTMLResponse)
-def app_page():
-    """Рабочая панель инструментов."""
-    path = STATIC / "app.html"
+def _react_frontend() -> HTMLResponse:
+    path = STATIC / "react" / "index.html"
     if not path.is_file():
         path = STATIC / "index.html"
     return HTMLResponse(path.read_text(encoding="utf-8"))
 
 
+@app.get("/", response_class=HTMLResponse)
+def index():
+    return _react_frontend()
+
+
+@app.get("/app", response_class=HTMLResponse)
+def app_page():
+    return _react_frontend()
+
+
 @app.get("/mockup", response_class=HTMLResponse)
 def mockup_page():
-    """Isolated interactive Steam profile mockup."""
-    path = STATIC / "mockup.html"
-    return HTMLResponse(path.read_text(encoding="utf-8"))
+    return _react_frontend()
 
 
 @app.get("/builder", response_class=HTMLResponse)
 def builder_page():
-    """Isolated profile artwork builder."""
-    path = STATIC / "builder.html"
-    return HTMLResponse(path.read_text(encoding="utf-8"))
+    return _react_frontend()
+
+
+@app.get("/workshop", response_class=HTMLResponse)
+@app.get("/optimizer", response_class=HTMLResponse)
+@app.get("/backgrounds", response_class=HTMLResponse)
+@app.get("/achievements", response_class=HTMLResponse)
+@app.get("/billing", response_class=HTMLResponse)
+@app.get("/faq", response_class=HTMLResponse)
+def react_tool_pages():
+    return _react_frontend()
 
 
 
@@ -633,21 +640,12 @@ def builder_page():
 @app.get("/profile", response_class=HTMLResponse)
 @app.get("/profile/", response_class=HTMLResponse)
 async def profile_me(request: Request):
-    """Owner shortcut → /profile/{username} or login prompt page."""
-    user = _auth_user(request)
-    p = Path(__file__).parent / "static" / "profile.html"
-    if not p.is_file():
-        return HTMLResponse("profile.html missing", status_code=404)
-    html = p.read_text(encoding="utf-8")
-    return HTMLResponse(html)
+    return _react_frontend()
 
 
 @app.get("/profile/{username}", response_class=HTMLResponse)
 async def profile_public(username: str, request: Request):
-    p = Path(__file__).parent / "static" / "profile.html"
-    if not p.is_file():
-        return HTMLResponse("profile.html missing", status_code=404)
-    return HTMLResponse(p.read_text(encoding="utf-8"))
+    return _react_frontend()
 
 
 @app.get("/api/profile/me")
@@ -1288,6 +1286,64 @@ def auth_me(request: Request):
     }
 
 
+def _require_pro_user(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return None, JSONResponse({"ok": False, "msg": "Authentication required"}, status_code=401)
+    if not auth_db.effective_pro(user):
+        return None, JSONResponse({"ok": False, "msg": "Projects are available with Pro"}, status_code=403)
+    return user, None
+
+
+@app.get("/api/projects")
+def api_projects(request: Request):
+    user, error = _require_pro_user(request)
+    if error:
+        return error
+    return {"ok": True, "items": auth_db.project_list(int(user["id"]))}
+
+
+@app.get("/api/projects/{project_id}")
+def api_project_get(project_id: int, request: Request):
+    user, error = _require_pro_user(request)
+    if error:
+        return error
+    item = auth_db.project_get(int(user["id"]), project_id)
+    if not item:
+        return JSONResponse({"ok": False, "msg": "Project not found"}, status_code=404)
+    return {"ok": True, "project": item}
+
+
+@app.post("/api/projects")
+async def api_project_save(request: Request):
+    user, error = _require_pro_user(request)
+    if error:
+        return error
+    body = await request.json()
+    state = body.get("state") if isinstance(body, dict) else None
+    if not isinstance(state, dict):
+        return JSONResponse({"ok": False, "msg": "Invalid project state"}, status_code=400)
+    try:
+        pid = auth_db.project_save(
+            int(user["id"]),
+            str(body.get("name") or "Untitled project"),
+            str(body.get("project_type") or "builder"),
+            state,
+            int(body["id"]) if body.get("id") else None,
+        )
+        return {"ok": True, "id": pid}
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
+
+
+@app.delete("/api/projects/{project_id}")
+def api_project_delete(project_id: int, request: Request):
+    user, error = _require_pro_user(request)
+    if error:
+        return error
+    return {"ok": auth_db.project_delete(int(user["id"]), project_id)}
+
+
 @app.post("/api/billing/checkout")
 async def billing_checkout(request: Request):
     """Покупка Pro — редирект на FunPay (ключ активируется на сайте)."""
@@ -1517,6 +1573,102 @@ def meta():
         "fonts": ["rob", "lap", "caratte", "Fineday", "roboto", "gothic-rus"],
         "steam_code": STEAM_CONSOLE_CODE,
     }
+
+
+_STEAM_BG_CACHE: dict[str, tuple[float, dict]] = {}
+_STEAM_ACH_CACHE: dict[int, tuple[float, dict]] = {}
+
+
+@app.get("/api/steam/backgrounds")
+def api_steam_backgrounds(q: str = "", page: int = 0, count: int = 24):
+    """Public Steam Community Market background search; no private key required."""
+    import requests
+
+    query = (q or "").strip()[:80]
+    size = max(1, min(50, int(count)))
+    start = max(0, int(page)) * size
+    cache_key = f"{query.lower()}:{start}:{size}"
+    cached = _STEAM_BG_CACHE.get(cache_key)
+    if cached and time.time() - cached[0] < 900:
+        return cached[1]
+    params = {
+        "query": query, "start": start, "count": size,
+        "search_descriptions": 0, "sort_column": "popular", "sort_dir": "desc",
+        "appid": 753, "category_753_item_class[]": "tag_item_class_3", "norender": 1,
+    }
+    try:
+        response = requests.get(
+            "https://steamcommunity.com/market/search/render/",
+            params=params,
+            headers={"User-Agent": "ShowcaseMaker/1.0"},
+            timeout=12,
+        )
+        response.raise_for_status()
+        raw = response.json()
+        items = []
+        for row in raw.get("results") or []:
+            asset = row.get("asset_description") or {}
+            icon = asset.get("icon_url_large") or asset.get("icon_url") or ""
+            name = row.get("name") or asset.get("name") or "Steam Background"
+            market_hash = row.get("hash_name") or asset.get("market_hash_name") or name
+            items.append({
+                "name": name,
+                "game": row.get("app_name") or "Steam",
+                "image": f"https://community.fastly.steamstatic.com/economy/image/{icon}/600x340" if icon else "",
+                "market_url": "https://steamcommunity.com/market/listings/753/" + requests.utils.quote(market_hash, safe=""),
+                "price": row.get("sell_price_text") or "",
+            })
+        payload = {"ok": True, "items": items, "total": int(raw.get("total_count") or len(items)), "page": max(0, int(page))}
+        _STEAM_BG_CACHE[cache_key] = (time.time(), payload)
+        return payload
+    except Exception as exc:
+        LOGGER.warning("steam background search failed: %s", exc)
+        return JSONResponse({"ok": False, "msg": "Steam catalog is temporarily unavailable", "items": []}, status_code=502)
+
+
+@app.get("/api/steam/achievements/{appid}")
+def api_steam_achievements(appid: int):
+    """Read the public global-achievement page without a Steam Web API key."""
+    import requests
+
+    appid = int(appid)
+    if appid <= 0:
+        return JSONResponse({"ok": False, "msg": "Invalid AppID"}, status_code=400)
+    cached = _STEAM_ACH_CACHE.get(appid)
+    if cached and time.time() - cached[0] < 3600:
+        return cached[1]
+    try:
+        response = requests.get(
+            f"https://steamcommunity.com/stats/{appid}/achievements/",
+            headers={"User-Agent": "ShowcaseMaker/1.0", "Accept-Language": "en-US,en;q=0.8"},
+            timeout=12,
+        )
+        response.raise_for_status()
+        source = response.text
+        rows = re.findall(r'<div class="achieveRow[^>]*>(.*?)<div style="clear: both;"></div>', source, re.S | re.I)
+        items = []
+        for row in rows:
+            image_match = re.search(r'<img[^>]+src="([^"]+)"', row, re.I)
+            name_match = re.search(r'<h3>(.*?)</h3>', row, re.S | re.I)
+            desc_match = re.search(r'<h5>(.*?)</h5>', row, re.S | re.I)
+            percent_match = re.search(r'class="achievePercent">\s*([^<]+)', row, re.I)
+            if not image_match or not name_match:
+                continue
+            clean = lambda value: html.unescape(re.sub(r"<[^>]+>", "", value or "")).strip()
+            items.append({
+                "name": clean(name_match.group(1)),
+                "description": clean(desc_match.group(1) if desc_match else ""),
+                "image": image_match.group(1),
+                "percent": clean(percent_match.group(1) if percent_match else ""),
+            })
+        if not items:
+            return JSONResponse({"ok": False, "msg": "Achievements are unavailable for this AppID", "items": []}, status_code=404)
+        payload = {"ok": True, "appid": appid, "items": items}
+        _STEAM_ACH_CACHE[appid] = (time.time(), payload)
+        return payload
+    except Exception as exc:
+        LOGGER.warning("steam achievements failed appid=%s: %s", appid, exc)
+        return JSONResponse({"ok": False, "msg": "Steam achievements are temporarily unavailable", "items": []}, status_code=502)
 
 
 STEAM_CONSOLE_CODE = r"""// Вставь в консоль Steam (F12 → Console) на странице загрузки
@@ -2460,6 +2612,48 @@ async def api_convert(
             shutil.rmtree(work, ignore_errors=True)
         except Exception:
             pass
+
+
+@app.post("/api/optimizer")
+async def api_optimizer(
+    request: Request,
+    target_mb: float = Form(5.0),
+    file: UploadFile = File(...),
+):
+    """Compress a GIF to a requested Steam-friendly size."""
+    import tempfile
+
+    q = quota_state(request)
+    if not q["pro"] and q["left"] <= 0:
+        return JSONResponse({"ok": False, "msg": f"Limit {FREE_LIMIT} files/day."}, status_code=403)
+    name = file.filename or "animation.gif"
+    if Path(name).suffix.lower() != ".gif":
+        return JSONResponse({"ok": False, "msg": "GIF file required"}, status_code=400)
+    raw = await file.read()
+    if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+        return JSONResponse({"ok": False, "msg": f"File >{MAX_UPLOAD_MB}MB"}, status_code=400)
+    limit = max(0.5, min(20.0 if q["pro"] else 5.0, float(target_mb or 5.0)))
+    work = Path(tempfile.mkdtemp(prefix="sm_opt_"))
+    try:
+        out = work / "optimized.gif"
+        out.write_bytes(raw)
+        proc.ensure_under_mb(out, max_mb=limit)
+        data = out.read_bytes()
+        quota_inc(request, 1)
+        return StreamingResponse(
+            io.BytesIO(data),
+            media_type="image/gif",
+            headers={
+                "Content-Disposition": 'attachment; filename="optimized.gif"',
+                "X-Original-Bytes": str(len(raw)),
+                "X-Result-Bytes": str(len(data)),
+                "Access-Control-Expose-Headers": "Content-Disposition,X-Original-Bytes,X-Result-Bytes",
+            },
+        )
+    except Exception as exc:
+        return JSONResponse({"ok": False, "msg": f"{type(exc).__name__}: {exc}"[:400]}, status_code=400)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 @app.post("/api/hex21")
@@ -4406,10 +4600,7 @@ def gallery_am_admin(request: Request):
 
 @app.get("/gallery", response_class=HTMLResponse)
 def gallery_page():
-    path = STATIC / "gallery.html"
-    if path.is_file():
-        return HTMLResponse(path.read_text(encoding="utf-8"))
-    return HTMLResponse("<h1>Gallery</h1><p>Add static/gallery.html</p>")
+    return _react_frontend()
 
 
 # ====================== Discord OAuth login ======================
