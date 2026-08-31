@@ -229,7 +229,49 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .final-card p{position:relative;margin:24px auto 0;color:rgba(255,255,255,.6);max-width:28rem;font-size:14px;line-height:1.6}
 .final-btns{position:relative;margin-top:28px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
 
-footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255,.35);border-top:1px solid rgba(255,255,255,.06)}
+.legacy-tools-preview[hidden]{display:none!important}
+
+.extension-promo{
+  position:relative;isolation:isolate;max-width:72rem;margin:16px auto 0;padding:clamp(24px,4vw,48px);
+  min-height:590px;display:grid;grid-template-columns:minmax(300px,.82fr) minmax(0,1.35fr);
+  gap:clamp(28px,5vw,72px);align-items:center;overflow:hidden;border-radius:28px;
+  border:1px solid rgba(164,244,253,.18);background:linear-gradient(145deg,rgba(13,18,27,.96),rgba(3,7,13,.92));
+  box-shadow:0 40px 120px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05)
+}
+.extension-promo::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(110deg,rgba(0,210,255,.08),transparent 38%,rgba(11,37,81,.08));pointer-events:none}
+.extension-promo__glow{position:absolute;z-index:-1;width:520px;height:520px;right:-120px;top:-180px;border-radius:50%;background:rgba(0,210,255,.12);filter:blur(100px);pointer-events:none}
+.extension-promo__copy{position:relative;z-index:2}
+.extension-promo__eyebrow{display:flex;align-items:center;gap:9px;color:#a4f4fd;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.extension-promo__eyebrow span:first-child{width:7px;height:7px;border-radius:50%;background:#00d2ff;box-shadow:0 0 18px rgba(0,210,255,.9)}
+.extension-promo h2{margin-top:20px;font-size:clamp(2.25rem,4.5vw,4.5rem);font-weight:650;letter-spacing:-.055em;line-height:.98}
+.extension-promo__copy>p:not(.extension-promo__hint){max-width:35rem;margin-top:24px;color:rgba(255,255,255,.64);font-size:15px;line-height:1.7}
+.extension-promo__features{display:grid;gap:10px;margin-top:28px;list-style:none}
+.extension-promo__features li{display:flex;align-items:center;gap:13px;color:rgba(255,255,255,.82);font-size:13px}
+.extension-promo__features li>span:first-child{width:31px;height:31px;display:grid;place-items:center;flex:0 0 auto;border:1px solid rgba(164,244,253,.22);border-radius:9px;background:rgba(0,210,255,.07);color:#a4f4fd;font-size:10px;font-weight:800}
+.extension-promo__actions{display:flex;align-items:center;flex-wrap:wrap;gap:14px;margin-top:32px}
+.extension-install{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 21px;border-radius:999px;background:linear-gradient(90deg,#a4f4fd,#00d2ff);color:#031018;font-size:14px;font-weight:800;box-shadow:0 14px 40px rgba(0,210,255,.25);transition:transform .2s,box-shadow .2s}
+.extension-install:hover{color:#031018;transform:translateY(-2px);box-shadow:0 18px 46px rgba(0,210,255,.38)}
+.extension-install svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.extension-promo__actions>span{color:rgba(255,255,255,.42);font-size:11px;letter-spacing:.04em}
+.extension-promo__hint{max-width:33rem;margin-top:13px!important;color:rgba(255,255,255,.4)!important;font-size:11px!important;line-height:1.55!important}
+.extension-promo__visual{position:relative;margin:0;min-width:0}
+.extension-promo__visual::after{content:"";position:absolute;inset:12% 5% -8%;z-index:-1;background:rgba(0,210,255,.18);filter:blur(60px);border-radius:50%}
+.extension-promo__visual img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:20px;border:1px solid rgba(164,244,253,.22);box-shadow:0 26px 70px rgba(0,0,0,.5)}
+.extension-promo__visual figcaption{position:absolute;left:18px;bottom:16px;padding:7px 11px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(4,9,15,.7);backdrop-filter:blur(12px);color:rgba(255,255,255,.68);font-size:10px;letter-spacing:.05em}
+
+.site-footer{max-width:72rem;margin:0 auto 28px;padding:54px 24px 28px;color:rgba(255,255,255,.58);border-top:1px solid rgba(255,255,255,.1);font-size:13px}
+.site-footer__main{display:flex;flex-direction:column;align-items:center;gap:26px;padding-bottom:34px;border-bottom:1px dashed rgba(255,255,255,.12)}
+.site-footer__brand{display:flex;align-items:center;gap:12px;color:#fff;text-align:left}
+.site-footer__brand:hover{color:#fff}
+.site-footer__brand img{width:42px;height:42px;border-radius:12px;object-fit:cover;box-shadow:0 0 28px rgba(0,210,255,.16)}
+.site-footer__brand span{display:flex;flex-direction:column;gap:3px}.site-footer__brand b{font-size:15px}.site-footer__brand small{color:rgba(255,255,255,.42);font-size:11px;font-weight:500}
+.site-footer__nav{display:flex;justify-content:center;flex-wrap:wrap;gap:12px 25px}.site-footer__nav a{color:rgba(255,255,255,.72);transition:color .2s}.site-footer__nav a:hover{color:#a4f4fd}
+.site-footer__bottom{display:flex;align-items:center;justify-content:space-between;gap:24px;padding-top:28px}
+.site-footer__socials{display:flex;align-items:center;gap:12px}.site-footer__socials a{width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.03);transition:transform .2s,border-color .2s,background .2s}.site-footer__socials a:hover{transform:translateY(-2px);border-color:rgba(164,244,253,.4);background:rgba(0,210,255,.08)}
+.site-footer__socials img,.site-footer__socials svg{width:17px;height:17px;object-fit:contain;filter:grayscale(1) brightness(2);opacity:.8}.site-footer__socials svg{fill:currentColor;filter:none;color:rgba(255,255,255,.8)}
+
+@media(max-width:900px){.extension-promo{grid-template-columns:1fr;min-height:0;margin:0 16px;padding:32px}.extension-promo__copy{order:1}.extension-promo__visual{order:0}.extension-promo h2{font-size:clamp(2.1rem,9vw,3.5rem)}}
+@media(max-width:560px){.extension-promo{margin:0 12px;padding:24px 18px;border-radius:20px}.extension-promo__visual img{border-radius:14px}.extension-promo__visual figcaption{display:none}.extension-install{width:100%}.extension-promo__actions>span{width:100%;text-align:center}.site-footer{margin-bottom:72px;padding-left:20px;padding-right:20px}.site-footer__bottom{flex-direction:column;text-align:center}.site-footer__nav{gap:12px 18px}}
 .lang{position:fixed;bottom:20px;right:20px;z-index:50;border-radius:999px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.5);backdrop-filter:blur(8px);padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer}
 
 .modal-bg{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:20px}
@@ -927,7 +969,33 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
     </div>
   </section>
 
-  <section class="mock" id="features">
+  <section class="extension-promo" id="features" aria-labelledby="extension-title">
+    <div class="extension-promo__glow" aria-hidden="true"></div>
+    <div class="extension-promo__copy">
+      <div class="extension-promo__eyebrow"><span></span><span data-i="ext_eyebrow">Browser extension</span></div>
+      <h2 id="extension-title" data-i="ext_title">Showcase tools.<br/>Always one click away.</h2>
+      <p data-i="ext_text">Prepare Workshop, Featured and Split showcases directly from Steam pages. Local processing, quick presets and profile preview — without extra tabs.</p>
+      <ul class="extension-promo__features" aria-label="Extension features">
+        <li><span>01</span><span data-i="ext_feature_1">Tools directly on Steam pages</span></li>
+        <li><span>02</span><span data-i="ext_feature_2">Local image and GIF processing</span></li>
+        <li><span>03</span><span data-i="ext_feature_3">Chrome and Chromium browsers</span></li>
+      </ul>
+      <div class="extension-promo__actions">
+        <a class="extension-install" href="/static/downloads/SteamShowcase-Helper-v0.9.3.zip" download>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 18v2h14v-2"/></svg>
+          <span data-i="ext_install">Install extension</span>
+        </a>
+        <span data-i="ext_version">Version 0.9.3 · ZIP</span>
+      </div>
+      <p class="extension-promo__hint" data-i="ext_hint">Download the ZIP, unpack it and select “Load unpacked” on the browser extensions page.</p>
+    </div>
+    <figure class="extension-promo__visual">
+      <img src="/static/extension-showcase.png" alt="" loading="eager" decoding="async">
+      <figcaption data-i="ext_caption">SteamShowcase Helper · private and local</figcaption>
+    </figure>
+  </section>
+
+  <section class="mock legacy-tools-preview" aria-hidden="true" hidden>
     <div class="mock-frame">
       <div class="mock-title">
         <span class="mock-title-label"><span data-i="mock_title">Showcase Maker — Tools</span></span>
@@ -1143,7 +1211,33 @@ footer{padding:32px 24px;text-align:center;font-size:12px;color:rgba(255,255,255
     </div>
   </section>
 
-  <footer>Showcase Maker · by n1t1337 · <a href="/app">Tools</a></footer>
+  <footer class="site-footer">
+    <div class="site-footer__main">
+      <a class="site-footer__brand" href="/" aria-label="Showcase Maker">
+        <img src="/static/icon.png" alt="" width="42" height="42">
+        <span><b>Showcase Maker</b><small data-i="footer_tagline">Steam showcase tools by n1t1337</small></span>
+      </a>
+      <nav class="site-footer__nav" aria-label="Footer navigation">
+        <a href="/app" data-i="footer_tools">Tools</a>
+        <a href="/gallery" data-i="footer_gallery">Gallery</a>
+        <a href="#pricing" data-i="footer_pricing">Pricing</a>
+        <a href="/profile" data-i="footer_profile">Profile</a>
+        <a href="#features" data-i="footer_extension">Extension</a>
+      </nav>
+    </div>
+    <div class="site-footer__bottom">
+      <span>© 2026 n1t1337 · Showcase Maker</span>
+      <div class="site-footer__socials" aria-label="Social links">
+        <a href="https://steamcommunity.com/id/n1t1337/" target="_blank" rel="noopener noreferrer" aria-label="Steam"><img src="/static/steam.png" alt=""></a>
+        <a href="https://discord.com/invite/me48dhgcw4" target="_blank" rel="noopener noreferrer" aria-label="Discord"><img src="/static/discord.png" alt=""></a>
+        <a href="https://www.youtube.com/@n1t1337/videos" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><img src="/static/youtube.png" alt=""></a>
+        <a href="https://www.tiktok.com/@n1t1337" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><img src="/static/tiktok.png" alt=""></a>
+        <a href="https://t.me/SteamMakerBot" target="_blank" rel="noopener noreferrer" aria-label="Telegram">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 3.4 18.3 20c-.2 1.2-.9 1.5-1.9.9l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-8c.4-.3-.1-.5-.6-.2L6 14l-4.7-1.5c-1-.3-1-1 .2-1.5L20 3.8c.9-.3 1.6.2 1.4-.4Z"/></svg>
+        </a>
+      </div>
+    </div>
+  </footer>
 </div>
 
 
@@ -1210,6 +1304,22 @@ const I18N = {
     hero_note: "Free · 5 files/day  ·  Pro · unlimited",
     mock_title: "Showcase Maker — Tools",
     compose: "✦ Open tools",
+    ext_eyebrow: "Browser extension",
+    ext_title: "Showcase tools.<br/>Always one click away.",
+    ext_text: "Prepare Workshop, Featured and Split showcases directly from Steam pages. Local processing, quick presets and profile preview — without extra tabs.",
+    ext_feature_1: "Tools directly on Steam pages",
+    ext_feature_2: "Local image and GIF processing",
+    ext_feature_3: "Chrome and Chromium browsers",
+    ext_install: "Install extension",
+    ext_version: "Version 0.9.3 · ZIP",
+    ext_hint: "Download the ZIP, unpack it and select “Load unpacked” on the browser extensions page.",
+    ext_caption: "SteamShowcase Helper · private and local",
+    footer_tagline: "Steam showcase tools by n1t1337",
+    footer_tools: "Tools",
+    footer_gallery: "Gallery",
+    footer_pricing: "Pricing",
+    footer_profile: "Profile",
+    footer_extension: "Extension",
     tri_label: "Process",
     tri_h: "Clear the busywork.<br/>Ship the showcase.",
     tri_p: "Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.",
@@ -1266,6 +1376,22 @@ const I18N = {
     hero_note: "Free · 5 файлов/сутки  ·  Pro · безлимит",
     mock_title: "Showcase Maker — Инструменты",
     compose: "✦ Открыть",
+    ext_eyebrow: "Расширение для браузера",
+    ext_title: "Инструменты для витрин.<br/>Всегда в один клик.",
+    ext_text: "Готовь витрины Workshop, Featured и Split прямо на страницах Steam. Локальная обработка, быстрые пресеты и предпросмотр профиля — без лишних вкладок.",
+    ext_feature_1: "Инструменты прямо на страницах Steam",
+    ext_feature_2: "Локальная обработка изображений и GIF",
+    ext_feature_3: "Chrome и браузеры на Chromium",
+    ext_install: "Установить расширение",
+    ext_version: "Версия 0.9.3 · ZIP",
+    ext_hint: "Скачай ZIP, распакуй его и выбери «Загрузить распакованное расширение» на странице расширений браузера.",
+    ext_caption: "SteamShowcase Helper · приватно и локально",
+    footer_tagline: "Инструменты для Steam-витрин от n1t1337",
+    footer_tools: "Инструменты",
+    footer_gallery: "Галерея",
+    footer_pricing: "Цены",
+    footer_profile: "Профиль",
+    footer_extension: "Расширение",
     tri_label: "Обработка",
     tri_h: "Убери рутину.<br/>Отгрузи витрину.",
     tri_p: "Showcase Maker режет Workshop, Featured и Split, ставит watermark, укладывается в лимиты Steam и собирает ZIP — ты занимаешься артом, а не пиксельной математикой.",
