@@ -227,15 +227,20 @@
         "</div>"
       );
     }
-    // generic
-    var g = (sc.images && sc.images[0]) || "";
+    // Steam has several smaller showcase families (game collector, items for
+    // trade, achievement grids). Preserve them as editable grids instead of
+    // collapsing the whole block into one oversized image.
+    var genericImages = (sc.images || []).slice(0, 8);
+    var genericSlots = genericImages.length ? genericImages : [""];
     return (
       '<div class="profile_main_banner" data-sc="' +
       idx +
       '"><div class="profile_main_banner_up_content"><div class="profile_main_banner_title">' +
       esc(sc.title || sc.type || "Showcase") +
       "</div></div>" +
-      imgTag(g, "profile_main_banner_big", "") +
+      '<div class="sm-generic-grid">' + genericSlots.map(function(url, n) {
+        return slotTag(url, "sm-generic-grid__media", "showcase item", "showcase", idx + ':' + n);
+      }).join("") + '</div>' +
       "</div>"
     );
   }
@@ -392,9 +397,12 @@
     if (p.summary) state.summary = p.summary;
     if (p.avatar) state.avatar = p.avatar;
     if (p.background) state.background = p.background;
+    if (p.background_item && p.background_item.poster) state.background = p.background_item.poster;
     if (p.background_movie) state.backgroundMovie = p.background_movie;
+    if (p.background_item) state.backgroundMovie = p.background_item.webm || p.background_item.mp4 || state.backgroundMovie;
     if (p.background && isVideoUrl(p.background) && !state.backgroundMovie) state.backgroundMovie = p.background;
     if (p.frame) state.frame = p.frame;
+    if (p.avatar_frame) state.frame = p.avatar_frame.animated || p.avatar_frame.static || state.frame;
     if (p.status) {
       var s = String(p.status).toLowerCase();
       state.status = /online/.test(s)
@@ -421,7 +429,7 @@
         return typeof b === "string" ? { image: b } : b;
       });
     }
-    var imported = p.showcases || [];
+    var imported = p.showcase_instances || p.showcases || [];
     if (imported.length) {
       var list = [];
       var artN = 0;
@@ -452,12 +460,14 @@
             text: sc.text || "",
             link: (sc.links && sc.links[0]) || "",
           });
+        } else if (typ === "unknown") {
+          list.push({type:"unknown",title:sc.title || "Steam Showcase",images:images.slice(0, 8)});
         } else if (images.length) {
           var title = String(sc.title || "Artwork Showcase");
           var lowerTitle = title.toLowerCase();
           var isFavorite = /favorite|избранн/.test(lowerTitle);
-          var isFeatured = /featured|избранная иллюстрац/.test(lowerTitle);
-          var isSplit = /split|раздел[её]н|составн/.test(lowerTitle) || images.length === 2;
+          var isFeatured = typ === "featured" || /featured|избранная иллюстрац/.test(lowerTitle);
+          var isSplit = typ === "artwork" || typ === "split" || /split|раздел[её]н|составн/.test(lowerTitle);
           list.push({
             type: isFavorite ? "artfav" : (isSplit ? "split" : (isFeatured ? "featured" : "artwork")),
             title: title,

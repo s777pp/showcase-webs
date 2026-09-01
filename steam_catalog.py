@@ -16,6 +16,7 @@ import re
 from html.parser import HTMLParser
 import threading
 import time
+import unicodedata
 from html import unescape
 from pathlib import Path
 from typing import Any, Optional
@@ -497,6 +498,14 @@ def backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24, 
 
     got = _market_rows(ITEM_CLASS[asset], q, page * count, count, extra)
     if got is None:
+        # Market search is aggressively rate-limited on hosting providers.
+        # The Points Shop exposes an official, keyless background catalog and
+        # is a better fallback than leaving the designer empty.
+        if asset == "background":
+            fallback = points_items("points_background", q, page, count)
+            if fallback.get("ok"):
+                fallback["fallback"] = "points_shop"
+                return fallback
         return {"ok": False, "items": [], "total": 0, "msg": "Steam is unavailable, try again shortly"}
     results, total = got
 
@@ -529,6 +538,10 @@ class _ProfilePageParser(HTMLParser):
         self._title_parts = []
         self.badges = []
         self.awards = []
+        self.background = {"poster": "", "webm": "", "mp4": ""}
+        self.avatar_frame = {"animated": "", "static": ""}
+        self._background_depth = None
+        self._frame_depth = None
 
     @staticmethod
     def _attrs(attrs):
@@ -549,6 +562,24 @@ class _ProfilePageParser(HTMLParser):
         classes = set((a.get("class") or "").split())
         if tag == "div":
             self.depth += 1
+        if tag == "div" and "profile_animated_background" in classes:
+            self._background_depth = self.depth
+        if tag == "div" and "profile_avatar_frame" in classes:
+            self._frame_depth = self.depth
+        if self._background_depth is not None:
+            media = self._media(a)
+            if tag == "video" and media:
+                self.background["poster"] = media
+            if tag == "source":
+                src = (a.get("src") or a.get("srcset") or "").strip()
+                if src:
+                    kind = "mp4" if "mp4" in (a.get("type") or "").lower() or ".mp4" in src.lower() else "webm"
+                    self.background[kind] = unescape(src)
+        if self._frame_depth is not None and tag in ("img", "source"):
+            src = (a.get("srcset") or a.get("src") or "").strip()
+            if src:
+                key = "static" if "reduced-motion" in (a.get("media") or "").lower() else "animated"
+                self.avatar_frame[key] = unescape(src.split()[0])
         if tag == "div" and self.current is None and "profile_customization" in classes:
             self.current = {"depth": self.depth, "title": "", "images": [], "links": [], "text": []}
         if self.current is not None:
@@ -592,6 +623,7 @@ class _ProfilePageParser(HTMLParser):
             item["links"] = list(dict.fromkeys(item["links"]))
             item["text"] = " ".join(item["text"])
             title = item["title"].lower().strip()
+            plain_title = unicodedata.normalize("NFKD", item["title"]).lower().strip()
             # Classify by the customization header, never by all body text.
             # A Recent Activity block can contain the words "Workshop Submission"
             # and used to be imported as a fake 15-image Workshop showcase.
@@ -599,15 +631,29 @@ class _ProfilePageParser(HTMLParser):
                 item["type"] = "workshop"
             elif "guide" in title or "руковод" in title:
                 item["type"] = "guide"
+            elif "featured artwork" in title or "избранная иллюстрац" in title:
+                item["type"] = "featured"
+            elif title == "artwork showcase" or title == "витрина иллюстраций":
+                item["type"] = "artwork"
             elif "artwork" in title or "illustration" in title or "иллюстра" in title or "screenshot" in title:
-                item["type"] = "art"
-            elif "information" in title or "custom info" in title or "информац" in title:
+                item["type"] = "artwork"
+            elif ("information" in plain_title or "custom info" in plain_title or "информац" in plain_title or
+                  "about me" in plain_title or "обо мне" in plain_title):
                 item["type"] = "info"
+            elif "recent activity" in title or "недавняя активность" in title:
+                item["type"] = "activity"
             else:
-                item["type"] = "other"
-            if item["type"] != "other":
+                # Keep unsupported Steam blocks in their real order.  The
+                # renderer can show a compact placeholder and future versions
+                # can add a specialised editor without requiring a re-import.
+                item["type"] = "unknown"
+            if item["type"] != "activity":
                 self.showcases.append(item)
             self.current = None
+        if self._background_depth == self.depth:
+            self._background_depth = None
+        if self._frame_depth == self.depth:
+            self._frame_depth = None
         self.depth = max(0, self.depth - 1)
 
 
@@ -621,7 +667,38 @@ def _profile_customizations(page_html: str) -> dict:
         "showcases": parser.showcases[:20],
         "badges": parser.badges[:16],
         "awards": parser.awards[:12],
+        "background_item": parser.background,
+        "avatar_frame": parser.avatar_frame,
     }
+
+
+def _normalise_showcase(item: dict) -> dict:
+    """Reduce Steam's noisy block media to the slots visible in the showcase."""
+    result = dict(item)
+    images = []
+    for raw in item.get("images") or []:
+        url = unescape(str(raw or "")).strip()
+        if not url or any(noise in url.lower() for noise in (
+            "avatars.akamai", "/avatars/", "steamcommunity/public/images/skin",
+            "blank.gif", "pixel.gif", "trans.gif",
+        )):
+            continue
+        if url not in images:
+            images.append(url)
+    typ = result.get("type") or "unknown"
+    if typ == "workshop":
+        result["images"] = images[:15]
+    elif typ in ("guide", "featured"):
+        result["images"] = images[:1]
+    elif typ == "artwork":
+        # Artwork Showcase is 506px + 100px. Steam may render thumbnail
+        # duplicates before the two full-height assets, so prefer the largest
+        # community-file URLs while preserving DOM order.
+        full = [u for u in images if "steamuserimages" in u.lower() or "usercontent" in u.lower()]
+        result["images"] = (full or images)[:2]
+    else:
+        result["images"] = images[:8]
+    return result
 
 
 def profile(url: str) -> dict:
@@ -643,7 +720,7 @@ def profile(url: str) -> dict:
             return {"ok": False, "msg": "Enter a public steamcommunity.com profile URL"}
         canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
 
-    key = f"profile6:{canonical.lower()}"
+    key = f"profile9:{canonical.lower()}"
     cached = _get(key)
     if cached is not None:
         return cached
@@ -703,6 +780,9 @@ def profile(url: str) -> dict:
         summary = re.sub(r"<br\s*/?>", "\n", summary, flags=re.I)
         summary = _clean(summary)
         custom = _profile_customizations(page_html)
+        showcase_instances = [_normalise_showcase(s) for s in custom["showcases"]]
+        background_item = custom.get("background_item") or {}
+        avatar_frame = custom.get("avatar_frame") or {}
         out = {
             "ok": True,
             "profile": {
@@ -718,10 +798,17 @@ def profile(url: str) -> dict:
                 "member_since": txt("memberSince"),
                 "groups": groups,
                 "level": int(level_match.group(1)) if level_match else None,
-                "background": unescape(bg_match.group(1)) if bg_match else "",
+                "background": (background_item.get("poster") or
+                               (unescape(bg_match.group(1)) if bg_match else "")),
+                "background_movie": (background_item.get("webm") or background_item.get("mp4") or ""),
+                "background_item": background_item,
+                "frame": avatar_frame.get("animated") or avatar_frame.get("static") or "",
+                "avatar_frame": avatar_frame,
                 "stats": counts[:6],
                 "stats_map": stat_map,
-                "showcases": custom["showcases"],
+                "showcases": showcase_instances,
+                "showcase_instances": showcase_instances,
+                "showcase_order": [s.get("type") or "unknown" for s in showcase_instances],
                 "badges": [
                     (b if isinstance(b, str) else (b.get("image") or b.get("url") or ""))
                     for b in (custom.get("badges") or [])
@@ -729,6 +816,8 @@ def profile(url: str) -> dict:
                 ],
                 "badge_items": custom.get("badges") or [],
                 "awards": custom["awards"],
+                "sync_mode": "api_plus_html" if page_html else "api_only",
+                "steam_api_available": False,
             },
         }
         # Community HTML supplies showcases, while Valve's Web API supplies
@@ -736,6 +825,7 @@ def profile(url: str) -> dict:
         api_key = (os.environ.get("STEAM_API_KEY") or "").strip()
         steam_id = out["profile"].get("steamid") or ""
         if api_key and steam_id.isdigit():
+            out["profile"]["steam_api_available"] = True
             def api(path: str, **params) -> dict:
                 params.update({"key": api_key, "steamid": steam_id})
                 response = requests.get("https://api.steampowered.com" + path, params=params,
