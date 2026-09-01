@@ -445,3 +445,53 @@ html, body {
   font-size: 12px;
   color: #8f98a0;
 }
+
+
+/* ---- FIX: background stays behind mockup, does not push layout ---- */
+.sm-stage {
+  position: relative !important;
+  overflow: auto !important;
+  isolation: isolate;
+}
+.sm-stage .profile_page {
+  position: relative !important;
+  z-index: 1;
+  min-height: 100%;
+  overflow: visible;
+}
+.sm-stage .profile_animated_background,
+.sm-stage .profile_animated_background_fallback {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  background-size: cover !important;
+  background-position: center top !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+.sm-stage .container_profile {
+  position: relative !important;
+  z-index: 2 !important;
+}
+.profile_up_avatar_wrap video.profile_up_avatar {
+  width: 140px;
+  height: 140px;
+  object-fit: cover;
+}
+.profile_up_avatar_wrap video.profile_up_avatar_frame {
+  position: absolute;
+  inset: -22px;
+  width: calc(100% + 44px);
+  height: calc(100% + 44px);
+  object-fit: contain;
+  background: transparent;
+  pointer-events: none;
+}

@@ -14,19 +14,35 @@
     if (/^(blob:|data:|\/)/i.test(url)) return url;
     return "/api/steam/proxy-image?url=" + encodeURIComponent(url);
   }
-  function imgTag(url, cls, alt) {
+  function isVideoUrl(url) {
+    return /\.(webm|mp4)(\?|$)/i.test(String(url || ""));
+  }
+  function mediaTag(url, cls, alt) {
     if (!url) {
       return '<div class="' + esc(cls) + ' sm-slot-empty" data-empty="1"></div>';
+    }
+    var src = px(url);
+    if (isVideoUrl(url)) {
+      return (
+        '<video class="' +
+        esc(cls) +
+        '" src="' +
+        esc(src) +
+        '" autoplay muted loop playsinline preload="auto"></video>'
+      );
     }
     return (
       '<img class="' +
       esc(cls) +
       '" src="' +
-      esc(px(url)) +
+      esc(src) +
       '" alt="' +
       esc(alt || "") +
       '" loading="lazy"/>'
     );
+  }
+  function imgTag(url, cls, alt) {
+    return mediaTag(url, cls, alt);
   }
 
   function defaultState() {
@@ -203,16 +219,18 @@
   function render(state, root) {
     state = state || defaultState();
     var bg = "";
-    if (state.backgroundMovie) {
+    var bgMovie = state.backgroundMovie || (isVideoUrl(state.background) ? state.background : "");
+    var bgStill = state.background && !isVideoUrl(state.background) ? state.background : "";
+    if (bgMovie) {
       bg =
-        '<video class="profile_animated_background" autoplay muted loop playsinline src="' +
-        esc(px(state.backgroundMovie)) +
+        '<video class="profile_animated_background" autoplay muted loop playsinline preload="auto" src="' +
+        esc(px(bgMovie)) +
         '"></video>';
-    } else if (state.background) {
+    } else if (bgStill) {
       bg =
-        '<div class="profile_animated_background profile_animated_background_fallback" style="background-image:url(' +
-        esc(px(state.background)) +
-        ')"></div>';
+        '<div class="profile_animated_background profile_animated_background_fallback" style="background-image:url(\'' +
+        esc(px(bgStill)) +
+        '\')"></div>';
     }
 
     var awards = (state.awards || [])
@@ -336,6 +354,16 @@
   function applySteamProfile(apiProfile, state) {
     state = state || defaultState();
     var p = apiProfile || {};
+    /* always replace lists so a second import does not keep old badges/showcases */
+    state.badges = [];
+    state.awards = [];
+    state.groups = [];
+    state.favBadge = { image: "", title: "Favorite Badge", xp: "" };
+    state.background = "";
+    state.backgroundMovie = "";
+    state.frame = "";
+    state.showcases = defaultState().showcases;
+    state.stats = defaultState().stats;
     if (p.name) state.name = p.name;
     if (p.realname) state.realname = p.realname;
     if (p.level != null) state.level = p.level;
@@ -343,6 +371,8 @@
     if (p.avatar) state.avatar = p.avatar;
     if (p.background) state.background = p.background;
     if (p.background_movie) state.backgroundMovie = p.background_movie;
+    if (p.background && isVideoUrl(p.background) && !state.backgroundMovie) state.backgroundMovie = p.background;
+    if (p.frame) state.frame = p.frame;
     if (p.status) {
       var s = String(p.status).toLowerCase();
       state.status = /online/.test(s)

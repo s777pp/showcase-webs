@@ -644,7 +644,10 @@ def profile(url: str) -> dict:
     key = f"profile4:{canonical.lower()}"
     cached = _get(key)
     if cached is not None:
-        return cached
+        prof = (cached.get("profile") or {}) if isinstance(cached, dict) else {}
+        if (prof.get("showcases") or prof.get("background") or prof.get("background_movie")):
+            return cached
+        # empty parse — refetch
     r = _fetch(canonical + "/?xml=1")
     if r is None:
         return {"ok": False, "msg": "Steam profile is unavailable or private"}
@@ -723,6 +726,22 @@ def profile(url: str) -> dict:
         summary = re.sub(r"<br\s*/?>", "\n", summary, flags=re.I)
         summary = _clean(summary)
         custom = _profile_customizations(page_html)
+        if not custom.get("showcases") and page_html:
+            imgs = re.findall(
+                r'(https://(?:steamuserimages[^"\s<>]+|[^"\s<>]*steamstatic[^"\s<>]+/economy/image/[^"\s<>]+)',
+                page_html,
+                re.I,
+            )
+            imgs = [unescape(u) for u in dict.fromkeys(imgs) if not re.search(r'emoticon|avatar|icon_/', u, re.I)]
+            if len(imgs) >= 3:
+                custom["showcases"] = [{
+                    "type": "workshop",
+                    "title": "Workshop Showcase",
+                    "images": imgs[:15],
+                    "links": [],
+                    "text": "",
+                }]
+
         out = {
             "ok": True,
             "profile": {
@@ -752,7 +771,9 @@ def profile(url: str) -> dict:
                 "awards": custom["awards"],
             },
         }
-        _put(key, out, TTL_PROFILE)
+        sc_n = len((out.get("profile") or {}).get("showcases") or [])
+        bg_ok = bool((out.get("profile") or {}).get("background") or (out.get("profile") or {}).get("background_movie"))
+        _put(key, out, TTL_PROFILE if (sc_n or bg_ok) else 45)
         return out
     except Exception as e:
         LOGGER.warning("steam profile parse failed: %s", e)

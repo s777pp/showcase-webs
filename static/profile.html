@@ -174,8 +174,9 @@
           var movie = it.movie || it.movie_mp4 || it.video || '';
           var cell = document.createElement('div');
           cell.className = 'cell';
-          if (movie && cat.asset === 'background') {
-            cell.innerHTML = '<video src="' + SteamMockup.px(movie) + '" muted loop autoplay playsinline></video>';
+          var anim = movie || (img && /\.(webm|mp4)(\?|$)/i.test(img) ? img : '');
+          if (anim) {
+            cell.innerHTML = '<video src="' + SteamMockup.px(anim) + '" muted loop autoplay playsinline preload="metadata"></video>';
           } else if (img) {
             cell.innerHTML = '<img src="' + SteamMockup.px(img) + '" alt=""/>';
           }
@@ -188,13 +189,15 @@
               document.getElementById('fBg').value = S.background || '';
               document.getElementById('fBgMovie').value = S.backgroundMovie || '';
             } else if (cat.asset === 'avatar') {
-              S.avatar = img;
-              document.getElementById('fAvatar').value = img;
+              S.avatar = movie || img;
+              document.getElementById('fAvatar').value = S.avatar;
             } else if (cat.asset === 'frame') {
               S.frame = movie || img;
               document.getElementById('fFrame').value = S.frame;
             }
             paint();
+            var stage = document.querySelector(".sm-stage");
+            if (stage) stage.scrollTop = 0;
           };
           grid.appendChild(cell);
         });
