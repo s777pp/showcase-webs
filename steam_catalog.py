@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from html.parser import HTMLParser
 import threading
 import time
 from html import unescape
@@ -506,6 +507,109 @@ def backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24, 
     return out
 
 
+class _ProfilePageParser(HTMLParser):
+    """Extract server-rendered showcase media without depending on Steam's CSS layout."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.depth = 0
+        self.current = None
+        self.showcases = []
+        self._title_depth = None
+        self._title_parts = []
+        self.badges = []
+        self.awards = []
+
+    @staticmethod
+    def _attrs(attrs):
+        return {str(k).lower(): (v or "") for k, v in attrs}
+
+    @staticmethod
+    def _media(a):
+        for key in ("data-src", "data-image", "data-background-image", "src"):
+            val = (a.get(key) or "").strip()
+            if val and not val.startswith("data:"):
+                return unescape(val)
+        style = a.get("style") or ""
+        m = re.search(r"url\([\"']?([^\)\"']+)", style, re.I)
+        return unescape(m.group(1)) if m else ""
+
+    def handle_starttag(self, tag, attrs):
+        a = self._attrs(attrs)
+        classes = set((a.get("class") or "").split())
+        if tag == "div":
+            self.depth += 1
+        if tag == "div" and self.current is None and "profile_customization" in classes:
+            self.current = {"depth": self.depth, "title": "", "images": [], "links": [], "text": []}
+        if self.current is not None:
+            if any("profile_customization_header" in c for c in classes):
+                self._title_depth = self.depth
+                self._title_parts = []
+            href = (a.get("href") or "").strip()
+            if href and ("sharedfiles" in href or "filedetails" in href):
+                self.current["links"].append(unescape(href))
+            media = self._media(a)
+            if media and tag in ("img", "source", "video"):
+                low = media.lower()
+                if not any(x in low for x in ("blank.gif", "pixel.gif", "trans.gif")):
+                    self.current["images"].append(media)
+        media = self._media(a)
+        if media and tag == "img":
+            joined = " ".join(classes).lower()
+            if "badge" in joined and media not in self.badges:
+                self.badges.append(media)
+            if ("award" in joined or "profile_award" in joined) and media not in self.awards:
+                self.awards.append(media)
+
+    def handle_data(self, data):
+        txt = re.sub(r"\s+", " ", data or "").strip()
+        if not txt or self.current is None:
+            return
+        self.current["text"].append(txt)
+        if self._title_depth is not None:
+            self._title_parts.append(txt)
+
+    def handle_endtag(self, tag):
+        if tag != "div":
+            return
+        if self.current is not None and self._title_depth == self.depth:
+            self.current["title"] = " ".join(self._title_parts).strip()
+            self._title_depth = None
+            self._title_parts = []
+        if self.current is not None and self.current["depth"] == self.depth:
+            item = self.current
+            item["images"] = list(dict.fromkeys(item["images"]))
+            item["links"] = list(dict.fromkeys(item["links"]))
+            item["text"] = " ".join(item["text"])
+            title = item["title"].lower()
+            if "workshop" in title or "мастерск" in title:
+                item["type"] = "workshop"
+            elif "guide" in title or "руковод" in title:
+                item["type"] = "guide"
+            elif "artwork" in title or "illustration" in title or "иллюстра" in title:
+                item["type"] = "art"
+            elif "information" in title or "информац" in title:
+                item["type"] = "info"
+            else:
+                item["type"] = "other"
+            self.showcases.append(item)
+            self.current = None
+        self.depth = max(0, self.depth - 1)
+
+
+def _profile_customizations(page_html: str) -> dict:
+    parser = _ProfilePageParser()
+    try:
+        parser.feed(page_html or "")
+    except Exception as exc:
+        LOGGER.debug("profile showcase parse degraded: %s", exc)
+    return {
+        "showcases": parser.showcases[:12],
+        "badges": parser.badges[:8],
+        "awards": parser.awards[:8],
+    }
+
+
 def profile(url: str) -> dict:
     """Load the public part of a Steam profile without a Web API key."""
     raw = (url or "").strip().rstrip("/")
@@ -513,7 +617,7 @@ def profile(url: str) -> dict:
     if not m:
         return {"ok": False, "msg": "Enter a public steamcommunity.com profile URL"}
     canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
-    key = f"profile3:{canonical.lower()}"
+    key = f"profile4:{canonical.lower()}"
     cached = _get(key)
     if cached is not None:
         return cached
@@ -562,6 +666,7 @@ def profile(url: str) -> dict:
         summary = unescape(txt("summary"))
         summary = re.sub(r"<br\s*/?>", "\n", summary, flags=re.I)
         summary = _clean(summary)
+        custom = _profile_customizations(page_html)
         out = {
             "ok": True,
             "profile": {
@@ -580,6 +685,9 @@ def profile(url: str) -> dict:
                 "background": unescape(bg_match.group(1)) if bg_match else "",
                 "stats": counts[:6],
                 "stats_map": stat_map,
+                "showcases": custom["showcases"],
+                "badges": custom["badges"],
+                "awards": custom["awards"],
             },
         }
         _put(key, out, TTL_PROFILE)

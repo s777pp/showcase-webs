@@ -95,11 +95,29 @@
       '<span class="ss-head__sp"></span>' +
       '<div class="ss-head__right">' + langHTML() +
         '<a class="ss-pill" id="ssUser" href="/profile" hidden></a>' +
-        '<a class="ss-btn ss-btn--sm" id="ssLogin" href="/app#login" hidden>' +
-          (lang() === 'ru' ? 'Войти' : 'Log in') + '</a>' +
+        '<button class="ss-btn ss-btn--sm" id="ssLogin" type="button" hidden>' +
+          (lang() === 'ru' ? 'Войти' : 'Log in') + '</button>' +
         '<button class="ss-burger" id="ssBurger" type="button" aria-label="Menu"><span></span></button>' +
       '</div></div></header>' +
       '<div class="ss-drawer" id="ssDrawer">' + drawerHTML() + '</div>';
+  }
+
+  function authHTML() {
+    var ru = lang() === 'ru';
+    return '<div class="ss-auth" id="ssAuth" aria-hidden="true"><div class="ss-auth__card" role="dialog" aria-modal="true" aria-labelledby="ssAuthTitle">' +
+      '<button class="ss-auth__close" id="ssAuthClose" type="button" aria-label="Close">×</button>' +
+      '<div class="ss-auth__mark"><img src="/static/icon.png" alt=""></div>' +
+      '<p class="ss-auth__eyebrow">SHOWCASE MAKER / ACCOUNT</p>' +
+      '<h2 id="ssAuthTitle">' + (ru ? 'С возвращением' : 'Welcome back') + '</h2>' +
+      '<p class="ss-auth__sub" id="ssAuthSub">' + (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.') + '</p>' +
+      '<form class="ss-auth__form" id="ssAuthForm">' +
+        '<label><span>Email</span><input id="ssAuthEmail" type="email" autocomplete="email" required placeholder="name@example.com"></label>' +
+        '<label><span>' + (ru ? 'Пароль' : 'Password') + '</span><input id="ssAuthPass" type="password" autocomplete="current-password" minlength="6" required placeholder="••••••••"></label>' +
+        '<p class="ss-auth__state" id="ssAuthState"></p>' +
+        '<button class="ss-auth__submit" id="ssAuthSubmit" type="submit">' + (ru ? 'Войти' : 'Log in') + '</button>' +
+      '</form>' +
+      '<button class="ss-auth__switch" id="ssAuthSwitch" type="button">' + (ru ? 'Нет аккаунта? Создать' : 'No account? Sign up') + '</button>' +
+    '</div></div>';
   }
 
   function footerHTML() {
@@ -187,18 +205,74 @@
       });
       document.addEventListener('click', function () { box.classList.remove('is-open'); });
     }
+    wireAuth();
+  }
+
+  var authMode = 'login';
+  function openAuth(mode) {
+    authMode = mode === 'register' ? 'register' : 'login';
+    var modal = document.getElementById('ssAuth');
+    if (!modal) return;
+    paintAuth();
+    modal.classList.add('is-open'); modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function () { var e = document.getElementById('ssAuthEmail'); if (e) e.focus(); }, 40);
+  }
+  function closeAuth() {
+    var modal = document.getElementById('ssAuth');
+    if (!modal) return;
+    modal.classList.remove('is-open'); modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+  function paintAuth() {
+    var ru = lang() === 'ru', reg = authMode === 'register';
+    var title = document.getElementById('ssAuthTitle'), sub = document.getElementById('ssAuthSub');
+    var submit = document.getElementById('ssAuthSubmit'), sw = document.getElementById('ssAuthSwitch');
+    if (title) title.textContent = reg ? (ru ? 'Создать аккаунт' : 'Create account') : (ru ? 'С возвращением' : 'Welcome back');
+    if (sub) sub.textContent = reg ? (ru ? 'Один аккаунт для проектов, галереи и Pro.' : 'One account for projects, gallery and Pro.') : (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.');
+    if (submit) submit.textContent = reg ? (ru ? 'Зарегистрироваться' : 'Sign up') : (ru ? 'Войти' : 'Log in');
+    if (sw) sw.textContent = reg ? (ru ? 'Уже есть аккаунт? Войти' : 'Already registered? Log in') : (ru ? 'Нет аккаунта? Создать' : 'No account? Sign up');
+  }
+  function wireAuth() {
+    var login = document.getElementById('ssLogin'), modal = document.getElementById('ssAuth');
+    var close = document.getElementById('ssAuthClose'), sw = document.getElementById('ssAuthSwitch');
+    var form = document.getElementById('ssAuthForm');
+    if (login) login.onclick = function () { openAuth('login'); };
+    if (close) close.onclick = closeAuth;
+    if (modal) modal.onclick = function (e) { if (e.target === modal) closeAuth(); };
+    if (sw) sw.onclick = function () { authMode = authMode === 'login' ? 'register' : 'login'; paintAuth(); };
+    if (form) form.onsubmit = function (e) {
+      e.preventDefault();
+      var email = document.getElementById('ssAuthEmail').value.trim();
+      var password = document.getElementById('ssAuthPass').value;
+      var state = document.getElementById('ssAuthState'), submit = document.getElementById('ssAuthSubmit');
+      state.textContent = lang() === 'ru' ? 'Подключаем…' : 'Connecting…'; state.className = 'ss-auth__state is-wait';
+      submit.disabled = true;
+      fetch(authMode === 'register' ? '/api/auth/register' : '/api/auth/login', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:email,password:password}) })
+        .then(function (r) { return r.json(); }).then(function (j) {
+          if (!j || !j.ok) throw new Error((j && j.msg) || 'Authentication failed');
+          if (j.token) {
+            try { localStorage.setItem('sm_session', j.token); } catch (e) {}
+            var secure = location.protocol === 'https:' ? '; Secure' : '';
+            document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax' + secure;
+          }
+          state.textContent = lang() === 'ru' ? 'Готово' : 'Done'; state.className = 'ss-auth__state is-ok';
+          return loadMe().then(function () { setTimeout(closeAuth, 350); });
+        }).catch(function (err) { state.textContent = err.message; state.className = 'ss-auth__state is-bad'; })
+        .then(function () { submit.disabled = false; });
+    };
   }
 
   function mount() {
     var head = document.getElementById('ssHeadHost');
     var foot = document.getElementById('ssFootHost');
-    if (head) head.innerHTML = headerHTML();
+    if (head) head.innerHTML = headerHTML() + authHTML();
     if (foot) foot.innerHTML = footerHTML();
     wire();
     paintUser(window.SS_ME);
   }
 
-  window.SSShell = { mount: mount, loadMe: loadMe, lang: lang, t: t, esc: esc };
+  window.SSShell = { mount: mount, loadMe: loadMe, lang: lang, t: t, esc: esc, openAuth: openAuth, closeAuth: closeAuth };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { mount(); loadMe(); });

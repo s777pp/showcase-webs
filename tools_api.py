@@ -233,6 +233,11 @@ def steam_proxy_image(url: str):
         "avatars.cloudflare.steamstatic.com",
         "avatars.akamai.steamstatic.com",
         "avatars.fastly.steamstatic.com",
+        "images.steamusercontent.com",
+        "steamuserimages-a.akamaihd.net",
+        "store.akamai.steamstatic.com",
+        "store.cloudflare.steamstatic.com",
+        "store.fastly.steamstatic.com",
     )
     from urllib.parse import urlparse
 

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/ss.css?v=20260901b">
+<link rel="stylesheet" href="/static/ss.css?v=20260901c">
 <style>
 /* ===================== builder shell ===================== */
 .mk{padding:18px 0 30px}
@@ -458,7 +458,7 @@ html,body{background:#05090d!important}body{font-family:"Segoe UI",Arial,sans-se
 <div class="stage__full" id="fullBack"></div>
 <div id="ssFootHost"></div>
 
-<script src="/static/ss-shell.js?v=20260901b"></script>
+<script src="/static/ss-shell.js?v=20260901c"></script>
 <script>
 /* =====================================================================
    Мокап профиля Steam.
@@ -745,7 +745,7 @@ function paintDom() {
       var cl = o.max ? ';display:-webkit-box;-webkit-line-clamp:' + o.max +
         ';-webkit-box-orient:vertical;overflow:hidden' : '';
       html += '<div class="op op--text" style="' + styleOf(o) +
-        'font:' + o.weight + ' ' + o.size + 'px/' + o.lh + 'px ' + FONT +
+        'font-family:Mulish,Arial,sans-serif;font-weight:' + o.weight + ';font-size:' + o.size + 'px;line-height:' + o.lh + 'px' +
         ';color:' + o.color + ';text-align:' + o.align +
         (o.up ? ';text-transform:uppercase' : '') +
         (o.ls ? ';letter-spacing:' + o.ls + 'px' : '') + cl + '">' + esc(o.s) + '</div>';
@@ -1343,12 +1343,49 @@ on($('impGo'), 'click', function () {
       if (p.groups && p.groups.length) {
         S.groups = p.groups.map(function (g) { return { name: g.name, members: 0, avatar: g.avatar }; });
       }
+      if (p.badges && p.badges.length) {
+        S.badges = p.badges.slice(0, 4).map(function (url) { return { image: url }; });
+        while (S.badges.length < 4) S.badges.push(null);
+      }
+      if (p.awards && p.awards.length) {
+        S.awards = p.awards.slice(0, 4).map(function (url) { return { image: url }; });
+      }
+      /* Витрины Steam сервер отдаёт отдельными блоками. Раскладываем найденные
+         изображения по нашим редактируемым слотам; после импорта пользователь
+         всё так же может менять порядок, видимость и каждую картинку вручную. */
+      var imported = p.showcases || [];
+      var artNo = 0;
+      imported.forEach(function (sc) {
+        var images = (sc.images || []).filter(Boolean);
+        if (!images.length) return;
+        if (sc.type === 'workshop') {
+          S.workshop.thumbs = images.slice(0, 5);
+          var subs = /([\d,]+)\s+Submissions/i.exec(sc.text || '');
+          var foll = /([\d,]+)\s+Followers/i.exec(sc.text || '');
+          if (subs) S.workshop.subs = num(subs[1], S.workshop.subs);
+          if (foll) S.workshop.followers = num(foll[1], S.workshop.followers);
+        } else if (sc.type === 'guide') {
+          S.guide.img = images[0];
+        } else if (sc.type === 'art') {
+          if (!artNo) { S.art.big = images[0]; S.art.small = images[1] || ''; }
+          else if (!S.artfav.img) S.artfav.img = images[0];
+          artNo++;
+        }
+      });
+      if (imported.length) {
+        var foundTypes = imported.map(function (x) { return x.type; });
+        S.show.forEach(function (row) {
+          if (row.k === 'artfav') row.on = artNo > 1;
+          else if (row.k !== 'info') row.on = foundTypes.indexOf(row.k) >= 0;
+        });
+      }
       /* Steam печатает только те счётчики, которые у профиля есть, поэтому
          бэкенд отдаёт их с подписями (stats_map) — по позиции их читать нельзя. */
       var sm = p.stats_map || {};
       Object.keys(sm).forEach(function (k) { if (k in S.stats) S.stats[k] = num(sm[k], 0); });
-      syncFields(); drawGroups(); render();
-      st.textContent = 'Готово: ' + (p.name || 'профиль') + (p.level ? ', уровень ' + p.level : '');
+      syncFields(); drawGroups(); drawVitrines(); render();
+      st.textContent = 'Готово: ' + (p.name || 'профиль') + (p.level ? ', уровень ' + p.level : '') +
+        (imported.length ? ', витрин: ' + imported.length : ', витрины не открыты Steam');
       st.className = 'stat is-ok';
     })
     .catch(function (e) { st.textContent = 'Не вышло: ' + e.message; st.className = 'stat is-bad'; });
