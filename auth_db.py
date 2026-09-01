@@ -113,6 +113,22 @@ def _conn() -> sqlite3.Connection:
         )
         """
     )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS profile_import_tickets (
+            ticket_hash TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            steam_id TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            expires_at REAL NOT NULL,
+            used_at REAL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
+    c.execute(
+        "CREATE INDEX IF NOT EXISTS idx_profile_import_tickets_user ON profile_import_tickets(user_id, expires_at)"
+    )
     # migrations for older DBs
     cols = {r[1] for r in c.execute("PRAGMA table_info(users)").fetchall()}
     for col, typ in (
@@ -1437,6 +1453,82 @@ def get_steam_profile_snapshot(user_id: int) -> dict | None:
         return None
     except Exception:
         return None
+    finally:
+        c.close()
+
+
+def steam_link_for_user(user_id: int) -> dict | None:
+    """Return the Steam identity bound to one site account."""
+    c = _conn()
+    try:
+        for col, typ in (("steam_id", "TEXT"), ("steam_username", "TEXT")):
+            try:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
+            except Exception:
+                pass
+        row = c.execute(
+            "SELECT steam_id, steam_username FROM users WHERE id=?",
+            (int(user_id),),
+        ).fetchone()
+        if not row or not row["steam_id"]:
+            return None
+        return {"steam_id": str(row["steam_id"]), "steam_username": row["steam_username"] or ""}
+    finally:
+        c.close()
+
+
+def create_profile_import_ticket(user_id: int, steam_id: str, ttl_sec: int = 300) -> tuple[str, float]:
+    """Create a short-lived, single-use credential for the browser extension."""
+    raw = secrets.token_urlsafe(32)
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    now = time.time()
+    expires = now + max(60, min(int(ttl_sec), 600))
+    c = _conn()
+    try:
+        c.execute("DELETE FROM profile_import_tickets WHERE expires_at<?", (now - 3600,))
+        recent = c.execute("SELECT COUNT(*) AS n FROM profile_import_tickets WHERE user_id=? AND created_at>?", (int(user_id), now - 60)).fetchone()
+        if recent and int(recent["n"] or 0) >= 3:
+            raise ValueError("Too many imports; wait one minute")
+        c.execute(
+            "INSERT INTO profile_import_tickets(ticket_hash,user_id,steam_id,created_at,expires_at,used_at) VALUES(?,?,?,?,?,NULL)",
+            (digest, int(user_id), str(steam_id), now, expires),
+        )
+        c.commit()
+        return raw, expires
+    finally:
+        c.close()
+
+
+def consume_profile_import_ticket(raw_ticket: str, steam_id: str) -> dict | None:
+    """Atomically consume a matching import ticket; replay attempts fail."""
+    raw_ticket = (raw_ticket or "").strip()
+    steam_id = str(steam_id or "").strip()
+    if len(raw_ticket) < 32 or not steam_id:
+        return None
+    digest = hashlib.sha256(raw_ticket.encode("utf-8")).hexdigest()
+    now = time.time()
+    c = _conn()
+    try:
+        c.execute("BEGIN IMMEDIATE")
+        row = c.execute(
+            "SELECT user_id,steam_id,expires_at,used_at FROM profile_import_tickets WHERE ticket_hash=?",
+            (digest,),
+        ).fetchone()
+        if not row or row["used_at"] is not None or float(row["expires_at"]) < now:
+            c.rollback()
+            return None
+        if not secrets.compare_digest(str(row["steam_id"]), steam_id):
+            c.rollback()
+            return None
+        changed = c.execute(
+            "UPDATE profile_import_tickets SET used_at=? WHERE ticket_hash=? AND used_at IS NULL",
+            (now, digest),
+        ).rowcount
+        if changed != 1:
+            c.rollback()
+            return None
+        c.commit()
+        return {"user_id": int(row["user_id"]), "steam_id": str(row["steam_id"])}
     finally:
         c.close()
 

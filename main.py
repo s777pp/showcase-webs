@@ -5137,6 +5137,143 @@ def api_profile_steam_snapshot(request: Request):
     return {"ok": True, "profile": snap}
 
 
+def _clean_extension_profile(raw: dict, steam_id: str) -> dict:
+    """Normalize and bound untrusted DOM data sent by the extension."""
+    def txt(value, limit=500):
+        return re.sub(r"\s+", " ", str(value or "")).strip()[:limit]
+    def url(value):
+        value = txt(value, 2048)
+        try:
+            parsed = urlparse(value)
+            host = (parsed.hostname or "").lower()
+            allowed = host == "steamcommunity.com" or any(host.endswith(suffix) for suffix in (
+                ".steamstatic.com", ".akamaihd.net", ".steamusercontent.com"
+            ))
+            return value if parsed.scheme == "https" and allowed else ""
+        except Exception:
+            return ""
+    def media_list(items, limit=40):
+        out = []
+        for item in (items if isinstance(items, list) else [])[:limit]:
+            if isinstance(item, str):
+                u = url(item)
+                if u: out.append(u)
+            elif isinstance(item, dict):
+                u = url(item.get("url") or item.get("image"))
+                if u: out.append(u)
+        return list(dict.fromkeys(out))
+    p = raw if isinstance(raw, dict) else {}
+    bg = p.get("background_item") if isinstance(p.get("background_item"), dict) else {}
+    frame = p.get("avatar_frame") if isinstance(p.get("avatar_frame"), dict) else {}
+    showcases = []
+    for sc in (p.get("showcase_instances") if isinstance(p.get("showcase_instances"), list) else [])[:20]:
+        if not isinstance(sc, dict):
+            continue
+        images = media_list(sc.get("images"), 40)
+        if not images and isinstance(sc.get("media"), list):
+            images = media_list(sc.get("media"), 40)
+        showcases.append({
+            "type": txt(sc.get("type"), 40).lower() or "other",
+            "title": txt(sc.get("title"), 120),
+            "images": images,
+            "text": txt(sc.get("text"), 1200),
+            "width": max(0, min(int(sc.get("width") or 0), 3000)),
+            "height": max(0, min(int(sc.get("height") or 0), 10000)),
+        })
+    def cards(name, limit=100):
+        out = []
+        for item in (p.get(name) if isinstance(p.get(name), list) else [])[:limit]:
+            if not isinstance(item, dict): continue
+            image = url(item.get("image"))
+            if image: out.append({"image": image, "title": txt(item.get("title") or item.get("name"), 120), "url": url(item.get("url"))})
+        return out
+    stats = {}
+    if isinstance(p.get("stats_map"), dict):
+        for key in ("games", "inventory", "screenshots", "videos", "workshop", "reviews", "guides", "artwork"):
+            try: stats[key] = max(0, min(int(p["stats_map"].get(key) or 0), 100000000))
+            except Exception: pass
+    fav = p.get("favorite_badge") if isinstance(p.get("favorite_badge"), dict) else {}
+    return {
+        "steamid": steam_id,
+        "url": url(p.get("url")) or f"https://steamcommunity.com/profiles/{steam_id}",
+        "name": txt(p.get("name"), 80), "realname": txt(p.get("realname"), 120),
+        "summary": txt(p.get("summary"), 2000), "status": txt(p.get("status"), 80),
+        "level": max(0, min(int(p.get("level") or 0), 9999)), "avatar": url(p.get("avatar")),
+        "background": url(bg.get("poster")), "background_movie": url(bg.get("webm") or bg.get("mp4")),
+        "background_item": {"poster": url(bg.get("poster")), "webm": url(bg.get("webm")), "mp4": url(bg.get("mp4"))},
+        "frame": url(frame.get("animated") or frame.get("static")),
+        "avatar_frame": {"animated": url(frame.get("animated")), "static": url(frame.get("static"))},
+        "favorite_badge": {"image": url(fav.get("image")), "title": txt(fav.get("title"), 120), "xp": txt(fav.get("xp"), 40)},
+        "badges": cards("badges"), "awards": cards("awards"), "groups": cards("groups", 30),
+        "stats_map": stats, "showcase_instances": showcases,
+        "sync_mode": "steam_api_plus_extension", "captured_at": txt(p.get("captured_at"), 80),
+    }
+
+
+def _merge_nonempty_profile(old: dict | None, new: dict) -> dict:
+    """A partial Steam page must not erase a previous successful capture."""
+    def meaningful(value):
+        if isinstance(value, dict): return any(meaningful(v) for v in value.values())
+        if isinstance(value, list): return bool(value)
+        return value not in (None, "")
+    out = dict(old or {})
+    for key, value in new.items():
+        if meaningful(value):
+            if key == "stats_map" and isinstance(value, dict):
+                merged = dict(out.get(key) or {}); merged.update(value); out[key] = merged
+            else:
+                out[key] = value
+    return out
+
+
+@app.post("/api/profile/import-ticket")
+def api_profile_import_ticket(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login through Steam first"}, status_code=401)
+    link = auth_db.steam_link_for_user(int(user["id"]))
+    if not link:
+        return JSONResponse({"ok": False, "msg": "Steam account is not linked"}, status_code=409)
+    try:
+        ticket, expires = auth_db.create_profile_import_ticket(int(user["id"]), link["steam_id"])
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=429)
+    return {"ok": True, "ticket": ticket, "expires_at": expires, "steamid": link["steam_id"], "profile_url": f"https://steamcommunity.com/profiles/{link['steam_id']}"}
+
+
+@app.post("/api/profile/extension-import")
+async def api_profile_extension_import(request: Request):
+    length = int(request.headers.get("content-length") or 0)
+    if length > 1_500_000:
+        return JSONResponse({"ok": False, "msg": "Profile snapshot is too large"}, status_code=413)
+    auth = (request.headers.get("authorization") or "").strip()
+    ticket = auth[13:].strip() if auth.lower().startswith("importticket ") else ""
+    try:
+        raw = await request.body()
+        if len(raw) > 1_500_000: raise ValueError("Profile snapshot is too large")
+        body = json.loads(raw or b"{}")
+    except Exception as exc:
+        return JSONResponse({"ok": False, "msg": str(exc) or "Invalid JSON"}, status_code=400)
+    if not ticket: ticket = str(body.get("ticket") or "")
+    steam_id = str(body.get("steamid") or "")
+    if not re.fullmatch(r"\d{17}", steam_id):
+        return JSONResponse({"ok": False, "msg": "Invalid SteamID"}, status_code=400)
+    grant = auth_db.consume_profile_import_ticket(ticket, steam_id)
+    if not grant:
+        return JSONResponse({"ok": False, "msg": "Import ticket expired, invalid or already used"}, status_code=401)
+    try:
+        profile = _clean_extension_profile(body.get("profile") or {}, steam_id)
+        if not profile.get("name") and not profile.get("avatar"):
+            return JSONResponse({"ok": False, "msg": "Steam page did not expose public profile data"}, status_code=422)
+        profile = _merge_steam_api(profile)
+        profile = _merge_nonempty_profile(auth_db.get_steam_profile_snapshot(grant["user_id"]), profile)
+        auth_db.save_steam_profile_snapshot(grant["user_id"], profile)
+        return {"ok": True, "profile": profile, "showcases": len(profile.get("showcase_instances") or [])}
+    except Exception as exc:
+        LOGGER.exception("extension Steam profile import failed")
+        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=500)
+
+
 @app.post("/api/profile/steam-import")
 async def api_profile_steam_import(request: Request):
     """Re-fetch Steam profile for logged-in user (by steam_id or body.url) and save snapshot."""

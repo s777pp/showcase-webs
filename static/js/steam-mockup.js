@@ -406,6 +406,14 @@
     if (p.background && isVideoUrl(p.background) && !state.backgroundMovie) state.backgroundMovie = p.background;
     if (p.frame) state.frame = p.frame;
     if (p.avatar_frame) state.frame = p.avatar_frame.animated || p.avatar_frame.static || state.frame;
+    if (p.favorite_badge || p.favBadge) {
+      var fb = p.favorite_badge || p.favBadge;
+      state.favBadge = {
+        image: fb.image || "",
+        title: fb.title || "Favorite Badge",
+        xp: fb.xp || ""
+      };
+    }
     if (p.status) {
       var s = String(p.status).toLowerCase();
       state.status = /online/.test(s)
