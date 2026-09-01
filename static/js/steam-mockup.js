@@ -91,8 +91,21 @@
 
   function renderShowcase(sc, idx) {
     var t = (sc.type || "").toLowerCase();
-    if (t === "artwork" || t === "art") {
+    if (t === "featured") {
+      return (
+        '<div class="profile_main_banner profile_main_banner--featured" data-sc="' + idx + '">' +
+        '<div class="profile_main_banner_up"><div class="profile_main_banner_up_content">' +
+        '<div class="profile_main_banner_title">' + esc(sc.title || "Featured Artwork Showcase") +
+        '</div></div></div><div class="profile_main_banner_main"><div class="profile_main_banner_main_content">' +
+        '<div class="profile_main_featured">' +
+        slotTag((sc.images && sc.images[0]) || "", "profile_main_featured_img", "featured artwork", "showcase", idx + ':0') +
+        '</div><div class="profile_main_banner_stats"><span class="profile_main_like">♥ 0</span>' +
+        '<span class="profile_main_comment">💬 0</span></div></div></div></div>'
+      );
+    }
+    if (t === "artwork" || t === "art" || t === "split") {
       var big = (sc.images && sc.images[0]) || "";
+      var side = (sc.images && sc.images[1]) || "";
       return (
         '<div class="profile_main_banner" data-sc="' +
         idx +
@@ -104,6 +117,7 @@
         '<div class="profile_main_banner_main"><div class="profile_main_banner_main_content">' +
         '<div class="profile_main_banners">' +
         slotTag(big, "profile_main_banner_big", "artwork", "showcase", idx + ':0') +
+        slotTag(side, "profile_main_banner_small", "artwork side", "showcase", idx + ':1') +
         "</div>" +
         '<div class="profile_main_banner_stats">' +
         '<span class="profile_main_like">♥ 0</span>' +
@@ -434,19 +448,16 @@
             link: (sc.links && sc.links[0]) || "",
           });
         } else if (images.length) {
-          if (!artN) {
-            list.push({
-              type: "artwork",
-              title: sc.title || "Artwork Showcase",
-              images: images.slice(0, 2),
-            });
-          } else {
-            list.push({
-              type: "artfav",
-              title: sc.title || "Favorite Artwork",
-              images: [images[0]],
-            });
-          }
+          var title = String(sc.title || "Artwork Showcase");
+          var lowerTitle = title.toLowerCase();
+          var isFavorite = /favorite|избранн/.test(lowerTitle);
+          var isFeatured = /featured|избранная иллюстрац/.test(lowerTitle);
+          var isSplit = /split|раздел[её]н|составн/.test(lowerTitle) || images.length === 2;
+          list.push({
+            type: isFavorite ? "artfav" : (isSplit ? "split" : (isFeatured ? "featured" : "artwork")),
+            title: title,
+            images: isFavorite ? [images[0]] : [images[0] || "", images[1] || ""],
+          });
           artN++;
         }
       });

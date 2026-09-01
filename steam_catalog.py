@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from html.parser import HTMLParser
 import threading
@@ -642,7 +643,7 @@ def profile(url: str) -> dict:
             return {"ok": False, "msg": "Enter a public steamcommunity.com profile URL"}
         canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
 
-    key = f"profile5:{canonical.lower()}"
+    key = f"profile6:{canonical.lower()}"
     cached = _get(key)
     if cached is not None:
         return cached
@@ -730,6 +731,42 @@ def profile(url: str) -> dict:
                 "awards": custom["awards"],
             },
         }
+        # Community HTML supplies showcases, while Valve's Web API supplies
+        # stable account fields when Steam rate-limits datacenter HTML.
+        api_key = (os.environ.get("STEAM_API_KEY") or "").strip()
+        steam_id = out["profile"].get("steamid") or ""
+        if api_key and steam_id.isdigit():
+            def api(path: str, **params) -> dict:
+                params.update({"key": api_key, "steamid": steam_id})
+                response = requests.get("https://api.steampowered.com" + path, params=params,
+                                        timeout=TIMEOUT, headers={"User-Agent": UA})
+                response.raise_for_status()
+                return response.json().get("response") or {}
+            try:
+                players = api("/ISteamUser/GetPlayerSummaries/v2/", steamids=steam_id).get("players") or []
+                if players:
+                    player = players[0]
+                    out["profile"]["name"] = player.get("personaname") or out["profile"]["name"]
+                    out["profile"]["avatar"] = player.get("avatarfull") or out["profile"]["avatar"]
+                    out["profile"]["realname"] = player.get("realname") or out["profile"]["realname"]
+                    if player.get("personastate") is not None:
+                        out["profile"]["status"] = "online" if int(player.get("personastate") or 0) else "offline"
+            except Exception as exc:
+                LOGGER.info("Steam GetPlayerSummaries unavailable: %s", exc)
+            try:
+                level = api("/IPlayerService/GetSteamLevel/v1/").get("player_level")
+                if level is not None:
+                    out["profile"]["level"] = int(level)
+            except Exception as exc:
+                LOGGER.info("Steam GetSteamLevel unavailable: %s", exc)
+            try:
+                owned = api("/IPlayerService/GetOwnedGames/v1/", include_appinfo=1,
+                            include_played_free_games=1)
+                games = owned.get("games") or []
+                out["profile"]["games"] = games[:500]
+                out["profile"]["stats_map"]["games"] = int(owned.get("game_count") or len(games))
+            except Exception as exc:
+                LOGGER.info("Steam GetOwnedGames unavailable/private: %s", exc)
         _put(key, out, TTL_PROFILE)
         return out
     except Exception as e:

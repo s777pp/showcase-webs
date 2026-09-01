@@ -300,14 +300,66 @@ html, body {
   color: #8f98a0;
 }
 
-/* Artwork: full width, natural aspect */
-.profile_main_banner_big,
+/* Artwork / Featured / Split: Steam 506 + 100 layout. */
+.sm-stage .profile_main_banner_main,
+.sm-stage .profile_main_banner_main_content,
+.sm-stage .profile_main_banners {
+  position: relative !important;
+  inset: auto !important;
+  transform: none !important;
+}
+.sm-stage .profile_main_banners {
+  display: grid !important;
+  grid-template-columns: minmax(0, 506fr) minmax(72px, 100fr) !important;
+  align-items: stretch !important;
+  gap: 4px !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 180px;
+  padding: 0 !important;
+  background: rgba(0,0,0,.22) !important;
+  overflow: hidden;
+}
+.sm-stage .profile_main_banners > .sm-media-slot {
+  position: relative !important;
+  inset: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  overflow: hidden;
+}
+.sm-stage .profile_main_banner_big,
+.sm-stage .profile_main_banner_small,
 .profile_main_illustration_img {
-  width: 100%;
-  height: auto;
-  max-height: none;
-  object-fit: contain;
-  display: block;
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: 760px !important;
+  object-fit: contain !important;
+  display: block !important;
+  background: rgba(0,0,0,.3);
+}
+.sm-stage .profile_main_banner_small { height: 100% !important; object-fit: cover !important; }
+.sm-stage .profile_main_banners .sm-slot-empty { height: 100%; min-height: 180px; }
+.sm-stage .profile_main_featured,
+.sm-stage .profile_main_featured > .sm-media-slot {
+  position: relative !important;
+  width: 100% !important;
+  height: auto !important;
+  overflow: hidden;
+}
+.sm-stage .profile_main_featured_img {
+  position: static !important;
+  transform: none !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 760px !important;
+  object-fit: contain !important;
+  display: block !important;
   background: rgba(0,0,0,.3);
 }
 
