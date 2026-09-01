@@ -93,14 +93,18 @@
       );
     }
     if (t === "workshop") {
-      var imgs = sc.images || [];
+      var imgs = (sc.images || []).filter(Boolean);
+      var n = Math.max(5, Math.min(15, imgs.length || 5));
+      // pad to full rows of 5
+      if (n % 5) n = n + (5 - (n % 5));
       var cells = "";
-      for (var i = 0; i < 5; i++) {
+      for (var i = 0; i < n; i++) {
         cells +=
           '<div class="profile_main_workshop_main_image">' +
           imgTag(imgs[i] || "", "profile_main_workshop_img", "ws") +
           "</div>";
       }
+      var wsIcon = imgs[0] || "";
       return (
         '<div class="profile_main_workshop" data-sc="' +
         idx +
@@ -110,7 +114,9 @@
         esc(sc.title || "Workshop Showcase") +
         "</div></div></div>" +
         '<div class="profile_main_workshop_main"><div class="profile_main_workshop_main_content">' +
-        '<div class="profile_main_workshop_main_title"><span>Workshop</span></div>' +
+'<div class="profile_main_workshop_main_title">' +
+        (wsIcon ? '<img src="' + esc(px(wsIcon)) + '" alt=""/>' : '') +
+        '<span>' + esc(sc.workshopName || 'Workshop') + '</span></div>' +
         '<div class="profile_main_workshop_main_images">' +
         cells +
         "</div>" +
@@ -373,7 +379,8 @@
           list.push({
             type: "workshop",
             title: sc.title || "Workshop Showcase",
-            images: images.slice(0, 5),
+            images: images.slice(0, 15),
+            workshopName: (sc.title || "").replace(/Showcase/i, "").trim() || "Workshop",
             subs: sc.subs || 0,
             followers: sc.followers || 0,
           });
