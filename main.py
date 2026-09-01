@@ -4967,8 +4967,25 @@ async def steam_callback(request: Request):
         if user and profile_data:
             try:
                 auth_db.save_steam_profile_snapshot(int(user["id"]), profile_data)
-                # best-effort avatar download URL stored as display only — profile_background etc.
                 auth_db.ensure_profile_username(int(user["id"]), persona)
+                # download avatar into local avatars store
+                av = (profile_data.get("avatar") or "").strip()
+                if av:
+                    try:
+                        import requests as _rq
+                        ar = _rq.get(av, timeout=12, headers={"User-Agent": "Mozilla/5.0"})
+                        if ar.status_code == 200 and ar.content[:3] != b"<!":
+                            adir = DATA / "avatars"
+                            adir.mkdir(parents=True, exist_ok=True)
+                            ext = ".jpg"
+                            ctype = (ar.headers.get("Content-Type") or "").lower()
+                            if "png" in ctype: ext = ".png"
+                            elif "webp" in ctype: ext = ".webp"
+                            rel = f"avatars/{int(user['id'])}{ext}"
+                            (DATA / rel).write_bytes(ar.content)
+                            auth_db.update_profile(int(user["id"]), display_name=persona, avatar_path=rel)
+                    except Exception:
+                        LOGGER.exception("steam avatar download")
             except Exception:
                 LOGGER.exception("save steam snapshot")
         resp = HTMLResponse(

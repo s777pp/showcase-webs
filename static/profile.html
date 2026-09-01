@@ -600,7 +600,7 @@ function block(y, title, bodyH) {
 
 function showArt(y) {
   var iw = MAIN_W - 20;
-  var imgH = Math.round(iw * (S.art.ratio && S.art.ratio > 0.2 && S.art.ratio < 3 ? S.art.ratio : 0.42));
+  var imgH = Math.round(iw * (S.art.ratio && S.art.ratio > 0.15 && S.art.ratio < 2.5 ? S.art.ratio : 0.5625));
   imgH = Math.max(160, Math.min(imgH, 520));
   var b = block(y, 'Artwork Showcase', imgH + 64);
   var ix = MAIN_X + 10, iy = b.y + 10;
@@ -1483,7 +1483,10 @@ on($('impGo'), 'click', function () {
         if (!images.length) return;
         var typ = (sc.type || '').toLowerCase();
         if (typ === 'workshop' || typ.indexOf('workshop') >= 0 || typ.indexOf('мастер') >= 0) {
-          S.workshop.thumbs = images.slice(0, 5);
+          S.workshop.thumbs = images.filter(function(u){
+            u = String(u||'').toLowerCase();
+            return u.indexOf('/public/images/badges/') < 0 && u.indexOf('emoticon') < 0;
+          }).slice(0, 5);
           var subs = /([\d,]+)\s+Submissions/i.exec(sc.text || '');
           var foll = /([\d,]+)\s+Followers/i.exec(sc.text || '');
           if (subs) S.workshop.subs = num(subs[1], S.workshop.subs);

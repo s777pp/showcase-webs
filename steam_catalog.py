@@ -616,9 +616,9 @@ def _profile_customizations(page_html: str) -> dict:
     except Exception as exc:
         LOGGER.debug("profile showcase parse degraded: %s", exc)
     return {
-        "showcases": parser.showcases[:12],
-        "badges": parser.badges[:8],
-        "awards": parser.awards[:8],
+        "showcases": parser.showcases[:20],
+        "badges": parser.badges[:16],
+        "awards": parser.awards[:12],
     }
 
 

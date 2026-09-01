@@ -95,7 +95,7 @@
       '<span class="ss-head__sp"></span>' +
       '<div class="ss-head__right">' + langHTML() +
         '<a class="ss-pill" id="ssUser" href="/profile" hidden></a>' +
-        '<button class="ss-btn ss-btn--sm" id="ssLogin" type="button" hidden>' +
+        '<button class="ss-btn ss-btn--sm" id="ssLogin" type="button">' +
           (lang() === 'ru' ? 'Войти' : 'Log in') + '</button>' +
         '<button class="ss-btn ss-btn--sm ss-btn--logout" id="ssLogout" type="button" hidden style="background:#c0392b;color:#fff;border-color:#c0392b">' +
           (lang() === 'ru' ? 'Выйти' : 'Log out') + '</button>' +
@@ -119,11 +119,11 @@
         '<button class="ss-auth__submit" id="ssAuthSubmit" type="submit">' + (ru ? 'Войти' : 'Log in') + '</button>' +
       '</form>' +
       '<div class="ss-auth__div"><span>' + (ru ? 'или войти через' : 'or continue with') + '</span></div>' +
-      '<div class="ss-auth__oauth">' +
-        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthDiscord">Discord</button>' +
-        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthGoogle">Google</button>' +
-        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthTelegram">Telegram</button>' +
-        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthSteam">Steam</button>' +
+      '<div class="ss-auth__oauth" style="display:flex;flex-direction:column;gap:10px;width:100%;margin:0 0 8px">' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthDiscord" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(88,101,242,.45);background:rgba(88,101,242,.18);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Discord</button>' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthGoogle" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Google</button>' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthTelegram" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(38,165,228,.45);background:rgba(38,165,228,.14);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Telegram</button>' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthSteam" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(27,40,56,.9);background:linear-gradient(180deg,#2a475e,#1b2838);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Steam</button>' +
       '</div>' +
       '<div id="ssTgHost" style="display:none;text-align:center;margin-top:8px"></div>' +
       '<button class="ss-auth__switch" id="ssAuthSwitch" type="button">' + (ru ? 'Нет аккаунта? Создать' : 'No account? Sign up') + '</button>' +
@@ -152,9 +152,12 @@
   function paintUser(me) {
     var pill = document.getElementById('ssUser');
     var login = document.getElementById('ssLogin');
-    if (!pill || !login) return;
-    if (!me || !me.logged_in) { pill.hidden = true; login.hidden = false; return; }
-    login.hidden = true;
+    var logout = document.getElementById('ssLogout');
+    var logged = !!(me && me.logged_in);
+    if (pill) pill.hidden = !logged;
+    if (login) login.hidden = logged;   /* only when guest */
+    if (logout) logout.hidden = !logged; /* only when logged in */
+    if (!logged || !pill) return;
     var name = me.display_name || (me.email || '').split('@')[0] || 'profile';
     var av = me.avatar_url || '';
     pill.innerHTML =
@@ -162,7 +165,6 @@
           : '<span class="ss-pill__av"></span>') +
       '<span>' + esc(name) + '</span>' +
       '<i class="ss-pill__plan ' + (me.is_pro ? 'is-pro">PRO' : 'is-free">FREE') + '</i>';
-    pill.hidden = false;
   }
 
   function loadMe() {
