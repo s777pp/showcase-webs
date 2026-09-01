@@ -5,138 +5,49 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Profile — Showcase Maker</title>
 <link rel="icon" href="/static/icon.png"/>
-<link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/static/ss.css"/>
-<style>
-  html,body{margin:0;min-height:100%;background:#05090d;color:#e8eef5;font-family:Mulish,system-ui,sans-serif}
-  .pp-wrap{width:min(1100px,100%);margin:0 auto;padding:24px 16px 80px}
-  .pp-loading,.pp-err{text-align:center;padding:80px 20px;color:rgba(255,255,255,.5)}
-  .pp-head{display:flex;gap:20px;align-items:flex-end;margin-bottom:28px;flex-wrap:wrap}
-  .pp-av{width:120px;height:120px;border-radius:12px;object-fit:cover;border:2px solid rgba(255,255,255,.12);background:#111}
-  .pp-name{font-size:28px;font-weight:800;margin:0 0 6px}
-  .pp-meta{font-size:13px;color:rgba(255,255,255,.45)}
-  .pp-level{width:56px;height:56px;border-radius:50%;border:2px solid #4f95bd;display:grid;place-items:center;font-weight:800;font-size:18px}
-  .pp-grid{display:grid;grid-template-columns:1fr 300px;gap:20px}
-  @media(max-width:900px){.pp-grid{grid-template-columns:1fr}}
-  .pp-card{background:rgba(20,28,38,.92);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;margin-bottom:14px}
-  .pp-card h3{margin:0 0 12px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.45)}
-  .pp-art img{width:100%;max-height:520px;object-fit:contain;border-radius:8px;background:#0a0e14;display:block}
-  .pp-ws{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-  .pp-ws img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:6px;background:#0a0e14}
-  .pp-badges{display:flex;flex-wrap:wrap;gap:8px}
-  .pp-badges img{width:48px;height:48px;object-fit:contain}
-  .pp-bg{position:fixed;inset:0;z-index:0;background:#05090d;background-size:cover;background-position:center top;opacity:.35;pointer-events:none}
-  .pp-main{position:relative;z-index:1}
-  .pp-empty{color:rgba(255,255,255,.35);font-size:13px;padding:12px 0}
-</style>
+<link rel="stylesheet" href="/static/steam-mockup/steam_profile.css"/>
+<link rel="stylesheet" href="/static/steam-mockup/builder.css"/>
 </head>
-<body>
-<div class="pp-bg" id="ppBg"></div>
-<div class="pp-main">
-  <div id="ss-root"></div>
-  <div class="pp-wrap">
-    <div class="pp-loading" id="ppLoad">Загрузка профиля…</div>
-    <div class="pp-err" id="ppErr" hidden></div>
-    <div id="ppContent" hidden></div>
-  </div>
-</div>
+<body class="is-public">
+<div id="ss-root"></div>
+<main class="sm-stage is-public">
+  <div id="mockupRoot"></div>
+  <p id="ppMsg" style="text-align:center;color:rgba(255,255,255,.45);padding:40px">Загрузка…</p>
+</main>
 <script src="/static/ss-shell.js" defer></script>
+<script src="/static/js/steam-mockup.js"></script>
 <script>
-(function(){
-  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
-  function proxy(url){
-    if(!url) return '';
-    if(url.startsWith('/')||url.startsWith('blob:')) return url;
-    return '/api/steam/proxy-image?url='+encodeURIComponent(url);
-  }
+(function () {
   var m = location.pathname.match(/^\/profile\/([^\/]+)\/?$/i);
   var uname = m ? decodeURIComponent(m[1]) : '';
-  if(!uname){ document.getElementById('ppLoad').textContent='Нет имени профиля'; return; }
-
-  fetch('/api/profile/'+encodeURIComponent(uname),{credentials:'same-origin'})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      document.getElementById('ppLoad').hidden=true;
-      if(!d||!d.ok){
-        document.getElementById('ppErr').hidden=false;
-        document.getElementById('ppErr').textContent=(d&&d.msg)||'Профиль не найден';
+  var root = document.getElementById('mockupRoot');
+  var msg = document.getElementById('ppMsg');
+  if (!uname) {
+    msg.textContent = 'Профиль не указан';
+    return;
+  }
+  fetch('/api/profile/' + encodeURIComponent(uname), { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d || !d.ok) {
+        msg.textContent = (d && d.msg) || 'Не найден';
         return;
       }
-      var p=d.profile||{};
-      var steam=p.steam||null;
-      var name=p.display_name||p.username||uname;
-      var av=p.avatar_url||(steam&&steam.avatar)||'';
-      var level=p.profile_level||(steam&&steam.level)||'—';
-      var summary=p.profile_summary||(steam&&steam.summary)||'';
-      var bg=p.background_url||(steam&&steam.background)||'';
-      if(bg) document.getElementById('ppBg').style.backgroundImage='url('+JSON.stringify(proxy(bg)).slice(1,-1)+')';
-
-      var showcases=(steam&&steam.showcases)||p.showcases||[];
-      // also profile_showcases from site
-      var siteSc=p.showcases||[];
-      var art='', workshop=[], guide='', artfav='';
-      showcases.forEach(function(sc){
-        var imgs=(sc.images||[]).filter(Boolean);
-        var typ=(sc.type||'').toLowerCase();
-        if(typ.indexOf('workshop')>=0 && !workshop.length) workshop=imgs.slice(0,5);
-        else if(typ.indexOf('guide')>=0 && !guide) guide=imgs[0];
-        else if(!art) art=imgs[0];
-        else if(!artfav) artfav=imgs[0];
-      });
-
-      var html='<div class="pp-head">';
-      html+=(av?'<img class="pp-av" src="'+esc(proxy(av))+'" alt=""/>':'<div class="pp-av"></div>');
-      html+='<div style="flex:1;min-width:180px"><p class="pp-name">'+esc(name)+'</p>';
-      html+='<p class="pp-meta">@'+esc(p.username||uname)+(p.is_pro?' · PRO':'')+'</p>';
-      if(summary) html+='<p class="pp-meta" style="margin-top:8px;max-width:520px;line-height:1.45">'+esc(summary)+'</p>';
-      html+='</div><div class="pp-level">'+esc(level)+'</div></div>';
-
-      html+='<div class="pp-grid"><div>';
-      if(art){
-        html+='<div class="pp-card pp-art"><h3>Artwork</h3><img src="'+esc(proxy(art))+'" alt=""/></div>';
-      }
-      if(workshop.length){
-        html+='<div class="pp-card"><h3>Workshop</h3><div class="pp-ws">';
-        workshop.forEach(function(u){ html+='<img src="'+esc(proxy(u))+'" alt=""/>'; });
-        html+='</div></div>';
-      }
-      if(guide){
-        html+='<div class="pp-card"><h3>Favorite Guide</h3><img src="'+esc(proxy(guide))+'" style="max-height:160px;border-radius:8px" alt=""/></div>';
-      }
-      if(artfav){
-        html+='<div class="pp-card pp-art"><h3>Favorite Artwork</h3><img src="'+esc(proxy(artfav))+'" alt=""/></div>';
-      }
-      if(!art && !workshop.length && !guide && !artfav){
-        html+='<div class="pp-card"><p class="pp-empty">Витрины пока не настроены. Владелец может импортировать Steam-профиль в редакторе.</p></div>';
-      }
-      html+='</div><div>';
-      if(steam&&steam.badges&&steam.badges.length){
-        html+='<div class="pp-card"><h3>Badges</h3><div class="pp-badges">';
-        steam.badges.slice(0,12).forEach(function(b){
-          var u=typeof b==='string'?b:(b.image||b.url||'');
-          if(u) html+='<img src="'+esc(proxy(u))+'" alt=""/>';
-        });
-        html+='</div></div>';
-      }
-      if(steam&&steam.groups&&steam.groups.length){
-        html+='<div class="pp-card"><h3>Groups</h3>';
-        steam.groups.slice(0,6).forEach(function(g){
-          html+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">';
-          if(g.avatar) html+='<img src="'+esc(proxy(g.avatar))+'" style="width:32px;height:32px;border-radius:6px"/>';
-          html+='<span>'+esc(g.name||'')+'</span></div>';
-        });
-        html+='</div>';
-      }
-      html+='</div></div>';
-      var c=document.getElementById('ppContent');
-      c.hidden=false;
-      c.innerHTML=html;
-      document.title=name+' — Showcase Maker';
+      msg.hidden = true;
+      var p = d.profile || {};
+      var S = SteamMockup.defaultState();
+      if (p.display_name) S.name = p.display_name;
+      if (p.profile_summary) S.summary = p.profile_summary;
+      if (p.profile_level) S.level = p.profile_level;
+      if (p.avatar_url) S.avatar = p.avatar_url;
+      if (p.background_url) S.background = p.background_url;
+      if (p.steam) S = SteamMockup.applySteamProfile(p.steam, S);
+      SteamMockup.render(S, root);
+      document.title = (S.name || uname) + ' — Showcase Maker';
     })
-    .catch(function(e){
-      document.getElementById('ppLoad').hidden=true;
-      document.getElementById('ppErr').hidden=false;
-      document.getElementById('ppErr').textContent=String(e);
+    .catch(function (e) {
+      msg.textContent = String(e);
     });
 })();
 </script>
