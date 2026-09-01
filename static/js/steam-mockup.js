@@ -17,6 +17,13 @@
   function isVideoUrl(url) {
     return /\.(webm|mp4)(\?|$)/i.test(String(url || ""));
   }
+  function fullBackgroundUrl(url) {
+    /* Steam Market returns a square 360px preview.  It contains the artwork
+       lower in the canvas, which made the public profile look as if its
+       background started halfway down the page.  Removing the resize suffix
+       requests the original profile-background asset. */
+    return String(url || "").replace(/\/(?:\d+f?x\d+f?|\d+x\d+)(?:\?.*)?$/i, "");
+  }
   function mediaTag(url, cls, alt) {
     if (!url) {
       return '<div class="' + esc(cls) + ' sm-slot-empty" data-empty="1"></div>';
@@ -238,7 +245,7 @@
     var bg = "";
     var pageStyle = "";
     var bgMovie = state.backgroundMovie || (isVideoUrl(state.background) ? state.background : "");
-    var bgStill = state.background && !isVideoUrl(state.background) ? state.background : "";
+    var bgStill = state.background && !isVideoUrl(state.background) ? fullBackgroundUrl(state.background) : "";
     if (bgMovie) {
       bg =
         '<video class="profile_animated_background" autoplay muted loop playsinline preload="auto" src="' +
