@@ -1,19 +1,3 @@
-# ---------------------------------------------------------------------------
-# Stage 1 — build the React frontend into static/react.
-# Kept separate so node and node_modules never reach the runtime image.
-# ---------------------------------------------------------------------------
-FROM node:22-slim AS frontend
-WORKDIR /fe
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
-COPY frontend/ ./
-# vite.config.ts writes to ../static/react, so give it that directory to fill.
-RUN mkdir -p /static && npx vite build --outDir /static/react --emptyOutDir
-
-
-# ---------------------------------------------------------------------------
-# Stage 2 — runtime
-# ---------------------------------------------------------------------------
 FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -37,9 +21,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-# Built SPA from stage 1. Copied after COPY . . so it is not overwritten, and
-# the frontend sources themselves are excluded via .dockerignore.
-COPY --from=frontend /static/react ./static/react
 
 # Drop Windows-only binaries from image
 RUN rm -f /app/bin/ffmpeg /app/bin/ffmpeg.exe /app/bin/ffprobe /app/bin/ffprobe.exe \

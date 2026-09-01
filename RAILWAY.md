@@ -96,6 +96,20 @@ APP_URL=https://<твой-домен>
 Опционально: `REDIS_URL`, `FREE_LIMIT`, `MAX_UPLOAD_MB`, `MAX_JOBS_PER_USER`,
 OAuth (`DISCORD_*`, `GOOGLE_*`, `TELEGRAM_*`), `STRIPE_*`.
 
+### Профиль Steam и каталог
+
+`STEAM_API_KEY` для текущей реализации **не нужен**: профиль, фоны, значки и
+достижения загружаются из публичных Steam Community / Steam Store endpoints.
+Railway должен иметь обычный исходящий HTTPS-доступ, а профиль пользователя в
+Steam должен быть публичным. Первый запрос может быть медленным; каталог затем
+кэшируется в `/data/steam_cache.json`, поэтому том `/data` также ускоряет повторные
+загрузки после редеплоя.
+
+Если профиль не прогружается, сначала проверь сам URL (поддерживаются
+`steamcommunity.com/id/...` и `steamcommunity.com/profiles/...`), публичность
+профиля и логи на `Steam rate limited` / `steam fetch failed`. Добавление Steam API
+key это не исправит, пока код не будет отдельно переведён на Web API.
+
 > **`UVICORN_WORKERS` держи равным 1.** ZIP-результат лежит на диске того процесса,
 > который его собрал. При двух и более воркерах часть запросов `/api/process/status`
 > и `/api/process/download` попадает в процесс, который об этой задаче ничего не знает.

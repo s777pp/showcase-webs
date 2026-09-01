@@ -43,6 +43,22 @@ TTL_ACH = 24 * 3600
 TTL_APPS = 24 * 3600
 TTL_PROFILE = 15 * 60
 
+# Label on a Steam profile count link -> the key the mockup builder uses.
+_STAT_KEYS = {
+    "games": "games",
+    "inventory": "inv",
+    "screenshots": "screens",
+    "videos": "videos",
+    "workshop items": "workshop",
+    "reviews": "reviews",
+    "guides": "guides",
+    "artwork": "art",
+    "groups": "groups",
+    "friends": "friends",
+    "profile awards": "awards",
+    "badges": "badges",
+}
+
 _LOCK = threading.Lock()
 _MEM: dict[str, tuple[float, Any]] = {}
 _CACHE_PATH: Optional[Path] = None
@@ -131,44 +147,56 @@ def _icon_url(icon: str, size: str = "360fx360f") -> str:
     return f"https://community.cloudflare.steamstatic.com/economy/image/{icon}/{size}"
 
 
-def backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24, asset: str = "background") -> dict:
-    """Search Steam Market for profile backgrounds.
+# Steam community-item classes on appid 753. The market only understands these
+# numeric tags, so keeping them in one table beats sprinkling magic strings.
+ITEM_CLASS = {
+    "card": "tag_item_class_2",
+    "background": "tag_item_class_3",
+    "emoticon": "tag_item_class_4",
+    "booster": "tag_item_class_5",
+}
+# Avatars (13), frames (14) and animated backgrounds (15) are deliberately absent:
+# those classes exist in Steam taxonomy but carry zero market listings because
+# they are points-shop rewards. See POINTS_CLASS below.
+# "badge" is not a market item at all - badges are crafted from cards. We build
+# it by grouping the card listings of a game, so it reuses the card class.
+# The points-shop kinds are appended in the Points Shop section below.
+MARKET_ASSETS = tuple(ITEM_CLASS) + ("badge",)
 
-    `kind` filters static vs animated. Animated backgrounds are a distinct
-    market item type, so the query differs rather than post-filtering a page
-    that may contain none of them.
+# Trailing item-kind noise in asset_description.type ("Portal 2 Trading Card"),
+# stripped so the UI can show the game on its own line.
+_TYPE_SUFFIX = re.compile(
+    r"\s*(Animated\s+)?(Profile Background|Trading Card|Foil Trading Card|"
+    r"Booster Pack|Avatar Frame|Animated Avatar|Avatar|Emoticon)$",
+    re.I,
+)
+
+
+MARKET_PAGE = 10  # Steam caps market/search/render at 10 rows, whatever count says
+
+
+def _extra_key(extra: dict | None) -> str:
+    if not extra:
+        return ""
+    return "|".join("%s=%s" % (k, extra[k]) for k in sorted(extra))
+
+
+def _market_slab(item_class: str, q: str, start: int, extra: dict | None = None):
+    """One 10-row slab of market/search/render. Returns (rows, total) or None.
+
+    The endpoint silently clamps `count` to 10 -- it answers pagesize 10 even for
+    count=100 -- so a slab is the real unit of paging and the unit we cache.
     """
-    page = max(0, int(page))
-    count = max(1, min(50, int(count)))
-    kind = (kind or "all").lower()
-    asset = (asset or "background").lower()
-    if asset not in ("background", "avatar", "frame"):
-        asset = "background"
-    q = (q or "").strip()
-
-    key = f"asset2:{asset}:{kind}:{q.lower()}:{page}:{count}"
+    start = max(0, int(start))
+    key = "slab:%s:%s:%d:%s" % (item_class, q.lower(), start, _extra_key(extra))
     cached = _get(key)
     if cached is not None:
-        return cached
-
-    if asset == "avatar":
-        item_class = "tag_item_class_11"
-    elif asset == "frame":
-        item_class = "tag_item_class_14"
-    else:
-        item_class = "tag_item_class_3"
-
-    if kind == "animated" and asset == "background":
-        tag = "Animated Profile Background"
-    elif kind == "static":
-        tag = "Profile Background"
-    else:
-        tag = ""
+        return cached["rows"], cached["total"]
 
     params = {
         "query": q,
-        "start": page * count,
-        "count": count,
+        "start": start,
+        "count": MARKET_PAGE,
         "search_descriptions": 0,
         "sort_column": "popular",
         "sort_dir": "desc",
@@ -176,55 +204,304 @@ def backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24, 
         "norender": 1,
         "category_753_item_class[]": item_class,
     }
-    if tag:
-        params["category_753_Type[]"] = f"tag_{tag.replace(' ', '_')}"
-
+    if extra:
+        params.update(extra)
     r = _fetch(MARKET_SEARCH, params)
     if r is None:
-        return {"ok": False, "items": [], "total": 0, "msg": "Steam is unavailable, try again shortly"}
-
+        return None
     try:
         data = r.json()
     except Exception:
-        return {"ok": False, "items": [], "total": 0, "msg": "Unexpected response from Steam"}
+        return None
+    if not isinstance(data, dict) or not data.get("success"):
+        return None
+    out = {"rows": data.get("results") or [], "total": int(data.get("total_count") or 0)}
+    _put(key, out, TTL_BG)
+    return out["rows"], out["total"]
+
+
+def _market_rows(item_class: str, q: str, start: int, count: int, extra: dict | None = None):
+    """Assemble `count` rows from consecutive slabs. Returns (rows, total) or None."""
+    start = max(0, int(start))
+    count = max(1, int(count))
+    rows: list = []
+    total = 0
+    pos = start
+    while len(rows) < count:
+        base = pos - (pos % MARKET_PAGE)
+        got = _market_slab(item_class, q, base, extra)
+        if got is None:
+            return (rows[:count], total) if rows else None
+        slab, total = got
+        if not slab:
+            break
+        rows.extend(slab[pos - base:])
+        if len(slab) < MARKET_PAGE:
+            break
+        pos = base + MARKET_PAGE
+        if pos >= total:
+            break
+    return rows[:count], total
+
+
+def _game_facet(appid: int) -> dict:
+    """Narrow a 753 search to one game. The facet value needs the tag_ prefix."""
+    return {"category_753_Game[]": "tag_app_%d" % int(appid)}
+
+
+def card_set(appid: int, foil: bool = False) -> dict:
+    """Every trading card of one game, with the price of the full set.
+
+    This is the exact answer for a badge: a badge is crafted from one full set,
+    so summing the cheapest listing of each card is what it costs to make.
+    """
+    try:
+        appid = int(appid)
+    except (TypeError, ValueError):
+        return {"ok": False, "items": [], "msg": "Bad appid"}
+    if appid <= 0:
+        return {"ok": False, "items": [], "msg": "Bad appid"}
+
+    key = "cardset:%d:%d" % (appid, int(bool(foil)))
+    cached = _get(key)
+    if cached is not None:
+        return cached
+
+    extra = _game_facet(appid)
+    extra["category_753_cardborder[]"] = "tag_cardborder_1" if foil else "tag_cardborder_0"
+    got = _market_rows(ITEM_CLASS["card"], "", 0, 60, extra)
+    if got is None:
+        return {"ok": False, "items": [], "msg": "Steam is unavailable, try again shortly"}
+    rows, total = got
 
     items = []
-    for row in data.get("results") or []:
-        asset = ((row.get("asset_description") or {}) if isinstance(row, dict) else {})
-        name = unescape(str(row.get("name") or ""))
-        icon = str(asset.get("icon_url_large") or asset.get("icon_url") or "")
-        item_type = str(asset.get("type") or "")
-        hash_name = str(row.get("hash_name") or row.get("name") or "")
-        animated = "animated" in item_type.lower() or "animated" in name.lower()
-        if kind == "animated" and not animated:
+    cents = 0
+    for row in rows:
+        it = _row_to_item(row, "card")
+        if it is None:
             continue
-        if kind == "static" and animated:
-            continue
-        price = row.get("sell_price_text") or row.get("sale_price_text") or ""
-        items.append(
-            {
-                "name": name,
-                "game": unescape(
-                    re.sub(r"\s*(Animated\s+)?Profile Background$", "", item_type).strip()
-                ),
-                "image": _icon_url(icon),
-                "animated": animated,
-                "price": str(price),
-                "market_url": (
-                    f"https://steamcommunity.com/market/listings/753/{quote(hash_name)}"
-                    if hash_name
-                    else ""
-                ),
-                "asset": asset,
-            }
-        )
-
+        items.append(it)
+        cents += _price_cents(it["price"])
+    sample = next((i["price"] for i in items if i["price"]), "")
     out = {
         "ok": True,
+        "appid": appid,
+        "foil": bool(foil),
+        "game": next((i["game"] for i in items if i["game"]), ""),
         "items": items,
-        "total": int(data.get("total_count") or 0),
-        "page": page,
+        "count": len(items),
+        "total": total,
+        "set_price_cents": cents,
+        "set_price": _price_like(sample, cents),
+        "capsule": APP_CAPSULE.format(appid),
+        "badge_url": "https://steamcommunity.com/my/gamecards/%d" % appid,
+        "partial": len(items) < total,
     }
+    _put(key, out, TTL_BG)
+    return out
+
+
+def _badge_row(appid: int, name: str, game: str, image: str, market_url: str = "") -> dict:
+    """One badge candidate. Price stays empty until card_set(appid) is asked for."""
+    capsule = APP_CAPSULE.format(appid) if appid else ""
+    return {
+        "name": name,
+        "game": game,
+        "appid": appid,
+        "defid": None,
+        "asset": "badge",
+        "image": image or capsule,
+        "capsule": capsule,
+        "movie": "",
+        "movie_mp4": "",
+        "animated": False,
+        "tiled": False,
+        "foil": False,
+        "source": "market",
+        "price": "",
+        "points": 0,
+        "card_count": 0,
+        "cards": [],
+        "buy_url": ("https://steamcommunity.com/my/gamecards/%d" % appid) if appid else "",
+        "market_url": market_url,
+        "partial": True,
+    }
+
+
+def _badges(q: str, page: int, count: int) -> dict:
+    """Badge candidates: one row per game.
+
+    A badge has no market listing of its own -- it is crafted from a full card
+    set -- so this lists games and leaves the exact set and its price to
+    card_set(appid), which the UI calls once a game is picked. With a search term
+    we resolve games by name; without one we read the games off the popular card
+    listings.
+    """
+    page = max(0, int(page))
+    count = max(1, min(50, int(count)))
+
+    if len(q) >= 2:
+        found = apps(q, limit=count)
+        if not found.get("ok"):
+            return {"ok": False, "items": [], "total": 0, "msg": found.get("msg") or "No games found"}
+        items = [
+            _badge_row(a["appid"], a["name"], a["name"], APP_CAPSULE.format(a["appid"]))
+            for a in found.get("items") or []
+        ]
+        return {"ok": True, "items": items, "total": len(items), "page": page, "source": "market"}
+
+    got = _market_rows(ITEM_CLASS["card"], "", page * count * 3, count * 3)
+    if got is None:
+        return {"ok": False, "items": [], "total": 0, "msg": "Steam is unavailable, try again shortly"}
+    rows, total = got
+    seen: dict[int, dict] = {}
+    for row in rows:
+        it = _row_to_item(row, "card")
+        if it is None or not it["appid"] or it["appid"] in seen:
+            continue
+        seen[it["appid"]] = _badge_row(
+            it["appid"], it["game"] or it["name"], it["game"], it["capsule"], it["market_url"]
+        )
+    return {"ok": True, "items": list(seen.values())[:count], "total": total, "page": page, "source": "market"}
+
+
+def _row_to_item(row: dict, asset: str) -> dict | None:
+    """Flatten one market row into the shape the builder UI consumes."""
+    if not isinstance(row, dict):
+        return None
+    ad = row.get("asset_description") or {}
+    if not isinstance(ad, dict):
+        ad = {}
+    name = unescape(str(row.get("name") or ""))
+    icon = str(ad.get("icon_url_large") or ad.get("icon_url") or "")
+    if not name or not icon:
+        return None
+    item_type = unescape(str(ad.get("type") or ""))
+    hash_name = str(row.get("hash_name") or row.get("name") or "")
+    animated = "animated" in item_type.lower() or "animated" in name.lower()
+    try:
+        appid = int(ad.get("market_fee_app") or 0)
+    except (TypeError, ValueError):
+        appid = 0
+    market_url = ""
+    if hash_name:
+        market_url = "https://steamcommunity.com/market/listings/753/" + quote(hash_name)
+    if not appid:
+        # market_fee_app is often absent, but every community hash name is
+        # "{appid}-{item}", which is the only place the game id survives.
+        m = re.match(r"^(\d+)-", str(ad.get("market_hash_name") or hash_name))
+        if m:
+            appid = int(m.group(1))
+    game = _TYPE_SUFFIX.sub("", item_type).strip()
+    if not game:
+        # Booster packs carry a bare "Booster Pack" type; the game is in the name.
+        game = _TYPE_SUFFIX.sub("", name).strip()
+    return {
+        "name": name,
+        "game": game,
+        "appid": appid,
+        "defid": None,
+        "image": _icon_url(icon),
+        "movie": "",
+        "movie_mp4": "",
+        "animated": animated,
+        "tiled": False,
+        "foil": "foil" in item_type.lower() or "(foil)" in name.lower(),
+        "source": "market",
+        "price": str(row.get("sell_price_text") or row.get("sale_price_text") or ""),
+        "points": 0,
+        "buy_url": market_url,
+        "market_url": market_url,
+        "capsule": APP_CAPSULE.format(appid) if appid else "",
+        "asset": asset,
+    }
+
+
+def _price_cents(text: str) -> int:
+    """Market prices arrive pre-formatted per locale. Digits are enough to sum."""
+    digits = re.sub(r"[^\d]", "", text or "")
+    return int(digits) if digits else 0
+
+
+def _price_like(sample: str, cents: int) -> str:
+    """Render `cents` in the same layout Steam used for `sample`.
+
+    Currency position and decimal separator differ per account region ($0.30 vs
+    0,30 EUR), and we never learn the region -- so a sample price from the same
+    response is the only trustworthy template.
+    """
+    m = re.search(r"\d+(?:[.,]\d{2})?", sample or "")
+    if not m:
+        return ""
+    token = m.group(0)
+    sep = "," if ("," in token and "." not in token) else "."
+    whole, frac = divmod(max(0, cents), 100)
+    return sample[: m.start()] + "%d%s%02d" % (whole, sep, frac) + sample[m.end():]
+
+
+def backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24, asset: str = "background") -> dict:
+    """Search the Steam Market for profile-decoration items.
+
+    `asset` picks the catalog: background, avatar, frame, card, booster,
+    emoticon or badge. `kind` narrows it - static/animated for backgrounds and
+    avatars, normal/foil for cards - and is applied in the query rather than by
+    post-filtering a page that may contain none of the wanted type.
+    """
+    page = max(0, int(page))
+    count = max(1, min(50, int(count)))
+    kind = (kind or "all").lower()
+    asset = (asset or "background").lower()
+    if asset not in ASSETS:
+        asset = "background"
+    q = (q or "").strip()
+
+    # Points-shop kinds never reach the market at all.
+    if asset in POINTS_CLASS:
+        return points_items(asset, q=q, page=page, count=count)
+    if asset == "background" and kind == "animated":
+        return points_items("animated_background", q=q, page=page, count=count)
+    if asset == "background" and kind == "points":
+        return points_items("points_background", q=q, page=page, count=count)
+
+    key = "asset3:%s:%s:%s:%d:%d" % (asset, kind, q.lower(), page, count)
+    cached = _get(key)
+    if cached is not None:
+        return cached
+
+    if asset == "badge":
+        out = _badges(q, page, count)
+        if out.get("ok"):
+            _put(key, out, TTL_BG)
+        return out
+
+    extra: dict = {}
+    if asset == "background":
+        if kind == "static":
+            extra["category_753_Type[]"] = "tag_Profile_Background"
+    elif asset == "card":
+        if kind == "foil":
+            extra["category_753_cardborder[]"] = "tag_cardborder_1"
+        elif kind in ("normal", "static"):
+            extra["category_753_cardborder[]"] = "tag_cardborder_0"
+
+    got = _market_rows(ITEM_CLASS[asset], q, page * count, count, extra)
+    if got is None:
+        return {"ok": False, "items": [], "total": 0, "msg": "Steam is unavailable, try again shortly"}
+    results, total = got
+
+    items = []
+    for row in results:
+        it = _row_to_item(row, asset)
+        if it is None:
+            continue
+        # Animated avatars share the avatar class, so they are filtered here.
+        if kind == "animated" and not it["animated"]:
+            continue
+        if kind == "static" and it["animated"] and asset != "card":
+            continue
+        items.append(it)
+
+    out = {"ok": True, "items": items, "total": total, "page": page}
     _put(key, out, TTL_BG)
     return out
 
@@ -236,7 +513,7 @@ def profile(url: str) -> dict:
     if not m:
         return {"ok": False, "msg": "Enter a public steamcommunity.com profile URL"}
     canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
-    key = f"profile2:{canonical.lower()}"
+    key = f"profile3:{canonical.lower()}"
     cached = _get(key)
     if cached is not None:
         return cached
@@ -261,6 +538,27 @@ def profile(url: str) -> dict:
         level_match = re.search(r'friendPlayerLevelNum[^>]*>\s*(\d+)', page_html, re.I)
         bg_match = re.search(r'profile_page[^>]+style="[^"]*background-image:\s*url\([\'\"]?([^\)\'\"]+)', page_html, re.I)
         counts = [int(x.replace(',', '')) for x in re.findall(r'profile_count_link_total[^>]*>\s*([\d,]+)', page_html, re.I)]
+        # The count links a profile shows depend on what that profile actually has,
+        # so their order is not fixed — read the label next to each number instead
+        # of trusting a position.
+        stat_map: dict = {}
+        for label_html, num in re.findall(
+            r'profile_count_link[^>]*>(.{0,400}?)profile_count_link_total[^>]*>\s*([\d,]+)',
+            page_html, re.S | re.I,
+        ):
+            # The window can end inside an unfinished tag; drop that tail first,
+            # otherwise its attribute text sticks to the label.
+            frag = re.sub(r'<[^>]*$', '', label_html)
+            label = unescape(re.sub(r'<[^>]+>', ' ', frag))
+            label = re.sub(r'\s+', ' ', label).strip().lower()
+            key = _STAT_KEYS.get(label)
+            if not key:
+                for phrase, k in _STAT_KEYS.items():
+                    if label.endswith(phrase):
+                        key = k
+                        break
+            if key and key not in stat_map:
+                stat_map[key] = int(num.replace(',', ''))
         summary = unescape(txt("summary"))
         summary = re.sub(r"<br\s*/?>", "\n", summary, flags=re.I)
         summary = _clean(summary)
@@ -281,6 +579,7 @@ def profile(url: str) -> dict:
                 "level": int(level_match.group(1)) if level_match else None,
                 "background": unescape(bg_match.group(1)) if bg_match else "",
                 "stats": counts[:6],
+                "stats_map": stat_map,
             },
         }
         _put(key, out, TTL_PROFILE)
@@ -394,3 +693,157 @@ def apps(q: str, limit: int = 24) -> dict:
     out = {"ok": True, "items": items}
     _put(key, out, TTL_APPS)
     return out
+
+
+# ==========================================================================
+# Steam Points Shop
+#
+# Avatar frames, animated avatars, animated backgrounds and profile themes are
+# NOT community-market items -- they are bought with Steam Points, so the market
+# search returns nothing for them (item classes 13/14/15 exist in the taxonomy
+# but have zero listings). The points shop has its own public read endpoint,
+# which is what this section talks to.
+# ==========================================================================
+
+POINTS_QUERY = "https://api.steampowered.com/ILoyaltyRewardsService/QueryRewardItems/v1/"
+# Every points-shop asset is addressed as {appid}/{40-hex}.{ext} under this base.
+POINTS_CDN = "https://shared.cloudflare.steamstatic.com/community_assets/images/items"
+POINTS_SHOP_APP = "https://store.steampowered.com/points/shop/app/"
+APP_CAPSULE = "https://cdn.cloudflare.steamstatic.com/steam/apps/{}/capsule_231x87.jpg"
+
+# ECommunityItemClass values the points shop actually serves.
+POINTS_CLASS = {
+    "avatar": 13,
+    "frame": 14,
+    "animated_background": 15,
+    "points_background": 3,
+    "theme": 8,
+    "points_emoticon": 4,
+}
+TTL_POINTS = 6 * 3600
+_POINTS_BLOCK = 1000  # server maximum per request
+
+
+def _points_asset(appid: int, filename: str) -> str:
+    if not appid or not filename:
+        return ""
+    return "%s/%d/%s" % (POINTS_CDN, appid, filename)
+
+
+def _points_item(defn: dict, asset: str) -> dict | None:
+    """Flatten one reward definition into the shared catalog item shape."""
+    if not isinstance(defn, dict):
+        return None
+    cid = defn.get("community_item_data") or {}
+    if not isinstance(cid, dict):
+        cid = {}
+    try:
+        appid = int(defn.get("appid") or 0)
+    except (TypeError, ValueError):
+        appid = 0
+    image = _points_asset(appid, str(cid.get("item_image_large") or cid.get("item_image_small") or ""))
+    if not image:
+        return None
+    try:
+        points = int(defn.get("point_cost") or 0)
+    except (TypeError, ValueError):
+        points = 0
+    name = str(cid.get("item_title") or cid.get("item_name") or "").strip()
+    return {
+        "name": name,
+        "game": "",
+        "appid": appid,
+        "defid": defn.get("defid"),
+        "image": image,
+        # Animated items ship a looping video; the still is only a poster frame.
+        "movie": _points_asset(appid, str(cid.get("item_movie_webm") or "")),
+        "movie_mp4": _points_asset(appid, str(cid.get("item_movie_mp4") or "")),
+        "animated": bool(cid.get("animated")),
+        "tiled": bool(cid.get("tiled")),
+        "foil": False,
+        "source": "points",
+        "price": "",
+        "points": points,
+        "buy_url": (POINTS_SHOP_APP + str(appid)) if appid else "",
+        "market_url": "",
+        "capsule": APP_CAPSULE.format(appid) if appid else "",
+        "asset": asset,
+    }
+
+
+def _points_block(cls: int, term: str, block: int) -> tuple[list, int, str] | None:
+    """One 1000-item block. Returns (definitions, total, next_cursor).
+
+    The endpoint pages by opaque cursor, not offset, so reaching block N means
+    walking blocks 0..N. Each block is cached, which makes the walk free after
+    the first visit and keeps ordinary first-page browsing at one request.
+    """
+    cursor = ""
+    for i in range(block + 1):
+        key = "points:%d:%s:%d" % (cls, term.lower(), i)
+        cached = _get(key)
+        if cached is None:
+            payload = {
+                "language": "english",
+                "count": _POINTS_BLOCK,
+                "community_item_classes": [cls],
+            }
+            if term:
+                payload["search_term"] = term
+            if cursor:
+                payload["cursor"] = cursor
+            r = _fetch(POINTS_QUERY, {"input_json": json.dumps(payload)})
+            if r is None:
+                return None
+            try:
+                resp = (r.json() or {}).get("response") or {}
+            except Exception:
+                return None
+            cached = {
+                "defs": resp.get("definitions") or [],
+                "total": int(resp.get("total_count") or 0),
+                "next": str(resp.get("next_cursor") or ""),
+            }
+            _put(key, cached, TTL_POINTS)
+        if i == block:
+            return cached["defs"], cached["total"], cached["next"]
+        cursor = cached["next"]
+        if not cursor:
+            # Ran out of data before the requested block.
+            return [], cached["total"], ""
+    return None
+
+
+def points_items(asset: str, q: str = "", page: int = 0, count: int = 24) -> dict:
+    """Catalog page for a points-shop asset kind."""
+    cls = POINTS_CLASS.get(asset)
+    if cls is None:
+        return {"ok": False, "items": [], "total": 0, "msg": "Unknown points-shop asset"}
+    page = max(0, int(page))
+    count = max(1, min(100, int(count)))
+    q = (q or "").strip()
+
+    start = page * count
+    block = start // _POINTS_BLOCK
+    got = _points_block(cls, q, block)
+    if got is None:
+        return {"ok": False, "items": [], "total": 0, "msg": "Steam is unavailable, try again shortly"}
+    defs, total, _next = got
+    offset = start - block * _POINTS_BLOCK
+    window = defs[offset:offset + count]
+    # A page may straddle two blocks.
+    if len(window) < count and len(defs) >= _POINTS_BLOCK:
+        more = _points_block(cls, q, block + 1)
+        if more is not None:
+            window += more[0][: count - len(window)]
+
+    items = []
+    for d in window:
+        it = _points_item(d, asset)
+        if it is not None:
+            items.append(it)
+    return {"ok": True, "items": items, "total": total, "page": page, "source": "points"}
+
+
+# Every catalog kind the builder may ask for, market and points shop together.
+ASSETS = MARKET_ASSETS + tuple(POINTS_CLASS)

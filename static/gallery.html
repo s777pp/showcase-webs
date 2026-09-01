@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Gallery · Showcase Maker</title>
 <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/static/ss.css?v=20260901b"/>
 <style>
 :root{
   --bg:#0c0c0c;
@@ -281,8 +282,26 @@ body.feed-mode .hint{display:none}
 }
 .composer button:hover{opacity:.9}
 </style>
+<style id="sm-gallery-unified-theme">
+:root{--accent:#35c9f2;--bg:#05090d;--panel:rgba(10,18,25,.78);--border:rgba(139,233,255,.13)}
+body{background:radial-gradient(55% 70% at 8% 18%,rgba(30,178,216,.14),transparent 68%),radial-gradient(55% 70% at 92% 70%,rgba(52,120,246,.13),transparent 70%),#05090d!important}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(67,215,255,.018) 1px,transparent 1px),linear-gradient(rgba(67,215,255,.014) 1px,transparent 1px);background-size:72px 72px;z-index:0}
+#ssHeadHost{position:relative;z-index:150;padding-top:2px}
+.site-header{display:none!important}
+.view-bar{top:92px;background:rgba(7,13,19,.74);border-color:rgba(139,233,255,.15);backdrop-filter:blur(20px)}
+.view-bar button.active{background:rgba(53,201,242,.14);color:#eefdff;box-shadow:inset 0 0 0 1px rgba(139,233,255,.15)}
+.stage{background:transparent!important;top:74px}
+.layer{border-radius:22px}
+.feed{padding-top:132px!important;position:relative;z-index:2}
+.feed-card{border-radius:18px!important;background:linear-gradient(145deg,rgba(14,23,31,.84),rgba(7,12,18,.76))!important;border-color:rgba(139,233,255,.12)!important;box-shadow:0 20px 55px rgba(0,0,0,.22);overflow:hidden}
+.feed-card:hover{border-color:rgba(139,233,255,.3)!important;transform:translateY(-5px)}
+.modal-content,.composer{background:rgba(7,13,19,.9)!important;border-color:rgba(139,233,255,.16)!important;backdrop-filter:blur(24px)}
+@media(max-width:640px){.view-bar{top:82px}.stage{top:68px}.feed{padding-top:122px!important}}
+</style>
 </head>
 <body class="carousel-mode">
+
+<div id="ssHeadHost"></div>
 
 <header class="site-header" id="siteHeader">
   <nav class="nav">
@@ -824,5 +843,6 @@ body.feed-mode .hint{display:none}
   load();
 })();
 </script>
+<script src="/static/ss-shell.js?v=20260901b"></script>
 </body>
 </html>

@@ -76,33 +76,14 @@ def service_wm_text() -> str:
 
 
 def enforce_watermark(is_pro: bool, opts: dict) -> dict:
-    """Return watermark options with the free-plan policy applied.
+    """Watermark is fully user-controlled on every plan.
 
-    Pro keeps full control (including turning the mark off). Free gets the
-    service mark at a fixed opacity and corner — the user's own text is not
-    silently replaced when they set one, it is appended, so people can still
-    sign their work.
+    The free tier used to get a forced service mark here. That was dropped on
+    purpose: free is limited by the daily quota alone, so the mark only made
+    the output worse without protecting anything. Both plans now get exactly
+    the options they asked for -- including no mark at all.
     """
-    out = dict(opts)
-    if is_pro:
-        return out
-
-    user_text = str(out.get("wm_text") or "").strip()
-    service = service_wm_text()
-    if user_text and user_text.lower() != service.lower():
-        text = f"{user_text} · {service}"
-    else:
-        text = service
-
-    out["wm_enable"] = True
-    out["wm_text"] = text
-    # Keep it visible but not destructive to the artwork.
-    try:
-        opacity = int(out.get("wm_opacity") or 22)
-    except (TypeError, ValueError):
-        opacity = 22
-    out["wm_opacity"] = max(18, min(60, opacity))
-    return out
+    return dict(opts)
 
 
 @router.get("/watermark/policy")
@@ -112,7 +93,7 @@ def watermark_policy(request: Request):
     return {
         "ok": True,
         "pro": bool(q.get("pro")),
-        "forced": not q.get("pro"),
+        "forced": False,
         "text": service_wm_text(),
     }
 
@@ -208,6 +189,12 @@ def steam_backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int 
     return steam_catalog.backgrounds(q=q, page=page, kind=kind, count=count, asset=asset)
 
 
+@router.get("/steam/cards/{appid}")
+def steam_cards(appid: int, foil: bool = False):
+    """Full trading-card set of one game plus what the badge costs to craft."""
+    return steam_catalog.card_set(appid, foil=foil)
+
+
 @router.get("/steam/achievements/{appid}")
 def steam_achievements(appid: str):
     return steam_catalog.achievements(appid)
@@ -225,17 +212,27 @@ def steam_profile(url: str = ""):
 
 @router.get("/steam/proxy-image")
 def steam_proxy_image(url: str):
-    """Fetch a Steam-hosted image so the builder can use a catalog background.
+    """Fetch a Steam-hosted asset so the builder can use it on a canvas.
 
-    Restricted to Steam CDN hosts — this must not become a generic fetcher.
+    Two reasons this exists rather than pointing <img> straight at Steam: the
+    export canvas would be tainted by a cross-origin draw, and points-shop
+    animated items are video files. Restricted to Steam CDN hosts - this must
+    not become a generic fetcher.
     """
     allowed = (
         "community.cloudflare.steamstatic.com",
         "community.akamai.steamstatic.com",
+        "community.fastly.steamstatic.com",
         "steamcommunity-a.akamaihd.net",
         "cdn.cloudflare.steamstatic.com",
         "cdn.akamai.steamstatic.com",
+        "cdn.fastly.steamstatic.com",
         "shared.cloudflare.steamstatic.com",
+        "shared.akamai.steamstatic.com",
+        "shared.fastly.steamstatic.com",
+        "avatars.cloudflare.steamstatic.com",
+        "avatars.akamai.steamstatic.com",
+        "avatars.fastly.steamstatic.com",
     )
     from urllib.parse import urlparse
 
@@ -250,8 +247,9 @@ def steam_proxy_image(url: str):
         if r.status_code != 200:
             return _err(f"Upstream HTTP {r.status_code}", 502)
         ctype = r.headers.get("Content-Type", "image/png")
-        if not ctype.startswith("image/"):
-            return _err("Not an image", 502)
+        # Animated backgrounds and avatars are webm/mp4, not images.
+        if not (ctype.startswith("image/") or ctype in ("video/webm", "video/mp4")):
+            return _err("Not an image or video", 502)
         if len(r.content) > 25 * 1024 * 1024:
             return _err("Image too large", 502)
         return Response(content=r.content, media_type=ctype,

@@ -1,1209 +1,1662 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="ru">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Steam Community :: Profile</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Мокап профиля Steam — превью и экспорт 1920×1080</title>
+<meta name="description" content="Собери оформление профиля Steam: фон, аватар, рамка, значки и витрины. Живое превью и экспорт картинки 1920×1080.">
+<link rel="icon" href="/static/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/ss.css?v=20260901b">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-html{background:#1b2838}
-body{
-  min-height:100%;
-  background:#1b2838;
-  color:#c7d5e0;
-  font-family:"Motiva Sans",Arial,"Helvetica Neue",Helvetica,sans-serif;
-  font-size:14px;
-  line-height:1.4;
-  -webkit-font-smoothing:antialiased;
+/* ===================== builder shell ===================== */
+.mk{padding:18px 0 30px}
+.mk__grid{display:grid;grid-template-columns:minmax(340px,392px) 1fr;gap:18px;align-items:start}
+.mk__left{
+  position:sticky;top:calc(var(--head-h) + 14px);
+  max-height:calc(100vh - var(--head-h) - 28px);overflow:auto;padding-right:4px;
+  display:flex;flex-direction:column;gap:12px;
 }
-a{color:#ebebeb;text-decoration:none}
-a:hover{color:#fff}
-img{border:0}
+.mk__tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.mk__tab{padding:10px 8px;border-radius:9px;font-size:13px;font-weight:700;color:var(--txt-2);transition:.16s var(--ease)}
+.mk__tab:hover{background:rgba(255,255,255,.05);color:var(--txt)}
+.mk__tab.is-on{background:var(--brand);color:#fff;box-shadow:0 6px 18px rgba(61,129,227,.3)}
+.mk__pane{display:none;flex-direction:column;gap:12px}
+.mk__pane.is-on{display:flex}
 
-/* Steam global header */
-#global_header{
-  background:#171a21;
-  height:50px;
-  position:relative;
-  z-index:50;
-  box-shadow:0 0 8px rgba(0,0,0,.6);
-}
-#global_header .content{
-  width:960px;max-width:100%;margin:0 auto;height:50px;
-  display:flex;align-items:center;padding:0 12px;gap:4px;
-}
-#global_header .brand{color:#fff;font-weight:700;font-size:14px;margin-right:12px;display:inline-flex;align-items:center}
-#global_header .brand-logo img{display:block;width:28px;height:28px;border-radius:6px;object-fit:contain}
-#global_header .menuitem{
-  color:#dcdedf;font-size:13px;text-transform:uppercase;
-  padding:0 11px;line-height:50px;letter-spacing:.03em;
-}
-#global_header .menuitem:hover{color:#fff}
-#global_actions{margin-left:auto}
-.btn{
-  display:inline-block;border:none;border-radius:2px;cursor:pointer;
-  font-size:12px;line-height:24px;padding:0 14px;font-weight:500;
-  font-family:inherit;color:#fff;
-}
-.btn-green{background:linear-gradient(to bottom,#75b022 5%,#588a1b 95%)}
-.btn-blue{background:linear-gradient(to bottom,#66c0f4 5%,#417a9b 95%)}
-.btn-gray{background:linear-gradient(to bottom,#4a5562 5%,#313843 95%);color:#d0d8e0}
-.btn:hover{filter:brightness(1.1)}
+.pn{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.pn__h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+.pn__t{font-size:14px;font-weight:800;letter-spacing:-.2px}
+.pn__sub{font-size:11.5px;color:var(--txt-3)}
+.pn + .pn{margin-top:0}
 
-/* Page: background grows with source image height */
-.profile_page{position:relative;min-height:calc(100vh - 50px)}
-.profile_bg_wrap{
-  position:absolute;left:0;right:0;top:0;z-index:0;pointer-events:none;
-  width:100%;overflow:hidden;
-}
-.profile_bg_wrap img{
-  display:block;width:100%;height:auto;
-  /* natural aspect from source — full height of uploaded file */
-  min-height:0;
-}
-.profile_bg_wrap .fallback_bg{
-  width:100%;min-height:100vh;background:#1b2838;
-}
-/* soft bottom fade so content never hard-cuts the art */
-.profile_bg_fade{
-  position:absolute;left:0;right:0;z-index:1;pointer-events:none;
-  height:320px;
-  bottom:0;
-  background:linear-gradient(to bottom,
-    rgba(0,0,0,0) 0%,
-    rgba(0,0,0,.25) 25%,
-    rgba(0,0,0,.65) 55%,
-    rgba(0,0,0,.92) 80%,
-    #000 100%);
-}
-.profile_bg_fade::before{
-  content:"";
-  position:absolute;left:0;right:0;bottom:0;height:200px;
-  backdrop-filter:blur(16px);
-  -webkit-backdrop-filter:blur(16px);
-  mask-image:linear-gradient(to bottom, transparent, #000);
-  -webkit-mask-image:linear-gradient(to bottom, transparent, #000);
-  background:rgba(0,0,0,.35);
-}
-.profile_bg_wrap{
-  position:absolute;left:0;right:0;top:0;z-index:0;pointer-events:none;
-  width:100%;
-}
-.profile_bg_wrap img{
-  display:block;width:100%;height:auto;
-}
-.profile_page{background:#000}
-body{background:#000}
-html{background:#000}
+.seg{display:flex;gap:5px;padding:4px;background:var(--bg-2);border:1px solid var(--line);border-radius:11px}
+.seg button{flex:1;padding:8px;border-radius:8px;font-size:12.5px;font-weight:700;color:var(--txt-2)}
+.seg button.is-on{background:var(--panel-3);color:#fff;box-shadow:inset 0 0 0 1px var(--line-2)}
 
+.navs{display:flex;gap:6px;overflow:auto;padding-bottom:2px;margin-top:10px}
+.navs button{
+  flex:none;padding:8px 12px;border-radius:var(--r-pill);font-size:12.5px;font-weight:700;
+  color:var(--txt-2);border:1px solid var(--line);white-space:nowrap;
+}
+.navs button.is-on{color:#fff;background:var(--brand-dim);border-color:rgba(61,129,227,.4)}
 
-.profile_content{
-  position:relative;z-index:2;
-  width:948px;max-width:100%;
-  margin:0 auto;
-  padding:28px 10px 60px;
-}
+.srch{position:relative;margin-top:10px}
+.srch .ss-in{padding-right:38px}
+.srch button{position:absolute;right:6px;top:6px;width:28px;height:28px;border-radius:8px;
+  display:grid;place-items:center;color:var(--txt-3)}
+.srch button:hover{color:var(--txt);background:rgba(255,255,255,.06)}
 
-/* Header — translucent like Steam */
-.profile_header_bg{
-  background:rgba(0,0,0,.35);
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
-  border-radius:0;
-  padding:22px 18px 18px;
-  margin-bottom:10px;
-  border:none;
-  outline:none;
-  box-shadow:none;
-}
-.profile_header{display:flex;gap:16px;align-items:flex-start}
-.playerAvatar{
-  width:164px;height:164px;flex:0 0 164px;position:relative;
-  background:#1b2838;border:1px solid rgba(0,0,0,.6);
-}
-.playerAvatar img{width:164px;height:164px;object-fit:cover;display:block}
-.playerAvatar .fb{width:164px;height:164px;display:grid;place-items:center;font-size:52px;color:#66c0f4;font-weight:200}
-.playerAvatar.online img{outline:2px solid #57cbde;outline-offset:0}
-.playerAvatar.offline img{outline:2px solid #898989}
-.playerAvatar.ingame img{outline:2px solid #90ba3c}
+.chosen{margin-top:9px;font-size:11.5px;color:var(--txt-3)}
+.chosen b{color:var(--brand-2);font-weight:700}
 
-.profile_header_content{flex:1;min-width:0;padding-top:2px}
-.persona_name{
-  font-size:24px;font-weight:300;color:#fff;
-  text-shadow:1px 1px 0 rgba(0,0,0,.6);
+.flt{margin-top:11px;border-top:1px solid var(--line);padding-top:11px}
+.flt__g + .flt__g{margin-top:10px}
+.flt__t{font-size:10.5px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--txt-3);margin-bottom:7px}
+.flt__row{display:flex;flex-wrap:wrap;gap:6px}
+.chk{
+  display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-pill);
+  border:1px solid var(--line);font-size:12px;font-weight:600;color:var(--txt-2);cursor:pointer;
+  transition:.15s var(--ease);
 }
-.profile_in_game_header{font-size:13px;margin-top:3px}
-.profile_in_game_header.online{color:#57cbde}
-.profile_in_game_header.offline{color:#898989}
-.profile_in_game_header.ingame{color:#90ba3c}
-.header_real_name{font-size:12px;color:#8f98a0;margin-top:2px}
-.profile_summary{
-  margin-top:10px;font-size:13px;line-height:1.45;color:#c6d4df;
-  white-space:pre-wrap;max-width:500px;
-}
-.profile_header_actions{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap}
+.chk:hover{border-color:var(--line-2);color:var(--txt)}
+.chk input{display:none}
+.chk i{width:10px;height:10px;border-radius:3px;border:1.5px solid var(--line-2);flex:none}
+.chk.is-on{color:#fff;background:var(--brand-dim);border-color:rgba(61,129,227,.45)}
+.chk.is-on i{background:var(--brand);border-color:var(--brand)}
+.chk--dot i{border-radius:50%}
 
-.profile_header_badgeinfo{flex:0 0 120px;text-align:center;padding-top:4px}
-.persona_level_title{font-size:12px;color:#c6d4df;margin-bottom:4px}
-.friendPlayerLevel{
-  display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;
-  border-radius:50%;font-size:15px;font-weight:700;color:#fff;
-  background:#4c6b22;border:2px solid #b9a34c;
+/* asset grid */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:11px}
+.grid--2{grid-template-columns:repeat(2,1fr)}
+.cell{
+  position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);
+  background:var(--bg-2);aspect-ratio:16/9;cursor:pointer;transition:.16s var(--ease);
 }
-.xp_bar{
-  width:96px;height:6px;margin:8px auto 0;background:rgba(0,0,0,.5);
-  border:1px solid #000;border-radius:2px;overflow:hidden;
+.cell:hover{border-color:var(--line-2);transform:translateY(-2px)}
+.cell.is-on{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-dim)}
+.cell img,.cell video{width:100%;height:100%;object-fit:cover}
+.cell--sq{aspect-ratio:1}
+.cell__n{
+  position:absolute;left:0;right:0;bottom:0;padding:14px 6px 5px;font-size:10px;font-weight:700;
+  color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.86));
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.xp_fill{height:100%;background:linear-gradient(to right,#c6a43d,#e8d070);width:10%}
-.xp_text{font-size:11px;color:#8f98a0;margin-top:3px}
+.cell__p{
+  position:absolute;top:5px;right:5px;padding:2px 6px;border-radius:6px;font-size:9.5px;font-weight:800;
+  background:rgba(0,0,0,.7);color:var(--ok);
+}
+.cell__p.is-pts{color:#c8a6ff}
+.cell__badge{position:absolute;top:5px;left:5px;padding:2px 5px;border-radius:5px;font-size:9px;
+  font-weight:800;background:rgba(0,0,0,.7);color:var(--warn)}
+.more{display:flex;gap:8px;margin-top:10px}
+.state{padding:16px 4px;text-align:center;font-size:12.5px;color:var(--txt-3)}
 
-/* two columns */
-.profile_col_layout{display:flex;gap:12px;align-items:flex-start}
-.profile_leftcol{flex:1;min-width:0}
-.profile_rightcol{width:280px;flex:0 0 280px}
-@media(max-width:920px){
-  .profile_col_layout{flex-direction:column}
-  .profile_rightcol{width:100%}
-  .profile_header{flex-wrap:wrap}
-}
+/* vitrine rows */
+.vrow{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid var(--line);
+  border-radius:11px;background:var(--bg-2)}
+.vrow + .vrow{margin-top:7px}
+.vrow__t{flex:1;font-size:13px;font-weight:700}
+.vrow__mv{display:flex;flex-direction:column;gap:2px}
+.vrow__mv button{width:20px;height:14px;display:grid;place-items:center;color:var(--txt-3);font-size:9px}
+.vrow__mv button:hover{color:var(--txt)}
+.sw{position:relative;width:38px;height:21px;flex:none;cursor:pointer}
+.sw input{display:none}
+.sw i{position:absolute;inset:0;border-radius:99px;background:var(--panel-3);transition:.18s var(--ease);
+  box-shadow:inset 0 0 0 1px var(--line)}
+.sw i::after{content:'';position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;
+  background:var(--txt-3);transition:.18s var(--ease)}
+.sw.is-on i{background:var(--brand-dim);box-shadow:inset 0 0 0 1px rgba(61,129,227,.5)}
+.sw.is-on i::after{left:20px;background:var(--brand-2)}
 
-/* Steam translucent module */
-.profile_customization{
-  background:rgba(0,0,0,.35);
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
-  border:none;
-  outline:none;
-  box-shadow:none;
-  border-radius:0;
-  margin-bottom:12px;
-  overflow:hidden;
-}
-.profile_customization_header{
-  padding:8px 12px;
-  font-size:12px;text-transform:none;letter-spacing:0;
-  color:#ebebeb;
-  background:rgba(255,255,255,.06);
-  border-bottom:none;
-  display:flex;justify-content:space-between;align-items:center;
-  font-weight:400;
-}
-.profile_customization_header .sub{
-  text-transform:none;letter-spacing:0;color:#8f98a0;font-size:11px;
-}
-.showcase_content{padding:10px 12px 12px}
+/* fields */
+.f{margin-top:10px}
+.f__t{font-size:11.5px;font-weight:700;color:var(--txt-2);margin-bottom:6px;display:flex;justify-content:space-between}
+.f__t span{color:var(--txt-3);font-weight:600}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+select.ss-in{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--txt-3) 50%),
+  linear-gradient(135deg,var(--txt-3) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:32px}
 
-/* Workshop: rows of 5 equal parts, image fills height of source ratio */
-.workshop_rows{
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-  width:100%;
-}
-.workshop_row{
-  display:flex !important;
-  flex-direction:row !important;
-  width:100%;
-  line-height:0;
-  background:transparent;
-  /* visible black gaps between the 5 parts — like Steam / Split */
-  gap:4px !important;
-}
-.workshop_row .wslice{
-  flex:1 1 0 !important;
-  width:0 !important;
-  min-width:0 !important;
-  overflow:hidden !important;
-  display:block !important;
-  background:#000;
-  line-height:0;
-}
-.workshop_row img{
-  display:block !important;
-  flex:1 1 0 !important;
-  width:0 !important; /* flex distributes evenly with gap */
-  min-width:0 !important;
-  height:auto !important;
-  object-fit:fill;
-  object-position:center top;
-  border:none !important;
-  outline:none !important;
-  background:#000;
-  box-shadow:none !important;
-}
-.workshop_title_row{
-  display:flex;align-items:center;gap:8px;
-  padding:8px 2px 10px;
-}
-.workshop_title_row img.ws_av{
-  width:28px;height:28px;border-radius:2px;object-fit:cover;
-}
-.workshop_title_row .ws_name{color:#ebebeb;font-size:14px;font-weight:400}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.actions .ss-btn{width:100%}
+.rng{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:12px;color:var(--txt-2)}
+.rng input[type=range]{flex:1;accent-color:var(--brand)}
+.rng output{font-weight:800;font-size:12px;min-width:40px;text-align:right}
+.hint{margin-top:9px;font-size:11px;line-height:1.5;color:var(--txt-3)}
+.stat{font-size:11.5px;margin-top:8px;min-height:15px}
+.stat.is-ok{color:var(--ok)}.stat.is-bad{color:var(--bad)}.stat.is-wait{color:var(--warn)}
 
+/* ===================== stage / preview ===================== */
+.mk__stage{
+  position:sticky;top:calc(var(--head-h) + 14px);
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:12px;box-shadow:var(--shadow);
+}
+.stage__bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.stage__badge{font-size:10.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--txt-3);padding:5px 9px;border:1px solid var(--line);border-radius:7px}
+.stage__sp{flex:1}
+.stage__view{
+  position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:12px;
+  background:#05070a;border:1px solid var(--line);
+}
+/* the scene is authored at exactly 1920x1080 and scaled to the viewport, so what
+   you see is the pixel geometry the exporter paints. */
+.scene{position:absolute;top:0;left:0;width:1920px;height:1080px;transform-origin:0 0}
+.scene__bg{position:absolute;inset:0;overflow:hidden;background:#0b0f14}
+.scene__bg img,.scene__bg video{width:100%;height:100%;object-fit:cover}
+.scene__op{position:absolute;inset:0;background:#000;opacity:0}
+.scene__layer{position:absolute;inset:0}
+.op{position:absolute;box-sizing:border-box}
+.op--text{white-space:pre-wrap;overflow:hidden}
+.op--img img,.op--img video{width:100%;height:100%;display:block}
+.op--fit img,.op--fit video{object-fit:cover}
+.op--contain img,.op--contain video{object-fit:contain}
+.scene ::selection{background:transparent}
 
-/* Featured — full width, natural height of processed 630-wide image scaled up */
-.featured_shot img{
-  display:block;width:100%;height:auto;
-  background:transparent;border:none;outline:none;
-}
+.stage__full{position:fixed;inset:0;z-index:80;background:#04050700;display:none}
+body.is-full{overflow:hidden}
+body.is-full .stage__full{display:block;background:#040507}
+body.is-full .mk__stage{position:fixed;inset:0;z-index:81;border-radius:0;border:none;
+  padding:14px;display:flex;flex-direction:column}
+body.is-full .stage__view{flex:1;aspect-ratio:auto}
 
-/* Split */
-.split_row{display:flex;gap:4px;align-items:stretch}
-.split_row img{background:#000;border:1px solid #000;height:auto}
-.split_row .center{flex:506;min-width:0}
-.split_row .side{flex:100;min-width:0}
-.split_row .center img,.split_row .side img{width:100%;height:auto;object-fit:cover}
-
-/* Artwork grid */
-.artwork_grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
-.artwork_grid img{width:100%;height:auto;aspect-ratio:1;object-fit:cover;background:#000;border:1px solid #000}
-
-.sc_block{margin-bottom:14px;position:relative}
-.sc_block:last-child{margin-bottom:0}
-.sc_remove{
-  position:absolute;top:8px;right:10px;z-index:3;
-  background:rgba(0,0,0,.65);color:#c7d5e0;border:1px solid rgba(255,255,255,.1);
-  font-size:11px;padding:2px 8px;border-radius:2px;cursor:pointer;display:none;
+@media(max-width:1180px){
+  .mk__grid{grid-template-columns:1fr}
+  .mk__left,.mk__stage{position:static;max-height:none}
+  .mk__stage{order:-1}
 }
-.sc_block.owner .sc_remove{display:inline-block}
-.sc_remove:hover{color:#fff;background:rgba(120,30,30,.8)}
-
-.empty{
-  color:#8f98a0;font-size:13px;text-align:center;padding:18px 8px;line-height:1.5;
-}
-
-/* Right column blocks */
-.right_block{
-  background:rgba(0,0,0,.35);
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
-  border:none;
-  outline:none;
-  box-shadow:none;
-  border-radius:0;
-  margin-bottom:12px;
-  padding:10px 12px;
-}
-.right_block .h{
-  font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#ebebeb;
-  margin-bottom:8px;
-}
-.right_block .status_line{font-size:13px;color:#898989;margin-bottom:4px}
-.right_block .status_line.online{color:#57cbde}
-.right_block .status_line.ingame{color:#90ba3c}
-.count_link{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:4px 0;font-size:13px;color:#c6d4df;
-}
-.count_link:hover{color:#fff}
-.count_link .n{color:#ebebeb}
-
-/* Editor panels */
-.panel{
-  display:none;
-  background:rgba(22,32,45,.92);
-  border:1px solid rgba(0,0,0,.5);
-  border-radius:3px;
-  padding:14px 16px;
-  margin-bottom:12px;
-}
-.panel.open{display:block}
-.panel h3{
-  font-size:12px;text-transform:uppercase;letter-spacing:.06em;
-  color:#fff;font-weight:400;margin-bottom:10px;
-}
-.panel label{display:block;font-size:11px;color:#8f98a0;margin:8px 0 3px;text-transform:uppercase}
-.panel input,.panel select,.panel textarea{
-  width:100%;background:#1b2838;border:1px solid #000;color:#c7d5e0;
-  padding:6px 8px;font-size:13px;border-radius:2px;font-family:inherit;
-}
-.panel textarea{min-height:72px;resize:vertical}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:600px){.row2{grid-template-columns:1fr}}
-.msg{font-size:12px;margin-top:8px;color:#8f98a0}
-.msg.ok{color:#90ba3c}.msg.err{color:#c15755}
-.hint{font-size:11px;color:#8f98a0;margin-top:6px;line-height:1.4}
-
-.gate{
-  max-width:420px;margin:90px auto;text-align:center;
-  background:rgba(0,0,0,.45);padding:28px;border-radius:3px;border:1px solid #000;
-}
-.gate h2{color:#fff;font-weight:300;margin-bottom:8px}
-
-.right_block.steam_side{
-  background:rgba(0,0,0,.40);
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  padding:16px 18px 18px;
-}
-.side_sub{font-size:11px;color:#56707f;margin:4px 0 16px}
-.side_sec{margin:14px 0 12px}
-.side_label{font-size:13px;color:#c6d4df;margin-bottom:8px;letter-spacing:.01em}
-.side_label .n{color:#ebebeb;margin-left:6px;font-weight:400}
-.side_icons{display:flex;gap:8px;flex-wrap:wrap;min-height:24px;margin-bottom:4px}
-.side_icons .ic{
-  width:48px;height:48px;background:rgba(255,255,255,.05);
-  border-radius:3px;display:grid;place-items:center;
-}
-.count_link{padding:5px 0;font-size:13px;color:#c6d4df}
-.count_link .n{color:#ebebeb}
-.profile_header_badgeinfo .friendPlayerLevel{
-  width:42px;height:42px;line-height:42px;font-size:16px;
-  border:2px solid #66c0f4;background:transparent;color:#fff;
-  box-shadow:0 0 0 1px rgba(102,192,244,.3);
-}
-.persona_level_title{font-size:14px;color:rgba(255,255,255,.7);margin-bottom:6px}
-
-.friends_list .fr,.groups_list .gr{
-  display:flex;align-items:center;gap:8px;padding:5px 0;
-}
-.friends_list .fr img,.groups_list .gr img{
-  width:32px;height:32px;border-radius:2px;object-fit:cover;background:#1b2838;
-}
-.friends_list .fr .meta,.groups_list .gr .meta{flex:1;min-width:0}
-.friends_list .fr .nm,.groups_list .gr .nm{font-size:12px;color:#c6d4df}
-.friends_list .fr .st{font-size:11px;color:#56707f}
-.friends_list .fr .st.ingame{color:#90ba3c}
-.friends_list .fr .lvl{
-  font-size:11px;color:#ebebeb;border:1px solid #c6a43d;
-  border-radius:50%;width:22px;height:22px;line-height:20px;text-align:center;
-}
-
-
-/* Buy key chooser modal */
-.sm-buy-overlay{
-  display:none;position:fixed;inset:0;z-index:10050;
-  background:rgba(0,0,0,.65);backdrop-filter:blur(8px);
-  align-items:center;justify-content:center;padding:20px;
-}
-.sm-buy-overlay.open{display:flex}
-.sm-buy-card{
-  width:min(400px,100%);
-  background:#12141c;
-  border:1px solid rgba(255,255,255,.1);
-  border-radius:18px;
-  padding:24px 22px 20px;
-  box-shadow:0 24px 64px rgba(0,0,0,.55);
-  color:#e8eef5;
-  font-family:inherit;
-}
-.sm-buy-card h3{
-  margin:0 0 6px;font-size:18px;font-weight:700;color:#fff;text-align:center;
-}
-.sm-buy-card .sm-buy-sub{
-  margin:0 0 18px;font-size:13px;color:rgba(255,255,255,.55);text-align:center;line-height:1.4;
-}
-.sm-buy-opts{display:flex;flex-direction:column;gap:10px}
-.sm-buy-opt{
-  display:flex;align-items:center;gap:14px;
-  padding:14px 16px;border-radius:14px;
-  border:1px solid rgba(255,255,255,.1);
-  background:rgba(255,255,255,.04);
-  color:#fff;text-decoration:none;cursor:pointer;
-  transition:background .15s,border-color .15s,transform .15s;
-}
-.sm-buy-opt:hover{
-  background:rgba(255,255,255,.09);
-  border-color:rgba(255,255,255,.22);
-  transform:translateY(-1px);
-}
-.sm-buy-opt .ico{
-  width:42px;height:42px;border-radius:12px;flex:0 0 42px;
-  display:grid;place-items:center;
-}
-.sm-buy-opt .ico svg{width:24px;height:24px;display:block}
-.sm-buy-opt.funpay .ico{background:linear-gradient(135deg,#ff8a3d,#e85d04)}
-.sm-buy-opt.tg .ico{background:linear-gradient(135deg,#2AABEE,#229ED9)}
-.sm-buy-opt .txt{flex:1;min-width:0}
-.sm-buy-opt .txt .t{font-size:15px;font-weight:700;display:block}
-.sm-buy-opt .txt .d{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px}
-.sm-buy-opt .arrow{opacity:.45;font-size:18px}
-.sm-buy-close{
-  display:block;width:100%;margin-top:14px;padding:10px;
-  border:none;border-radius:999px;cursor:pointer;
-  background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);
-  font-size:13px;font-weight:600;font-family:inherit;
-}
-.sm-buy-close:hover{background:rgba(255,255,255,.1);color:#fff}
-
-
-.sm-buy-opt.funpay .ico.ico-funpay{
-  background:#ffffff !important;
-  padding:8px 6px;
-}
-.sm-buy-opt.funpay .ico.ico-funpay img{
-  width:100%;
-  height:auto;
-  max-height:20px;
-  object-fit:contain;
-  display:block;
-}
-
+</style>
+<style id="sm-production-profile-theme">
+:root{--brand:#43d7ff;--brand-2:#8cecff;--brand-dim:rgba(67,215,255,.1);--bg:#05090d;--bg-2:#061018;--panel:#09151d;--panel-2:#0d1c26;--panel-3:#122733;--line:rgba(138,215,238,.16);--line-2:rgba(138,215,238,.28);--txt:#eaf7fa;--txt-2:#93a9b3;--txt-3:#58717d;--ok:#43d7ff;--warn:#f2c14e;--r:7px;--r-sm:5px;--r-lg:9px;--r-pill:4px;--shadow:12px 16px 0 rgba(0,0,0,.16);--shadow-sm:6px 8px 0 rgba(0,0,0,.13)}
+html,body{background:#05090d!important}body{font-family:"Segoe UI",Arial,sans-serif!important;background:linear-gradient(90deg,rgba(67,215,255,.032) 1px,transparent 1px),linear-gradient(rgba(67,215,255,.024) 1px,transparent 1px),radial-gradient(circle at 12% 8%,rgba(24,125,158,.17),transparent 30%),linear-gradient(145deg,#05090d,#071019 58%,#06111a)!important;background-size:64px 64px,64px 64px,auto,auto!important;background-attachment:fixed!important}.ss-head{height:72px!important;background:rgba(4,9,13,.95)!important;border-bottom:1px solid var(--line)!important;backdrop-filter:blur(14px)!important}.ss-head__in{width:min(1560px,100% - 28px)!important;border-left:1px solid rgba(67,215,255,.08);border-right:1px solid rgba(67,215,255,.08);padding:0 14px}.ss-logo__mark{border-radius:5px!important;background:#0b1b25!important;color:var(--brand)!important;box-shadow:none!important;border:1px solid var(--line-2)}.ss-logo__txt,.pn__t,.mk__tab,.stage__badge{font-family:Consolas,"Courier New",monospace!important}.ss-logo__txt::after{content:" / PROFILE BUILDER";color:rgba(67,215,255,.42);font-size:8px;letter-spacing:.12em}.ss-nav__i{border-radius:3px!important;font-family:Consolas,monospace!important}.ss-nav__i.is-on{background:rgba(67,215,255,.07)!important;box-shadow:inset 0 -2px var(--brand)!important}.ss-btn,.ss-in{border-radius:4px!important}.ss-btn:not(.ss-btn--ghost){background:#eaf7fa!important;color:#041016!important;box-shadow:4px 4px 0 rgba(67,215,255,.14)!important}.mk{padding-top:22px!important}.mk__grid{grid-template-columns:minmax(350px,410px) minmax(0,1fr)!important;gap:22px!important}.mk__tabs{padding:0!important;gap:0!important;border-radius:6px!important;background:#03080c!important}.mk__tab{min-height:45px;border-radius:0!important;font-family:Consolas,monospace!important}.mk__tab.is-on{background:rgba(67,215,255,.08)!important;color:#fff!important;box-shadow:inset 0 -3px var(--brand)!important}.pn,.mk__stage{border-radius:7px!important;border-color:var(--line)!important;background:linear-gradient(145deg,rgba(9,21,29,.96),rgba(4,10,14,.94))!important;box-shadow:var(--shadow)!important;backdrop-filter:blur(10px)}.pn__t{color:var(--brand)!important;text-transform:uppercase;letter-spacing:.08em}.seg,.vrow,.cell,.stage__view{border-radius:5px!important}.seg{background:#040b10!important}.seg button,.navs button,.chk{border-radius:3px!important;font-family:Consolas,monospace!important}.seg button.is-on,.navs button.is-on,.chk.is-on{background:rgba(67,215,255,.1)!important;box-shadow:inset 3px 0 var(--brand)!important}.cell:hover{transform:none!important;border-color:var(--brand)!important}.cell.is-on{box-shadow:inset 0 0 0 2px var(--brand)!important}.mk__stage{padding:9px!important}.stage__bar{padding:2px 2px 7px;border-bottom:1px solid var(--line)}.stage__view{background:linear-gradient(90deg,rgba(67,215,255,.025) 1px,transparent 1px),linear-gradient(rgba(67,215,255,.025) 1px,transparent 1px),#03080c!important;background-size:32px 32px!important}.stage__badge{border-radius:3px!important;color:rgba(67,215,255,.7)!important}.f__t,.flt__t,.chosen,.hint,.stat{font-family:Consolas,"Courier New",monospace!important}.sw i{border-radius:3px!important}.sw i::after{border-radius:2px!important}.more{gap:6px}.actions{gap:6px}.ss-scroll{scrollbar-color:rgba(67,215,255,.25) transparent}
+@media(max-width:1180px){.mk__grid{grid-template-columns:1fr!important}.mk__stage{order:-1!important}.mk__left{position:static!important}}@media(max-width:640px){.ss-logo__txt::after{display:none}.mk{padding-top:12px!important}.pn{padding:11px!important}.mk__tabs{position:sticky;top:72px;z-index:20}}
+</style>
+<style id="sm-profile-unified-final">
+.ss-head{top:10px!important;width:min(1560px,calc(100% - 28px))!important;height:64px!important;margin:0 auto!important;border:1px solid rgba(255,255,255,.105)!important;border-radius:18px!important;background:rgba(7,12,17,.76)!important;box-shadow:0 18px 55px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.045)!important;backdrop-filter:blur(22px) saturate(145%)!important}.ss-head__in{width:min(1560px,100% - 32px)!important;border:0!important;padding:0!important}.ss-logo__mark{border-radius:9px!important;background:rgba(255,255,255,.045)!important}.ss-logo__txt,.ss-nav__i{font-family:'Mulish',system-ui,sans-serif!important}.ss-logo__txt::after{display:none!important}.ss-nav__i{border-radius:10px!important}.ss-nav__i.is-on{background:rgba(255,255,255,.065)!important;box-shadow:inset 0 0 0 1px rgba(139,233,255,.22)!important}
+.pn,.mk__stage{border-radius:18px!important;background:linear-gradient(145deg,rgba(13,22,30,.86),rgba(5,10,15,.8))!important;box-shadow:0 28px 80px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.045)!important;backdrop-filter:blur(20px)!important}.mk__tabs{padding:5px!important;gap:4px!important;border-radius:14px!important;background:rgba(0,0,0,.23)!important}.mk__tab{border-radius:10px!important;font-family:'Mulish',system-ui,sans-serif!important}.mk__tab.is-on{border:1px solid rgba(139,233,255,.2)!important;background:rgba(255,255,255,.065)!important;box-shadow:none!important}.seg,.vrow,.cell,.stage__view,.ss-btn,.ss-in{border-radius:10px!important}.mk{padding-top:34px!important}
+@media(max-width:640px){.ss-head{top:6px!important;width:calc(100% - 12px)!important;border-radius:15px!important}.mk__tabs{top:78px!important}}
 </style>
 </head>
 <body>
-<div id="global_header">
-  <div class="content">
-    <a class="brand brand-logo" href="/" title="Showcase Maker"><img src="/static/icon.png" alt="Showcase Maker" width="28" height="28"/></a>
-    <a class="menuitem" href="/">Store</a>
-    <a class="menuitem" href="/gallery">Community</a>
-    <a class="menuitem" href="/app">Tools</a>
-    <a class="menuitem" href="/profile">Profile</a>
-    <div id="global_actions"><a class="btn btn-gray" href="/app">Open tools</a></div>
+<div id="ssHeadHost"></div>
+
+<main class="mk">
+  <div class="ss-wrap mk__grid">
+    <!-- ======================= left: controls ======================= -->
+    <aside class="mk__left ss-scroll">
+      <div class="mk__tabs" role="tablist">
+        <button class="mk__tab is-on" data-tab="look" type="button">Оформление</button>
+        <button class="mk__tab" data-tab="prof" type="button">Профиль</button>
+        <button class="mk__tab" data-tab="exp" type="button">Экспорт</button>
+      </div>
+
+      <!-- ---------------- Оформление ---------------- -->
+      <div class="mk__pane is-on" data-pane="look">
+        <div class="pn">
+          <div class="pn__h">
+            <p class="pn__t">Мокап</p>
+            <p class="pn__sub" id="uCnt"></p>
+          </div>
+          <div class="seg">
+            <button type="button" id="btnRandom">Случайный набор</button>
+            <button type="button" id="btnClearLook">Сбросить оформление</button>
+          </div>
+          <div class="navs" id="lookNavs">
+            <button class="is-on" data-sec="bg" type="button">Фон</button>
+            <button data-sec="av" type="button">Аватар и рамка</button>
+            <button data-sec="bd" type="button">Значки</button>
+            <button data-sec="vt" type="button">Витрины</button>
+          </div>
+        </div>
+
+        <!-- фон -->
+        <div class="pn" data-sec="bg">
+          <p class="pn__t">Настройка фона</p>
+          <div class="srch">
+            <input class="ss-in" id="bgQ" type="text" placeholder="Название фона или ссылка...">
+            <button type="button" id="bgGo" aria-label="Искать">🔍</button>
+          </div>
+          <p class="chosen">Выбран фон: <b id="bgSel">не выбран</b></p>
+          <div class="flt">
+            <div class="flt__g"><p class="flt__t">Тип</p>
+              <div class="flt__row" id="bgType"></div></div>
+            <div class="flt__g"><p class="flt__t">Стиль</p>
+              <div class="flt__row" id="bgStyle"></div></div>
+            <div class="flt__g"><p class="flt__t">Цвет</p>
+              <div class="flt__row" id="bgColor"></div></div>
+          </div>
+          <div class="grid" id="bgGrid"></div>
+          <div class="state" id="bgState">Загрузка каталога…</div>
+          <div class="more">
+            <button class="ss-btn ss-btn--ghost ss-btn--sm" id="bgMore" type="button">Показать ещё</button>
+            <a class="ss-btn ss-btn--ghost ss-btn--sm" id="bgBuy" target="_blank" rel="noopener">Купить в Steam</a>
+          </div>
+        </div>
+
+        <!-- аватар и рамка -->
+        <div class="pn" data-sec="av" hidden>
+          <p class="pn__t">Настройка аватарки и рамки</p>
+          <div class="seg" style="margin-top:10px">
+            <button class="is-on" data-av="frame" type="button">Рамки</button>
+            <button data-av="avatar" type="button">Аватарки</button>
+          </div>
+          <div class="srch">
+            <input class="ss-in" id="avQ" type="text" placeholder="Поиск по названию, AppID или ссылке...">
+            <button type="button" id="avGo" aria-label="Искать">🔍</button>
+          </div>
+          <div class="flt">
+            <div class="flt__g"><p class="flt__t">Тип</p><div class="flt__row" id="avType"></div></div>
+            <div class="flt__g"><p class="flt__t">Цвет</p><div class="flt__row" id="avColor"></div></div>
+          </div>
+          <div class="grid grid--2" id="avGrid"></div>
+          <div class="state" id="avState"></div>
+          <div class="more">
+            <button class="ss-btn ss-btn--ghost ss-btn--sm" id="avMore" type="button">Показать ещё</button>
+            <button class="ss-btn ss-btn--ghost ss-btn--sm" id="avNone" type="button">Без рамки</button>
+            <a class="ss-btn ss-btn--ghost ss-btn--sm" id="avBuy" target="_blank" rel="noopener">Купить в Steam Points</a>
+          </div>
+          <div class="f">
+            <p class="f__t">Своя аватарка <span>PNG / JPG</span></p>
+            <input class="ss-in" id="avFile" type="file" accept="image/*">
+          </div>
+        </div>
+
+        <!-- значки -->
+        <div class="pn" data-sec="bd" hidden>
+          <p class="pn__t">Настройка значков</p>
+          <p class="chosen" style="margin-top:9px">Значки в профиле <b id="bdSlotHint">слот #1</b></p>
+          <div class="grid grid--2" id="bdSlots" style="grid-template-columns:repeat(4,1fr)"></div>
+          <div class="srch">
+            <input class="ss-in" id="bdQ" type="text" placeholder="Найти значок, игру или AppID...">
+            <button type="button" id="bdGo" aria-label="Искать">🔍</button>
+          </div>
+          <div class="grid grid--2" id="bdGrid"></div>
+          <div class="state" id="bdState">Загрузка каталога…</div>
+          <div class="more">
+            <button class="ss-btn ss-btn--ghost ss-btn--sm" id="bdMore" type="button">Показать ещё</button>
+            <button class="ss-btn ss-btn--ghost ss-btn--sm" id="bdCards" type="button">Карточки и цена</button>
+          </div>
+          <div id="bdCardsBox" hidden style="margin-top:11px;border-top:1px solid var(--line);padding-top:11px">
+            <div class="pn__h"><p class="ss-h3" id="bdCardsT">Карточки</p>
+              <p class="pn__sub" id="bdCardsP"></p></div>
+            <div class="grid" id="bdCardsGrid"></div>
+          </div>
+          <div class="f">
+            <p class="f__t">Избранный значок</p>
+            <div class="f2">
+              <input class="ss-in" id="bdFavName" type="text" placeholder="Название значка">
+              <input class="ss-in" id="bdFavXp" type="text" placeholder="500 XP">
+            </div>
+          </div>
+        </div>
+
+        <!-- витрины -->
+        <div class="pn" data-sec="vt" hidden>
+          <p class="pn__t">Настройка витрины</p>
+          <div id="vtRows" style="margin-top:11px"></div>
+          <div id="vtEditor" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px"></div>
+        </div>
+      </div>
+
+      <!-- ---------------- Профиль ---------------- -->
+      <div class="mk__pane" data-pane="prof">
+        <div class="pn">
+          <div class="pn__h"><p class="pn__t">Настройка профиля</p></div>
+          <div class="actions">
+            <button class="ss-btn" id="btnSave" type="button">Сохранить профиль</button>
+            <button class="ss-btn ss-btn--ghost" id="btnReset" type="button">Сбросить</button>
+            <button class="ss-btn ss-btn--ghost" id="btnOrig" type="button">Оригинал</button>
+            <button class="ss-btn ss-btn--ghost" id="btnFull" type="button">На весь экран</button>
+          </div>
+          <label class="rng"><span>Zoom</span>
+            <input id="zoom" type="range" min="0.3" max="1.6" step="0.02" value="1">
+            <output id="zoomOut">100%</output></label>
+          <p class="stat" id="saveStat"></p>
+        </div>
+
+        <div class="pn">
+          <div class="pn__h"><p class="pn__t">Импорт публичного профиля</p></div>
+          <p class="pn__sub">Ссылка на Steam-профиль</p>
+          <div class="srch" style="display:flex;gap:8px">
+            <input class="ss-in" id="impUrl" type="text" placeholder="https://steamcommunity.com/id/...">
+            <button class="ss-btn ss-btn--sm" id="impGo" type="button" style="flex:none">Загрузить</button>
+          </div>
+          <p class="stat" id="impStat"></p>
+          <p class="hint">Мы используем только публично доступную информацию профиля. Это не меняет ваш
+            Steam-профиль и ничего в него не отправляет.</p>
+        </div>
+
+        <div class="pn">
+          <div class="f"><p class="f__t">Ник</p><input class="ss-in" id="pNick" type="text" placeholder="Aero Design"></div>
+          <div class="f"><p class="f__t">Имя аккаунта</p><input class="ss-in" id="pReal" type="text" placeholder="account name"></div>
+          <div class="f f2">
+            <div><p class="f__t">Уровень</p><input class="ss-in" id="pLevel" type="text" placeholder="134"></div>
+            <div><p class="f__t">Статус</p>
+              <select class="ss-in" id="pStatus">
+                <option value="online">Онлайн</option>
+                <option value="offline">Оффлайн</option>
+                <option value="ingame">В игре</option>
+              </select></div>
+          </div>
+          <div class="f"><p class="f__t">Описание <span id="pAboutC">0/120</span></p>
+            <textarea class="ss-in" id="pAbout" maxlength="600" placeholder="Пара строк о себе"></textarea></div>
+        </div>
+
+        <div class="pn">
+          <p class="pn__t">Блоки справа</p>
+          <div id="visRows" style="margin-top:11px"></div>
+        </div>
+
+        <div class="pn">
+          <p class="pn__t">Статистика</p>
+          <div class="f f2" id="statFields"></div>
+        </div>
+
+        <div class="pn">
+          <div class="pn__h"><p class="pn__t">Группы</p>
+            <button class="pn__sub" id="grpToggle" type="button" style="cursor:pointer">Скрыть</button></div>
+          <div id="grpBox">
+            <div id="grpList"></div>
+            <div class="f"><p class="f__t">Ссылка на группу</p>
+              <input class="ss-in" id="grpUrl" type="text" placeholder="steamcommunity.com/groups/...">
+            </div>
+            <button class="ss-btn ss-btn--ghost ss-btn--sm" id="grpAdd" type="button" style="margin-top:8px;width:100%">Добавить группу</button>
+            <p class="stat" id="grpStat"></p>
+          </div>
+        </div>
+
+        <div class="pn" id="accPanel2">
+          <div class="pn__h"><p class="pn__t">Аккаунт</p><p class="pn__sub" id="accPlan">—</p></div>
+          <p class="chosen">Почта: <b id="accEmail">—</b></p>
+          <div class="f"><p class="f__t">Отображаемое имя</p>
+            <input class="ss-in" id="accNick" type="text" placeholder="ник на сайте"></div>
+          <div class="f"><p class="f__t">Аватар аккаунта</p>
+            <input class="ss-in" id="accAvatarFile" type="file" accept="image/*"></div>
+          <div class="f" id="accKeyProRow" hidden><p class="f__t">Pro-ключ</p>
+            <input class="ss-in" id="accKeyMasked" type="text" readonly></div>
+          <div class="f" id="accKeyFreeRow"><p class="f__t">Код доступа</p>
+            <input class="ss-in" id="accCode" type="text" placeholder="SM-WEB-XXXXXX-XXXX"></div>
+          <div class="actions" style="margin-top:11px">
+            <button class="ss-btn ss-btn--sm" id="btnAccSave" type="button">Сохранить</button>
+            <button class="ss-btn ss-btn--ghost ss-btn--sm" id="btnAccBuy" type="button">Купить Pro</button>
+            <button class="ss-btn ss-btn--ghost ss-btn--sm" id="btnAccLogout" type="button">Выйти</button>
+            <a class="ss-btn ss-btn--ghost ss-btn--sm" id="btnPublic" href="/profile">Публичный профиль</a>
+          </div>
+          <p class="stat" id="accStat"></p>
+        </div>
+      </div>
+
+      <!-- ---------------- Экспорт ---------------- -->
+      <div class="mk__pane" data-pane="exp">
+        <div class="pn">
+          <div class="pn__h"><p class="pn__t">Экспорт превью</p><p class="pn__sub">1920 × 1080</p></div>
+          <div class="f f2">
+            <div><p class="f__t">Размер</p>
+              <select class="ss-in" id="exSize">
+                <option value="1920x1080">1920 × 1080</option>
+                <option value="2560x1440">2560 × 1440</option>
+                <option value="3840x2160">3840 × 2160</option>
+                <option value="1280x720">1280 × 720</option>
+              </select></div>
+            <div><p class="f__t">Формат</p>
+              <select class="ss-in" id="exFmt">
+                <option value="image/png">PNG</option>
+                <option value="image/jpeg">JPEG</option>
+                <option value="image/webp">WEBP</option>
+              </select></div>
+          </div>
+          <label class="rng"><span>Затемнение фона</span>
+            <input id="exDim" type="range" min="0" max="0.8" step="0.02" value="0">
+            <output id="exDimOut">0%</output></label>
+          <button class="ss-btn" id="btnExport" type="button" style="width:100%;margin-top:12px">Скачать превью</button>
+          <p class="stat" id="exStat"></p>
+          <p class="hint">Картинка собирается прямо в браузере: сцена рисуется на canvas в выбранном
+            разрешении, ничего не уходит на сервер. Steam-арт грузится через наш прокси, иначе браузер
+            запрещает сохранять такой canvas.</p>
+        </div>
+
+        <div class="pn">
+          <div class="pn__h"><p class="pn__t">Мои мокапы</p><p class="pn__sub" id="prjSub"></p></div>
+          <div id="prjList"></div>
+          <div class="f"><p class="f__t">Название</p>
+            <input class="ss-in" id="prjName" type="text" placeholder="Мой мокап"></div>
+          <div class="actions" style="margin-top:10px">
+            <button class="ss-btn ss-btn--sm" id="prjSave" type="button">Сохранить как</button>
+            <button class="ss-btn ss-btn--ghost ss-btn--sm" id="prjRefresh" type="button">Обновить список</button>
+          </div>
+          <p class="stat" id="prjStat"></p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ======================= right: preview ======================= -->
+    <section class="mk__stage" id="stage">
+      <div class="stage__bar">
+        <span class="stage__badge" id="stBadge">превью 1920 × 1080</span>
+        <span class="stage__sp"></span>
+        <button class="ss-btn ss-btn--ghost ss-btn--sm" id="btnFull2" type="button">На весь экран</button>
+        <button class="ss-btn ss-btn--sm" id="btnExport2" type="button">Скачать</button>
+      </div>
+      <div class="stage__view" id="view">
+        <div class="scene" id="scene">
+          <div class="scene__bg" id="scBg"></div>
+          <div class="scene__op" id="scDim"></div>
+          <div class="scene__layer" id="scLayer"></div>
+        </div>
+      </div>
+    </section>
   </div>
-</div>
+</main>
 
-<div class="profile_page">
-  <div class="profile_bg_wrap" id="bgWrap">
-    <div class="fallback_bg" id="bgFallback"></div>
-  </div>
-  <div class="profile_bg_fade" id="bgFade" style="display:none"></div>
+<div class="stage__full" id="fullBack"></div>
+<div id="ssFootHost"></div>
 
-  <div class="profile_content">
-    <div id="gate" class="gate" style="display:none">
-      <h2 id="gateTitle">Loading…</h2>
-      <p id="gateText" style="color:#8f98a0"></p>
-      <p style="margin-top:14px"><a class="btn btn-blue" href="/">Home</a></p>
-    </div>
-
-    <div id="main" style="display:none">
-      <div class="profile_header_bg">
-        <div class="profile_header">
-          <div class="playerAvatar online" id="avWrap">
-            <img id="avImg" alt="" style="display:none"/>
-            <div class="fb" id="avFb">?</div>
-          </div>
-          <div class="profile_header_content">
-            <div class="persona_name" id="pName">—</div>
-            <div class="profile_in_game_header online" id="pState">Currently Online</div>
-            <div class="header_real_name" id="pLoc"></div>
-            <div class="profile_summary" id="pSummary"></div>
-            <div class="profile_header_actions" id="ownerBtns" style="display:none">
-              <button type="button" class="btn btn-green" id="btnEdit">Edit Profile</button>
-              <button type="button" class="btn btn-gray" id="btnAccount">Account</button>
-              <button type="button" class="btn btn-blue" id="btnAddSc">Add Showcase</button>
-              <a class="btn btn-gray" href="/app">Showcase Maker</a>
-            </div>
-          </div>
-          <div class="profile_header_badgeinfo">
-            <div class="persona_level_title">Level</div>
-            <div class="friendPlayerLevel" id="lvl">1</div>
-            <div class="xp_bar"><div class="xp_fill" id="xpFill"></div></div>
-            <div class="xp_text" id="xpTxt">0 XP</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel" id="editPanel">
-        <h3>Edit Profile</h3>
-        <div class="row2">
-          <div><label>Display name</label><input id="edName" maxlength="40"/></div>
-          <div><label>Profile URL</label><input id="edUser" maxlength="24"/></div>
-        </div>
-        <label>Summary</label><textarea id="edSummary" maxlength="2000"></textarea>
-        <div class="row2">
-          <div><label>Location</label><input id="edLoc"/></div>
-          <div><label>Status</label>
-            <select id="edStatus">
-              <option value="online">Online</option>
-              <option value="ingame">In-Game</option>
-              <option value="offline">Offline</option>
-            </select>
-          </div>
-        </div>
-        <div class="row2">
-          <div><label>Level</label><input id="edLevel" type="number" min="0"/></div>
-          <div><label>XP</label><input id="edXp" type="number" min="0"/></div>
-        </div>
-        <div class="row2">
-          <div><label>Visibility</label>
-            <select id="edVis"><option value="public">Public</option><option value="private">Private</option></select>
-          </div>
-          <div><label>Background (full image height)</label><input id="edBg" type="file" accept="image/*,video/mp4,video/webm,.gif"/></div>
-        </div>
-        <p class="hint">Background uses the full resolution of your file — height follows the source aspect ratio (like Steam profile backgrounds).</p>
-        <div style="margin-top:12px">
-          <button type="button" class="btn btn-green" id="btnSave">Save</button>
-          <button type="button" class="btn btn-gray" id="btnEditCancel">Cancel</button>
-        </div>
-        <div class="msg" id="edMsg"></div>
-      </div>
-
-      
-      <div class="panel" id="accPanel">
-        <h3>Account</h3>
-        <div class="row2">
-          <div>
-            <label>Nickname</label>
-            <input id="accNick" maxlength="40" placeholder="Display name"/>
-          </div>
-          <div>
-            <label>Email</label>
-            <input id="accEmail" disabled style="opacity:.7"/>
-          </div>
-        </div>
-        <div class="row2">
-          <div>
-            <label>Plan</label>
-            <input id="accPlan" disabled style="opacity:.7"/>
-          </div>
-          <div>
-            <label>Avatar</label>
-            <input id="accAvatarFile" type="file" accept="image/*"/>
-          </div>
-        </div>
-        <!-- Pro: masked key, click to reveal. Free: input to activate -->
-        <div id="accKeyProRow" style="display:none;margin-top:10px">
-          <label>License key</label>
-          <p class="hint" style="margin:4px 0 0">
-            <code id="accKeyMasked" style="cursor:pointer;user-select:none;letter-spacing:.04em" title="Click to show full key">••••••••••••</code>
-            <span class="hint" id="accKeyHint" style="margin-left:8px">click to show</span>
-          </p>
-        </div>
-        <div id="accKeyFreeRow" style="display:none;margin-top:10px">
-          <label>Activate Pro code</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-            <input id="accCode" placeholder="SM-WEB-XXXXXX-XXXX" style="flex:1;min-width:160px"/>
-            <button type="button" class="btn btn-gray" id="btnAccCode">Apply</button>
-          </div>
-        </div>
-        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-          <button type="button" class="btn btn-green" id="btnAccSave">Save profile</button>
-          <button type="button" class="btn btn-blue" id="btnAccBuy">Buy Key</button>
-          <button type="button" class="btn btn-gray" id="btnAccLogout">Log out</button>
-          <button type="button" class="btn btn-gray" id="btnAccClose">Close</button>
-        </div>
-        <div class="msg" id="accMsg"></div>
-      </div>
-
-      <div class="panel" id="scPanel">
-        <h3>Add Showcase</h3>
-        <label>Type</label>
-        <select id="scType">
-          <option value="featured">Featured Artwork</option>
-          <option value="artwork">Artwork Showcase</option>
-          <option value="workshop">Workshop Showcase (auto ×5 parts)</option>
-          <option value="split">Artwork Split (auto-cut)</option>
-        </select>
-        <label>Title</label>
-        <input id="scTitle" placeholder="Optional"/>
-        <label>Source image / GIF</label>
-        <input id="scFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.gif" multiple/>
-        <p class="hint" id="scHint">Workshop: up to <b>3 files</b> (PNG/JPG/GIF/MP4) → each becomes a row of 5 parts (like Steam). One Workshop block on the profile. Split / Featured / Artwork: one file.</p>
-        <div style="margin-top:12px">
-          <button type="button" class="btn btn-blue" id="btnScUpload">Upload &amp; Add</button>
-          <button type="button" class="btn btn-gray" id="btnScCancel">Cancel</button>
-        </div>
-        <div class="msg" id="scMsg"></div>
-      </div>
-
-      <div class="profile_col_layout">
-        <div class="profile_leftcol">
-          <div class="profile_customization">
-            <div class="profile_customization_header">
-              Showcases
-              <span class="sub" id="scCount">0</span>
-            </div>
-            <div class="showcase_content" id="scList">
-              <p class="empty">No showcases yet.</p>
-            </div>
-          </div>
-        </div>
-        <div class="profile_rightcol">
-          <div class="right_block steam_side">
-            <div class="status_line" id="sideStatus">Currently Online</div>
-            <div class="side_sub" id="sideLoc"></div>
-
-            <div class="side_sec">
-              <div class="side_label">Profile Awards <span class="n" id="nAwards">0</span></div>
-              <div class="side_icons" id="awardsRow"></div>
-            </div>
-
-            <div class="side_sec">
-              <div class="side_label">Badges <span class="n" id="nBadges">0</span></div>
-              <div class="side_icons" id="badgesRow"></div>
-            </div>
-
-            <a class="count_link" href="#"><span>Games</span><span class="n" id="nGames">0</span></a>
-            <a class="count_link" href="#"><span>Inventory</span><span class="n" id="nInv">—</span></a>
-            <a class="count_link" href="#"><span>Screenshots</span><span class="n" id="nShots">0</span></a>
-            <a class="count_link" href="#"><span>Videos</span><span class="n" id="nVids">0</span></a>
-            <a class="count_link" href="/app"><span>Workshop Items</span><span class="n" id="wsCount">0</span></a>
-            <a class="count_link" href="#"><span>Reviews</span><span class="n" id="nRev">0</span></a>
-            <a class="count_link" href="#"><span>Guides</span><span class="n" id="nGuides">0</span></a>
-            <a class="count_link" href="/gallery"><span>Artwork</span><span class="n" id="nArt">0</span></a>
-
-            <div class="side_sec" style="margin-top:10px">
-              <div class="side_label">Groups <span class="n" id="nGroups">0</span></div>
-              <div id="groupsList" class="groups_list"></div>
-            </div>
-
-            <div class="side_sec">
-              <div class="side_label">Friends <span class="n" id="nFriends">0</span></div>
-              <div id="friendsList" class="friends_list"></div>
-            </div>
-
-            <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px">
-              <a class="count_link" href="/app"><span>Showcase Maker</span><span class="n">→</span></a>
-              <a class="count_link" href="/gallery"><span>Gallery</span><span class="n">→</span></a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
+<script src="/static/ss-shell.js?v=20260901b"></script>
 <script>
-(function(){
-  function token(){ try{return localStorage.getItem('sm_session')||'';}catch(e){return '';} }
-  function headers(){ var h={}; var t=token(); if(t) h['X-Session-Token']=t; return h; }
-  function pathUser(){
-    var parts=location.pathname.replace(/\/+$/,'').split('/');
-    if(parts.length>=3 && parts[1]==='profile' && parts[2]) return decodeURIComponent(parts[2]);
-    return null;
+/* =====================================================================
+   Мокап профиля Steam.
+
+   Одна модель -> один список примитивов (ops) -> два рендерера:
+   DOM для превью и canvas для экспорта. Поэтому картинка совпадает с тем,
+   что видно на экране: геометрия считается ровно один раз.
+   ===================================================================== */
+'use strict';
+
+var W = 1920, H = 1080;                  /* авторская сцена */
+var COL = 940, COL_X = (W - COL) / 2;    /* колонка профиля как в Steam */
+var MAIN_W = 616, SIDE_W = 274, GAP = 50;
+var MAIN_X = COL_X, SIDE_X = COL_X + MAIN_W + GAP, TOP = 96;
+
+var FONT = '"Motiva Sans","Mulish",system-ui,sans-serif';
+var C = {
+  txt: '#c7d5e0', head: '#ffffff', dim: '#8f98a0', link: '#66c0f4',
+  panel: 'rgba(0,0,0,.28)', panelTop: 'rgba(103,193,245,.06)',
+  line: 'rgba(255,255,255,.09)', on: '#57cbde', off: '#898989'
+};
+var PROXY = '/api/steam/proxy-image?url=';
+
+function px(u) {                          /* всё внешнее — через свой прокси */
+  if (!u) return '';
+  if (u.indexOf('data:') === 0 || u.indexOf('blob:') === 0) return u;
+  if (u.indexOf('/') === 0) return u;
+  return PROXY + encodeURIComponent(u);
+}
+function esc(s) { return window.SSShell ? SSShell.esc(s) : String(s == null ? '' : s); }
+function num(v, d) { var n = parseInt(String(v).replace(/[^\d]/g, ''), 10); return isNaN(n) ? d : n; }
+function fmt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function $(id) { return document.getElementById(id); }
+function on(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
+
+/* ------------------------------ модель ------------------------------ */
+var SHOWCASES = [
+  { k: 'art',      t: 'Витрина иллюстраций' },
+  { k: 'info',     t: 'Информационный блок' },
+  { k: 'workshop', t: 'Витрина мастерской' },
+  { k: 'guide',    t: 'Избранное руководство' },
+  { k: 'artfav',   t: 'Избранная витрина иллюстраций' }
+];
+var STAT_FIELDS = [
+  ['games', 'Игры'], ['inv', 'Инвентарь'], ['screens', 'Скриншоты'], ['videos', 'Видео'],
+  ['workshop', 'Предметы мастерской'], ['reviews', 'Отзывы'], ['guides', 'Руководства'], ['art', 'Иллюстрации'],
+  ['awards', 'Награды профиля'], ['badges', 'Значки'], ['friends', 'Друзья']
+];
+var VIS_ROWS = [
+  ['awards', 'Награды профиля'], ['badges', 'Значки'], ['nav', 'Список разделов'], ['groups', 'Группы']
+];
+
+function fresh() {
+  return {
+    bg: { url: '', movie: '', name: '', animated: false },
+    avatar: { url: '' },
+    frame: { url: '', movie: '', name: '' },
+    badges: [null, null, null, null],
+    awards: [],
+    fav: { img: '', name: '', xp: '' },
+    nick: 'Aero Design', real: '', level: 80, status: 'offline', about: '',
+    stats: { games: 43, inv: 0, screens: 134, videos: 13, workshop: 50, reviews: 0, guides: 28, art: 49,
+             awards: 23, badges: 117, friends: 0 },
+    vis: { awards: true, badges: true, nav: true, groups: true },
+    show: SHOWCASES.map(function (s, i) { return { k: s.k, on: i < 4 }; }),
+    art: { big: '', small: '' },
+    info: { title: 'Info', lines: [{ text: 'my telegram channel →', link: 'https://t.me/', note: '(free works + custom)' }] },
+    workshop: { title: 'Workshop', author: '', thumbs: [], subs: 50, followers: 40 },
+    guide: { img: '', author: '', ratings: 3 },
+    artfav: { img: '' },
+    groups: [],
+    dim: 0
+  };
+}
+var S = fresh();
+
+/* ------------------------------ примитивы ------------------------------ */
+var ops = [];
+function rect(x, y, w, h, fill, r, stroke) {
+  ops.push({ t: 'rect', x: x, y: y, w: w, h: h, fill: fill, r: r || 0, stroke: stroke || '' });
+}
+function text(x, y, w, s, o) {
+  o = o || {};
+  if (s === '' || s == null) return;
+  ops.push({
+    t: 'text', x: x, y: y, w: w, s: String(s),
+    size: o.size || 14, weight: o.weight || 400, color: o.color || C.txt,
+    lh: o.lh || Math.round((o.size || 14) * 1.35), align: o.align || 'left',
+    max: o.max || 0, up: !!o.up, ls: o.ls || 0
+  });
+}
+function img(x, y, w, h, url, o) {
+  o = o || {};
+  if (!url) return;
+  ops.push({ t: 'img', x: x, y: y, w: w, h: h, url: url, movie: o.movie || '',
+             fit: o.fit || 'cover', r: o.r || 0, circle: !!o.circle, op: o.op == null ? 1 : o.op });
+}
+function ph(x, y, w, h, r) { rect(x, y, w, h, 'rgba(255,255,255,.05)', r || 3, C.line); }
+
+/* ------------------------------ сборка сцены ------------------------------ */
+function head(y) {
+  var av = S.avatar.url, fr = S.frame.url;
+  img(MAIN_X - 26, y - 26, 216, 216, fr, { movie: S.frame.movie, fit: 'contain' });
+  if (av) img(MAIN_X, y, 164, 164, av, { r: 2 });
+  else ph(MAIN_X, y, 164, 164, 2);
+  var tx = MAIN_X + 188, tw = MAIN_W - 188;
+  text(tx, y + 4, tw, S.nick || 'Nickname', { size: 27, weight: 800, color: C.head });
+  text(tx, y + 42, tw, S.real, { size: 14, color: C.dim });
+  text(tx, y + (S.real ? 68 : 44), tw, S.about, { size: 13.5, color: C.txt, lh: 20, max: 5 });
+  return y + 200;
+}
+
+function statRow(x, y, w, likes, comments, favs, more) {
+  text(x, y, 120, '♥ ' + fmt(likes) + '   ○ ' + fmt(comments) + '   ★ ' + fmt(favs),
+       { size: 12, color: C.dim });
+  if (more) text(x, y, w, '+' + more, { size: 12, weight: 700, color: C.link, align: 'right' });
+}
+
+function block(y, title, bodyH) {
+  text(MAIN_X, y, MAIN_W, title, { size: 15, weight: 700, color: C.head });
+  var top = y + 26;
+  rect(MAIN_X, top, MAIN_W, bodyH, C.panel, 3, C.line);
+  return { y: top, end: top + bodyH + 24 };
+}
+
+function showArt(y) {
+  var b = block(y, 'Artwork Showcase', 296);
+  var ix = MAIN_X + 10, iy = b.y + 10, iw = MAIN_W - 20;
+  if (S.art.big) img(ix, iy, iw, 232, S.art.big, { r: 2 }); else ph(ix, iy, iw, 232, 2);
+  statRow(ix, iy + 246, iw, 11, 2, 4, 47);
+  return b.end;
+}
+function showArtFav(y) {
+  var b = block(y, 'Favorite Artwork', 236);
+  var ix = MAIN_X + 10, iy = b.y + 10, iw = MAIN_W - 20;
+  if (S.artfav.img) img(ix, iy, iw, 180, S.artfav.img, { r: 2 }); else ph(ix, iy, iw, 180, 2);
+  statRow(ix, iy + 194, iw, 8, 1, 3, 0);
+  return b.end;
+}
+function showInfo(y) {
+  var lines = S.info.lines || [];
+  var h = 18 + Math.max(1, lines.length) * 44;
+  var b = block(y, S.info.title || 'Info', h);
+  var cy = b.y + 14;
+  lines.forEach(function (l) {
+    text(MAIN_X + 14, cy, MAIN_W - 28, l.text || '', { size: 13.5, color: C.txt });
+    text(MAIN_X + 14, cy + 20, MAIN_W - 28, l.link || '', { size: 13, color: C.link });
+    if (l.note) text(MAIN_X + 14, cy + 20, MAIN_W - 28, l.note, { size: 12, color: C.dim, align: 'right' });
+    cy += 44;
+  });
+  return b.end;
+}
+function showWorkshop(y) {
+  var b = block(y, 'Workshop Showcase', 196);
+  text(MAIN_X + 14, b.y + 12, MAIN_W - 28, (S.workshop.title || 'Workshop') +
+       (S.workshop.author ? '  •  ' + S.workshop.author : ''), { size: 13, weight: 700, color: C.head });
+  var th = S.workshop.thumbs || [], n = 5, gap = 8;
+  var tw = Math.floor((MAIN_W - 28 - gap * (n - 1)) / n), tHt = Math.round(tw * 0.56);
+  for (var i = 0; i < n; i++) {
+    var x = MAIN_X + 14 + i * (tw + gap), iy = b.y + 38;
+    if (th[i]) img(x, iy, tw, tHt, th[i], { r: 2 }); else ph(x, iy, tw, tHt, 2);
   }
-  function esc(s){
-    return String(s||'').replace(/[&<>"']/g,function(c){
-      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+  var sy = b.y + 46 + Math.round(tw * 0.56);
+  text(MAIN_X + 14, sy, 140, fmt(num(S.workshop.subs, 0)), { size: 20, weight: 800, color: C.head });
+  text(MAIN_X + 14, sy + 26, 140, 'Submissions', { size: 11.5, color: C.dim });
+  text(MAIN_X + 150, sy, 140, fmt(num(S.workshop.followers, 0)), { size: 20, weight: 800, color: C.head });
+  text(MAIN_X + 150, sy + 26, 140, 'Followers', { size: 11.5, color: C.dim });
+  return b.end;
+}
+function showGuide(y) {
+  var b = block(y, 'Favorite Guide', 124);
+  var ix = MAIN_X + 12, iy = b.y + 12;
+  if (S.guide.img) img(ix, iy, 178, 100, S.guide.img, { r: 2 }); else ph(ix, iy, 178, 100, 2);
+  text(ix + 194, iy + 6, MAIN_W - 220, 'Created by — ' + (S.guide.author || S.nick), { size: 13, color: C.txt });
+  text(ix + 194, iy + 32, MAIN_W - 220, '★★★☆☆  ' + num(S.guide.ratings, 0) + ' ratings',
+       { size: 12.5, color: C.dim });
+  return b.end;
+}
+var SHOW_FN = { art: showArt, info: showInfo, workshop: showWorkshop, guide: showGuide, artfav: showArtFav };
+
+function side(y) {
+  var x = SIDE_X, w = SIDE_W;
+  /* уровень */
+  text(x, y + 12, w - 56, 'Level', { size: 13, color: C.dim, up: true, ls: 1 });
+  rect(x + w - 48, y + 2, 48, 48, 'rgba(0,0,0,.35)', 24, 'rgba(87,203,222,.55)');
+  text(x + w - 48, y + 16, 48, String(num(S.level, 1)), { size: 17, weight: 800, color: C.head, align: 'center' });
+  y += 62;
+
+  /* избранный значок */
+  rect(x, y, w, 78, C.panel, 3, C.line);
+  if (S.fav.img) img(x + 12, y + 15, 48, 48, S.fav.img, { fit: 'contain' }); else ph(x + 12, y + 15, 48, 48);
+  text(x + 72, y + 18, w - 84, S.fav.name || 'Favorite badge', { size: 13, weight: 700, color: C.head, max: 1 });
+  text(x + 72, y + 40, w - 84, (S.fav.xp ? String(S.fav.xp).replace(/\s*XP$/i, '') : '500') + ' XP',
+       { size: 12, color: C.dim });
+  y += 96;
+
+  /* статус */
+  var st = S.status === 'online' ? ['Currently Online', C.on]
+         : S.status === 'ingame' ? ['Currently In-Game', '#90ba3c'] : ['Currently Offline', C.off];
+  text(x, y, w, st[0], { size: 13.5, weight: 700, color: st[1] });
+  y += 30;
+
+  function iconRow(title, count, list) {
+    rect(x, y, w, 92, C.panel, 3, C.line);
+    text(x + 12, y + 12, w - 24, title, { size: 13, weight: 700, color: C.head });
+    text(x + 12, y + 12, w - 24, count ? fmt(count) : '', { size: 13, weight: 700, color: C.dim, align: 'right' });
+    var n = 4, gap = 8, s = Math.floor((w - 24 - gap * (n - 1)) / n);
+    for (var i = 0; i < n; i++) {
+      var ix = x + 12 + i * (s + gap);
+      if (list[i]) img(ix, y + 38, s, s, list[i], { fit: 'contain' }); else ph(ix, y + 38, s, s);
+    }
+    y += 106;
+  }
+  if (S.vis.awards) iconRow('Profile Awards', S.stats.awards,
+                            S.awards.map(function (a) { return a.image; }));
+  if (S.vis.badges) iconRow('Badges', S.stats.badges, S.badges.map(function (b) { return b && b.image; }));
+
+  /* список разделов */
+  if (S.vis.nav) {
+    var navs = [['Games', S.stats.games], ['Inventory', S.stats.inv], ['Screenshots', S.stats.screens],
+                ['Videos', S.stats.videos], ['Workshop Items', S.stats.workshop], ['Reviews', S.stats.reviews],
+                ['Guides', S.stats.guides], ['Artwork', S.stats.art]];
+    var rows = navs.length, hh = rows * 30 + 8;
+    rect(x, y, w, hh, C.panel, 3, C.line);
+    navs.forEach(function (n, i) {
+      var ry = y + 4 + i * 30;
+      text(x + 12, ry + 8, w - 24, n[0], { size: 12.5, color: C.txt });
+      text(x + 12, ry + 8, w - 24, n[1] ? fmt(num(n[1], 0)) : '', { size: 12.5, weight: 700, color: C.head, align: 'right' });
+      if (i) rect(x + 12, ry, w - 24, 1, C.line, 0, '');
     });
+    y += hh + 14;
   }
 
-  var state={profile:null,isOwner:false,username:null,showcases:[]};
-
-  function showGate(title,text){
-    document.getElementById('main').style.display='none';
-    document.getElementById('gate').style.display='';
-    document.getElementById('gateTitle').textContent=title||'Error';
-    document.getElementById('gateText').textContent=text||'';
+  /* группы */
+  if (S.vis.groups && S.groups.length) {
+    var g0 = S.groups[0], rest = S.groups.slice(1, 4);
+    var gh = 96 + rest.length * 44;
+    rect(x, y, w, gh, C.panel, 3, C.line);
+    text(x + 12, y + 12, w - 24, 'Groups', { size: 13, weight: 700, color: C.head });
+    text(x + 12, y + 12, w - 24, fmt(S.groups.length), { size: 13, weight: 700, color: C.dim, align: 'right' });
+    if (g0.avatar) img(x + 12, y + 38, 44, 44, g0.avatar, { r: 2 }); else ph(x + 12, y + 38, 44, 44);
+    text(x + 66, y + 42, w - 78, g0.name || 'Group', { size: 13, weight: 700, color: C.head, max: 1 });
+    text(x + 66, y + 62, w - 78, fmt(num(g0.members, 0)) + ' Members', { size: 11.5, color: C.dim });
+    rest.forEach(function (g, i) {
+      var ry = y + 92 + i * 44;
+      if (g.avatar) img(x + 12, ry, 32, 32, g.avatar, { r: 2 }); else ph(x + 12, ry, 32, 32);
+      text(x + 54, ry + 2, w - 66, g.name || 'Group', { size: 12, weight: 700, color: C.txt, max: 1 });
+      text(x + 54, ry + 18, w - 66, fmt(num(g.members, 0)) + ' Members', { size: 11, color: C.dim });
+    });
+    y += gh + 14;
   }
+  return y;
+}
 
-  function setBackground(url){
-    var wrap=document.getElementById('bgWrap');
-    var fade=document.getElementById('bgFade');
-    wrap.innerHTML='';
-    fade.style.display='block';
-    if(!url){
-      var d=document.createElement('div');
-      d.className='fallback_bg';
-      d.style.cssText='width:100%;min-height:100vh;background:#000';
-      wrap.appendChild(d);
-      fade.style.top='auto';
-      fade.style.bottom='0';
+function build() {
+  ops = [];
+  var y = head(TOP);
+  S.show.forEach(function (s) {
+    if (!s.on) return;
+    var fn = SHOW_FN[s.k];
+    if (fn) y = fn(y);
+  });
+  side(TOP);
+  return ops;
+}
+
+/* ------------------------------ рендер в DOM ------------------------------ */
+var scLayer = $('scLayer'), scBg = $('scBg'), scDim = $('scDim');
+
+function styleOf(o) {
+  var s = 'left:' + o.x + 'px;top:' + o.y + 'px;';
+  if (o.w) s += 'width:' + o.w + 'px;';
+  if (o.h) s += 'height:' + o.h + 'px;';
+  return s;
+}
+function paintDom() {
+  var html = '';
+  ops.forEach(function (o) {
+    if (o.t === 'rect') {
+      html += '<div class="op" style="' + styleOf(o) + 'background:' + o.fill +
+        ';border-radius:' + o.r + 'px' +
+        (o.stroke ? ';box-shadow:inset 0 0 0 1px ' + o.stroke : '') + '"></div>';
+    } else if (o.t === 'text') {
+      var cl = o.max ? ';display:-webkit-box;-webkit-line-clamp:' + o.max +
+        ';-webkit-box-orient:vertical;overflow:hidden' : '';
+      html += '<div class="op op--text" style="' + styleOf(o) +
+        'font:' + o.weight + ' ' + o.size + 'px/' + o.lh + 'px ' + FONT +
+        ';color:' + o.color + ';text-align:' + o.align +
+        (o.up ? ';text-transform:uppercase' : '') +
+        (o.ls ? ';letter-spacing:' + o.ls + 'px' : '') + cl + '">' + esc(o.s) + '</div>';
+    } else if (o.t === 'img') {
+      var inner = o.movie
+        ? '<video src="' + esc(px(o.movie)) + '" autoplay loop muted playsinline></video>'
+        : '<img src="' + esc(px(o.url)) + '" alt="" crossorigin="anonymous">';
+      html += '<div class="op op--img op--' + (o.fit === 'contain' ? 'contain' : 'fit') + '" style="' +
+        styleOf(o) + 'border-radius:' + (o.circle ? '50%' : o.r + 'px') + ';overflow:hidden;opacity:' + o.op +
+        '">' + inner + '</div>';
+    }
+  });
+  scLayer.innerHTML = html;
+}
+
+function paintBg() {
+  var b = S.bg;
+  scDim.style.opacity = S.dim;
+  if (!b.url && !b.movie) { scBg.innerHTML = ''; return; }
+  scBg.innerHTML = b.movie
+    ? '<video src="' + esc(px(b.movie)) + '" autoplay loop muted playsinline></video>'
+    : '<img src="' + esc(px(b.url)) + '" alt="" crossorigin="anonymous">';
+}
+
+function render() { build(); paintDom(); paintBg(); }
+
+/* масштаб сцены под контейнер */
+function fit() {
+  var view = $('view'), sc = $('scene');
+  if (!view || !sc) return;
+  /* пока панель скрыта, clientWidth = 0 — не даём сцене свернуться в точку */
+  var vw = view.clientWidth || W, vh = view.clientHeight || H;
+  var k = Math.min(vw / W, vh / H) * (window.__zoom || 1);
+  sc.style.transform = 'scale(' + k + ')';
+  var ox = Math.max(0, (vw - W * k) / 2), oy = Math.max(0, (vh - H * k) / 2);
+  sc.style.left = ox + 'px'; sc.style.top = oy + 'px';
+}
+window.addEventListener('resize', fit);
+
+/* ------------------------------ рендер в canvas ------------------------------ */
+function loadMedia(url, wantVideo) {
+  return new Promise(function (res) {
+    if (!url) return res(null);
+    if (wantVideo) {
+      var v = document.createElement('video');
+      v.crossOrigin = 'anonymous'; v.muted = true; v.playsInline = true; v.preload = 'auto';
+      v.onloadeddata = function () { res(v); };
+      v.onerror = function () { res(null); };
+      v.src = px(url);
+      setTimeout(function () { res(v.readyState >= 2 ? v : null); }, 6000);
       return;
     }
-    var img=document.createElement('img');
-    img.alt='';
-    img.src=url+(url.indexOf('?')>=0?'&':'?')+'t='+Date.now();
-    img.onload=function(){
-      // pin fade to bottom of the background image
-      var h=img.offsetHeight||img.naturalHeight;
-      fade.style.top=(Math.max(0, h-320))+'px';
-      fade.style.bottom='auto';
-      fade.style.height='320px';
-    };
-    wrap.appendChild(img);
-  }
+    var im = new Image(), done = false;
+    function fin(v) { if (!done) { done = true; res(v); } }
+    im.crossOrigin = 'anonymous';
+    im.onload = function () { fin(im); };
+    im.onerror = function () { fin(null); };
+    im.src = px(url);
+    /* если CDN висит, экспорт всё равно должен собраться — просто без этой картинки */
+    setTimeout(function () { fin(im.complete && im.naturalWidth ? im : null); }, 8000);
+  });
+}
 
-  function renderProfile(p,isOwner){
-    state.profile=p; state.isOwner=isOwner;
-    state.username=p.username||p.profile_username;
-    document.getElementById('gate').style.display='none';
-    document.getElementById('main').style.display='';
+function rr(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function cover(ctx, m, x, y, w, h, fit, r) {
+  var mw = m.videoWidth || m.naturalWidth || m.width, mh = m.videoHeight || m.naturalHeight || m.height;
+  if (!mw || !mh) return;
+  var k = fit === 'contain' ? Math.min(w / mw, h / mh) : Math.max(w / mw, h / mh);
+  var dw = mw * k, dh = mh * k, dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
+  ctx.save();
+  rr(ctx, x, y, w, h, r || 0); ctx.clip();
+  ctx.drawImage(m, dx, dy, dw, dh);
+  ctx.restore();
+}
+function wrap(ctx, s, w, max) {
+  var out = [];
+  String(s).split('\n').forEach(function (para) {
+    var line = '', words = para.split(/\s+/);
+    if (!para) { out.push(''); return; }
+    words.forEach(function (word) {
+      var probe = line ? line + ' ' + word : word;
+      if (ctx.measureText(probe).width <= w || !line) { line = probe; }
+      else { out.push(line); line = word; }
+    });
+    out.push(line);
+  });
+  return max ? out.slice(0, max) : out;
+}
 
-    document.getElementById('pName').textContent=p.display_name||p.username||'User';
-    var st=(p.profile_status||'online').toLowerCase();
-    var stEl=document.getElementById('pState');
-    var av=document.getElementById('avWrap');
-    stEl.className='profile_in_game_header '+st;
-    av.className='playerAvatar '+st;
-    stEl.textContent=st==='ingame'?'Currently In-Game':(st==='offline'?'Currently Offline':'Currently Online');
-    document.getElementById('pLoc').textContent=p.profile_location||'';
-    document.getElementById('pSummary').textContent=p.profile_summary||'';
+function exportCanvas(outW, outH, fmt) {
+  build();
+  var cv = document.createElement('canvas');
+  cv.width = outW; cv.height = outH;
+  var ctx = cv.getContext('2d');
+  var k = outW / W;
+  ctx.scale(k, k);
+  ctx.fillStyle = '#0b0f14'; ctx.fillRect(0, 0, W, H);
 
-    var side=document.getElementById('sideStatus');
-    side.className='status_line '+st;
-    side.textContent=stEl.textContent;
-    document.getElementById('sideLoc').textContent=p.profile_location||'';
+  var media = [];
+  if (S.bg.movie || S.bg.url) media.push({ key: 'bg', url: S.bg.movie || S.bg.url, video: !!S.bg.movie });
+  ops.forEach(function (o, i) {
+    if (o.t === 'img') media.push({ key: i, url: o.movie || o.url, video: !!o.movie });
+  });
 
-    var lvl=50, xp=p.profile_xp||0;
-    document.getElementById('lvl').textContent='50';
-    document.getElementById('xpFill').style.width=Math.max(4,Math.min(100,(xp%1000)/10))+'%';
-    document.getElementById('xpTxt').textContent=xp+' XP';
+  return Promise.all(media.map(function (m) { return loadMedia(m.url, m.video); }))
+    .then(function (loaded) {
+      var byKey = {};
+      media.forEach(function (m, i) { byKey[m.key] = loaded[i]; });
+      if (byKey.bg) cover(ctx, byKey.bg, 0, 0, W, H, 'cover', 0);
+      if (S.dim > 0) { ctx.fillStyle = 'rgba(0,0,0,' + S.dim + ')'; ctx.fillRect(0, 0, W, H); }
 
-    var img=document.getElementById('avImg'), fb=document.getElementById('avFb');
-    if(p.avatar_url){
-      img.src=p.avatar_url+'?t='+Date.now(); img.style.display='block'; fb.style.display='none';
-    } else {
-      img.style.display='none'; fb.style.display='grid';
-      fb.textContent=(p.display_name||'?').charAt(0).toUpperCase();
-    }
-
-    setBackground(p.background_url||'');
-    
-    // Steam-like fixed level 50 + sample white icons
-    document.getElementById('nBadges').textContent='80';
-    document.getElementById('nAwards').textContent='2';
-    document.getElementById('nGames').textContent='295';
-    document.getElementById('nShots').textContent='65';
-    document.getElementById('nVids').textContent='3';
-    document.getElementById('nRev').textContent='17';
-    document.getElementById('nGuides').textContent='5';
-    document.getElementById('nArt').textContent='66';
-    document.getElementById('nGroups').textContent='1';
-    document.getElementById('nFriends').textContent='27';
-    var ic = function(svg){ return '<div class="ic">'+svg+'</div>'; };
-    var white = 'stroke="#e6e6e6" fill="none" stroke-width="1.5"';
-    var badgeSvgs = [
-      '<svg width="28" height="28" viewBox="0 0 24 24"><path '+white+' d="M12 2l2.4 7.4H22l-6 4.6 2.3 7-6.3-4.6L5.7 21l2.3-7-6-4.6h7.6z"/></svg>',
-      '<svg width="28" height="28" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" '+white+'/><path '+white+' d="M12 7v5l3 2"/></svg>',
-      '<svg width="28" height="28" viewBox="0 0 24 24"><path '+white+' d="M12 3l7 4v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V7l7-4z"/></svg>',
-      '<svg width="28" height="28" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" '+white+'/><path '+white+' d="M8 12h8M12 8v8"/></svg>'
-    ];
-    var awardSvgs = [
-      '<svg width="28" height="28" viewBox="0 0 24 24"><path '+white+' d="M6 4h12v2l-2 3v3l4 4v2H4v-2l4-4V9L6 6V4z"/><path '+white+' d="M9 20h6"/></svg>',
-      '<svg width="28" height="28" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" '+white+'/><path '+white+' d="M6 20c1.5-3 4-4.5 6-4.5S16.5 17 18 20"/></svg>'
-    ];
-    document.getElementById('badgesRow').innerHTML = badgeSvgs.map(ic).join('');
-    document.getElementById('awardsRow').innerHTML = awardSvgs.map(ic).join('');
-
-    document.getElementById('ownerBtns').style.display=isOwner?'':'none';
-    document.title='Steam Community :: '+(p.display_name||p.username||'Profile');
-
-    document.getElementById('edName').value=p.display_name||'';
-    document.getElementById('edUser').value=p.username||'';
-    document.getElementById('edSummary').value=p.profile_summary||'';
-    document.getElementById('edLoc').value=p.profile_location||'';
-    document.getElementById('edStatus').value=(st==='ingame'||st==='offline')?st:'online';
-    document.getElementById('edLevel').value=lvl;
-    document.getElementById('edXp').value=xp;
-    document.getElementById('edVis').value=p.profile_visibility||'public';
-  }
-
-  function workshopCount(list){
-    return (list||[]).filter(function(s){ return s.type==='workshop'; }).length;
-  }
-
-  function renderShowcases(list,isOwner){
-    state.showcases=list||[];
-    var box=document.getElementById('scList');
-    document.getElementById('scCount').textContent=String(state.showcases.length);
-    document.getElementById('wsCount').textContent=String(workshopCount(state.showcases));
-
-    if(!state.showcases.length){
-      box.innerHTML='<p class="empty">No showcases yet.'+(isOwner?' Use <b>Add Showcase</b>.':'')+'</p>';
-      return;
-    }
-
-    // Group: each showcase is its own Steam-style block
-    var html='';
-    state.showcases.forEach(function(sc){
-      var type=sc.type||'artwork';
-      var urls=sc.urls||[];
-      var title=sc.title||type;
-      var label={featured:'Featured Artwork Showcase',workshop:'Workshop Showcase',split:'Artwork Split',artwork:'Artwork Showcase'}[type]||type;
-      var headerRight = isOwner ? '' : '';
-
-      html+='<div class="sc_block '+(isOwner?'owner':'')+'" data-id="'+sc.id+'">';
-      html+='<div class="profile_customization">';
-      html+='<div class="profile_customization_header">'+esc(label)+'<span class="sub">'+esc(title)+'</span></div>';
-      html+='<div class="showcase_content">';
-      if(isOwner) html+='<button type="button" class="sc_remove" data-id="'+sc.id+'">Remove</button>';
-
-      if(type==='workshop'){
-        var avUrl=(state.profile&&state.profile.avatar_url)||'';
-        var disp=(state.profile&&(state.profile.display_name||state.profile.username))||'Workshop';
-        html+='<div class="workshop_title_row">';
-        if(avUrl) html+='<img class="ws_av" src="'+avUrl+'" alt=""/>';
-        html+='<span class="ws_name">'+esc(disp)+"'s Workshop</span></div>";
-
-        var rows={};
-        urls.forEach(function(u){
-          var m=u.match(/_r(\d+)_p(\d+)/i) || u.match(/row(\d+)[^\d]*part[_-]?(\d+)/i);
-          if(m){
-            var ri=String(m[1]), pi=+m[2];
-            if(!rows[ri]) rows[ri]=[];
-            rows[ri].push({pi:pi, u:u});
-          }
-        });
-        var keys=Object.keys(rows).sort(function(a,b){return (+a)-(+b);});
-
-        function rowFromParts(parts){
-          var h='<div class="workshop_row">';
-          for(var i=1;i<=5;i++){
-            var item=null;
-            for(var j=0;j<parts.length;j++){ if(parts[j].pi===i){ item=parts[j]; break; } }
-            if(item) h+='<img src="'+item.u+'" alt="p'+i+'"/>';
-          }
-          h+='</div>';
-          return h;
-        }
-        // CSS-slice full image into 5 with GAPS (overflow technique)
-        function rowFromFull(src){
-          var h='<div class="workshop_row">';
-          for(var pi=0;pi<5;pi++){
-            h+='<span class="wslice"><img src="'+src+'" style="width:500%;max-width:none;margin-left:-'+(pi*100)+'%;height:auto;display:block" alt=""/></span>';
-          }
-          h+='</div>';
-          return h;
-        }
-
-        html+='<div class="workshop_rows">';
-        if(keys.length){
-          keys.forEach(function(k){
-            var parts=rows[k].slice().sort(function(a,b){return a.pi-b.pi;});
-            if(parts.length>=5) html+=rowFromParts(parts);
-            else if(parts.length===1) html+=rowFromFull(parts[0].u);
-            else html+=rowFromParts(parts);
+      ops.forEach(function (o, i) {
+        if (o.t === 'rect') {
+          if (o.fill) { ctx.fillStyle = o.fill; rr(ctx, o.x, o.y, o.w, o.h, o.r); ctx.fill(); }
+          if (o.stroke) { ctx.strokeStyle = o.stroke; ctx.lineWidth = 1;
+                          rr(ctx, o.x + .5, o.y + .5, o.w - 1, o.h - 1, o.r); ctx.stroke(); }
+        } else if (o.t === 'text') {
+          ctx.font = o.weight + ' ' + o.size + 'px ' + FONT;
+          ctx.fillStyle = o.color;
+          ctx.textAlign = o.align === 'right' ? 'right' : o.align === 'center' ? 'center' : 'left';
+          ctx.textBaseline = 'top';
+          var s = o.up ? String(o.s).toUpperCase() : o.s;
+          var tx = o.align === 'right' ? o.x + o.w : o.align === 'center' ? o.x + o.w / 2 : o.x;
+          wrap(ctx, s, o.w, o.max).forEach(function (line, li) {
+            ctx.fillText(line, tx, o.y + li * o.lh + (o.lh - o.size) / 2);
           });
-        } else {
-          // no part files — slice each unique url into 5 with gaps
-          var seen={}, fulls=[];
-          urls.forEach(function(u){
-            if(!seen[u]){ seen[u]=1; fulls.push(u); }
-          });
-          fulls.slice(0,3).forEach(function(src){ html+=rowFromFull(src); });
+        } else if (o.t === 'img') {
+          var m = byKey[i];
+          if (!m) return;
+          ctx.globalAlpha = o.op;
+          if (o.circle) {
+            ctx.save(); ctx.beginPath();
+            ctx.arc(o.x + o.w / 2, o.y + o.h / 2, Math.min(o.w, o.h) / 2, 0, Math.PI * 2);
+            ctx.clip(); cover(ctx, m, o.x, o.y, o.w, o.h, o.fit, 0); ctx.restore();
+          } else cover(ctx, m, o.x, o.y, o.w, o.h, o.fit, o.r);
+          ctx.globalAlpha = 1;
         }
-        html+='</div>';
-      } else if(type==='split'){
-        var center=urls.find(function(u){return /center/i.test(u);})||urls[0];
-        var side=urls.find(function(u){return /side/i.test(u);})||urls[1];
-        html+='<div class="split_row">';
-        if(center){
-          html+='<div class="center">';
-          if(/\.mp4|\.webm|\.mov/i.test(center)) html+='<video src="'+center+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
-          else html+='<img src="'+center+'" alt=""/>';
-          html+='</div>';
-        }
-        if(side){
-          html+='<div class="side">';
-          if(/\.mp4|\.webm|\.mov/i.test(side)) html+='<video src="'+side+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
-          else html+='<img src="'+side+'" alt=""/>';
-          html+='</div>';
-        }
-        html+='</div>';
-      } else if(type==='featured'){
-        var u=urls.find(function(x){return /featured/i.test(x);})||urls[0];
-        html+='<div class="featured_shot">';
-        if(u){
-          if(/\.mp4|\.webm|\.mov/i.test(u)) html+='<video src="'+u+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
-          else html+='<img src="'+u+'" alt=""/>';
-        }
-        html+='</div>';
-      } else {
-        html+='<div class="artwork_grid">';
-        urls.forEach(function(u){
-          if(/\.mp4|\.webm|\.mov/i.test(u)) html+='<video src="'+u+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
-          else html+='<img src="'+u+'" alt=""/>';
+      });
+      return new Promise(function (res, rej) {
+        cv.toBlob(function (b) { b ? res(b) : rej(new Error('toBlob failed')); }, fmt, 0.95);
+      });
+    });
+}
+
+/* ------------------------------ каталоги ------------------------------ */
+var COLORS = [
+  ['Чёрный', 'black'], ['Белый', 'white'], ['Красный', 'red'], ['Оранжевый', 'orange'],
+  ['Салатовый', 'green'], ['Бирюзовый', 'teal'], ['Розовый', 'pink'], ['Фиолетовый', 'purple'],
+  ['Жёлтый', 'yellow'], ['Голубой', 'cyan'], ['Синий', 'blue']
+];
+var STYLES = [['Аниме', 'anime'], ['Киберпанк', 'cyberpunk'], ['Космос', 'space'], ['Природа', 'nature']];
+
+function chips(host, list, opt) {
+  if (!host) return;
+  host.innerHTML = list.map(function (it, i) {
+    var one = opt.single, act = opt.value === it[1] || (opt.multi && opt.value.indexOf(it[1]) >= 0);
+    return '<label class="chk' + (one ? ' chk--dot' : '') + (act ? ' is-on' : '') +
+      '" data-v="' + it[1] + '"><input type="checkbox"><i></i>' + esc(it[0]) + '</label>';
+  }).join('');
+  host.querySelectorAll('.chk').forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      opt.pick(el.getAttribute('data-v'), el);
+    });
+  });
+}
+
+function Cat(cfg) {
+  var st = { page: 0, items: [], q: '', kind: cfg.kind || 'all', busy: false, end: false };
+  function url() {
+    var q = st.q;
+    if (cfg.extraQ) q = (q + ' ' + cfg.extraQ()).trim();
+    return '/api/steam/backgrounds?asset=' + encodeURIComponent(cfg.asset) +
+      '&kind=' + encodeURIComponent(st.kind) + '&q=' + encodeURIComponent(q) +
+      '&page=' + st.page + '&count=' + (cfg.count || 24);
+  }
+  function say(msg, cls) {
+    var el = $(cfg.state);
+    if (el) { el.textContent = msg || ''; el.className = 'state' + (cls ? ' ' + cls : ''); }
+  }
+  function draw() {
+    var host = $(cfg.grid);
+    if (!host) return;
+    host.innerHTML = st.items.map(function (it, i) {
+      var media = it.movie
+        ? '<video src="' + esc(px(it.movie)) + '" autoplay loop muted playsinline></video>'
+        : '<img src="' + esc(px(it.image)) + '" alt="" loading="lazy">';
+      var price = it.source === 'points'
+        ? '<span class="cell__p is-pts">' + (num(it.points, 0) ? fmt(num(it.points, 0)) + ' pts' : 'points') + '</span>'
+        : (it.price ? '<span class="cell__p">' + esc(it.price) + '</span>' : '');
+      return '<div class="cell' + (cfg.square ? ' cell--sq' : '') +
+        (cfg.isOn && cfg.isOn(it) ? ' is-on' : '') + '" data-i="' + i + '">' + media + price +
+        (it.animated ? '<span class="cell__badge">GIF</span>' : '') +
+        '<span class="cell__n">' + esc(it.name || '') + '</span></div>';
+    }).join('');
+    host.querySelectorAll('.cell').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var it = st.items[+el.getAttribute('data-i')];
+        cfg.pick(it);
+        draw();
+      });
+    });
+  }
+  function load(reset) {
+    if (st.busy) return;
+    if (reset) { st.page = 0; st.items = []; st.end = false; }
+    st.busy = true;
+    say(st.items.length ? 'Загрузка…' : 'Загрузка каталога…', 'is-wait');
+    fetch(url(), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        st.busy = false;
+        var got = (d && d.items) || [];
+        if (cfg.filter) got = got.filter(cfg.filter);
+        st.items = st.items.concat(got);
+        st.end = got.length === 0;
+        draw();
+        say(st.items.length ? (st.end ? 'Это всё, что нашлось' : '') :
+            ((d && d.msg) || 'Ничего не нашлось'), st.items.length ? '' : 'is-bad');
+      })
+      .catch(function (e) { st.busy = false; say('Steam недоступен: ' + e.message, 'is-bad'); });
+  }
+  return {
+    st: st, load: load, draw: draw,
+    search: function (q) { st.q = q || ''; load(true); },
+    kind: function (k) { st.kind = k; load(true); },
+    more: function () { st.page += 1; load(false); }
+  };
+}
+
+/* ---------- фон ---------- */
+var bgFilter = { type: 'all', style: '', color: '' };
+var bgCat = Cat({
+  asset: 'background', grid: 'bgGrid', state: 'bgState',
+  extraQ: function () { return [bgFilter.style, bgFilter.color].filter(Boolean).join(' '); },
+  isOn: function (it) { return (it.movie || it.image) === (S.bg.movie || S.bg.url); },
+  pick: function (it) {
+    S.bg = { url: it.image || '', movie: it.movie || it.movie_mp4 || '', name: it.name || '', animated: !!it.animated };
+    $('bgSel').textContent = it.name || 'без названия';
+    var buy = $('bgBuy');
+    buy.href = it.buy_url || it.market_url || '#';
+    buy.textContent = it.source === 'points' ? 'Купить в Steam Points' : 'Купить в Steam';
+    render();
+  }
+});
+chips($('bgType'), [['Все', 'all'], ['Статичные', 'static'], ['Анимированные', 'animated'], ['Points Shop', 'points']], {
+  single: true, value: 'all',
+  pick: function (v, el) {
+    bgFilter.type = v;
+    el.parentNode.querySelectorAll('.chk').forEach(function (n) { n.classList.toggle('is-on', n === el); });
+    bgCat.kind(v === 'static' ? 'all' : v);
+  }
+});
+chips($('bgStyle'), STYLES, { single: true, value: '',
+  pick: function (v, el) {
+    var was = bgFilter.style === v; bgFilter.style = was ? '' : v;
+    el.parentNode.querySelectorAll('.chk').forEach(function (n) { n.classList.toggle('is-on', !was && n === el); });
+    bgCat.load(true);
+  }
+});
+chips($('bgColor'), COLORS, { single: true, value: '',
+  pick: function (v, el) {
+    var was = bgFilter.color === v; bgFilter.color = was ? '' : v;
+    el.parentNode.querySelectorAll('.chk').forEach(function (n) { n.classList.toggle('is-on', !was && n === el); });
+    bgCat.load(true);
+  }
+});
+on($('bgGo'), 'click', function () { bgCat.search($('bgQ').value); });
+on($('bgQ'), 'keydown', function (e) { if (e.key === 'Enter') bgCat.search($('bgQ').value); });
+on($('bgMore'), 'click', function () { bgCat.more(); });
+
+/* ---------- аватар и рамка ---------- */
+var avMode = 'frame', avFilter = { type: 'all', color: '' };
+function avAsset() { return avMode === 'frame' ? 'frame' : 'avatar'; }
+var avCat = Cat({
+  asset: 'frame', grid: 'avGrid', state: 'avState', square: true,
+  extraQ: function () { return avFilter.color; },
+  isOn: function (it) {
+    var cur = avMode === 'frame' ? (S.frame.movie || S.frame.url) : S.avatar.url;
+    return (it.movie || it.image) === cur;
+  },
+  pick: function (it) {
+    if (avMode === 'frame') S.frame = { url: it.image || '', movie: it.movie || it.movie_mp4 || '', name: it.name || '' };
+    else S.avatar = { url: it.image || '' };
+    var buy = $('avBuy'); buy.href = it.buy_url || it.market_url || '#';
+    render();
+  }
+});
+function avSwitch(mode) {
+  avMode = mode;
+  avCat.st.items = []; avCat.st.page = 0;
+  $('avQ').placeholder = mode === 'frame' ? 'Поиск рамки по названию или ссылке...'
+                                          : 'Поиск аватарки по названию, AppID или ссылке...';
+  $('avNone').textContent = mode === 'frame' ? 'Без рамки' : 'Без аватарки';
+  avCat.st.q = '';
+  avCatReload();
+}
+function avCatReload() {
+  /* Cat держит asset в замыкании, поэтому пересобираем его под текущий режим */
+  avCat = Cat({
+    asset: avAsset(), grid: 'avGrid', state: 'avState', square: true,
+    extraQ: function () { return avFilter.color; },
+    isOn: function (it) {
+      var cur = avMode === 'frame' ? (S.frame.movie || S.frame.url) : S.avatar.url;
+      return (it.movie || it.image) === cur;
+    },
+    filter: function (it) {
+      if (avFilter.type === 'static') return !it.animated;
+      if (avFilter.type === 'animated') return !!it.animated;
+      return true;
+    },
+    pick: function (it) {
+      if (avMode === 'frame') S.frame = { url: it.image || '', movie: it.movie || it.movie_mp4 || '', name: it.name || '' };
+      else S.avatar = { url: it.image || '' };
+      var buy = $('avBuy'); buy.href = it.buy_url || it.market_url || '#';
+      render();
+    }
+  });
+  avCat.search($('avQ').value);
+}
+document.querySelectorAll('[data-av]').forEach(function (b) {
+  on(b, 'click', function () {
+    document.querySelectorAll('[data-av]').forEach(function (n) { n.classList.toggle('is-on', n === b); });
+    avSwitch(b.getAttribute('data-av'));
+  });
+});
+chips($('avType'), [['Все', 'all'], ['Статичные', 'static'], ['Анимированные', 'animated']], {
+  single: true, value: 'all',
+  pick: function (v, el) {
+    avFilter.type = v;
+    el.parentNode.querySelectorAll('.chk').forEach(function (n) { n.classList.toggle('is-on', n === el); });
+    avCatReload();
+  }
+});
+chips($('avColor'), COLORS, { single: true, value: '',
+  pick: function (v, el) {
+    var was = avFilter.color === v; avFilter.color = was ? '' : v;
+    el.parentNode.querySelectorAll('.chk').forEach(function (n) { n.classList.toggle('is-on', !was && n === el); });
+    avCatReload();
+  }
+});
+on($('avGo'), 'click', function () { avCat.search($('avQ').value); });
+on($('avQ'), 'keydown', function (e) { if (e.key === 'Enter') avCat.search($('avQ').value); });
+on($('avMore'), 'click', function () { avCat.more(); });
+on($('avNone'), 'click', function () {
+  if (avMode === 'frame') S.frame = { url: '', movie: '', name: '' }; else S.avatar = { url: '' };
+  render(); avCat.draw();
+});
+on($('avFile'), 'change', function (e) {
+  var f = e.target.files && e.target.files[0];
+  if (!f) return;
+  var fr = new FileReader();
+  fr.onload = function () { S.avatar = { url: fr.result }; render(); };
+  fr.readAsDataURL(f);
+});
+
+/* ---------- значки ---------- */
+var bdSlot = 0;
+function drawSlots() {
+  $('bdSlots').innerHTML = S.badges.map(function (b, i) {
+    return '<div class="cell cell--sq' + (i === bdSlot ? ' is-on' : '') + '" data-i="' + i + '">' +
+      (b ? '<img src="' + esc(px(b.image)) + '" alt="">' : '') +
+      '<span class="cell__n">#' + (i + 1) + '</span></div>';
+  }).join('');
+  $('bdSlots').querySelectorAll('.cell').forEach(function (el) {
+    on(el, 'click', function () {
+      var i = +el.getAttribute('data-i');
+      if (i === bdSlot && S.badges[i]) { S.badges[i] = null; render(); }
+      bdSlot = i;
+      $('bdSlotHint').textContent = 'слот #' + (i + 1);
+      drawSlots();
+    });
+  });
+}
+var bdCat = Cat({
+  asset: 'badge', grid: 'bdGrid', state: 'bdState', count: 18,
+  isOn: function (it) { var b = S.badges[bdSlot]; return b && b.image === it.image; },
+  pick: function (it) {
+    S.badges[bdSlot] = { image: it.image || it.badge_url || it.capsule, name: it.name || '', appid: it.appid || 0 };
+    if (!S.fav.name) { S.fav = { img: S.badges[bdSlot].image, name: it.name || '', xp: '500' }; syncFields(); }
+    if (it.appid) loadCards(it.appid, it.name);
+    drawSlots(); render();
+  }
+});
+on($('bdGo'), 'click', function () { bdCat.search($('bdQ').value); });
+on($('bdQ'), 'keydown', function (e) { if (e.key === 'Enter') bdCat.search($('bdQ').value); });
+on($('bdMore'), 'click', function () { bdCat.more(); });
+on($('bdCards'), 'click', function () {
+  var b = S.badges[bdSlot];
+  if (!b || !b.appid) { $('bdState').textContent = 'Сначала выбери значок в слот'; return; }
+  loadCards(b.appid, b.name);
+  $('bdCardsBox').hidden = false;
+});
+function loadCards(appid, name) {
+  var box = $('bdCardsBox');
+  box.hidden = false;
+  $('bdCardsT').textContent = 'Карточки' + (name ? ' — ' + name : '');
+  $('bdCardsP').textContent = 'загрузка…';
+  fetch('/api/steam/cards/' + appid, { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var items = (d && d.items) || [];
+      $('bdCardsP').textContent = items.length
+        ? items.length + ' шт' + (d.set_price ? ' · набор ' + d.set_price : '') + (d.partial ? ' (неполно)' : '')
+        : ((d && d.msg) || 'нет данных');
+      $('bdCardsGrid').innerHTML = items.map(function (c) {
+        return '<div class="cell"><img src="' + esc(px(c.image)) + '" alt="" loading="lazy">' +
+          (c.price ? '<span class="cell__p">' + esc(c.price) + '</span>' : '') +
+          '<span class="cell__n">' + esc(c.name) + '</span></div>';
+      }).join('');
+    })
+    .catch(function () { $('bdCardsP').textContent = 'не удалось загрузить'; });
+}
+on($('bdFavName'), 'input', function (e) { S.fav.name = e.target.value; render(); });
+on($('bdFavXp'), 'input', function (e) { S.fav.xp = e.target.value; render(); });
+
+/* ---------- витрины ---------- */
+var EDITORS = {
+  art: [['big', 'Большая иллюстрация (ссылка)'], ['small', 'Малая иллюстрация (ссылка)']],
+  artfav: [['img', 'Иллюстрация (ссылка)']],
+  guide: [['img', 'Обложка (ссылка)'], ['author', 'Автор'], ['ratings', 'Оценок']],
+  workshop: [['title', 'Заголовок'], ['author', 'Автор'], ['subs', 'Публикаций'], ['followers', 'Подписчиков']],
+  info: [['title', 'Заголовок блока']]
+};
+var vtOpen = 'art';
+function drawVitrines() {
+  $('vtRows').innerHTML = S.show.map(function (s, i) {
+    var meta = SHOWCASES.filter(function (x) { return x.k === s.k; })[0] || { t: s.k };
+    return '<div class="vrow" data-i="' + i + '">' +
+      '<div class="vrow__mv"><button data-mv="up" type="button">▲</button>' +
+      '<button data-mv="down" type="button">▼</button></div>' +
+      '<span class="vrow__t" data-open="' + s.k + '" style="cursor:pointer">' + esc(meta.t) + '</span>' +
+      '<label class="sw' + (s.on ? ' is-on' : '') + '"><input type="checkbox"' + (s.on ? ' checked' : '') + '><i></i></label>' +
+      '</div>';
+  }).join('');
+  $('vtRows').querySelectorAll('.vrow').forEach(function (row) {
+    var i = +row.getAttribute('data-i');
+    on(row.querySelector('.sw'), 'click', function (e) {
+      e.preventDefault();
+      S.show[i].on = !S.show[i].on;
+      drawVitrines(); render();
+    });
+    row.querySelectorAll('[data-mv]').forEach(function (b) {
+      on(b, 'click', function () {
+        var j = b.getAttribute('data-mv') === 'up' ? i - 1 : i + 1;
+        if (j < 0 || j >= S.show.length) return;
+        var tmp = S.show[i]; S.show[i] = S.show[j]; S.show[j] = tmp;
+        drawVitrines(); render();
+      });
+    });
+    on(row.querySelector('[data-open]'), 'click', function () {
+      vtOpen = row.querySelector('[data-open]').getAttribute('data-open');
+      drawEditor();
+    });
+  });
+  drawEditor();
+}
+function drawEditor() {
+  var fields = EDITORS[vtOpen] || [];
+  var meta = SHOWCASES.filter(function (x) { return x.k === vtOpen; })[0] || { t: vtOpen };
+  var html = '<p class="ss-h3">' + esc(meta.t) + '</p>';
+  fields.forEach(function (f) {
+    html += '<div class="f"><p class="f__t">' + esc(f[1]) + '</p>' +
+      '<input class="ss-in" data-fk="' + f[0] + '" type="text" value="' +
+      esc((S[vtOpen] || {})[f[0]] || '') + '"></div>';
+  });
+  if (vtOpen === 'workshop') {
+    html += '<div class="f"><p class="f__t">Превью работ (ссылки через запятую)</p>' +
+      '<textarea class="ss-in" data-fk="thumbs">' + esc((S.workshop.thumbs || []).join(', ')) + '</textarea></div>';
+  }
+  if (vtOpen === 'info') {
+    html += '<div class="f"><p class="f__t">Строки: текст | ссылка | примечание</p>' +
+      '<textarea class="ss-in" data-fk="lines" style="min-height:96px">' +
+      esc((S.info.lines || []).map(function (l) {
+        return [l.text || '', l.link || '', l.note || ''].join(' | ');
+      }).join('\n')) + '</textarea></div>';
+  }
+  $('vtEditor').innerHTML = html;
+  $('vtEditor').querySelectorAll('[data-fk]').forEach(function (el) {
+    on(el, 'input', function () {
+      var k = el.getAttribute('data-fk'), v = el.value;
+      if (k === 'thumbs') S.workshop.thumbs = v.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+      else if (k === 'lines') {
+        S.info.lines = v.split('\n').filter(function (s) { return s.trim(); }).map(function (row) {
+          var p = row.split('|');
+          return { text: (p[0] || '').trim(), link: (p[1] || '').trim(), note: (p[2] || '').trim() };
         });
-        html+='</div>';
-      }
-
-      html+='</div></div></div>';
+      } else S[vtOpen][k] = v;
+      render();
     });
+  });
+}
 
-    // If multiple workshops, also show combined 3-row view at top when >=1
-    // (each workshop is already its own block — Steam stacks them)
+/* ---------- поля профиля ---------- */
+function syncFields() {
+  $('pNick').value = S.nick; $('pReal').value = S.real;
+  $('pLevel').value = S.level; $('pStatus').value = S.status;
+  $('pAbout').value = S.about; $('pAboutC').textContent = S.about.length + '/120';
+  $('bdFavName').value = S.fav.name || ''; $('bdFavXp').value = S.fav.xp || '';
+  $('bgSel').textContent = S.bg.name || 'не выбран';
+  STAT_FIELDS.forEach(function (f) {
+    var el = document.querySelector('[data-stat="' + f[0] + '"]');
+    if (el) el.value = S.stats[f[0]];
+  });
+  VIS_ROWS.forEach(function (r) {
+    var el = document.querySelector('[data-vis="' + r[0] + '"]');
+    if (el) el.classList.toggle('is-on', !!S.vis[r[0]]);
+  });
+}
+on($('pNick'), 'input', function (e) { S.nick = e.target.value; render(); });
+on($('pReal'), 'input', function (e) { S.real = e.target.value; render(); });
+on($('pLevel'), 'input', function (e) { S.level = num(e.target.value, 1); render(); });
+on($('pStatus'), 'change', function (e) { S.status = e.target.value; render(); });
+on($('pAbout'), 'input', function (e) {
+  S.about = e.target.value; $('pAboutC').textContent = S.about.length + '/120'; render();
+});
 
-    box.innerHTML=html;
-    box.querySelectorAll('.sc_remove').forEach(function(btn){
-      btn.onclick=async function(){
-        if(!confirm('Remove this showcase?')) return;
-        var r=await fetch('/api/profile/showcase/delete',{
-          method:'POST',
-          headers:Object.assign({'Content-Type':'application/json'},headers()),
-          credentials:'include',
-          body:JSON.stringify({id:+btn.dataset.id})
+$('statFields').innerHTML = STAT_FIELDS.map(function (f) {
+  return '<div><p class="f__t">' + esc(f[1]) + '</p>' +
+    '<input class="ss-in" data-stat="' + f[0] + '" type="text" placeholder="134"></div>';
+}).join('');
+$('statFields').querySelectorAll('[data-stat]').forEach(function (el) {
+  on(el, 'input', function () { S.stats[el.getAttribute('data-stat')] = num(el.value, 0); render(); });
+});
+
+$('visRows').innerHTML = VIS_ROWS.map(function (r) {
+  return '<div class="vrow"><span class="vrow__t">' + esc(r[1]) + '</span>' +
+    '<label class="sw is-on" data-vis="' + r[0] + '"><input type="checkbox" checked><i></i></label></div>';
+}).join('');
+$('visRows').querySelectorAll('[data-vis]').forEach(function (el) {
+  on(el, 'click', function (e) {
+    e.preventDefault();
+    var k = el.getAttribute('data-vis');
+    S.vis[k] = !S.vis[k];
+    el.classList.toggle('is-on', S.vis[k]);
+    render();
+  });
+});
+
+/* ---------- группы ---------- */
+function drawGroups() {
+  $('grpList').innerHTML = S.groups.length ? S.groups.map(function (g, i) {
+    return '<div class="vrow" data-i="' + i + '">' +
+      '<span class="vrow__t">' + esc(g.name || 'группа') + '</span>' +
+      '<span class="pn__sub">' + fmt(num(g.members, 0)) + '</span>' +
+      '<button class="ss-btn ss-btn--ghost ss-btn--sm" data-del="' + i + '" type="button">✕</button></div>';
+  }).join('') : '<p class="state">Групп пока нет</p>';
+  $('grpList').querySelectorAll('[data-del]').forEach(function (b) {
+    on(b, 'click', function () { S.groups.splice(+b.getAttribute('data-del'), 1); drawGroups(); render(); });
+  });
+}
+on($('grpAdd'), 'click', function () {
+  var raw = ($('grpUrl').value || '').trim();
+  if (!raw) return;
+  var name = raw.replace(/\/+$/, '').split('/').pop() || raw;
+  S.groups.push({ name: decodeURIComponent(name), members: 0, avatar: '' });
+  $('grpUrl').value = '';
+  $('grpStat').textContent = 'Группа добавлена. Аватар и число участников подтянутся из импорта профиля.';
+  $('grpStat').className = 'stat is-ok';
+  drawGroups(); render();
+});
+on($('grpToggle'), 'click', function () {
+  var box = $('grpBox');
+  box.hidden = !box.hidden;
+  $('grpToggle').textContent = box.hidden ? 'Показать' : 'Скрыть';
+});
+
+/* ---------- импорт публичного профиля ---------- */
+on($('impGo'), 'click', function () {
+  var url = ($('impUrl').value || '').trim();
+  if (!url) return;
+  var st = $('impStat');
+  st.textContent = 'Читаем публичный профиль…'; st.className = 'stat is-wait';
+  fetch('/api/steam/profile?url=' + encodeURIComponent(url), { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d || !d.ok) throw new Error((d && d.msg) || 'профиль недоступен');
+      var p = d.profile;
+      S.nick = p.name || S.nick;
+      S.real = p.realname || '';
+      S.about = (p.summary || '').slice(0, 600);
+      if (p.level) S.level = p.level;
+      S.status = /online/i.test(p.status || '') ? 'online' : /game/i.test(p.status || '') ? 'ingame' : 'offline';
+      if (p.avatar) S.avatar = { url: p.avatar };
+      if (p.background) S.bg = { url: p.background, movie: '', name: 'фон из профиля', animated: false };
+      if (p.groups && p.groups.length) {
+        S.groups = p.groups.map(function (g) { return { name: g.name, members: 0, avatar: g.avatar }; });
+      }
+      /* Steam печатает только те счётчики, которые у профиля есть, поэтому
+         бэкенд отдаёт их с подписями (stats_map) — по позиции их читать нельзя. */
+      var sm = p.stats_map || {};
+      Object.keys(sm).forEach(function (k) { if (k in S.stats) S.stats[k] = num(sm[k], 0); });
+      syncFields(); drawGroups(); render();
+      st.textContent = 'Готово: ' + (p.name || 'профиль') + (p.level ? ', уровень ' + p.level : '');
+      st.className = 'stat is-ok';
+    })
+    .catch(function (e) { st.textContent = 'Не вышло: ' + e.message; st.className = 'stat is-bad'; });
+});
+
+/* ---------- zoom / полный экран / оригинал ---------- */
+window.__zoom = 1;
+function setZoom(v) {
+  window.__zoom = v;
+  $('zoomOut').textContent = Math.round(v * 100) + '%';
+  $('zoom').value = v;
+  fit();
+}
+on($('zoom'), 'input', function (e) { setZoom(parseFloat(e.target.value)); });
+on($('btnOrig'), 'click', function () { setZoom(1); });
+function toggleFull() {
+  document.body.classList.toggle('is-full');
+  var f = document.body.classList.contains('is-full');
+  $('btnFull').textContent = f ? 'Свернуть' : 'На весь экран';
+  $('btnFull2').textContent = f ? 'Свернуть' : 'На весь экран';
+  setTimeout(fit, 30);
+}
+on($('btnFull'), 'click', toggleFull);
+on($('btnFull2'), 'click', toggleFull);
+on($('fullBack'), 'click', function () { if (document.body.classList.contains('is-full')) toggleFull(); });
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && document.body.classList.contains('is-full')) toggleFull();
+});
+
+/* ---------- экспорт ---------- */
+on($('exDim'), 'input', function (e) {
+  S.dim = parseFloat(e.target.value);
+  $('exDimOut').textContent = Math.round(S.dim * 100) + '%';
+  paintBg();
+});
+function doExport() {
+  var size = ($('exSize').value || '1920x1080').split('x');
+  var fmtv = $('exFmt').value || 'image/png';
+  var st = $('exStat');
+  st.textContent = 'Собираем картинку…'; st.className = 'stat is-wait';
+  $('btnExport').disabled = true; $('btnExport2').disabled = true;
+  exportCanvas(+size[0], +size[1], fmtv)
+    .then(function (blob) {
+      var ext = fmtv === 'image/jpeg' ? 'jpg' : fmtv === 'image/webp' ? 'webp' : 'png';
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'steam-profile-' + size[0] + 'x' + size[1] + '.' + ext;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      st.textContent = 'Готово: ' + size[0] + '×' + size[1] + ', ' + Math.round(blob.size / 1024) + ' КБ';
+      st.className = 'stat is-ok';
+    })
+    .catch(function (e) {
+      st.textContent = 'Экспорт не удался: ' + e.message + '. Если это анимированный фон — попробуй PNG.';
+      st.className = 'stat is-bad';
+    })
+    .then(function () { $('btnExport').disabled = false; $('btnExport2').disabled = false; });
+}
+on($('btnExport'), 'click', doExport);
+on($('btnExport2'), 'click', doExport);
+
+/* ---------- сохранение ---------- */
+var LS = 'ss_mockup_v1';
+function saveLocal() {
+  try { localStorage.setItem(LS, JSON.stringify(S)); return true; } catch (e) { return false; }
+}
+function loadLocal() {
+  try {
+    var raw = localStorage.getItem(LS);
+    if (!raw) return false;
+    var d = JSON.parse(raw);
+    if (!d || typeof d !== 'object') return false;
+    S = Object.assign(fresh(), d);
+    S.stats = Object.assign(fresh().stats, d.stats || {});
+    S.vis = Object.assign(fresh().vis, d.vis || {});
+    return true;
+  } catch (e) { return false; }
+}
+/* «Сохранить профиль» = мокап в браузере + публичные поля в свой профиль на сайте,
+   чтобы /profile/{username} показывал то же самое. Витрины и арт остаются в мокапе. */
+on($('btnSave'), 'click', function () {
+  var st = $('saveStat');
+  saveLocal();
+  var body = {
+    display_name: S.nick.slice(0, 64),
+    profile_summary: S.about.slice(0, 600),
+    profile_level: String(num(S.level, 1)),
+    profile_status: S.status === 'ingame' ? 'online' : S.status,
+    profile_location: ''
+  };
+  st.textContent = 'Сохраняем…'; st.className = 'stat is-wait';
+  fetch('/api/profile/update', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  })
+    .then(function (r) { return r.json().then(function (d) { return { s: r.status, d: d }; }); })
+    .then(function (x) {
+      if (x.s === 401) { st.textContent = 'Мокап сохранён в браузере. Войди, чтобы обновить публичный профиль.';
+                         st.className = 'stat is-wait'; return; }
+      if (!x.d || !x.d.ok) throw new Error((x.d && x.d.msg) || 'ошибка сервера');
+      st.textContent = 'Сохранено: мокап и публичный профиль обновлены.'; st.className = 'stat is-ok';
+    })
+    .catch(function (e) {
+      st.textContent = 'Мокап сохранён в браузере, но профиль не обновился: ' + e.message;
+      st.className = 'stat is-bad';
+    });
+});
+on($('btnReset'), 'click', function () {
+  S = fresh();
+  try { localStorage.removeItem(LS); } catch (e) {}
+  syncFields(); drawSlots(); drawVitrines(); drawGroups(); render();
+  $('saveStat').textContent = 'Сброшено к настройкам по умолчанию.'; $('saveStat').className = 'stat';
+});
+on($('btnClearLook'), 'click', function () {
+  var f = fresh();
+  S.bg = f.bg; S.frame = f.frame; S.avatar = f.avatar; S.badges = f.badges; S.fav = f.fav;
+  syncFields(); drawSlots(); render();
+});
+on($('btnRandom'), 'click', function () {
+  var pool = bgCat.st.items;
+  if (pool.length) {
+    var it = pool[Math.floor(Math.random() * pool.length)];
+    S.bg = { url: it.image || '', movie: it.movie || '', name: it.name || '', animated: !!it.animated };
+    $('bgSel').textContent = S.bg.name;
+  }
+  S.show = S.show.map(function (s) { return { k: s.k, on: Math.random() > 0.35 }; });
+  drawVitrines(); render();
+});
+
+/* ---------- проекты (Pro) ---------- */
+function prjLoadList() {
+  var st = $('prjStat'), host = $('prjList');
+  fetch('/api/projects', { credentials: 'same-origin' })
+    .then(function (r) { return r.json().then(function (d) { return { s: r.status, d: d }; }); })
+    .then(function (x) {
+      if (x.s === 401) { host.innerHTML = '<p class="state">Войди, чтобы хранить мокапы на аккаунте</p>';
+                         $('prjSub').textContent = ''; return; }
+      var d = x.d || {};
+      if (d.pro === false) {
+        host.innerHTML = '<p class="state">Хранение мокапов на аккаунте — функция Pro. ' +
+          'Сейчас мокап сохраняется в браузере.</p>';
+        $('prjSub').textContent = 'free';
+        return;
+      }
+      var items = (d.items || []).filter(function (p) { return p.project_type === 'mockup'; });
+      $('prjSub').textContent = items.length + ' шт';
+      host.innerHTML = items.length ? items.map(function (p) {
+        return '<div class="vrow"><span class="vrow__t">' + esc(p.name) + '</span>' +
+          '<button class="ss-btn ss-btn--ghost ss-btn--sm" data-load="' + esc(p.id) + '" type="button">Открыть</button>' +
+          '<button class="ss-btn ss-btn--ghost ss-btn--sm" data-drop="' + esc(p.id) + '" type="button">✕</button></div>';
+      }).join('') : '<p class="state">Сохранённых мокапов нет</p>';
+      host.querySelectorAll('[data-load]').forEach(function (b) {
+        on(b, 'click', function () { prjOpen(b.getAttribute('data-load')); });
+      });
+      host.querySelectorAll('[data-drop]').forEach(function (b) {
+        on(b, 'click', function () {
+          fetch('/api/projects/' + encodeURIComponent(b.getAttribute('data-drop')),
+                { method: 'DELETE', credentials: 'same-origin' }).then(prjLoadList);
         });
-        var j=await r.json();
-        if(j.ok) loadShowcases();
-      };
+      });
+    })
+    .catch(function (e) { st.textContent = 'Список не загрузился: ' + e.message; st.className = 'stat is-bad'; });
+}
+function prjOpen(id) {
+  fetch('/api/projects/' + encodeURIComponent(id), { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d || !d.ok) throw new Error((d && d.msg) || 'не найдено');
+      S = Object.assign(fresh(), d.project.scene || {});
+      S.stats = Object.assign(fresh().stats, (d.project.scene || {}).stats || {});
+      S.vis = Object.assign(fresh().vis, (d.project.scene || {}).vis || {});
+      $('prjName').value = d.project.name || '';
+      syncFields(); drawSlots(); drawVitrines(); drawGroups(); render();
+      $('prjStat').textContent = 'Открыт: ' + (d.project.name || id); $('prjStat').className = 'stat is-ok';
+    })
+    .catch(function (e) { $('prjStat').textContent = 'Не открылось: ' + e.message; $('prjStat').className = 'stat is-bad'; });
+}
+on($('prjSave'), 'click', function () {
+  var st = $('prjStat');
+  st.textContent = 'Сохраняем…'; st.className = 'stat is-wait';
+  fetch('/api/projects', {
+    method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: $('prjName').value || 'Мокап', project_type: 'mockup', scene: S })
+  })
+    .then(function (r) { return r.json().then(function (d) { return { s: r.status, d: d }; }); })
+    .then(function (x) {
+      if (x.s === 401) throw new Error('нужен вход');
+      if (x.s === 403) throw new Error('это функция Pro — мокап остался в браузере');
+      if (!x.d || !x.d.ok) throw new Error((x.d && x.d.msg) || 'ошибка сервера');
+      st.textContent = 'Сохранено: ' + x.d.name; st.className = 'stat is-ok';
+      prjLoadList();
+    })
+    .catch(function (e) { saveLocal(); st.textContent = 'Не вышло: ' + e.message; st.className = 'stat is-bad'; });
+});
+on($('prjRefresh'), 'click', prjLoadList);
+
+/* ---------- аккаунт ---------- */
+function paintAcc(me) {
+  if (!me || !me.logged_in) {
+    $('accEmail').textContent = 'не выполнен вход';
+    $('accPlan').textContent = '—';
+    $('accStat').textContent = 'Войти можно на странице инструментов.';
+    return;
+  }
+  $('accEmail').textContent = me.email || '—';
+  $('accPlan').textContent = me.is_pro ? ('PRO' + (me.pro_until ? ' до ' + String(me.pro_until).slice(0, 10) : '')) : 'FREE';
+  $('accNick').value = me.display_name || '';
+  $('accKeyProRow').hidden = !me.is_pro;
+  $('accKeyFreeRow').hidden = !!me.is_pro;
+  if (me.is_pro && me.pro_code) {
+    var c = String(me.pro_code);
+    $('accKeyMasked').value = c.slice(0, 6) + '••••••' + c.slice(-4);
+  }
+}
+document.addEventListener('ss:me', function (e) { paintAcc(e.detail); });
+on($('btnAccSave'), 'click', function () {
+  var st = $('accStat');
+  st.textContent = 'Сохраняем…'; st.className = 'stat is-wait';
+  var code = ($('accCode').value || '').trim();
+  var chain = Promise.resolve();
+  if (code) {
+    chain = chain.then(function () {
+      return fetch('/api/unlock', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code })
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (!d || !d.ok) throw new Error((d && d.msg) || 'код не принят');
+      });
     });
   }
+  var file = $('accAvatarFile').files && $('accAvatarFile').files[0];
+  chain.then(function () {
+    var fd = new FormData();
+    fd.append('display_name', ($('accNick').value || '').slice(0, 64));
+    if (file) fd.append('avatar', file);
+    return fetch('/api/auth/profile', { method: 'POST', credentials: 'same-origin', body: fd })
+      .then(function (r) { return r.json(); });
+  })
+    .then(function (d) {
+      if (!d || !d.ok) throw new Error((d && d.msg) || 'ошибка сервера');
+      st.textContent = 'Сохранено'; st.className = 'stat is-ok';
+      if (window.SSShell) SSShell.loadMe();
+    })
+    .catch(function (e) { st.textContent = 'Не вышло: ' + e.message; st.className = 'stat is-bad'; });
+});
+on($('btnAccBuy'), 'click', function () {
+  fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) { if (d && d.url) window.open(d.url, '_blank', 'noopener'); });
+});
+on($('btnAccLogout'), 'click', function () {
+  fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+    .then(function () { location.href = '/'; });
+});
 
-  async function loadShowcases(){
-    var un=state.username||pathUser();
-    if(!un) return;
-    try{
-      var r=await fetch('/api/profile/'+encodeURIComponent(un)+'/showcases',{headers:headers(),credentials:'include'});
-      var j=await r.json();
-      if(j.ok) renderShowcases(j.showcases||[], !!(j.is_owner||state.isOwner));
-    }catch(e){ console.error(e); }
-  }
-
-  async function load(){
-    var un=pathUser();
-    var url=un?('/api/profile/'+encodeURIComponent(un)):'/api/profile/me';
-    try{
-      var r=await fetch(url,{headers:headers(),credentials:'include'});
-      var j={}; try{j=await r.json();}catch(e){}
-      if(r.status===401 && !un){ showGate('Log in required','Sign in on the home page, then open Profile.'); return; }
-      if(r.status===403){ showGate('Private profile','This profile is private.'); return; }
-      if(!j.ok){ showGate('Not found', j.msg||'Profile not found'); return; }
-      if(!un && j.profile && j.profile.username){
-        history.replaceState(null,'','/profile/'+encodeURIComponent(j.profile.username));
-      }
-      renderProfile(j.profile, !!j.is_owner);
-      loadShowcases();
-    }catch(e){ showGate('Error', String(e)); }
-  }
-
-  document.getElementById('btnEdit').onclick=function(){
-    document.getElementById('editPanel').classList.add('open');
-    document.getElementById('scPanel').classList.remove('open');
-  };
-  document.getElementById('btnEditCancel').onclick=function(){
-    document.getElementById('editPanel').classList.remove('open');
-  };
-  document.getElementById('btnAddSc').onclick=function(){
-    document.getElementById('scPanel').classList.add('open');
-    document.getElementById('editPanel').classList.remove('open');
-  };
-  document.getElementById('btnScCancel').onclick=function(){
-    document.getElementById('scPanel').classList.remove('open');
-  };
-
-  document.getElementById('btnSave').onclick=async function(){
-    var msg=document.getElementById('edMsg'); msg.className='msg'; msg.textContent='Saving…';
-    var fd=new FormData();
-    fd.append('display_name',document.getElementById('edName').value);
-    fd.append('profile_username',document.getElementById('edUser').value);
-    fd.append('profile_summary',document.getElementById('edSummary').value);
-    fd.append('profile_location',document.getElementById('edLoc').value);
-    fd.append('profile_status',document.getElementById('edStatus').value);
-    fd.append('profile_level',document.getElementById('edLevel').value);
-    fd.append('profile_xp',document.getElementById('edXp').value);
-    fd.append('profile_visibility',document.getElementById('edVis').value);
-    var f=document.getElementById('edBg').files[0]; if(f) fd.append('background',f);
-    try{
-      var r=await fetch('/api/profile/update',{method:'POST',headers:headers(),credentials:'include',body:fd});
-      var j=await r.json();
-      if(!j.ok){ msg.className='msg err'; msg.textContent=j.msg||'Error'; return; }
-      msg.className='msg ok'; msg.textContent='Saved';
-      if(j.username && pathUser()!==j.username){ location.href='/profile/'+encodeURIComponent(j.username); return; }
-      document.getElementById('editPanel').classList.remove('open');
-      load();
-    }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
-  };
-
-  document.getElementById('btnScUpload').onclick=async function(){
-    var msg=document.getElementById('scMsg');
-    var type=document.getElementById('scType').value;
-    if(type==='workshop' && workshopCount(state.showcases)>=1){
-      msg.className='msg err';
-      msg.textContent='Workshop already on profile. Remove it first, then upload up to 3 images together.';
-      return;
-    }
-    var files=document.getElementById('scFile').files;
-    if(!files || !files.length){ msg.className='msg err'; msg.textContent='Choose a file'; return; }
-    if(type==='workshop' && files.length>3){
-      msg.className='msg err'; msg.textContent='Workshop: max 3 images at once'; return;
-    }
-    msg.className='msg'; msg.textContent='Processing…';
-    var fd=new FormData();
-    fd.append('type',type);
-    fd.append('title',document.getElementById('scTitle').value||type);
-    for(var i=0;i<files.length && i<(type==='workshop'?3:1);i++){
-      fd.append('file', files[i]);
-    }
-    try{
-      var r=await fetch('/api/profile/showcase/add',{method:'POST',headers:headers(),credentials:'include',body:fd});
-      var j=await r.json();
-      if(!j.ok){ msg.className='msg err'; msg.textContent=j.msg||'Error'; return; }
-      msg.className='msg ok'; msg.textContent='Added';
-      document.getElementById('scPanel').classList.remove('open');
-      document.getElementById('scFile').value='';
-      loadShowcases();
-    }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
-  };
-
-
-  var _btnAcc=document.getElementById('btnAccount'); if(_btnAcc) _btnAcc.onclick=function(){
-    document.getElementById('accPanel').classList.add('open');
-    document.getElementById('editPanel').classList.remove('open');
-    document.getElementById('scPanel').classList.remove('open');
-    // fill from /api/auth/me
-    fetch('/api/auth/me',{headers:headers(),credentials:'include'}).then(function(r){return r.json()}).then(function(j){
-      if(!j||!j.ok) return;
-      document.getElementById('accNick').value=j.display_name||'';
-      document.getElementById('accEmail').value=j.email||'';
-      document.getElementById('accPlan').value=j.is_pro?'Pro':'Free';
-      var proRow=document.getElementById('accKeyProRow');
-      var freeRow=document.getElementById('accKeyFreeRow');
-      var fullKey=j.pro_code||j.license_key||j.access_key||j.key||'';
-      window._accFullKey=fullKey;
-      window._accKeyShown=false;
-      if(j.is_pro){
-        proRow.style.display='block';
-        freeRow.style.display='none';
-        if(fullKey){
-          var masked=fullKey.length>10?(fullKey.slice(0,4)+'••••'+fullKey.slice(-4)):'••••••••';
-          document.getElementById('accKeyMasked').textContent=masked;
-          document.getElementById('accKeyHint').textContent='click to show';
-        } else {
-          document.getElementById('accKeyMasked').textContent='Pro active';
-          document.getElementById('accKeyHint').textContent='';
-          window._accFullKey='';
-        }
-      } else {
-        proRow.style.display='none';
-        freeRow.style.display='block';
-      }
-    }).catch(function(){});
-  };
-  
-  document.getElementById('accKeyMasked').onclick=function(){
-    var el=document.getElementById('accKeyMasked');
-    var hint=document.getElementById('accKeyHint');
-    if(!window._accFullKey) return;
-    window._accKeyShown=!window._accKeyShown;
-    if(window._accKeyShown){
-      el.textContent=window._accFullKey;
-      if(hint) hint.textContent='click to hide';
-    } else {
-      var k=window._accFullKey;
-      el.textContent=k.length>10?(k.slice(0,4)+'••••'+k.slice(-4)):'••••••••';
-      if(hint) hint.textContent='click to show';
-    }
-  };
-
-  document.getElementById('btnAccClose').onclick=function(){ document.getElementById('accPanel').classList.remove('open'); };
-  document.getElementById('btnAccLogout').onclick=async function(){
-    try{ await fetch('/api/auth/logout',{method:'POST',headers:headers(),credentials:'include'}); }catch(e){}
-    try{ localStorage.removeItem('sm_session'); }catch(e){}
-    location.href='/';
-  };
-  document.getElementById('btnAccSave').onclick=async function(){
-    var msg=document.getElementById('accMsg'); msg.className='msg'; msg.textContent='Saving…';
-    var fd=new FormData();
-    fd.append('display_name', document.getElementById('accNick').value);
-    var f=document.getElementById('accAvatarFile').files[0];
-    if(f) fd.append('avatar', f);
-    try{
-      var r=await fetch('/api/auth/profile',{method:'POST',headers:headers(),credentials:'include',body:fd});
-      if(!r.ok){
-        // fallback profile update
-        r=await fetch('/api/profile/update',{method:'POST',headers:headers(),credentials:'include',body:fd});
-      }
-      var j=await r.json();
-      if(!j.ok){ msg.className='msg err'; msg.textContent=j.msg||'Error'; return; }
-      msg.className='msg ok'; msg.textContent='Saved';
-      load();
-    }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
-  };
-  document.getElementById('btnAccCode').onclick=async function(){
-    var code=document.getElementById('accCode').value.trim();
-    var msg=document.getElementById('accMsg');
-    if(!code){ msg.className='msg err'; msg.textContent='Enter code'; return; }
-    try{
-      var r=await fetch('/api/unlock',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},headers()),credentials:'include',body:JSON.stringify({code:code})});
-      var j=await r.json();
-      msg.className=j.ok?'msg ok':'msg err';
-      msg.textContent=j.msg||(j.ok?'OK':'Error');
-      if(j.ok){
-        // switch UI to pro key view
-        var _btn=document.getElementById('btnAccount');
-        if(_btn) _btn.click();
-      }
-    }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
-  };
-  document.getElementById('btnAccBuy').onclick=function(e){
-    if(typeof openBuyKeyModal==='function') openBuyKeyModal(e);
-    else window.open('https://funpay.com/lots/offer?id=75434891','_blank');
-  };
-
-  load();
-})();
-</script>
-
-<div class="sm-buy-overlay" id="smBuyOverlay" aria-hidden="true">
-  <div class="sm-buy-card" role="dialog" aria-labelledby="smBuyTitle">
-    <h3 id="smBuyTitle">Buy Pro key</h3>
-    <p class="sm-buy-sub" id="smBuySub">Choose where to buy. After payment, activate the code in your account.</p>
-    <div class="sm-buy-opts">
-      <a class="sm-buy-opt funpay" id="smBuyFunpay" href="https://funpay.com/lots/offer?id=75434891" target="_blank" rel="noopener">
-        <span class="ico ico-funpay" aria-hidden="true">
-          <img src="/static/img/funpay-logo.svg" alt="FunPay" width="28" height="12"/>
-        </span>
-        <span class="txt">
-          <span class="t">FunPay</span>
-          <span class="d" id="smBuyFunpayD">Instant code after payment</span>
-        </span>
-        <span class="arrow">→</span>
-      </a>
-      <a class="sm-buy-opt tg" id="smBuyTg" href="https://t.me/SteamMakerBot" target="_blank" rel="noopener">
-        <span class="ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="#fff"><path d="M9.78 14.65l-.3 4.2c.43 0 .62-.18.85-.4l2.04-1.94 4.23 3.1c.78.43 1.33.2 1.54-.72l2.8-13.13h.01c.25-1.16-.42-1.61-1.18-1.33L3.3 9.7c-1.13.44-1.11 1.07-.19 1.35l4.37 1.36 10.15-6.4c.48-.29.91-.13.55.18L9.78 14.65z"/></svg>
-        </span>
-        <span class="txt">
-          <span class="t">Telegram</span>
-          <span class="d" id="smBuyTgD">Buy via bot / support</span>
-        </span>
-        <span class="arrow">→</span>
-      </a>
-    </div>
-    <button type="button" class="sm-buy-close" id="smBuyClose">Close</button>
-  </div>
-</div>
-
-<script>
-
-(function(){
-  var FUNPAY_URL = 'https://funpay.com/lots/offer?id=75434891';
-  var TG_URL = 'https://t.me/SteamMakerBot';
-
-  function i18nBuy(){
-    var lang = (localStorage.getItem('sm_lang') || document.documentElement.lang || 'en').slice(0,2).toLowerCase();
-    var ru = lang === 'ru';
-    var t = document.getElementById('smBuyTitle');
-    var s = document.getElementById('smBuySub');
-    var fd = document.getElementById('smBuyFunpayD');
-    var td = document.getElementById('smBuyTgD');
-    var c = document.getElementById('smBuyClose');
-    if (t) t.textContent = ru ? 'Купить Pro-ключ' : 'Buy Pro key';
-    if (s) s.textContent = ru
-      ? 'Выбери, где купить. После оплаты активируй код в аккаунте.'
-      : 'Choose where to buy. After payment, activate the code in your account.';
-    if (fd) fd.textContent = ru ? 'Код сразу после оплаты' : 'Instant code after payment';
-    if (td) td.textContent = ru ? 'Через бота / поддержку' : 'Buy via bot / support';
-    if (c) c.textContent = ru ? 'Закрыть' : 'Close';
-  }
-
-  window.openBuyKeyModal = function openBuyKeyModal(e){
-    if (e && e.preventDefault) e.preventDefault();
-    var ov = document.getElementById('smBuyOverlay');
-    if (!ov) return;
-    i18nBuy();
-    var fp = document.getElementById('smBuyFunpay');
-    var tg = document.getElementById('smBuyTg');
-    if (fp) fp.href = FUNPAY_URL;
-    if (tg) tg.href = TG_URL;
-    ov.classList.add('open');
-    ov.setAttribute('aria-hidden', 'false');
-  };
-  window.closeBuyKeyModal = function(){
-    var ov = document.getElementById('smBuyOverlay');
-    if (!ov) return;
-    ov.classList.remove('open');
-    ov.setAttribute('aria-hidden', 'true');
-  };
-
-  function bind(){
-    var ov = document.getElementById('smBuyOverlay');
-    if (!ov) return;
-    var closeBtn = document.getElementById('smBuyClose');
-    if (closeBtn) closeBtn.onclick = window.closeBuyKeyModal;
-    ov.addEventListener('click', function(ev){
-      if (ev.target === ov) window.closeBuyKeyModal();
+/* ---------- вкладки и разделы ---------- */
+document.querySelectorAll('.mk__tab').forEach(function (b) {
+  on(b, 'click', function () {
+    var k = b.getAttribute('data-tab');
+    document.querySelectorAll('.mk__tab').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+    document.querySelectorAll('.mk__pane').forEach(function (p) {
+      p.classList.toggle('is-on', p.getAttribute('data-pane') === k);
     });
-    document.addEventListener('keydown', function(ev){
-      if (ev.key === 'Escape') window.closeBuyKeyModal();
+    if (k === 'exp' && !prjLoadList.done) { prjLoadList.done = 1; prjLoadList(); }
+  });
+});
+$('lookNavs').querySelectorAll('button').forEach(function (b) {
+  on(b, 'click', function () {
+    var k = b.getAttribute('data-sec');
+    $('lookNavs').querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+    document.querySelectorAll('.pn[data-sec]').forEach(function (p) {
+      p.hidden = p.getAttribute('data-sec') !== k;
     });
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
-  else bind();
-})();
+    /* каталоги грузим лениво: первый показ раздела — первый запрос */
+    if (k === 'av' && !avCat.started) { avCat.started = 1; avCat.load(true); }
+    if (k === 'bd' && !bdCat.started) { bdCat.started = 1; bdCat.load(true); }
+  });
+});
 
+/* ---------- старт ---------- */
+loadLocal();
+syncFields();
+drawSlots();
+drawVitrines();
+drawGroups();
+render();
+fit();
+on(window, 'resize', fit);
+bgCat.load(true);
+if (window.SS_ME) paintAcc(window.SS_ME);
+
+/* ---------- мелкая обвязка шапки панели и ссылки на публичный профиль ---------- */
+var _renderBase = render;
+render = function () {
+  _renderBase();
+  var n = S.show.filter(function (s) { return s.on; }).length;
+  $('uCnt').textContent = n + ' из ' + S.show.length + ' витрин';
+};
+$('btnPublic').hidden = true;
+fetch('/api/profile/me', { credentials: 'same-origin' })
+  .then(function (r) { return r.ok ? r.json() : null; })
+  .then(function (d) {
+    if (!d || !d.ok || !d.profile.username) return;
+    $('btnPublic').href = '/profile/' + encodeURIComponent(d.profile.username);
+    $('btnPublic').hidden = false;
+  })
+  .catch(function () {});
+render();
 </script>
 </body>
 </html>

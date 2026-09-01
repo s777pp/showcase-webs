@@ -6,6 +6,7 @@
 <title>Tools · Showcase Maker</title>
 <link rel="icon" href="/static/icon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap&subset=cyrillic,cyrillic-ext,latin" rel="stylesheet"/>
+<link rel="stylesheet" href="/static/ss.css?v=20260901b"/>
 <style>
 
 :root{
@@ -31,9 +32,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 .top-chrome{
   position:sticky;top:0;z-index:50;
   border-bottom:1px solid var(--border);
-  background:rgba(8,8,8,.85);backdrop-filter:blur(16px);
+  background:#080808;backdrop-filter:none;
   padding:12px 20px 0;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
 }
+
 .top-chrome-inner{max-width:1040px;margin:0 auto}
 .brand-row{
   display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px
@@ -49,15 +52,13 @@ button,input,select,textarea{font:inherit;color:inherit}
   padding-bottom:10px;-webkit-overflow-scrolling:touch
 }
 .nav::-webkit-scrollbar{display:none}
-.nav button{
+.nav button{position:relative;z-index:1;
   flex:0 0 auto;white-space:nowrap;padding:9px 16px;font-size:13px;font-weight:500;
   border-radius:999px;border:1px solid transparent;background:transparent;
   color:var(--muted);cursor:pointer;transition:.15s
 }
 .nav button:hover{background:rgba(255,255,255,.05);color:#fff}
-.nav button.active{
-  background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.1)
-}
+.nav button.active{background:transparent;color:#fff;border-color:transparent}
 
 /* MAIN CENTERED */
 .main{
@@ -569,8 +570,382 @@ input[type="range"]{
 }
 
 </style>
+<style id="sm-shared-tools-header">
+#ssHeadHost{position:relative;z-index:80;padding-top:2px}
+.top-chrome{position:sticky!important;top:84px!important;margin-top:22px!important;width:min(calc(100% - 28px),1280px)!important;border-radius:16px!important;background:rgba(5,10,15,.78)!important;backdrop-filter:blur(22px) saturate(140%)!important}
+.top-chrome-inner{display:block!important}
+.top-chrome .brand-row{display:block!important}
+.top-chrome .brand,.top-chrome .top-actions{display:none!important}
+.top-chrome .nav{width:100%;min-height:70px!important;border-radius:11px!important;background:rgba(0,0,0,.2)!important;overflow-x:auto;justify-content:center}
+.top-chrome .nav button{font-family:'Mulish',system-ui,sans-serif!important;border-radius:10px!important}
+.top-chrome .nav button.active{border:1px solid rgba(139,233,255,.22)!important;border-bottom:1px solid rgba(139,233,255,.22)!important;background:rgba(255,255,255,.07)!important;color:#fff!important}
+.top-chrome .nav button.active::after{display:none!important}
+.main{padding-top:34px!important}
+@media(max-width:900px){.top-chrome{top:76px!important}.top-chrome .nav{justify-content:flex-start}.main{padding-top:24px!important}}
+</style>
+
+<style id="sm-modern-upload-nav">
+/* =========================================================
+   Showcase Maker — modern upload surfaces + animated nav
+   Vanilla equivalent of the supplied shadcn/Aceternity ideas.
+   Kept framework-free so the existing app.js logic is untouched.
+   ========================================================= */
+
+/* ---------- File upload surfaces ---------- */
+.sm-upload-surface,
+.drop.sm-upload-surface {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 176px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px dashed rgba(148,163,184,.32);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(0,210,255,.075), transparent 34%),
+    linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px),
+    linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+    #090d12;
+  background-size: auto, 32px 32px, 32px 32px, auto;
+  cursor: pointer;
+  transition: border-color .28s ease, box-shadow .28s ease, transform .28s ease, background-color .28s ease;
+}
+
+.sm-upload-surface::before {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,.12), transparent 62%);
+  opacity: .28;
+  transform: scale(.9);
+  transition: opacity .3s ease, transform .45s cubic-bezier(.22,1,.36,1);
+}
+
+.sm-upload-surface:hover,
+.sm-upload-surface.drag,
+.sm-upload-surface:focus-visible {
+  border-color: rgba(56,189,248,.72);
+  box-shadow: 0 0 0 1px rgba(56,189,248,.08), 0 20px 60px rgba(0,0,0,.22), inset 0 0 40px rgba(56,189,248,.025);
+  transform: translateY(-1px);
+}
+
+.sm-upload-surface:hover::before,
+.sm-upload-surface.drag::before {
+  opacity: .62;
+  transform: scale(1.04);
+}
+
+.sm-upload-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  width: min(100%, 720px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 20px 24px;
+  text-align: center;
+}
+
+.sm-upload-icon-wrap {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 5px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+  box-shadow: 0 12px 35px rgba(0,0,0,.22);
+  transition: transform .35s cubic-bezier(.22,1,.36,1), background .2s ease, border-color .2s ease;
+}
+
+.sm-upload-surface:hover .sm-upload-icon-wrap,
+.sm-upload-surface.drag .sm-upload-icon-wrap {
+  transform: translate(8px,-8px) rotate(-2deg) scale(1.03);
+  border-color: rgba(56,189,248,.28);
+  background: rgba(56,189,248,.06);
+}
+
+.sm-upload-icon {
+  width: 22px;
+  height: 22px;
+  color: rgba(255,255,255,.88);
+}
+
+.sm-upload-title {
+  position: relative;
+  z-index: 2;
+  color: rgba(255,255,255,.96);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.sm-upload-subtitle {
+  position: relative;
+  z-index: 2;
+  max-width: 520px;
+  color: rgba(255,255,255,.42);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sm-upload-meta {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.sm-upload-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+  background: rgba(255,255,255,.025);
+  color: rgba(255,255,255,.5);
+  font-size: 10px;
+}
+
+.sm-upload-selection {
+  position: relative;
+  z-index: 3;
+  display: none;
+  width: min(100%, 640px);
+  margin-top: 12px;
+  text-align: left;
+}
+
+.sm-upload-selection.show { display:block; }
+
+.sm-upload-file-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 14px;
+  padding: 13px 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 12px;
+  background: rgba(8,12,16,.82);
+  box-shadow: 0 14px 36px rgba(0,0,0,.24);
+  animation: smUploadCardIn .38s cubic-bezier(.22,1,.36,1) both;
+}
+
+.sm-upload-file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.9);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sm-upload-file-size {
+  align-self: start;
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.55);
+  font-size: 10px;
+}
+
+.sm-upload-file-info {
+  grid-column: 1/-1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  color: rgba(255,255,255,.4);
+  font-size: 10px;
+}
+
+.sm-upload-file-info strong { color: rgba(255,255,255,.68); font-weight: 600; }
+
+.sm-upload-mini {
+  min-height: 108px !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+  border-radius: 12px !important;
+}
+
+.sm-upload-mini .sm-upload-content {
+  align-items: flex-start;
+  padding: 16px;
+}
+
+.sm-upload-mini .sm-upload-icon-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+}
+
+.sm-upload-mini .sm-upload-title { font-size: 12px; }
+.sm-upload-mini .sm-upload-subtitle { font-size: 10px; }
+.sm-upload-mini .sm-upload-icon { width: 18px; height: 18px; }
+
+/* Upgrade the existing compact file chooser in Character + BG. */
+.fi.sm-file-chooser {
+  position: relative;
+  border-style: dashed !important;
+  background: rgba(4,8,11,.5) !important;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.fi.sm-file-chooser:hover,
+.fi.sm-file-chooser.drag {
+  border-color: rgba(56,189,248,.55) !important;
+  background: rgba(56,189,248,.035) !important;
+  transform: translateY(-1px);
+}
+
+.fi.sm-file-chooser .btn.ghost {
+  position: relative;
+  z-index: 2;
+}
+
+.sm-file-caption {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+
+.sm-file-caption::before {
+  content: "↑";
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,.03);
+  color: rgba(255,255,255,.65);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@keyframes smUploadCardIn {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------- Animated header / navbar ---------- */
+#nav {
+  position: relative;
+  isolation: isolate;
+  align-items: center;
+  padding-bottom: 8px;
+}
+
+#nav .sm-nav-indicator {
+  position: absolute;
+  z-index: 0;
+  top: 1px;
+  left: 0;
+  height: 38px;
+  width: 72px;
+  border: 1px solid rgba(255,255,255,.20);
+  border-radius: 12px;
+  background: rgba(255,255,255,.075);
+  box-shadow: 0 6px 24px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.035);
+  transform: translate3d(0,0,0);
+  transform-origin: 50% 50%;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform .34s cubic-bezier(.22,1,.36,1),
+    width .34s cubic-bezier(.22,1,.36,1),
+    opacity .16s ease;
+}
+
+#nav .sm-nav-indicator.is-visible { opacity: 1; }
+
+#nav > button {
+  position: relative;
+  z-index: 1;
+  min-height: 38px;
+  padding: 0 15px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent !important;
+  color: rgba(255,255,255,.58);
+  transition: color .2s ease, transform .22s cubic-bezier(.22,1,.36,1);
+}
+
+#nav > button:hover {
+  transform: translateY(-1px);
+  color: rgba(255,255,255,.92);
+}
+
+#nav > button.active {
+  color: #fff;
+  border-color: transparent !important;
+}
+
+/* Keep the visual system consistent with the reference on touch devices. */
+@media (max-width: 760px) {
+  .sm-upload-surface { min-height: 160px; }
+  .sm-upload-content { padding: 20px 16px; }
+  .sm-upload-selection { width: 100%; }
+  #nav { overflow-x: auto; scrollbar-width: none; }
+  #nav::-webkit-scrollbar { display:none; }
+  #nav .sm-nav-indicator { transition-duration: .3s; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sm-upload-surface,
+  .sm-upload-icon-wrap,
+  .sm-upload-file-card,
+  #nav .sm-nav-indicator,
+  #nav > button { transition: none !important; animation: none !important; }
+}
+</style>
+
+<style id="sm-redesign-preview">
+:root{--bg:#050608;--panel:rgba(17,20,25,.62);--card:rgba(18,21,27,.58);--elev:rgba(255,255,255,.045);--text:#f7f9fc;--muted:rgba(235,242,250,.53);--faint:rgba(235,242,250,.3);--accent:#3d81e3;--accent2:#55d9ff;--border:rgba(255,255,255,.1);--radius:22px}html,body{background:#050608}body::before,body::after{content:"";position:fixed;z-index:0;pointer-events:none;border-radius:50%;filter:blur(90px);opacity:.36;animation:smAppDrift 20s ease-in-out infinite alternate}body::before{width:50vw;height:50vw;left:-20vw;top:-28vw;background:radial-gradient(circle,rgba(0,210,255,.3),transparent 68%)}body::after{width:44vw;height:44vw;right:-16vw;top:18vh;background:radial-gradient(circle,rgba(61,129,227,.28),transparent 70%);animation-delay:-8s}@keyframes smAppDrift{to{transform:translate3d(8vw,7vh,0) scale(1.13)}}.bg-video,.stars-layer{display:none!important}.shell{isolation:isolate;background:linear-gradient(180deg,rgba(5,6,8,.04),rgba(5,6,8,.82))}
+.top-chrome{top:12px;width:min(calc(100% - 28px),1240px);margin:12px auto 0;padding:9px 11px;border:1px solid rgba(255,255,255,.11);border-radius:22px;background:rgba(8,10,13,.7);box-shadow:0 22px 70px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.075);backdrop-filter:blur(26px) saturate(140%)}.top-chrome-inner{max-width:none;display:flex;align-items:center;gap:12px}.brand-row{display:contents}.brand{order:1;min-width:190px}.brand img{width:38px;height:38px;border:1px solid rgba(255,255,255,.12);border-radius:13px}.brand b{font-size:14px}.brand span{font-size:9px;text-transform:uppercase;letter-spacing:.18em}.top-chrome .nav{order:2;flex:1;margin:0;padding:4px;gap:3px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:rgba(0,0,0,.26)}.top-actions{order:3;margin-left:auto;flex-wrap:nowrap}.top-actions .pill,.top-actions .btn{min-height:38px;padding:8px 13px;border-radius:12px}.nav button{padding:9px 11px;border-radius:10px;font-size:11px;color:rgba(255,255,255,.48)}.nav button:hover{background:rgba(255,255,255,.055)}.nav button.active{background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.065));box-shadow:inset 0 1px rgba(255,255,255,.09);color:#fff}
+.main{max-width:1240px;padding:62px 24px 60px}.back{margin-bottom:18px;padding:7px 10px;border:1px solid rgba(255,255,255,.07);border-radius:999px;background:rgba(255,255,255,.025)}.topbar{align-items:end;margin-bottom:28px}.h-title{font-size:clamp(2.35rem,5vw,4.6rem);font-weight:650;letter-spacing:-.065em;line-height:.92}.h-sub{max-width:560px;margin-top:13px;font-size:13px;color:rgba(255,255,255,.42)}
+#tab-process{display:grid!important;grid-template-columns:minmax(0,1.55fr) minmax(310px,.8fr);gap:14px;align-items:start}#tab-process>.card{margin:0}#tab-process>.card:nth-child(1){grid-column:1/-1}#tab-process>.card:nth-child(2){grid-column:2;grid-row:2/span 2}#tab-process>#wmPreviewCard{grid-column:1;grid-row:2}#tab-process>.card:nth-child(4){grid-column:1;grid-row:3}.card{padding:22px;border:1px solid rgba(255,255,255,.105);border-radius:22px;background:linear-gradient(145deg,rgba(20,23,29,.7),rgba(8,10,13,.57));box-shadow:0 24px 70px rgba(0,0,0,.27),inset 0 1px rgba(255,255,255,.07);backdrop-filter:blur(22px) saturate(130%)}.card h2{display:flex;align-items:center;gap:9px;margin-bottom:17px;font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:rgba(255,255,255,.62)}.card h2::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent2);box-shadow:0 0 15px rgba(85,217,255,.75)}
+.modes{gap:10px}.mode{min-height:92px;padding:17px;border-color:rgba(255,255,255,.09);border-radius:16px;background:rgba(0,0,0,.23)}.mode:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.2)}.mode.active{border-color:rgba(85,217,255,.42);background:linear-gradient(135deg,rgba(85,217,255,.11),rgba(61,129,227,.035));box-shadow:inset 0 1px rgba(255,255,255,.07),0 15px 35px rgba(0,0,0,.18)}.mode strong{font-size:14px}.mode span{font-size:11px}#tab-process>.card:nth-child(2) .row{display:grid;grid-template-columns:1fr 1fr;gap:13px}label.field{min-width:0;color:rgba(255,255,255,.42);font-size:10px;text-transform:uppercase;letter-spacing:.08em}label.field input,label.field select,input,select,textarea{min-height:43px;border-color:rgba(255,255,255,.09);border-radius:12px;background:rgba(0,0,0,.27);font-size:12px;text-transform:none;letter-spacing:0}input:focus,select:focus,textarea:focus{border-color:rgba(85,217,255,.58)!important;box-shadow:0 0 0 3px rgba(85,217,255,.07)}
+.drop,.sm-upload-surface{min-height:190px!important;border-color:rgba(255,255,255,.16)!important;border-radius:17px!important;background:radial-gradient(circle at 50% 35%,rgba(85,217,255,.07),transparent 35%),linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px),rgba(0,0,0,.24)!important;background-size:auto,28px 28px,28px 28px,auto!important}.drop:hover,.drop.drag,.sm-upload-surface:hover{border-color:rgba(85,217,255,.55)!important;background-color:rgba(85,217,255,.025)!important}.btn{min-height:42px;padding:10px 17px;border-radius:12px;background:#f7f9fb;color:#07090c}.btn:hover{transform:translateY(-1px);box-shadow:0 12px 30px rgba(0,0,0,.22)}.btn.ghost{border-color:rgba(255,255,255,.09);background:rgba(255,255,255,.035);color:rgba(255,255,255,.72)}#wmCanvasWrap{border-radius:16px!important;border-color:rgba(255,255,255,.09)!important;background:rgba(0,0,0,.25)!important}.app-footer{border-top-color:rgba(255,255,255,.07)}
+@media(max-width:1050px){.top-chrome-inner{display:block}.brand-row{display:flex}.top-chrome .nav{margin-top:9px}.top-actions{flex-wrap:wrap}#tab-process{grid-template-columns:1fr}#tab-process>.card,#tab-process>.card:nth-child(1),#tab-process>.card:nth-child(2),#tab-process>#wmPreviewCard,#tab-process>.card:nth-child(4){grid-column:1;grid-row:auto}}@media(max-width:700px){.top-chrome{top:6px;width:calc(100% - 12px);margin-top:6px;border-radius:18px;padding:8px}.brand span,.top-actions .pill,#trialTimer{display:none!important}.top-actions .btn{padding:8px 10px;font-size:10px}.main{padding:38px 12px 40px}.h-title{font-size:2.8rem}.card{padding:16px;border-radius:18px}#tab-process>.card:nth-child(2) .row{grid-template-columns:1fr}.modes{grid-template-columns:1fr}.nav button{padding:8px 10px}}@media(prefers-reduced-motion:reduce){body::before,body::after{animation:none}}
+.shell::before{content:"";position:fixed;inset:-48%;z-index:-1;pointer-events:none;background:conic-gradient(from 45deg,transparent 0 14%,rgba(0,210,255,.13) 21%,transparent 31% 50%,rgba(61,129,227,.15) 60%,transparent 72% 86%,rgba(164,244,253,.09) 94%,transparent);filter:blur(85px);animation:smToolsAurora 18s linear infinite}.shell::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(55% 60% at 12% 20%,rgba(0,210,255,.12),transparent 68%),radial-gradient(60% 55% at 88% 54%,rgba(61,129,227,.14),transparent 70%);animation:smToolsPulse 7s ease-in-out infinite alternate}@keyframes smToolsAurora{to{transform:rotate(360deg) scale(1.08)}}@keyframes smToolsPulse{to{opacity:.5;transform:scale(1.08) translate3d(-2%,1%,0)}}
+.top-chrome .nav button::before{display:block;margin:0 auto 4px;font-size:15px;line-height:1;color:rgba(255,255,255,.82)}.top-chrome .nav button[data-tab="process"]::before{content:"✦"}.top-chrome .nav button[data-tab="compose"]::before{content:"♙"}.top-chrome .nav button[data-tab="download"]::before{content:"↓"}.top-chrome .nav button[data-tab="convert"]::before{content:"↻"}.top-chrome .nav button[data-tab="upscale"]::before{content:"◇"}.top-chrome .nav button[data-tab="hex"]::before{content:"⌘"}.top-chrome .nav button[data-tab="preview"]::before{content:"◫"}.top-chrome .nav button[data-tab="steam"]::before{content:"◉"}.top-chrome .nav button[data-tab="da"]::before{content:"△"}.top-chrome .nav button[data-tab="about"]::before{content:"?"}.top-chrome .nav button{min-width:58px;padding:8px 7px 7px;font-size:9px}.top-chrome .nav button.active::before{color:var(--accent2);text-shadow:0 0 14px rgba(85,217,255,.7)}
+@media(max-width:700px){.top-chrome .nav button::before{display:inline;margin:0 6px 0 0}.top-chrome .nav button{min-width:auto;font-size:10px}.shell::before{animation-duration:13s}}
+.top-chrome .nav button{min-width:68px!important;padding:8px 8px 7px!important;font-size:10px!important}.top-chrome .nav button::before{content:""!important;display:block!important;width:23px;height:23px;margin:0 auto 6px!important;background:currentColor!important;-webkit-mask:var(--tool-icon) center/contain no-repeat;mask:var(--tool-icon) center/contain no-repeat;filter:drop-shadow(0 0 9px rgba(85,217,255,.18))}.top-chrome .nav button[data-tab="process"]{--tool-icon:url('/static/img/tool-icons/process.svg')}.top-chrome .nav button[data-tab="compose"]{--tool-icon:url('/static/img/tool-icons/character.svg')}.top-chrome .nav button[data-tab="download"]{--tool-icon:url('/static/img/tool-icons/download.svg')}.top-chrome .nav button[data-tab="convert"]{--tool-icon:url('/static/img/tool-icons/converter.svg')}.top-chrome .nav button[data-tab="upscale"]{--tool-icon:url('/static/img/tool-icons/upscale.svg')}.top-chrome .nav button[data-tab="hex"]{--tool-icon:url('/static/img/tool-icons/hex.svg')}.top-chrome .nav button[data-tab="preview"]{--tool-icon:url('/static/img/tool-icons/preview.svg')}.top-chrome .nav button[data-tab="steam"]{--tool-icon:url('/static/img/tool-icons/steam.svg')}.top-chrome .nav button[data-tab="da"]{--tool-icon:url('/static/img/tool-icons/deviantart.svg')}.top-chrome .nav button[data-tab="about"]{--tool-icon:url('/static/img/tool-icons/about.svg')}.top-chrome .nav button.active::before{color:var(--accent2)!important}@media(max-width:700px){.top-chrome .nav button{min-width:auto!important}.top-chrome .nav button::before{display:inline-block!important;width:19px;height:19px;margin:0 7px -5px 0!important}}
+/* Unified tools workspace */
+.main{width:min(calc(100% - 40px),1220px)!important;margin:0 auto!important;padding-left:0!important;padding-right:0!important}.topbar{margin:24px 0 28px!important}.tab{animation:smTabIn .36s ease both}@keyframes smTabIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}.tab>.card,.compose-controls,.compose-preview-panel{border:1px solid rgba(255,255,255,.12)!important;background:linear-gradient(145deg,rgba(15,20,27,.78),rgba(6,9,13,.66))!important;box-shadow:0 28px 80px rgba(0,0,0,.26),inset 0 1px rgba(255,255,255,.045)!important;backdrop-filter:blur(22px) saturate(125%)}.tab>.card{border-radius:24px!important;padding:28px!important}.tab>.card>h2:first-child{font-size:13px!important;text-transform:uppercase;letter-spacing:.16em;color:rgba(255,255,255,.72)!important}.tab>.card>h2:first-child::before{content:"";display:inline-block;width:7px;height:7px;margin-right:10px;border-radius:50%;background:var(--accent2);box-shadow:0 0 14px rgba(85,217,255,.6)}
+#tab-download>.card,#tab-convert>.card,#tab-upscale>.card,#tab-hex>.card,#tab-preview>.card,#tab-da>.card,#tab-about>.card{max-width:980px;margin:0 auto;min-height:360px}.steps,.compose-intro,.h-sub{color:rgba(255,255,255,.48)!important;line-height:1.65!important}.drop{min-height:190px!important;border:1px dashed rgba(133,224,255,.25)!important;border-radius:18px!important;background:linear-gradient(rgba(85,217,255,.018),rgba(85,217,255,.008)),repeating-linear-gradient(0deg,transparent 0 31px,rgba(255,255,255,.018) 32px),repeating-linear-gradient(90deg,transparent 0 31px,rgba(255,255,255,.018) 32px)!important;transition:.25s ease}.drop:hover{border-color:rgba(85,217,255,.55)!important;background-color:rgba(85,217,255,.035)!important;transform:translateY(-2px)}.field input,.field select,.tab input:not([type="range"]):not([type="checkbox"]):not([type="color"]),.tab select{min-height:46px!important;border-radius:13px!important;background:rgba(0,0,0,.28)!important;border:1px solid rgba(255,255,255,.1)!important}.tab .btn{min-height:43px;border-radius:13px!important}.files{gap:10px!important}.files>*{border-radius:14px!important;background:rgba(255,255,255,.035)!important;border:1px solid rgba(255,255,255,.08)!important}.sm-progress,.da-progress{padding:16px!important;border:1px solid rgba(255,255,255,.09)!important;border-radius:15px!important;background:rgba(0,0,0,.23)!important}.sm-prog-track,.da-prog-track{height:7px!important;border-radius:99px!important;overflow:hidden}
+#tab-download>.card::after,#tab-convert>.card::after,#tab-hex>.card::after,#tab-preview>.card::after{display:block;margin-top:28px;padding-top:18px;border-top:1px solid rgba(255,255,255,.07);font-size:10px;letter-spacing:.16em;color:rgba(255,255,255,.25)}#tab-download>.card::after{content:"YOUTUBE / TIKTOK / X / REDDIT / PINTEREST"}#tab-convert>.card::after{content:"GIF / MP4 / WEBM / PNG / JPG / WEBP"}#tab-hex>.card::after{content:"STEAM COMPATIBILITY / HEX 21"}#tab-preview>.card::after{content:"WORKSHOP / FEATURED / ARTWORK SPLIT"}
+.compose-layout{grid-template-columns:minmax(0,1fr) minmax(320px,410px)!important;gap:18px!important;align-items:start}.compose-controls,.compose-preview-panel{border-radius:24px!important;padding:24px!important}.compose-controls .row{padding:12px 0;border-bottom:1px solid rgba(255,255,255,.055)}.compose-controls .row:last-of-type{border-bottom:0}.compose-preview-panel{position:sticky!important;top:112px!important}.compose-canvas-wrap,.compose-final-wrap{border-radius:18px!important;border:1px solid rgba(255,255,255,.1)!important;background:radial-gradient(circle at 50% 20%,rgba(85,217,255,.08),transparent 55%),rgba(0,0,0,.32)!important}.compose-help{background:rgba(0,0,0,.18)!important;border-color:rgba(255,255,255,.07)!important}
+#tab-steam>.card{padding:24px!important}.steam-layout{grid-template-columns:minmax(0,1fr) minmax(320px,430px)!important;gap:22px!important}.steam-block{margin:0 0 10px!important;padding:18px!important;border:1px solid rgba(255,255,255,.085)!important;border-radius:17px!important;background:rgba(0,0,0,.18)!important}.steam-block h3{margin-top:0!important}.steam-video-side{position:sticky;top:112px;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:rgba(0,0,0,.22)}.steam-video-wrap{border-radius:14px!important;overflow:hidden}.code{border-radius:14px!important;background:#05080b!important;border:1px solid rgba(85,217,255,.14)!important}.upscale-lock{border-radius:20px!important;background:radial-gradient(circle at 50% 0,rgba(85,217,255,.09),transparent 55%),rgba(0,0,0,.2)!important;border:1px solid rgba(255,255,255,.1)!important}.compare-wrap{border-radius:18px!important;overflow:hidden}
+.about-card{text-align:center!important;display:grid!important;place-items:center!important;align-content:center!important;min-height:440px!important}.about-card h2{font-size:13px!important}.about-text{font-size:16px!important;max-width:580px}.about-stack{width:min(100%,520px)!important}.about-code-row{padding:10px!important;border-radius:16px!important;background:rgba(0,0,0,.24)!important;border:1px solid rgba(255,255,255,.08)!important}
+@media(max-width:900px){.compose-layout,.steam-layout{grid-template-columns:1fr!important}.compose-preview-panel,.steam-video-side{position:relative!important;top:auto!important}.main{width:min(calc(100% - 24px),1220px)!important}.tab>.card{padding:20px!important}}@media(max-width:600px){#tab-download>.card,#tab-convert>.card,#tab-upscale>.card,#tab-hex>.card,#tab-preview>.card,#tab-da>.card,#tab-about>.card{min-height:0}.drop{min-height:150px!important}.tab>.card{border-radius:19px!important;padding:16px!important}}
+</style>
 </head>
 <body>
+<style>#tab-process:not(.active){display:none!important}#tab-process.active{display:grid!important}.top-chrome .nav{align-items:stretch!important;padding-top:0!important;padding-bottom:0!important}.top-chrome .nav button{align-self:stretch!important;margin-top:0!important;margin-bottom:0!important;border-radius:0!important}.top-chrome .nav button.active{background:linear-gradient(180deg,rgba(85,217,255,.12),rgba(85,217,255,.035))!important;border-color:transparent!important;border-left:1px solid rgba(85,217,255,.16)!important;border-right:1px solid rgba(85,217,255,.16)!important;border-bottom:2px solid var(--accent2)!important;box-shadow:inset 0 1px rgba(255,255,255,.07),0 8px 24px rgba(0,0,0,.15)!important;backdrop-filter:none!important}.top-chrome .nav button.active:hover{background:linear-gradient(180deg,rgba(85,217,255,.16),rgba(85,217,255,.055))!important}</style>
+<style id="sm-production-tools-theme">
+:root{--pd-ink:#05090d;--pd-panel:#0a141c;--pd-panel-2:#122532;--pd-paper:#eaf7fa;--pd-cyan:#43d7ff;--pd-blue:#3478f6;--pd-signal:#f2c14e;--pd-line:rgba(138,215,238,.18)}html,body{background:var(--pd-ink)!important;color:var(--pd-paper)!important}body{font-family:"Segoe UI",Arial,sans-serif!important}.shell{background:linear-gradient(90deg,rgba(67,215,255,.032) 1px,transparent 1px),linear-gradient(rgba(67,215,255,.024) 1px,transparent 1px),radial-gradient(circle at 10% 12%,rgba(25,127,160,.18),transparent 30%),linear-gradient(145deg,#05090d,#071019 60%,#06111a)!important;background-size:64px 64px,64px 64px,auto,auto!important}.bg-video{display:none!important}.shell::before{opacity:.38!important;filter:blur(120px)!important}.shell::after{opacity:.28!important}
+.top-chrome{width:min(calc(100% - 28px),1280px)!important;padding:6px 9px!important;border-radius:11px!important;border-color:var(--pd-line)!important;background:rgba(4,9,13,.94)!important;box-shadow:0 20px 60px rgba(0,0,0,.3)!important;backdrop-filter:blur(16px)!important}.brand{min-width:180px!important}.brand img{border-radius:7px!important;background:var(--pd-panel)!important}.brand span{font-family:Consolas,monospace!important;color:rgba(67,215,255,.46)!important}.top-chrome .nav{min-height:66px;border-radius:7px!important;border-color:rgba(138,215,238,.12)!important;background:#03070a!important}.top-chrome .nav button{position:relative;border-radius:0!important;font-family:Consolas,"Courier New",monospace!important;color:rgba(234,247,250,.53)!important}.top-chrome .nav button.active{background:rgba(67,215,255,.08)!important;border-left:0!important;border-right:0!important;border-bottom:3px solid var(--pd-cyan)!important;box-shadow:none!important;color:#fff!important}.top-chrome .nav button.active::after{content:"ACTIVE";position:absolute;right:5px;top:4px;color:rgba(67,215,255,.62);font-size:6px;letter-spacing:.12em}.top-actions .pill,.top-actions .btn{border-radius:5px!important;font-family:Consolas,monospace!important}
+.main{width:min(calc(100% - 40px),1280px)!important}.back{border-radius:4px!important;font-family:Consolas,monospace!important}.topbar{padding:12px 0 20px;border-bottom:1px solid var(--pd-line)}.h-title{font-family:"Arial Narrow","Roboto Condensed","Segoe UI",sans-serif!important;font-weight:760!important;text-transform:uppercase;letter-spacing:-.055em!important}.h-title::before{content:"WORKSPACE / ";color:var(--pd-cyan);font:600 10px/1 Consolas,monospace;letter-spacing:.15em}.h-sub{font-family:Consolas,monospace!important;font-size:11px!important}
+.tab>.card,.compose-controls,.compose-preview-panel{border-radius:8px!important;border-color:var(--pd-line)!important;background:linear-gradient(145deg,rgba(9,19,27,.95),rgba(4,9,13,.92))!important;box-shadow:12px 16px 0 rgba(0,0,0,.14)!important;backdrop-filter:blur(10px)!important}.tab>.card{padding:24px!important}.tab>.card>h2:first-child,.compose-controls>h2{font-family:Consolas,monospace!important;color:var(--pd-cyan)!important}.modes{gap:8px!important}.mode{min-height:88px;border-radius:5px!important;background:#061018!important;border-color:rgba(138,215,238,.14)!important}.mode.active{border-color:var(--pd-cyan)!important;background:linear-gradient(90deg,rgba(67,215,255,.12),rgba(67,215,255,.025))!important;box-shadow:inset 3px 0 var(--pd-cyan)!important}.mode strong{font-family:Consolas,monospace!important}.field{font-family:Consolas,monospace!important}.field input,.field select,.tab input:not([type="range"]):not([type="checkbox"]):not([type="color"]),.tab select{border-radius:4px!important;background:#03090d!important;border-color:rgba(138,215,238,.16)!important}.drop{border-radius:6px!important;background:linear-gradient(90deg,rgba(67,215,255,.025) 1px,transparent 1px),linear-gradient(rgba(67,215,255,.025) 1px,transparent 1px),#050d12!important;background-size:28px 28px!important;font-family:Consolas,monospace!important}.tab .btn{border-radius:4px!important;font-family:Consolas,monospace!important}.btn:not(.ghost){background:var(--pd-paper)!important;color:#041016!important;box-shadow:5px 5px 0 rgba(67,215,255,.14)!important}.files>*{border-radius:5px!important}.sm-progress,.da-progress{border-radius:5px!important}.compose-canvas-wrap,.compose-final-wrap,.steam-video-side,.steam-block,.code,.upscale-lock,.compare-wrap,.about-code-row{border-radius:6px!important}.compose-preview-panel h3,.steam-block h3{font-family:Consolas,monospace!important}.steam-block{border-left:3px solid rgba(67,215,255,.25)!important}.about-card{background:linear-gradient(90deg,rgba(67,215,255,.05),transparent 45%),#071018!important}
+@media(max-width:700px){.top-chrome{border-radius:8px!important}.top-chrome .nav{overflow-x:auto}.top-chrome .nav button.active::after{display:none}.main{width:min(calc(100% - 20px),1280px)!important}.h-title::before{display:block;margin-bottom:8px}}
+</style>
+<style id="sm-shared-tools-final">
+#ssHeadHost{position:relative;z-index:120;padding-top:2px}.top-chrome{position:sticky!important;top:84px!important;margin-top:22px!important;width:min(calc(100% - 28px),1280px)!important;border-radius:16px!important;background:rgba(5,10,15,.78)!important;backdrop-filter:blur(22px) saturate(140%)!important}.top-chrome-inner{display:block!important}.top-chrome .brand-row{display:block!important}.top-chrome .brand,.top-chrome .top-actions{display:none!important}.top-chrome .nav{width:100%;min-height:70px!important;border-radius:11px!important;background:rgba(0,0,0,.2)!important;overflow-x:auto;justify-content:center}.top-chrome .nav button{font-family:'Mulish',system-ui,sans-serif!important;border-radius:10px!important}.top-chrome .nav button.active{border:1px solid rgba(139,233,255,.22)!important;border-bottom:1px solid rgba(139,233,255,.22)!important;background:rgba(255,255,255,.07)!important;color:#fff!important}.top-chrome .nav button.active::after{display:none!important}.main{padding-top:34px!important}@media(max-width:900px){.top-chrome{top:76px!important}.top-chrome .nav{justify-content:flex-start}.main{padding-top:24px!important}}
+</style>
 <div class="bg-video" aria-hidden="true">
   <video autoplay loop muted playsinline>
     <source src="/static/video/hero.mp4" type="video/mp4"/>
@@ -582,6 +957,7 @@ input[type="range"]{
 
 
 <div class="shell">
+  <div id="ssHeadHost"></div>
   <header class="top-chrome">
     <div class="top-chrome-inner">
       <div class="brand-row">
@@ -5144,5 +5520,304 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 })();
 
 </script>
+
+<script id="sm-modern-upload-nav-js">
+(function(){
+  'use strict';
+
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+  function formatBytes(bytes){
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+    const units = ['B','KB','MB','GB'];
+    const i = Math.min(Math.floor(Math.log(bytes)/Math.log(1024)), units.length-1);
+    return (bytes/Math.pow(1024,i)).toFixed(i ? 2 : 0) + ' ' + units[i];
+  }
+
+  function prettyType(file){
+    if (!file) return 'file';
+    if (file.type) return file.type;
+    const n=(file.name||'').toLowerCase();
+    const m=n.match(/\.([a-z0-9]+)$/);
+    return m ? m[1].toUpperCase() : 'file';
+  }
+
+  function fileMeta(files){
+    const arr=Array.from(files||[]);
+    if (!arr.length) return '';
+    const items=arr.slice(0,4).map(f=>{
+      const modified = f.lastModified ? new Date(f.lastModified).toLocaleDateString() : '—';
+      return '<div class="sm-upload-file-card">' +
+        '<div class="sm-upload-file-name">' + escapeHtml(f.name || 'file') + '</div>' +
+        '<div class="sm-upload-file-size">' + formatBytes(f.size) + '</div>' +
+        '<div class="sm-upload-file-info"><span><strong>Type</strong> ' + escapeHtml(prettyType(f)) + '</span><span><strong>Modified</strong> ' + escapeHtml(modified) + '</span></div>' +
+      '</div>';
+    }).join('');
+    if (arr.length > 4) {
+      return items + '<div style="margin-top:7px;color:rgba(255,255,255,.4);font-size:10px">+' + (arr.length-4) + ' more file(s)</div>';
+    }
+    return items;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[ch]));
+  }
+
+  function ensureSurfaceContents(surface, multi){
+    if (surface.querySelector('.sm-upload-content')) return surface.querySelector('.sm-upload-content');
+    const content=document.createElement('div');
+    content.className='sm-upload-content';
+    content.innerHTML =
+      '<div class="sm-upload-icon-wrap" aria-hidden="true">' +
+        '<svg class="sm-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/>' +
+        '</svg>' +
+      '</div>' +
+      '<div class="sm-upload-title">Upload file</div>' +
+      '<div class="sm-upload-subtitle">Drag or drop your ' + (multi ? 'files' : 'file') + ' here or click to upload</div>' +
+      '<div class="sm-upload-meta"><span>Drag &amp; drop</span><span>Browse</span></div>';
+    surface.appendChild(content);
+    return content;
+  }
+
+  function setSurfaceText(surface, fileCount, custom){
+    const title=$('.sm-upload-title', surface);
+    const sub=$('.sm-upload-subtitle', surface);
+    const meta=$('.sm-upload-meta', surface);
+    if (!title || !sub) return;
+    const ru = (localStorage.getItem('sm_lang') || 'en') === 'ru';
+    if (!fileCount) {
+      title.textContent = ru ? 'Загрузить файл' : 'Upload file';
+      sub.textContent = custom || (ru ? 'Перетащи файл сюда или нажми для выбора' : 'Drag or drop your files here or click to upload');
+      if (meta) meta.innerHTML=ru ? '<span>Перетащить</span><span>Выбрать</span>' : '<span>Drag & drop</span><span>Browse</span>';
+      return;
+    }
+    title.textContent = ru
+      ? (fileCount === 1 ? 'Выбран 1 файл' : 'Выбрано файлов: ' + fileCount)
+      : (fileCount === 1 ? '1 file selected' : fileCount + ' files selected');
+    sub.textContent = ru ? 'Перетащи ещё файлы сюда или нажми, чтобы выбрать' : 'Drop more files here or click to replace / add';
+    if (meta) meta.innerHTML=ru ? '<span>Готово</span><span>' + fileCount + (fileCount===1?' файл':' файла(ов)') + '</span>' : '<span>Ready</span><span>' + fileCount + (fileCount===1?' item':' items') + '</span>';
+  }
+
+  function addSelectionPanel(surface){
+    if (surface.querySelector('.sm-upload-selection')) return;
+    const panel=document.createElement('div');
+    panel.className='sm-upload-selection';
+    panel.setAttribute('aria-live','polite');
+    const content=surface.querySelector('.sm-upload-content');
+    if (content) content.appendChild(panel); else surface.appendChild(panel);
+  }
+
+  function showFiles(surface, files){
+    const arr=Array.from(files||[]);
+    addSelectionPanel(surface);
+    const panel=surface.querySelector('.sm-upload-selection');
+    if (!panel) return;
+    if (!arr.length) {
+      panel.classList.remove('show');
+      panel.innerHTML='';
+      setSurfaceText(surface, 0);
+      return;
+    }
+    panel.innerHTML=fileMeta(arr);
+    panel.classList.add('show');
+    setSurfaceText(surface, arr.length);
+  }
+
+  function enhanceDropSurface(surface, input){
+    if (!surface || surface.dataset.smEnhanced === '1') return;
+    surface.dataset.smEnhanced='1';
+    surface.classList.add('sm-upload-surface');
+    // Existing drop zones contain a legacy text node. Remove only bare text nodes so
+    // the new upload UI does not show duplicate instructions.
+    Array.from(surface.childNodes).forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) node.remove();
+    });
+    ensureSurfaceContents(surface, !!input?.multiple);
+
+    // Existing app handlers remain responsible for actually accepting files.
+    // We only add visual state, preventing duplicate upload logic.
+    surface.addEventListener('dragenter', e=>{ e.preventDefault(); surface.classList.add('drag'); });
+    surface.addEventListener('dragover', e=>{ e.preventDefault(); surface.classList.add('drag'); });
+    surface.addEventListener('dragleave', ()=>surface.classList.remove('drag'));
+    surface.addEventListener('drop', e=>{
+      surface.classList.remove('drag');
+      if (e.dataTransfer?.files?.length) showFiles(surface, e.dataTransfer.files);
+    });
+    if (input) {
+      input.addEventListener('change', ()=>showFiles(surface, input.files));
+    }
+  }
+
+  function enhanceCompactChooser(fi, input){
+    if (!fi || !input || fi.dataset.smEnhanced==='1') return;
+    fi.dataset.smEnhanced='1';
+    fi.classList.add('sm-file-chooser');
+    const first=fi.querySelector('span');
+    if (first && !first.closest('.sm-file-caption')) {
+      const caption=document.createElement('span');
+      caption.className='sm-file-caption';
+      caption.appendChild(first);
+      fi.insertBefore(caption, fi.firstChild);
+    }
+    fi.addEventListener('dragenter', e=>{e.preventDefault();fi.classList.add('drag');});
+    fi.addEventListener('dragover', e=>{e.preventDefault();fi.classList.add('drag');});
+    fi.addEventListener('dragleave', e=>{if(e.target===fi || !fi.contains(e.relatedTarget))fi.classList.remove('drag');});
+    fi.addEventListener('drop', e=>{
+      e.preventDefault();fi.classList.remove('drag');
+      const files=e.dataTransfer?.files;
+      if (!files?.length) return;
+      try {
+        const dt=new DataTransfer();
+        dt.items.add(files[0]);
+        input.files=dt.files;
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+      } catch(_) {
+        // Browser may disallow programmatic FileList assignment; user can still click Choose.
+      }
+    });
+  }
+
+  function enhanceHiddenPicker(input){
+    if (!input || input.dataset.smEnhanced==='1') return;
+    if (input.type !== 'file') return;
+    if (input.closest('.drop,.sm-upload-surface,.fi.sm-file-chooser')) return;
+
+    // These hidden inputs are already controlled by their dedicated large drop surface.
+    // Do NOT insert a second upload component next to them.
+    const pairedDropIds = {
+      fileInput: 'drop',
+      cvInput: 'cvDrop',
+      hexInput: 'hexDrop',
+      upscaleFile: 'upscaleDrop'
+    };
+    if (pairedDropIds[input.id]) {
+      const existing = document.getElementById(pairedDropIds[input.id]);
+      if (existing) return;
+    }
+
+    const parent=input.parentElement;
+    if (!parent) return;
+
+    // Special standalone preview avatar and dynamic picker rows keep their existing buttons.
+    const row=input.closest('.fi');
+    if (row) {
+      enhanceCompactChooser(row,input);
+      return;
+    }
+
+    // For completely hidden inputs create a visually consistent mini dropzone immediately before it.
+    const surface=document.createElement('div');
+    surface.className='sm-upload-surface sm-upload-mini';
+    surface.setAttribute('role','button');
+    surface.setAttribute('tabindex','0');
+    surface.setAttribute('aria-label','Upload file');
+    ensureSurfaceContents(surface, !!input.multiple);
+    parent.insertBefore(surface,input);
+    input.dataset.smEnhanced='1';
+    surface.addEventListener('click',()=>input.click());
+    surface.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click();}});
+    surface.addEventListener('dragenter',e=>{e.preventDefault();surface.classList.add('drag');});
+    surface.addEventListener('dragover',e=>{e.preventDefault();surface.classList.add('drag');});
+    surface.addEventListener('dragleave',()=>surface.classList.remove('drag'));
+    surface.addEventListener('drop',e=>{
+      e.preventDefault();surface.classList.remove('drag');
+      const files=e.dataTransfer?.files;
+      if(!files?.length)return;
+      try{
+        const dt=new DataTransfer();
+        Array.from(files).slice(0,input.multiple?files.length:1).forEach(f=>dt.items.add(f));
+        input.files=dt.files;
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+      }catch(_){showFiles(surface,files);}
+    });
+    input.addEventListener('change',()=>showFiles(surface,input.files));
+  }
+
+  function refreshUploads(root=document){
+    // Existing large dropzones are upgraded in place.
+    $$('.drop', root).forEach(drop=>{
+      const inputId={
+        '#drop':'fileInput','#cvDrop':'cvInput','#hexDrop':'hexInput','#upscaleDrop':'upscaleFile'
+      }['#'+drop.id];
+      const input=inputId ? document.getElementById(inputId) : null;
+      enhanceDropSurface(drop,input);
+    });
+
+    // The two Character + BG inputs are compact choosers.
+    ['composeBg','composeChar'].forEach(id=>{
+      const input=document.getElementById(id);
+      if(input) enhanceCompactChooser(input.closest('.fi'),input);
+    });
+
+    $$('input[type="file"]', root).forEach(enhanceHiddenPicker);
+  }
+
+  /* ---------- Animated navbar indicator (Aceternity-like shared layout state) ---------- */
+  function setupNav(){
+    const nav=document.getElementById('nav');
+    if(!nav || nav.querySelector('.sm-nav-indicator')) return;
+    const indicator=document.createElement('div');
+    indicator.className='sm-nav-indicator';
+    nav.insertBefore(indicator,nav.firstChild);
+
+    const buttons=()=>$$(':scope > button[data-tab]',nav);
+    function moveTo(btn,visible=true){
+      if(!btn)return;
+      const nr=nav.getBoundingClientRect();
+      const br=btn.getBoundingClientRect();
+      indicator.style.width=br.width+'px';
+      indicator.style.transform='translate3d('+(br.left-nr.left)+'px,0,0) scale(1)';
+      indicator.classList.toggle('is-visible',visible);
+    }
+    function moveToActive(){
+      const active=nav.querySelector(':scope > button.active') || buttons()[0];
+      moveTo(active,!!active);
+    }
+    buttons().forEach(btn=>{
+      btn.addEventListener('mouseenter',()=>moveTo(btn,true));
+      btn.addEventListener('focus',()=>moveTo(btn,true));
+      btn.addEventListener('mouseleave',moveToActive);
+      btn.addEventListener('blur',moveToActive);
+    });
+    nav.addEventListener('mouseleave',moveToActive);
+    window.addEventListener('resize',moveToActive,{passive:true});
+    document.addEventListener('click',e=>{
+      const btn=e.target?.closest?.('#nav > button[data-tab]');
+      if(btn) setTimeout(moveToActive,0);
+    });
+    moveToActive();
+  }
+
+  // Existing preview slot code creates new .fi + input dynamically. Observe those nodes so
+  // the same visual component appears there without changing the preview logic.
+  function setupObserver(){
+    const root=document.body;
+    if(!root || window.__smModernObserver) return;
+    const mo=new MutationObserver(mutations=>{
+      let added=false;
+      for(const m of mutations){ if(m.addedNodes?.length){ added=true; break; } }
+      if(added) refreshUploads();
+    });
+    mo.observe(root,{childList:true,subtree:true});
+    window.__smModernObserver=mo;
+  }
+
+  function start(){
+    refreshUploads();
+    setupNav();
+    setupObserver();
+    // Existing localized text can be applied after our mount; re-run visual enhancement safely.
+    setTimeout(refreshUploads,200);
+    setTimeout(refreshUploads,900);
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
+  else start();
+})();
+</script>
+
+<script src="/static/ss-shell.js?v=20260901b"></script>
 </body>
 </html>

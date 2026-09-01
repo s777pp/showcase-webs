@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Steam Community :: Profile</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#1b2838}
+body{
+  min-height:100%;
+  background:#1b2838;
+  color:#c7d5e0;
+  font-family:"Motiva Sans",Arial,"Helvetica Neue",Helvetica,sans-serif;
+  font-size:14px;
+  line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:#ebebeb;text-decoration:none}
+a:hover{color:#fff}
+img{border:0}
+
+/* Steam global header */
+#global_header{
+  background:#171a21;
+  height:50px;
+  position:relative;
+  z-index:50;
+  box-shadow:0 0 8px rgba(0,0,0,.6);
+}
+#global_header .content{
+  width:960px;max-width:100%;margin:0 auto;height:50px;
+  display:flex;align-items:center;padding:0 12px;gap:4px;
+}
+#global_header .brand{color:#fff;font-weight:700;font-size:14px;margin-right:12px;display:inline-flex;align-items:center}
+#global_header .brand-logo img{display:block;width:28px;height:28px;border-radius:6px;object-fit:contain}
+#global_header .menuitem{
+  color:#dcdedf;font-size:13px;text-transform:uppercase;
+  padding:0 11px;line-height:50px;letter-spacing:.03em;
+}
+#global_header .menuitem:hover{color:#fff}
+#global_actions{margin-left:auto}
+.btn{
+  display:inline-block;border:none;border-radius:2px;cursor:pointer;
+  font-size:12px;line-height:24px;padding:0 14px;font-weight:500;
+  font-family:inherit;color:#fff;
+}
+.btn-green{background:linear-gradient(to bottom,#75b022 5%,#588a1b 95%)}
+.btn-blue{background:linear-gradient(to bottom,#66c0f4 5%,#417a9b 95%)}
+.btn-gray{background:linear-gradient(to bottom,#4a5562 5%,#313843 95%);color:#d0d8e0}
+.btn:hover{filter:brightness(1.1)}
+
+/* Page: background grows with source image height */
+.profile_page{position:relative;min-height:calc(100vh - 50px)}
+.profile_bg_wrap{
+  position:absolute;left:0;right:0;top:0;z-index:0;pointer-events:none;
+  width:100%;overflow:hidden;
+}
+.profile_bg_wrap img{
+  display:block;width:100%;height:auto;
+  /* natural aspect from source — full height of uploaded file */
+  min-height:0;
+}
+.profile_bg_wrap .fallback_bg{
+  width:100%;min-height:100vh;background:#1b2838;
+}
+/* soft bottom fade so content never hard-cuts the art */
+.profile_bg_fade{
+  position:absolute;left:0;right:0;z-index:1;pointer-events:none;
+  height:320px;
+  bottom:0;
+  background:linear-gradient(to bottom,
+    rgba(0,0,0,0) 0%,
+    rgba(0,0,0,.25) 25%,
+    rgba(0,0,0,.65) 55%,
+    rgba(0,0,0,.92) 80%,
+    #000 100%);
+}
+.profile_bg_fade::before{
+  content:"";
+  position:absolute;left:0;right:0;bottom:0;height:200px;
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  mask-image:linear-gradient(to bottom, transparent, #000);
+  -webkit-mask-image:linear-gradient(to bottom, transparent, #000);
+  background:rgba(0,0,0,.35);
+}
+.profile_bg_wrap{
+  position:absolute;left:0;right:0;top:0;z-index:0;pointer-events:none;
+  width:100%;
+}
+.profile_bg_wrap img{
+  display:block;width:100%;height:auto;
+}
+.profile_page{background:#000}
+body{background:#000}
+html{background:#000}
+
+
+.profile_content{
+  position:relative;z-index:2;
+  width:948px;max-width:100%;
+  margin:0 auto;
+  padding:28px 10px 60px;
+}
+
+/* Header — translucent like Steam */
+.profile_header_bg{
+  background:rgba(0,0,0,.35);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-radius:0;
+  padding:22px 18px 18px;
+  margin-bottom:10px;
+  border:none;
+  outline:none;
+  box-shadow:none;
+}
+.profile_header{display:flex;gap:16px;align-items:flex-start}
+.playerAvatar{
+  width:164px;height:164px;flex:0 0 164px;position:relative;
+  background:#1b2838;border:1px solid rgba(0,0,0,.6);
+}
+.playerAvatar img{width:164px;height:164px;object-fit:cover;display:block}
+.playerAvatar .fb{width:164px;height:164px;display:grid;place-items:center;font-size:52px;color:#66c0f4;font-weight:200}
+.playerAvatar.online img{outline:2px solid #57cbde;outline-offset:0}
+.playerAvatar.offline img{outline:2px solid #898989}
+.playerAvatar.ingame img{outline:2px solid #90ba3c}
+
+.profile_header_content{flex:1;min-width:0;padding-top:2px}
+.persona_name{
+  font-size:24px;font-weight:300;color:#fff;
+  text-shadow:1px 1px 0 rgba(0,0,0,.6);
+}
+.profile_in_game_header{font-size:13px;margin-top:3px}
+.profile_in_game_header.online{color:#57cbde}
+.profile_in_game_header.offline{color:#898989}
+.profile_in_game_header.ingame{color:#90ba3c}
+.header_real_name{font-size:12px;color:#8f98a0;margin-top:2px}
+.profile_summary{
+  margin-top:10px;font-size:13px;line-height:1.45;color:#c6d4df;
+  white-space:pre-wrap;max-width:500px;
+}
+.profile_header_actions{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap}
+
+.profile_header_badgeinfo{flex:0 0 120px;text-align:center;padding-top:4px}
+.persona_level_title{font-size:12px;color:#c6d4df;margin-bottom:4px}
+.friendPlayerLevel{
+  display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;
+  border-radius:50%;font-size:15px;font-weight:700;color:#fff;
+  background:#4c6b22;border:2px solid #b9a34c;
+}
+.xp_bar{
+  width:96px;height:6px;margin:8px auto 0;background:rgba(0,0,0,.5);
+  border:1px solid #000;border-radius:2px;overflow:hidden;
+}
+.xp_fill{height:100%;background:linear-gradient(to right,#c6a43d,#e8d070);width:10%}
+.xp_text{font-size:11px;color:#8f98a0;margin-top:3px}
+
+/* two columns */
+.profile_col_layout{display:flex;gap:12px;align-items:flex-start}
+.profile_leftcol{flex:1;min-width:0}
+.profile_rightcol{width:280px;flex:0 0 280px}
+@media(max-width:920px){
+  .profile_col_layout{flex-direction:column}
+  .profile_rightcol{width:100%}
+  .profile_header{flex-wrap:wrap}
+}
+
+/* Steam translucent module */
+.profile_customization{
+  background:rgba(0,0,0,.35);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:none;
+  outline:none;
+  box-shadow:none;
+  border-radius:0;
+  margin-bottom:12px;
+  overflow:hidden;
+}
+.profile_customization_header{
+  padding:8px 12px;
+  font-size:12px;text-transform:none;letter-spacing:0;
+  color:#ebebeb;
+  background:rgba(255,255,255,.06);
+  border-bottom:none;
+  display:flex;justify-content:space-between;align-items:center;
+  font-weight:400;
+}
+.profile_customization_header .sub{
+  text-transform:none;letter-spacing:0;color:#8f98a0;font-size:11px;
+}
+.showcase_content{padding:10px 12px 12px}
+
+/* Workshop: rows of 5 equal parts, image fills height of source ratio */
+.workshop_rows{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  width:100%;
+}
+.workshop_row{
+  display:flex !important;
+  flex-direction:row !important;
+  width:100%;
+  line-height:0;
+  background:transparent;
+  /* visible black gaps between the 5 parts — like Steam / Split */
+  gap:4px !important;
+}
+.workshop_row .wslice{
+  flex:1 1 0 !important;
+  width:0 !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+  display:block !important;
+  background:#000;
+  line-height:0;
+}
+.workshop_row img{
+  display:block !important;
+  flex:1 1 0 !important;
+  width:0 !important; /* flex distributes evenly with gap */
+  min-width:0 !important;
+  height:auto !important;
+  object-fit:fill;
+  object-position:center top;
+  border:none !important;
+  outline:none !important;
+  background:#000;
+  box-shadow:none !important;
+}
+.workshop_title_row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 2px 10px;
+}
+.workshop_title_row img.ws_av{
+  width:28px;height:28px;border-radius:2px;object-fit:cover;
+}
+.workshop_title_row .ws_name{color:#ebebeb;font-size:14px;font-weight:400}
+
+
+/* Featured — full width, natural height of processed 630-wide image scaled up */
+.featured_shot img{
+  display:block;width:100%;height:auto;
+  background:transparent;border:none;outline:none;
+}
+
+/* Split */
+.split_row{display:flex;gap:4px;align-items:stretch}
+.split_row img{background:#000;border:1px solid #000;height:auto}
+.split_row .center{flex:506;min-width:0}
+.split_row .side{flex:100;min-width:0}
+.split_row .center img,.split_row .side img{width:100%;height:auto;object-fit:cover}
+
+/* Artwork grid */
+.artwork_grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.artwork_grid img{width:100%;height:auto;aspect-ratio:1;object-fit:cover;background:#000;border:1px solid #000}
+
+.sc_block{margin-bottom:14px;position:relative}
+.sc_block:last-child{margin-bottom:0}
+.sc_remove{
+  position:absolute;top:8px;right:10px;z-index:3;
+  background:rgba(0,0,0,.65);color:#c7d5e0;border:1px solid rgba(255,255,255,.1);
+  font-size:11px;padding:2px 8px;border-radius:2px;cursor:pointer;display:none;
+}
+.sc_block.owner .sc_remove{display:inline-block}
+.sc_remove:hover{color:#fff;background:rgba(120,30,30,.8)}
+
+.empty{
+  color:#8f98a0;font-size:13px;text-align:center;padding:18px 8px;line-height:1.5;
+}
+
+/* Right column blocks */
+.right_block{
+  background:rgba(0,0,0,.35);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:none;
+  outline:none;
+  box-shadow:none;
+  border-radius:0;
+  margin-bottom:12px;
+  padding:10px 12px;
+}
+.right_block .h{
+  font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#ebebeb;
+  margin-bottom:8px;
+}
+.right_block .status_line{font-size:13px;color:#898989;margin-bottom:4px}
+.right_block .status_line.online{color:#57cbde}
+.right_block .status_line.ingame{color:#90ba3c}
+.count_link{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:4px 0;font-size:13px;color:#c6d4df;
+}
+.count_link:hover{color:#fff}
+.count_link .n{color:#ebebeb}
+
+/* Editor panels */
+.panel{
+  display:none;
+  background:rgba(22,32,45,.92);
+  border:1px solid rgba(0,0,0,.5);
+  border-radius:3px;
+  padding:14px 16px;
+  margin-bottom:12px;
+}
+.panel.open{display:block}
+.panel h3{
+  font-size:12px;text-transform:uppercase;letter-spacing:.06em;
+  color:#fff;font-weight:400;margin-bottom:10px;
+}
+.panel label{display:block;font-size:11px;color:#8f98a0;margin:8px 0 3px;text-transform:uppercase}
+.panel input,.panel select,.panel textarea{
+  width:100%;background:#1b2838;border:1px solid #000;color:#c7d5e0;
+  padding:6px 8px;font-size:13px;border-radius:2px;font-family:inherit;
+}
+.panel textarea{min-height:72px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.row2{grid-template-columns:1fr}}
+.msg{font-size:12px;margin-top:8px;color:#8f98a0}
+.msg.ok{color:#90ba3c}.msg.err{color:#c15755}
+.hint{font-size:11px;color:#8f98a0;margin-top:6px;line-height:1.4}
+
+.gate{
+  max-width:420px;margin:90px auto;text-align:center;
+  background:rgba(0,0,0,.45);padding:28px;border-radius:3px;border:1px solid #000;
+}
+.gate h2{color:#fff;font-weight:300;margin-bottom:8px}
+
+.right_block.steam_side{
+  background:rgba(0,0,0,.40);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  padding:16px 18px 18px;
+}
+.side_sub{font-size:11px;color:#56707f;margin:4px 0 16px}
+.side_sec{margin:14px 0 12px}
+.side_label{font-size:13px;color:#c6d4df;margin-bottom:8px;letter-spacing:.01em}
+.side_label .n{color:#ebebeb;margin-left:6px;font-weight:400}
+.side_icons{display:flex;gap:8px;flex-wrap:wrap;min-height:24px;margin-bottom:4px}
+.side_icons .ic{
+  width:48px;height:48px;background:rgba(255,255,255,.05);
+  border-radius:3px;display:grid;place-items:center;
+}
+.count_link{padding:5px 0;font-size:13px;color:#c6d4df}
+.count_link .n{color:#ebebeb}
+.profile_header_badgeinfo .friendPlayerLevel{
+  width:42px;height:42px;line-height:42px;font-size:16px;
+  border:2px solid #66c0f4;background:transparent;color:#fff;
+  box-shadow:0 0 0 1px rgba(102,192,244,.3);
+}
+.persona_level_title{font-size:14px;color:rgba(255,255,255,.7);margin-bottom:6px}
+
+.friends_list .fr,.groups_list .gr{
+  display:flex;align-items:center;gap:8px;padding:5px 0;
+}
+.friends_list .fr img,.groups_list .gr img{
+  width:32px;height:32px;border-radius:2px;object-fit:cover;background:#1b2838;
+}
+.friends_list .fr .meta,.groups_list .gr .meta{flex:1;min-width:0}
+.friends_list .fr .nm,.groups_list .gr .nm{font-size:12px;color:#c6d4df}
+.friends_list .fr .st{font-size:11px;color:#56707f}
+.friends_list .fr .st.ingame{color:#90ba3c}
+.friends_list .fr .lvl{
+  font-size:11px;color:#ebebeb;border:1px solid #c6a43d;
+  border-radius:50%;width:22px;height:22px;line-height:20px;text-align:center;
+}
+
+
+/* Buy key chooser modal */
+.sm-buy-overlay{
+  display:none;position:fixed;inset:0;z-index:10050;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;padding:20px;
+}
+.sm-buy-overlay.open{display:flex}
+.sm-buy-card{
+  width:min(400px,100%);
+  background:#12141c;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:18px;
+  padding:24px 22px 20px;
+  box-shadow:0 24px 64px rgba(0,0,0,.55);
+  color:#e8eef5;
+  font-family:inherit;
+}
+.sm-buy-card h3{
+  margin:0 0 6px;font-size:18px;font-weight:700;color:#fff;text-align:center;
+}
+.sm-buy-card .sm-buy-sub{
+  margin:0 0 18px;font-size:13px;color:rgba(255,255,255,.55);text-align:center;line-height:1.4;
+}
+.sm-buy-opts{display:flex;flex-direction:column;gap:10px}
+.sm-buy-opt{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);
+  color:#fff;text-decoration:none;cursor:pointer;
+  transition:background .15s,border-color .15s,transform .15s;
+}
+.sm-buy-opt:hover{
+  background:rgba(255,255,255,.09);
+  border-color:rgba(255,255,255,.22);
+  transform:translateY(-1px);
+}
+.sm-buy-opt .ico{
+  width:42px;height:42px;border-radius:12px;flex:0 0 42px;
+  display:grid;place-items:center;
+}
+.sm-buy-opt .ico svg{width:24px;height:24px;display:block}
+.sm-buy-opt.funpay .ico{background:linear-gradient(135deg,#ff8a3d,#e85d04)}
+.sm-buy-opt.tg .ico{background:linear-gradient(135deg,#2AABEE,#229ED9)}
+.sm-buy-opt .txt{flex:1;min-width:0}
+.sm-buy-opt .txt .t{font-size:15px;font-weight:700;display:block}
+.sm-buy-opt .txt .d{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px}
+.sm-buy-opt .arrow{opacity:.45;font-size:18px}
+.sm-buy-close{
+  display:block;width:100%;margin-top:14px;padding:10px;
+  border:none;border-radius:999px;cursor:pointer;
+  background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);
+  font-size:13px;font-weight:600;font-family:inherit;
+}
+.sm-buy-close:hover{background:rgba(255,255,255,.1);color:#fff}
+
+
+.sm-buy-opt.funpay .ico.ico-funpay{
+  background:#ffffff !important;
+  padding:8px 6px;
+}
+.sm-buy-opt.funpay .ico.ico-funpay img{
+  width:100%;
+  height:auto;
+  max-height:20px;
+  object-fit:contain;
+  display:block;
+}
+
+</style>
+</head>
+<body>
+<div id="global_header">
+  <div class="content">
+    <a class="brand brand-logo" href="/" title="Showcase Maker"><img src="/static/icon.png" alt="Showcase Maker" width="28" height="28"/></a>
+    <a class="menuitem" href="/">Store</a>
+    <a class="menuitem" href="/gallery">Community</a>
+    <a class="menuitem" href="/app">Tools</a>
+    <a class="menuitem" href="/profile">Profile</a>
+    <div id="global_actions"><a class="btn btn-gray" href="/app">Open tools</a></div>
+  </div>
+</div>
+
+<div class="profile_page">
+  <div class="profile_bg_wrap" id="bgWrap">
+    <div class="fallback_bg" id="bgFallback"></div>
+  </div>
+  <div class="profile_bg_fade" id="bgFade" style="display:none"></div>
+
+  <div class="profile_content">
+    <div id="gate" class="gate" style="display:none">
+      <h2 id="gateTitle">Loading…</h2>
+      <p id="gateText" style="color:#8f98a0"></p>
+      <p style="margin-top:14px"><a class="btn btn-blue" href="/">Home</a></p>
+    </div>
+
+    <div id="main" style="display:none">
+      <div class="profile_header_bg">
+        <div class="profile_header">
+          <div class="playerAvatar online" id="avWrap">
+            <img id="avImg" alt="" style="display:none"/>
+            <div class="fb" id="avFb">?</div>
+          </div>
+          <div class="profile_header_content">
+            <div class="persona_name" id="pName">—</div>
+            <div class="profile_in_game_header online" id="pState">Currently Online</div>
+            <div class="header_real_name" id="pLoc"></div>
+            <div class="profile_summary" id="pSummary"></div>
+            <div class="profile_header_actions" id="ownerBtns" style="display:none">
+              <button type="button" class="btn btn-green" id="btnEdit">Edit Profile</button>
+              <button type="button" class="btn btn-gray" id="btnAccount">Account</button>
+              <button type="button" class="btn btn-blue" id="btnAddSc">Add Showcase</button>
+              <a class="btn btn-gray" href="/app">Showcase Maker</a>
+            </div>
+          </div>
+          <div class="profile_header_badgeinfo">
+            <div class="persona_level_title">Level</div>
+            <div class="friendPlayerLevel" id="lvl">1</div>
+            <div class="xp_bar"><div class="xp_fill" id="xpFill"></div></div>
+            <div class="xp_text" id="xpTxt">0 XP</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="editPanel">
+        <h3>Edit Profile</h3>
+        <div class="row2">
+          <div><label>Display name</label><input id="edName" maxlength="40"/></div>
+          <div><label>Profile URL</label><input id="edUser" maxlength="24"/></div>
+        </div>
+        <label>Summary</label><textarea id="edSummary" maxlength="2000"></textarea>
+        <div class="row2">
+          <div><label>Location</label><input id="edLoc"/></div>
+          <div><label>Status</label>
+            <select id="edStatus">
+              <option value="online">Online</option>
+              <option value="ingame">In-Game</option>
+              <option value="offline">Offline</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div><label>Level</label><input id="edLevel" type="number" min="0"/></div>
+          <div><label>XP</label><input id="edXp" type="number" min="0"/></div>
+        </div>
+        <div class="row2">
+          <div><label>Visibility</label>
+            <select id="edVis"><option value="public">Public</option><option value="private">Private</option></select>
+          </div>
+          <div><label>Background (full image height)</label><input id="edBg" type="file" accept="image/*,video/mp4,video/webm,.gif"/></div>
+        </div>
+        <p class="hint">Background uses the full resolution of your file — height follows the source aspect ratio (like Steam profile backgrounds).</p>
+        <div style="margin-top:12px">
+          <button type="button" class="btn btn-green" id="btnSave">Save</button>
+          <button type="button" class="btn btn-gray" id="btnEditCancel">Cancel</button>
+        </div>
+        <div class="msg" id="edMsg"></div>
+      </div>
+
+      
+      <div class="panel" id="accPanel">
+        <h3>Account</h3>
+        <div class="row2">
+          <div>
+            <label>Nickname</label>
+            <input id="accNick" maxlength="40" placeholder="Display name"/>
+          </div>
+          <div>
+            <label>Email</label>
+            <input id="accEmail" disabled style="opacity:.7"/>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Plan</label>
+            <input id="accPlan" disabled style="opacity:.7"/>
+          </div>
+          <div>
+            <label>Avatar</label>
+            <input id="accAvatarFile" type="file" accept="image/*"/>
+          </div>
+        </div>
+        <!-- Pro: masked key, click to reveal. Free: input to activate -->
+        <div id="accKeyProRow" style="display:none;margin-top:10px">
+          <label>License key</label>
+          <p class="hint" style="margin:4px 0 0">
+            <code id="accKeyMasked" style="cursor:pointer;user-select:none;letter-spacing:.04em" title="Click to show full key">••••••••••••</code>
+            <span class="hint" id="accKeyHint" style="margin-left:8px">click to show</span>
+          </p>
+        </div>
+        <div id="accKeyFreeRow" style="display:none;margin-top:10px">
+          <label>Activate Pro code</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+            <input id="accCode" placeholder="SM-WEB-XXXXXX-XXXX" style="flex:1;min-width:160px"/>
+            <button type="button" class="btn btn-gray" id="btnAccCode">Apply</button>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-green" id="btnAccSave">Save profile</button>
+          <button type="button" class="btn btn-blue" id="btnAccBuy">Buy Key</button>
+          <button type="button" class="btn btn-gray" id="btnAccLogout">Log out</button>
+          <button type="button" class="btn btn-gray" id="btnAccClose">Close</button>
+        </div>
+        <div class="msg" id="accMsg"></div>
+      </div>
+
+      <div class="panel" id="scPanel">
+        <h3>Add Showcase</h3>
+        <label>Type</label>
+        <select id="scType">
+          <option value="featured">Featured Artwork</option>
+          <option value="artwork">Artwork Showcase</option>
+          <option value="workshop">Workshop Showcase (auto ×5 parts)</option>
+          <option value="split">Artwork Split (auto-cut)</option>
+        </select>
+        <label>Title</label>
+        <input id="scTitle" placeholder="Optional"/>
+        <label>Source image / GIF</label>
+        <input id="scFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.gif" multiple/>
+        <p class="hint" id="scHint">Workshop: up to <b>3 files</b> (PNG/JPG/GIF/MP4) → each becomes a row of 5 parts (like Steam). One Workshop block on the profile. Split / Featured / Artwork: one file.</p>
+        <div style="margin-top:12px">
+          <button type="button" class="btn btn-blue" id="btnScUpload">Upload &amp; Add</button>
+          <button type="button" class="btn btn-gray" id="btnScCancel">Cancel</button>
+        </div>
+        <div class="msg" id="scMsg"></div>
+      </div>
+
+      <div class="profile_col_layout">
+        <div class="profile_leftcol">
+          <div class="profile_customization">
+            <div class="profile_customization_header">
+              Showcases
+              <span class="sub" id="scCount">0</span>
+            </div>
+            <div class="showcase_content" id="scList">
+              <p class="empty">No showcases yet.</p>
+            </div>
+          </div>
+        </div>
+        <div class="profile_rightcol">
+          <div class="right_block steam_side">
+            <div class="status_line" id="sideStatus">Currently Online</div>
+            <div class="side_sub" id="sideLoc"></div>
+
+            <div class="side_sec">
+              <div class="side_label">Profile Awards <span class="n" id="nAwards">0</span></div>
+              <div class="side_icons" id="awardsRow"></div>
+            </div>
+
+            <div class="side_sec">
+              <div class="side_label">Badges <span class="n" id="nBadges">0</span></div>
+              <div class="side_icons" id="badgesRow"></div>
+            </div>
+
+            <a class="count_link" href="#"><span>Games</span><span class="n" id="nGames">0</span></a>
+            <a class="count_link" href="#"><span>Inventory</span><span class="n" id="nInv">—</span></a>
+            <a class="count_link" href="#"><span>Screenshots</span><span class="n" id="nShots">0</span></a>
+            <a class="count_link" href="#"><span>Videos</span><span class="n" id="nVids">0</span></a>
+            <a class="count_link" href="/app"><span>Workshop Items</span><span class="n" id="wsCount">0</span></a>
+            <a class="count_link" href="#"><span>Reviews</span><span class="n" id="nRev">0</span></a>
+            <a class="count_link" href="#"><span>Guides</span><span class="n" id="nGuides">0</span></a>
+            <a class="count_link" href="/gallery"><span>Artwork</span><span class="n" id="nArt">0</span></a>
+
+            <div class="side_sec" style="margin-top:10px">
+              <div class="side_label">Groups <span class="n" id="nGroups">0</span></div>
+              <div id="groupsList" class="groups_list"></div>
+            </div>
+
+            <div class="side_sec">
+              <div class="side_label">Friends <span class="n" id="nFriends">0</span></div>
+              <div id="friendsList" class="friends_list"></div>
+            </div>
+
+            <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px">
+              <a class="count_link" href="/app"><span>Showcase Maker</span><span class="n">→</span></a>
+              <a class="count_link" href="/gallery"><span>Gallery</span><span class="n">→</span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  function token(){ try{return localStorage.getItem('sm_session')||'';}catch(e){return '';} }
+  function headers(){ var h={}; var t=token(); if(t) h['X-Session-Token']=t; return h; }
+  function pathUser(){
+    var parts=location.pathname.replace(/\/+$/,'').split('/');
+    if(parts.length>=3 && parts[1]==='profile' && parts[2]) return decodeURIComponent(parts[2]);
+    return null;
+  }
+  function esc(s){
+    return String(s||'').replace(/[&<>"']/g,function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+    });
+  }
+
+  var state={profile:null,isOwner:false,username:null,showcases:[]};
+
+  function showGate(title,text){
+    document.getElementById('main').style.display='none';
+    document.getElementById('gate').style.display='';
+    document.getElementById('gateTitle').textContent=title||'Error';
+    document.getElementById('gateText').textContent=text||'';
+  }
+
+  function setBackground(url){
+    var wrap=document.getElementById('bgWrap');
+    var fade=document.getElementById('bgFade');
+    wrap.innerHTML='';
+    fade.style.display='block';
+    if(!url){
+      var d=document.createElement('div');
+      d.className='fallback_bg';
+      d.style.cssText='width:100%;min-height:100vh;background:#000';
+      wrap.appendChild(d);
+      fade.style.top='auto';
+      fade.style.bottom='0';
+      return;
+    }
+    var img=document.createElement('img');
+    img.alt='';
+    img.src=url+(url.indexOf('?')>=0?'&':'?')+'t='+Date.now();
+    img.onload=function(){
+      // pin fade to bottom of the background image
+      var h=img.offsetHeight||img.naturalHeight;
+      fade.style.top=(Math.max(0, h-320))+'px';
+      fade.style.bottom='auto';
+      fade.style.height='320px';
+    };
+    wrap.appendChild(img);
+  }
+
+  function renderProfile(p,isOwner){
+    state.profile=p; state.isOwner=isOwner;
+    state.username=p.username||p.profile_username;
+    document.getElementById('gate').style.display='none';
+    document.getElementById('main').style.display='';
+
+    document.getElementById('pName').textContent=p.display_name||p.username||'User';
+    var st=(p.profile_status||'online').toLowerCase();
+    var stEl=document.getElementById('pState');
+    var av=document.getElementById('avWrap');
+    stEl.className='profile_in_game_header '+st;
+    av.className='playerAvatar '+st;
+    stEl.textContent=st==='ingame'?'Currently In-Game':(st==='offline'?'Currently Offline':'Currently Online');
+    document.getElementById('pLoc').textContent=p.profile_location||'';
+    document.getElementById('pSummary').textContent=p.profile_summary||'';
+
+    var side=document.getElementById('sideStatus');
+    side.className='status_line '+st;
+    side.textContent=stEl.textContent;
+    document.getElementById('sideLoc').textContent=p.profile_location||'';
+
+    var lvl=50, xp=p.profile_xp||0;
+    document.getElementById('lvl').textContent='50';
+    document.getElementById('xpFill').style.width=Math.max(4,Math.min(100,(xp%1000)/10))+'%';
+    document.getElementById('xpTxt').textContent=xp+' XP';
+
+    var img=document.getElementById('avImg'), fb=document.getElementById('avFb');
+    if(p.avatar_url){
+      img.src=p.avatar_url+'?t='+Date.now(); img.style.display='block'; fb.style.display='none';
+    } else {
+      img.style.display='none'; fb.style.display='grid';
+      fb.textContent=(p.display_name||'?').charAt(0).toUpperCase();
+    }
+
+    setBackground(p.background_url||'');
+    
+    // Steam-like fixed level 50 + sample white icons
+    document.getElementById('nBadges').textContent='80';
+    document.getElementById('nAwards').textContent='2';
+    document.getElementById('nGames').textContent='295';
+    document.getElementById('nShots').textContent='65';
+    document.getElementById('nVids').textContent='3';
+    document.getElementById('nRev').textContent='17';
+    document.getElementById('nGuides').textContent='5';
+    document.getElementById('nArt').textContent='66';
+    document.getElementById('nGroups').textContent='1';
+    document.getElementById('nFriends').textContent='27';
+    var ic = function(svg){ return '<div class="ic">'+svg+'</div>'; };
+    var white = 'stroke="#e6e6e6" fill="none" stroke-width="1.5"';
+    var badgeSvgs = [
+      '<svg width="28" height="28" viewBox="0 0 24 24"><path '+white+' d="M12 2l2.4 7.4H22l-6 4.6 2.3 7-6.3-4.6L5.7 21l2.3-7-6-4.6h7.6z"/></svg>',
+      '<svg width="28" height="28" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" '+white+'/><path '+white+' d="M12 7v5l3 2"/></svg>',
+      '<svg width="28" height="28" viewBox="0 0 24 24"><path '+white+' d="M12 3l7 4v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V7l7-4z"/></svg>',
+      '<svg width="28" height="28" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" '+white+'/><path '+white+' d="M8 12h8M12 8v8"/></svg>'
+    ];
+    var awardSvgs = [
+      '<svg width="28" height="28" viewBox="0 0 24 24"><path '+white+' d="M6 4h12v2l-2 3v3l4 4v2H4v-2l4-4V9L6 6V4z"/><path '+white+' d="M9 20h6"/></svg>',
+      '<svg width="28" height="28" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" '+white+'/><path '+white+' d="M6 20c1.5-3 4-4.5 6-4.5S16.5 17 18 20"/></svg>'
+    ];
+    document.getElementById('badgesRow').innerHTML = badgeSvgs.map(ic).join('');
+    document.getElementById('awardsRow').innerHTML = awardSvgs.map(ic).join('');
+
+    document.getElementById('ownerBtns').style.display=isOwner?'':'none';
+    document.title='Steam Community :: '+(p.display_name||p.username||'Profile');
+
+    document.getElementById('edName').value=p.display_name||'';
+    document.getElementById('edUser').value=p.username||'';
+    document.getElementById('edSummary').value=p.profile_summary||'';
+    document.getElementById('edLoc').value=p.profile_location||'';
+    document.getElementById('edStatus').value=(st==='ingame'||st==='offline')?st:'online';
+    document.getElementById('edLevel').value=lvl;
+    document.getElementById('edXp').value=xp;
+    document.getElementById('edVis').value=p.profile_visibility||'public';
+  }
+
+  function workshopCount(list){
+    return (list||[]).filter(function(s){ return s.type==='workshop'; }).length;
+  }
+
+  function renderShowcases(list,isOwner){
+    state.showcases=list||[];
+    var box=document.getElementById('scList');
+    document.getElementById('scCount').textContent=String(state.showcases.length);
+    document.getElementById('wsCount').textContent=String(workshopCount(state.showcases));
+
+    if(!state.showcases.length){
+      box.innerHTML='<p class="empty">No showcases yet.'+(isOwner?' Use <b>Add Showcase</b>.':'')+'</p>';
+      return;
+    }
+
+    // Group: each showcase is its own Steam-style block
+    var html='';
+    state.showcases.forEach(function(sc){
+      var type=sc.type||'artwork';
+      var urls=sc.urls||[];
+      var title=sc.title||type;
+      var label={featured:'Featured Artwork Showcase',workshop:'Workshop Showcase',split:'Artwork Split',artwork:'Artwork Showcase'}[type]||type;
+      var headerRight = isOwner ? '' : '';
+
+      html+='<div class="sc_block '+(isOwner?'owner':'')+'" data-id="'+sc.id+'">';
+      html+='<div class="profile_customization">';
+      html+='<div class="profile_customization_header">'+esc(label)+'<span class="sub">'+esc(title)+'</span></div>';
+      html+='<div class="showcase_content">';
+      if(isOwner) html+='<button type="button" class="sc_remove" data-id="'+sc.id+'">Remove</button>';
+
+      if(type==='workshop'){
+        var avUrl=(state.profile&&state.profile.avatar_url)||'';
+        var disp=(state.profile&&(state.profile.display_name||state.profile.username))||'Workshop';
+        html+='<div class="workshop_title_row">';
+        if(avUrl) html+='<img class="ws_av" src="'+avUrl+'" alt=""/>';
+        html+='<span class="ws_name">'+esc(disp)+"'s Workshop</span></div>";
+
+        var rows={};
+        urls.forEach(function(u){
+          var m=u.match(/_r(\d+)_p(\d+)/i) || u.match(/row(\d+)[^\d]*part[_-]?(\d+)/i);
+          if(m){
+            var ri=String(m[1]), pi=+m[2];
+            if(!rows[ri]) rows[ri]=[];
+            rows[ri].push({pi:pi, u:u});
+          }
+        });
+        var keys=Object.keys(rows).sort(function(a,b){return (+a)-(+b);});
+
+        function rowFromParts(parts){
+          var h='<div class="workshop_row">';
+          for(var i=1;i<=5;i++){
+            var item=null;
+            for(var j=0;j<parts.length;j++){ if(parts[j].pi===i){ item=parts[j]; break; } }
+            if(item) h+='<img src="'+item.u+'" alt="p'+i+'"/>';
+          }
+          h+='</div>';
+          return h;
+        }
+        // CSS-slice full image into 5 with GAPS (overflow technique)
+        function rowFromFull(src){
+          var h='<div class="workshop_row">';
+          for(var pi=0;pi<5;pi++){
+            h+='<span class="wslice"><img src="'+src+'" style="width:500%;max-width:none;margin-left:-'+(pi*100)+'%;height:auto;display:block" alt=""/></span>';
+          }
+          h+='</div>';
+          return h;
+        }
+
+        html+='<div class="workshop_rows">';
+        if(keys.length){
+          keys.forEach(function(k){
+            var parts=rows[k].slice().sort(function(a,b){return a.pi-b.pi;});
+            if(parts.length>=5) html+=rowFromParts(parts);
+            else if(parts.length===1) html+=rowFromFull(parts[0].u);
+            else html+=rowFromParts(parts);
+          });
+        } else {
+          // no part files — slice each unique url into 5 with gaps
+          var seen={}, fulls=[];
+          urls.forEach(function(u){
+            if(!seen[u]){ seen[u]=1; fulls.push(u); }
+          });
+          fulls.slice(0,3).forEach(function(src){ html+=rowFromFull(src); });
+        }
+        html+='</div>';
+      } else if(type==='split'){
+        var center=urls.find(function(u){return /center/i.test(u);})||urls[0];
+        var side=urls.find(function(u){return /side/i.test(u);})||urls[1];
+        html+='<div class="split_row">';
+        if(center){
+          html+='<div class="center">';
+          if(/\.mp4|\.webm|\.mov/i.test(center)) html+='<video src="'+center+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
+          else html+='<img src="'+center+'" alt=""/>';
+          html+='</div>';
+        }
+        if(side){
+          html+='<div class="side">';
+          if(/\.mp4|\.webm|\.mov/i.test(side)) html+='<video src="'+side+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
+          else html+='<img src="'+side+'" alt=""/>';
+          html+='</div>';
+        }
+        html+='</div>';
+      } else if(type==='featured'){
+        var u=urls.find(function(x){return /featured/i.test(x);})||urls[0];
+        html+='<div class="featured_shot">';
+        if(u){
+          if(/\.mp4|\.webm|\.mov/i.test(u)) html+='<video src="'+u+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
+          else html+='<img src="'+u+'" alt=""/>';
+        }
+        html+='</div>';
+      } else {
+        html+='<div class="artwork_grid">';
+        urls.forEach(function(u){
+          if(/\.mp4|\.webm|\.mov/i.test(u)) html+='<video src="'+u+'" autoplay muted loop playsinline style="width:100%;height:auto;display:block"></video>';
+          else html+='<img src="'+u+'" alt=""/>';
+        });
+        html+='</div>';
+      }
+
+      html+='</div></div></div>';
+    });
+
+    // If multiple workshops, also show combined 3-row view at top when >=1
+    // (each workshop is already its own block — Steam stacks them)
+
+    box.innerHTML=html;
+    box.querySelectorAll('.sc_remove').forEach(function(btn){
+      btn.onclick=async function(){
+        if(!confirm('Remove this showcase?')) return;
+        var r=await fetch('/api/profile/showcase/delete',{
+          method:'POST',
+          headers:Object.assign({'Content-Type':'application/json'},headers()),
+          credentials:'include',
+          body:JSON.stringify({id:+btn.dataset.id})
+        });
+        var j=await r.json();
+        if(j.ok) loadShowcases();
+      };
+    });
+  }
+
+  async function loadShowcases(){
+    var un=state.username||pathUser();
+    if(!un) return;
+    try{
+      var r=await fetch('/api/profile/'+encodeURIComponent(un)+'/showcases',{headers:headers(),credentials:'include'});
+      var j=await r.json();
+      if(j.ok) renderShowcases(j.showcases||[], !!(j.is_owner||state.isOwner));
+    }catch(e){ console.error(e); }
+  }
+
+  async function load(){
+    var un=pathUser();
+    var url=un?('/api/profile/'+encodeURIComponent(un)):'/api/profile/me';
+    try{
+      var r=await fetch(url,{headers:headers(),credentials:'include'});
+      var j={}; try{j=await r.json();}catch(e){}
+      if(r.status===401 && !un){ showGate('Log in required','Sign in on the home page, then open Profile.'); return; }
+      if(r.status===403){ showGate('Private profile','This profile is private.'); return; }
+      if(!j.ok){ showGate('Not found', j.msg||'Profile not found'); return; }
+      if(!un && j.profile && j.profile.username){
+        history.replaceState(null,'','/profile/'+encodeURIComponent(j.profile.username));
+      }
+      renderProfile(j.profile, !!j.is_owner);
+      loadShowcases();
+    }catch(e){ showGate('Error', String(e)); }
+  }
+
+  document.getElementById('btnEdit').onclick=function(){
+    document.getElementById('editPanel').classList.add('open');
+    document.getElementById('scPanel').classList.remove('open');
+  };
+  document.getElementById('btnEditCancel').onclick=function(){
+    document.getElementById('editPanel').classList.remove('open');
+  };
+  document.getElementById('btnAddSc').onclick=function(){
+    document.getElementById('scPanel').classList.add('open');
+    document.getElementById('editPanel').classList.remove('open');
+  };
+  document.getElementById('btnScCancel').onclick=function(){
+    document.getElementById('scPanel').classList.remove('open');
+  };
+
+  document.getElementById('btnSave').onclick=async function(){
+    var msg=document.getElementById('edMsg'); msg.className='msg'; msg.textContent='Saving…';
+    var fd=new FormData();
+    fd.append('display_name',document.getElementById('edName').value);
+    fd.append('profile_username',document.getElementById('edUser').value);
+    fd.append('profile_summary',document.getElementById('edSummary').value);
+    fd.append('profile_location',document.getElementById('edLoc').value);
+    fd.append('profile_status',document.getElementById('edStatus').value);
+    fd.append('profile_level',document.getElementById('edLevel').value);
+    fd.append('profile_xp',document.getElementById('edXp').value);
+    fd.append('profile_visibility',document.getElementById('edVis').value);
+    var f=document.getElementById('edBg').files[0]; if(f) fd.append('background',f);
+    try{
+      var r=await fetch('/api/profile/update',{method:'POST',headers:headers(),credentials:'include',body:fd});
+      var j=await r.json();
+      if(!j.ok){ msg.className='msg err'; msg.textContent=j.msg||'Error'; return; }
+      msg.className='msg ok'; msg.textContent='Saved';
+      if(j.username && pathUser()!==j.username){ location.href='/profile/'+encodeURIComponent(j.username); return; }
+      document.getElementById('editPanel').classList.remove('open');
+      load();
+    }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
+  };
+
+  document.getElementById('btnScUpload').onclick=async function(){
+    var msg=document.getElementById('scMsg');
+    var type=document.getElementById('scType').value;
+    if(type==='workshop' && workshopCount(state.showcases)>=1){
+      msg.className='msg err';
+      msg.textContent='Workshop already on profile. Remove it first, then upload up to 3 images together.';
+      return;
+    }
+    var files=document.getElementById('scFile').files;
+    if(!files || !files.length){ msg.className='msg err'; msg.textContent='Choose a file'; return; }
+    if(type==='workshop' && files.length>3){
+      msg.className='msg err'; msg.textContent='Workshop: max 3 images at once'; return;
+    }
+    msg.className='msg'; msg.textContent='Processing…';
+    var fd=new FormData();
+    fd.append('type',type);
+    fd.append('title',document.getElementById('scTitle').value||type);
+    for(var i=0;i<files.length && i<(type==='workshop'?3:1);i++){
+      fd.append('file', files[i]);
+    }
+    try{
+      var r=await fetch('/api/profile/showcase/add',{method:'POST',headers:headers(),credentials:'include',body:fd});
+      var j=await r.json();
+      if(!j.ok){ msg.className='msg err'; msg.textContent=j.msg||'Error'; return; }
+      msg.className='msg ok'; msg.textContent='Added';
+      document.getElementById('scPanel').classList.remove('open');
+      document.getElementById('scFile').value='';
+      loadShowcases();
+    }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
+  };
+
+
+  var _btnAcc=document.getElementById('btnAccount'); if(_btnAcc) _btnAcc.onclick=function(){
+    document.getElementById('accPanel').classList.add('open');
+    document.getElementById('editPanel').classList.remove('open');
+    document.getElementById('scPanel').classList.remove('open');
+    // fill from /api/auth/me
+    fetch('/api/auth/me',{headers:headers(),credentials:'include'}).then(function(r){return r.json()}).then(function(j){
+      if(!j||!j.ok) return;
+      document.getElementById('accNick').value=j.display_name||'';
+      document.getElementById('accEmail').value=j.email||'';
+      document.getElementById('accPlan').value=j.is_pro?'Pro':'Free';
+      var proRow=document.getElementById('accKeyProRow');
+      var freeRow=document.getElementById('accKeyFreeRow');
+      var fullKey=j.pro_code||j.license_key||j.access_key||j.key||'';
+      window._accFullKey=fullKey;
+      window._accKeyShown=false;
+      if(j.is_pro){
+        proRow.style.display='block';
+        freeRow.style.display='none';
+        if(fullKey){
+          var masked=fullKey.length>10?(fullKey.slice(0,4)+'••••'+fullKey.slice(-4)):'••••••••';
+          document.getElementById('accKeyMasked').textContent=masked;
+          document.getElementById('accKeyHint').textContent='click to show';
+        } else {
+          document.getElementById('accKeyMasked').textContent='Pro active';
+          document.getElementById('accKeyHint').textContent='';
+          window._accFullKey='';
+        }
+      } else {
+        proRow.style.display='none';
+        freeRow.style.display='block';
+      }
+    }).catch(function(){});
+  };
+  
+  document.getElementById('accKeyMasked').onclick=function(){
+    var el=document.getElementById('accKeyMasked');
+    var hint=document.getElementById('accKeyHint');
+    if(!window._accFullKey) return;
+    window._accKeyShown=!window._accKeyShown;
+    if(window._accKeyShown){
+      el.textContent=window._accFullKey;
+      if(hint) hint.textContent='click to hide';
+    } else {
+      var k=window._accFullKey;
+      el.textContent=k.length>10?(k.slice(0,4)+'••••'+k.slice(-4)):'••••••••';
+      if(hint) hint.textContent='click to show';
+    }
+  };
+
+  document.getElementById('btnAccClose').onclick=function(){ document.getElementById('accPanel').classList.remove('open'); };
+  document.getElementById('btnAccLogout').onclick=async function(){
+    try{ await fetch('/api/auth/logout',{method:'POST',headers:headers(),credentials:'include'}); }catch(e){}
+    try{ localStorage.removeItem('sm_session'); }catch(e){}
+    location.href='/';
+  };
+  document.getElementById('btnAccSave').onclick=async function(){
+    var msg=document.getElementById('accMsg'); msg.className='msg'; msg.textContent='Saving…';
+    var fd=new FormData();
+    fd.append('display_name', document.getElementById('accNick').value);
+    var f=document.getElementById('accAvatarFile').files[0];
+    if(f) fd.append('avatar', f);
+    try{
+      var r=await fetch('/api/auth/profile',{method:'POST',headers:headers(),credentials:'include',body:fd});
+      if(!r.ok){
+        // fallback profile update
+        r=await fetch('/api/profile/update',{method:'POST',headers:headers(),credentials:'include',body:fd});
+      }
+      var j=await r.json();
+      if(!j.ok){ msg.className='msg err'; msg.textContent=j.msg||'Error'; return; }
+      msg.className='msg ok'; msg.textContent='Saved';
+      load();
+    }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
+  };
+  document.getElementById('btnAccCode').onclick=async function(){
+    var code=document.getElementById('accCode').value.trim();
+    var msg=document.getElementById('accMsg');
+    if(!code){ msg.className='msg err'; msg.textContent='Enter code'; return; }
+    try{
+      var r=await fetch('/api/unlock',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},headers()),credentials:'include',body:JSON.stringify({code:code})});
+      var j=await r.json();
+      msg.className=j.ok?'msg ok':'msg err';
+      msg.textContent=j.msg||(j.ok?'OK':'Error');
+      if(j.ok){
+        // switch UI to pro key view
+        var _btn=document.getElementById('btnAccount');
+        if(_btn) _btn.click();
+      }
+    }catch(e){ msg.className='msg err'; msg.textContent=String(e); }
+  };
+  document.getElementById('btnAccBuy').onclick=function(e){
+    if(typeof openBuyKeyModal==='function') openBuyKeyModal(e);
+    else window.open('https://funpay.com/lots/offer?id=75434891','_blank');
+  };
+
+  load();
+})();
+</script>
+
+<div class="sm-buy-overlay" id="smBuyOverlay" aria-hidden="true">
+  <div class="sm-buy-card" role="dialog" aria-labelledby="smBuyTitle">
+    <h3 id="smBuyTitle">Buy Pro key</h3>
+    <p class="sm-buy-sub" id="smBuySub">Choose where to buy. After payment, activate the code in your account.</p>
+    <div class="sm-buy-opts">
+      <a class="sm-buy-opt funpay" id="smBuyFunpay" href="https://funpay.com/lots/offer?id=75434891" target="_blank" rel="noopener">
+        <span class="ico ico-funpay" aria-hidden="true">
+          <img src="/static/img/funpay-logo.svg" alt="FunPay" width="28" height="12"/>
+        </span>
+        <span class="txt">
+          <span class="t">FunPay</span>
+          <span class="d" id="smBuyFunpayD">Instant code after payment</span>
+        </span>
+        <span class="arrow">→</span>
+      </a>
+      <a class="sm-buy-opt tg" id="smBuyTg" href="https://t.me/SteamMakerBot" target="_blank" rel="noopener">
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M9.78 14.65l-.3 4.2c.43 0 .62-.18.85-.4l2.04-1.94 4.23 3.1c.78.43 1.33.2 1.54-.72l2.8-13.13h.01c.25-1.16-.42-1.61-1.18-1.33L3.3 9.7c-1.13.44-1.11 1.07-.19 1.35l4.37 1.36 10.15-6.4c.48-.29.91-.13.55.18L9.78 14.65z"/></svg>
+        </span>
+        <span class="txt">
+          <span class="t">Telegram</span>
+          <span class="d" id="smBuyTgD">Buy via bot / support</span>
+        </span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+    <button type="button" class="sm-buy-close" id="smBuyClose">Close</button>
+  </div>
+</div>
+
+<script>
+
+(function(){
+  var FUNPAY_URL = 'https://funpay.com/lots/offer?id=75434891';
+  var TG_URL = 'https://t.me/SteamMakerBot';
+
+  function i18nBuy(){
+    var lang = (localStorage.getItem('sm_lang') || document.documentElement.lang || 'en').slice(0,2).toLowerCase();
+    var ru = lang === 'ru';
+    var t = document.getElementById('smBuyTitle');
+    var s = document.getElementById('smBuySub');
+    var fd = document.getElementById('smBuyFunpayD');
+    var td = document.getElementById('smBuyTgD');
+    var c = document.getElementById('smBuyClose');
+    if (t) t.textContent = ru ? 'Купить Pro-ключ' : 'Buy Pro key';
+    if (s) s.textContent = ru
+      ? 'Выбери, где купить. После оплаты активируй код в аккаунте.'
+      : 'Choose where to buy. After payment, activate the code in your account.';
+    if (fd) fd.textContent = ru ? 'Код сразу после оплаты' : 'Instant code after payment';
+    if (td) td.textContent = ru ? 'Через бота / поддержку' : 'Buy via bot / support';
+    if (c) c.textContent = ru ? 'Закрыть' : 'Close';
+  }
+
+  window.openBuyKeyModal = function openBuyKeyModal(e){
+    if (e && e.preventDefault) e.preventDefault();
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    i18nBuy();
+    var fp = document.getElementById('smBuyFunpay');
+    var tg = document.getElementById('smBuyTg');
+    if (fp) fp.href = FUNPAY_URL;
+    if (tg) tg.href = TG_URL;
+    ov.classList.add('open');
+    ov.setAttribute('aria-hidden', 'false');
+  };
+  window.closeBuyKeyModal = function(){
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    ov.classList.remove('open');
+    ov.setAttribute('aria-hidden', 'true');
+  };
+
+  function bind(){
+    var ov = document.getElementById('smBuyOverlay');
+    if (!ov) return;
+    var closeBtn = document.getElementById('smBuyClose');
+    if (closeBtn) closeBtn.onclick = window.closeBuyKeyModal;
+    ov.addEventListener('click', function(ev){
+      if (ev.target === ov) window.closeBuyKeyModal();
+    });
+    document.addEventListener('keydown', function(ev){
+      if (ev.key === 'Escape') window.closeBuyKeyModal();
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+
+</script>
+</body>
+</html>

@@ -30,7 +30,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
@@ -453,35 +453,6 @@ def quota_state(req: Request) -> dict:
     }
 
 
-SERVICE_WM_TEXT = (os.environ.get("SERVICE_WM_TEXT") or "Showcase Maker").strip() or "Showcase Maker"
-
-
-def _forced_wm(q: dict, wm_enable, wm_text, wm_opacity) -> dict:
-    """Apply the free-plan watermark policy.
-
-    Pro keeps full control, including switching the mark off. Free always gets
-    the service mark: the client can ask for its own text, which is appended
-    rather than replaced so people can still sign their work, but it cannot
-    disable the mark or fade it out of visibility.
-    """
-    on = str(wm_enable) not in ("0", "false", "False", "")
-    try:
-        opacity = int(wm_opacity)
-    except (TypeError, ValueError):
-        opacity = 22
-    text = str(wm_text or "").strip()
-
-    if q.get("pro"):
-        return {"on": on, "text": text, "opacity": opacity}
-
-    service = SERVICE_WM_TEXT
-    if text and text.lower() != service.lower():
-        text = f"{text} · {service}"
-    else:
-        text = service
-    return {"on": True, "text": text, "opacity": max(18, min(60, opacity))}
-
-
 def quota_inc(req: Request, n: int) -> None:
     try:
         # Must match the IP that quota_state reads, or the Redis counter and
@@ -628,11 +599,18 @@ async def _unhandled(request: Request, exc: Exception):
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    """Landing — React build when present, legacy static page otherwise."""
-    react = STATIC / "react" / "index.html"
-    if react.is_file():
-        return HTMLResponse(react.read_text(encoding="utf-8"))
-    return HTMLResponse((STATIC / "index.html").read_text(encoding="utf-8"))
+    """Лендинг (как kant.tools)."""
+    path = STATIC / "index.html"
+    return HTMLResponse(path.read_text(encoding="utf-8"))
+
+
+@app.get("/app", response_class=HTMLResponse)
+def app_page():
+    """Рабочая панель инструментов."""
+    path = STATIC / "app.html"
+    if not path.is_file():
+        path = STATIC / "index.html"
+    return HTMLResponse(path.read_text(encoding="utf-8"))
 
 
 
@@ -641,22 +619,18 @@ def index():
 @app.get("/profile", response_class=HTMLResponse)
 @app.get("/profile/", response_class=HTMLResponse)
 async def profile_me(request: Request):
-    """Account page. Served by the SPA so login/register share its session."""
-    react = STATIC / "react" / "index.html"
-    if react.is_file():
-        return HTMLResponse(react.read_text(encoding="utf-8"))
-    p = STATIC / "profile.html"
+    """Owner shortcut → /profile/{username} or login prompt page."""
+    user = _auth_user(request)
+    p = Path(__file__).parent / "static" / "profile.html"
     if not p.is_file():
         return HTMLResponse("profile.html missing", status_code=404)
-    return HTMLResponse(p.read_text(encoding="utf-8"))
+    html = p.read_text(encoding="utf-8")
+    return HTMLResponse(html)
 
 
 @app.get("/profile/{username}", response_class=HTMLResponse)
 async def profile_public(username: str, request: Request):
-    react = STATIC / "react" / "index.html"
-    if react.is_file():
-        return HTMLResponse(react.read_text(encoding="utf-8"))
-    p = STATIC / "profile.html"
+    p = Path(__file__).parent / "static" / "profile.html"
     if not p.is_file():
         return HTMLResponse("profile.html missing", status_code=404)
     return HTMLResponse(p.read_text(encoding="utf-8"))
@@ -1853,10 +1827,7 @@ async def api_process_start(
         return JSONResponse({"ok": False, "msg": "Unknown mode"}, status_code=400)
     do_all = str(all_modes).lower() in ("1", "true", "yes", "on")
     modes = ["workshop", "featured", "split"] if do_all else [mode]
-    # Free accounts always carry the service mark. The client could previously
-    # send wm_enable=0 and strip it, so the decision is made here, not there.
-    _wmp = _forced_wm(quota_state(request), wm_enable, wm_text, wm_opacity)
-    wm_on, wm_text, wm_opacity = _wmp["on"], _wmp["text"], _wmp["opacity"]
+    wm_on = wm_enable not in ("0", "false", "False", "")
     opacity = (wm_opacity / 100.0) if wm_on else 0.0
     text = wm_text if wm_on else ""
     color = (wm_color or "#ffffff").strip() or "#ffffff"
@@ -2045,10 +2016,7 @@ async def api_process(
     do_all = str(all_modes).lower() in ("1", "true", "yes", "on")
     modes = ["workshop", "featured", "split"] if do_all else [mode]
 
-    # Free accounts always carry the service mark. The client could previously
-    # send wm_enable=0 and strip it, so the decision is made here, not there.
-    _wmp = _forced_wm(quota_state(request), wm_enable, wm_text, wm_opacity)
-    wm_on, wm_text, wm_opacity = _wmp["on"], _wmp["text"], _wmp["opacity"]
+    wm_on = wm_enable not in ("0", "false", "False", "")
     opacity = (wm_opacity / 100.0) if wm_on else 0.0
     text = wm_text if wm_on else ""
     color = (wm_color or "#ffffff").strip() or "#ffffff"
@@ -3624,10 +3592,6 @@ async def preview_wm(
             rgb = ImageOps.autocontrast(img.convert("RGB"), cutoff=1)
             img = rgb.convert("RGBA")
             suggestion = "Auto-contrast applied — details are clearer under the watermark."
-        # Preview must show what the export will actually produce, so the same
-        # free-plan policy applies here as in the processing endpoints.
-        _wmp = _forced_wm(quota_state(request), "1", wm_text, wm_opacity)
-        wm_text, wm_opacity = _wmp["text"], _wmp["opacity"]
         opacity = max(0.0, min(1.0, float(wm_opacity) / 100.0))
         corner = (wm_corner or "bl").strip().lower()
         if corner not in ("tl", "tr", "bl", "br"):
@@ -3998,10 +3962,7 @@ async def gallery_publish(
         elif is_video:
             ext = ".mp4"
 
-    # Free accounts always carry the service mark. The client could previously
-    # send wm_enable=0 and strip it, so the decision is made here, not there.
-    _wmp = _forced_wm(quota_state(request), wm_enable, wm_text, wm_opacity)
-    wm_on, wm_text, wm_opacity = _wmp["on"], _wmp["text"], _wmp["opacity"]
+    wm_on = wm_enable not in ("0", "false", "False", "")
     opacity = (wm_opacity / 100.0) if wm_on else 0.0
     text = wm_text if wm_on else ""
     color = (wm_color or "#ffffff").strip() or "#ffffff"
@@ -4431,9 +4392,6 @@ def gallery_am_admin(request: Request):
 
 @app.get("/gallery", response_class=HTMLResponse)
 def gallery_page():
-    react = STATIC / "react" / "index.html"
-    if react.is_file():
-        return HTMLResponse(react.read_text(encoding="utf-8"))
     path = STATIC / "gallery.html"
     if path.is_file():
         return HTMLResponse(path.read_text(encoding="utf-8"))
@@ -4441,56 +4399,6 @@ def gallery_page():
 
 
 # ====================== Discord OAuth login ======================
-
-# ====================== Steam OpenID login ======================
-
-@app.get("/api/auth/steam/login")
-def steam_login_start(request: Request):
-    from urllib.parse import urlencode
-    base = (os.environ.get("APP_URL") or str(request.base_url)).rstrip("/")
-    state = secrets.token_hex(16)
-    if not hasattr(app.state, "steam_pending"):
-        app.state.steam_pending = {}
-    app.state.steam_pending[state] = time.time()
-    return_to = f"{base}/api/auth/steam/callback?state={state}"
-    q = urlencode({
-        "openid.ns": "http://specs.openid.net/auth/2.0",
-        "openid.mode": "checkid_setup",
-        "openid.return_to": return_to,
-        "openid.realm": base + "/",
-        "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
-        "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
-    })
-    return RedirectResponse("https://steamcommunity.com/openid/login?" + q, status_code=302)
-
-
-@app.get("/api/auth/steam/callback")
-def steam_login_callback(request: Request, state: str = ""):
-    pending = getattr(app.state, "steam_pending", {})
-    created = pending.pop(state, None)
-    if not created or time.time() - created > 900:
-        return HTMLResponse("<h3>Steam auth failed (expired state)</h3>", status_code=400)
-    params = dict(request.query_params)
-    verify = {k: v for k, v in params.items() if k.startswith("openid.")}
-    verify["openid.mode"] = "check_authentication"
-    try:
-        import requests as rq
-        check = rq.post("https://steamcommunity.com/openid/login", data=verify, timeout=20)
-        if "is_valid:true" not in check.text:
-            return HTMLResponse("<h3>Steam verification failed</h3>", status_code=400)
-        claimed = params.get("openid.claimed_id", "")
-        match = re.search(r"/openid/id/(\d+)$", claimed)
-        if not match:
-            return HTMLResponse("<h3>Steam ID missing</h3>", status_code=400)
-        steam_id = match.group(1)
-        ok, msg, token = auth_db.register_or_login_steam(steam_id)
-        if not ok or not token:
-            return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
-        resp = RedirectResponse("/profile", status_code=302)
-        return _attach_session_cookie(resp, token, request)
-    except Exception:
-        LOGGER.exception("steam openid callback failed")
-        return HTMLResponse("<h3>Steam sign-in failed</h3>", status_code=500)
 
 def _discord_redirect_uri() -> str:
     """Build redirect URI; collapse accidental double slashes in path."""
@@ -4963,61 +4871,7 @@ async def api_compose(
         return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
 
 
-# ===========================================================================
-# React frontend (frontend/ → static/react) + the newer tool endpoints
-# ===========================================================================
-REACT_DIR = STATIC / "react"
-REACT_INDEX = REACT_DIR / "index.html"
-
-# Every client-side route the SPA owns. Anything not listed here (and not an
-# /api or /static path) keeps its existing server-rendered handler.
-SPA_ROUTES = [
-    "/app", "/builder", "/process", "/mockup", "/backgrounds", "/optimizer",
-    "/achievements", "/converter", "/upscale", "/hex", "/download",
-    "/steam", "/deviantart", "/billing", "/faq",
-    "/legal/terms", "/legal/privacy", "/legal/dmca",
-]
-
-
-def _spa_or(fallback: Path) -> HTMLResponse:
-    """Serve the built SPA when it exists, else the legacy static page."""
-    if REACT_INDEX.is_file():
-        return HTMLResponse(REACT_INDEX.read_text(encoding="utf-8"))
-    if fallback.is_file():
-        return HTMLResponse(fallback.read_text(encoding="utf-8"))
-    return HTMLResponse("Frontend is not built. Run: cd frontend && npm install && npm run build", status_code=503)
-
-
-if REACT_DIR.is_dir():
-    # Hashed bundles live under /assets in the Vite output.
-    try:
-        app.mount("/assets", StaticFiles(directory=str(REACT_DIR / "assets")), name="react_assets")
-    except Exception as e:
-        LOGGER.warning("react assets mount failed: %s", e)
-
-
-def _register_spa_routes() -> None:
-    for path in SPA_ROUTES:
-        async def _handler(request: Request, _p=path):
-            return _spa_or(STATIC / "app.html")
-
-        app.add_api_route(path, _handler, methods=["GET"], response_class=HTMLResponse,
-                          include_in_schema=False)
-
-
-_register_spa_routes()
-
-# The legacy vanilla pages stay reachable while the React build settles in.
-@app.get("/legacy", response_class=HTMLResponse, include_in_schema=False)
-def legacy_landing():
-    return HTMLResponse((STATIC / "index.html").read_text(encoding="utf-8"))
-
-
-@app.get("/legacy/app", response_class=HTMLResponse, include_in_schema=False)
-def legacy_app():
-    return HTMLResponse((STATIC / "app.html").read_text(encoding="utf-8"))
-
-
+# ====================== Profile builder API (Steam catalogs, projects) ======================
 try:
     import tools_api
 
@@ -5031,7 +4885,8 @@ try:
     )
     app.include_router(tools_api.router)
     LOGGER.info("tools_api mounted")
-except Exception as e:  # never take the whole app down over an optional module
+except Exception as e:
+    # The profile builder is optional and must never prevent the rest of the site from starting.
     LOGGER.exception("tools_api not mounted: %s", e)
 
 
