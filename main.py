@@ -5177,6 +5177,11 @@ def _clean_extension_profile(raw: dict, steam_id: str) -> dict:
             "title": txt(sc.get("title"), 120),
             "images": images,
             "text": txt(sc.get("text"), 1200),
+            "links": [
+                {"title": txt(link.get("title"), 160), "url": url(link.get("url"))}
+                for link in (sc.get("links") if isinstance(sc.get("links"), list) else [])[:30]
+                if isinstance(link, dict) and url(link.get("url"))
+            ],
             "width": max(0, min(int(sc.get("width") or 0), 3000)),
             "height": max(0, min(int(sc.get("height") or 0), 10000)),
         })
@@ -5268,6 +5273,20 @@ async def api_profile_extension_import(request: Request):
         profile = _merge_steam_api(profile)
         profile = _merge_nonempty_profile(auth_db.get_steam_profile_snapshot(grant["user_id"]), profile)
         auth_db.save_steam_profile_snapshot(grant["user_id"], profile)
+        avatar_url = str(profile.get("avatar") or "").strip()
+        if avatar_url:
+            try:
+                import requests as _rq
+                avatar_response = _rq.get(avatar_url, timeout=12, headers={"User-Agent": "Mozilla/5.0 ShowcaseMaker"})
+                if avatar_response.ok and avatar_response.content and len(avatar_response.content) <= 8_000_000:
+                    content_type = (avatar_response.headers.get("content-type") or "").lower()
+                    ext = ".png" if "png" in content_type else (".webp" if "webp" in content_type else ".jpg")
+                    avatar_dir = DATA / "avatars"; avatar_dir.mkdir(parents=True, exist_ok=True)
+                    rel = f"avatars/{grant['user_id']}{ext}"
+                    (DATA / rel).write_bytes(avatar_response.content)
+                    auth_db.update_profile(grant["user_id"], display_name=profile.get("name") or None, avatar_path=rel)
+            except Exception:
+                LOGGER.warning("Could not cache imported Steam avatar", exc_info=True)
         return {"ok": True, "profile": profile, "showcases": len(profile.get("showcase_instances") or [])}
     except Exception as exc:
         LOGGER.exception("extension Steam profile import failed")

@@ -540,6 +540,10 @@ html, body {
 .sm-generic-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:10px;background:rgba(0,0,0,.18)}
 .sm-generic-grid>.sm-media-slot{aspect-ratio:184/69;min-height:58px;background:rgba(255,255,255,.025)}
 .sm-generic-grid__media{display:block;width:100%;height:100%;object-fit:cover}
+.sm-generic-grid--items{grid-template-columns:repeat(6,minmax(0,1fr))}
+.sm-generic-grid--items>.sm-media-slot{aspect-ratio:1;min-height:0}
+.sm-generic-grid--items .sm-generic-grid__media{object-fit:contain;padding:5px}
+.profile_main_info_body{white-space:pre-wrap;overflow-wrap:anywhere}
 
 
 /* ---- FIX: background stays behind mockup, does not push layout ---- */

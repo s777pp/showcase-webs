@@ -230,7 +230,7 @@
     // Steam has several smaller showcase families (game collector, items for
     // trade, achievement grids). Preserve them as editable grids instead of
     // collapsing the whole block into one oversized image.
-    var genericImages = (sc.images || []).slice(0, 8);
+    var genericImages = (sc.images || []).slice(0, t === "items" ? 12 : 8);
     var genericSlots = genericImages.length ? genericImages : [""];
     return (
       '<div class="profile_main_banner" data-sc="' +
@@ -238,7 +238,7 @@
       '"><div class="profile_main_banner_up_content"><div class="profile_main_banner_title">' +
       esc(sc.title || sc.type || "Showcase") +
       "</div></div>" +
-      '<div class="sm-generic-grid">' + genericSlots.map(function(url, n) {
+      '<div class="sm-generic-grid sm-generic-grid--' + esc(t || "other") + '">' + genericSlots.map(function(url, n) {
         return slotTag(url, "sm-generic-grid__media", "showcase item", "showcase", idx + ':' + n);
       }).join("") + '</div>' +
       "</div>"
@@ -465,12 +465,17 @@
             ratings: 0,
           });
         } else if (typ.indexOf("info") >= 0) {
+          var infoLink = sc.links && sc.links[0];
           list.push({
             type: "info",
             title: sc.title || "Info",
             text: sc.text || "",
-            link: (sc.links && sc.links[0]) || "",
+            link: (infoLink && (infoLink.url || infoLink)) || "",
           });
+        } else if (typ.indexOf("gamecollector") >= 0 || typ === "games") {
+          list.push({type:"gamecollector",title:sc.title || "Game Collector",images:images.slice(0,8)});
+        } else if (typ.indexOf("items") >= 0 || typ.indexOf("item") >= 0) {
+          list.push({type:"items",title:sc.title || "Item Showcase",images:images.slice(0,12)});
         } else if (typ === "unknown") {
           list.push({type:"unknown",title:sc.title || "Steam Showcase",images:images.slice(0, 8)});
         } else if (images.length) {
