@@ -675,6 +675,16 @@ def api_profile_get(username: str, request: Request):
     av_url = f"/api/auth/avatar/{prof['id']}" if av else ""
     bg = prof.get("profile_background") or ""
     bg_url = f"/api/profile/bg/{prof['id']}" if bg else ""
+    steam_snap = None
+    try:
+        steam_snap = auth_db.get_steam_profile_snapshot(int(prof["id"]))
+    except Exception:
+        steam_snap = None
+    showcases = []
+    try:
+        showcases = auth_db.profile_showcase_list(int(prof["id"]))
+    except Exception:
+        showcases = []
     return {
         "ok": True,
         "is_owner": is_owner,
@@ -683,6 +693,8 @@ def api_profile_get(username: str, request: Request):
             "avatar_url": av_url,
             "background_url": bg_url,
             "username": prof.get("profile_username"),
+            "steam": steam_snap,
+            "showcases": showcases,
         },
     }
 
@@ -4888,6 +4900,144 @@ try:
 except Exception as e:
     # The profile builder is optional and must never prevent the rest of the site from starting.
     LOGGER.exception("tools_api not mounted: %s", e)
+
+
+# ====================== Steam OpenID login ======================
+def _steam_realm() -> str:
+    base = (os.environ.get("APP_URL") or "").strip().rstrip("/")
+    if not base:
+        base = f"http://{HOST}:{PORT}"
+    return base
+
+
+@app.get("/api/auth/steam/login")
+def steam_login_start(request: Request):
+    """Start Steam OpenID 2.0 sign-in (no API key required for OpenID)."""
+    from urllib.parse import urlencode
+    realm = _steam_realm()
+    return_to = realm + "/api/auth/steam/callback"
+    params = {
+        "openid.ns": "http://specs.openid.net/auth/2.0",
+        "openid.mode": "checkid_setup",
+        "openid.return_to": return_to,
+        "openid.realm": realm,
+        "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
+        "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
+    }
+    return {"ok": True, "url": "https://steamcommunity.com/openid/login?" + urlencode(params)}
+
+
+@app.get("/api/auth/steam/callback")
+async def steam_callback(request: Request):
+    """Verify Steam OpenID assertion, create session, pull public profile snapshot."""
+    import requests as _req
+    q = dict(request.query_params)
+    # local verify with Steam
+    payload = {k: v for k, v in q.items()}
+    payload["openid.mode"] = "check_authentication"
+    try:
+        vr = _req.post(
+            "https://steamcommunity.com/openid/login",
+            data=payload,
+            timeout=15,
+            headers={"User-Agent": "Mozilla/5.0 ShowcaseMaker"},
+        )
+        if "is_valid:true" not in (vr.text or "").lower():
+            return HTMLResponse("<h3>Steam login failed (invalid assertion)</h3>", status_code=400)
+        claimed = q.get("openid.claimed_id") or q.get("openid.identity") or ""
+        m = re.search(r"/openid/id/(\d{17})", claimed)
+        if not m:
+            return HTMLResponse("<h3>Steam login failed (no steamid)</h3>", status_code=400)
+        steam_id = m.group(1)
+        # persona name via public XML
+        persona = f"steam_{steam_id[-6:]}"
+        profile_data = None
+        try:
+            import steam_catalog
+            pr = steam_catalog.profile(f"https://steamcommunity.com/profiles/{steam_id}")
+            if pr.get("ok") and pr.get("profile"):
+                profile_data = pr["profile"]
+                persona = profile_data.get("name") or persona
+        except Exception:
+            LOGGER.exception("steam profile snapshot failed")
+        ok, msg, token = auth_db.register_or_login_steam(steam_id, persona)
+        if not ok or not token:
+            return HTMLResponse(f"<h3>Login error: {html.escape(msg)}</h3>", status_code=400)
+        user = auth_db.user_by_token(token)
+        if user and profile_data:
+            try:
+                auth_db.save_steam_profile_snapshot(int(user["id"]), profile_data)
+                # best-effort avatar download URL stored as display only — profile_background etc.
+                auth_db.ensure_profile_username(int(user["id"]), persona)
+            except Exception:
+                LOGGER.exception("save steam snapshot")
+        resp = HTMLResponse(
+            f"""<!doctype html><html><body style="background:#0b0f14;color:#fff;font-family:sans-serif;display:grid;place-items:center;height:100vh">
+<p>Steam OK — можно закрыть окно</p>
+<script>
+try {{ if (window.opener) window.opener.postMessage({{type:'steam_login', token:{token!r}}}, '*'); }} catch(e) {{}}
+try {{ localStorage.setItem('sm_session', {token!r}); }} catch(e) {{}}
+setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} location.href='/profile'; }}, 600);
+</script></body></html>"""
+        )
+        return _attach_session_cookie(resp, token, request)
+    except Exception as e:
+        LOGGER.exception("steam callback")
+        return HTMLResponse(f"<h3>Steam error: {html.escape(str(e))}</h3>", status_code=500)
+
+
+@app.get("/api/profile/steam-snapshot")
+def api_profile_steam_snapshot(request: Request):
+    """Return saved Steam profile JSON for the logged-in user (or ?user_id= for public)."""
+    uid = None
+    q_uid = (request.query_params.get("user_id") or "").strip()
+    if q_uid.isdigit():
+        uid = int(q_uid)
+    else:
+        user = _auth_user(request)
+        if not user:
+            return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+        uid = int(user["id"])
+    snap = auth_db.get_steam_profile_snapshot(uid)
+    if not snap:
+        return JSONResponse({"ok": False, "msg": "No Steam profile linked"}, status_code=404)
+    return {"ok": True, "profile": snap}
+
+
+@app.post("/api/profile/steam-import")
+async def api_profile_steam_import(request: Request):
+    """Re-fetch Steam profile for logged-in user (by steam_id or body.url) and save snapshot."""
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    url = (body.get("url") or "").strip()
+    if not url:
+        # try linked steam id
+        c_user = auth_db.user_by_token(request.cookies.get("sm_session") or "")
+        # fallthrough: use steam from snapshot
+        snap = auth_db.get_steam_profile_snapshot(int(user["id"]))
+        if snap and snap.get("steamid"):
+            url = f"https://steamcommunity.com/profiles/{snap['steamid']}"
+        elif snap and snap.get("url"):
+            url = snap["url"]
+    if not url:
+        return JSONResponse({"ok": False, "msg": "No Steam URL"}, status_code=400)
+    try:
+        import steam_catalog
+        pr = steam_catalog.profile(url)
+        if not pr.get("ok"):
+            return JSONResponse(pr, status_code=400)
+        auth_db.save_steam_profile_snapshot(int(user["id"]), pr["profile"])
+        return {"ok": True, "profile": pr["profile"]}
+    except Exception as e:
+        return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
+
+
 
 
 if __name__ == "__main__":

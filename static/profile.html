@@ -626,16 +626,19 @@ function showInfo(y) {
   return b.end;
 }
 function showWorkshop(y) {
-  var b = block(y, 'Workshop Showcase', 196);
+  /* длинные workshop-гифы: выше ячейка + object-fit contain через mediaSlot fit */
+  var th = S.workshop.thumbs || [], n = 5, gap = 8;
+  var tw = Math.floor((MAIN_W - 28 - gap * (n - 1)) / n);
+  var tHt = Math.max(Math.round(tw * 1.65), 120); /* tall strip */
+  var blockH = 38 + tHt + 70;
+  var b = block(y, 'Workshop Showcase', blockH);
   text(MAIN_X + 14, b.y + 12, MAIN_W - 28, (S.workshop.title || 'Workshop') +
        (S.workshop.author ? '  •  ' + S.workshop.author : ''), { size: 13, weight: 700, color: C.head });
-  var th = S.workshop.thumbs || [], n = 5, gap = 8;
-  var tw = Math.floor((MAIN_W - 28 - gap * (n - 1)) / n), tHt = Math.round(tw * 0.56);
   for (var i = 0; i < n; i++) {
     var x = MAIN_X + 14 + i * (tw + gap), iy = b.y + 38;
-    mediaSlot(x, iy, tw, tHt, th[i], 'workshop.thumbs', i, { r: 2 });
+    mediaSlot(x, iy, tw, tHt, th[i], 'workshop.thumbs', i, { r: 2, fit: 'contain' });
   }
-  var sy = b.y + 46 + Math.round(tw * 0.56);
+  var sy = b.y + 46 + tHt;
   text(MAIN_X + 14, sy, 140, fmt(num(S.workshop.subs, 0)), { size: 20, weight: 800, color: C.head });
   text(MAIN_X + 14, sy + 26, 140, 'Submissions', { size: 11.5, color: C.dim });
   text(MAIN_X + 150, sy, 140, fmt(num(S.workshop.followers, 0)), { size: 20, weight: 800, color: C.head });
@@ -736,6 +739,13 @@ function build() {
     if (fn) y = fn(y);
   });
   side(TOP);
+  /* сцена растёт под контент — иначе витрины ниже 1080px обрезаются и «не листаются» */
+  window.__sceneH = Math.max(H, y + 40, 1080);
+  var sc = $('scene');
+  if (sc) {
+    sc.style.height = window.__sceneH + 'px';
+    sc.style.width = W + 'px';
+  }
   return ops;
 }
 
@@ -848,12 +858,26 @@ on(scLayer, 'drop', function (e) {
 function fit() {
   var view = $('view'), sc = $('scene');
   if (!view || !sc) return;
-  /* пока панель скрыта, clientWidth = 0 — не даём сцене свернуться в точку */
-  var vw = view.clientWidth || W, vh = view.clientHeight || H;
-  var k = Math.min(vw / W, vh / H) * (window.__zoom || 1);
+  var sceneH = window.__sceneH || H;
+  /* масштаб только по ширине — по высоте скроллим view, чтобы видеть все витрины */
+  var vw = view.clientWidth || W;
+  var k = (vw / W) * (window.__zoom || 1);
+  if (k <= 0) k = 1;
   sc.style.transform = 'scale(' + k + ')';
-  var ox = Math.max(0, (vw - W * k) / 2), oy = Math.max(0, (vh - H * k) / 2);
-  sc.style.left = ox + 'px'; sc.style.top = oy + 'px';
+  sc.style.transformOrigin = 'top left';
+  sc.style.left = Math.max(0, (vw - W * k) / 2) + 'px';
+  sc.style.top = '0px';
+  /* место под отмасштабированную сцену, чтобы скролл view работал */
+  view.style.overflow = 'auto';
+  var spacer = $('sceneSpacer');
+  if (!spacer) {
+    spacer = document.createElement('div');
+    spacer.id = 'sceneSpacer';
+    spacer.style.pointerEvents = 'none';
+    view.appendChild(spacer);
+  }
+  spacer.style.width = '1px';
+  spacer.style.height = Math.ceil(sceneH * k + 24) + 'px';
 }
 window.addEventListener('resize', fit);
 
@@ -1422,7 +1446,11 @@ on($('impGo'), 'click', function () {
         S.groups = p.groups.map(function (g) { return { name: g.name, members: 0, avatar: g.avatar }; });
       }
       if (p.badges && p.badges.length) {
-        S.badges = p.badges.slice(0, 4).map(function (url) { return { image: url }; });
+        S.badges = p.badges.slice(0, 4).map(function (b) {
+          if (!b) return null;
+          if (typeof b === 'string') return { image: b };
+          return { image: b.image || b.url || '' };
+        });
         while (S.badges.length < 4) S.badges.push(null);
       }
       if (p.awards && p.awards.length) {
@@ -1436,26 +1464,45 @@ on($('impGo'), 'click', function () {
       imported.forEach(function (sc) {
         var images = (sc.images || []).filter(Boolean);
         if (!images.length) return;
-        if (sc.type === 'workshop') {
+        var typ = (sc.type || '').toLowerCase();
+        if (typ === 'workshop' || typ.indexOf('workshop') >= 0 || typ.indexOf('мастер') >= 0) {
           S.workshop.thumbs = images.slice(0, 5);
           var subs = /([\d,]+)\s+Submissions/i.exec(sc.text || '');
           var foll = /([\d,]+)\s+Followers/i.exec(sc.text || '');
           if (subs) S.workshop.subs = num(subs[1], S.workshop.subs);
           if (foll) S.workshop.followers = num(foll[1], S.workshop.followers);
-        } else if (sc.type === 'guide') {
+        } else if (typ === 'guide' || typ.indexOf('guide') >= 0 || typ.indexOf('руковод') >= 0) {
           S.guide.img = images[0];
-        } else if (sc.type === 'art') {
+        } else if (typ === 'art' || typ === 'artwork' || typ.indexOf('art') >= 0 || typ === 'screenshot') {
           if (!artNo) { S.art.big = images[0]; S.art.small = images[1] || ''; }
           else if (!S.artfav.img) S.artfav.img = images[0];
+          artNo++;
+        } else if (images.length >= 4) {
+          /* fallback: multi-image block → workshop strip */
+          if (!(S.workshop.thumbs && S.workshop.thumbs.length)) S.workshop.thumbs = images.slice(0, 5);
+        } else if (images[0] && !S.art.big) {
+          S.art.big = images[0];
           artNo++;
         }
       });
       if (imported.length) {
-        var foundTypes = imported.map(function (x) { return x.type; });
+        var foundTypes = imported.map(function (x) { return (x.type || '').toLowerCase(); });
+        function hasType(keys) {
+          return foundTypes.some(function (t) {
+            return keys.some(function (k) { return t === k || t.indexOf(k) >= 0; });
+          });
+        }
         S.show.forEach(function (row) {
           if (row.k === 'artfav') row.on = artNo > 1;
+          else if (row.k === 'workshop') row.on = hasType(['workshop', 'мастер']);
+          else if (row.k === 'guide') row.on = hasType(['guide', 'руковод']);
+          else if (row.k === 'art') row.on = artNo > 0 || hasType(['art', 'screenshot', 'иллюстр']);
           else if (row.k !== 'info') row.on = foundTypes.indexOf(row.k) >= 0;
         });
+        /* если витрины пришли, но типы не распознались — включить workshop/art */
+        if (imported.length && !S.show.some(function (r) { return r.on && r.k !== 'info'; })) {
+          S.show.forEach(function (r) { if (r.k === 'workshop' || r.k === 'art') r.on = true; });
+        }
       }
       /* Steam печатает только те счётчики, которые у профиля есть, поэтому
          бэкенд отдаёт их с подписями (stats_map) — по позиции их читать нельзя. */

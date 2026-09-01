@@ -214,6 +214,7 @@ def user_by_token(token: str) -> Optional[dict]:
             ("profile_bg_x", "REAL"), ("profile_bg_y", "REAL"), ("profile_bg_scale", "REAL"),
             ("profile_bg_overlay", "REAL"), ("profile_level", "INTEGER"), ("profile_xp", "INTEGER"),
             ("profile_location", "TEXT"), ("profile_status", "TEXT"), ("profile_visibility", "TEXT"),
+            ("steam_id", "TEXT"), ("steam_username", "TEXT"), ("steam_profile_json", "TEXT"),
         ):
             try:
                 c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
@@ -1297,3 +1298,143 @@ def gallery_list_for_user(user_id: int, limit: int = 50) -> list[dict]:
     ).fetchall()
     c.close()
     return [dict(r) for r in rows]
+
+
+
+def user_by_steam(steam_id: str) -> dict | None:
+    if not steam_id:
+        return None
+    c = _conn()
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN steam_id TEXT")
+        c.commit()
+    except Exception:
+        pass
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN steam_username TEXT")
+        c.commit()
+    except Exception:
+        pass
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN steam_profile_json TEXT")
+        c.commit()
+    except Exception:
+        pass
+    row = c.execute(
+        "SELECT id, email, is_pro, pro_code, pro_until, steam_id, steam_username, display_name, avatar_path FROM users WHERE steam_id=?",
+        (str(steam_id),),
+    ).fetchone()
+    c.close()
+    return dict(row) if row else None
+
+
+def register_or_login_steam(steam_id: str, persona_name: str | None = None) -> tuple[bool, str, str | None]:
+    """Create or login user bound to SteamID64."""
+    steam_id = str(steam_id).strip()
+    if not steam_id.isdigit() or len(steam_id) != 17:
+        return False, "Invalid SteamID", None
+    name = (persona_name or f"steam_{steam_id[-6:]}")[:40]
+    existing = user_by_steam(steam_id)
+    c = _conn()
+    try:
+        for col, typ in (("steam_id", "TEXT"), ("steam_username", "TEXT"), ("steam_profile_json", "TEXT")):
+            try:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
+                c.commit()
+            except Exception:
+                pass
+        if existing:
+            uid = int(existing["id"])
+            c.execute(
+                "UPDATE users SET steam_username=?, display_name=COALESCE(NULLIF(display_name,''), ?) WHERE id=?",
+                (name, name, uid),
+            )
+        else:
+            em = f"steam_{steam_id}@users.local"
+            # if email collision, attach steam to that row is unlikely; use unique email
+            try:
+                c.execute(
+                    "INSERT INTO users(email, password_hash, is_pro, email_verified, steam_id, steam_username, display_name, created_at) VALUES (?,?,0,1,?,?,?,?)",
+                    (em, _hash_pw(secrets.token_hex(16)), steam_id, name, name, time.time()),
+                )
+            except Exception:
+                em = f"steam_{steam_id}_{int(time.time())}@users.local"
+                c.execute(
+                    "INSERT INTO users(email, password_hash, is_pro, email_verified, steam_id, steam_username, display_name, created_at) VALUES (?,?,0,1,?,?,?,?)",
+                    (em, _hash_pw(secrets.token_hex(16)), steam_id, name, name, time.time()),
+                )
+            uid = int(c.execute("SELECT id FROM users WHERE steam_id=?", (steam_id,)).fetchone()["id"])
+        token = secrets.token_hex(24)
+        c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (token, uid, time.time()))
+        c.commit()
+        return True, "OK", token
+    except Exception as e:
+        return False, str(e), None
+    finally:
+        c.close()
+
+
+def save_steam_profile_snapshot(user_id: int, profile: dict) -> None:
+    """Persist Steam profile JSON + useful public fields for /profile/{user}."""
+    import json as _json
+    c = _conn()
+    try:
+        for col, typ in (
+            ("steam_profile_json", "TEXT"),
+            ("profile_summary", "TEXT"),
+            ("profile_level", "INTEGER"),
+            ("profile_status", "TEXT"),
+            ("profile_location", "TEXT"),
+            ("profile_background", "TEXT"),
+        ):
+            try:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
+                c.commit()
+            except Exception:
+                pass
+        summary = (profile.get("summary") or "")[:2000]
+        level = profile.get("level")
+        status = (profile.get("status") or "")[:40]
+        location = (profile.get("location") or "")[:120]
+        c.execute(
+            """UPDATE users SET steam_profile_json=?, profile_summary=COALESCE(NULLIF(?,''), profile_summary),
+               profile_level=COALESCE(?, profile_level), profile_status=COALESCE(NULLIF(?,''), profile_status),
+               profile_location=COALESCE(NULLIF(?,''), profile_location),
+               display_name=COALESCE(NULLIF(display_name,''), ?)
+               WHERE id=?""",
+            (
+                _json.dumps(profile, ensure_ascii=False)[:500000],
+                summary,
+                int(level) if level is not None else None,
+                status,
+                location,
+                (profile.get("name") or "")[:40],
+                int(user_id),
+            ),
+        )
+        c.commit()
+    finally:
+        c.close()
+
+
+def get_steam_profile_snapshot(user_id: int) -> dict | None:
+    import json as _json
+    c = _conn()
+    try:
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN steam_profile_json TEXT")
+            c.commit()
+        except Exception:
+            pass
+        row = c.execute("SELECT steam_profile_json, steam_id FROM users WHERE id=?", (int(user_id),)).fetchone()
+        if not row or not row["steam_profile_json"]:
+            return None
+        data = _json.loads(row["steam_profile_json"])
+        if isinstance(data, dict):
+            data.setdefault("steamid", row["steam_id"])
+            return data
+        return None
+    except Exception:
+        return None
+    finally:
+        c.close()

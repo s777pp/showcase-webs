@@ -582,14 +582,17 @@ class _ProfilePageParser(HTMLParser):
             item["links"] = list(dict.fromkeys(item["links"]))
             item["text"] = " ".join(item["text"])
             title = item["title"].lower()
-            if "workshop" in title or "мастерск" in title:
+            blob = (title + " " + " ".join(item.get("text") or [])).lower() if isinstance(item.get("text"), list) else (title + " " + str(item.get("text") or "")).lower()
+            if "workshop" in blob or "мастерск" in blob:
                 item["type"] = "workshop"
-            elif "guide" in title or "руковод" in title:
+            elif "guide" in blob or "руковод" in blob:
                 item["type"] = "guide"
-            elif "artwork" in title or "illustration" in title or "иллюстра" in title:
+            elif "artwork" in blob or "illustration" in blob or "иллюстра" in blob or "screenshot" in blob:
                 item["type"] = "art"
-            elif "information" in title or "информац" in title:
+            elif "information" in blob or "информац" in blob:
                 item["type"] = "info"
+            elif "favorite" in blob and ("art" in blob or "иллюстр" in blob):
+                item["type"] = "art"
             else:
                 item["type"] = "other"
             self.showcases.append(item)
@@ -611,12 +614,24 @@ def _profile_customizations(page_html: str) -> dict:
 
 
 def profile(url: str) -> dict:
-    """Load the public part of a Steam profile without a Web API key."""
-    raw = (url or "").strip().rstrip("/")
-    m = re.match(r"^https?://steamcommunity\.com/(id|profiles)/([^/?#]+)$", raw, re.I)
-    if not m:
+    """Load the public part of a Steam profile without a Web API key.
+
+    Accepts full URL, /id/vanity, /profiles/steamid64, bare vanity or SteamID64.
+    """
+    raw = (url or "").strip()
+    if not raw:
         return {"ok": False, "msg": "Enter a public steamcommunity.com profile URL"}
-    canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
+    if re.fullmatch(r"\d{17}", raw):
+        canonical = f"https://steamcommunity.com/profiles/{raw}"
+    elif re.fullmatch(r"[A-Za-z0-9_-]{2,64}", raw):
+        canonical = f"https://steamcommunity.com/id/{raw}"
+    else:
+        raw = raw.rstrip("/")
+        m = re.search(r"steamcommunity\.com/(id|profiles)/([^/?#]+)", raw, re.I)
+        if not m:
+            return {"ok": False, "msg": "Enter a public steamcommunity.com profile URL"}
+        canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
+
     key = f"profile4:{canonical.lower()}"
     cached = _get(key)
     if cached is not None:
@@ -686,7 +701,12 @@ def profile(url: str) -> dict:
                 "stats": counts[:6],
                 "stats_map": stat_map,
                 "showcases": custom["showcases"],
-                "badges": custom["badges"],
+                "badges": [
+                    (b if isinstance(b, str) else (b.get("image") or b.get("url") or ""))
+                    for b in (custom.get("badges") or [])
+                    if (b if isinstance(b, str) else (b.get("image") or b.get("url")))
+                ],
+                "badge_items": custom.get("badges") or [],
                 "awards": custom["awards"],
             },
         }

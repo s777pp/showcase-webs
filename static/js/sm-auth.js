@@ -7,6 +7,7 @@
   if (window.__smAuthLoaded) return;
   window.__smAuthLoaded = true;
 
+  var ST_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-6.8 17.3l3.7-1.5a3.6 3.6 0 0 0 6.6-1.7 3.6 3.6 0 0 0-3.5-3.6l-1.7.1 2.5-3.6a4.8 4.8 0 1 0-4.2 7.5l-2.9 1.2A10 10 0 1 0 12 2zm6.3 6.1a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0zM9.4 14.5a2 2 0 1 1-1.6 3.7 2 2 0 0 1 1.6-3.7z"/></svg>';
   var TG_SVG =
     '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#26A5E4" d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>';
   var DC_SVG =
@@ -69,12 +70,14 @@
       '<button type="button" id="smAuthDiscord">' + DC_SVG + '<span>Discord</span></button>' +
       '<button type="button" id="smAuthGoogle">' + GG_SVG + '<span>Google</span></button>' +
       '<button type="button" id="smAuthTelegram">' + TG_SVG + '<span>Telegram</span></button>' +
+      '<button type="button" id="smAuthSteam">' + ST_SVG + '<span>Steam</span></button>' +
       '<div id="smTgHost" style="display:none;text-align:center;margin-top:4px"></div>' +
       '</div>' +
       '<div class="switch" id="smAuthSwitch"></div>' +
       '</div>';
     document.body.appendChild(el);
     wire(el);
+    /* steam button bound in wire */
     return el;
   }
 
@@ -195,6 +198,26 @@
     document.getElementById('smAuthGoogle').onclick = function () {
       goOAuth('google');
     };
+    
+    document.getElementById('smAuthSteam').onclick = async function () {
+      try {
+        var r = await fetch('/api/auth/steam/login', { credentials: 'include' });
+        var d = await r.json();
+        if (!d.ok || !d.url) { alert(d.msg || 'Steam not available'); return; }
+        var w = window.open(d.url, 'sm_steam', 'width=980,height=720');
+        var onMsg = function (ev) {
+          if (!ev.data || ev.data.type !== 'steam_login') return;
+          window.removeEventListener('message', onMsg);
+          if (ev.data.token) {
+            try { localStorage.setItem('sm_session', ev.data.token); } catch (e) {}
+          }
+          location.reload();
+        };
+        window.addEventListener('message', onMsg);
+        if (!w) location.href = d.url;
+      } catch (e) { alert(String(e)); }
+    };
+
     document.getElementById('smAuthTelegram').onclick = async function () {
       try {
         var r = await fetch('/api/auth/telegram/config');
