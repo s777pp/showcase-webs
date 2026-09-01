@@ -71,6 +71,34 @@ function setTrialTimer(remainingSec) {
   _trialTick = setInterval(updateTrialClock, 1000);
 }
 
+function syncWatermarkAccess(isPro) {
+  window.__watermarkIsPro = !!isPro;
+  const fixed = {
+    wmText: 'ShowcaseMaker', wmFont: 'Fineday', wmOpacity: '50',
+    wmScale: '100', wmCorner: 'bl', wmColor: '#ffffff'
+  };
+  Object.keys(fixed).forEach(function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!isPro) el.value = fixed[id];
+    el.disabled = !isPro;
+  });
+  const enabled = document.getElementById('wmEnable');
+  if (enabled) {
+    if (!isPro) enabled.checked = true;
+    enabled.disabled = !isPro;
+  }
+  const reset = document.getElementById('btnWmReset');
+  if (reset) reset.disabled = !isPro;
+  if (!isPro) {
+    const wx = document.getElementById('wmX');
+    const wy = document.getElementById('wmY');
+    if (wx) wx.value = '';
+    if (wy) wy.value = '';
+  }
+  try { window.__wmRedraw && window.__wmRedraw(); } catch (e) {}
+}
+
 async function refreshQuota() {
   const r = await fetch('/api/quota', { headers: headers(), credentials: 'include' });
   const j = await r.json();
@@ -80,6 +108,7 @@ async function refreshQuota() {
   const btnUp = document.getElementById('btnUpgrade');
   const btnOut = document.getElementById('btnLogout');
   const btnAuth = document.getElementById('btnAuth');
+  syncWatermarkAccess(!!j.pro);
   if (j.pro) {
     if (j.is_trial && j.remaining_sec != null) {
       el.innerHTML = `<b>Trial</b> · ` + fmtTrial(j.remaining_sec);
@@ -968,7 +997,12 @@ function refreshSteamUI() {
     });
   }
   // i18n chrome
-  const pack = (typeof APP_I18N !== "undefined" && APP_I18N[L]) ? APP_I18N[L] : null;
+  // APP_I18N is declared later in this classic script. Referring to the lexical
+  // binding here puts it in the temporal dead zone and used to abort the whole
+  // tools page before the file pickers were wired. Reading through window is
+  // safe both before and after the translation table is mounted.
+  const i18n = window.APP_I18N;
+  const pack = (i18n && i18n[L]) ? i18n[L] : null;
   if (pack) {
     const map = [
       ["steamTitle", pack.steam_h],
@@ -1585,6 +1619,52 @@ document.getElementById('daClearFiles') && document.getElementById('daClearFiles
   renderDaList();
 });
 
+document.getElementById('daLoadWorks') && document.getElementById('daLoadWorks').addEventListener('click', async function () {
+  var btn = this;
+  var box = document.getElementById('daWorks');
+  var st = document.getElementById('daMsg');
+  var ru = localStorage.getItem('sm_lang') === 'ru';
+  btn.disabled = true;
+  if (st) { st.className = 'status'; st.textContent = ru ? 'Загружаю твои работы DeviantArt…' : 'Loading your DeviantArt works…'; }
+  try {
+    var r = await fetch('/api/da/works?limit=36', { headers: headers(), credentials: 'include' });
+    var j = await r.json().catch(function () { return {}; });
+    if (!r.ok || !j.ok) throw new Error(j.msg || ('HTTP ' + r.status));
+    box.style.display = 'grid';
+    box.innerHTML = (j.works || []).map(function (work) {
+      return '<button type="button" class="da-work" data-id="' + work.id + '" data-name="' +
+        String(work.filename || '').replace(/"/g, '&quot;') + '" data-title="' +
+        String(work.title || '').replace(/"/g, '&quot;') + '" style="padding:0;overflow:hidden;text-align:left;border:1px solid var(--border);border-radius:12px;background:rgba(0,0,0,.22);color:var(--text);cursor:pointer">' +
+        '<img src="' + work.preview + '" alt="" loading="lazy" style="display:block;width:100%;aspect-ratio:1;object-fit:cover">' +
+        '<span style="display:block;padding:8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + work.title + '</span></button>';
+    }).join('');
+    box.querySelectorAll('.da-work').forEach(function (workBtn) {
+      workBtn.addEventListener('click', async function () {
+        workBtn.disabled = true;
+        try {
+          var fr = await fetch('/api/da/work-file/' + encodeURIComponent(workBtn.dataset.id), { headers: headers(), credentials: 'include' });
+          if (!fr.ok) { var er = await fr.json().catch(function(){ return {}; }); throw new Error(er.msg || ('HTTP ' + fr.status)); }
+          var blob = await fr.blob();
+          var name = workBtn.dataset.name || ('deviation_' + workBtn.dataset.id + '.jpg');
+          var file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
+          daItems.push({ file: file, name: name, title: workBtn.dataset.title || name.replace(/\.[^.]+$/, '') });
+          renderDaList();
+          workBtn.style.outline = '2px solid var(--accent)';
+          if (st) { st.className = 'status ok'; st.textContent = ru ? 'Работа добавлена в список.' : 'Work added to the list.'; }
+        } catch (e) {
+          workBtn.disabled = false;
+          if (st) { st.className = 'status err'; st.textContent = String(e.message || e); }
+        }
+      });
+    });
+    if (st) { st.className = 'status ok'; st.textContent = (ru ? 'Работы загружены: ' : 'Works loaded: ') + (j.works || []).length; }
+  } catch (e) {
+    if (st) { st.className = 'status err'; st.textContent = String(e.message || e); }
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 document.getElementById('daUpload') && document.getElementById('daUpload').addEventListener('click', async function () {
   var st = document.getElementById('daMsg');
   if (!daItems.length) {
@@ -1616,6 +1696,8 @@ document.getElementById('daUpload') && document.getElementById('daUpload').addEv
     if (st) { st.className = 'status err'; st.textContent = String(e); }
   }
 });
+
+window.__daLegacyBound = true;
 
 if (location.hash === '#account' || location.hash === '#profile') {
   var btnA = document.querySelector('#nav button[data-tab="account"]');
@@ -1955,6 +2037,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       da_redirect: "Redirect URI in your DA app must be exactly:",
       da_connect: "Connect",
       da_need_login: "DA: log in to Showcase account first",
+      da_import_works: "Import my DeviantArt works",
+      da_import_hint: "Select works to add them to the upload list.",
       steam_h: "Upload to Steam",
       steam_desc: "Semi-auto: results folder → Steam page → console code → upload.",
       steam_tip: "Tip: log into Steam in the browser first. Paste the code once on the page, then pick files.",
@@ -2067,6 +2151,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       da_redirect: "Redirect URI в приложении DA должен быть точно:",
       da_connect: "Подключить",
       da_need_login: "DA: сначала войди в аккаунт Showcase",
+      da_import_works: "Импортировать мои работы DeviantArt",
+      da_import_hint: "Выбери работы, чтобы добавить их в список загрузки.",
       steam_h: "Загрузка в Steam",
       steam_desc: "Полуавтомат: папка с файлами → страница Steam → код в консоль → загрузка.",
       steam_tip: "Совет: войди в Steam в браузере заранее. Код вставляется один раз на страницу, затем выбираешь файлы.",
@@ -2397,6 +2483,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 // app.html L3996-4353
 /* DeviantArt Connect — standalone */
 (function () {
+  if (window.__daLegacyBound) return;
   function msg(text, cls) {
     var st = document.getElementById("daMsg");
     if (!st) { try { alert(text); } catch (e) {} return; }
@@ -2865,6 +2952,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     ctx.strokeRect(x - 3, y - fontSize - 2, tw + 6, fontSize + 8);
     ctx.setLineDash([]);
   }
+  window.__wmRedraw = draw;
 
   function loadFromImageUrl(url, revoke){
     return new Promise(function(resolve){
@@ -2986,7 +3074,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     };
   }
   canvas.addEventListener('pointerdown', function(e){
-    if (!img) return;
+    if (!img || window.__watermarkIsPro === false) return;
     e.preventDefault();
     dragging = true;
     try { canvas.setPointerCapture(e.pointerId); } catch(err){}

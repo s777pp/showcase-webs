@@ -12,13 +12,6 @@
 
 </head>
 <body>
-<div class="bg-video" aria-hidden="true">
-  <video autoplay loop muted playsinline>
-    <source src="/static/video/hero.mp4" type="video/mp4"/>
-    <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4" type="video/mp4"/>
-  </video>
-</div>
-
 <div class="stars-layer" id="starsLayer" aria-hidden="true"></div>
 
 
@@ -549,18 +542,23 @@
       </div>
       <div class="row" style="margin-bottom:14px">
         <span class="pill" id="daStatusPill">DA: not connected</span>
-        <button class="btn" id="daLogin" data-i="da_connect" data-da-connect="1" type="button" onclick="if(window.__daConnect){window.__daConnect();}else{alert('JS not loaded — hard refresh Ctrl+Shift+R');}return false;">Connect</button>
+        <button class="btn" id="daLogin" data-i="da_connect" data-da-connect="1" type="button">Connect</button>
         <button class="btn ghost" id="daLogout" type="button" style="display:none">Disconnect</button>
       </div>
       <div id="daConnectedBlock" style="display:none">
+        <div class="row" style="margin-bottom:10px;flex-wrap:wrap">
+          <button class="btn ghost" id="daLoadWorks" data-i="da_import_works" type="button">Import my DeviantArt works</button>
+          <span class="steps" id="daWorksHint" data-i="da_import_hint" style="font-size:12px">Select works to add them to the upload list.</span>
+        </div>
+        <div id="daWorks" style="display:none;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin:0 0 14px"></div>
         <div class="row" style="margin-bottom:10px">
-          <button class="btn" id="daAddFiles" type="button" onclick="window.__daPickFiles&&window.__daPickFiles();return false;">Add files</button>
-          <button class="btn ghost" id="daClearFiles" type="button" onclick="window.__daClearFiles&&window.__daClearFiles();return false;">Clear list</button>
+          <button class="btn" id="daAddFiles" type="button">Add files</button>
+          <button class="btn ghost" id="daClearFiles" type="button">Clear list</button>
           <input type="file" id="daFiles" multiple accept="image/*,image/gif,image/png,image/jpeg,video/mp4,video/webm,.gif,.png,.jpg,.jpeg,.mp4,.webm" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0"/>
         </div>
         <div id="daList" class="files"></div>
         <div class="row" style="margin-top:12px">
-          <button class="btn" id="daUpload" type="button" onclick="window.__daUpload&&window.__daUpload();return false;">Upload to Sta.sh</button>
+          <button class="btn" id="daUpload" type="button">Upload to Sta.sh</button>
         </div>
         <div class="da-progress" id="daProgress" aria-live="polite">
           <div class="da-prog-top">
@@ -648,7 +646,7 @@
   </div>
 </div>
 
-<script src="/static/js/app.js?v=20260901s"></script>
+  <script src="/static/js/app.js?v=20260901x"></script>
 
 
 

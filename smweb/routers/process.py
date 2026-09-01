@@ -66,6 +66,47 @@ from smweb.jobs import (
 router = APIRouter()
 
 
+def _watermark_options(
+    quota: dict,
+    wm_text: str,
+    wm_font: str,
+    wm_opacity: int,
+    wm_enable: str,
+    wm_corner: str,
+    wm_scale: float,
+    wm_color: str,
+    wm_x: str,
+    wm_y: str,
+) -> tuple[str, str, float, str, float, str, float | None, float | None]:
+    """Return trusted watermark settings for the processing pipeline.
+
+    Free-tier branding is enforced here instead of only in the browser, so it
+    cannot be disabled or changed by editing the form payload.
+    """
+    if not quota.get("pro"):
+        return "ShowcaseMaker", "Fineday", 0.50, "bl", 1.0, "#ffffff", None, None
+
+    wm_on = wm_enable not in ("0", "false", "False", "")
+    opacity = (wm_opacity / 100.0) if wm_on else 0.0
+    text = wm_text if wm_on else ""
+    color = (wm_color or "#ffffff").strip() or "#ffffff"
+    corner = (wm_corner or "bl").strip().lower()
+    if corner not in ("tl", "tr", "bl", "br"):
+        corner = "bl"
+    try:
+        scale = max(0.4, min(2.5, float(wm_scale)))
+    except (TypeError, ValueError):
+        scale = 1.0
+    wm_x_f = wm_y_f = None
+    try:
+        if str(wm_x).strip() != "" and str(wm_y).strip() != "":
+            wm_x_f = max(0.0, min(1.0, float(wm_x)))
+            wm_y_f = max(0.0, min(1.0, float(wm_y)))
+    except (TypeError, ValueError):
+        wm_x_f = wm_y_f = None
+    return text, wm_font, opacity, corner, scale, color, wm_x_f, wm_y_f
+
+
 @router.post("/api/process/start")
 async def api_process_start(
     request: Request,
@@ -99,24 +140,10 @@ async def api_process_start(
         return JSONResponse({"ok": False, "msg": "Unknown mode"}, status_code=400)
     do_all = str(all_modes).lower() in ("1", "true", "yes", "on")
     modes = ["workshop", "featured", "split"] if do_all else [mode]
-    wm_on = wm_enable not in ("0", "false", "False", "")
-    opacity = (wm_opacity / 100.0) if wm_on else 0.0
-    text = wm_text if wm_on else ""
-    color = (wm_color or "#ffffff").strip() or "#ffffff"
-    corner = (wm_corner or "bl").strip().lower()
-    if corner not in ("tl", "tr", "bl", "br"):
-        corner = "bl"
-    try:
-        scale = max(0.4, min(2.5, float(wm_scale)))
-    except (TypeError, ValueError):
-        scale = 1.0
-    wm_x_f = wm_y_f = None
-    try:
-        if str(wm_x).strip() != "" and str(wm_y).strip() != "":
-            wm_x_f = max(0.0, min(1.0, float(wm_x)))
-            wm_y_f = max(0.0, min(1.0, float(wm_y)))
-    except (TypeError, ValueError):
-        wm_x_f = wm_y_f = None
+    text, wm_font, opacity, corner, scale, color, wm_x_f, wm_y_f = _watermark_options(
+        q, wm_text, wm_font, wm_opacity, wm_enable, wm_corner,
+        wm_scale, wm_color, wm_x, wm_y,
+    )
     do_ac = str(auto_contrast).lower() in ("1", "true", "yes", "on")
     try:
         size_i = int(size)
@@ -287,24 +314,10 @@ async def api_process(
     do_all = str(all_modes).lower() in ("1", "true", "yes", "on")
     modes = ["workshop", "featured", "split"] if do_all else [mode]
 
-    wm_on = wm_enable not in ("0", "false", "False", "")
-    opacity = (wm_opacity / 100.0) if wm_on else 0.0
-    text = wm_text if wm_on else ""
-    color = (wm_color or "#ffffff").strip() or "#ffffff"
-    corner = (wm_corner or "bl").strip().lower()
-    if corner not in ("tl", "tr", "bl", "br"):
-        corner = "bl"
-    try:
-        scale = max(0.4, min(2.5, float(wm_scale)))
-    except (TypeError, ValueError):
-        scale = 1.0
-    wm_x_f = wm_y_f = None
-    try:
-        if str(wm_x).strip() != "" and str(wm_y).strip() != "":
-            wm_x_f = max(0.0, min(1.0, float(wm_x)))
-            wm_y_f = max(0.0, min(1.0, float(wm_y)))
-    except (TypeError, ValueError):
-        wm_x_f = wm_y_f = None
+    text, wm_font, opacity, corner, scale, color, wm_x_f, wm_y_f = _watermark_options(
+        q, wm_text, wm_font, wm_opacity, wm_enable, wm_corner,
+        wm_scale, wm_color, wm_x, wm_y,
+    )
     do_ac = str(auto_contrast).lower() in ("1", "true", "yes", "on")
     try:
         size_i = int(size)
