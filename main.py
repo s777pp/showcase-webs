@@ -5035,10 +5035,6 @@ async def api_profile_steam_import(request: Request):
         body = await request.json()
     except Exception:
         body = {}
-    snapshot = body.get("snapshot")
-    if isinstance(snapshot, dict) and (snapshot.get("name") or snapshot.get("showcases") or snapshot.get("avatar")):
-        auth_db.save_steam_profile_snapshot(int(user["id"]), snapshot)
-        return {"ok": True, "profile": snapshot}
     url = (body.get("url") or "").strip()
     if not url:
         # try linked steam id
