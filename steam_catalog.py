@@ -119,24 +119,33 @@ def _put(key: str, val, ttl: int) -> None:
     _flush()
 
 
-def _fetch(url: str, params: dict | None = None) -> Optional[requests.Response]:
-    try:
-        r = requests.get(
-            url,
-            params=params,
-            timeout=TIMEOUT,
-            headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"},
-        )
-        if r.status_code == 429:
-            LOGGER.warning("steam rate limited: %s", url)
-            return None
-        if r.status_code != 200:
-            LOGGER.warning("steam %s → HTTP %s", url, r.status_code)
-            return None
-        return r
-    except Exception as e:
-        LOGGER.warning("steam fetch failed %s: %s", url, e)
-        return None
+def _fetch(url: str, params: dict | None = None, retries: int = 3) -> Optional[requests.Response]:
+    """GET Steam with retries. 429/5xx → backoff (Steam often throttles datacenter IPs)."""
+    headers = {
+        "User-Agent": UA,
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Cache-Control": "no-cache",
+    }
+    last_err = None
+    for attempt in range(max(1, retries)):
+        try:
+            r = requests.get(url, params=params, timeout=TIMEOUT, headers=headers)
+            if r.status_code == 429 or r.status_code >= 500:
+                LOGGER.warning("steam %s → HTTP %s (try %s)", url, r.status_code, attempt + 1)
+                time.sleep(1.2 * (attempt + 1))
+                last_err = r.status_code
+                continue
+            if r.status_code != 200:
+                LOGGER.warning("steam %s → HTTP %s", url, r.status_code)
+                return None
+            return r
+        except Exception as e:
+            last_err = e
+            LOGGER.warning("steam fetch failed %s: %s", url, e)
+            time.sleep(0.8 * (attempt + 1))
+    LOGGER.warning("steam give up %s last=%s", url, last_err)
+    return None
 
 
 # --------------------------------------------------------------------------
@@ -653,7 +662,17 @@ def profile(url: str) -> dict:
                 "avatar": (group.findtext("avatarMedium") or "").strip(),
             })
         page = _fetch(canonical)
+        if page is None and "/id/" in canonical:
+            # resolve vanity via XML first, then fetch by steamid64 (sometimes less throttled)
+            sid = txt("steamID64")
+            if sid:
+                page = _fetch(f"https://steamcommunity.com/profiles/{sid}")
+        if page is None:
+            time.sleep(1.5)
+            page = _fetch(canonical + "/")
         page_html = page.text if page is not None else ""
+        if not page_html:
+            LOGGER.warning("profile HTML empty for %s — showcases/level/bg unavailable (Steam throttle)", canonical)
         level_match = re.search(r'friendPlayerLevelNum[^>]*>\s*(\d+)', page_html, re.I)
         bg_match = re.search(r'profile_page[^>]+style="[^"]*background-image:\s*url\([\'\"]?([^\)\'\"]+)', page_html, re.I)
         counts = [int(x.replace(',', '')) for x in re.findall(r'profile_count_link_total[^>]*>\s*([\d,]+)', page_html, re.I)]

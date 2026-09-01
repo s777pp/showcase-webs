@@ -1045,6 +1045,7 @@ html[lang="ru"] .echo-text{padding:0 .08em .14em;margin:0 -.08em -.14em;contain:
     </div>
     <div class="nav-right">
       <a href="#" class="btn-shiny-nav" data-i="nav_login" id="navReg" role="button">Log in</a>
+      <button type="button" class="btn-shiny-nav" id="navLogout" hidden style="background:#c0392b;color:#fff;border:none;cursor:pointer">Выйти</button>
       <a href="/profile" class="nav-user-pill" id="navUserPill" title="Profile"></a>
 
 
@@ -1377,6 +1378,9 @@ html[lang="ru"] .echo-text{padding:0 .08em .14em;margin:0 -.08em -.14em;contain:
         </svg>
         <span class="oauth-label" data-i="nav_google">Continue with Google</span>
       </button>
+      <button type="button" class="btn-oauth" id="authSteam">
+        <span class="oauth-label">Continue with Steam</span>
+      </button>
       <button type="button" class="btn-oauth" id="authTelegram">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#2AABEE" d="M9.78 14.65l-.3 4.2c.43 0 .62-.18.85-.4l2.04-1.94 4.23 3.1c.78.43 1.33.2 1.54-.72l2.8-13.13h.01c.25-1.16-.42-1.61-1.18-1.33L3.3 9.7c-1.13.44-1.11 1.07-.19 1.35l4.37 1.36 10.15-6.4c.48-.29.91-.13.55.18L9.78 14.65z"/></svg>
         <span class="oauth-label" data-i="nav_telegram">Continue with Telegram</span>
@@ -1707,19 +1711,31 @@ async function refreshHomeUser() {
   try {
     const r = await fetch("/api/auth/me", { credentials: "include" });
     const j = await r.json();
+    const logout = document.getElementById("navLogout");
     if (j && j.ok && j.logged_in) {
       const label = (j.display_name || "").trim() || (j.email || "").trim() || "Account";
       pill.textContent = label;
       pill.title = j.email || label;
       pill.classList.add("visible");
       if (reg) reg.style.display = "none";
+      if (logout) logout.hidden = false;
       return;
     }
   } catch (e) {}
   pill.classList.remove("visible");
   pill.textContent = "";
   if (reg) reg.style.display = "";
+  const logout2 = document.getElementById("navLogout");
+  if (logout2) logout2.hidden = true;
 }
+document.addEventListener("DOMContentLoaded", function () {
+  var lo = document.getElementById("navLogout");
+  if (lo) lo.addEventListener("click", async function () {
+    try { await fetch("/api/auth/logout", { method: "POST", credentials: "include" }); } catch (e) {}
+    try { localStorage.removeItem("sm_session"); } catch (e) {}
+    location.reload();
+  });
+});
 
 document.addEventListener("DOMContentLoaded", function () {
   applyLang(getLang());
@@ -1780,6 +1796,13 @@ document.addEventListener("DOMContentLoaded", function () {
     } catch (err) { alert(String(err)); }
   }
   document.getElementById('authDiscord')?.addEventListener('click', function(e){ goOAuth('discord', e); });
+  document.getElementById('authSteam')?.addEventListener('click', async function(e){
+    e.preventDefault();
+    try { const r = await fetch('/api/auth/steam/login'); const d = await r.json();
+      if (!d.ok||!d.url){ alert(d.msg||'Steam not configured'); return; }
+      window.open(d.url,'steam_oauth','width=980,height=720');
+    } catch(err){ alert(String(err)); }
+  });
   document.getElementById('authGoogle')?.addEventListener('click', function(e){ goOAuth('google', e); });
   document.getElementById('authTelegram')?.addEventListener('click', async function(){
     try {

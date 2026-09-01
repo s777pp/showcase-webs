@@ -599,10 +599,13 @@ function block(y, title, bodyH) {
 }
 
 function showArt(y) {
-  var b = block(y, 'Artwork Showcase', 296);
-  var ix = MAIN_X + 10, iy = b.y + 10, iw = MAIN_W - 20;
-  mediaSlot(ix, iy, iw, 232, S.art.big, 'art.big', -1, { r: 2 });
-  statRow(ix, iy + 246, iw, 11, 2, 4, 47);
+  var iw = MAIN_W - 20;
+  var imgH = Math.round(iw * (S.art.ratio && S.art.ratio > 0.2 && S.art.ratio < 3 ? S.art.ratio : 0.42));
+  imgH = Math.max(160, Math.min(imgH, 520));
+  var b = block(y, 'Artwork Showcase', imgH + 64);
+  var ix = MAIN_X + 10, iy = b.y + 10;
+  mediaSlot(ix, iy, iw, imgH, S.art.big, 'art.big', -1, { r: 2, fit: 'contain' });
+  statRow(ix, iy + imgH + 14, iw, 11, 2, 4, 47);
   return b.end;
 }
 function showArtFav(y) {
@@ -805,7 +808,7 @@ document.body.appendChild(slotPick);
 var pendingSlot = null;
 function setSlotMedia(slot, index, dataUrl) {
   index = num(index, -1);
-  if (slot === 'art.big') S.art.big = dataUrl;
+  if (slot === 'art.big') { S.art.big = dataUrl; probeArtRatio(dataUrl); }
   else if (slot === 'artfav.img') S.artfav.img = dataUrl;
   else if (slot === 'guide.img') S.guide.img = dataUrl;
   else if (slot === 'fav.img') S.fav.img = dataUrl;
@@ -1424,6 +1427,20 @@ on($('grpToggle'), 'click', function () {
   $('grpToggle').textContent = box.hidden ? 'Показать' : 'Скрыть';
 });
 
+
+function probeArtRatio(url) {
+  if (!url) return;
+  var im = new Image();
+  im.crossOrigin = 'anonymous';
+  im.onload = function () {
+    if (im.naturalWidth && im.naturalHeight) {
+      S.art.ratio = im.naturalHeight / im.naturalWidth;
+      render();
+    }
+  };
+  try { im.src = (typeof px === 'function') ? px(url) : url; } catch (e) { im.src = url; }
+}
+
 /* ---------- импорт публичного профиля ---------- */
 on($('impGo'), 'click', function () {
   var url = ($('impUrl').value || '').trim();
@@ -1819,6 +1836,71 @@ fetch('/api/profile/me', { credentials: 'same-origin' })
   })
   .catch(function () {});
 render();
+</script>
+<script>
+
+/* ---- public profile mode: /profile/{username} is read-only showcase ---- */
+(function () {
+  var m = location.pathname.match(/^\/profile\/([^\/]+)\/?$/i);
+  if (!m) return;
+  var uname = decodeURIComponent(m[1]);
+  document.documentElement.classList.add('is-public-profile');
+  window.__publicUsername = uname;
+  function hideEditor() {
+    var left = document.querySelector('.mk__left');
+    if (left) left.style.display = 'none';
+    var grid = document.querySelector('.mk__grid');
+    if (grid) grid.style.gridTemplateColumns = '1fr';
+    document.querySelectorAll('.stage__bar .ss-btn, #btnPublic, #impGo, #impUrl').forEach(function (el) {
+      if (el) el.style.display = 'none';
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    hideEditor();
+    fetch('/api/profile/' + encodeURIComponent(uname), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) {
+          var st = document.getElementById('impStat');
+          if (st) { st.textContent = (d && d.msg) || 'Профиль не найден'; st.className = 'stat is-bad'; }
+          return;
+        }
+        var p = d.profile || {};
+        if (p.display_name) S.nick = p.display_name;
+        if (p.profile_summary) S.about = p.profile_summary;
+        if (p.profile_level) S.level = p.profile_level;
+        if (p.avatar_url) S.avatar = { url: p.avatar_url };
+        if (p.background_url) S.bg = { url: p.background_url, movie: '', name: '', animated: false };
+        if (p.steam && p.steam.showcases) {
+          var imported = p.steam.showcases || [];
+          var artNo = 0;
+          imported.forEach(function (sc) {
+            var images = (sc.images || []).filter(Boolean);
+            if (!images.length) return;
+            var typ = (sc.type || '').toLowerCase();
+            if (typ.indexOf('workshop') >= 0) S.workshop.thumbs = images.slice(0, 5);
+            else if (typ.indexOf('guide') >= 0) S.guide.img = images[0];
+            else {
+              if (!artNo) { S.art.big = images[0]; probeArtRatio(images[0]); }
+              else S.artfav.img = images[0];
+              artNo++;
+            }
+          });
+          S.show.forEach(function (row) {
+            if (row.k === 'workshop') row.on = !!(S.workshop.thumbs && S.workshop.thumbs.length);
+            if (row.k === 'guide') row.on = !!S.guide.img;
+            if (row.k === 'art') row.on = !!S.art.big;
+            if (row.k === 'artfav') row.on = !!S.artfav.img;
+          });
+        }
+        try { syncFields(); drawGroups(); drawVitrines(); } catch (e) {}
+        render();
+        hideEditor();
+      })
+      .catch(function () {});
+  });
+})();
+
 </script>
 </body>
 </html>

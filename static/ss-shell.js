@@ -97,6 +97,8 @@
         '<a class="ss-pill" id="ssUser" href="/profile" hidden></a>' +
         '<button class="ss-btn ss-btn--sm" id="ssLogin" type="button" hidden>' +
           (lang() === 'ru' ? 'Войти' : 'Log in') + '</button>' +
+        '<button class="ss-btn ss-btn--sm ss-btn--logout" id="ssLogout" type="button" hidden style="background:#c0392b;color:#fff;border-color:#c0392b">' +
+          (lang() === 'ru' ? 'Выйти' : 'Log out') + '</button>' +
         '<button class="ss-burger" id="ssBurger" type="button" aria-label="Menu"><span></span></button>' +
       '</div></div></header>' +
       '<div class="ss-drawer" id="ssDrawer">' + drawerHTML() + '</div>';
@@ -116,6 +118,14 @@
         '<p class="ss-auth__state" id="ssAuthState"></p>' +
         '<button class="ss-auth__submit" id="ssAuthSubmit" type="submit">' + (ru ? 'Войти' : 'Log in') + '</button>' +
       '</form>' +
+      '<div class="ss-auth__div"><span>' + (ru ? 'или войти через' : 'or continue with') + '</span></div>' +
+      '<div class="ss-auth__oauth">' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthDiscord">Discord</button>' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthGoogle">Google</button>' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthTelegram">Telegram</button>' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthSteam">Steam</button>' +
+      '</div>' +
+      '<div id="ssTgHost" style="display:none;text-align:center;margin-top:8px"></div>' +
       '<button class="ss-auth__switch" id="ssAuthSwitch" type="button">' + (ru ? 'Нет аккаунта? Создать' : 'No account? Sign up') + '</button>' +
     '</div></div>';
   }
@@ -275,6 +285,71 @@
   window.SSShell = { mount: mount, loadMe: loadMe, lang: lang, t: t, esc: esc, openAuth: openAuth, closeAuth: closeAuth };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { mount(); loadMe(); });
+    document.addEventListener('DOMContentLoaded', function () { mount(); 
+    var logoutBtn = document.getElementById('ssLogout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function () {
+        fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+          .then(function () {
+            try { localStorage.removeItem('sm_session'); } catch (e) {}
+            location.reload();
+          });
+      });
+    }
+    function openOAuth(path, name) {
+      fetch(path, { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.ok || !d.url) { alert((d && d.msg) || (name + ' not configured')); return; }
+          var w = window.open(d.url, name + '_oauth', 'width=560,height=720');
+          if (!w) location.href = d.url;
+        })
+        .catch(function (e) { alert(String(e)); });
+    }
+    var dBtn = document.getElementById('ssAuthDiscord');
+    if (dBtn) dBtn.onclick = function () { openOAuth('/api/auth/discord/login', 'discord'); };
+    var gBtn = document.getElementById('ssAuthGoogle');
+    if (gBtn) gBtn.onclick = function () { openOAuth('/api/auth/google/login', 'google'); };
+    var sBtn = document.getElementById('ssAuthSteam');
+    if (sBtn) sBtn.onclick = function () { openOAuth('/api/auth/steam/login', 'steam'); };
+    var tBtn = document.getElementById('ssAuthTelegram');
+    if (tBtn) tBtn.onclick = function () {
+      fetch('/api/auth/telegram/config').then(function (r) { return r.json(); }).then(function (d) {
+        if (!d.ok || !d.bot_username) { alert((d && d.msg) || 'Telegram not configured'); return; }
+        var host = document.getElementById('ssTgHost');
+        if (!host) return;
+        host.style.display = 'block';
+        host.innerHTML = '';
+        window.onTelegramAuth = function (user) {
+          fetch('/api/auth/telegram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(user),
+          }).then(function (r) { return r.json(); }).then(function (j) {
+            if (j.token) try { localStorage.setItem('sm_session', j.token); } catch (e) {}
+            location.reload();
+          });
+        };
+        var s = document.createElement('script');
+        s.src = 'https://telegram.org/js/telegram-widget.js?22';
+        s.setAttribute('data-telegram-login', d.bot_username);
+        s.setAttribute('data-size', 'large');
+        s.setAttribute('data-radius', '12');
+        s.setAttribute('data-onauth', 'onTelegramAuth(user)');
+        s.setAttribute('data-request-access', 'write');
+        host.appendChild(s);
+      });
+    };
+    window.addEventListener('message', function (ev) {
+      if (!ev.data) return;
+      if (ev.data.type === 'discord_login' || ev.data.type === 'google_login' ||
+          ev.data.type === 'telegram_login' || ev.data.type === 'steam_login') {
+        if (ev.data.token) try { localStorage.setItem('sm_session', ev.data.token); } catch (e) {}
+        location.reload();
+      }
+    });
+
+  loadMe(); });
   } else { mount(); loadMe(); }
 })();
