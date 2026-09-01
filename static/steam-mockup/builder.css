@@ -89,7 +89,11 @@ html, body {
   min-height: 100%;
   padding: 28px 12px 64px;
   box-sizing: border-box;
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: 100% auto;
 }
+.sm-stage .profile_page--has-bg { background-attachment: scroll; }
 .sm-stage .container_profile {
   width: 100%;
   max-width: 948px; /* Steam content ~948–998 */
@@ -338,12 +342,12 @@ html, body {
   width: 100% !important;
   max-width: none !important;
   height: auto !important;
-  max-height: 760px !important;
+  max-height: none !important;
   object-fit: contain !important;
   display: block !important;
   background: rgba(0,0,0,.3);
 }
-.sm-stage .profile_main_banner_small { height: 100% !important; object-fit: cover !important; }
+.sm-stage .profile_main_banner_small { height: 100% !important; object-fit: fill !important; }
 .sm-stage .profile_main_banners .sm-slot-empty { height: 100%; min-height: 180px; }
 .sm-stage .profile_main_featured,
 .sm-stage .profile_main_featured > .sm-media-slot {
@@ -357,7 +361,7 @@ html, body {
   transform: none !important;
   width: 100% !important;
   height: auto !important;
-  max-height: 760px !important;
+  max-height: none !important;
   object-fit: contain !important;
   display: block !important;
   background: rgba(0,0,0,.3);

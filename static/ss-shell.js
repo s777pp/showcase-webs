@@ -31,6 +31,13 @@
     { code: 'en', name: 'English' }
   ];
 
+  var OAUTH_ICONS = {
+    discord: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#8b95ff" d="M20.3 4.4a19.7 19.7 0 0 0-4.9-1.5l-.6 1.2a18.3 18.3 0 0 0-5.5 0l-.6-1.2a19.7 19.7 0 0 0-4.9 1.5C.5 9-.3 13.6.1 18.1a19.9 19.9 0 0 0 6 3l1.2-2a13 13 0 0 1-1.9-.9l.4-.3c3.9 1.8 8.2 1.8 12.1 0l.4.3a12 12 0 0 1-1.9.9l1.2 2a19.8 19.8 0 0 0 6-3c.5-5.2-.8-9.7-3.3-13.7ZM8 15.3c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Z"/></svg>',
+    google: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.3h5.4a4.6 4.6 0 0 1-2 3v2.8h3.3c1.9-1.8 2.9-4.4 2.9-7.9Z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.7-2.4l-3.3-2.8c-.9.6-2.1 1-3.4 1a5.9 5.9 0 0 1-5.5-4.1H3.1v2.9A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.5 13.7a6 6 0 0 1 0-3.8V7H3.1a10 10 0 0 0 0 9.6l3.4-2.9Z"/><path fill="#EA4335" d="M12 5.8c1.5 0 2.8.5 3.8 1.5l2.9-2.8A9.7 9.7 0 0 0 12 2a10 10 0 0 0-8.9 5.4l3.4 2.5A5.9 5.9 0 0 1 12 5.8Z"/></svg>',
+    telegram: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#26A5E4"/><path fill="#fff" d="m17.8 7-2 10c-.2.7-.6.9-1.2.5l-3-2.2-1.5 1.4c-.2.2-.3.3-.7.3l.2-3.1 5.7-5.2c.2-.2 0-.4-.4-.2l-7 4.4-3-.9c-.7-.2-.7-.7.1-1l11.7-4.5c.6-.2 1.1.1 1.1.5Z"/></svg>',
+    steam: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-6.8 17.3l3.7-1.5a3.6 3.6 0 0 0 6.6-1.7 3.6 3.6 0 0 0-3.5-3.6l-1.7.1 2.5-3.6a4.8 4.8 0 1 0-4.2 7.5l-2.9 1.2A10 10 0 1 0 12 2Zm6.3 6.1a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0ZM9.4 14.5a2 2 0 1 1-1.6 3.7 2 2 0 0 1 1.6-3.7Z"/></svg>'
+  };
+
   function lang() {
     try { return localStorage.getItem('sm_lang') || localStorage.getItem('ss_lang') || 'ru'; } catch (e) { return 'ru'; }
   }
@@ -120,10 +127,10 @@
       '</form>' +
       '<div class="ss-auth__div"><span>' + (ru ? 'или войти через' : 'or continue with') + '</span></div>' +
       '<div class="ss-auth__oauth" style="display:flex;flex-direction:column;gap:10px;width:100%;margin:0 0 8px">' +
-        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthDiscord" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(88,101,242,.45);background:rgba(88,101,242,.18);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Discord</button>' +
-        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthGoogle" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Google</button>' +
-        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthTelegram" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(38,165,228,.45);background:rgba(38,165,228,.14);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Telegram</button>' +
-        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthSteam" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(27,40,56,.9);background:linear-gradient(180deg,#2a475e,#1b2838);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Steam</button>' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthDiscord" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(88,101,242,.45);background:rgba(88,101,242,.18);color:#fff;font-weight:700;font-size:14px;cursor:pointer">' + OAUTH_ICONS.discord + '<span>Discord</span></button>' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthGoogle" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-weight:700;font-size:14px;cursor:pointer">' + OAUTH_ICONS.google + '<span>Google</span></button>' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthTelegram" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(38,165,228,.45);background:rgba(38,165,228,.14);color:#fff;font-weight:700;font-size:14px;cursor:pointer">' + OAUTH_ICONS.telegram + '<span>Telegram</span></button>' +
+        '<button type="button" class="ss-auth__oauth-btn" id="ssAuthSteam" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(27,40,56,.9);background:linear-gradient(180deg,#2a475e,#1b2838);color:#fff;font-weight:700;font-size:14px;cursor:pointer">' + OAUTH_ICONS.steam + '<span>Steam</span></button>' +
       '</div>' +
       '<div id="ssTgHost" style="display:none;text-align:center;margin-top:8px"></div>' +
       '<button class="ss-auth__switch" id="ssAuthSwitch" type="button">' + (ru ? 'Нет аккаунта? Создать' : 'No account? Sign up') + '</button>' +

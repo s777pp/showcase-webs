@@ -236,6 +236,7 @@
   function render(state, root) {
     state = state || defaultState();
     var bg = "";
+    var pageStyle = "";
     var bgMovie = state.backgroundMovie || (isVideoUrl(state.background) ? state.background : "");
     var bgStill = state.background && !isVideoUrl(state.background) ? state.background : "";
     if (bgMovie) {
@@ -244,10 +245,7 @@
         esc(px(bgMovie)) +
         '"></video>';
     } else if (bgStill) {
-      bg =
-        '<div class="profile_animated_background profile_animated_background_fallback" style="background-image:url(\'' +
-        esc(px(bgStill)) +
-        '\')"></div>';
+      pageStyle = ' style="background-image:url(&quot;' + esc(px(bgStill)) + '&quot;)"';
     }
 
     var awards = (state.awards || [])
@@ -312,7 +310,7 @@
       : "";
 
     root.innerHTML =
-      '<div class="profile_page">' +
+      '<div class="profile_page' + (bgStill ? ' profile_page--has-bg' : '') + '"' + pageStyle + '>' +
       bg +
       '<div class="container_profile">' +
       '<div class="profile_sections">' +
