@@ -671,6 +671,28 @@ def profile(url: str) -> dict:
             time.sleep(1.5)
             page = _fetch(canonical + "/")
         page_html = page.text if page is not None else ""
+
+        bg_url = ""
+        bg_movie = ""
+        if page_html:
+            for pat in (
+                r'profile_animated_background[^>]+src=[\'\"]([^\'\"]+)',
+                r'<video[^>]+src=[\'\"]([^\'\"]+\.(?:webm|mp4)[^\'\"]*)[\'\"]',
+                r'profile_page[^>]*style="[^"]*background-image:\s*url\([\'\"]?([^\)\'\"]+)',
+                r'has_profile_background[^>]*style="[^"]*background-image:\s*url\([\'\"]?([^\)\'\"]+)',
+                r'background-image:\s*url\([\'\"]?(https?://[^\)\'\"]+(?:steamstatic|akamaihd|steamcommunity)[^\)\'\"]*)',
+            ):
+                mm = re.search(pat, page_html, re.I | re.S)
+                if not mm:
+                    continue
+                u = unescape((mm.group(1) or "").strip().strip("'\""))
+                if not u.startswith("http"):
+                    continue
+                if re.search(r"\.(webm|mp4)(\?|$)", u, re.I):
+                    bg_movie = bg_movie or u
+                else:
+                    bg_url = bg_url or u
+
         if not page_html:
             LOGGER.warning("profile HTML empty for %s — showcases/level/bg unavailable (Steam throttle)", canonical)
         level_match = re.search(r'friendPlayerLevelNum[^>]*>\s*(\d+)', page_html, re.I)
@@ -716,7 +738,8 @@ def profile(url: str) -> dict:
                 "member_since": txt("memberSince"),
                 "groups": groups,
                 "level": int(level_match.group(1)) if level_match else None,
-                "background": unescape(bg_match.group(1)) if bg_match else "",
+                "background": bg_url or (unescape(bg_match.group(1)) if bg_match else ""),
+                "background_movie": bg_movie or "",
                 "stats": counts[:6],
                 "stats_map": stat_map,
                 "showcases": custom["showcases"],

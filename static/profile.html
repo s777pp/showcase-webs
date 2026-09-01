@@ -8,6 +8,17 @@
 <link rel="stylesheet" href="/static/ss.css"/>
 <link rel="stylesheet" href="/static/steam-mockup/steam_profile.css"/>
 <link rel="stylesheet" href="/static/steam-mockup/builder.css"/>
+<style>
+  .cat-tabs{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap}
+  .cat-tabs button{flex:1;min-width:70px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;border-radius:3px;padding:7px 8px;font-size:12px;cursor:pointer}
+  .cat-tabs button.is-on{background:rgba(102,192,244,.18);border-color:rgba(102,192,244,.45);color:#66c0f4}
+  .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;max-height:280px;overflow:auto}
+  .cat-grid .cell{aspect-ratio:1;border-radius:4px;overflow:hidden;border:1px solid rgba(255,255,255,.1);cursor:pointer;background:#0a0e14;position:relative}
+  .cat-grid .cell.is-on{outline:2px solid #66c0f4}
+  .cat-grid .cell img,.cat-grid .cell video{width:100%;height:100%;object-fit:cover;display:block}
+  .cat-search{display:flex;gap:6px;margin-top:6px}
+  .cat-search input{flex:1}
+</style>
 </head>
 <body>
 <div id="ss-root"></div>
@@ -19,9 +30,9 @@
       <input id="impUrl" type="text" placeholder="https://steamcommunity.com/id/..." style="flex:1"/>
       <button class="sm-btn sm-btn--go" type="button" id="impGo">Импорт</button>
     </div>
-    <p class="sm-stat" id="impStat">Публичные данные профиля. Steam может ограничивать витрины с сервера.</p>
+    <p class="sm-stat" id="impStat">Публичные данные. Если витрины пустые — Steam не отдал HTML с сервера.</p>
 
-    <h2 style="margin-top:22px">Профиль</h2>
+    <h2>Профиль</h2>
     <label>Ник</label>
     <input id="fName" type="text"/>
     <label>Уровень</label>
@@ -35,20 +46,41 @@
     <label>Описание</label>
     <textarea id="fSummary" rows="3"></textarea>
 
-    <h2 style="margin-top:22px">Слоты (URL картинки)</h2>
+    <h2>Каталог: фон / аватар / рамка</h2>
+    <div class="cat-tabs">
+      <button type="button" class="is-on" data-asset="background">Фон</button>
+      <button type="button" data-asset="avatar">Аватар</button>
+      <button type="button" data-asset="frame">Рамка</button>
+    </div>
+    <div class="cat-search">
+      <input id="catQ" type="text" placeholder="Поиск…"/>
+      <button class="sm-btn sm-btn--ghost" type="button" id="catGo">Найти</button>
+    </div>
+    <div class="cat-tabs" id="catKind" style="margin-top:6px">
+      <button type="button" class="is-on" data-kind="all">Все</button>
+      <button type="button" data-kind="static">Статик</button>
+      <button type="button" data-kind="animated">Аним</button>
+    </div>
+    <div class="cat-grid" id="catGrid"></div>
+    <div class="sm-row">
+      <button class="sm-btn sm-btn--ghost" type="button" id="catMore">Ещё</button>
+    </div>
+    <p class="sm-stat" id="catStat"></p>
+
+    <h2>Слоты (URL)</h2>
     <label>Аватар</label>
-    <input id="fAvatar" type="text" placeholder="https://..."/>
+    <input id="fAvatar" type="text"/>
     <label>Рамка</label>
-    <input id="fFrame" type="text" placeholder="https://..."/>
+    <input id="fFrame" type="text"/>
     <label>Фон</label>
-    <input id="fBg" type="text" placeholder="https://..."/>
+    <input id="fBg" type="text"/>
     <label>Фон video (webm)</label>
-    <input id="fBgMovie" type="text" placeholder="https://...webm"/>
+    <input id="fBgMovie" type="text"/>
 
     <div class="sm-row">
-      <button class="sm-btn" type="button" id="btnRender">Обновить превью</button>
+      <button class="sm-btn" type="button" id="btnRender">Обновить</button>
       <button class="sm-btn sm-btn--ghost" type="button" id="btnSave">Сохранить</button>
-      <a class="sm-btn sm-btn--ghost" id="btnPublic" href="/profile" target="_blank">Публичная страница</a>
+      <a class="sm-btn sm-btn--ghost" id="btnPublic" href="/profile" target="_blank">Публичная</a>
     </div>
     <p class="sm-stat" id="saveStat"></p>
   </aside>
@@ -62,10 +94,9 @@
 (function () {
   var S = SteamMockup.defaultState();
   var root = document.getElementById('mockupRoot');
+  var cat = { asset: 'background', kind: 'all', page: 0, q: '' };
 
-  function paint() {
-    SteamMockup.render(S, root);
-  }
+  function paint() { SteamMockup.render(S, root); }
   function syncForm() {
     document.getElementById('fName').value = S.name || '';
     document.getElementById('fLevel').value = S.level || 0;
@@ -87,10 +118,7 @@
     S.backgroundMovie = document.getElementById('fBgMovie').value.trim();
   }
 
-  document.getElementById('btnRender').onclick = function () {
-    readForm();
-    paint();
-  };
+  document.getElementById('btnRender').onclick = function () { readForm(); paint(); };
 
   document.getElementById('impGo').onclick = function () {
     var url = document.getElementById('impUrl').value.trim();
@@ -103,14 +131,17 @@
       .then(function (d) {
         if (!d || !d.ok) throw new Error((d && d.msg) || 'ошибка');
         S = SteamMockup.applySteamProfile(d.profile, S);
+        if (d.profile.background_movie) S.backgroundMovie = d.profile.background_movie;
+        if (d.profile.background) S.background = d.profile.background;
         syncForm();
         paint();
         var n = (d.profile.showcases || []).length;
+        var bgOk = !!(d.profile.background || d.profile.background_movie);
         st.className = 'sm-stat ok';
         st.textContent =
-          'Готово: ' +
-          (d.profile.name || '') +
+          'Готово: ' + (d.profile.name || '') +
           (d.profile.level != null ? ', lvl ' + d.profile.level : '') +
+          (bgOk ? ', фон ✓' : ', фон не найден') +
           (n ? ', витрин: ' + n : ', витрины не отдались Steam (HTML)');
       })
       .catch(function (e) {
@@ -118,6 +149,83 @@
         st.textContent = String(e.message || e);
       });
   };
+
+  /* ---- catalog ---- */
+  function loadCatalog(append) {
+    var st = document.getElementById('catStat');
+    st.textContent = 'Загрузка…';
+    var q = document.getElementById('catQ').value.trim();
+    cat.q = q;
+    if (!append) cat.page = 0;
+    var url =
+      '/api/steam/backgrounds?asset=' + encodeURIComponent(cat.asset) +
+      '&kind=' + encodeURIComponent(cat.kind) +
+      '&page=' + cat.page +
+      '&count=24&q=' + encodeURIComponent(q);
+    fetch(url, { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var items = (d && (d.items || d.results || d.backgrounds)) || [];
+        if (!d || d.ok === false) throw new Error((d && d.msg) || 'каталог недоступен');
+        var grid = document.getElementById('catGrid');
+        if (!append) grid.innerHTML = '';
+        items.forEach(function (it) {
+          var img = it.image || it.img || it.icon || it.url || '';
+          var movie = it.movie || it.movie_mp4 || it.video || '';
+          var cell = document.createElement('div');
+          cell.className = 'cell';
+          if (movie && cat.asset === 'background') {
+            cell.innerHTML = '<video src="' + SteamMockup.px(movie) + '" muted loop autoplay playsinline></video>';
+          } else if (img) {
+            cell.innerHTML = '<img src="' + SteamMockup.px(img) + '" alt=""/>';
+          }
+          cell.onclick = function () {
+            grid.querySelectorAll('.cell').forEach(function (c) { c.classList.remove('is-on'); });
+            cell.classList.add('is-on');
+            if (cat.asset === 'background') {
+              if (movie) { S.backgroundMovie = movie; S.background = img || S.background; }
+              else { S.background = img; S.backgroundMovie = ''; }
+              document.getElementById('fBg').value = S.background || '';
+              document.getElementById('fBgMovie').value = S.backgroundMovie || '';
+            } else if (cat.asset === 'avatar') {
+              S.avatar = img;
+              document.getElementById('fAvatar').value = img;
+            } else if (cat.asset === 'frame') {
+              S.frame = movie || img;
+              document.getElementById('fFrame').value = S.frame;
+            }
+            paint();
+          };
+          grid.appendChild(cell);
+        });
+        st.textContent = items.length ? ('Показано: ' + grid.children.length) : 'Ничего не найдено';
+      })
+      .catch(function (e) {
+        st.textContent = String(e.message || e);
+      });
+  }
+
+  document.querySelectorAll('.cat-tabs button[data-asset]').forEach(function (btn) {
+    btn.onclick = function () {
+      document.querySelectorAll('.cat-tabs button[data-asset]').forEach(function (b) { b.classList.remove('is-on'); });
+      btn.classList.add('is-on');
+      cat.asset = btn.getAttribute('data-asset');
+      loadCatalog(false);
+    };
+  });
+  document.querySelectorAll('#catKind button').forEach(function (btn) {
+    btn.onclick = function () {
+      document.querySelectorAll('#catKind button').forEach(function (b) { b.classList.remove('is-on'); });
+      btn.classList.add('is-on');
+      cat.kind = btn.getAttribute('data-kind');
+      loadCatalog(false);
+    };
+  });
+  document.getElementById('catGo').onclick = function () { loadCatalog(false); };
+  document.getElementById('catMore').onclick = function () { cat.page += 1; loadCatalog(true); };
+  document.getElementById('catQ').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') loadCatalog(false);
+  });
 
   document.getElementById('btnSave').onclick = function () {
     readForm();
@@ -130,24 +238,23 @@
     fd.append('profile_summary', S.summary);
     fd.append('profile_level', String(S.level || 0));
     fd.append('profile_status', S.status);
-    // store full mockup JSON in summary-adjacent field via steam snapshot API if available
     fetch('/api/profile/update', { method: 'POST', body: fd, credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (!d || !d.ok) throw new Error((d && d.msg) || 'не сохранено');
-        // also save steam-like snapshot for public page
         return fetch('/api/profile/steam-import', {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            url: document.getElementById('impUrl').value.trim(),
             snapshot: {
               name: S.name,
               level: S.level,
               summary: S.summary,
               avatar: S.avatar,
+              frame: S.frame,
               background: S.background,
+              background_movie: S.backgroundMovie,
               status: S.status,
               showcases: S.showcases,
               badges: S.badges,
@@ -174,7 +281,6 @@
       });
   };
 
-  // load me
   fetch('/api/profile/me', { credentials: 'same-origin' })
     .then(function (r) { return r.json(); })
     .then(function (d) {
@@ -185,15 +291,20 @@
         if (p.profile_level) S.level = p.profile_level;
         if (p.avatar_url) S.avatar = p.avatar_url;
         if (p.background_url) S.background = p.background_url;
-        if (p.steam) S = SteamMockup.applySteamProfile(p.steam, S);
+        if (p.steam) {
+          S = SteamMockup.applySteamProfile(p.steam, S);
+          if (p.steam.background_movie) S.backgroundMovie = p.steam.background_movie;
+        }
         if (p.username) document.getElementById('btnPublic').href = '/profile/' + encodeURIComponent(p.username);
       }
       syncForm();
       paint();
+      loadCatalog(false);
     })
     .catch(function () {
       syncForm();
       paint();
+      loadCatalog(false);
     });
 })();
 </script>

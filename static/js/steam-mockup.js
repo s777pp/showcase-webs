@@ -342,6 +342,7 @@
     if (p.summary) state.summary = p.summary;
     if (p.avatar) state.avatar = p.avatar;
     if (p.background) state.background = p.background;
+    if (p.background_movie) state.backgroundMovie = p.background_movie;
     if (p.status) {
       var s = String(p.status).toLowerCase();
       state.status = /online/.test(s)

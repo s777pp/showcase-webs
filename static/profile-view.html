@@ -23,17 +23,11 @@
   var uname = m ? decodeURIComponent(m[1]) : '';
   var root = document.getElementById('mockupRoot');
   var msg = document.getElementById('ppMsg');
-  if (!uname) {
-    msg.textContent = 'Профиль не указан';
-    return;
-  }
+  if (!uname) { msg.textContent = 'Профиль не указан'; return; }
   fetch('/api/profile/' + encodeURIComponent(uname), { credentials: 'same-origin' })
     .then(function (r) { return r.json(); })
     .then(function (d) {
-      if (!d || !d.ok) {
-        msg.textContent = (d && d.msg) || 'Не найден';
-        return;
-      }
+      if (!d || !d.ok) { msg.textContent = (d && d.msg) || 'Не найден'; return; }
       msg.hidden = true;
       var p = d.profile || {};
       var S = SteamMockup.defaultState();
@@ -42,13 +36,16 @@
       if (p.profile_level) S.level = p.profile_level;
       if (p.avatar_url) S.avatar = p.avatar_url;
       if (p.background_url) S.background = p.background_url;
-      if (p.steam) S = SteamMockup.applySteamProfile(p.steam, S);
+      if (p.steam) {
+        S = SteamMockup.applySteamProfile(p.steam, S);
+        if (p.steam.background_movie) S.backgroundMovie = p.steam.background_movie;
+        if (p.steam.background) S.background = p.steam.background;
+        if (p.steam.frame) S.frame = p.steam.frame;
+      }
       SteamMockup.render(S, root);
       document.title = (S.name || uname) + ' — Showcase Maker';
     })
-    .catch(function (e) {
-      msg.textContent = String(e);
-    });
+    .catch(function (e) { msg.textContent = String(e); });
 })();
 </script>
 </body>
