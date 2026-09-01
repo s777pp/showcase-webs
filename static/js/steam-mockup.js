@@ -282,9 +282,11 @@
         return (
           '<div class="profile_groups_item">' +
           imgTag(g.avatar || "", "profile_group_av", "") +
-          '<span class="profile_groups_name">' +
+          '<span class="profile_groups_text"><span class="profile_groups_name">' +
           esc(g.name || "") +
-          "</span></div>"
+          '</span><span class="profile_groups_members">' +
+          esc(g.members || g.member_count || "") +
+          "</span></span></div>"
         );
       })
       .join("");
@@ -322,8 +324,9 @@
       : "";
 
     root.innerHTML =
-      '<div class="profile_page' + (bgStill ? ' profile_page--has-bg' : '') + '"' + pageStyle + '>' +
+      '<div class="profile_page' + ((bgStill || bgMovie) ? ' profile_page--has-bg' : '') + '"' + pageStyle + '>' +
       bg +
+      '<div class="profile_background_fade" aria-hidden="true"></div>' +
       '<div class="container_profile">' +
       '<div class="profile_sections">' +
       '<div class="profile_section_main">' +
@@ -344,7 +347,7 @@
       showHtml +
       "</div></div>" +
       '<div class="profile_section_right">' +
-      '<div class="profile_right_level"><span>' +
+      '<div class="profile_right_level"><em>Level</em><span>' +
       esc(state.level || 0) +
       "</span></div>" +
       '<div class="profile_right_achievement">' +
@@ -362,16 +365,16 @@
       '<div class="profile_right_menu_status">' +
       esc(state.status || "Currently Offline") +
       "</div>" +
-      '<div class="profile_right_awards_block"><div class="profile_right_block_title">Profile Awards</div><div class="profile_right_awards">' +
+      '<div class="profile_right_awards_block"><div class="profile_right_block_title">Profile Awards <span>' + esc((state.awards || []).length) + '</span></div><div class="profile_right_awards">' +
       (awards || '<div class="sm-slot-empty"></div>') +
       "</div></div>" +
-      '<div class="profile_right_badges_block"><div class="profile_right_block_title">Badges</div><div class="profile_right_badges">' +
+      '<div class="profile_right_badges_block"><div class="profile_right_block_title">Badges <span>' + esc((state.badges || []).length) + '</span></div><div class="profile_right_badges">' +
       (badges || '<div class="sm-slot-empty"></div>') +
       "</div></div>" +
       '<div class="profile_right_stats">' +
       statRows +
       "</div>" +
-      '<div class="profile_groups"><div class="profile_right_block_title">Groups</div>' +
+      '<div class="profile_groups"><div class="profile_right_block_title">Groups <span>' + esc((state.groups || []).length) + '</span></div>' +
       (groups || '<div class="profile_groups_empty">No groups</div>') +
       "</div>" +
       "</div></div>" +

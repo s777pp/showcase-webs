@@ -77,7 +77,7 @@ html, body {
   position: relative;
   overflow: auto;
   min-height: calc(100vh - 72px);
-  background: #1b2838;
+  background: #000;
 }
 .sm-stage.is-public { min-height: 100vh; }
 
@@ -92,6 +92,8 @@ html, body {
   background-repeat: no-repeat;
   background-position: center top;
   background-size: 100% auto;
+  background-color: #000;
+  container-type: inline-size;
 }
 .sm-stage .profile_page--has-bg { background-attachment: scroll; }
 .sm-stage .container_profile {
@@ -142,8 +144,9 @@ html, body {
   position: absolute !important;
   left: 0; right: 0; top: 0;
   width: 100% !important;
-  height: 100% !important;
-  min-height: 100%;
+  height: auto !important;
+  min-height: 0;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   background-size: cover;
   background-position: center top;
@@ -152,14 +155,31 @@ html, body {
   pointer-events: none;
   filter: none;
 }
-/* darken overlay so glass panels readable */
+/* The Steam background is a 16:9 canvas.  The fade layer starts just before
+   its physical lower edge, blurs that edge, and hands the rest of the page to
+   real black instead of the old #1b2838 band. */
+.profile_background_fade {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  top: calc(56.25cqw - 190px);
+  height: 300px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.6) 44%, #000 82%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 24%, #000);
+  mask-image: linear-gradient(180deg, transparent, #000 24%, #000);
+}
+/* darken overlay so glass panels remain readable */
 .profile_page::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(27,40,56,.25) 0%, rgba(27,40,56,.55) 100%);
+  background: linear-gradient(180deg, rgba(7,9,13,.08) 0%, rgba(7,9,13,.2) 54%, rgba(0,0,0,.72) 100%);
 }
 
 /* ---- header (avatar + name) denser, Steam-like ---- */
@@ -223,10 +243,11 @@ html, body {
 .profile_main_info,
 .profile_main_illustration {
   margin-top: 10px;
-  background: rgba(23, 26, 33, 0.75) !important;
+  background: rgba(25, 21, 29, .58) !important;
   border-radius: 3px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 0 12px rgba(0,0,0,.25);
+  -webkit-backdrop-filter: blur(8px) saturate(112%);
+  backdrop-filter: blur(8px) saturate(112%);
+  box-shadow: none;
 }
 .profile_main_workshop_title,
 .profile_main_banner_title,
@@ -399,10 +420,12 @@ html, body {
 /* ---- right column ---- */
 .profile_right_level {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   transform: none !important;
   margin: 4px 0 8px;
 }
+.profile_right_level em{font-style:normal;font-size:18px;font-weight:300;color:rgba(255,255,255,.88)}
 .profile_right_level span {
   width: 36px !important;
   height: 36px !important;
@@ -417,7 +440,7 @@ html, body {
   background: rgba(0,0,0,.25);
 }
 .profile_right_achievement {
-  background: rgba(23, 26, 33, 0.75) !important;
+  background: rgba(25, 21, 29, .58) !important;
   border-radius: 3px;
   margin-top: 0 !important;
   transform: none !important;
@@ -438,9 +461,10 @@ html, body {
 
 .profile_right_menu {
   margin-top: 10px !important;
-  background: rgba(23, 26, 33, 0.75) !important;
+  background: rgba(18, 12, 22, .62) !important;
   border-radius: 3px;
-  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(14px) saturate(115%);
+  backdrop-filter: blur(14px) saturate(115%);
 }
 .profile_right_menu_content { padding: 10px !important; }
 .profile_right_menu_status {
@@ -450,10 +474,11 @@ html, body {
   margin-bottom: 10px;
 }
 .profile_right_block_title {
-  font-size: 12px;
-  color: #8f98a0;
-  margin: 10px 0 6px;
+  font-size: 14px;
+  color: rgba(255,255,255,.9);
+  margin: 18px 0 9px;
 }
+.profile_right_block_title span{color:rgba(255,255,255,.42);font-weight:300}
 .profile_right_badges,
 .profile_right_awards {
   display: flex;
@@ -470,11 +495,13 @@ html, body {
 .profile_right_stat_row {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  padding: 2px 0;
-  color: #8f98a0;
+  justify-content: flex-start;
+  gap: 7px;
+  font-size: 14px;
+  padding: 5px 0;
+  color: rgba(255,255,255,.85);
 }
-.profile_right_stat_num { color: #fff; font-weight: 400; }
+.profile_right_stat_num { color: rgba(255,255,255,.45); font-size:16px; font-weight: 300; }
 .profile_groups_item {
   display: flex;
   align-items: center;
@@ -483,6 +510,7 @@ html, body {
   font-size: 12px;
   color: #c6d4df;
 }
+.profile_groups_text{display:flex;min-width:0;flex-direction:column;gap:2px}.profile_groups_name{color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.profile_groups_members{font-size:11px;color:rgba(255,255,255,.48)}
 .profile_group_av {
   width: 32px;
   height: 32px;
@@ -533,8 +561,9 @@ html, body {
   left: 0 !important;
   right: 0 !important;
   width: 100% !important;
-  height: 100% !important;
-  min-height: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: 16 / 9 !important;
   max-height: none !important;
   object-fit: cover !important;
   background-size: cover !important;
