@@ -153,10 +153,20 @@
     var pill = document.getElementById('ssUser');
     var login = document.getElementById('ssLogin');
     var logout = document.getElementById('ssLogout');
-    var logged = !!(me && me.logged_in);
-    if (pill) pill.hidden = !logged;
-    if (login) login.hidden = logged;   /* only when guest */
-    if (logout) logout.hidden = !logged; /* only when logged in */
+    var logged = !!(me && (me.logged_in === true || me.ok === true && me.email));
+    /* use display — [hidden] is overridden by .ss-btn { display:inline-flex } */
+    if (pill) {
+      pill.hidden = !logged;
+      pill.style.display = logged ? 'inline-flex' : 'none';
+    }
+    if (login) {
+      login.hidden = logged;
+      login.style.setProperty('display', logged ? 'none' : 'inline-flex', 'important');
+    }
+    if (logout) {
+      logout.hidden = !logged;
+      logout.style.setProperty('display', logged ? 'inline-flex' : 'none', 'important');
+    }
     if (!logged || !pill) return;
     var name = me.display_name || (me.email || '').split('@')[0] || 'profile';
     var av = me.avatar_url || '';

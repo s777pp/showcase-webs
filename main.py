@@ -630,9 +630,12 @@ async def profile_me(request: Request):
 
 @app.get("/profile/{username}", response_class=HTMLResponse)
 async def profile_public(username: str, request: Request):
-    p = Path(__file__).parent / "static" / "profile.html"
+    """Public full-page profile (not the editor)."""
+    p = Path(__file__).parent / "static" / "profile-view.html"
     if not p.is_file():
-        return HTMLResponse("profile.html missing", status_code=404)
+        p = Path(__file__).parent / "static" / "profile.html"
+    if not p.is_file():
+        return HTMLResponse("profile page missing", status_code=404)
     return HTMLResponse(p.read_text(encoding="utf-8"))
 
 

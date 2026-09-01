@@ -1707,26 +1707,25 @@ async function submitAuth() {
 async function refreshHomeUser() {
   const pill = document.getElementById("navUserPill");
   const reg = document.getElementById("navReg");
-  if (!pill) return;
+  const logout = document.getElementById("navLogout");
   try {
     const r = await fetch("/api/auth/me", { credentials: "include" });
     const j = await r.json();
-    const logout = document.getElementById("navLogout");
     if (j && j.ok && j.logged_in) {
-      const label = (j.display_name || "").trim() || (j.email || "").trim() || "Account";
-      pill.textContent = label;
-      pill.title = j.email || label;
-      pill.classList.add("visible");
-      if (reg) reg.style.display = "none";
-      if (logout) logout.hidden = false;
+      if (pill) {
+        const label = (j.display_name || "").trim() || (j.email || "").trim() || "Account";
+        pill.textContent = label;
+        pill.title = j.email || label;
+        pill.classList.add("visible");
+      }
+      if (reg) { reg.style.setProperty("display", "none", "important"); reg.hidden = true; }
+      if (logout) { logout.hidden = false; logout.style.setProperty("display", "inline-flex", "important"); }
       return;
     }
   } catch (e) {}
-  pill.classList.remove("visible");
-  pill.textContent = "";
-  if (reg) reg.style.display = "";
-  const logout2 = document.getElementById("navLogout");
-  if (logout2) logout2.hidden = true;
+  if (pill) { pill.classList.remove("visible"); pill.textContent = ""; }
+  if (reg) { reg.hidden = false; reg.style.setProperty("display", "inline-flex", "important"); }
+  if (logout) { logout.hidden = true; logout.style.setProperty("display", "none", "important"); }
 }
 document.addEventListener("DOMContentLoaded", function () {
   var lo = document.getElementById("navLogout");
