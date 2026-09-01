@@ -166,7 +166,7 @@
             <div class="fi" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;min-width:0">
               <span id="composeBgName" data-i-empty="compose_nofile" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)">no file selected</span>
               <button type="button" class="btn ghost" id="btnComposeBg" data-i="compose_pick" style="padding:6px 14px;flex-shrink:0">Choose</button>
-              <input type="file" id="composeBg" accept="image/png,image/jpeg,image/webp,image/bmp" style="display:none"/>
+              <input type="file" id="composeBg" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,video/mp4,video/webm,video/quicktime,video/*" style="display:none"/>
             </div>
           </div>
           <div class="field" style="flex:1;min-width:160px;max-width:100%">
@@ -546,11 +546,6 @@
         <button class="btn ghost" id="daLogout" type="button" style="display:none">Disconnect</button>
       </div>
       <div id="daConnectedBlock" style="display:none">
-        <div class="row" style="margin-bottom:10px;flex-wrap:wrap">
-          <button class="btn ghost" id="daLoadWorks" data-i="da_import_works" type="button">Import my DeviantArt works</button>
-          <span class="steps" id="daWorksHint" data-i="da_import_hint" style="font-size:12px">Select works to add them to the upload list.</span>
-        </div>
-        <div id="daWorks" style="display:none;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin:0 0 14px"></div>
         <div class="row" style="margin-bottom:10px">
           <button class="btn" id="daAddFiles" type="button">Add files</button>
           <button class="btn ghost" id="daClearFiles" type="button">Clear list</button>
@@ -646,7 +641,7 @@
   </div>
 </div>
 
-  <script src="/static/js/app.js?v=20260901x"></script>
+  <script src="/static/js/app.js?v=20260901y"></script>
 
 
 

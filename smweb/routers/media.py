@@ -556,13 +556,9 @@ async def api_compose(
     if size_i not in (630, 640, 750, 800, 1920):
         size_i = 750
     try:
-        bg = Image.open(io.BytesIO(bg_raw)).convert("RGBA")
-        # fit background to target width (Steam workshop style)
-        if bg.width != size_i:
-            nh = max(1, int(bg.height * (size_i / max(1, bg.width))))
-            bg = bg.resize((size_i, nh), Image.Resampling.LANCZOS)
-
+        bg_name = (background.filename or "background.png").lower()
         ch_name = (character.filename or "char.png").lower()
+        bg_ext = Path(bg_name).suffix.lower()
         ch_ext = Path(ch_name).suffix.lower()
         key = (chroma_key or "auto").strip().lower()
         try:
@@ -584,48 +580,66 @@ async def api_compose(
             ox, oy = 0.5, 1.0
 
         video_exts = (".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v")
-        is_video = ch_ext in video_exts
-        is_anim = ch_ext in (".gif", ".webp") or is_video
-        n_frames = 1
-        if ch_ext in (".gif", ".webp") and not is_video:
+
+        def animated(raw: bytes, ext: str) -> bool:
+            if ext in video_exts:
+                return True
+            if ext == ".gif":
+                return True
+            if ext != ".webp":
+                return False
             try:
-                with Image.open(io.BytesIO(ch_raw)) as im:
-                    n_frames = int(getattr(im, "n_frames", 1) or 1)
+                with Image.open(io.BytesIO(raw)) as im:
+                    return int(getattr(im, "n_frames", 1) or 1) > 1
             except Exception:
-                n_frames = 1
+                return False
+
+        bg_animated = animated(bg_raw, bg_ext)
+        ch_animated = animated(ch_raw, ch_ext)
+        try:
+            fps_i = max(5, min(30, int(fps)))
+        except Exception:
+            fps_i = 12
 
         from fastapi.responses import Response
 
-        if is_video or (is_anim and n_frames > 1):
+        if bg_animated or ch_animated:
             tmp = Path(tempfile.mkdtemp(prefix="sm_compose_"))
             try:
-                # write original character
+                bpath = tmp / f"background{bg_ext or '.bin'}"
                 cpath = tmp / f"char{ch_ext or '.bin'}"
+                bpath.write_bytes(bg_raw)
                 cpath.write_bytes(ch_raw)
+
+                gif_bg = bpath
                 gif_char = cpath
-                if is_video:
+                if bg_ext in video_exts:
+                    gif_bg = tmp / "background.gif"
+                    proc.media_to_gif(bpath, gif_bg, fps=fps_i, width=size_i, duration=8)
+                    if not gif_bg.is_file():
+                        return JSONResponse({"ok": False, "msg": "Background video→GIF failed (ffmpeg?)"}, status_code=500)
+                if ch_ext in video_exts:
                     gif_char = tmp / "char.gif"
-                    # convert video → gif (short clip for character loops)
-                    proc.media_to_gif(cpath, gif_char, fps=12, width=min(bg.width, 800), duration=8)
+                    proc.media_to_gif(cpath, gif_char, fps=fps_i, width=min(size_i, 800), duration=8)
                     if not gif_char.is_file():
-                        return JSONResponse({"ok": False, "msg": "Video→GIF failed (ffmpeg?)"}, status_code=500)
-                frames, durs = proc.compose_animated(
-                    bg, gif_char,
+                        return JSONResponse({"ok": False, "msg": "Character video→GIF failed (ffmpeg?)"}, status_code=500)
+
+                frames, durs = proc.compose_animated_layers(
+                    gif_bg, gif_char,
                     chroma_key=key,
                     chroma_tol=tol,
                     scale=sc,
                     offset_x=ox,
                     offset_y=oy,
                     feather=feather_f,
+                    target_width=size_i,
+                    fps=fps_i,
+                    max_seconds=8,
                 )
                 out = tmp / "composed.gif"
                 enc = (gif_encoder or "ffmpeg").strip().lower()
                 if enc not in ("ffmpeg", "gifski", "pillow"):
                     enc = "ffmpeg"
-                try:
-                    fps_i = max(5, min(30, int(fps)))
-                except Exception:
-                    fps_i = 12
                 if enc == "pillow":
                     frames_p = [proc._quantize_rgba_for_gif(f) for f in frames]
                     proc._save_animated_gif(frames_p, durs, out)
@@ -660,6 +674,10 @@ async def api_compose(
             finally:
                 shutil.rmtree(tmp, ignore_errors=True)
         else:
+            bg = Image.open(io.BytesIO(bg_raw)).convert("RGBA")
+            if bg.width != size_i:
+                nh = max(1, int(bg.height * (size_i / max(1, bg.width))))
+                bg = bg.resize((size_i, nh), Image.Resampling.LANCZOS)
             char = Image.open(io.BytesIO(ch_raw)).convert("RGBA")
             composed = proc.compose_static(
                 bg, char,

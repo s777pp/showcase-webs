@@ -1720,3 +1720,81 @@ def compose_animated(
     if not frames:
         raise RuntimeError("No frames in character file")
     return frames, durations
+
+
+def compose_animated_layers(
+    bg_path: Path,
+    char_path: Path,
+    *,
+    chroma_key: str = "auto",
+    chroma_tol: float = 40.0,
+    scale: float = 1.0,
+    offset_x: float = 0.5,
+    offset_y: float = 1.0,
+    feather: float = 1.6,
+    target_width: int = 750,
+    fps: int = 12,
+    max_seconds: float = 8.0,
+) -> tuple[list[Image.Image], list[int]]:
+    """Composite two animated/static image sources on one shared timeline."""
+    fps = max(5, min(30, int(fps or 12)))
+    frame_ms = max(20, round(1000 / fps))
+    max_frames = max(1, min(240, round(float(max_seconds) * fps)))
+
+    def read_frames(path: Path, resize_bg: bool = False):
+        frames: list[Image.Image] = []
+        durations: list[int] = []
+        with Image.open(path) as im:
+            try:
+                count = max(1, min(240, int(getattr(im, "n_frames", 1) or 1)))
+            except (EOFError, IndexError, OSError):
+                count = 240
+                try:
+                    im.seek(0)
+                except Exception:
+                    pass
+            for index in range(count):
+                try:
+                    im.seek(index)
+                    rgba = im.convert("RGBA")
+                except (EOFError, IndexError, OSError):
+                    break
+                if resize_bg and rgba.width != target_width:
+                    nh = max(1, int(rgba.height * target_width / max(1, rgba.width)))
+                    rgba = rgba.resize((target_width, nh), Image.Resampling.LANCZOS)
+                frames.append(rgba.copy())
+                durations.append(max(20, int(im.info.get("duration", frame_ms) or frame_ms)))
+        if not frames:
+            raise RuntimeError(f"No frames in {path.name}")
+        return frames, durations
+
+    bg_frames, bg_durations = read_frames(bg_path, resize_bg=True)
+    char_frames, char_durations = read_frames(char_path)
+    bg_total = max(frame_ms, sum(bg_durations))
+    char_total = max(frame_ms, sum(char_durations))
+    total_ms = min(int(max_seconds * 1000), max(bg_total, char_total))
+    count = max(1, min(max_frames, (total_ms + frame_ms - 1) // frame_ms))
+
+    def at_time(frames, durations, time_ms):
+        total = max(1, sum(durations))
+        cursor = time_ms % total
+        acc = 0
+        for frame, duration in zip(frames, durations):
+            acc += duration
+            if cursor < acc:
+                return frame
+        return frames[-1]
+
+    output: list[Image.Image] = []
+    do_key = bool(chroma_key and chroma_key not in ("none", "0", "off", ""))
+    for index in range(count):
+        time_ms = index * frame_ms
+        bg = at_time(bg_frames, bg_durations, time_ms)
+        char = at_time(char_frames, char_durations, time_ms)
+        if do_key:
+            char = remove_chromakey(char, key=chroma_key, tolerance=chroma_tol)
+            if feather and float(feather) > 0:
+                char = feather_alpha(char, radius=float(feather))
+        char = _crop_to_alpha(char)
+        output.append(_place_character(bg, char, scale=scale, offset_x=offset_x, offset_y=offset_y))
+    return output, [frame_ms] * len(output)

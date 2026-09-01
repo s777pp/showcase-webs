@@ -1619,52 +1619,6 @@ document.getElementById('daClearFiles') && document.getElementById('daClearFiles
   renderDaList();
 });
 
-document.getElementById('daLoadWorks') && document.getElementById('daLoadWorks').addEventListener('click', async function () {
-  var btn = this;
-  var box = document.getElementById('daWorks');
-  var st = document.getElementById('daMsg');
-  var ru = localStorage.getItem('sm_lang') === 'ru';
-  btn.disabled = true;
-  if (st) { st.className = 'status'; st.textContent = ru ? 'Загружаю твои работы DeviantArt…' : 'Loading your DeviantArt works…'; }
-  try {
-    var r = await fetch('/api/da/works?limit=36', { headers: headers(), credentials: 'include' });
-    var j = await r.json().catch(function () { return {}; });
-    if (!r.ok || !j.ok) throw new Error(j.msg || ('HTTP ' + r.status));
-    box.style.display = 'grid';
-    box.innerHTML = (j.works || []).map(function (work) {
-      return '<button type="button" class="da-work" data-id="' + work.id + '" data-name="' +
-        String(work.filename || '').replace(/"/g, '&quot;') + '" data-title="' +
-        String(work.title || '').replace(/"/g, '&quot;') + '" style="padding:0;overflow:hidden;text-align:left;border:1px solid var(--border);border-radius:12px;background:rgba(0,0,0,.22);color:var(--text);cursor:pointer">' +
-        '<img src="' + work.preview + '" alt="" loading="lazy" style="display:block;width:100%;aspect-ratio:1;object-fit:cover">' +
-        '<span style="display:block;padding:8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + work.title + '</span></button>';
-    }).join('');
-    box.querySelectorAll('.da-work').forEach(function (workBtn) {
-      workBtn.addEventListener('click', async function () {
-        workBtn.disabled = true;
-        try {
-          var fr = await fetch('/api/da/work-file/' + encodeURIComponent(workBtn.dataset.id), { headers: headers(), credentials: 'include' });
-          if (!fr.ok) { var er = await fr.json().catch(function(){ return {}; }); throw new Error(er.msg || ('HTTP ' + fr.status)); }
-          var blob = await fr.blob();
-          var name = workBtn.dataset.name || ('deviation_' + workBtn.dataset.id + '.jpg');
-          var file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
-          daItems.push({ file: file, name: name, title: workBtn.dataset.title || name.replace(/\.[^.]+$/, '') });
-          renderDaList();
-          workBtn.style.outline = '2px solid var(--accent)';
-          if (st) { st.className = 'status ok'; st.textContent = ru ? 'Работа добавлена в список.' : 'Work added to the list.'; }
-        } catch (e) {
-          workBtn.disabled = false;
-          if (st) { st.className = 'status err'; st.textContent = String(e.message || e); }
-        }
-      });
-    });
-    if (st) { st.className = 'status ok'; st.textContent = (ru ? 'Работы загружены: ' : 'Works loaded: ') + (j.works || []).length; }
-  } catch (e) {
-    if (st) { st.className = 'status err'; st.textContent = String(e.message || e); }
-  } finally {
-    btn.disabled = false;
-  }
-});
-
 document.getElementById('daUpload') && document.getElementById('daUpload').addEventListener('click', async function () {
   var st = document.getElementById('daMsg');
   if (!daItems.length) {
@@ -2037,8 +1991,6 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       da_redirect: "Redirect URI in your DA app must be exactly:",
       da_connect: "Connect",
       da_need_login: "DA: log in to Showcase account first",
-      da_import_works: "Import my DeviantArt works",
-      da_import_hint: "Select works to add them to the upload list.",
       steam_h: "Upload to Steam",
       steam_desc: "Semi-auto: results folder → Steam page → console code → upload.",
       steam_tip: "Tip: log into Steam in the browser first. Paste the code once on the page, then pick files.",
@@ -2151,8 +2103,6 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       da_redirect: "Redirect URI в приложении DA должен быть точно:",
       da_connect: "Подключить",
       da_need_login: "DA: сначала войди в аккаунт Showcase",
-      da_import_works: "Импортировать мои работы DeviantArt",
-      da_import_hint: "Выбери работы, чтобы добавить их в список загрузки.",
       steam_h: "Загрузка в Steam",
       steam_desc: "Полуавтомат: папка с файлами → страница Steam → код в консоль → загрузка.",
       steam_tip: "Совет: войди в Steam в браузере заранее. Код вставляется один раз на страницу, затем выбираешь файлы.",
@@ -3284,6 +3234,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   let bgImg  = null;
   let charImg = null;
   let redrawPending = false;
+  let animationPreviewRunning = false;
   // last placement on canvas (display px) for hit-testing
   let lastLayout = null; // { dispScale, bw, bh, ax, ay, nw, nh, dx, dy, dw, dh }
   let dragMode = null;   // 'move' | 'scale' | null
@@ -3343,13 +3294,31 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     });
   }
 
+  function mediaWidth(media) {
+    return media ? (media.videoWidth || media.naturalWidth || media.width || 0) : 0;
+  }
+  function mediaHeight(media) {
+    return media ? (media.videoHeight || media.naturalHeight || media.height || 0) : 0;
+  }
+
+  function ensureAnimationPreview() {
+    if (animationPreviewRunning) return;
+    animationPreviewRunning = true;
+    function tick() {
+      if (!bgImg && !charImg) { animationPreviewRunning = false; return; }
+      drawLive();
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
   function computePlacement(bw, bh) {
     const sc = scaleVal();
     const ox = oxVal();
     const oy = oyVal();
     let targetH = Math.max(1, Math.round(bh * 0.85 * sc));
-    let r = targetH / Math.max(1, charImg.naturalHeight);
-    let nw = Math.max(1, Math.round(charImg.naturalWidth * r));
+    let r = targetH / Math.max(1, mediaHeight(charImg));
+    let nw = Math.max(1, Math.round(mediaWidth(charImg) * r));
     let nh = Math.max(1, targetH);
     let ax = Math.round(bw * ox - nw / 2);
     let ay = Math.round(bh * oy - nh);
@@ -3361,7 +3330,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     updateRangeLabels();
     lastLayout = null;
 
-    if (!bgImg || !bgImg.naturalWidth) {
+    if (!bgImg || !mediaWidth(bgImg)) {
       liveCanvas.style.display = 'none';
       if (liveEmpty) liveEmpty.style.display = 'flex';
       return;
@@ -3372,7 +3341,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     liveCanvas.style.touchAction = 'none';
 
     const tw = targetWidth();
-    const ratio = bgImg.naturalHeight / bgImg.naturalWidth;
+    const ratio = mediaHeight(bgImg) / mediaWidth(bgImg);
     const bw = tw;
     const bh = Math.max(1, Math.round(tw * ratio));
 
@@ -3388,7 +3357,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     liveCtx.clearRect(0, 0, cw, ch);
     liveCtx.drawImage(bgImg, 0, 0, cw, ch);
 
-    if (!charImg || !charImg.naturalWidth) return;
+    if (!charImg || !mediaWidth(charImg)) return;
 
     const p = computePlacement(bw, bh);
     const dx = p.ax * dispScale;
@@ -3541,32 +3510,13 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       if (isVideo) {
         const url = URL.createObjectURL(file);
         const v = document.createElement('video');
-        v.muted = true; v.playsInline = true; v.preload = 'auto';
-        let done = false;
-        function finish(img) {
-          if (done) return;
-          done = true;
-          try { v.pause(); } catch(e){}
-          try { v.removeAttribute('src'); v.load(); } catch(e){}
-          URL.revokeObjectURL(url);
-          resolve(img);
-        }
+        v.muted = true; v.playsInline = true; v.preload = 'auto'; v.loop = true;
+        v.__objectUrl = url;
         v.addEventListener('loadeddata', function() {
-          try { v.currentTime = Math.min(0.05, (v.duration || 1) * 0.01); } catch(e){}
-          setTimeout(function() {
-            try {
-              const c = document.createElement('canvas');
-              c.width = v.videoWidth || 640;
-              c.height = v.videoHeight || 360;
-              c.getContext('2d').drawImage(v, 0, 0);
-              const im = new Image();
-              im.onload = function(){ finish(im); };
-              im.onerror = function(){ finish(null); };
-              im.src = c.toDataURL('image/png');
-            } catch(e) { finish(null); }
-          }, 100);
+          Promise.resolve(v.play()).catch(function(){});
+          resolve(v);
         });
-        v.addEventListener('error', function(){ finish(null); });
+        v.addEventListener('error', function(){ URL.revokeObjectURL(url); resolve(null); }, { once: true });
         v.src = url;
         try { v.load(); } catch(e){}
         return;
@@ -3585,14 +3535,18 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const f = document.getElementById('composeBg')?.files?.[0];
     const el = document.getElementById('composeBgName');
     if (el) el.textContent = f ? f.name : 'файл не выбран';
+    if (bgImg && bgImg.__objectUrl) { try { bgImg.pause(); URL.revokeObjectURL(bgImg.__objectUrl); } catch(e){} }
     bgImg = f ? await loadImageFromFile(f) : null;
+    ensureAnimationPreview();
     scheduleRedraw();
   }
   async function onCharChange() {
     const f = document.getElementById('composeChar')?.files?.[0];
     const el = document.getElementById('composeCharName');
     if (el) el.textContent = f ? f.name : 'файл не выбран';
+    if (charImg && charImg.__objectUrl) { try { charImg.pause(); URL.revokeObjectURL(charImg.__objectUrl); } catch(e){} }
     charImg = f ? await loadImageFromFile(f) : null;
+    ensureAnimationPreview();
     scheduleRedraw();
   }
 
