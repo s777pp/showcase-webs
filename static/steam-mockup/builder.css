@@ -438,6 +438,14 @@ html, body {
   background: rgba(255,255,255,.03);
   border: 1px dashed rgba(255,255,255,.1);
 }
+.sm-media-slot{position:relative;display:block;width:100%;padding:0;border:0;background:transparent;color:inherit;text-align:inherit;cursor:pointer;overflow:hidden}
+.sm-media-slot__action{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:7px 10px;border-radius:3px;background:rgba(12,18,24,.9);border:1px solid rgba(102,192,244,.55);color:#fff;font:600 11px "Motiva Sans",sans-serif;white-space:nowrap;opacity:0;transition:opacity .15s}
+.sm-media-slot:hover .sm-media-slot__action,.sm-media-slot:focus-visible .sm-media-slot__action,.sm-media-slot .sm-slot-empty+.sm-media-slot__action{opacity:1}
+.sm-media-slot:focus-visible{outline:2px solid #66c0f4;outline-offset:2px}
+.profile_up_avatar_wrap>.sm-media-slot{width:140px;height:140px}
+.profile_main_workshop_main_image>.sm-media-slot{height:auto;min-height:110px}
+.profile_main_workshop_main_image .sm-slot-empty{min-height:180px}
+.profile_main_banner_main_content .sm-media-slot,.profile_main_illustration>.sm-media-slot{width:100%}
 .profile_main_banner_stats {
   display: flex;
   gap: 12px;

@@ -590,21 +590,22 @@ class _ProfilePageParser(HTMLParser):
             item["images"] = list(dict.fromkeys(item["images"]))
             item["links"] = list(dict.fromkeys(item["links"]))
             item["text"] = " ".join(item["text"])
-            title = item["title"].lower()
-            blob = (title + " " + " ".join(item.get("text") or [])).lower() if isinstance(item.get("text"), list) else (title + " " + str(item.get("text") or "")).lower()
-            if "workshop" in blob or "мастерск" in blob:
+            title = item["title"].lower().strip()
+            # Classify by the customization header, never by all body text.
+            # A Recent Activity block can contain the words "Workshop Submission"
+            # and used to be imported as a fake 15-image Workshop showcase.
+            if "workshop" in title or "мастерск" in title:
                 item["type"] = "workshop"
-            elif "guide" in blob or "руковод" in blob:
+            elif "guide" in title or "руковод" in title:
                 item["type"] = "guide"
-            elif "artwork" in blob or "illustration" in blob or "иллюстра" in blob or "screenshot" in blob:
+            elif "artwork" in title or "illustration" in title or "иллюстра" in title or "screenshot" in title:
                 item["type"] = "art"
-            elif "information" in blob or "информац" in blob:
+            elif "information" in title or "custom info" in title or "информац" in title:
                 item["type"] = "info"
-            elif "favorite" in blob and ("art" in blob or "иллюстр" in blob):
-                item["type"] = "art"
             else:
                 item["type"] = "other"
-            self.showcases.append(item)
+            if item["type"] != "other":
+                self.showcases.append(item)
             self.current = None
         self.depth = max(0, self.depth - 1)
 
@@ -641,7 +642,7 @@ def profile(url: str) -> dict:
             return {"ok": False, "msg": "Enter a public steamcommunity.com profile URL"}
         canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
 
-    key = f"profile4:{canonical.lower()}"
+    key = f"profile5:{canonical.lower()}"
     cached = _get(key)
     if cached is not None:
         return cached

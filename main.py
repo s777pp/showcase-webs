@@ -660,6 +660,8 @@ def api_profile_me(request: Request):
             "avatar_url": av_url,
             "background_url": bg_url,
             "username": un,
+            "snapshot": auth_db.get_profile_builder_snapshot(int(user["id"])),
+            "steam": auth_db.get_steam_profile_snapshot(int(user["id"])),
         },
     }
 
@@ -697,6 +699,7 @@ def api_profile_get(username: str, request: Request):
             "background_url": bg_url,
             "username": prof.get("profile_username"),
             "steam": steam_snap,
+            "snapshot": auth_db.get_profile_builder_snapshot(int(prof["id"])),
             "showcases": showcases,
         },
     }
@@ -749,6 +752,63 @@ async def api_profile_update(request: Request):
         return JSONResponse({"ok": False, "msg": msg}, status_code=400)
     un = auth_db.ensure_profile_username(int(user["id"]))
     return {"ok": True, "msg": msg, "username": un}
+
+
+@app.post("/api/profile/snapshot")
+async def api_profile_snapshot_save(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    try:
+        body = await request.json()
+        snapshot = body.get("snapshot") if isinstance(body, dict) else None
+        if not isinstance(snapshot, dict):
+            return JSONResponse({"ok": False, "msg": "Invalid snapshot"}, status_code=400)
+        auth_db.save_profile_builder_snapshot(int(user["id"]), snapshot)
+        auth_db.ensure_profile_username(int(user["id"]), snapshot.get("name") or user.get("display_name"))
+        auth_db.update_steam_profile(
+            int(user["id"]),
+            display_name=str(snapshot.get("name") or "")[:40],
+            profile_summary=str(snapshot.get("summary") or "")[:2000],
+            profile_level=int(snapshot.get("level") or 1),
+        )
+        un = auth_db.ensure_profile_username(int(user["id"]))
+        return {"ok": True, "username": un, "url": f"/profile/{un}"}
+    except ValueError as e:
+        return JSONResponse({"ok": False, "msg": str(e)}, status_code=413)
+    except Exception:
+        LOGGER.exception("save profile snapshot")
+        return JSONResponse({"ok": False, "msg": "Could not save profile"}, status_code=500)
+
+
+@app.post("/api/profile/asset")
+async def api_profile_asset(request: Request, file: UploadFile = File(...)):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    raw = await file.read()
+    if not raw or len(raw) > 24 * 1024 * 1024:
+        return JSONResponse({"ok": False, "msg": "File must be under 24 MB"}, status_code=400)
+    ext = Path(file.filename or "asset.bin").suffix.lower()
+    allowed = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".webm", ".mp4"}
+    if ext not in allowed:
+        return JSONResponse({"ok": False, "msg": "PNG, JPG, WEBP, GIF, WEBM or MP4 only"}, status_code=400)
+    uid = int(user["id"])
+    out = Path(DATA) / "profile_assets" / str(uid)
+    out.mkdir(parents=True, exist_ok=True)
+    name = secrets.token_hex(12) + ext
+    (out / name).write_bytes(raw)
+    return {"ok": True, "url": f"/api/profile/asset/{uid}/{name}"}
+
+
+@app.get("/api/profile/asset/{user_id}/{name}")
+def api_profile_asset_get(user_id: int, name: str):
+    if Path(name).name != name:
+        return JSONResponse({"ok": False}, status_code=404)
+    path = Path(DATA) / "profile_assets" / str(user_id) / name
+    if not path.is_file():
+        return JSONResponse({"ok": False}, status_code=404)
+    return FileResponse(path, headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @app.get("/api/profile/bg/{user_id}")
@@ -4913,6 +4973,59 @@ def _steam_realm() -> str:
     return base
 
 
+def _steam_web_api_data(steam_id: str) -> dict:
+    """Optional private-key enrichment; public HTML remains the showcase source."""
+    key = (os.environ.get("STEAM_API_KEY") or "").strip()
+    if not key or not str(steam_id).isdigit():
+        return {}
+    import requests as _req
+    base = "https://api.steampowered.com"
+    def get(path: str, **params):
+        params.update({"key": key, "steamid": str(steam_id)})
+        r = _req.get(base + path, params=params, timeout=15)
+        r.raise_for_status()
+        return r.json().get("response") or {}
+    out: dict = {}
+    try:
+        players = get("/ISteamUser/GetPlayerSummaries/v2/", steamids=str(steam_id)).get("players") or []
+        if players:
+            out["player"] = players[0]
+    except Exception:
+        LOGGER.warning("Steam GetPlayerSummaries unavailable")
+    try:
+        owned = get("/IPlayerService/GetOwnedGames/v1/", include_appinfo=1, include_played_free_games=1)
+        out["games"] = (owned.get("games") or [])[:500]
+        out["game_count"] = int(owned.get("game_count") or len(out["games"]))
+    except Exception:
+        pass
+    try:
+        out["recent_games"] = (get("/IPlayerService/GetRecentlyPlayedGames/v1/").get("games") or [])[:20]
+    except Exception:
+        pass
+    try:
+        out["level"] = int(get("/IPlayerService/GetSteamLevel/v1/").get("player_level") or 0)
+    except Exception:
+        pass
+    return out
+
+
+def _merge_steam_api(profile: dict) -> dict:
+    sid = str(profile.get("steamid") or "")
+    api = _steam_web_api_data(sid)
+    if not api:
+        return profile
+    player = api.get("player") or {}
+    profile["name"] = player.get("personaname") or profile.get("name")
+    profile["avatar"] = player.get("avatarfull") or profile.get("avatar")
+    profile["status"] = "online" if int(player.get("personastate") or 0) else profile.get("status")
+    if api.get("level"):
+        profile["level"] = api["level"]
+    profile["games"] = api.get("games") or []
+    profile["recent_games"] = api.get("recent_games") or []
+    profile.setdefault("stats_map", {})["games"] = api.get("game_count") or profile.get("stats_map", {}).get("games", 0)
+    return profile
+
+
 @app.get("/api/auth/steam/login")
 def steam_login_start(request: Request):
     """Start Steam OpenID 2.0 sign-in (no API key required for OpenID)."""
@@ -4959,7 +5072,7 @@ async def steam_callback(request: Request):
             import steam_catalog
             pr = steam_catalog.profile(f"https://steamcommunity.com/profiles/{steam_id}")
             if pr.get("ok") and pr.get("profile"):
-                profile_data = pr["profile"]
+                profile_data = _merge_steam_api(pr["profile"])
                 persona = profile_data.get("name") or persona
         except Exception:
             LOGGER.exception("steam profile snapshot failed")
@@ -5052,8 +5165,9 @@ async def api_profile_steam_import(request: Request):
         pr = steam_catalog.profile(url)
         if not pr.get("ok"):
             return JSONResponse(pr, status_code=400)
-        auth_db.save_steam_profile_snapshot(int(user["id"]), pr["profile"])
-        return {"ok": True, "profile": pr["profile"]}
+        profile = _merge_steam_api(pr["profile"])
+        auth_db.save_steam_profile_snapshot(int(user["id"]), profile)
+        return {"ok": True, "profile": profile}
     except Exception as e:
         return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
 

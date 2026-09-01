@@ -44,6 +44,11 @@
   function imgTag(url, cls, alt) {
     return mediaTag(url, cls, alt);
   }
+  function slotTag(url, cls, alt, slot, index) {
+    return '<button type="button" class="sm-media-slot" data-slot="' + esc(slot) + '" data-index="' +
+      esc(index == null ? 0 : index) + '" aria-label="Replace media">' + mediaTag(url, cls, alt) +
+      '<span class="sm-media-slot__action">' + (url ? 'Replace' : '＋ Upload') + '</span></button>';
+  }
 
   function defaultState() {
     return {
@@ -72,7 +77,6 @@
       },
       showcases: [
         { type: "artwork", title: "Artwork Showcase", images: ["", ""] },
-        { type: "info", title: "Info", text: "", link: "" },
         {
           type: "workshop",
           title: "Workshop Showcase",
@@ -81,7 +85,6 @@
           followers: 0,
         },
         { type: "guide", title: "Favorite Guide", images: [""], author: "", ratings: 0 },
-        { type: "artfav", title: "Favorite Artwork", images: [""] },
       ],
     };
   }
@@ -100,7 +103,7 @@
         "</div></div></div>" +
         '<div class="profile_main_banner_main"><div class="profile_main_banner_main_content">' +
         '<div class="profile_main_banners">' +
-        imgTag(big, "profile_main_banner_big", "artwork") +
+        slotTag(big, "profile_main_banner_big", "artwork", "showcase", idx + ':0') +
         "</div>" +
         '<div class="profile_main_banner_stats">' +
         '<span class="profile_main_like">♥ 0</span>' +
@@ -117,7 +120,7 @@
       for (var i = 0; i < n; i++) {
         cells +=
           '<div class="profile_main_workshop_main_image">' +
-          imgTag(imgs[i] || "", "profile_main_workshop_img", "ws") +
+          slotTag(imgs[i] || "", "profile_main_workshop_img", "ws", "showcase", idx + ':' + i) +
           "</div>";
       }
       var wsIcon = imgs[0] || "";
@@ -160,7 +163,7 @@
         esc(sc.title || "Favorite Guide") +
         "</div>" +
         '<div class="profile_main_guide_row">' +
-        imgTag((sc.images && sc.images[0]) || "", "profile_main_guide_img", "guide") +
+        slotTag((sc.images && sc.images[0]) || "", "profile_main_guide_img", "guide", "showcase", idx + ':0') +
         '<div class="profile_main_guide_meta">' +
         "<div>Created by — " +
         esc(sc.author || "") +
@@ -199,7 +202,7 @@
         '<div class="profile_main_illustration_title">' +
         esc(sc.title || "Favorite Artwork") +
         "</div>" +
-        imgTag((sc.images && sc.images[0]) || "", "profile_main_illustration_img", "fav") +
+        slotTag((sc.images && sc.images[0]) || "", "profile_main_illustration_img", "fav", "showcase", idx + ':0') +
         "</div>"
       );
     }
@@ -302,7 +305,7 @@
       '<div class="profile_section_main">' +
       '<div class="profile_up">' +
       '<div class="profile_up_avatar_wrap">' +
-      imgTag(state.avatar, "profile_up_avatar", "avatar") +
+      slotTag(state.avatar, "profile_up_avatar", "avatar", "avatar", 0) +
       frame +
       "</div>" +
       '<div class="profile_up_items">' +
@@ -322,7 +325,7 @@
       "</span></div>" +
       '<div class="profile_right_achievement">' +
       '<div class="profile_right_achievement_content">' +
-      imgTag((state.favBadge && state.favBadge.image) || "", "profile_right_achievement_icon", "") +
+      slotTag((state.favBadge && state.favBadge.image) || "", "profile_right_achievement_icon", "", "favBadge", 0) +
       '<div class="profile_right_achievement_texts">' +
       '<div class="profile_right_achievement_title">' +
       esc((state.favBadge && state.favBadge.title) || "Favorite Badge") +

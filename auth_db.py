@@ -215,6 +215,7 @@ def user_by_token(token: str) -> Optional[dict]:
             ("profile_bg_overlay", "REAL"), ("profile_level", "INTEGER"), ("profile_xp", "INTEGER"),
             ("profile_location", "TEXT"), ("profile_status", "TEXT"), ("profile_visibility", "TEXT"),
             ("steam_id", "TEXT"), ("steam_username", "TEXT"), ("steam_profile_json", "TEXT"),
+            ("profile_builder_json", "TEXT"),
         ):
             try:
                 c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
@@ -1434,6 +1435,44 @@ def get_steam_profile_snapshot(user_id: int) -> dict | None:
             data.setdefault("steamid", row["steam_id"])
             return data
         return None
+    except Exception:
+        return None
+    finally:
+        c.close()
+
+
+def save_profile_builder_snapshot(user_id: int, snapshot: dict) -> None:
+    """Persist the exact DOM-profile state used by editor and public page."""
+    import json as _json
+    raw = _json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))
+    if len(raw.encode("utf-8")) > 2_000_000:
+        raise ValueError("Profile snapshot is too large")
+    c = _conn()
+    try:
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN profile_builder_json TEXT")
+        except Exception:
+            pass
+        c.execute("UPDATE users SET profile_builder_json=? WHERE id=?", (raw, int(user_id)))
+        c.commit()
+    finally:
+        c.close()
+
+
+def get_profile_builder_snapshot(user_id: int) -> dict | None:
+    import json as _json
+    c = _conn()
+    try:
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN profile_builder_json TEXT")
+            c.commit()
+        except Exception:
+            pass
+        row = c.execute("SELECT profile_builder_json FROM users WHERE id=?", (int(user_id),)).fetchone()
+        if not row or not row["profile_builder_json"]:
+            return None
+        data = _json.loads(row["profile_builder_json"])
+        return data if isinstance(data, dict) else None
     except Exception:
         return None
     finally:
