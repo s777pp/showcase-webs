@@ -1,8 +1,14 @@
 .git
 .gitignore
 .DS_Store
+# A bare pattern only matches the top level, so before the smweb/ split these
+# two caught the only __pycache__ there was. The code now lives in packages, so
+# they have to be recursive or smweb/__pycache__ and
+# smweb/routers/__pycache__ ship in the image.
 __pycache__
+**/__pycache__
 *.pyc
+**/*.pyc
 .venv
 venv
 
@@ -22,3 +28,17 @@ data/jobs
 main2.py
 bin/*.exe
 docs
+
+# Refactor working directory: old copies of split files plus a smoke-test
+# SQLite database. Never belongs in an image.
+.refactor-tmp
+
+# One-shot analysis/verification scripts (scripts/_*.py). The three real
+# operational scripts - backup_sqlite.sh, gen_access_codes.py,
+# migrate_sqlite_to_pg.py - do not match this pattern and still ship.
+scripts/_*.py
+
+# Editor and agent state
+.vscode
+.idea
+.claude

@@ -26,11 +26,6 @@
     key: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v4"/>'
   };
 
-  var LANGS = [
-    { code: 'ru', name: 'Русский' },
-    { code: 'en', name: 'English' }
-  ];
-
   var OAUTH_ICONS = {
     discord: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#8b95ff" d="M20.3 4.4a19.7 19.7 0 0 0-4.9-1.5l-.6 1.2a18.3 18.3 0 0 0-5.5 0l-.6-1.2a19.7 19.7 0 0 0-4.9 1.5C.5 9-.3 13.6.1 18.1a19.9 19.9 0 0 0 6 3l1.2-2a13 13 0 0 1-1.9-.9l.4-.3c3.9 1.8 8.2 1.8 12.1 0l.4.3a12 12 0 0 1-1.9.9l1.2 2a19.8 19.8 0 0 0 6-3c.5-5.2-.8-9.7-3.3-13.7ZM8 15.3c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Z"/></svg>',
     google: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.3h5.4a4.6 4.6 0 0 1-2 3v2.8h3.3c1.9-1.8 2.9-4.4 2.9-7.9Z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.7-2.4l-3.3-2.8c-.9.6-2.1 1-3.4 1a5.9 5.9 0 0 1-5.5-4.1H3.1v2.9A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.5 13.7a6 6 0 0 1 0-3.8V7H3.1a10 10 0 0 0 0 9.6l3.4-2.9Z"/><path fill="#EA4335" d="M12 5.8c1.5 0 2.8.5 3.8 1.5l2.9-2.8A9.7 9.7 0 0 0 12 2a10 10 0 0 0-8.9 5.4l3.4 2.5A5.9 5.9 0 0 1 12 5.8Z"/></svg>',
@@ -85,13 +80,8 @@
 
   function langHTML() {
     var cur = lang();
-    return '<div class="ss-lang" id="ssLang">' +
-      '<button class="ss-lang__btn" type="button" aria-haspopup="true">' +
-        cur.toUpperCase() + '<span>▾</span></button>' +
-      '<div class="ss-lang__list">' + LANGS.map(function (l) {
-        return '<button type="button" data-lang="' + l.code + '"' +
-          (l.code === cur ? ' class="is-on"' : '') + '>' + esc(l.name) + '</button>';
-      }).join('') + '</div></div>';
+    return '<button class="ss-lang__btn" id="ssLangToggle" type="button" aria-label="' +
+      (cur === 'ru' ? 'Switch to English' : 'Переключить на русский') + '">' + cur.toUpperCase() + '</button>';
   }
 
   function headerHTML() {
@@ -100,7 +90,8 @@
       '<span class="ss-logo__txt">Showcase <span>Maker</span></span></a>' +
       '<nav class="ss-nav">' + navHTML() + '</nav>' +
       '<span class="ss-head__sp"></span>' +
-      '<div class="ss-head__right">' + langHTML() +
+      '<div class="ss-head__right"><button class="ss-activate" id="ssActivate" type="button">' + svg('key') + '<span>' +
+        (lang() === 'ru' ? 'Активация' : 'Activate') + '</span></button>' + langHTML() +
         '<a class="ss-pill" id="ssUser" href="/profile" hidden></a>' +
         '<button class="ss-btn ss-btn--sm" id="ssLogin" type="button">' +
           (lang() === 'ru' ? 'Войти' : 'Log in') + '</button>' +
@@ -109,6 +100,20 @@
         '<button class="ss-burger" id="ssBurger" type="button" aria-label="Menu"><span></span></button>' +
       '</div></div></header>' +
       '<div class="ss-drawer" id="ssDrawer">' + drawerHTML() + '</div>';
+  }
+
+  function activationHTML() {
+    var ru = lang() === 'ru';
+    return '<div class="ss-activation" id="ssActivation" aria-hidden="true"><div class="ss-activation__card" role="dialog" aria-modal="true" aria-labelledby="ssActivationTitle">' +
+      '<button class="ss-auth__close" id="ssActivationClose" type="button" aria-label="Close">×</button>' +
+      '<div class="ss-activation__icon">' + svg('key') + '</div>' +
+      '<p class="ss-auth__eyebrow">SHOWCASE MAKER / PRO</p>' +
+      '<h2 id="ssActivationTitle">' + (ru ? 'Активировать ключ' : 'Activate a key') + '</h2>' +
+      '<p class="ss-auth__sub">' + (ru ? 'Ключ привязывается к аккаунту. Один ключ нельзя использовать повторно.' : 'The key is linked to your account and cannot be reused.') + '</p>' +
+      '<form class="ss-activation__form" id="ssActivationForm"><label><span>' + (ru ? 'Ключ доступа' : 'Access key') + '</span><div class="ss-activation__entry"><input id="ssActivationCode" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX"><button type="submit">' + (ru ? 'Активировать' : 'Activate') + '</button></div></label><p class="ss-auth__state" id="ssActivationState"></p></form>' +
+      '<div class="ss-activation__divide"><span>' + (ru ? 'Купить ключ' : 'Buy a key') + '</span></div>' +
+      '<div class="ss-activation__shops"><a href="https://funpay.com/lots/offer?id=75434891" target="_blank" rel="noopener"><b>FunPay</b><small>' + (ru ? 'Код после оплаты' : 'Code after payment') + '</small><i>↗</i></a><a href="https://t.me/SteamMakerBot" target="_blank" rel="noopener"><b>Telegram</b><small>' + (ru ? 'Покупка через бота' : 'Buy via bot') + '</small><i>↗</i></a></div>' +
+    '</div></div>';
   }
 
   function authHTML() {
@@ -184,8 +189,13 @@
       '<i class="ss-pill__plan ' + (me.is_pro ? 'is-pro">PRO' : 'is-free">FREE') + '</i>';
   }
 
+  // One request for the whole shell. /api/bootstrap returns everything
+  // /api/auth/me did plus the unread count, so a page's own scripts can reuse
+  // this response instead of asking the server about the same session again.
+  var _mePromise = null;
+
   function loadMe() {
-    return fetch('/api/auth/me', { credentials: 'same-origin' })
+    _mePromise = fetch('/api/bootstrap', { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
       .catch(function () { return { logged_in: false }; })
       .then(function (me) {
@@ -194,7 +204,13 @@
         document.dispatchEvent(new CustomEvent('ss:me', { detail: me }));
         return me;
       });
+    return _mePromise;
   }
+
+  // The in-flight (or already finished) bootstrap, without starting a second
+  // request. Use loadMe() instead when the state must be re-read - after a
+  // login, for instance.
+  function me() { return _mePromise || loadMe(); }
 
   function wire() {
     var burger = document.getElementById('ssBurger');
@@ -205,36 +221,57 @@
         document.body.style.overflow = drawer.classList.contains('is-open') ? 'hidden' : '';
       });
     }
-    var box = document.getElementById('ssLang');
-    if (box) {
-      box.querySelector('.ss-lang__btn').addEventListener('click', function (e) {
-        e.stopPropagation();
-        box.classList.toggle('is-open');
+    var langToggle = document.getElementById('ssLangToggle');
+    if (langToggle) {
+      langToggle.addEventListener('click', function () {
+        var code = lang() === 'ru' ? 'en' : 'ru';
+        try { localStorage.setItem('ss_lang', code); localStorage.setItem('sm_lang', code); } catch (e) {}
+        if (typeof window.ssApplyLang === 'function') window.ssApplyLang(code);
+        else if (typeof window.applyAppLang === 'function') window.applyAppLang(code);
+        else if (typeof window.applyLang === 'function') window.applyLang(code);
+        else { location.reload(); return; }
+        mount();
       });
-      box.querySelectorAll('[data-lang]').forEach(function (b) {
-        b.addEventListener('click', function () {
-          var code = b.getAttribute('data-lang');
-          try { localStorage.setItem('ss_lang', code); localStorage.setItem('sm_lang', code); } catch (e) {}
-          if (typeof window.ssApplyLang === 'function') {
-            window.ssApplyLang(code);
-            box.classList.remove('is-open');
-            mount();               /* redraw chrome in the new language */
-          } else if (typeof window.applyAppLang === 'function') {
-            window.applyAppLang(code);
-            box.classList.remove('is-open');
-            mount();
-          } else if (typeof window.applyLang === 'function') {
-            window.applyLang(code);
-            box.classList.remove('is-open');
-            mount();
-          } else {
-            location.reload();     /* page has no live i18n — reload is honest */
-          }
-        });
-      });
-      document.addEventListener('click', function () { box.classList.remove('is-open'); });
     }
     wireAuth();
+    wireActivation();
+  }
+
+  function openActivation() {
+    var modal = document.getElementById('ssActivation');
+    if (!modal) return;
+    modal.classList.add('is-open'); modal.setAttribute('aria-hidden', 'false'); document.body.style.overflow = 'hidden';
+    setTimeout(function () { document.getElementById('ssActivationCode')?.focus(); }, 40);
+  }
+  function closeActivation() {
+    var modal = document.getElementById('ssActivation');
+    if (!modal) return;
+    modal.classList.remove('is-open'); modal.setAttribute('aria-hidden', 'true'); document.body.style.overflow = '';
+  }
+  function wireActivation() {
+    var open = document.getElementById('ssActivate'), close = document.getElementById('ssActivationClose');
+    var modal = document.getElementById('ssActivation'), form = document.getElementById('ssActivationForm');
+    if (open) open.onclick = openActivation;
+    if (close) close.onclick = closeActivation;
+    if (modal) modal.onclick = function (e) { if (e.target === modal) closeActivation(); };
+    if (form) form.onsubmit = function (e) {
+      e.preventDefault();
+      var code = (document.getElementById('ssActivationCode').value || '').trim();
+      var state = document.getElementById('ssActivationState'), button = form.querySelector('button[type="submit"]');
+      if (!code) { state.textContent = lang() === 'ru' ? 'Введите ключ.' : 'Enter a key.'; state.className = 'ss-auth__state is-bad'; return; }
+      state.textContent = lang() === 'ru' ? 'Проверяем ключ…' : 'Checking key…'; state.className = 'ss-auth__state is-wait'; button.disabled = true;
+      fetch('/api/unlock', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:code}) })
+        .then(function (r) { return r.json().then(function (j) { return { status:r.status, data:j }; }); })
+        .then(function (x) {
+          if (!x.data || !x.data.ok) {
+            if (x.status === 401) { closeActivation(); openAuth('login'); throw new Error(lang() === 'ru' ? 'Сначала войдите в аккаунт.' : 'Log in first.'); }
+            throw new Error((x.data && x.data.msg) || 'Activation failed');
+          }
+          state.textContent = x.data.msg || (lang() === 'ru' ? 'Pro активирован.' : 'Pro activated.'); state.className = 'ss-auth__state is-ok';
+          return loadMe();
+        }).catch(function (err) { state.textContent = err.message; state.className = 'ss-auth__state is-bad'; })
+        .then(function () { button.disabled = false; });
+    };
   }
 
   var authMode = 'login';
@@ -295,13 +332,13 @@
   function mount() {
     var head = document.getElementById('ssHeadHost');
     var foot = document.getElementById('ssFootHost');
-    if (head) head.innerHTML = headerHTML() + authHTML();
+    if (head) head.innerHTML = headerHTML() + authHTML() + activationHTML();
     if (foot) foot.innerHTML = footerHTML();
     wire();
     paintUser(window.SS_ME);
   }
 
-  window.SSShell = { mount: mount, loadMe: loadMe, lang: lang, t: t, esc: esc, openAuth: openAuth, closeAuth: closeAuth };
+  window.SSShell = { mount: mount, loadMe: loadMe, me: me, lang: lang, t: t, esc: esc, openAuth: openAuth, closeAuth: closeAuth, openActivation: openActivation, closeActivation: closeActivation };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { mount(); 

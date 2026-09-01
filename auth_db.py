@@ -5,6 +5,7 @@ import hashlib
 import os
 import secrets
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from typing import Optional
@@ -60,9 +61,18 @@ if not DATA_WRITABLE:
     )
 
 
-def _conn() -> sqlite3.Connection:
-    c = sqlite3.connect(str(DB), timeout=30)
-    c.row_factory = sqlite3.Row
+# --- schema bootstrap ------------------------------------------------------
+# This DDL used to live inside _conn(), which means it ran on every one of its
+# 53 call sites: 8 statements plus a commit, each time. On a network-attached
+# volume (Railway) every one of those commits is an fsync, so a single
+# authorised page load paid for a dozen of them before touching real data.
+# The schema is now built once per process; _conn() only hands out a connection.
+_SCHEMA_READY = False
+_SCHEMA_LOCK = threading.Lock()
+
+
+def _create_schema(c: sqlite3.Connection) -> None:
+    """Every table, migration and index the app needs. Once per process."""
     c.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
@@ -164,7 +174,124 @@ def _conn() -> sqlite3.Connection:
                 c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
             except Exception:
                 pass
-    c.commit()
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gallery (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            title TEXT,
+            mode TEXT,
+            image_path TEXT NOT NULL,
+            thumb_path TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at REAL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gallery_likes (
+            item_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            created_at REAL,
+            PRIMARY KEY (item_id, user_id)
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gallery_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            parent_id INTEGER,
+            body TEXT NOT NULL,
+            created_at REAL,
+            deleted INTEGER DEFAULT 0
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            actor_id INTEGER,
+            item_id INTEGER,
+            comment_id INTEGER,
+            body TEXT,
+            is_read INTEGER DEFAULT 0,
+            created_at REAL
+        )
+        """
+    )
+    c.execute("CREATE INDEX IF NOT EXISTS idx_likes_item ON gallery_likes(item_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_comments_item ON gallery_comments(item_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read)")
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS profile_showcases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            sc_type TEXT NOT NULL,
+            title TEXT,
+            sort_order INTEGER DEFAULT 0,
+            data_json TEXT,
+            created_at REAL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
+
+    for ddl in (
+        # Hot paths that had no index at all - see docs/ARCHITECTURE_AUDIT.md.
+        "CREATE INDEX IF NOT EXISTS idx_gallery_status_created ON gallery(status, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_gallery_user ON gallery(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_showcases_user ON profile_showcases(user_id, sort_order)",
+        "CREATE INDEX IF NOT EXISTS idx_users_profile_username ON users(profile_username)",
+        "CREATE INDEX IF NOT EXISTS idx_users_discord ON users(discord_id)",
+        "CREATE INDEX IF NOT EXISTS idx_users_google ON users(google_id)",
+        "CREATE INDEX IF NOT EXISTS idx_users_telegram ON users(telegram_id)",
+    ):
+        try:
+            c.execute(ddl)
+        except Exception:
+            # An index over a column an ancient DB never got is not worth
+            # refusing to start over.
+            pass
+
+
+def _init_schema() -> None:
+    global _SCHEMA_READY
+    if _SCHEMA_READY:
+        return
+    with _SCHEMA_LOCK:
+        if _SCHEMA_READY:
+            return
+        c = sqlite3.connect(str(DB), timeout=30)
+        try:
+            # journal_mode is persisted in the database header, so setting it once
+            # covers every later connection. WAL is what stops one write (marking
+            # a notification read, say) from blocking all concurrent readers.
+            c.execute("PRAGMA journal_mode=WAL")
+            _create_schema(c)
+            c.commit()
+        finally:
+            c.close()
+        _SCHEMA_READY = True
+
+
+def _conn() -> sqlite3.Connection:
+    _init_schema()
+    c = sqlite3.connect(str(DB), timeout=30)
+    c.row_factory = sqlite3.Row
+    # Per-connection pragmas (unlike journal_mode these are not persisted);
+    # neither touches the disk.
+    c.execute("PRAGMA synchronous=NORMAL")
+    c.execute("PRAGMA busy_timeout=5000")
     return c
 
 
@@ -509,22 +636,11 @@ def wipe_all_users() -> int:
 # ─── Gallery ────────────────────────────────────────────────────────────────
 
 def _ensure_gallery(c: sqlite3.Connection) -> None:
-    c.execute(
-        """
-        CREATE TABLE IF NOT EXISTS gallery (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            title TEXT,
-            mode TEXT,
-            image_path TEXT NOT NULL,
-            thumb_path TEXT,
-            status TEXT DEFAULT 'pending',
-            created_at REAL,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-        """
-    )
-    c.commit()
+    """No-op: _create_schema() builds this at startup now.
+
+    Kept so the existing call sites need no edit.
+    """
+    return
 
 
 def gallery_add(user_id: int | None, title: str, mode: str, image_path: str, thumb_path: str | None = None) -> int:
@@ -760,48 +876,11 @@ def register_or_login_telegram(
 
 
 def _ensure_social(c) -> None:
-    c.execute(
-        """
-        CREATE TABLE IF NOT EXISTS gallery_likes (
-            item_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            created_at REAL,
-            PRIMARY KEY (item_id, user_id)
-        )
-        """
-    )
-    c.execute(
-        """
-        CREATE TABLE IF NOT EXISTS gallery_comments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            item_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            parent_id INTEGER,
-            body TEXT NOT NULL,
-            created_at REAL,
-            deleted INTEGER DEFAULT 0
-        )
-        """
-    )
-    c.execute(
-        """
-        CREATE TABLE IF NOT EXISTS notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            kind TEXT NOT NULL,
-            actor_id INTEGER,
-            item_id INTEGER,
-            comment_id INTEGER,
-            body TEXT,
-            is_read INTEGER DEFAULT 0,
-            created_at REAL
-        )
-        """
-    )
-    c.execute("CREATE INDEX IF NOT EXISTS idx_likes_item ON gallery_likes(item_id)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_comments_item ON gallery_comments(item_id)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read)")
-    c.commit()
+    """No-op: _create_schema() builds this at startup now.
+
+    Kept so the existing call sites need no edit.
+    """
+    return
 
 
 def gallery_like_counts(item_ids: list[int]) -> dict[int, int]:
@@ -1222,21 +1301,11 @@ def update_steam_profile(user_id: int, **fields) -> tuple[bool, str]:
 
 
 def _ensure_profile_showcases(c):
-    c.execute(
-        """
-        CREATE TABLE IF NOT EXISTS profile_showcases (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            sc_type TEXT NOT NULL,
-            title TEXT,
-            sort_order INTEGER DEFAULT 0,
-            data_json TEXT,
-            created_at REAL,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-        """
-    )
-    c.commit()
+    """No-op: _create_schema() builds this at startup now.
+
+    Kept so the existing call sites need no edit.
+    """
+    return
 
 
 def profile_showcase_list(user_id: int) -> list[dict]:

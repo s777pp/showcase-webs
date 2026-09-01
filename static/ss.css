@@ -83,6 +83,8 @@ img,video{max-width:100%;display:block}
   transition:.18s var(--ease);
 }
 .ss-lang__btn:hover{border-color:var(--line-2);color:var(--txt)}
+.ss-activate{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border:1px solid rgba(53,201,242,.24);border-radius:10px;background:rgba(53,201,242,.075);color:#bfefff;font-size:12px;font-weight:750}
+.ss-activate svg{width:15px;height:15px}.ss-activate:hover{border-color:rgba(139,233,255,.5);background:rgba(53,201,242,.14);color:#fff}
 .ss-lang__list{
   position:absolute;top:calc(100% + 8px);right:0;min-width:132px;padding:6px;
   background:var(--panel);border:1px solid var(--line-2);border-radius:var(--r);
@@ -159,6 +161,12 @@ img,video{max-width:100%;display:block}
 .ss-auth__submit{height:48px;margin-top:2px;border-radius:12px;background:linear-gradient(100deg,#a6f2ff,#35c9f2);color:#031018;font-weight:850}.ss-auth__submit:disabled{opacity:.55}
 .ss-auth__switch{width:100%;margin-top:17px;color:var(--txt-2);font-size:12.5px}.ss-auth__switch:hover{color:#fff}
 .ss-auth__state{min-height:16px;font-size:11.5px}.ss-auth__state.is-wait{color:var(--brand-2)}.ss-auth__state.is-ok{color:var(--ok)}.ss-auth__state.is-bad{color:var(--bad)}
+.ss-activation{position:fixed;inset:0;z-index:205;display:none;place-items:center;padding:20px;background:rgba(1,5,8,.72);backdrop-filter:blur(20px)}
+.ss-activation.is-open{display:grid}.ss-activation__card{position:relative;width:min(100%,470px);padding:32px;border:1px solid rgba(139,233,255,.18);border-radius:24px;background:radial-gradient(circle at 8% 0,rgba(53,201,242,.16),transparent 36%),rgba(7,13,19,.96);box-shadow:0 40px 120px rgba(0,0,0,.62),inset 0 1px rgba(255,255,255,.06)}
+.ss-activation__icon{display:grid;place-items:center;width:48px;height:48px;border:1px solid rgba(139,233,255,.25);border-radius:15px;background:rgba(53,201,242,.09);color:#8be9ff}.ss-activation__icon svg{width:23px;height:23px}.ss-activation h2{font-size:30px;line-height:1.05;letter-spacing:-.04em}
+.ss-activation__form label>span{display:block;margin-bottom:7px;color:var(--txt-3);font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.ss-activation__entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.ss-activation__entry input{min-width:0;height:48px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.3);outline:0;font:650 13px ui-monospace,monospace;letter-spacing:.04em}.ss-activation__entry input:focus{border-color:rgba(139,233,255,.48);box-shadow:0 0 0 4px rgba(53,201,242,.07)}
+.ss-activation__entry button{height:48px;padding:0 16px;border-radius:12px;background:linear-gradient(100deg,#a6f2ff,#35c9f2);color:#031018;font-weight:850}.ss-activation__entry button:disabled{opacity:.5}.ss-activation__divide{display:flex;align-items:center;gap:12px;margin:19px 0 11px;color:var(--txt-3);font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.ss-activation__divide:before,.ss-activation__divide:after{content:"";height:1px;flex:1;background:var(--line)}
+.ss-activation__shops{display:grid;grid-template-columns:1fr 1fr;gap:9px}.ss-activation__shops a{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:13px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.025);color:var(--txt)}.ss-activation__shops a:hover{border-color:rgba(139,233,255,.35);background:rgba(53,201,242,.07)}.ss-activation__shops b{font-size:13px}.ss-activation__shops small{grid-column:1;color:var(--txt-3);font-size:10px}.ss-activation__shops i{grid-column:2;grid-row:1/3;align-self:center;color:var(--brand);font-style:normal}
 @media(max-width:520px){.ss-auth__card{padding:26px 20px;border-radius:20px}.ss-auth h2{font-size:27px}}
 
 @media(max-width:1180px){
@@ -170,6 +178,7 @@ img,video{max-width:100%;display:block}
   .ss-lang__btn span{display:none}
 }
 @media(max-width:640px){.ss-head{top:6px;width:calc(100% - 12px);border-radius:15px}}
+@media(max-width:760px){.ss-activate span{display:none}.ss-activate{width:34px;padding:0;justify-content:center}.ss-activation__card{padding:26px 20px}.ss-activation__shops{grid-template-columns:1fr}.ss-activation__entry{grid-template-columns:1fr}.ss-activation__entry button{width:100%}}
 
 /* ============================ primitives ============================ */
 .ss-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm)}
