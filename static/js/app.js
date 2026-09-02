@@ -250,7 +250,7 @@ document.getElementById('btnLogout').onclick = async () => {
 };
 function openFunPayBuy(e) {
   if (typeof openBuyKeyModal === 'function') openBuyKeyModal(e);
-  else window.open('https://funpay.com/lots/offer?id=75434891', '_blank');
+  else window.open('https://funpay.com/lots/offer?id=76420307', '_blank');
 }
 ['btnBuyKeyAbout','btnBuyKeyAccount','btnBuyKeyGuest','btnUpgrade'].forEach(function(id) {
   const el = document.getElementById(id);

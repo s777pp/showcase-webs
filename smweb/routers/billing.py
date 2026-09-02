@@ -56,7 +56,7 @@ async def billing_checkout(request: Request):
     # не требуем логин: можно купить и потом ввести код
     return {
         "ok": True,
-        "url": "https://funpay.com/lots/offer?id=75434891",
+        "url": "https://funpay.com/lots/offer?id=76420307",
         "msg": "FunPay",
     }
 

@@ -252,7 +252,7 @@ async def unlock(request: Request):
 def meta():
     return {
         "socials": SOCIALS,
-        "buy_url": "https://funpay.com/lots/offer?id=75434891",
+        "buy_url": "https://funpay.com/lots/offer?id=76420307",
         "stripe_enabled": bool(STRIPE_SECRET and STRIPE_PRICE_ID),
         "pro_label": PRO_PRICE_LABEL,
         "modes": [
