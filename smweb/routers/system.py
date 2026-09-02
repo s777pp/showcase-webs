@@ -38,6 +38,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import object_store
 
 
 from fastapi import APIRouter
@@ -52,7 +53,10 @@ from smweb.core import (
     STRIPE_PRICE_ID,
     STRIPE_SECRET,
     TEMPLATES,
+    TRUSTED_PROXY_HOPS,
+    _admin_ok,
     _auth_user,
+    _ip,
     _load_codes,
     _load_used,
     _save_used,
@@ -69,7 +73,9 @@ router = APIRouter()
 def api_ready():
     """Readiness: DB must answer."""
     try:
-        auth_db._conn().execute("SELECT 1")
+        c = auth_db._conn()
+        c.execute("SELECT 1")
+        c.close()
         return {"ok": True}
     except Exception:
         from fastapi.responses import JSONResponse
@@ -80,13 +86,16 @@ def api_ready():
 def api_health_prod():
     db_ok = True
     try:
-        auth_db._conn().execute("SELECT 1")
+        c = auth_db._conn()
+        c.execute("SELECT 1")
+        c.close()
     except Exception:
         db_ok = False
     try:
         redis_ok = rs.redis_ok()
     except Exception:
         redis_ok = False
+    r2_ok, r2_error = object_store.health()
     mode = _worker_mode()
     # writability, not just readability: a readonly volume still answers SELECT 1,
     # which is why the old db:true hid the "readonly database" failure entirely.
@@ -120,7 +129,9 @@ def api_health_prod():
             "db_path": str(auth_db.DB),
             "db_writable": db_writable,
             "db_write_error": db_write_error,
+            "database_backend": "postgresql" if auth_db.USING_POSTGRES else "sqlite",
         },
+        "r2": {"configured": object_store.configured(), "ok": r2_ok, "error": r2_error},
         "redis": redis_ok,
         # why Redis is down — the old endpoint only ever said "false"
         "redis_detail": {
@@ -156,6 +167,35 @@ def health():
         "gifski_path": gs or None,
         "fonts": [f.name for f in FONTS.glob("*.ttf")] if FONTS.is_dir() else [],
         "templates": [f.name for f in TEMPLATES.glob("*.png")] if TEMPLATES.is_dir() else [],
+    }
+
+
+@router.get("/api/admin/whoami")
+def api_admin_whoami(request: Request):
+    """Show how the proxy chain resolves to a client IP.
+
+    TRUSTED_PROXY_HOPS has to match the real number of proxies that append to
+    X-Forwarded-For. Too low and every visitor shares one quota bucket (the
+    tunnel container's address); too high and a client can forge its own.
+    The value is topology-dependent, so it needs checking against the live
+    chain rather than being assumed.
+    """
+    if not _admin_ok(request):
+        return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
+    xff = request.headers.get("x-forwarded-for") or ""
+    parts = [x.strip() for x in xff.split(",") if x.strip()]
+    return {
+        "ok": True,
+        "resolved_ip": _ip(request),
+        "trusted_proxy_hops": TRUSTED_PROXY_HOPS,
+        "x_forwarded_for": parts,
+        "xff_entries": len(parts),
+        "cf_connecting_ip": request.headers.get("cf-connecting-ip") or "",
+        "socket_peer": (request.client.host if request.client else ""),
+        "hint": (
+            "resolved_ip must equal cf_connecting_ip. If it does not, set "
+            "TRUSTED_PROXY_HOPS = xff_entries - index_of_real_client_from_right."
+        ),
     }
 
 

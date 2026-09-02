@@ -18,10 +18,13 @@ data/used_codes.json
 data/usage.json
 data/users.db
 data/jobs
-
-# NOTE: data/access_codes.json IS shipped in the image on purpose — it is the
-# master code list (trial codes carry "hours", which env vars cannot express).
-# It is readable by anyone with the repo or the image.
+data/access_codes.json
+ENV.txt
+tail.txt
+PROMT.txt
+railway-backup
+.old_app.html
+.tmp-test-avatar
 
 *.md
 !README.md
@@ -35,7 +38,7 @@ docs
 
 # One-shot analysis/verification scripts (scripts/_*.py). The three real
 # operational scripts - backup_sqlite.sh, gen_access_codes.py,
-# migrate_sqlite_to_pg.py - do not match this pattern and still ship.
+# migrate_sqlite_to_postgres.py - do not match this pattern and still ship.
 scripts/_*.py
 
 # Editor and agent state

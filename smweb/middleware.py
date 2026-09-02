@@ -116,6 +116,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/admin/", 5, 60),
         ("/api/process", 8, 60),
         ("/api/process/start", 8, 60),
+        # Compose is the most expensive route in the app (minutes of FFmpeg per
+        # call) and, like the endpoint it replaced, does not consume the daily
+        # quota -- so this rule is what keeps it from being a free CPU faucet.
+        ("/api/compose/start", 6, 60),
         ("/api/gallery/", 60, 60),
         ("/api/download-url", 5, 60),
     )

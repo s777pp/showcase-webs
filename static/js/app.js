@@ -3624,8 +3624,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     }, 350);
 
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/compose');
-    xhr.responseType = 'blob';
+    xhr.open('POST', '/api/compose/start');
+    xhr.responseType = 'json';
     xhr.withCredentials = true;
     xhr.upload.onprogress = function(ev){
       if (!ev.lengthComputable) return;
@@ -3633,34 +3633,51 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       fake = Math.max(fake, up);
       setProg(fake, 'Загрузка на сервер…', Math.round(ev.loaded/1024) + ' KB');
     };
-    xhr.onload = function(){
+    xhr.onload = async function(){
       stopTick();
-      if (btn) btn.disabled = false;
-      const ct = (xhr.getResponseHeader('content-type') || '');
-      if (xhr.status >= 200 && xhr.status < 300 && (ct.includes('image/') || ct.includes('octet-stream') || ct.includes('gif'))) {
-        setProg(100, 'Готово!', '');
-        const blob = xhr.response;
-        lastBlob = blob;
-        lastName = ct.includes('gif') ? 'composed.gif' : 'composed.png';
-        const url = URL.createObjectURL(blob);
-        lastBlob._url = url;
-        if (prev) { prev.src = url; prev.style.display = 'block'; }
-        if (empty) empty.style.display = 'none';
-        if (dl) { dl.href = url; dl.download = lastName; dl.style.display = 'inline-flex'; }
-        if (toProc) toProc.style.display = 'inline-flex';
-        const enc = xhr.getResponseHeader('X-Compose-Encoder') || '';
-        if (st) { st.className = 'status ok'; st.textContent = 'Готово!' + (enc ? ' (' + enc + ')' : '') + ' — скачай или нарежь Workshop'; }
-        setTimeout(function(){ if (prog) prog.classList.remove('show'); }, 2500);
+      const body = xhr.response || {};
+      if (xhr.status < 200 || xhr.status >= 300 || !body.ok || !body.job_id) {
+        if (btn) btn.disabled = false;
+        const msg = body.msg || ('HTTP ' + xhr.status);
+        if (st) { st.className = 'status err'; st.textContent = msg; }
+        setProg(0, 'Ошибка', String(msg).slice(0,80));
         return;
       }
-      const reader = new FileReader();
-      reader.onload = function(){
-        let msg = 'Ошибка';
-        try { msg = JSON.parse(String(reader.result||'')).msg || msg; } catch(e){ msg = String(reader.result||'').slice(0,200) || ('HTTP '+xhr.status); }
+      const jid = body.job_id;
+      const labels = {queued:'В очереди…',prepare:'Подготовка…',decode:'Читаем медиа…',background:'Конвертируем фон…',character:'Конвертируем персонажа…',chromakey:'Удаляем фон и собираем кадры…',encode:'Кодируем GIF…',upload:'Сохраняем результат…'};
+      try {
+        while (true) {
+          await new Promise(function(resolve){ setTimeout(resolve, 1200); });
+          const response = await fetch('/api/compose/status/' + encodeURIComponent(jid), {credentials:'include', cache:'no-store'});
+          const job = await response.json();
+          if (!response.ok || !job.ok) throw new Error(job.msg || 'Задача потеряна');
+          setProg(job.pct || 3, labels[job.stage] || 'Обрабатываем…', 'Можно оставить эту вкладку открытой');
+          if (job.status === 'error') throw new Error(job.error || 'Ошибка обработки');
+          if (job.status === 'done') {
+            const result = await fetch('/api/compose/download/' + encodeURIComponent(jid), {credentials:'include', cache:'no-store'});
+            if (!result.ok) { const e = await result.json().catch(function(){return {}}); throw new Error(e.msg || 'Не удалось скачать результат'); }
+            const blob = await result.blob();
+            lastBlob = blob;
+            lastName = job.filename || (blob.type.includes('gif') ? 'composed.gif' : 'composed.png');
+            const url = URL.createObjectURL(blob);
+            lastBlob._url = url;
+            if (prev) { prev.src = url; prev.style.display = 'block'; }
+            if (empty) empty.style.display = 'none';
+            if (dl) { dl.href = url; dl.download = lastName; dl.style.display = 'inline-flex'; }
+            if (toProc) toProc.style.display = 'inline-flex';
+            if (st) { st.className = 'status ok'; st.textContent = 'Готово! Скачай результат или отправь его в Обработку'; }
+            setProg(100, 'Готово!', '');
+            setTimeout(function(){ if (prog) prog.classList.remove('show'); }, 2500);
+            break;
+          }
+        }
+      } catch (error) {
+        const msg = error && error.message ? error.message : String(error);
         if (st) { st.className = 'status err'; st.textContent = msg; }
         setProg(0, 'Ошибка', msg.slice(0,80));
-      };
-      reader.readAsText(xhr.response || new Blob());
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     };
     xhr.onerror = function(){
       stopTick();

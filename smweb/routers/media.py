@@ -51,10 +51,12 @@ from smweb.core import (
     MAX_UPLOAD_MB,
     _auth_user,
     _check_public_url,
+    _ip,
     quota_inc,
     quota_state,
 )
 from smweb.downloads import _download_pinterest
+from smweb.jobs import _job_pool, _worker_mode
 from smweb.upscale_models import _UPSCALE_MODELS, _UPSCALE_MODEL_META, _run_hf_upscale
 
 
@@ -528,175 +530,124 @@ async def api_upscale(
 
 # ====================== Character + background compose ======================
 
-@router.post("/api/compose")
-async def api_compose(
-    request: Request,
-    chroma_key: str = Form("auto"),
-    chroma_tol: float = Form(55),
-    feather: float = Form(1.6),
-    scale: float = Form(1.0),
-    offset_x: float = Form(0.5),
-    offset_y: float = Form(1.0),
-    width: int = Form(750),
-    gif_encoder: str = Form("gifski"),
-    fps: int = Form(12),
-    background: UploadFile = File(...),
-    character: UploadFile = File(...),
-):
-    """Composite character (PNG/GIF, optional chromakey) onto background. Returns PNG or GIF."""
-    import tempfile
-    bg_raw = await background.read()
-    ch_raw = await character.read()
-    if len(bg_raw) > MAX_UPLOAD_MB * 1024 * 1024 or len(ch_raw) > MAX_UPLOAD_MB * 1024 * 1024:
-        return JSONResponse({"ok": False, "msg": "File too large"}, status_code=400)
+def _compose_user_key(request, user) -> str:
     try:
-        size_i = int(width)
+        return str(user.get("id") or "") if user else _ip(request)
     except Exception:
-        size_i = 750
-    if size_i not in (630, 640, 750, 800, 1920):
-        size_i = 750
+        return ""
+
+
+@router.post("/api/compose/start")
+async def api_compose_start(
+    request: Request,
+    chroma_key: str = Form("auto"), chroma_tol: float = Form(55),
+    feather: float = Form(1.6), scale: float = Form(1.0),
+    offset_x: float = Form(0.5), offset_y: float = Form(1.0),
+    width: int = Form(750), gif_encoder: str = Form("gifski"), fps: int = Form(12),
+    background: UploadFile = File(...), character: UploadFile = File(...),
+):
+    """Accept the inputs quickly and render in the background.
+
+    Composing an animated character over a background takes minutes; answering
+    it synchronously meant Cloudflare closed the connection at its proxy timeout
+    and the browser received Cloudflare's HTML error page instead of the GIF.
+    """
+    user = None
     try:
-        bg_name = (background.filename or "background.png").lower()
-        ch_name = (character.filename or "char.png").lower()
-        bg_ext = Path(bg_name).suffix.lower()
-        ch_ext = Path(ch_name).suffix.lower()
-        key = (chroma_key or "auto").strip().lower()
+        user = _auth_user(request)
+    except Exception:
+        user = None
+    user_key = _compose_user_key(request, user)
+
+    # Same budget as /api/process/start. Without this a single client could keep
+    # the render pool busy indefinitely -- compose is the most expensive route.
+    if user_key and rs.job_count_user(user_key) >= int(os.environ.get("MAX_JOBS_PER_USER", "2")):
+        return JSONResponse(
+            {"ok": False, "msg": "Too many active jobs. Wait for current processing to finish."},
+            status_code=429,
+        )
+
+    bg_raw, ch_raw = await background.read(), await character.read()
+    limit = MAX_UPLOAD_MB * 1024 * 1024
+    if not bg_raw or not ch_raw or len(bg_raw) > limit or len(ch_raw) > limit:
+        return JSONResponse({"ok": False, "msg": "File missing or too large"}, status_code=400)
+
+    jid = secrets.token_urlsafe(18)
+    job_dir = Path(DATA) / "jobs" / jid
+    job_dir.mkdir(parents=True, exist_ok=False)
+    bg_ext = Path(background.filename or "background.png").suffix.lower() or ".bin"
+    ch_ext = Path(character.filename or "character.png").suffix.lower() or ".bin"
+    bg_path, ch_path = job_dir / f"input_bg{bg_ext}", job_dir / f"input_char{ch_ext}"
+    bg_path.write_bytes(bg_raw); ch_path.write_bytes(ch_raw)
+
+    # Hand the job to worker.py only when one is actually draining the queue,
+    # otherwise it would sit in Redis forever. Mirrors /api/process/start.
+    mode = _worker_mode()
+    external = mode == "external" and rs.redis_ok() and rs.worker_alive()
+    if mode == "external" and not external:
+        LOGGER.warning(
+            "[compose %s] WORKER_MODE=external but no live worker (redis=%s beat=%s) - running embedded",
+            jid[:8], rs.redis_ok(), rs.worker_alive(),
+        )
+
+    payload = {
+        "kind": "compose", "job_dir": str(job_dir),
+        "background_path": str(bg_path), "character_path": str(ch_path),
+        "options": {"chroma_key": chroma_key, "chroma_tol": chroma_tol, "feather": feather,
+                    "scale": scale, "offset_x": offset_x, "offset_y": offset_y,
+                    "width": width, "gif_encoder": gif_encoder, "fps": fps},
+        "status": "queued", "pct": 2, "stage": "queued",
+        "user_key": user_key, "created": time.time(),
+    }
+    rs.job_create(jid, payload, enqueue=external)
+    if not external:
+        from smweb.compose_jobs import run as _compose_run
+        _job_pool.submit(_compose_run, jid, dict(payload))
+    return JSONResponse({"ok": True, "job_id": jid}, status_code=202)
+
+
+def _compose_job_for(request: Request, job_id: str) -> dict | None:
+    """Fetch a compose job, enforcing that it belongs to the caller."""
+    job = rs.job_get(job_id)
+    if not job or job.get("kind") != "compose":
+        return None
+    owner = str(job.get("user_key") or "")
+    if owner:
         try:
-            tol = float(chroma_tol)
+            user = _auth_user(request)
         except Exception:
-            tol = 40.0
-        try:
-            feather_f = max(0.0, min(4.0, float(feather)))
-        except Exception:
-            feather_f = 1.6
-        try:
-            sc = max(0.05, min(4.0, float(scale)))
-        except Exception:
-            sc = 1.0
-        try:
-            ox = max(0.0, min(1.0, float(offset_x)))
-            oy = max(0.0, min(1.0, float(offset_y)))
-        except Exception:
-            ox, oy = 0.5, 1.0
+            user = None
+        if _compose_user_key(request, user) != owner:
+            return None
+    return job
 
-        video_exts = (".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v")
 
-        def animated(raw: bytes, ext: str) -> bool:
-            if ext in video_exts:
-                return True
-            if ext == ".gif":
-                return True
-            if ext != ".webp":
-                return False
-            try:
-                with Image.open(io.BytesIO(raw)) as im:
-                    return int(getattr(im, "n_frames", 1) or 1) > 1
-            except Exception:
-                return False
+@router.get("/api/compose/status/{job_id}")
+def api_compose_status(request: Request, job_id: str):
+    job = _compose_job_for(request, job_id)
+    if not job:
+        return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
+    return {"ok": True, "status": job.get("status"), "pct": job.get("pct", 0),
+            "stage": job.get("stage", ""), "error": job.get("error", ""),
+            "filename": job.get("filename", "")}
 
-        bg_animated = animated(bg_raw, bg_ext)
-        ch_animated = animated(ch_raw, ch_ext)
-        try:
-            fps_i = max(5, min(30, int(fps)))
-        except Exception:
-            fps_i = 12
 
-        from fastapi.responses import Response
-
-        if bg_animated or ch_animated:
-            tmp = Path(tempfile.mkdtemp(prefix="sm_compose_"))
-            try:
-                bpath = tmp / f"background{bg_ext or '.bin'}"
-                cpath = tmp / f"char{ch_ext or '.bin'}"
-                bpath.write_bytes(bg_raw)
-                cpath.write_bytes(ch_raw)
-
-                gif_bg = bpath
-                gif_char = cpath
-                if bg_ext in video_exts:
-                    gif_bg = tmp / "background.gif"
-                    proc.media_to_gif(bpath, gif_bg, fps=fps_i, width=size_i, duration=8)
-                    if not gif_bg.is_file():
-                        return JSONResponse({"ok": False, "msg": "Background video→GIF failed (ffmpeg?)"}, status_code=500)
-                if ch_ext in video_exts:
-                    gif_char = tmp / "char.gif"
-                    proc.media_to_gif(cpath, gif_char, fps=fps_i, width=min(size_i, 800), duration=8)
-                    if not gif_char.is_file():
-                        return JSONResponse({"ok": False, "msg": "Character video→GIF failed (ffmpeg?)"}, status_code=500)
-
-                frames, durs = proc.compose_animated_layers(
-                    gif_bg, gif_char,
-                    chroma_key=key,
-                    chroma_tol=tol,
-                    scale=sc,
-                    offset_x=ox,
-                    offset_y=oy,
-                    feather=feather_f,
-                    target_width=size_i,
-                    fps=fps_i,
-                    max_seconds=8,
-                )
-                out = tmp / "composed.gif"
-                enc = (gif_encoder or "ffmpeg").strip().lower()
-                if enc not in ("ffmpeg", "gifski", "pillow"):
-                    enc = "ffmpeg"
-                if enc == "pillow":
-                    frames_p = [proc._quantize_rgba_for_gif(f) for f in frames]
-                    proc._save_animated_gif(frames_p, durs, out)
-                else:
-                    fdir = tmp / "frames"
-                    fdir.mkdir(parents=True, exist_ok=True)
-                    for i, fr in enumerate(frames):
-                        fr.convert("RGBA").save(fdir / f"frame_{i:04d}.png")
-                    try:
-                        proc.encode_gif_from_png_sequence(fdir, out, fps=fps_i, encoder=enc)
-                    except Exception:
-                        # fallback pillow
-                        frames_p = [proc._quantize_rgba_for_gif(f) for f in frames]
-                        proc._save_animated_gif(frames_p, durs, out)
-                if not out.is_file():
-                    return JSONResponse({"ok": False, "msg": "GIF encode failed"}, status_code=500)
-                try:
-                    proc.ensure_under_mb(out)
-                except Exception:
-                    pass
-                data = out.read_bytes()
-                return Response(
-                    content=data,
-                    media_type="image/gif",
-                    headers={
-                        "Content-Disposition": 'attachment; filename="composed.gif"',
-                        "X-Compose-Type": "gif",
-                        "X-Compose-Encoder": enc,
-                        "X-Compose-Size-MB": f"{len(data)/(1024*1024):.2f}",
-                    },
-                )
-            finally:
-                shutil.rmtree(tmp, ignore_errors=True)
+@router.get("/api/compose/download/{job_id}")
+def api_compose_download(request: Request, job_id: str):
+    from fastapi.responses import Response
+    from smweb import object_store
+    job = _compose_job_for(request, job_id)
+    if not job or job.get("status") != "done":
+        return JSONResponse({"ok": False, "msg": "Result is not ready"}, status_code=404)
+    try:
+        if job.get("result_key"):
+            data = object_store.get_bytes(job["result_key"], public=False)
         else:
-            bg = Image.open(io.BytesIO(bg_raw)).convert("RGBA")
-            if bg.width != size_i:
-                nh = max(1, int(bg.height * (size_i / max(1, bg.width))))
-                bg = bg.resize((size_i, nh), Image.Resampling.LANCZOS)
-            char = Image.open(io.BytesIO(ch_raw)).convert("RGBA")
-            composed = proc.compose_static(
-                bg, char,
-                chroma_key=key,
-                chroma_tol=tol,
-                scale=sc,
-                offset_x=ox,
-                offset_y=oy,
-                feather=feather_f,
-            )
-            buf = io.BytesIO()
-            composed.save(buf, format="PNG")
-            return Response(
-                content=buf.getvalue(),
-                media_type="image/png",
-                headers={
-                    "Content-Disposition": 'attachment; filename="composed.png"',
-                    "X-Compose-Type": "png",
-                },
-            )
-    except Exception as e:
-        return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
+            data = Path(job["result_path"]).read_bytes()
+        filename = str(job.get("filename") or "composed.png")
+        return Response(data, media_type=job.get("media_type") or "application/octet-stream",
+                        headers={"Content-Disposition": f'attachment; filename="{filename}"',
+                                 "Cache-Control": "no-store"})
+    except Exception as exc:
+        LOGGER.exception("compose result unavailable for %s", job_id)
+        return JSONResponse({"ok": False, "msg": f"Result unavailable: {type(exc).__name__}"}, status_code=404)

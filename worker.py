@@ -42,6 +42,10 @@ def _process_one(jid: str) -> None:
         return
     rs.job_update(jid, status="running", pct=5, stage="prepare")
     try:
+        if job.get("kind") == "compose":
+            from smweb.compose_jobs import run
+            run(jid, job)
+            return
         from main import _run_process_job_from_payload
 
         _run_process_job_from_payload(jid, job)

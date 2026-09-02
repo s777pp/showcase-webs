@@ -30,7 +30,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
@@ -38,12 +38,13 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import object_store
 
 
 from fastapi import APIRouter
 
 
-from smweb.core import DATA, MAX_UPLOAD_MB, _admin_ok, _auth_user, _is_gallery_admin
+from smweb.core import DATA, LOGGER, MAX_UPLOAD_MB, _admin_ok, _auth_user, _is_gallery_admin
 
 
 
@@ -68,7 +69,7 @@ def gallery_list(request: Request, status: str = "approved", limit: int = 40, of
         if st in ("deleted", "rejected", "removed"):
             continue
         img_path = it.get("image_path") or ""
-        if img_path and not Path(img_path).is_file():
+        if img_path and not object_store.configured() and not Path(img_path).is_file():
             # also try relative to DATA
             if not (Path(DATA) / img_path).is_file():
                 continue
@@ -115,12 +116,55 @@ def gallery_list(request: Request, status: str = "approved", limit: int = 40, of
     return {"ok": True, "items": out, "logged_in": bool(viewer)}
 
 
+def _publish_to_r2(key: str, data: bytes, local: Path, thumb_key: str | None) -> None:
+    """Mirror a freshly published gallery image into R2.
+
+    Gallery keys carry a random suffix and are never overwritten, so they are
+    safe to cache forever.  The local copy under /data is kept unless R2 can
+    actually serve the object publicly -- otherwise the redirect fallback in
+    gallery_image() would have nothing left to read.
+    """
+    if not object_store.configured():
+        return
+    try:
+        object_store.put_bytes(
+            key, data, media_type=object_store.content_type(key), immutable=True
+        )
+        if thumb_key:
+            tp = local.with_name(Path(thumb_key).name)
+            if tp.is_file():
+                object_store.upload_file(tp, thumb_key, public=True, immutable=True)
+    except Exception:
+        # The local file is already written, so serving still works.
+        LOGGER.exception("gallery R2 upload failed for %s", key)
+        return
+    if not object_store.public_url(key):
+        # R2_PUBLIC_BASE_URL is unset: /api/gallery/image falls back to disk.
+        return
+    for victim in (local, local.with_name(Path(thumb_key).name) if thumb_key else None):
+        if victim is not None:
+            try:
+                victim.unlink()
+            except Exception:
+                pass
+
+
 @router.get("/api/gallery/image/{item_id}")
 def gallery_image(item_id: int):
     item = auth_db.gallery_get(item_id)
     if not item or item.get("status") != "approved":
         return JSONResponse({"ok": False}, status_code=404)
-    path = Path(item["image_path"])
+    stored = str(item["image_path"])
+    if object_store.configured():
+        try:
+            url = object_store.public_url(object_store.key_from_stored(stored))
+            if url:
+                return RedirectResponse(url, status_code=307, headers={"Cache-Control": "public, max-age=31536000, immutable"})
+        except Exception:
+            return JSONResponse({"ok": False}, status_code=404)
+    path = Path(stored)
+    if not path.is_file():
+        path = Path(DATA) / stored
     if not path.is_file():
         return JSONResponse({"ok": False}, status_code=404)
     return FileResponse(path)
@@ -151,13 +195,11 @@ async def gallery_submit(
         Image.open(io.BytesIO(raw)).verify()
     except Exception:
         return JSONResponse({"ok": False, "msg": "Not a valid image"}, status_code=400)
-    gdir = Path(DATA) / "gallery"
-    gdir.mkdir(parents=True, exist_ok=True)
     uid = int(user["id"])
-    sub = gdir / f"u{uid}"
-    sub.mkdir(parents=True, exist_ok=True)
     name = f"{int(time.time())}_{secrets.token_hex(4)}{ext}"
-    path = sub / name
+    key = f"gallery/u{uid}/{name}"
+    path = Path(DATA) / key
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(raw)
     thumb = None
     try:
@@ -165,10 +207,11 @@ async def gallery_submit(
         im.thumbnail((400, 400))
         tp = path.with_suffix(".thumb.png")
         im.save(tp, "PNG")
-        thumb = str(tp)
+        thumb = f"gallery/u{uid}/{tp.name}"
     except Exception:
         pass
-    gid = auth_db.gallery_add(uid, title, mode, str(path), thumb, status="approved")
+    _publish_to_r2(key, raw, path, thumb)
+    gid = auth_db.gallery_add(uid, title, mode, key, thumb, status="approved")
     return {"ok": True, "id": gid, "msg": "Published"}
 
 
@@ -402,13 +445,11 @@ async def gallery_publish(
         if not data:
             return JSONResponse({"ok": False, "msg": "Nothing to publish"}, status_code=400)
 
-        gdir = Path(DATA) / "gallery"
-        gdir.mkdir(parents=True, exist_ok=True)
         uid = int(user["id"])
-        sub = gdir / f"u{uid}"
-        sub.mkdir(parents=True, exist_ok=True)
         name = f"{int(time.time())}_{secrets.token_hex(4)}_{mode}{out_ext}"
-        path = sub / name
+        key = f"gallery/u{uid}/{name}"
+        path = Path(DATA) / key
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
         thumb = None
         try:
@@ -418,11 +459,12 @@ async def gallery_publish(
             im.thumbnail((400, 400))
             tp = path.with_name(path.stem + ".thumb.png")
             im.save(tp, "PNG")
-            thumb = str(tp)
+            thumb = f"gallery/u{uid}/{tp.name}"
         except Exception:
             pass
         ttl = (title or "").strip() or f"{mode} showcase"
-        gid = auth_db.gallery_add(uid, ttl, mode, str(path), thumb, status="approved")
+        _publish_to_r2(key, data, path, thumb)
+        gid = auth_db.gallery_add(uid, ttl, mode, key, thumb, status="approved")
         return {"ok": True, "id": gid, "msg": "Published"}
     except Exception as e:
         return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
@@ -551,31 +593,24 @@ async def gallery_delete(item_id: int, request: Request):
         except Exception:
             continue
 
-    # Hard delete from SQLite if status update failed
+    # Hard delete if the status update failed. This used to probe auth_db.connect()
+    # and auth_db.get_conn() -- neither exists -- and then opened a *new* SQLite
+    # file next to the real one, so on PostgreSQL it silently deleted nothing.
     if not marked:
+        conn = None
         try:
-            conn = auth_db.connect() if hasattr(auth_db, "connect") else None
-            if conn is None and hasattr(auth_db, "get_conn"):
-                conn = auth_db.get_conn()
-            if conn is None:
-                # fallback: open DATA db the same way auth often does
-                db_path = Path(os.environ.get("DATA_DIR") or DATA) / "auth.db"
-                if not db_path.is_file():
-                    db_path = Path(DATA) / "users.db"
-                import sqlite3
-                conn = sqlite3.connect(str(db_path))
-                own = True
-            else:
-                own = False
-            try:
-                conn.execute("DELETE FROM gallery WHERE id=?", (int(item_id),))
-                conn.commit()
-                marked = True
-            finally:
-                if own:
-                    conn.close()
+            conn = auth_db._conn()
+            conn.execute("DELETE FROM gallery WHERE id=?", (int(item_id),))
+            conn.commit()
+            marked = True
         except Exception:
-            pass
+            LOGGER.exception("gallery hard delete failed for %s", item_id)
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     return {"ok": True, "id": item_id, "status": "deleted", "db": marked}
 

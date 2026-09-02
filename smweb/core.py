@@ -75,11 +75,6 @@ JOBS = DATA / "jobs"
 USAGE_FILE = DATA / "usage.json"
 
 
-# keys: bundled file (repo) -> env -> volume override. The bundled file carries
-# per-code metadata (trial codes have "hours"), which a flat env list cannot express.
-CODES_FILE_REPO = ROOT / "data" / "access_codes.json"
-
-
 ACCESS_FILE = DATA / "access_codes.json"
 
 
@@ -152,11 +147,9 @@ PRO_PRICE_LABEL = os.environ.get("PRO_PRICE_LABEL", "Pro · безлимит")
 
 # Коды доступа: снимают лимит. Источники, по возрастанию приоритета:
 #   ADMIN_ACCESS_CODE      — один админский ключ
-#   data/access_codes.json — файл в репозитории (основной список, с метаданными
-#                            trial-кодов: {"type": "trial", "hours": 2})
 #   ACCESS_CODES           — список через запятую: CODE1,CODE2 (только unlimited)
 #   ACCESS_CODES_JSON      — JSON с метками, для точечных добавлений
-#   DATA/access_codes.json — файл на томе, перекрывает всё остальное
+#   DATA/access_codes.json — приватный файл на VPS volume
 DEFAULT_CODES: dict[str, dict] = {}
 
 
@@ -169,14 +162,6 @@ if _admin_code:
 
 def _load_codes() -> dict:
     codes = dict(DEFAULT_CODES)
-    # bundled list first, so env entries below can override individual codes
-    if CODES_FILE_REPO.is_file():
-        try:
-            data = json.loads(CODES_FILE_REPO.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                codes.update({str(k).upper(): v for k, v in data.items()})
-        except Exception as e:
-            print("load codes", CODES_FILE_REPO, e)
     for c in os.environ.get("ACCESS_CODES", "").split(","):
         c = c.strip()
         if c:
@@ -314,18 +299,26 @@ def _auth_user(req: Request) -> dict | None:
     return auth_db.user_by_token(tok)
 
 
-# Moderator list. Kept in env so the deploy owns it; the address that used to be
-# hardcoded here as a fallback is now just the default value of that variable.
-GALLERY_ADMIN_EMAILS = os.environ.get(
-    "GALLERY_ADMIN_EMAILS", "serhii.perepelytsia1510@gmail.com"
-)
+# Moderator list, env-only. There is deliberately no fallback address: this file
+# lives in a public repository, so a default here would both publish a personal
+# address and grant moderation to whoever ends up holding it.
+GALLERY_ADMIN_EMAILS = os.environ.get("GALLERY_ADMIN_EMAILS", "")
+_ADMIN_WARNED = False
 
 
 def _is_gallery_admin(user: dict | None) -> bool:
+    global _ADMIN_WARNED
+    emails = {e.strip() for e in GALLERY_ADMIN_EMAILS.lower().split(",") if e.strip()}
+    if not emails:
+        if not _ADMIN_WARNED:
+            _ADMIN_WARNED = True
+            LOGGER.warning(
+                "GALLERY_ADMIN_EMAILS is empty - gallery moderation is disabled for everyone"
+            )
+        return False
     if not user:
         return False
     email = (user.get("email") or "").strip().lower()
-    emails = {e.strip() for e in GALLERY_ADMIN_EMAILS.lower().split(",") if e.strip()}
     return bool(email) and email in emails
 
 

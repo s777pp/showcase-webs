@@ -30,7 +30,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
@@ -38,6 +38,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import object_store
 
 
 from fastapi import APIRouter
@@ -57,6 +58,28 @@ from smweb.core import (
 
 
 router = APIRouter()
+
+
+def _avatar_files(user_id) -> list[Path]:
+    """Local avatar files for a user, newest first.
+
+    Matches both the legacy `<id>.<ext>` layout and the versioned
+    `<id>-<token>.<ext>` one written by /api/auth/profile.
+    """
+    av_dir = Path(DATA) / "avatars"
+    if not av_dir.is_dir():
+        return []
+    try:
+        uid = str(int(user_id))
+    except (TypeError, ValueError):
+        return []
+    found = list(av_dir.glob(f"{uid}.*")) + list(av_dir.glob(f"{uid}-*"))
+    def _mtime(path: Path) -> float:
+        try:
+            return path.stat().st_mtime
+        except OSError:
+            return 0.0
+    return sorted(found, key=_mtime, reverse=True)
 
 
 @router.post("/api/auth/register")
@@ -119,8 +142,6 @@ async def auth_profile(request: Request):
             if f is not None and hasattr(f, "read"):
                 raw = await f.read()
                 if raw and len(raw) < 3_000_000:
-                    av_dir = Path(DATA) / "avatars"
-                    av_dir.mkdir(parents=True, exist_ok=True)
                     name = getattr(f, "filename", "") or "a.png"
                     ext = Path(name).suffix.lower()
                     # sniff magic if extension missing/wrong
@@ -135,16 +156,34 @@ async def auth_profile(request: Request):
                         ext = ".webp"
                     elif ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
                         ext = ".png"
-                    # remove old avatar files for this user
-                    for old in av_dir.glob(f"{user['id']}.*"):
-                        try:
-                            old.unlink(missing_ok=True)
-                        except Exception:
-                            pass
-                    path = av_dir / f"{user['id']}{ext}"
-                    path.write_bytes(raw)
-                    # store relative path so it survives DATA absolute path changes
-                    avatar_saved = f"avatars/{user['id']}{ext}"
+                    # A fresh key per upload. The header shows a stable
+                    # /api/auth/avatar/{id} URL that redirects to this object, so
+                    # reusing one key left browsers and R2 edges serving the
+                    # previous picture until their copy expired -- the "avatar
+                    # does not change in the header circle" report. A unique key
+                    # changes the redirect target, so the new image appears at
+                    # once and can still be cached hard.
+                    avatar_saved = f"avatars/{user['id']}-{secrets.token_hex(4)}{ext}"
+                    old_key = str(user.get("avatar_path") or "").strip()
+                    if object_store.configured():
+                        # Upload before deleting: a failed upload must not leave
+                        # the account with no avatar at all.
+                        object_store.put_bytes(
+                            avatar_saved, raw,
+                            media_type=object_store.content_type(avatar_saved),
+                            immutable=True,
+                        )
+                        if old_key:
+                            try: object_store.delete(object_store.key_from_stored(old_key))
+                            except Exception: pass
+                    else:
+                        path = Path(DATA) / avatar_saved
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_bytes(raw)
+                        old_local = _safe_data_path(old_key) if old_key else None
+                        if old_local is not None and old_local != path:
+                            try: old_local.unlink()
+                            except Exception: pass
         else:
             body = await request.json()
             display_name = str(body.get("display_name") or "")
@@ -154,10 +193,8 @@ async def auth_profile(request: Request):
             avatar_path=avatar_saved,
         )
         av_url = f"/api/auth/avatar/{user['id']}" if (avatar_saved or user.get("avatar_path")) else ""
-        if not av_url:
-            av_dir = Path(DATA) / "avatars"
-            if av_dir.is_dir() and list(av_dir.glob(f"{user['id']}.*")):
-                av_url = f"/api/auth/avatar/{user['id']}"
+        if not av_url and _avatar_files(user["id"]):
+            av_url = f"/api/auth/avatar/{user['id']}"
         return {
             "ok": True,
             "msg": "Profile updated",
@@ -176,12 +213,18 @@ def auth_avatar(user_id: int):
     stored = ""
     if row and row["avatar_path"]:
         stored = str(row["avatar_path"]).strip()
+    if stored and object_store.configured():
+        try:
+            url = object_store.public_url(object_store.key_from_stored(stored))
+            if url:
+                return RedirectResponse(url, status_code=307, headers={"Cache-Control": "no-cache"})
+        except Exception:
+            LOGGER.exception("R2 avatar lookup failed")
     # Always resolve INSIDE DATA. The stored value was once used as an absolute
     # path, which made this public endpoint read any file on the box.
     path = _safe_data_path(stored) if stored else None
     if path is None:
-        av_dir = Path(DATA) / "avatars"
-        matches = sorted(av_dir.glob(f"{int(user_id)}.*")) if av_dir.is_dir() else []
+        matches = _avatar_files(user_id)
         # prefer image extensions
         matches = [m for m in matches if m.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp", ".gif")] or matches
         path = matches[0] if matches else None
@@ -226,11 +269,9 @@ def _me_payload(user: Optional[dict]) -> dict:
     av_url = ""
     if av:
         av_url = f"/api/auth/avatar/{user['id']}"
-    else:
+    elif _avatar_files(user["id"]):
         # fallback if path was lost but file remains on disk
-        av_dir = Path(DATA) / "avatars"
-        if av_dir.is_dir() and list(av_dir.glob(f"{user['id']}.*")):
-            av_url = f"/api/auth/avatar/{user['id']}"
+        av_url = f"/api/auth/avatar/{user['id']}"
     return {
         "ok": True,
         "logged_in": True,

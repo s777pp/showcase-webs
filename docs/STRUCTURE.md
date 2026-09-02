@@ -102,4 +102,4 @@ renamed, every extracted statement byte-identical and in exactly one file, no
 unresolved names in any module, `node --check` clean on every extracted script,
 and a byte-exact gzip round trip. `scripts/` now holds only the three
 operational scripts (`backup_sqlite.sh`, `gen_access_codes.py`,
-`migrate_sqlite_to_pg.py`).
+`migrate_sqlite_to_postgres.py`).

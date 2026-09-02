@@ -1,4 +1,4 @@
-"""Users + sessions (SQLite). Supports Railway volume via DATA_DIR."""
+"""Users + sessions with PostgreSQL in production and SQLite for local use."""
 from __future__ import annotations
 
 import hashlib
@@ -50,6 +50,8 @@ try:
 except Exception:
     pass
 DB = DATA / "users.db"
+DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip()
+USING_POSTGRES = DATABASE_URL.startswith(("postgresql://", "postgres://"))
 
 if not DATA_WRITABLE:
     print(
@@ -271,6 +273,11 @@ def _init_schema() -> None:
     with _SCHEMA_LOCK:
         if _SCHEMA_READY:
             return
+        if USING_POSTGRES:
+            from smweb.db_backend import initialize
+            initialize(DATABASE_URL, ROOT / "sql" / "schema_pg.sql")
+            _SCHEMA_READY = True
+            return
         c = sqlite3.connect(str(DB), timeout=30)
         try:
             # journal_mode is persisted in the database header, so setting it once
@@ -284,8 +291,11 @@ def _init_schema() -> None:
         _SCHEMA_READY = True
 
 
-def _conn() -> sqlite3.Connection:
+def _conn():
     _init_schema()
+    if USING_POSTGRES:
+        from smweb.db_backend import connect
+        return connect(DATABASE_URL)
     c = sqlite3.connect(str(DB), timeout=30)
     c.row_factory = sqlite3.Row
     # Per-connection pragmas (unlike journal_mode these are not persisted);

@@ -1,15 +1,17 @@
 .env
-
-# NOTE: data/access_codes.json is intentionally COMMITTED — it is the master
-# code list and ships with the deploy. Anyone with repo access gets free Pro.
-# To stop that later: make the repo private, or untrack the file and move the
-# codes to ACCESS_CODES_JSON / the /data volume.
+ENV.txt
+tail.txt
+PROMT.txt
+railway-backup/
+.old_app.html
+.tmp-test-avatar
 
 # runtime state
 data/used_codes.json
 data/usage.json
 data/users.db
 data/auth.db
+data/access_codes.json
 data/jobs/
 data/gallery/
 data/avatars/

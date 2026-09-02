@@ -38,6 +38,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import object_store
 
 
 from fastapi import APIRouter
@@ -367,14 +368,16 @@ async def steam_callback(request: Request):
                         import requests as _rq
                         ar = _rq.get(av, timeout=12, headers={"User-Agent": "Mozilla/5.0"})
                         if ar.status_code == 200 and ar.content[:3] != b"<!":
-                            adir = DATA / "avatars"
-                            adir.mkdir(parents=True, exist_ok=True)
                             ext = ".jpg"
                             ctype = (ar.headers.get("Content-Type") or "").lower()
                             if "png" in ctype: ext = ".png"
                             elif "webp" in ctype: ext = ".webp"
                             rel = f"avatars/{int(user['id'])}{ext}"
-                            (DATA / rel).write_bytes(ar.content)
+                            if object_store.configured():
+                                object_store.put_bytes(rel, ar.content, media_type=ctype.split(";", 1)[0] or object_store.content_type(rel))
+                            else:
+                                (DATA / rel).parent.mkdir(parents=True, exist_ok=True)
+                                (DATA / rel).write_bytes(ar.content)
                             auth_db.update_profile(int(user["id"]), display_name=persona, avatar_path=rel)
                     except Exception:
                         LOGGER.exception("steam avatar download")

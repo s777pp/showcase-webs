@@ -35,6 +35,8 @@ services:
   app:
     build: .
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       DATA_DIR: /data
       DATABASE_URL: ${DATABASE_URL:-}
@@ -67,10 +69,20 @@ services:
     # exposed only via nginx
     expose:
       - "8080"
+    healthcheck:
+      # /api/health also probes PostgreSQL, Redis and R2, so an unhealthy app
+      # means a dependency is down, not just a dead process.
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
 
   worker:
     build: .
     restart: unless-stopped
+    env_file:
+      - .env
     command: ["python", "worker.py"]
     environment:
       DATA_DIR: /data
@@ -91,12 +103,26 @@ services:
     image: nginx:1.27-alpine
     restart: unless-stopped
     ports:
-      - "${HTTP_PORT:-80}:80"
+      # Loopback only: traffic arrives through the Cloudflare tunnel, which reaches
+      # nginx over the internal network. Publishing on 0.0.0.0 would let anyone who
+      # learns the VPS IP bypass Cloudflare (WAF, rate limits, bot rules) entirely.
+      # Set HTTP_BIND=0.0.0.0 in .env only if you deliberately want direct access.
+      # HTTP_PORT must be a bare port number here; older .env files folded the
+      # address into it ("127.0.0.1:8080"), which now yields an invalid spec.
+      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./static:/var/www/static:ro
     depends_on:
       - app
+    networks: [internal]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARE_TUNNEL_TOKEN}"]
+    depends_on:
+      - nginx
     networks: [internal]
 
 volumes:

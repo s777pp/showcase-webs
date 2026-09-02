@@ -1,111 +1,103 @@
-# SteamShowcase — Production Deploy
+# ShowcaseMaker production deployment
 
-Target: ~15–20 concurrent users on a single VPS (e.g. Hetzner CX33, 4 vCPU / 8 GB).
+Production runs on the OVH Ubuntu VPS with Docker Compose. Cloudflare Tunnel is
+the only public ingress, PostgreSQL is the source of truth, Redis backs queues,
+and R2 stores persistent media. `/data` remains a working/cache volume.
 
-## Architecture
-
-```text
-Internet → Cloudflare → Nginx → FastAPI (2 workers)
-                              → Redis ← Worker (FFmpeg/gifski)
-                              → PostgreSQL (optional)
-                              → /data volume
-```
-
-## 1. Server prep
+## First deployment
 
 ```bash
-# Ubuntu 22.04/24.04
-sudo apt update && sudo apt install -y docker.io docker-compose-v2 git curl
-sudo usermod -aG docker $USER   # re-login
-```
-
-Firewall: allow 22, 80, 443 only.
-
-## 2. Clone & configure
-
-```bash
-git clone https://github.com/s777pp/showcase-webs.git
-cd showcase-webs
-cp .env.example .env
-nano .env   # set SECRET_KEY, OAuth, APP_URL, passwords
-```
-
-## 3. Start stack
-
-```bash
+cd /opt/showcasemaker
+git pull --ff-only
+cp -n .env.example .env
+nano .env
+docker compose config --quiet
 docker compose up -d --build
 docker compose ps
-curl -s http://127.0.0.1/api/health
+docker compose exec -T app curl -fsS http://127.0.0.1:8080/api/health
 ```
 
-Expect: `{"ok":true,"db":true,"redis":true,...}`
+The production `.env` must contain `APP_URL`, `DATABASE_URL`, all three R2
+credentials, both bucket names, `R2_PUBLIC_BASE_URL`, the Tunnel token,
+`SECRET_KEY`, OAuth secrets and `TRUSTED_PROXY_HOPS=2`.
 
-## 4. SQLite → PostgreSQL (optional but recommended)
+## Upgrading an existing install: required `.env` edits
 
-1. Backup:
+`HTTP_PORT` used to carry the bind address (`HTTP_PORT=127.0.0.1:8080`). The
+publish spec is now `${HTTP_BIND}:${HTTP_PORT}:80`, so that old value expands to
+an invalid spec and `docker compose up` refuses to start. Split it in two:
 
 ```bash
-docker compose exec app python -c "print('ok')"
-# copy volume DB
-docker compose cp app:/data/users.db ./users_backup.db
+sed -i 's/^HTTP_PORT=.*/HTTP_PORT=8080/' .env
+grep -q '^HTTP_BIND=' .env || echo 'HTTP_BIND=127.0.0.1' >> .env
+docker compose config --quiet   # must print nothing
 ```
 
-2. Schema is auto-applied on first Postgres start via `sql/schema_pg.sql`.
+`GALLERY_ADMIN_EMAILS` no longer has a built-in fallback address, so gallery
+moderation is disabled until it is set. The app logs a warning at startup when
+it is empty.
 
-3. Migrate:
+## One-time Railway/SQLite migration
+
+Copy `railway-backup` to `/opt/showcasemaker/railway-backup` on the VPS, then:
 
 ```bash
-docker compose run --rm -e DATABASE_URL=postgresql://showcase:PASSWORD@postgres:5432/showcase \
-  -e SQLITE_PATH=/data/users.db app \
-  python scripts/migrate_sqlite_to_pg.py
+cd /opt/showcasemaker
+docker compose run --rm -v "$PWD/railway-backup:/import:ro" app \
+  python scripts/migrate_sqlite_to_postgres.py /import/users_backup.db
+docker compose run --rm -v "$PWD/railway-backup:/import:ro" app \
+  python scripts/migrate_sqlite_to_postgres.py /import/users_backup.db --apply
+docker compose run --rm -v "$PWD/railway-backup:/import:ro" app \
+  python scripts/migrate_media_to_r2.py /import
+docker compose run --rm -v "$PWD/railway-backup:/import:ro" app \
+  python scripts/migrate_media_to_r2.py /import --apply
 ```
 
-4. Set `DATABASE_URL` in `.env` and restart **only after** auth_db supports PG fully.  
-   **Current default:** app still uses SQLite on `/data/users.db` for zero-risk cutover.  
-   Postgres is provisioned so you can migrate when ready.
+The first command in each pair is a dry run. Do not run the `--apply` command
+unless its counts and paths are correct.
 
-## 5. Cloudflare
-
-- DNS A/AAAA → VPS  
-- SSL Full (strict) once origin has cert, or Flexible during setup  
-- Cache rules: cache `/static/*`, **bypass** `/api/*`  
-- Bot fight / rate limiting at edge optional  
-
-## 6. TLS (recommended)
-
-Put Caddy or certbot in front, or Cloudflare origin cert. Nginx in this compose listens on :80; terminate TLS at Cloudflare or add a cert service.
-
-## 7. Updates
+Activation codes are private production data. Copy the old list into the app
+volume instead of committing it:
 
 ```bash
-git pull
-docker compose build app worker
-docker compose up -d app worker
+docker compose cp data/access_codes.json app:/data/access_codes.json
+docker compose restart app
 ```
 
-## 8. Logs
+After the migration, verify the backend and object store:
 
 ```bash
-docker compose logs -f app worker nginx
+docker compose exec -T app curl -fsS http://127.0.0.1:8080/api/health | python -m json.tool
+docker compose logs --tail=100 app worker cloudflared
 ```
 
-## 9. Rollback
+Expected values: `database_backend=postgresql`, `r2.ok=true`, `redis=true`,
+`worker.external_alive=true`, `ffmpeg=true`, `gifski=true`.
+
+Then confirm the proxy chain resolves to the real visitor address, because the
+rate limiter and the daily quota are both keyed on it:
 
 ```bash
-docker compose down
-# restore users_backup.db into volume
+curl -fsS -H "X-Admin-Secret: $ADMIN_SECRET" https://showcasemaker.com/api/admin/whoami
+```
+
+`resolved_ip` must equal `cf_connecting_ip`. If it does not, set
+`TRUSTED_PROXY_HOPS` to `xff_entries` minus the index of the real client counted
+from the right, and restart `app`.
+
+## Updates
+
+```bash
+cd /opt/showcasemaker
+git pull --ff-only
+docker compose build --pull app worker
 docker compose up -d
+docker compose ps
+python scripts/smoke_test.py https://showcasemaker.com
 ```
 
-## 10. Load check (after deploy)
+## Rollback
 
-```bash
-# install k6 or use ab
-ab -n 200 -c 20 http://127.0.0.1/api/health
-```
-
-Heavy GIF jobs should not block `/api/health` or gallery when worker is separate.
-
-## Environment reference
-
-See `.env.example`.
+Before an update, record the current commit with `git rev-parse HEAD` and create
+a PostgreSQL dump plus an R2 backup/versioning policy. Rolling application code
+back must never delete the PostgreSQL or R2 data.

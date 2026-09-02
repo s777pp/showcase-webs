@@ -30,7 +30,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
@@ -38,6 +38,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import object_store
 
 
 from fastapi import APIRouter
@@ -136,15 +137,14 @@ async def api_profile_update(request: Request):
                     ext = Path(str(name)).suffix.lower()
                     if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
                         ext = ".png"
-                    bg_dir = Path(DATA) / "profile_bg"
-                    bg_dir.mkdir(parents=True, exist_ok=True)
-                    # clean old
-                    for old in bg_dir.glob(f"{user['id']}.*"):
-                        try: old.unlink()
-                        except Exception: pass
-                    dest = bg_dir / f"{user['id']}{ext}"
-                    dest.write_bytes(raw)
-                    fields["profile_background"] = f"profile_bg/{user['id']}{ext}"
+                    key = f"profile_bg/{user['id']}{ext}"
+                    if object_store.configured():
+                        object_store.put_bytes(key, raw, media_type=object_store.content_type(key))
+                    else:
+                        dest = Path(DATA) / key
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        dest.write_bytes(raw)
+                    fields["profile_background"] = key
         else:
             body = await request.json()
             if isinstance(body, dict):
@@ -181,6 +181,14 @@ async def api_profile_snapshot_save(request: Request):
             profile_summary=str(snapshot.get("summary") or "")[:2000],
             profile_level=int(snapshot.get("level") or 1),
         )
+        # The avatar selected in the profile editor is also the account avatar
+        # shown in every shared header. Only accept our own immutable asset URL.
+        avatar = str(snapshot.get("avatar") or "")
+        marker = f"/api/profile/asset/{int(user['id'])}/"
+        if avatar.startswith(marker):
+            name = Path(avatar.split(marker, 1)[1].split("?", 1)[0]).name
+            if name:
+                auth_db.update_profile(int(user["id"]), avatar_path=f"profile_assets/{int(user['id'])}/{name}")
         un = auth_db.ensure_profile_username(int(user["id"]))
         return {"ok": True, "username": un, "url": f"/profile/{un}"}
     except ValueError as e:
@@ -203,10 +211,14 @@ async def api_profile_asset(request: Request, file: UploadFile = File(...)):
     if ext not in allowed:
         return JSONResponse({"ok": False, "msg": "PNG, JPG, WEBP, GIF, WEBM or MP4 only"}, status_code=400)
     uid = int(user["id"])
-    out = Path(DATA) / "profile_assets" / str(uid)
-    out.mkdir(parents=True, exist_ok=True)
     name = secrets.token_hex(12) + ext
-    (out / name).write_bytes(raw)
+    key = f"profile_assets/{uid}/{name}"
+    if object_store.configured():
+        object_store.put_bytes(key, raw, media_type=object_store.content_type(name))
+    else:
+        out = Path(DATA) / key
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(raw)
     return {"ok": True, "url": f"/api/profile/asset/{uid}/{name}"}
 
 
@@ -214,10 +226,17 @@ async def api_profile_asset(request: Request, file: UploadFile = File(...)):
 def api_profile_asset_get(user_id: int, name: str):
     if Path(name).name != name:
         return JSONResponse({"ok": False}, status_code=404)
-    path = Path(DATA) / "profile_assets" / str(user_id) / name
+    key = f"profile_assets/{user_id}/{name}"
+    if object_store.configured():
+        url = object_store.public_url(key)
+        if url:
+            return RedirectResponse(
+                url, status_code=307, headers={"Cache-Control": object_store.MUTABLE_CACHE}
+            )
+    path = Path(DATA) / key
     if not path.is_file():
         return JSONResponse({"ok": False}, status_code=404)
-    return FileResponse(path, headers={"Cache-Control": "public, max-age=31536000, immutable"})
+    return FileResponse(path, headers={"Cache-Control": object_store.MUTABLE_CACHE})
 
 
 @router.get("/api/profile/bg/{user_id}")
@@ -228,6 +247,15 @@ def api_profile_bg(user_id: int):
     if not row or not row["profile_background"]:
         return JSONResponse({"ok": False}, status_code=404)
     stored = str(row["profile_background"])
+    if object_store.configured():
+        try:
+            url = object_store.public_url(object_store.key_from_stored(stored))
+            if url:
+                return RedirectResponse(
+                    url, status_code=307, headers={"Cache-Control": object_store.MUTABLE_CACHE}
+                )
+        except Exception:
+            LOGGER.exception("R2 background lookup failed")
     # Containment check: "../../etc/passwd" stored here used to escape DATA.
     path = _safe_data_path(stored)
     if path is None:
@@ -286,12 +314,19 @@ async def api_profile_showcase_add(request: Request):
             gid = int(gallery_id)
             g = auth_db.gallery_get(gid)
             if g and int(g.get("user_id") or 0) == uid and g.get("image_path"):
-                src = Path(DATA) / str(g["image_path"])
-                if src.is_file():
+                stored = str(g["image_path"])
+                src = Path(DATA) / stored
+                blob = None
+                if object_store.configured():
+                    try: blob = object_store.get_bytes(object_store.key_from_stored(stored), public=True)
+                    except Exception: blob = None
+                elif src.is_file():
+                    blob = src.read_bytes()
+                if blob:
                     class _F:
-                        filename = src.name
-                        async def read(self, _p=src):
-                            return _p.read_bytes()
+                        filename = Path(stored).name
+                        async def read(self, _blob=blob):
+                            return _blob
                     uploads.append(_F())
         except Exception as e:
             print("gallery pull", e)
@@ -506,6 +541,11 @@ async def api_profile_showcase_add(request: Request):
     if not files_saved:
         return JSONResponse({"ok": False, "msg": "No output files"}, status_code=500)
 
+    if object_store.configured():
+        for saved_name in files_saved:
+            local_file = out_dir / saved_name
+            object_store.upload_file(local_file, f"profile_sc/{uid}/{saved_name}", public=True)
+
     sid = auth_db.profile_showcase_add(uid, sc_type, title, {"files": files_saved})
     return {"ok": True, "id": sid, "files": files_saved, "type": sc_type}
 
@@ -517,13 +557,32 @@ async def api_profile_showcase_delete(request: Request):
         return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
     body = await request.json()
     sid = int(body.get("id") or 0)
+    files = []
+    for showcase in auth_db.profile_showcase_list(int(user["id"])):
+        if int(showcase.get("id") or 0) == sid:
+            files = list((showcase.get("data") or {}).get("files") or [])
+            break
     ok = auth_db.profile_showcase_delete(int(user["id"]), sid)
+    if ok:
+        for filename in files:
+            safe_name = Path(str(filename)).name
+            if object_store.configured():
+                try: object_store.delete(f"profile_sc/{int(user['id'])}/{safe_name}")
+                except Exception: pass
+            try: (Path(DATA) / "profile_sc" / str(int(user["id"])) / safe_name).unlink(missing_ok=True)
+            except Exception: pass
     return {"ok": ok}
 
 
 @router.get("/api/profile/file/{user_id}/{name}")
 def api_profile_file(user_id: int, name: str):
     name = Path(name).name
+    if object_store.configured():
+        url = object_store.public_url(f"profile_sc/{user_id}/{name}")
+        if url:
+            return RedirectResponse(
+                url, status_code=307, headers={"Cache-Control": object_store.MUTABLE_CACHE}
+            )
     path = Path(DATA) / "profile_sc" / str(user_id) / name
     if not path.is_file():
         return JSONResponse({"ok": False}, status_code=404)
@@ -586,10 +645,41 @@ async def api_profile_extension_import(request: Request):
                 if avatar_response.ok and avatar_response.content and len(avatar_response.content) <= 8_000_000:
                     content_type = (avatar_response.headers.get("content-type") or "").lower()
                     ext = ".png" if "png" in content_type else (".webp" if "webp" in content_type else ".jpg")
-                    avatar_dir = DATA / "avatars"; avatar_dir.mkdir(parents=True, exist_ok=True)
-                    rel = f"avatars/{grant['user_id']}{ext}"
-                    (DATA / rel).write_bytes(avatar_response.content)
+                    # Versioned like /api/auth/profile: a stable key would keep
+                    # the old picture in caches after a re-import.
+                    rel = f"avatars/{grant['user_id']}-{secrets.token_hex(4)}{ext}"
+                    if object_store.configured():
+                        object_store.put_bytes(
+                            rel, avatar_response.content,
+                            media_type=content_type.split(";", 1)[0] or object_store.content_type(rel),
+                            immutable=True,
+                        )
+                    else:
+                        (DATA / rel).parent.mkdir(parents=True, exist_ok=True)
+                        (DATA / rel).write_bytes(avatar_response.content)
+                    old_avatar = ""
+                    try:
+                        _c = auth_db._conn()
+                        try:
+                            _row = _c.execute(
+                                "SELECT avatar_path FROM users WHERE id=?", (grant["user_id"],)
+                            ).fetchone()
+                            old_avatar = str((_row["avatar_path"] if _row else "") or "").strip()
+                        finally:
+                            _c.close()
+                    except Exception:
+                        old_avatar = ""
                     auth_db.update_profile(grant["user_id"], display_name=profile.get("name") or None, avatar_path=rel)
+                    # Unique keys mean the previous object is now an orphan.
+                    if old_avatar and old_avatar != rel:
+                        if object_store.configured():
+                            try: object_store.delete(object_store.key_from_stored(old_avatar))
+                            except Exception: pass
+                        else:
+                            _old = _safe_data_path(old_avatar)
+                            if _old is not None:
+                                try: _old.unlink()
+                                except Exception: pass
             except Exception:
                 LOGGER.warning("Could not cache imported Steam avatar", exc_info=True)
         return {"ok": True, "profile": profile, "showcases": len(profile.get("showcase_instances") or [])}
