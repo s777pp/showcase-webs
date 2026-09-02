@@ -199,6 +199,9 @@ def _run_process_job_from_payload(jid: str, job: dict) -> None:
 def _run_process_job(jid: str, files_data: list[tuple[str, bytes]], opts: dict) -> None:
     """Background worker: same pipeline as /api/process, updates progress."""
     import tempfile
+    import time as _sm_time
+    _sm_job_t0 = _sm_time.perf_counter()
+    print(f"[JOB TIMING] START jid={jid}", flush=True)
     job_dir = Path(tempfile.mkdtemp(prefix="sm_job_"))
     _job_set(jid, status="running", pct=5, stage="prepare", job_dir=str(job_dir), error=None)
     zip_buf = io.BytesIO()
@@ -350,17 +353,28 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes]], opts: dict) 
                 processed += 1
             except Exception as e:
                 errors.append(f"{name}: {type(e).__name__}: {e}")
+        _sm_zip_t0 = _sm_time.perf_counter()
         try:
             zf.close()
         except Exception:
             pass
+        print(
+            f"[JOB TIMING] ZIP close: {_sm_time.perf_counter()-_sm_zip_t0:.3f}s",
+            flush=True,
+        )
         if processed == 0:
             detail = "; ".join(errors) if errors else "unknown error"
             _job_set(jid, status="error", pct=100, stage="error", error=f"Failed: {detail}", errors=errors)
             shutil.rmtree(job_dir, ignore_errors=True)
             return
         zip_path = job_dir / "result.zip"
+        _sm_zipwrite_t0 = _sm_time.perf_counter()
         zip_path.write_bytes(zip_buf.getvalue())
+        print(
+            f"[JOB TIMING] ZIP write: {_sm_time.perf_counter()-_sm_zipwrite_t0:.3f}s | "
+            f"size={zip_path.stat().st_size / 1024 / 1024:.2f}MB",
+            flush=True,
+        )
         # quota already counted on start
         _job_set(
             jid,
@@ -371,6 +385,10 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes]], opts: dict) 
             processed=processed,
             errors=errors,
             listed=listed,
+        )
+        print(
+            f"[JOB TIMING] TOTAL: {_sm_time.perf_counter()-_sm_job_t0:.3f}s | jid={jid}",
+            flush=True,
         )
     except Exception as e:
         _job_set(jid, status="error", pct=100, stage="error", error=f"{type(e).__name__}: {e}")

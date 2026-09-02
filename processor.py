@@ -1,5 +1,6 @@
 """Обработка витрин — порт логики desktop (упрощённо, но те же режимы)."""
 from __future__ import annotations
+import time
 
 import errno
 import io
@@ -394,6 +395,7 @@ def media_to_gif(
         frames = tmp / "frames"
         frames.mkdir()
         # Extract scaled frames as PNG (source for both encoders)
+        _m2g_t0 = time.perf_counter()
         try:
             _run([
                 ff, "-y", "-hide_banner", "-loglevel", "error",
@@ -401,6 +403,7 @@ def media_to_gif(
                 "-t", str(duration),
                 "-an",
                 "-vf", f"fps={fps},scale={width}:-2:flags=lanczos",
+                "-compression_level", "0",
                 str(frames / "frame_%04d.png"),
             ])
         except Exception:
@@ -423,13 +426,32 @@ def media_to_gif(
                 str(frames / "frame_%04d.png"),
             ])
 
+        _m2g_t1 = time.perf_counter()
+        print(
+            f"[M2G TIMING] ffmpeg->PNG: {_m2g_t1-_m2g_t0:.3f}s | "
+            f"src={src.name} width={width} fps={fps}",
+            flush=True,
+        )
+
         if not list(frames.glob("frame_*.png")):
             raise RuntimeError("no frames extracted for GIF")
 
         if encoder == "gifski":
             if not find_gifski():
                 raise RuntimeError("gifski selected but binary not found")
+            _m2g_t2 = time.perf_counter()
             ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
+            _m2g_t3 = time.perf_counter()
+            print(
+                f"[M2G TIMING] gifski q100: {_m2g_t3-_m2g_t2:.3f}s | "
+                f"dest={dest.name} width={width} fps={fps}",
+                flush=True,
+            )
+            print(
+                f"[M2G TIMING] TOTAL: {_m2g_t3-_m2g_t0:.3f}s | "
+                f"{src.name} -> {dest.name}",
+                flush=True,
+            )
             if not ok:
                 raise RuntimeError("gifski encode failed (no fallback to ffmpeg when gifski is selected)")
         else:
@@ -681,7 +703,7 @@ def _try_replace(src_tmp: Path, dest: Path) -> bool:
     return False
 
 
-def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
+def _ensure_under_mb_impl(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
     """Fit GIF under Steam limit while preserving as much quality as possible.
 
     Strategy (in order):
@@ -710,6 +732,7 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                 _run([
                     ff, "-y", "-hide_banner", "-loglevel", "error",
                     "-i", str(path),
+                    "-compression_level", "0",
                     str(frames_dir / "frame_%04d.png"),
                 ])
                 extracted = bool(list(frames_dir.glob("frame_*.png")))
@@ -735,15 +758,21 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
             lo, hi = 40, 100
             best = None  # (quality, path)
             # try high quality first
-            for q in (100, 92, 85, 78, 70, 60, 50):
+            for q in (92, 85, 78, 70, 60, 50):
                 out = tmp_dir / f"gs_{q}.gif"
                 try:
                     files = sorted(frames_dir.glob("frame_*.png"))
                     cmd = [gs, "--fps", str(src_fps), "--quality", str(q), "-o", str(out),
                            *[str(f) for f in files]]
+                    _q_t0 = time.perf_counter()
                     subprocess.run(cmd, check=True, capture_output=True)
+                    _q_dt = time.perf_counter() - _q_t0
                     if out.is_file() and out.stat().st_size > 50:
                         mb = _gif_mb(out)
+                        print(
+                            f"[FIT Q] {path.name} q={q} size={mb:.2f}MB time={_q_dt:.3f}s",
+                            flush=True,
+                        )
                         if mb <= max_mb:
                             best = (q, out)
                             break
@@ -764,6 +793,10 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                     except Exception:
                         continue
             if best is not None:
+                print(
+                    f"[FIT Q] CHOSEN {path.name} q={best[0]}",
+                    flush=True,
+                )
                 _safe_replace(best[1], path)
                 return
 
@@ -843,6 +876,22 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
 
 
 
+
+
+
+def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
+    _fit_t0 = time.perf_counter()
+    _fit_before = _gif_mb(Path(path)) if Path(path).is_file() else 0.0
+    try:
+        return _ensure_under_mb_impl(path, max_mb)
+    finally:
+        _fit_after = _gif_mb(Path(path)) if Path(path).is_file() else 0.0
+        _fit_t1 = time.perf_counter()
+        print(
+            f"[FIT TIMING] {_fit_t1-_fit_t0:.3f}s | "
+            f"{Path(path).name} | {_fit_before:.2f}MB -> {_fit_after:.2f}MB",
+            flush=True,
+        )
 
 
 
@@ -953,53 +1002,120 @@ def _gif_full_with_bar_split(
     wm_x: float | None = None,
     wm_y: float | None = None,
 ) -> None:
-    frames_p: list[Image.Image] = []
-    durations: list[int] = []
-    with Image.open(gif_path) as im:
-        n = int(getattr(im, "n_frames", 1) or 1)
-        max_frames = 180
-        step = 1
-        if n > max_frames:
-            step = max(1, n // max_frames)
-        for idx in range(0, n, step):
-            im.seek(idx)
-            frame = im.convert("RGBA")
-            fw, fh = frame.size
-            cut = min(506, max(1, fw - 1))
-            center = frame.crop((0, 0, cut, fh))
-            side = frame.crop((cut, 0, fw, fh))
-            if side.width <= 0:
-                side = Image.new("RGBA", (100, fh), (0, 0, 0, 255))
-            full_w = center.width + bar_width + side.width
-            full = Image.new("RGBA", (full_w, fh), (0, 0, 0, 255))
-            if center.mode == "RGBA":
-                full.paste(center, (0, 0), center)
-            else:
-                full.paste(center, (0, 0))
-            if side.mode == "RGBA":
-                full.paste(side, (center.width + bar_width, 0), side)
-            else:
-                full.paste(side, (center.width + bar_width, 0))
-            if wm_text and float(wm_opacity or 0) > 0:
-                full = apply_watermark(
-                    full,
-                    str(wm_text),
-                    wm_font,
-                    float(wm_opacity),
-                    corner=wm_corner,
-                    scale=float(wm_scale or 1.0),
-                    color=wm_color or "#ffffff",
-                    wx=wm_x,
-                    wy=wm_y,
+    """Build full-color split/bar frames and let gifski do final quantization."""
+    gs = find_gifski()
+    if not gs:
+        raise RuntimeError("gifski not found")
+
+    tmp = Path(tempfile.mkdtemp(prefix="sm_split_bars_"))
+    try:
+        frames_dir = tmp / "frames"
+        frames_dir.mkdir()
+
+        durations = []
+        frame_no = 0
+
+        with Image.open(gif_path) as im:
+            n = int(getattr(im, "n_frames", 1) or 1)
+            max_frames = 180
+            step = 1
+            if n > max_frames:
+                step = max(1, n // max_frames)
+
+            for idx in range(0, n, step):
+                im.seek(idx)
+                frame = im.convert("RGBA")
+                fw, fh = frame.size
+
+                cut = min(506, max(1, fw - 1))
+                center = frame.crop((0, 0, cut, fh))
+                side = frame.crop((cut, 0, fw, fh))
+
+                if side.width <= 0:
+                    side = Image.new(
+                        "RGBA", (100, fh), (0, 0, 0, 255)
+                    )
+
+                full_w = center.width + bar_width + side.width
+                full = Image.new(
+                    "RGBA", (full_w, fh), (0, 0, 0, 255)
                 )
-            frames_p.append(_quantize_rgba_for_gif(full))
-            try:
-                d = int(im.info.get("duration", 100) or 100)
-            except Exception:
-                d = 100
-            durations.append(max(20, d * step))
-            del full, frame
-    _save_animated_gif(frames_p, durations, out_path)
+
+                full.paste(center, (0, 0), center)
+
+                full.paste(
+                    side,
+                    (center.width + bar_width, 0),
+                    side,
+                )
+
+                if wm_text and float(wm_opacity or 0) > 0:
+                    full = apply_watermark(
+                        full,
+                        str(wm_text),
+                        wm_font,
+                        float(wm_opacity),
+                        corner=wm_corner,
+                        scale=float(wm_scale or 1.0),
+                        color=wm_color or "#ffffff",
+                        wx=wm_x,
+                        wy=wm_y,
+                    )
+
+                # Same black alpha composite as old quantizer,
+                # but DO NOT reduce to a 256-color Pillow palette.
+                bg = Image.new(
+                    "RGBA", full.size, (0, 0, 0, 255)
+                )
+                composed = Image.alpha_composite(bg, full)
+                rgb = composed.convert("RGB")
+
+                frame_no += 1
+                rgb.save(
+                    frames_dir / f"frame_{frame_no:04d}.png",
+                    format="PNG",
+                    compress_level=0,
+                )
+
+                try:
+                    d = int(im.info.get("duration", 100) or 100)
+                except Exception:
+                    d = 100
+
+                durations.append(max(20, d * step))
+
+        if frame_no == 0:
+            raise RuntimeError("no frames for split bars")
+
+        # Current Process uses fixed FPS. Keep the same fps behavior
+        # used by the existing gifski pipeline.
+        if durations:
+            avg_ms = sum(durations) / len(durations)
+            fps = max(5, min(30, round(1000.0 / avg_ms)))
+        else:
+            fps = 12
+
+        _t0 = time.perf_counter()
+
+        ok = _gifski_from_frames(
+            frames_dir,
+            out_path,
+            fps=fps,
+            quality=100,
+        )
+
+        _t1 = time.perf_counter()
+        print(
+            f"[PROCESS TIMING] split bars gifski q100: "
+            f"{_t1-_t0:.3f}s | frames={frame_no} fps={fps}",
+            flush=True,
+        )
+
+        if not ok:
+            raise RuntimeError("gifski split bars encode failed")
+
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 
@@ -1020,6 +1136,8 @@ def _reencode_crop_hq(
         frames = tmp / "f"
         frames.mkdir()
         # crop → PNG sequence
+        import time
+        _sm_t0 = time.perf_counter()
         _run([
             ff, "-y", "-hide_banner", "-loglevel", "error",
             "-i", str(src_gif),
@@ -1027,12 +1145,18 @@ def _reencode_crop_hq(
             "-vf", f"{crop_vf},fps={max(5, min(24, int(fps)))}",
             str(frames / "frame_%04d.png"),
         ])
+        _sm_t1 = time.perf_counter()
+        print(f"[PROCESS TIMING] decode+crop PNG: {_sm_t1-_sm_t0:.3f}s | {crop_vf}", flush=True)
         if not list(frames.glob("frame_*.png")):
             raise RuntimeError("crop produced no frames")
         if encoder == "gifski":
             if not find_gifski():
                 raise RuntimeError("gifski selected but binary not found")
+            _sm_t2 = time.perf_counter()
             ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
+            _sm_t3 = time.perf_counter()
+            print(f"[PROCESS TIMING] gifski q100: {_sm_t3-_sm_t2:.3f}s | {dest.name}", flush=True)
+            print(f"[PROCESS TIMING] crop total: {_sm_t3-_sm_t0:.3f}s | {dest.name}", flush=True)
             if not ok:
                 raise RuntimeError("gifski crop-encode failed (no ffmpeg fallback)")
         else:
@@ -1231,7 +1355,8 @@ def process_gif_featured(
                 wm_x=wm_x, wm_y=wm_y, encoder=encoder, fps=fps,
             )
             if wm_out.is_file() and wm_out.stat().st_size > 64:
-                ensure_under_mb(wm_out)
+                # Full preview is not subject to the Steam 5 MB limit.
+                # Keep the original maximum-quality output.
                 result[wm_out.name] = wm_out
                 result["full_with_bars.gif"] = wm_out
             else:
@@ -1256,6 +1381,116 @@ def process_gif_featured(
     return result
 
 
+
+def _reencode_split_crops_hq(
+    src_gif: Path,
+    center_dest: Path,
+    side_dest: Path,
+    height: int,
+    fps: int = 12,
+    encoder: str = "ffmpeg",
+) -> None:
+    """Decode split source once, produce center+side crops, then encode both."""
+    ff = find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not found")
+
+    encoder = (encoder or "ffmpeg").strip().lower()
+    fps = max(5, min(24, int(fps)))
+
+    tmp = Path(tempfile.mkdtemp(prefix="sm_split_crops_"))
+    try:
+        center_frames = tmp / "center"
+        side_frames = tmp / "side"
+        center_frames.mkdir()
+        side_frames.mkdir()
+
+        _t0 = time.perf_counter()
+
+        _run([
+            ff, "-y", "-hide_banner", "-loglevel", "error",
+            "-i", str(src_gif),
+            "-an",
+            "-filter_complex",
+            (
+                f"[0:v]fps={fps},split=2[c][s];"
+                f"[c]crop=506:{height}:0:0[co];"
+                f"[s]crop=100:{height}:506:0[so]"
+            ),
+            "-map", "[co]",
+            "-compression_level", "0",
+            str(center_frames / "frame_%04d.png"),
+            "-map", "[so]",
+            "-compression_level", "0",
+            str(side_frames / "frame_%04d.png"),
+        ])
+
+        _t1 = time.perf_counter()
+        print(
+            f"[PROCESS TIMING] split single decode+crop PNG: {_t1-_t0:.3f}s",
+            flush=True,
+        )
+
+        if not list(center_frames.glob("frame_*.png")):
+            raise RuntimeError("center crop produced no frames")
+        if not list(side_frames.glob("frame_*.png")):
+            raise RuntimeError("side crop produced no frames")
+
+        if encoder == "gifski":
+            if not find_gifski():
+                raise RuntimeError("gifski selected but binary not found")
+
+            _t2 = time.perf_counter()
+            ok_center = _gifski_from_frames(
+                center_frames, center_dest, fps=fps, quality=100
+            )
+            _t3 = time.perf_counter()
+
+            ok_side = _gifski_from_frames(
+                side_frames, side_dest, fps=fps, quality=100
+            )
+            _t4 = time.perf_counter()
+
+            print(
+                f"[PROCESS TIMING] split center gifski q100: {_t3-_t2:.3f}s",
+                flush=True,
+            )
+            print(
+                f"[PROCESS TIMING] split side gifski q100: {_t4-_t3:.3f}s",
+                flush=True,
+            )
+
+            if not ok_center or not ok_side:
+                raise RuntimeError("gifski split crop encode failed")
+        else:
+            vf = _ffmpeg_palette_vf(fps=fps, max_colors=256)
+
+            _run([
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-framerate", str(fps),
+                "-i", str(center_frames / "frame_%04d.png"),
+                "-lavfi", vf,
+                "-loop", "0",
+                str(center_dest),
+            ])
+
+            _run([
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-framerate", str(fps),
+                "-i", str(side_frames / "frame_%04d.png"),
+                "-lavfi", vf,
+                "-loop", "0",
+                str(side_dest),
+            ])
+
+        ensure_under_mb(center_dest)
+        ensure_under_mb(side_dest)
+
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+
 def process_gif_split(
     gif_path: Path,
     out_dir: Path,
@@ -1278,8 +1513,14 @@ def process_gif_split(
     width, height = _probe_wh(tmp)
     center = out_dir / "center_506.gif"
     side = out_dir / "side_100.gif"
-    _reencode_crop_hq(tmp, center, crop_vf=f"crop=506:{height}:0:0", fps=fps, encoder=encoder)
-    _reencode_crop_hq(tmp, side, crop_vf=f"crop=100:{height}:506:0", fps=fps, encoder=encoder)
+    _reencode_split_crops_hq(
+        tmp,
+        center,
+        side,
+        height=height,
+        fps=fps,
+        encoder=encoder,
+    )
     apply_hex21_file(center)
     apply_hex21_file(side)
     clean = out_dir / "full_original.gif"
@@ -1948,3 +2189,59 @@ def compose_animated_layers(
     )
 
     return output, [frame_ms] * len(output)
+
+# === TEMP PROCESS PIPELINE TIMING ===
+_sm_orig_save_animated_gif = _save_animated_gif
+def _save_animated_gif(frames_p, durations, out_path):
+    _t0 = time.perf_counter()
+    try:
+        return _sm_orig_save_animated_gif(frames_p, durations, out_path)
+    finally:
+        _t1 = time.perf_counter()
+        print(
+            f"[PIL TIMING] save GIF: {_t1-_t0:.3f}s | "
+            f"{Path(out_path).name} | frames={len(frames_p)}",
+            flush=True,
+        )
+
+
+_sm_orig_workshop_bars = _gif_full_with_bars_workshop
+def _gif_full_with_bars_workshop(*args, **kwargs):
+    _t0 = time.perf_counter()
+    try:
+        return _sm_orig_workshop_bars(*args, **kwargs)
+    finally:
+        _t1 = time.perf_counter()
+        out = args[1] if len(args) > 1 else kwargs.get("out_path", "?")
+        print(
+            f"[PIL TIMING] workshop bars TOTAL: {_t1-_t0:.3f}s | {Path(out).name}",
+            flush=True,
+        )
+
+
+_sm_orig_split_bars = _gif_full_with_bar_split
+def _gif_full_with_bar_split(*args, **kwargs):
+    _t0 = time.perf_counter()
+    try:
+        return _sm_orig_split_bars(*args, **kwargs)
+    finally:
+        _t1 = time.perf_counter()
+        out = args[1] if len(args) > 1 else kwargs.get("out_path", "?")
+        print(
+            f"[PIL TIMING] split bars TOTAL: {_t1-_t0:.3f}s | {Path(out).name}",
+            flush=True,
+        )
+
+
+_sm_orig_apply_watermark = _gif_apply_watermark
+def _gif_apply_watermark(*args, **kwargs):
+    _t0 = time.perf_counter()
+    try:
+        return _sm_orig_apply_watermark(*args, **kwargs)
+    finally:
+        _t1 = time.perf_counter()
+        out = args[1] if len(args) > 1 else kwargs.get("out_path", "?")
+        print(
+            f"[PIL TIMING] watermark TOTAL: {_t1-_t0:.3f}s | {Path(out).name}",
+            flush=True,
+        )
