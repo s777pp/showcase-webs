@@ -219,33 +219,27 @@ def steam_proxy_image(url: str):
     animated items are video files. Restricted to Steam CDN hosts - this must
     not become a generic fetcher.
     """
-    allowed = (
-        "community.cloudflare.steamstatic.com",
-        "community.akamai.steamstatic.com",
-        "community.fastly.steamstatic.com",
-        "steamcommunity-a.akamaihd.net",
-        "cdn.cloudflare.steamstatic.com",
-        "cdn.akamai.steamstatic.com",
-        "cdn.fastly.steamstatic.com",
-        "shared.cloudflare.steamstatic.com",
-        "shared.akamai.steamstatic.com",
-        "shared.fastly.steamstatic.com",
-        "avatars.cloudflare.steamstatic.com",
-        "avatars.akamai.steamstatic.com",
-        "avatars.fastly.steamstatic.com",
+    # Valve keeps adding CDN subdomains (avatars.steamstatic.com without the
+    # cloudflare/akamai/fastly infix is the current avatar host), so an
+    # exhaustive host list silently breaks images over time. Match the whole
+    # steamstatic.com zone instead and keep the handful of non-steamstatic
+    # hosts explicit. Still a closed allowlist - not a generic fetcher.
+    allowed_suffixes = (".steamstatic.com", ".steampowered.com")
+    allowed_hosts = (
         "images.steamusercontent.com",
         "steamuserimages-a.akamaihd.net",
-        "store.akamai.steamstatic.com",
-        "store.cloudflare.steamstatic.com",
-        "store.fastly.steamstatic.com",
+        "steamcommunity-a.akamaihd.net",
     )
     from urllib.parse import urlparse
 
     try:
-        host = (urlparse(url).hostname or "").lower()
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
     except Exception:
         return _err("Bad URL")
-    if host not in allowed:
+    if parsed.scheme not in ("http", "https"):
+        return _err("Only Steam CDN images are allowed")
+    if host not in allowed_hosts and not host.endswith(allowed_suffixes):
         return _err("Only Steam CDN images are allowed")
     try:
         r = requests.get(url, timeout=15, headers={"User-Agent": steam_catalog.UA})

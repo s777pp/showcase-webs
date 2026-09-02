@@ -79,11 +79,21 @@ def _page(path: Path) -> str:
     return text
 
 
+# The HTML shell must not be cached: it carries the ?v= tags that bust the
+# 7-day cache nginx puts on /static/. A stale shell keeps pointing at the old
+# JS, which is how a deployed frontend fix can stay invisible for a week.
+_HTML_HEADERS = {"Cache-Control": "no-cache"}
+
+
+def _html(content: str, status_code: int = 200) -> HTMLResponse:
+    return HTMLResponse(content, status_code=status_code, headers=_HTML_HEADERS)
+
+
 @router.get("/", response_class=HTMLResponse)
 def index():
     """Лендинг (как kant.tools)."""
     path = STATIC / "index.html"
-    return HTMLResponse(_page(path))
+    return _html(_page(path))
 
 
 @router.get("/app", response_class=HTMLResponse)
@@ -92,7 +102,7 @@ def app_page():
     path = STATIC / "app.html"
     if not path.is_file():
         path = STATIC / "index.html"
-    return HTMLResponse(_page(path))
+    return _html(_page(path))
 
 
 @router.get("/profile", response_class=HTMLResponse)
@@ -102,9 +112,9 @@ async def profile_me(request: Request):
     user = _auth_user(request)
     p = STATIC / "profile.html"
     if not p.is_file():
-        return HTMLResponse("profile.html missing", status_code=404)
+        return _html("profile.html missing", status_code=404)
     html = _page(p)
-    return HTMLResponse(html)
+    return _html(html)
 
 
 @router.get("/profile/{username}", response_class=HTMLResponse)
@@ -114,8 +124,8 @@ async def profile_public(username: str, request: Request):
     if not p.is_file():
         p = STATIC / "profile.html"
     if not p.is_file():
-        return HTMLResponse("profile page missing", status_code=404)
-    return HTMLResponse(_page(p))
+        return _html("profile page missing", status_code=404)
+    return _html(_page(p))
 
 
 @router.get("/preview/{job_id}", response_class=HTMLResponse)
@@ -123,13 +133,13 @@ def preview_page(job_id: str):
     job_id = "".join(c for c in job_id if c.isalnum())[:16]
     path = JOBS / job_id / "preview.html"
     if not path.is_file():
-        return HTMLResponse("<h3>Preview not found</h3>", status_code=404)
-    return HTMLResponse(path.read_text(encoding="utf-8"))
+        return _html("<h3>Preview not found</h3>", status_code=404)
+    return _html(path.read_text(encoding="utf-8"))
 
 
 @router.get("/gallery", response_class=HTMLResponse)
 def gallery_page():
     path = STATIC / "gallery.html"
     if path.is_file():
-        return HTMLResponse(_page(path))
-    return HTMLResponse("<h1>Gallery</h1><p>Add static/gallery.html</p>")
+        return _html(_page(path))
+    return _html("<h1>Gallery</h1><p>Add static/gallery.html</p>")

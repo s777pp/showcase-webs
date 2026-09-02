@@ -1,6 +1,7 @@
 """Обработка витрин — порт логики desktop (упрощённо, но те же режимы)."""
 from __future__ import annotations
 
+import errno
 import io
 import os
 import shutil
@@ -651,6 +652,16 @@ def _gif_mb(path: Path) -> float:
     except Exception:
         return 999.0
 
+def _safe_replace(src: Path, dest: Path) -> None:
+    """Replace a file, including across different filesystems."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        src.replace(dest)
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+        shutil.copy2(src, dest)
+        src.unlink()
 
 def _try_replace(src_tmp: Path, dest: Path) -> bool:
     """Replace dest with tmp if tmp is smaller and valid."""
@@ -661,7 +672,7 @@ def _try_replace(src_tmp: Path, dest: Path) -> bool:
             pass
         return False
     if src_tmp.stat().st_size < dest.stat().st_size:
-        src_tmp.replace(dest)
+        _safe_replace(src_tmp, dest)
         return True
     try:
         src_tmp.unlink(missing_ok=True)
@@ -753,7 +764,7 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                     except Exception:
                         continue
             if best is not None:
-                best[1].replace(path)
+                _safe_replace(best[1], path)
                 return
 
         # ── 2) ffmpeg gentle ladder (keep res/fps as long as possible) ──
@@ -803,11 +814,11 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                 ])
                 if tmp.is_file() and tmp.stat().st_size > 50:
                     if _gif_mb(tmp) <= max_mb:
-                        tmp.replace(path)
+                        _safe_replace(tmp, path)
                         return
                     # still over — keep if smaller (progress toward limit)
                     if tmp.stat().st_size < path.stat().st_size:
-                        tmp.replace(path)
+                        _safe_replace(tmp, path)
                     else:
                         tmp.unlink(missing_ok=True)
             except Exception:
@@ -824,7 +835,7 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                 _run([ff, "-y", "-hide_banner", "-loglevel", "error",
                       "-i", str(path), "-vf", vf, "-loop", "0", str(tmp)])
                 if tmp.is_file() and tmp.stat().st_size > 50:
-                    tmp.replace(path)
+                    _safe_replace(tmp, path)
             except Exception:
                 pass
     finally:
@@ -1415,17 +1426,22 @@ def remove_chromakey(
     tolerance: float = 55.0,
     softness: float = 20.0,
 ) -> Image.Image:
-    """Remove green/blue/red screen. key=auto samples corners.
+    """Remove green/blue/red screen using vectorized NumPy processing.
 
-    Uses classic channel-difference keying (reliable for pure #00FF00 screens)
-    plus a light despill. If the image already has transparency, auto skips.
-    If keying would wipe almost everything, falls back to the original frame.
+    Keeps the same keying thresholds, soft edge, despill and safety fallback
+    as the original implementation, but processes pixels in vectorized arrays.
     """
+    import numpy as np
+
     img = img.convert("RGBA")
     w, h = img.size
-    pixels = list(img.getdata())
+
+    rgba = np.asarray(img, dtype=np.uint8)
+    flat = rgba.reshape(-1, 4)
+
     key = (key or "auto").strip().lower()
-    n = len(pixels)
+    n = flat.shape[0]
+
     if n == 0:
         return img
 
@@ -1433,50 +1449,80 @@ def remove_chromakey(
     if key in ("auto", "a"):
         sample_n = min(n, 2500)
         step = max(1, n // sample_n)
-        transparent = sum(1 for i in range(0, n, step) if pixels[i][3] < 250)
-        checked = (n + step - 1) // step
+
+        sampled_alpha = flat[::step, 3]
+        transparent = int(np.count_nonzero(sampled_alpha < 250))
+        checked = len(sampled_alpha)
+
         if checked and (transparent / checked) > 0.08:
             return img
 
     def sample_backdrop():
-        """Sample border ring — chromakey usually fills the frame edge (green/blue/red)."""
+        """Sample border ring — chromakey usually fills the frame edge."""
         acc = []
+
         step_x = max(1, w // 24)
         step_y = max(1, h // 24)
+
         for x in range(0, w, step_x):
             for y in (1, 2, max(0, h - 2), max(0, h - 3)):
                 if 0 <= x < w and 0 <= y < h:
-                    r, g, b, a = pixels[y * w + x]
+                    r, g, b, a = (int(v) for v in rgba[y, x])
                     if a >= 16:
                         acc.append((r, g, b))
+
         for y in range(0, h, step_y):
             for x in (1, 2, max(0, w - 2), max(0, w - 3)):
                 if 0 <= x < w and 0 <= y < h:
-                    r, g, b, a = pixels[y * w + x]
+                    r, g, b, a = (int(v) for v in rgba[y, x])
                     if a >= 16:
                         acc.append((r, g, b))
+
         if not acc:
             return "green", (40, 200, 40)
+
         rs = sorted(c[0] for c in acc)
         gs = sorted(c[1] for c in acc)
         bs = sorted(c[2] for c in acc)
-        lo, hi = len(acc) // 4, max(len(acc) // 4 + 1, 3 * len(acc) // 4)
+
+        lo = len(acc) // 4
+        hi = max(len(acc) // 4 + 1, 3 * len(acc) // 4)
+
         ar = sum(rs[lo:hi]) // max(1, hi - lo)
         ag = sum(gs[lo:hi]) // max(1, hi - lo)
         ab = sum(bs[lo:hi]) // max(1, hi - lo)
+
         green_votes = sum(1 for r, g, b in acc if g > r + 15 and g > b + 15)
         blue_votes = sum(1 for r, g, b in acc if b > r + 15 and b > g + 15)
         red_votes = sum(1 for r, g, b in acc if r > g + 15 and r > b + 15)
-        if green_votes >= blue_votes and green_votes >= red_votes and green_votes > len(acc) * 0.2:
+
+        if (
+            green_votes >= blue_votes
+            and green_votes >= red_votes
+            and green_votes > len(acc) * 0.2
+        ):
             return "green", (ar, ag, ab)
-        if blue_votes >= green_votes and blue_votes >= red_votes and blue_votes > len(acc) * 0.2:
+
+        if (
+            blue_votes >= green_votes
+            and blue_votes >= red_votes
+            and blue_votes > len(acc) * 0.2
+        ):
             return "blue", (ar, ag, ab)
-        if red_votes >= green_votes and red_votes >= blue_votes and red_votes > len(acc) * 0.2:
+
+        if (
+            red_votes >= green_votes
+            and red_votes >= blue_votes
+            and red_votes > len(acc) * 0.2
+        ):
             return "red", (ar, ag, ab)
+
         if ag >= ar and ag >= ab:
             return "green", (ar, ag, ab)
+
         if ab >= ar and ab >= ag:
             return "blue", (ar, ag, ab)
+
         return "red", (ar, ag, ab)
 
     if key in ("none", "0", "off", ""):
@@ -1490,8 +1536,11 @@ def remove_chromakey(
         mode, kr, kg, kb = "red", 220, 30, 30
     elif key == "green":
         mode, kr, kg, kb = "green", 40, 200, 40
-    elif key.startswith("#") or (len(key) == 6 and all(c in "0123456789abcdef" for c in key)):
+    elif key.startswith("#") or (
+        len(key) == 6 and all(c in "0123456789abcdef" for c in key)
+    ):
         kr, kg, kb = _hex_to_rgb(key if key.startswith("#") else "#" + key)
+
         if kg >= kr and kg >= kb:
             mode = "green"
         elif kb >= kr and kb >= kg:
@@ -1501,82 +1550,145 @@ def remove_chromakey(
     else:
         mode, kr, kg, kb = "green", 40, 200, 40
 
-    # Map UI tolerance (10..120) → channel threshold
-    # Higher slider = more aggressive keying
+    # Same tolerance mapping as the original version
     tol_ui = max(10.0, min(120.0, float(tolerance or 55)))
-    # base threshold for (key_channel - max(other two))
-    base_thr = 18.0 + (tol_ui - 10.0) * (70.0 / 110.0)  # ~18..88
+    base_thr = 18.0 + (tol_ui - 10.0) * (70.0 / 110.0)
     soft = max(4.0, float(softness or 20.0))
+    rgb_thr = 28.0 + (tol_ui - 10.0) * 0.55
 
-    def key_score(r, g, b):
-        """Higher score = more like the backdrop → more transparent."""
-        if mode == "green":
-            return float(g) - max(r, b)
-        if mode == "blue":
-            return float(b) - max(r, g)
-        return float(r) - max(g, b)
+    # Float64 is intentional here to stay as close as possible
+    # to the calculations of the old Python implementation.
+    r = flat[:, 0].astype(np.float64)
+    g = flat[:, 1].astype(np.float64)
+    b = flat[:, 2].astype(np.float64)
+    a = flat[:, 3].astype(np.float64)
 
-    # Also kill pixels very close to sampled corner color (RGB distance)
-    def rgb_dist(r, g, b):
-        return ((r - kr) ** 2 + (g - kg) ** 2 + (b - kb) ** 2) ** 0.5
+    if mode == "green":
+        sc = g - np.maximum(r, b)
+    elif mode == "blue":
+        sc = b - np.maximum(r, g)
+    else:
+        sc = r - np.maximum(g, b)
 
-    rgb_thr = 28.0 + (tol_ui - 10.0) * 0.55  # ~28..88
+    rd = np.sqrt(
+        (r - float(kr)) ** 2
+        + (g - float(kg)) ** 2
+        + (b - float(kb)) ** 2
+    )
 
-    out_data = []
-    opaque = 0
-    for r, g, b, a in pixels:
-        if a < 8:
-            out_data.append((r, g, b, 0))
-            continue
-        sc = key_score(r, g, b)
-        rd = rgb_dist(r, g, b)
-        # transparent if either channel-diff OR close to key color
-        if sc >= base_thr or rd <= rgb_thr * 0.65:
-            na = 0
-        elif sc > base_thr - soft:
-            # soft edge on channel score
-            t = (sc - (base_thr - soft)) / soft
-            t = max(0.0, min(1.0, t))
-            na = int(a * (1.0 - t))
-        elif rd < rgb_thr:
-            t = (rgb_thr - rd) / max(1.0, rgb_thr * 0.5)
-            t = max(0.0, min(1.0, t))
-            na = int(a * (1.0 - t * 0.85))
-        else:
-            na = a
+    # Start with original alpha
+    na = a.copy()
 
-        # despill: pull key channel toward the other two on semi-transparent edges
-        if na > 0 and mode == "green" and g > max(r, b) + 8:
-            avg = (r + b) * 0.5
-            mix = 0.55 if na < 200 else 0.25
-            g = int(g * (1.0 - mix) + avg * mix)
-        elif na > 0 and mode == "blue" and b > max(r, g) + 8:
-            avg = (r + g) * 0.5
-            mix = 0.55 if na < 200 else 0.25
-            b = int(b * (1.0 - mix) + avg * mix)
-        elif na > 0 and mode == "red" and r > max(g, b) + 8:
-            avg = (g + b) * 0.5
-            mix = 0.55 if na < 200 else 0.25
-            r = int(r * (1.0 - mix) + avg * mix)
+    # Original function immediately makes a < 8 transparent
+    low_alpha = a < 8
+    na[low_alpha] = 0
 
-        if na > 16:
-            opaque += 1
-        out_data.append((
-            max(0, min(255, int(r))),
-            max(0, min(255, int(g))),
-            max(0, min(255, int(b))),
-            max(0, min(255, int(na))),
-        ))
+    active = ~low_alpha
 
-    # Safety: if keying wiped the subject (< 0.4% opaque), return original
+    # First branch:
+    # sc >= base_thr OR rd <= rgb_thr * 0.65
+    fully_keyed = active & (
+        (sc >= base_thr)
+        | (rd <= rgb_thr * 0.65)
+    )
+    na[fully_keyed] = 0
+
+    remaining = active & ~fully_keyed
+
+    # Second branch: soft edge based on channel score
+    score_soft = remaining & (sc > base_thr - soft)
+
+    if np.any(score_soft):
+        t = (
+            sc[score_soft]
+            - (base_thr - soft)
+        ) / soft
+
+        t = np.clip(t, 0.0, 1.0)
+
+        na[score_soft] = np.trunc(
+            a[score_soft] * (1.0 - t)
+        )
+
+    remaining &= ~score_soft
+
+    # Third branch: soft edge based on RGB distance
+    rgb_soft = remaining & (rd < rgb_thr)
+
+    if np.any(rgb_soft):
+        t = (
+            rgb_thr - rd[rgb_soft]
+        ) / max(1.0, rgb_thr * 0.5)
+
+        t = np.clip(t, 0.0, 1.0)
+
+        na[rgb_soft] = np.trunc(
+            a[rgb_soft] * (1.0 - t * 0.85)
+        )
+
+    # Despill — same formulas and branch conditions
+    if mode == "green":
+        despill = (
+            (na > 0)
+            & (g > np.maximum(r, b) + 8)
+        )
+
+        if np.any(despill):
+            avg = (r[despill] + b[despill]) * 0.5
+            mix = np.where(na[despill] < 200, 0.55, 0.25)
+
+            g[despill] = np.trunc(
+                g[despill] * (1.0 - mix)
+                + avg * mix
+            )
+
+    elif mode == "blue":
+        despill = (
+            (na > 0)
+            & (b > np.maximum(r, g) + 8)
+        )
+
+        if np.any(despill):
+            avg = (r[despill] + g[despill]) * 0.5
+            mix = np.where(na[despill] < 200, 0.55, 0.25)
+
+            b[despill] = np.trunc(
+                b[despill] * (1.0 - mix)
+                + avg * mix
+            )
+
+    else:
+        despill = (
+            (na > 0)
+            & (r > np.maximum(g, b) + 8)
+        )
+
+        if np.any(despill):
+            avg = (g[despill] + b[despill]) * 0.5
+            mix = np.where(na[despill] < 200, 0.55, 0.25)
+
+            r[despill] = np.trunc(
+                r[despill] * (1.0 - mix)
+                + avg * mix
+            )
+
+    opaque = int(np.count_nonzero(na > 16))
+
+    # Same safety fallback as before
     if opaque < max(16, int(n * 0.004)):
         return img
 
-    out = Image.new("RGBA", (w, h))
-    out.putdata(out_data)
-    return out
+    out_arr = np.empty((n, 4), dtype=np.uint8)
 
+    out_arr[:, 0] = np.clip(r, 0, 255).astype(np.uint8)
+    out_arr[:, 1] = np.clip(g, 0, 255).astype(np.uint8)
+    out_arr[:, 2] = np.clip(b, 0, 255).astype(np.uint8)
+    out_arr[:, 3] = np.clip(na, 0, 255).astype(np.uint8)
 
+    return Image.fromarray(
+        out_arr.reshape((h, w, 4)),
+        mode="RGBA",
+    )
 
 def _place_character(
     bg: Image.Image,
@@ -1785,16 +1897,54 @@ def compose_animated_layers(
                 return frame
         return frames[-1]
 
+    import time
+
     output: list[Image.Image] = []
     do_key = bool(chroma_key and chroma_key not in ("none", "0", "off", ""))
+
+    t_key = 0.0
+    t_feather = 0.0
+    t_crop = 0.0
+    t_place = 0.0
+
     for index in range(count):
         time_ms = index * frame_ms
         bg = at_time(bg_frames, bg_durations, time_ms)
         char = at_time(char_frames, char_durations, time_ms)
+
         if do_key:
+            t0 = time.monotonic()
             char = remove_chromakey(char, key=chroma_key, tolerance=chroma_tol)
+            t_key += time.monotonic() - t0
+
             if feather and float(feather) > 0:
+                t0 = time.monotonic()
                 char = feather_alpha(char, radius=float(feather))
+                t_feather += time.monotonic() - t0
+
+        t0 = time.monotonic()
         char = _crop_to_alpha(char)
-        output.append(_place_character(bg, char, scale=scale, offset_x=offset_x, offset_y=offset_y))
+        t_crop += time.monotonic() - t0
+
+        t0 = time.monotonic()
+        output.append(
+            _place_character(
+                bg,
+                char,
+                scale=scale,
+                offset_x=offset_x,
+                offset_y=offset_y,
+            )
+        )
+        t_place += time.monotonic() - t0
+
+    print(
+        f"[compose-detail] frames={count} "
+        f"chromakey={t_key:.1f}s "
+        f"feather={t_feather:.1f}s "
+        f"crop={t_crop:.1f}s "
+        f"place={t_place:.1f}s",
+        flush=True,
+    )
+
     return output, [frame_ms] * len(output)
