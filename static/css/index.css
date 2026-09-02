@@ -564,7 +564,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   position:relative;
   display:inline-block;
   white-space:nowrap;
-  line-height:0.92;
+  line-height:1.02;
   letter-spacing:-.03em;
   user-select:none;
   contain:layout style;
@@ -975,3 +975,24 @@ html,body{background:var(--pd-ink)!important;color:var(--pd-paper)!important}bod
 html[lang="ru"] .echo-text{padding:0 .08em .14em;margin:0 -.08em -.14em;contain:none!important;overflow:visible!important}
 .hero p{font-size:18px!important;max-width:560px!important;line-height:1.72!important}
 @media(max-width:600px){.hero p{font-size:15px!important}}
+
+/* Extra room for Cyrillic descenders in hero reveal */
+.hero .mh-line {
+  padding-bottom: 10px;
+  margin-bottom: -10px;
+}
+
+/* Do not clip descenders in the main hero heading */
+.hero .mh-scroll {
+  overflow: visible;
+}
+
+.hero .mh-scroll .mh-line {
+  overflow: visible;
+}
+
+/* Fix clipped Cyrillic descenders in hero gradient text */
+.hero .shiny {
+  padding-bottom: 12px !important;
+  margin-bottom: -12px !important;
+}
