@@ -3095,63 +3095,253 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   });
 
   // Publish to gallery
-  document.getElementById('btnPublishGallery')?.addEventListener('click', async function(){
+  function openGalleryPublishModal(onSubmit) {
+    const ru = (localStorage.getItem('sm_lang') === 'ru');
+
+    let old = document.getElementById('galleryPublishModal');
+    if (old) old.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'galleryPublishModal';
+
+    overlay.style.cssText = `
+      position:fixed;
+      inset:0;
+      z-index:99999;
+      background:rgba(0,0,0,.68);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      backdrop-filter:blur(4px);
+    `;
+
+    overlay.innerHTML = `
+      <div style="
+        width:min(440px,100%);
+        background:#07141d;
+        border:1px solid rgba(80,210,255,.22);
+        border-radius:16px;
+        box-shadow:0 24px 80px rgba(0,0,0,.55);
+        padding:22px;
+        color:#eaf8ff;
+        font-family:inherit;
+      ">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+          <div style="font-size:18px;font-weight:700;">
+            ${ru ? 'Опубликовать в галерею' : 'Publish to gallery'}
+          </div>
+          <button id="galleryModalClose" type="button" style="
+            background:transparent;border:0;color:#8fa6b3;
+            font-size:24px;cursor:pointer;line-height:1;
+          ">×</button>
+        </div>
+
+        <label style="
+          display:block;font-size:12px;font-weight:700;color:#8fa6b3;
+          margin-bottom:7px;text-transform:uppercase;letter-spacing:.06em;
+        ">
+          ${ru ? 'Название' : 'Title'}
+        </label>
+
+        <input id="galleryModalTitle"
+          maxlength="80"
+          placeholder="${ru ? 'Необязательно' : 'Optional'}"
+          style="
+            width:100%;box-sizing:border-box;background:#020b10;
+            border:1px solid #24404f;border-radius:9px;color:#fff;
+            padding:12px 13px;outline:none;font:inherit;
+          "
+        >
+
+        <div id="galleryModalProgressWrap" style="display:none;margin-top:18px;">
+          <div id="galleryModalStatus" style="
+            font-size:13px;color:#9eb4c0;margin-bottom:8px;
+          ">
+            ${ru ? 'Подготовка…' : 'Preparing…'}
+          </div>
+
+          <div style="
+            height:8px;background:#10232d;border-radius:999px;overflow:hidden;
+          ">
+            <div id="galleryModalProgress" style="
+              width:0%;height:100%;background:#39d7ff;
+              transition:width .18s ease;
+            "></div>
+          </div>
+        </div>
+
+        <div id="galleryModalMessage" style="
+          min-height:18px;margin-top:14px;font-size:13px;
+        "></div>
+
+        <div style="
+          display:flex;justify-content:flex-end;gap:10px;margin-top:18px;
+        ">
+          <button id="galleryModalCancel" type="button" style="
+            padding:10px 15px;border-radius:8px;border:1px solid #294654;
+            background:#10202a;color:#dcecf3;cursor:pointer;font:inherit;
+          ">
+            ${ru ? 'Отмена' : 'Cancel'}
+          </button>
+
+          <button id="galleryModalSubmit" type="button" style="
+            padding:10px 16px;border-radius:8px;border:1px solid #43d7ff;
+            background:#103746;color:#eafcff;cursor:pointer;
+            font:inherit;font-weight:700;
+          ">
+            ${ru ? 'Загрузить' : 'Upload'}
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector('#galleryModalTitle');
+    const closeBtn = overlay.querySelector('#galleryModalClose');
+    const cancelBtn = overlay.querySelector('#galleryModalCancel');
+    const submitBtn = overlay.querySelector('#galleryModalSubmit');
+    const progressWrap = overlay.querySelector('#galleryModalProgressWrap');
+    const progress = overlay.querySelector('#galleryModalProgress');
+    const status = overlay.querySelector('#galleryModalStatus');
+    const message = overlay.querySelector('#galleryModalMessage');
+
+    let busy = false;
+
+    function close() {
+      if (!busy) overlay.remove();
+    }
+
+    closeBtn.onclick = close;
+    cancelBtn.onclick = close;
+
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) close();
+    });
+
+    input.focus();
+
+    submitBtn.onclick = async function() {
+      if (busy) return;
+
+      busy = true;
+      submitBtn.disabled = true;
+      cancelBtn.disabled = true;
+      closeBtn.style.visibility = 'hidden';
+
+      progressWrap.style.display = 'block';
+      progress.style.width = '8%';
+      status.textContent = ru ? 'Подготовка файла…' : 'Preparing file…';
+      message.textContent = '';
+
+      try {
+        await onSubmit({
+          title: input.value.trim(),
+          setProgress: function(value, text) {
+            progress.style.width = Math.max(0, Math.min(100, value)) + '%';
+            if (text) status.textContent = text;
+          },
+          success: function(text) {
+            progress.style.width = '100%';
+            status.textContent = text;
+            message.style.color = '#55e69b';
+            message.textContent = '✓ ' + text;
+          },
+          error: function(text) {
+            message.style.color = '#ff7272';
+            message.textContent = text;
+          }
+        });
+      } catch (e) {
+        message.style.color = '#ff7272';
+        message.textContent = String(e);
+      }
+
+      busy = false;
+      submitBtn.disabled = false;
+      cancelBtn.disabled = false;
+      closeBtn.style.visibility = 'visible';
+    };
+  }
+
+  document.getElementById('btnPublishGallery')?.addEventListener('click', function(){
     const f = firstImageFile();
     const ru = (localStorage.getItem('sm_lang') === 'ru');
+
     if (!f) {
-      alert(ru ? 'Нет файла для публикации' : 'No file to publish');
+      tip(ru ? 'Нет файла для публикации' : 'No file to publish');
       return;
     }
-    const title = prompt(ru ? 'Название для галереи (необязательно):' : 'Gallery title (optional):', '') || '';
-    const fd = new FormData();
-    fd.append('file', f);
-    fd.append('mode', (window.state && window.state.mode) || 'workshop');
-    fd.append('size', document.getElementById('size')?.value || '750');
-    fd.append('wm_text', textVal());
-    fd.append('wm_font', fontKey());
-    fd.append('wm_opacity', document.getElementById('wmOpacity')?.value || '22');
-    fd.append('wm_enable', enabled() ? '1' : '0');
-    fd.append('wm_corner', document.getElementById('wmCorner')?.value || 'bl');
-    fd.append('wm_scale', String(scaleVal()));
-    fd.append('wm_color', colorVal());
-    fd.append('wm_x', document.getElementById('wmX')?.value || '');
-    fd.append('wm_y', document.getElementById('wmY')?.value || '');
-    fd.append('auto_contrast', document.getElementById('autoContrast')?.checked ? '1' : '0');
-    fd.append('title', title);
-    const btn = document.getElementById('btnPublishGallery');
-    const labelDefault = ru ? 'Опубликовать в галерею' : 'Publish to gallery';
-    if (btn) {
-      btn.disabled = true;
-      btn.style.display = 'inline-flex';
-      btn.textContent = ru ? 'Отправка…' : 'Sending…';
-    }
-    try {
+
+    openGalleryPublishModal(async function(ui) {
+      const fd = new FormData();
+
+      fd.append('file', f);
+      fd.append('mode', (window.state && window.state.mode) || 'workshop');
+      fd.append('size', document.getElementById('size')?.value || '750');
+      fd.append('wm_text', textVal());
+      fd.append('wm_font', fontKey());
+      fd.append('wm_opacity', document.getElementById('wmOpacity')?.value || '22');
+      fd.append('wm_enable', enabled() ? '1' : '0');
+      fd.append('wm_corner', document.getElementById('wmCorner')?.value || 'bl');
+      fd.append('wm_scale', String(scaleVal()));
+      fd.append('wm_color', colorVal());
+      fd.append('wm_x', document.getElementById('wmX')?.value || '');
+      fd.append('wm_y', document.getElementById('wmY')?.value || '');
+      fd.append('auto_contrast', document.getElementById('autoContrast')?.checked ? '1' : '0');
+      fd.append('title', ui.title);
+
       const hdr = {};
+
       try {
         const s = localStorage.getItem('sm_session') || '';
         if (s) hdr['X-Session-Token'] = s;
       } catch(e){}
-      const r = await fetch('/api/gallery/publish', { method:'POST', body: fd, credentials:'include', headers: hdr });
+
+      ui.setProgress(
+        20,
+        ru ? 'Загрузка на сервер…' : 'Uploading to server…'
+      );
+
+      const r = await fetch('/api/gallery/publish', {
+        method: 'POST',
+        body: fd,
+        credentials: 'include',
+        headers: hdr
+      });
+
+      ui.setProgress(
+        85,
+        ru ? 'Сохранение в галерее…' : 'Saving to gallery…'
+      );
+
       const d = await r.json().catch(function(){ return {}; });
+
       if (!r.ok || !d.ok) {
-        alert(d.msg || 'Publish failed');
-        if (btn) btn.textContent = labelDefault;
-      } else {
-        alert(ru ? 'Опубликовано в галерее: /gallery' : 'Published to gallery: /gallery');
-        if (btn) btn.textContent = ru ? 'Опубликовано ✓' : 'Published ✓';
+        ui.error(d.msg || (ru ? 'Ошибка публикации' : 'Publish failed'));
+        return;
+      }
+
+      ui.success(
+        ru ? 'Опубликовано в галерее' : 'Published to gallery'
+      );
+
+      const btn = document.getElementById('btnPublishGallery');
+
+      if (btn) {
+        const labelDefault = ru ? 'Опубликовать в галерею' : 'Publish to gallery';
+        btn.textContent = ru ? 'Опубликовано ✓' : 'Published ✓';
+
         setTimeout(function(){
-          if (btn) btn.textContent = labelDefault;
+          btn.textContent = labelDefault;
         }, 2500);
       }
-    } catch (e) {
-      alert(String(e));
-      if (btn) btn.textContent = labelDefault;
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.style.display = 'inline-flex';
-      }
-    }
+
+      setTimeout(function(){
+        document.getElementById('galleryPublishModal')?.remove();
+      }, 1200);
+    });
   });
 
   async function startDiscord(){
