@@ -385,3 +385,30 @@ input,select,textarea,button{ font-size:16px; } /* prevent iOS zoom on focus */
   .hero{ padding-top:24px !important; padding-bottom:24px !important; }
   .modal-media{ max-height:70vh !important; }
 }
+
+
+/* Drawer menu icons — never full-screen */
+.ss-drawer a svg,
+.ss-drawer svg,
+.mobile-menu svg,
+.mobile-menu img:not(.logo-mark){
+  width:18px !important;
+  height:18px !important;
+  min-width:18px !important;
+  max-width:18px !important;
+  min-height:18px !important;
+  max-height:18px !important;
+  flex:none !important;
+  display:inline-block !important;
+  object-fit:contain !important;
+}
+.ss-drawer a{
+  display:flex !important;
+  align-items:center !important;
+  gap:12px !important;
+}
+.mobile-menu a, .mobile-menu button.mm-item{
+  display:flex !important;
+  align-items:center !important;
+  gap:10px !important;
+}
