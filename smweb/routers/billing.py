@@ -93,3 +93,38 @@ async def billing_webhook(request: Request):
             except Exception:
                 pass
     return {"ok": True}
+
+@router.post("/api/billing/gumroad")
+async def gumroad_ping(request: Request):
+    """Gumroad Ping webhook — безопасная диагностика без выдачи Pro."""
+    try:
+        form = await request.form()
+        data = dict(form)
+
+        safe_data = {
+            "seller_id": data.get("seller_id"),
+            "product_id": data.get("product_id"),
+            "product_name": data.get("product_name"),
+            "product_permalink": data.get("product_permalink"),
+            "permalink": data.get("permalink"),
+            "order_number": data.get("order_number"),
+            "sale_id": data.get("sale_id"),
+            "email": data.get("email"),
+            "price": data.get("price"),
+            "currency": data.get("currency"),
+            "test": data.get("test"),
+            "refunded": data.get("refunded"),
+            "disputed": data.get("disputed"),
+            "chargebacked": data.get("chargebacked"),
+        }
+
+        LOGGER.info("Gumroad Ping: %s", safe_data)
+        return {"ok": True}
+
+    except Exception as e:
+        LOGGER.exception("Gumroad Ping error: %s", e)
+        return JSONResponse(
+            {"ok": False, "msg": "Invalid Gumroad payload"},
+            status_code=400,
+        )
+

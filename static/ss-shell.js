@@ -112,7 +112,7 @@
       '<p class="ss-auth__sub">' + (ru ? 'Ключ привязывается к аккаунту. Один ключ нельзя использовать повторно.' : 'The key is linked to your account and cannot be reused.') + '</p>' +
       '<form class="ss-activation__form" id="ssActivationForm"><label><span>' + (ru ? 'Ключ доступа' : 'Access key') + '</span><div class="ss-activation__entry"><input id="ssActivationCode" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX"><button type="submit">' + (ru ? 'Активировать' : 'Activate') + '</button></div></label><p class="ss-auth__state" id="ssActivationState"></p></form>' +
       '<div class="ss-activation__divide"><span>' + (ru ? 'Купить ключ' : 'Buy a key') + '</span></div>' +
-      '<div class="ss-activation__shops"><a href="https://funpay.com/lots/offer?id=76420307" target="_blank" rel="noopener"><b>FunPay</b><small>' + (ru ? 'Код после оплаты' : 'Code after payment') + '</small><i>↗</i></a><a href="https://t.me/SteamMakerBot" target="_blank" rel="noopener"><b>Telegram</b><small>' + (ru ? 'Покупка через бота' : 'Buy via bot') + '</small><i>↗</i></a></div>' +
+      '<div class="ss-activation__shops" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><a href="https://funpay.com/lots/offer?id=76420307" target="_blank" rel="noopener"><b>FunPay</b><small>' + (ru ? 'Код после оплаты' : 'Code after payment') + '</small><i>↗</i></a><a href="https://t.me/SteamMakerBot" target="_blank" rel="noopener"><b>Telegram</b><small>' + (ru ? 'Покупка через бота' : 'Buy via bot') + '</small><i>↗</i></a><a href="https://store.showcasemaker.com" target="_blank" rel="noopener" style="grid-column:1 / -1"><b>Gumroad</b><small>' + (ru ? 'Купить Pro ключ' : 'Buy Pro key') + '</small><i>↗</i></a></div>' +
     '</div></div>';
   }
 
