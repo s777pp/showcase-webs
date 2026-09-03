@@ -653,12 +653,15 @@ def _ensure_gallery(c: sqlite3.Connection) -> None:
     return
 
 
-def gallery_add(user_id: int | None, title: str, mode: str, image_path: str, thumb_path: str | None = None) -> int:
+def gallery_add(user_id: int | None, title: str, mode: str, image_path: str, thumb_path: str | None = None, status: str = "pending") -> int:
+    if status not in ("pending", "approved", "rejected"):
+        status = "pending"
+
     c = _conn()
     _ensure_gallery(c)
     cur = c.execute(
-        "INSERT INTO gallery(user_id, title, mode, image_path, thumb_path, status, created_at) VALUES (?,?,?,?,?,'pending',?)",
-        (user_id, (title or "")[:80], mode, image_path, thumb_path, time.time()),
+        "INSERT INTO gallery(user_id, title, mode, image_path, thumb_path, status, created_at) VALUES (?,?,?,?,?,?,?)",
+        (user_id, (title or "")[:80], mode, image_path, thumb_path, status, time.time()),
     )
     c.commit()
     gid = cur.lastrowid
