@@ -265,6 +265,11 @@ def _me_payload(user: Optional[dict]) -> dict:
     """
     if not user:
         return {"ok": False, "logged_in": False}
+    # Always have a public handle so the header nick can link to /profile/{username}
+    try:
+        un = auth_db.ensure_profile_username(int(user["id"]), user.get("display_name") or (user.get("email") or "").split("@")[0])
+    except Exception:
+        un = (user.get("profile_username") or "").strip()
     av = user.get("avatar_path") or ""
     av_url = ""
     if av:
@@ -280,7 +285,7 @@ def _me_payload(user: Optional[dict]) -> dict:
         "pro_until": user.get("pro_until"),
         "pro_code": user.get("pro_code") or "",
         "display_name": user.get("display_name") or "",
-        "profile_username": user.get("profile_username") or "",
+        "profile_username": un or (user.get("profile_username") or ""),
         "avatar_url": av_url,
         "is_gallery_admin": _is_gallery_admin(user),
     }

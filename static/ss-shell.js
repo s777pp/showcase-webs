@@ -172,11 +172,25 @@
       pill.hidden = !logged;
       pill.style.display = logged ? 'inline-flex' : 'none';
 
-      // User pill -> PUBLIC profile.
-      // The "Profile" menu item still opens the editor at /profile.
-      var publicUsername = me && (me.profile_username || me.username);
+      // User pill -> PUBLIC profile (/profile/{username}).
+      // Nav item "Profile" still opens the editor at /profile.
+      var publicUsername = '';
+      if (me) {
+        publicUsername = (me.profile_username || me.username || '').trim();
+        if (!publicUsername && me.display_name) {
+          publicUsername = String(me.display_name).trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '').slice(0, 24);
+        }
+        if (!publicUsername && me.email) {
+          publicUsername = String(me.email).split('@')[0].toLowerCase().replace(/[^a-z0-9_-]+/g, '').slice(0, 24);
+        }
+      }
       if (logged && publicUsername) {
         pill.href = '/profile/' + encodeURIComponent(publicUsername);
+        pill.title = (lang() === 'ru' ? 'Публичный профиль' : 'Public profile');
+      } else if (logged) {
+        // last resort: still avoid editor — API will ensure username on next load
+        pill.href = '/profile';
+        pill.title = (lang() === 'ru' ? 'Профиль' : 'Profile');
       } else {
         pill.href = '/profile';
       }
