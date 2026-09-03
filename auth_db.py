@@ -689,11 +689,11 @@ def gallery_set_status(item_id: int, status: str) -> bool:
         return False
     c = _conn()
     _ensure_gallery(c)
-    c.execute("UPDATE gallery SET status=? WHERE id=?", (status, item_id))
+    cur = c.execute("UPDATE gallery SET status=? WHERE id=?", (status, item_id))
     c.commit()
-    n = c.total_changes
+    changed = cur.rowcount > 0
     c.close()
-    return n > 0
+    return changed
 
 
 def gallery_get(item_id: int) -> dict | None:
