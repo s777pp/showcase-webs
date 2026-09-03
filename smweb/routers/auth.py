@@ -280,6 +280,7 @@ def _me_payload(user: Optional[dict]) -> dict:
         "pro_until": user.get("pro_until"),
         "pro_code": user.get("pro_code") or "",
         "display_name": user.get("display_name") or "",
+        "profile_username": user.get("profile_username") or "",
         "avatar_url": av_url,
         "is_gallery_admin": _is_gallery_admin(user),
     }

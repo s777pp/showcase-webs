@@ -170,6 +170,15 @@
     if (pill) {
       pill.hidden = !logged;
       pill.style.display = logged ? 'inline-flex' : 'none';
+
+      // User pill -> PUBLIC profile.
+      // The "Profile" menu item still opens the editor at /profile.
+      var publicUsername = me && (me.profile_username || me.username);
+      if (logged && publicUsername) {
+        pill.href = '/profile/' + encodeURIComponent(publicUsername);
+      } else {
+        pill.href = '/profile';
+      }
     }
     if (login) {
       login.hidden = logged;
