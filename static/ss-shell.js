@@ -179,6 +179,68 @@
       logout.hidden = !logged;
       logout.style.setProperty('display', logged ? 'inline-flex' : 'none', 'important');
     }
+    var activate = document.getElementById('ssActivate');
+
+    // Activation button state:
+    // FREE -> show Activate
+    // TRIAL -> show live countdown
+    // PERMANENT PRO -> hide activation button
+    if (window.SS_PRO_TIMER) {
+      clearInterval(window.SS_PRO_TIMER);
+      window.SS_PRO_TIMER = null;
+    }
+
+    if (activate) {
+      if (!logged || !me.is_pro) {
+        activate.style.display = 'inline-flex';
+        activate.disabled = false;
+        activate.onclick = openActivation;
+        activate.innerHTML = svg('key') + '<span>' +
+          (lang() === 'ru' ? 'Активация' : 'Activate') + '</span>';
+      } else if (me.pro_until) {
+        var untilMs = Number(me.pro_until) * 1000;
+
+        var renderProTimer = function () {
+          var left = Math.max(0, untilMs - Date.now());
+
+          if (left <= 0) {
+            if (window.SS_PRO_TIMER) {
+              clearInterval(window.SS_PRO_TIMER);
+              window.SS_PRO_TIMER = null;
+            }
+            activate.style.display = 'inline-flex';
+            activate.disabled = false;
+            activate.onclick = openActivation;
+            activate.innerHTML = svg('key') + '<span>' +
+              (lang() === 'ru' ? 'Активация' : 'Activate') + '</span>';
+            return;
+          }
+
+          var total = Math.floor(left / 1000);
+          var hours = Math.floor(total / 3600);
+          var minutes = Math.floor((total % 3600) / 60);
+          var seconds = total % 60;
+
+          var timer =
+            String(hours).padStart(2, '0') + ':' +
+            String(minutes).padStart(2, '0') + ':' +
+            String(seconds).padStart(2, '0');
+
+          activate.style.display = 'inline-flex';
+          activate.disabled = true;
+          activate.onclick = null;
+          activate.innerHTML = '<span>⏱ ' + timer + '</span>';
+        };
+
+        renderProTimer();
+        window.SS_PRO_TIMER = setInterval(renderProTimer, 1000);
+      } else {
+        // Permanent Pro
+        activate.style.display = 'none';
+        activate.onclick = null;
+      }
+    }
+
     if (!logged || !pill) return;
     var name = me.display_name || (me.email || '').split('@')[0] || 'profile';
     var av = me.avatar_url || '';
