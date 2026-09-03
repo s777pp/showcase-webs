@@ -299,6 +299,9 @@ async def api_process(
 ):
     """Process → ZIP download → delete temps."""
     import tempfile
+    import time as _sm_time
+    _sm_req_t0 = _sm_time.perf_counter()
+    print("[API TIMING] START /api/process", flush=True)
 
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
@@ -354,6 +357,7 @@ async def api_process(
                     continue
 
                 for mode in modes:
+                    _sm_mode_t0 = _sm_time.perf_counter()
                     folder = f"{stem}_{mode}"
                     work = job_dir / folder
                     work.mkdir(exist_ok=True)
@@ -462,6 +466,12 @@ async def api_process(
                         except Exception:
                             pass
 
+                    print(
+                        f"[API TIMING] MODE {mode}: "
+                        f"{_sm_time.perf_counter()-_sm_mode_t0:.3f}s",
+                        flush=True,
+                    )
+
                 processed += 1
             except Exception as e:
                 errors.append(f"{name}: {type(e).__name__}: {e}")
@@ -470,10 +480,16 @@ async def api_process(
                 except Exception:
                     pass
 
+        _sm_zip_t0 = _sm_time.perf_counter()
         try:
             zf.close()
         except Exception:
             pass
+        print(
+            f"[API TIMING] ZIP close: "
+            f"{_sm_time.perf_counter()-_sm_zip_t0:.3f}s",
+            flush=True,
+        )
 
         if processed == 0:
             detail = "; ".join(errors) if errors else "unknown error"
@@ -495,6 +511,12 @@ async def api_process(
             "X-Errors": str(len(errors)),
             "Access-Control-Expose-Headers": "Content-Disposition, X-Processed, X-Errors",
         }
+        print(
+            f"[API TIMING] TOTAL before response: "
+            f"{_sm_time.perf_counter()-_sm_req_t0:.3f}s | "
+            f"ZIP={len(zip_bytes)/1024/1024:.2f}MB",
+            flush=True,
+        )
         return StreamingResponse(
             io.BytesIO(zip_bytes),
             media_type="application/zip",

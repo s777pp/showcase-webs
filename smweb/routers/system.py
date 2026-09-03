@@ -68,6 +68,8 @@ from smweb.jobs import MAX_JOB_WORKERS, _worker_mode
 
 router = APIRouter()
 
+LOGGER = logging.getLogger("sm")
+
 
 @router.get("/api/ready")
 def api_ready():
@@ -204,6 +206,121 @@ def api_quota(request: Request):
     return quota_state(request)
 
 
+
+# === GUMROAD LICENSE ACTIVATION ===
+
+_GUMROAD_PRODUCT_ID = 'G80YAnc7y8X8DR3dwbjVMw=='
+
+
+def _gumroad_verify_license_sync(license_key: str) -> dict:
+    """Verify a Gumroad license directly against Gumroad's API."""
+    import json as _json
+    import urllib.error as _urlerror
+    import urllib.parse as _urlparse
+    import urllib.request as _urlrequest
+
+    payload = _urlparse.urlencode({
+        "product_id": _GUMROAD_PRODUCT_ID,
+        "license_key": license_key,
+        "increment_uses_count": "false",
+    }).encode("utf-8")
+
+    req = _urlrequest.Request(
+        "https://api.gumroad.com/v2/licenses/verify",
+        data=payload,
+        method="POST",
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "ShowcaseMaker/1.0",
+        },
+    )
+
+    try:
+        with _urlrequest.urlopen(req, timeout=12) as response:
+            raw = response.read().decode("utf-8", "replace")
+    except _urlerror.HTTPError as exc:
+        if exc.code == 404:
+            return {"ok": False, "invalid": True}
+        LOGGER.warning("Gumroad license API HTTP error: %s", exc.code)
+        return {"ok": False, "unavailable": True}
+    except Exception as exc:
+        LOGGER.warning(
+            "Gumroad license API unavailable: %s",
+            type(exc).__name__,
+        )
+        return {"ok": False, "unavailable": True}
+
+    try:
+        data = _json.loads(raw)
+    except Exception:
+        LOGGER.warning("Gumroad license API returned invalid JSON")
+        return {"ok": False, "unavailable": True}
+
+    purchase = data.get("purchase") or {}
+
+    if not data.get("success"):
+        return {"ok": False, "invalid": True}
+
+    if str(purchase.get("product_id") or "") != _GUMROAD_PRODUCT_ID:
+        LOGGER.warning("Gumroad license rejected: wrong product_id")
+        return {"ok": False, "invalid": True}
+
+    if purchase.get("refunded"):
+        return {"ok": False, "revoked": True, "reason": "Purchase was refunded"}
+
+    if purchase.get("chargebacked"):
+        return {"ok": False, "revoked": True, "reason": "Purchase was charged back"}
+
+    if purchase.get("disputed") and not purchase.get("dispute_won"):
+        return {"ok": False, "revoked": True, "reason": "Purchase is disputed"}
+
+    if (
+        purchase.get("subscription_ended_at")
+        or purchase.get("subscription_cancelled_at")
+        or purchase.get("subscription_failed_at")
+    ):
+        return {"ok": False, "revoked": True, "reason": "Subscription is inactive"}
+
+    sale_id = str(
+        purchase.get("sale_id")
+        or purchase.get("id")
+        or ""
+    ).strip()
+
+    if not sale_id:
+        LOGGER.warning("Gumroad license response missing sale_id")
+        return {"ok": False, "invalid": True}
+
+    return {
+        "ok": True,
+        "sale_id": sale_id,
+        "purchase": purchase,
+    }
+
+
+async def _gumroad_verify_license(license_key: str) -> dict:
+    import asyncio
+    return await asyncio.to_thread(
+        _gumroad_verify_license_sync,
+        license_key,
+    )
+
+
+def _gumroad_sale_marker(sale_id: str) -> str:
+    """
+    Store only a hash of the Gumroad sale ID in our activation table.
+    We deliberately do not store the customer's license key.
+    """
+    import hashlib as _hashlib
+
+    digest = _hashlib.sha256(
+        sale_id.encode("utf-8")
+    ).hexdigest().upper()
+
+    return "GR-" + digest[:48]
+
+
+
 @router.post("/api/unlock")
 async def unlock(request: Request):
     """Activate Pro code — must be logged in. Key is bound to the account."""
@@ -216,8 +333,106 @@ async def unlock(request: Request):
             status_code=401,
         )
     codes = _load_codes()
+
+    # A code that is not one of our legacy/local ShowcaseMaker codes may be
+    # a Gumroad license. Verification happens server-to-server; the browser
+    # is never trusted to tell us whether a purchase is valid.
     if code not in codes:
-        return JSONResponse({"ok": False, "msg": "Invalid access code"}, status_code=400)
+        gumroad = await _gumroad_verify_license(code)
+
+        if gumroad.get("unavailable"):
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "msg": "Gumroad verification is temporarily unavailable. Please try again.",
+                },
+                status_code=503,
+            )
+
+        if gumroad.get("revoked"):
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "msg": gumroad.get("reason") or "This Gumroad purchase is no longer active",
+                },
+                status_code=400,
+            )
+
+        if not gumroad.get("ok"):
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "msg": "Invalid access code or Gumroad license key",
+                },
+                status_code=400,
+            )
+
+        uid = int(user["id"])
+        sale_id = gumroad["sale_id"]
+        marker = _gumroad_sale_marker(sale_id)
+
+        # Bind one Gumroad sale permanently to one ShowcaseMaker account.
+        claimed_uid = auth_db.code_used(marker)
+
+        if claimed_uid is not None:
+            try:
+                claimed_uid = int(claimed_uid)
+            except (TypeError, ValueError):
+                LOGGER.error("Invalid Gumroad activation owner for %s", marker)
+                return JSONResponse(
+                    {"ok": False, "msg": "Activation database error"},
+                    status_code=500,
+                )
+
+            if claimed_uid != uid:
+                return JSONResponse(
+                    {
+                        "ok": False,
+                        "msg": "This Gumroad license is already activated on another ShowcaseMaker account",
+                    },
+                    status_code=400,
+                )
+        else:
+            auth_db.mark_code_used(marker, uid)
+
+            # Read it back before granting Pro.
+            confirmed_uid = auth_db.code_used(marker)
+            if confirmed_uid is not None:
+                try:
+                    confirmed_uid = int(confirmed_uid)
+                except (TypeError, ValueError):
+                    confirmed_uid = None
+
+                if confirmed_uid != uid:
+                    return JSONResponse(
+                        {
+                            "ok": False,
+                            "msg": "This Gumroad license is already activated on another ShowcaseMaker account",
+                        },
+                        status_code=400,
+                    )
+
+        # Never store the actual Gumroad license key on the user account.
+        # Store our irreversible sale marker instead.
+        auth_db.set_pro(
+            uid,
+            True,
+            code=marker,
+            until=None,
+        )
+
+        LOGGER.info(
+            "Gumroad Pro activated for user_id=%s sale=%s",
+            uid,
+            marker,
+        )
+
+        return {
+            "ok": True,
+            "label": "Pro",
+            "msg": "ShowcaseMaker Pro activated successfully",
+            "until": None,
+        }
     # already Pro on this account
     if user.get("is_pro"):
         return {"ok": True, "label": "Pro", "msg": "Already Pro on this account"}
@@ -252,7 +467,7 @@ async def unlock(request: Request):
 def meta():
     return {
         "socials": SOCIALS,
-        "buy_url": "https://funpay.com/lots/offer?id=75434891",
+        "buy_url": "https://funpay.com/lots/offer?id=76420307",
         "stripe_enabled": bool(STRIPE_SECRET and STRIPE_PRICE_ID),
         "pro_label": PRO_PRICE_LABEL,
         "modes": [

@@ -1,6 +1,8 @@
 """Обработка витрин — порт логики desktop (упрощённо, но те же режимы)."""
 from __future__ import annotations
+import time
 
+import errno
 import io
 import os
 import shutil
@@ -393,6 +395,7 @@ def media_to_gif(
         frames = tmp / "frames"
         frames.mkdir()
         # Extract scaled frames as PNG (source for both encoders)
+        _m2g_t0 = time.perf_counter()
         try:
             _run([
                 ff, "-y", "-hide_banner", "-loglevel", "error",
@@ -400,6 +403,7 @@ def media_to_gif(
                 "-t", str(duration),
                 "-an",
                 "-vf", f"fps={fps},scale={width}:-2:flags=lanczos",
+                "-compression_level", "0",
                 str(frames / "frame_%04d.png"),
             ])
         except Exception:
@@ -422,13 +426,32 @@ def media_to_gif(
                 str(frames / "frame_%04d.png"),
             ])
 
+        _m2g_t1 = time.perf_counter()
+        print(
+            f"[M2G TIMING] ffmpeg->PNG: {_m2g_t1-_m2g_t0:.3f}s | "
+            f"src={src.name} width={width} fps={fps}",
+            flush=True,
+        )
+
         if not list(frames.glob("frame_*.png")):
             raise RuntimeError("no frames extracted for GIF")
 
         if encoder == "gifski":
             if not find_gifski():
                 raise RuntimeError("gifski selected but binary not found")
+            _m2g_t2 = time.perf_counter()
             ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
+            _m2g_t3 = time.perf_counter()
+            print(
+                f"[M2G TIMING] gifski q100: {_m2g_t3-_m2g_t2:.3f}s | "
+                f"dest={dest.name} width={width} fps={fps}",
+                flush=True,
+            )
+            print(
+                f"[M2G TIMING] TOTAL: {_m2g_t3-_m2g_t0:.3f}s | "
+                f"{src.name} -> {dest.name}",
+                flush=True,
+            )
             if not ok:
                 raise RuntimeError("gifski encode failed (no fallback to ffmpeg when gifski is selected)")
         else:
@@ -651,6 +674,16 @@ def _gif_mb(path: Path) -> float:
     except Exception:
         return 999.0
 
+def _safe_replace(src: Path, dest: Path) -> None:
+    """Replace a file, including across different filesystems."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        src.replace(dest)
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+        shutil.copy2(src, dest)
+        src.unlink()
 
 def _try_replace(src_tmp: Path, dest: Path) -> bool:
     """Replace dest with tmp if tmp is smaller and valid."""
@@ -661,7 +694,7 @@ def _try_replace(src_tmp: Path, dest: Path) -> bool:
             pass
         return False
     if src_tmp.stat().st_size < dest.stat().st_size:
-        src_tmp.replace(dest)
+        _safe_replace(src_tmp, dest)
         return True
     try:
         src_tmp.unlink(missing_ok=True)
@@ -670,7 +703,7 @@ def _try_replace(src_tmp: Path, dest: Path) -> bool:
     return False
 
 
-def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
+def _ensure_under_mb_impl(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
     """Fit GIF under Steam limit while preserving as much quality as possible.
 
     Strategy (in order):
@@ -699,6 +732,7 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                 _run([
                     ff, "-y", "-hide_banner", "-loglevel", "error",
                     "-i", str(path),
+                    "-compression_level", "0",
                     str(frames_dir / "frame_%04d.png"),
                 ])
                 extracted = bool(list(frames_dir.glob("frame_*.png")))
@@ -724,15 +758,21 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
             lo, hi = 40, 100
             best = None  # (quality, path)
             # try high quality first
-            for q in (100, 92, 85, 78, 70, 60, 50):
+            for q in (92, 85, 78, 70, 60, 50):
                 out = tmp_dir / f"gs_{q}.gif"
                 try:
                     files = sorted(frames_dir.glob("frame_*.png"))
                     cmd = [gs, "--fps", str(src_fps), "--quality", str(q), "-o", str(out),
                            *[str(f) for f in files]]
+                    _q_t0 = time.perf_counter()
                     subprocess.run(cmd, check=True, capture_output=True)
+                    _q_dt = time.perf_counter() - _q_t0
                     if out.is_file() and out.stat().st_size > 50:
                         mb = _gif_mb(out)
+                        print(
+                            f"[FIT Q] {path.name} q={q} size={mb:.2f}MB time={_q_dt:.3f}s",
+                            flush=True,
+                        )
                         if mb <= max_mb:
                             best = (q, out)
                             break
@@ -753,7 +793,11 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                     except Exception:
                         continue
             if best is not None:
-                best[1].replace(path)
+                print(
+                    f"[FIT Q] CHOSEN {path.name} q={best[0]}",
+                    flush=True,
+                )
+                _safe_replace(best[1], path)
                 return
 
         # ── 2) ffmpeg gentle ladder (keep res/fps as long as possible) ──
@@ -803,11 +847,11 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                 ])
                 if tmp.is_file() and tmp.stat().st_size > 50:
                     if _gif_mb(tmp) <= max_mb:
-                        tmp.replace(path)
+                        _safe_replace(tmp, path)
                         return
                     # still over — keep if smaller (progress toward limit)
                     if tmp.stat().st_size < path.stat().st_size:
-                        tmp.replace(path)
+                        _safe_replace(tmp, path)
                     else:
                         tmp.unlink(missing_ok=True)
             except Exception:
@@ -824,7 +868,7 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                 _run([ff, "-y", "-hide_banner", "-loglevel", "error",
                       "-i", str(path), "-vf", vf, "-loop", "0", str(tmp)])
                 if tmp.is_file() and tmp.stat().st_size > 50:
-                    tmp.replace(path)
+                    _safe_replace(tmp, path)
             except Exception:
                 pass
     finally:
@@ -832,6 +876,22 @@ def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
 
 
 
+
+
+
+def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
+    _fit_t0 = time.perf_counter()
+    _fit_before = _gif_mb(Path(path)) if Path(path).is_file() else 0.0
+    try:
+        return _ensure_under_mb_impl(path, max_mb)
+    finally:
+        _fit_after = _gif_mb(Path(path)) if Path(path).is_file() else 0.0
+        _fit_t1 = time.perf_counter()
+        print(
+            f"[FIT TIMING] {_fit_t1-_fit_t0:.3f}s | "
+            f"{Path(path).name} | {_fit_before:.2f}MB -> {_fit_after:.2f}MB",
+            flush=True,
+        )
 
 
 
@@ -942,53 +1002,120 @@ def _gif_full_with_bar_split(
     wm_x: float | None = None,
     wm_y: float | None = None,
 ) -> None:
-    frames_p: list[Image.Image] = []
-    durations: list[int] = []
-    with Image.open(gif_path) as im:
-        n = int(getattr(im, "n_frames", 1) or 1)
-        max_frames = 180
-        step = 1
-        if n > max_frames:
-            step = max(1, n // max_frames)
-        for idx in range(0, n, step):
-            im.seek(idx)
-            frame = im.convert("RGBA")
-            fw, fh = frame.size
-            cut = min(506, max(1, fw - 1))
-            center = frame.crop((0, 0, cut, fh))
-            side = frame.crop((cut, 0, fw, fh))
-            if side.width <= 0:
-                side = Image.new("RGBA", (100, fh), (0, 0, 0, 255))
-            full_w = center.width + bar_width + side.width
-            full = Image.new("RGBA", (full_w, fh), (0, 0, 0, 255))
-            if center.mode == "RGBA":
-                full.paste(center, (0, 0), center)
-            else:
-                full.paste(center, (0, 0))
-            if side.mode == "RGBA":
-                full.paste(side, (center.width + bar_width, 0), side)
-            else:
-                full.paste(side, (center.width + bar_width, 0))
-            if wm_text and float(wm_opacity or 0) > 0:
-                full = apply_watermark(
-                    full,
-                    str(wm_text),
-                    wm_font,
-                    float(wm_opacity),
-                    corner=wm_corner,
-                    scale=float(wm_scale or 1.0),
-                    color=wm_color or "#ffffff",
-                    wx=wm_x,
-                    wy=wm_y,
+    """Build full-color split/bar frames and let gifski do final quantization."""
+    gs = find_gifski()
+    if not gs:
+        raise RuntimeError("gifski not found")
+
+    tmp = Path(tempfile.mkdtemp(prefix="sm_split_bars_"))
+    try:
+        frames_dir = tmp / "frames"
+        frames_dir.mkdir()
+
+        durations = []
+        frame_no = 0
+
+        with Image.open(gif_path) as im:
+            n = int(getattr(im, "n_frames", 1) or 1)
+            max_frames = 180
+            step = 1
+            if n > max_frames:
+                step = max(1, n // max_frames)
+
+            for idx in range(0, n, step):
+                im.seek(idx)
+                frame = im.convert("RGBA")
+                fw, fh = frame.size
+
+                cut = min(506, max(1, fw - 1))
+                center = frame.crop((0, 0, cut, fh))
+                side = frame.crop((cut, 0, fw, fh))
+
+                if side.width <= 0:
+                    side = Image.new(
+                        "RGBA", (100, fh), (0, 0, 0, 255)
+                    )
+
+                full_w = center.width + bar_width + side.width
+                full = Image.new(
+                    "RGBA", (full_w, fh), (0, 0, 0, 255)
                 )
-            frames_p.append(_quantize_rgba_for_gif(full))
-            try:
-                d = int(im.info.get("duration", 100) or 100)
-            except Exception:
-                d = 100
-            durations.append(max(20, d * step))
-            del full, frame
-    _save_animated_gif(frames_p, durations, out_path)
+
+                full.paste(center, (0, 0), center)
+
+                full.paste(
+                    side,
+                    (center.width + bar_width, 0),
+                    side,
+                )
+
+                if wm_text and float(wm_opacity or 0) > 0:
+                    full = apply_watermark(
+                        full,
+                        str(wm_text),
+                        wm_font,
+                        float(wm_opacity),
+                        corner=wm_corner,
+                        scale=float(wm_scale or 1.0),
+                        color=wm_color or "#ffffff",
+                        wx=wm_x,
+                        wy=wm_y,
+                    )
+
+                # Same black alpha composite as old quantizer,
+                # but DO NOT reduce to a 256-color Pillow palette.
+                bg = Image.new(
+                    "RGBA", full.size, (0, 0, 0, 255)
+                )
+                composed = Image.alpha_composite(bg, full)
+                rgb = composed.convert("RGB")
+
+                frame_no += 1
+                rgb.save(
+                    frames_dir / f"frame_{frame_no:04d}.png",
+                    format="PNG",
+                    compress_level=0,
+                )
+
+                try:
+                    d = int(im.info.get("duration", 100) or 100)
+                except Exception:
+                    d = 100
+
+                durations.append(max(20, d * step))
+
+        if frame_no == 0:
+            raise RuntimeError("no frames for split bars")
+
+        # Current Process uses fixed FPS. Keep the same fps behavior
+        # used by the existing gifski pipeline.
+        if durations:
+            avg_ms = sum(durations) / len(durations)
+            fps = max(5, min(30, round(1000.0 / avg_ms)))
+        else:
+            fps = 12
+
+        _t0 = time.perf_counter()
+
+        ok = _gifski_from_frames(
+            frames_dir,
+            out_path,
+            fps=fps,
+            quality=100,
+        )
+
+        _t1 = time.perf_counter()
+        print(
+            f"[PROCESS TIMING] split bars gifski q100: "
+            f"{_t1-_t0:.3f}s | frames={frame_no} fps={fps}",
+            flush=True,
+        )
+
+        if not ok:
+            raise RuntimeError("gifski split bars encode failed")
+
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 
@@ -1009,6 +1136,8 @@ def _reencode_crop_hq(
         frames = tmp / "f"
         frames.mkdir()
         # crop → PNG sequence
+        import time
+        _sm_t0 = time.perf_counter()
         _run([
             ff, "-y", "-hide_banner", "-loglevel", "error",
             "-i", str(src_gif),
@@ -1016,12 +1145,18 @@ def _reencode_crop_hq(
             "-vf", f"{crop_vf},fps={max(5, min(24, int(fps)))}",
             str(frames / "frame_%04d.png"),
         ])
+        _sm_t1 = time.perf_counter()
+        print(f"[PROCESS TIMING] decode+crop PNG: {_sm_t1-_sm_t0:.3f}s | {crop_vf}", flush=True)
         if not list(frames.glob("frame_*.png")):
             raise RuntimeError("crop produced no frames")
         if encoder == "gifski":
             if not find_gifski():
                 raise RuntimeError("gifski selected but binary not found")
+            _sm_t2 = time.perf_counter()
             ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
+            _sm_t3 = time.perf_counter()
+            print(f"[PROCESS TIMING] gifski q100: {_sm_t3-_sm_t2:.3f}s | {dest.name}", flush=True)
+            print(f"[PROCESS TIMING] crop total: {_sm_t3-_sm_t0:.3f}s | {dest.name}", flush=True)
             if not ok:
                 raise RuntimeError("gifski crop-encode failed (no ffmpeg fallback)")
         else:
@@ -1220,7 +1355,8 @@ def process_gif_featured(
                 wm_x=wm_x, wm_y=wm_y, encoder=encoder, fps=fps,
             )
             if wm_out.is_file() and wm_out.stat().st_size > 64:
-                ensure_under_mb(wm_out)
+                # Full preview is not subject to the Steam 5 MB limit.
+                # Keep the original maximum-quality output.
                 result[wm_out.name] = wm_out
                 result["full_with_bars.gif"] = wm_out
             else:
@@ -1245,6 +1381,116 @@ def process_gif_featured(
     return result
 
 
+
+def _reencode_split_crops_hq(
+    src_gif: Path,
+    center_dest: Path,
+    side_dest: Path,
+    height: int,
+    fps: int = 12,
+    encoder: str = "ffmpeg",
+) -> None:
+    """Decode split source once, produce center+side crops, then encode both."""
+    ff = find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not found")
+
+    encoder = (encoder or "ffmpeg").strip().lower()
+    fps = max(5, min(24, int(fps)))
+
+    tmp = Path(tempfile.mkdtemp(prefix="sm_split_crops_"))
+    try:
+        center_frames = tmp / "center"
+        side_frames = tmp / "side"
+        center_frames.mkdir()
+        side_frames.mkdir()
+
+        _t0 = time.perf_counter()
+
+        _run([
+            ff, "-y", "-hide_banner", "-loglevel", "error",
+            "-i", str(src_gif),
+            "-an",
+            "-filter_complex",
+            (
+                f"[0:v]fps={fps},split=2[c][s];"
+                f"[c]crop=506:{height}:0:0[co];"
+                f"[s]crop=100:{height}:506:0[so]"
+            ),
+            "-map", "[co]",
+            "-compression_level", "0",
+            str(center_frames / "frame_%04d.png"),
+            "-map", "[so]",
+            "-compression_level", "0",
+            str(side_frames / "frame_%04d.png"),
+        ])
+
+        _t1 = time.perf_counter()
+        print(
+            f"[PROCESS TIMING] split single decode+crop PNG: {_t1-_t0:.3f}s",
+            flush=True,
+        )
+
+        if not list(center_frames.glob("frame_*.png")):
+            raise RuntimeError("center crop produced no frames")
+        if not list(side_frames.glob("frame_*.png")):
+            raise RuntimeError("side crop produced no frames")
+
+        if encoder == "gifski":
+            if not find_gifski():
+                raise RuntimeError("gifski selected but binary not found")
+
+            _t2 = time.perf_counter()
+            ok_center = _gifski_from_frames(
+                center_frames, center_dest, fps=fps, quality=100
+            )
+            _t3 = time.perf_counter()
+
+            ok_side = _gifski_from_frames(
+                side_frames, side_dest, fps=fps, quality=100
+            )
+            _t4 = time.perf_counter()
+
+            print(
+                f"[PROCESS TIMING] split center gifski q100: {_t3-_t2:.3f}s",
+                flush=True,
+            )
+            print(
+                f"[PROCESS TIMING] split side gifski q100: {_t4-_t3:.3f}s",
+                flush=True,
+            )
+
+            if not ok_center or not ok_side:
+                raise RuntimeError("gifski split crop encode failed")
+        else:
+            vf = _ffmpeg_palette_vf(fps=fps, max_colors=256)
+
+            _run([
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-framerate", str(fps),
+                "-i", str(center_frames / "frame_%04d.png"),
+                "-lavfi", vf,
+                "-loop", "0",
+                str(center_dest),
+            ])
+
+            _run([
+                ff, "-y", "-hide_banner", "-loglevel", "error",
+                "-framerate", str(fps),
+                "-i", str(side_frames / "frame_%04d.png"),
+                "-lavfi", vf,
+                "-loop", "0",
+                str(side_dest),
+            ])
+
+        ensure_under_mb(center_dest)
+        ensure_under_mb(side_dest)
+
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+
 def process_gif_split(
     gif_path: Path,
     out_dir: Path,
@@ -1267,8 +1513,14 @@ def process_gif_split(
     width, height = _probe_wh(tmp)
     center = out_dir / "center_506.gif"
     side = out_dir / "side_100.gif"
-    _reencode_crop_hq(tmp, center, crop_vf=f"crop=506:{height}:0:0", fps=fps, encoder=encoder)
-    _reencode_crop_hq(tmp, side, crop_vf=f"crop=100:{height}:506:0", fps=fps, encoder=encoder)
+    _reencode_split_crops_hq(
+        tmp,
+        center,
+        side,
+        height=height,
+        fps=fps,
+        encoder=encoder,
+    )
     apply_hex21_file(center)
     apply_hex21_file(side)
     clean = out_dir / "full_original.gif"
@@ -1415,17 +1667,22 @@ def remove_chromakey(
     tolerance: float = 55.0,
     softness: float = 20.0,
 ) -> Image.Image:
-    """Remove green/blue/red screen. key=auto samples corners.
+    """Remove green/blue/red screen using vectorized NumPy processing.
 
-    Uses classic channel-difference keying (reliable for pure #00FF00 screens)
-    plus a light despill. If the image already has transparency, auto skips.
-    If keying would wipe almost everything, falls back to the original frame.
+    Keeps the same keying thresholds, soft edge, despill and safety fallback
+    as the original implementation, but processes pixels in vectorized arrays.
     """
+    import numpy as np
+
     img = img.convert("RGBA")
     w, h = img.size
-    pixels = list(img.getdata())
+
+    rgba = np.asarray(img, dtype=np.uint8)
+    flat = rgba.reshape(-1, 4)
+
     key = (key or "auto").strip().lower()
-    n = len(pixels)
+    n = flat.shape[0]
+
     if n == 0:
         return img
 
@@ -1433,50 +1690,80 @@ def remove_chromakey(
     if key in ("auto", "a"):
         sample_n = min(n, 2500)
         step = max(1, n // sample_n)
-        transparent = sum(1 for i in range(0, n, step) if pixels[i][3] < 250)
-        checked = (n + step - 1) // step
+
+        sampled_alpha = flat[::step, 3]
+        transparent = int(np.count_nonzero(sampled_alpha < 250))
+        checked = len(sampled_alpha)
+
         if checked and (transparent / checked) > 0.08:
             return img
 
     def sample_backdrop():
-        """Sample border ring — chromakey usually fills the frame edge (green/blue/red)."""
+        """Sample border ring — chromakey usually fills the frame edge."""
         acc = []
+
         step_x = max(1, w // 24)
         step_y = max(1, h // 24)
+
         for x in range(0, w, step_x):
             for y in (1, 2, max(0, h - 2), max(0, h - 3)):
                 if 0 <= x < w and 0 <= y < h:
-                    r, g, b, a = pixels[y * w + x]
+                    r, g, b, a = (int(v) for v in rgba[y, x])
                     if a >= 16:
                         acc.append((r, g, b))
+
         for y in range(0, h, step_y):
             for x in (1, 2, max(0, w - 2), max(0, w - 3)):
                 if 0 <= x < w and 0 <= y < h:
-                    r, g, b, a = pixels[y * w + x]
+                    r, g, b, a = (int(v) for v in rgba[y, x])
                     if a >= 16:
                         acc.append((r, g, b))
+
         if not acc:
             return "green", (40, 200, 40)
+
         rs = sorted(c[0] for c in acc)
         gs = sorted(c[1] for c in acc)
         bs = sorted(c[2] for c in acc)
-        lo, hi = len(acc) // 4, max(len(acc) // 4 + 1, 3 * len(acc) // 4)
+
+        lo = len(acc) // 4
+        hi = max(len(acc) // 4 + 1, 3 * len(acc) // 4)
+
         ar = sum(rs[lo:hi]) // max(1, hi - lo)
         ag = sum(gs[lo:hi]) // max(1, hi - lo)
         ab = sum(bs[lo:hi]) // max(1, hi - lo)
+
         green_votes = sum(1 for r, g, b in acc if g > r + 15 and g > b + 15)
         blue_votes = sum(1 for r, g, b in acc if b > r + 15 and b > g + 15)
         red_votes = sum(1 for r, g, b in acc if r > g + 15 and r > b + 15)
-        if green_votes >= blue_votes and green_votes >= red_votes and green_votes > len(acc) * 0.2:
+
+        if (
+            green_votes >= blue_votes
+            and green_votes >= red_votes
+            and green_votes > len(acc) * 0.2
+        ):
             return "green", (ar, ag, ab)
-        if blue_votes >= green_votes and blue_votes >= red_votes and blue_votes > len(acc) * 0.2:
+
+        if (
+            blue_votes >= green_votes
+            and blue_votes >= red_votes
+            and blue_votes > len(acc) * 0.2
+        ):
             return "blue", (ar, ag, ab)
-        if red_votes >= green_votes and red_votes >= blue_votes and red_votes > len(acc) * 0.2:
+
+        if (
+            red_votes >= green_votes
+            and red_votes >= blue_votes
+            and red_votes > len(acc) * 0.2
+        ):
             return "red", (ar, ag, ab)
+
         if ag >= ar and ag >= ab:
             return "green", (ar, ag, ab)
+
         if ab >= ar and ab >= ag:
             return "blue", (ar, ag, ab)
+
         return "red", (ar, ag, ab)
 
     if key in ("none", "0", "off", ""):
@@ -1490,8 +1777,11 @@ def remove_chromakey(
         mode, kr, kg, kb = "red", 220, 30, 30
     elif key == "green":
         mode, kr, kg, kb = "green", 40, 200, 40
-    elif key.startswith("#") or (len(key) == 6 and all(c in "0123456789abcdef" for c in key)):
+    elif key.startswith("#") or (
+        len(key) == 6 and all(c in "0123456789abcdef" for c in key)
+    ):
         kr, kg, kb = _hex_to_rgb(key if key.startswith("#") else "#" + key)
+
         if kg >= kr and kg >= kb:
             mode = "green"
         elif kb >= kr and kb >= kg:
@@ -1501,82 +1791,145 @@ def remove_chromakey(
     else:
         mode, kr, kg, kb = "green", 40, 200, 40
 
-    # Map UI tolerance (10..120) → channel threshold
-    # Higher slider = more aggressive keying
+    # Same tolerance mapping as the original version
     tol_ui = max(10.0, min(120.0, float(tolerance or 55)))
-    # base threshold for (key_channel - max(other two))
-    base_thr = 18.0 + (tol_ui - 10.0) * (70.0 / 110.0)  # ~18..88
+    base_thr = 18.0 + (tol_ui - 10.0) * (70.0 / 110.0)
     soft = max(4.0, float(softness or 20.0))
+    rgb_thr = 28.0 + (tol_ui - 10.0) * 0.55
 
-    def key_score(r, g, b):
-        """Higher score = more like the backdrop → more transparent."""
-        if mode == "green":
-            return float(g) - max(r, b)
-        if mode == "blue":
-            return float(b) - max(r, g)
-        return float(r) - max(g, b)
+    # Float64 is intentional here to stay as close as possible
+    # to the calculations of the old Python implementation.
+    r = flat[:, 0].astype(np.float64)
+    g = flat[:, 1].astype(np.float64)
+    b = flat[:, 2].astype(np.float64)
+    a = flat[:, 3].astype(np.float64)
 
-    # Also kill pixels very close to sampled corner color (RGB distance)
-    def rgb_dist(r, g, b):
-        return ((r - kr) ** 2 + (g - kg) ** 2 + (b - kb) ** 2) ** 0.5
+    if mode == "green":
+        sc = g - np.maximum(r, b)
+    elif mode == "blue":
+        sc = b - np.maximum(r, g)
+    else:
+        sc = r - np.maximum(g, b)
 
-    rgb_thr = 28.0 + (tol_ui - 10.0) * 0.55  # ~28..88
+    rd = np.sqrt(
+        (r - float(kr)) ** 2
+        + (g - float(kg)) ** 2
+        + (b - float(kb)) ** 2
+    )
 
-    out_data = []
-    opaque = 0
-    for r, g, b, a in pixels:
-        if a < 8:
-            out_data.append((r, g, b, 0))
-            continue
-        sc = key_score(r, g, b)
-        rd = rgb_dist(r, g, b)
-        # transparent if either channel-diff OR close to key color
-        if sc >= base_thr or rd <= rgb_thr * 0.65:
-            na = 0
-        elif sc > base_thr - soft:
-            # soft edge on channel score
-            t = (sc - (base_thr - soft)) / soft
-            t = max(0.0, min(1.0, t))
-            na = int(a * (1.0 - t))
-        elif rd < rgb_thr:
-            t = (rgb_thr - rd) / max(1.0, rgb_thr * 0.5)
-            t = max(0.0, min(1.0, t))
-            na = int(a * (1.0 - t * 0.85))
-        else:
-            na = a
+    # Start with original alpha
+    na = a.copy()
 
-        # despill: pull key channel toward the other two on semi-transparent edges
-        if na > 0 and mode == "green" and g > max(r, b) + 8:
-            avg = (r + b) * 0.5
-            mix = 0.55 if na < 200 else 0.25
-            g = int(g * (1.0 - mix) + avg * mix)
-        elif na > 0 and mode == "blue" and b > max(r, g) + 8:
-            avg = (r + g) * 0.5
-            mix = 0.55 if na < 200 else 0.25
-            b = int(b * (1.0 - mix) + avg * mix)
-        elif na > 0 and mode == "red" and r > max(g, b) + 8:
-            avg = (g + b) * 0.5
-            mix = 0.55 if na < 200 else 0.25
-            r = int(r * (1.0 - mix) + avg * mix)
+    # Original function immediately makes a < 8 transparent
+    low_alpha = a < 8
+    na[low_alpha] = 0
 
-        if na > 16:
-            opaque += 1
-        out_data.append((
-            max(0, min(255, int(r))),
-            max(0, min(255, int(g))),
-            max(0, min(255, int(b))),
-            max(0, min(255, int(na))),
-        ))
+    active = ~low_alpha
 
-    # Safety: if keying wiped the subject (< 0.4% opaque), return original
+    # First branch:
+    # sc >= base_thr OR rd <= rgb_thr * 0.65
+    fully_keyed = active & (
+        (sc >= base_thr)
+        | (rd <= rgb_thr * 0.65)
+    )
+    na[fully_keyed] = 0
+
+    remaining = active & ~fully_keyed
+
+    # Second branch: soft edge based on channel score
+    score_soft = remaining & (sc > base_thr - soft)
+
+    if np.any(score_soft):
+        t = (
+            sc[score_soft]
+            - (base_thr - soft)
+        ) / soft
+
+        t = np.clip(t, 0.0, 1.0)
+
+        na[score_soft] = np.trunc(
+            a[score_soft] * (1.0 - t)
+        )
+
+    remaining &= ~score_soft
+
+    # Third branch: soft edge based on RGB distance
+    rgb_soft = remaining & (rd < rgb_thr)
+
+    if np.any(rgb_soft):
+        t = (
+            rgb_thr - rd[rgb_soft]
+        ) / max(1.0, rgb_thr * 0.5)
+
+        t = np.clip(t, 0.0, 1.0)
+
+        na[rgb_soft] = np.trunc(
+            a[rgb_soft] * (1.0 - t * 0.85)
+        )
+
+    # Despill — same formulas and branch conditions
+    if mode == "green":
+        despill = (
+            (na > 0)
+            & (g > np.maximum(r, b) + 8)
+        )
+
+        if np.any(despill):
+            avg = (r[despill] + b[despill]) * 0.5
+            mix = np.where(na[despill] < 200, 0.55, 0.25)
+
+            g[despill] = np.trunc(
+                g[despill] * (1.0 - mix)
+                + avg * mix
+            )
+
+    elif mode == "blue":
+        despill = (
+            (na > 0)
+            & (b > np.maximum(r, g) + 8)
+        )
+
+        if np.any(despill):
+            avg = (r[despill] + g[despill]) * 0.5
+            mix = np.where(na[despill] < 200, 0.55, 0.25)
+
+            b[despill] = np.trunc(
+                b[despill] * (1.0 - mix)
+                + avg * mix
+            )
+
+    else:
+        despill = (
+            (na > 0)
+            & (r > np.maximum(g, b) + 8)
+        )
+
+        if np.any(despill):
+            avg = (g[despill] + b[despill]) * 0.5
+            mix = np.where(na[despill] < 200, 0.55, 0.25)
+
+            r[despill] = np.trunc(
+                r[despill] * (1.0 - mix)
+                + avg * mix
+            )
+
+    opaque = int(np.count_nonzero(na > 16))
+
+    # Same safety fallback as before
     if opaque < max(16, int(n * 0.004)):
         return img
 
-    out = Image.new("RGBA", (w, h))
-    out.putdata(out_data)
-    return out
+    out_arr = np.empty((n, 4), dtype=np.uint8)
 
+    out_arr[:, 0] = np.clip(r, 0, 255).astype(np.uint8)
+    out_arr[:, 1] = np.clip(g, 0, 255).astype(np.uint8)
+    out_arr[:, 2] = np.clip(b, 0, 255).astype(np.uint8)
+    out_arr[:, 3] = np.clip(na, 0, 255).astype(np.uint8)
 
+    return Image.fromarray(
+        out_arr.reshape((h, w, 4)),
+        mode="RGBA",
+    )
 
 def _place_character(
     bg: Image.Image,
@@ -1785,16 +2138,110 @@ def compose_animated_layers(
                 return frame
         return frames[-1]
 
+    import time
+
     output: list[Image.Image] = []
     do_key = bool(chroma_key and chroma_key not in ("none", "0", "off", ""))
+
+    t_key = 0.0
+    t_feather = 0.0
+    t_crop = 0.0
+    t_place = 0.0
+
     for index in range(count):
         time_ms = index * frame_ms
         bg = at_time(bg_frames, bg_durations, time_ms)
         char = at_time(char_frames, char_durations, time_ms)
+
         if do_key:
+            t0 = time.monotonic()
             char = remove_chromakey(char, key=chroma_key, tolerance=chroma_tol)
+            t_key += time.monotonic() - t0
+
             if feather and float(feather) > 0:
+                t0 = time.monotonic()
                 char = feather_alpha(char, radius=float(feather))
+                t_feather += time.monotonic() - t0
+
+        t0 = time.monotonic()
         char = _crop_to_alpha(char)
-        output.append(_place_character(bg, char, scale=scale, offset_x=offset_x, offset_y=offset_y))
+        t_crop += time.monotonic() - t0
+
+        t0 = time.monotonic()
+        output.append(
+            _place_character(
+                bg,
+                char,
+                scale=scale,
+                offset_x=offset_x,
+                offset_y=offset_y,
+            )
+        )
+        t_place += time.monotonic() - t0
+
+    print(
+        f"[compose-detail] frames={count} "
+        f"chromakey={t_key:.1f}s "
+        f"feather={t_feather:.1f}s "
+        f"crop={t_crop:.1f}s "
+        f"place={t_place:.1f}s",
+        flush=True,
+    )
+
     return output, [frame_ms] * len(output)
+
+# === TEMP PROCESS PIPELINE TIMING ===
+_sm_orig_save_animated_gif = _save_animated_gif
+def _save_animated_gif(frames_p, durations, out_path):
+    _t0 = time.perf_counter()
+    try:
+        return _sm_orig_save_animated_gif(frames_p, durations, out_path)
+    finally:
+        _t1 = time.perf_counter()
+        print(
+            f"[PIL TIMING] save GIF: {_t1-_t0:.3f}s | "
+            f"{Path(out_path).name} | frames={len(frames_p)}",
+            flush=True,
+        )
+
+
+_sm_orig_workshop_bars = _gif_full_with_bars_workshop
+def _gif_full_with_bars_workshop(*args, **kwargs):
+    _t0 = time.perf_counter()
+    try:
+        return _sm_orig_workshop_bars(*args, **kwargs)
+    finally:
+        _t1 = time.perf_counter()
+        out = args[1] if len(args) > 1 else kwargs.get("out_path", "?")
+        print(
+            f"[PIL TIMING] workshop bars TOTAL: {_t1-_t0:.3f}s | {Path(out).name}",
+            flush=True,
+        )
+
+
+_sm_orig_split_bars = _gif_full_with_bar_split
+def _gif_full_with_bar_split(*args, **kwargs):
+    _t0 = time.perf_counter()
+    try:
+        return _sm_orig_split_bars(*args, **kwargs)
+    finally:
+        _t1 = time.perf_counter()
+        out = args[1] if len(args) > 1 else kwargs.get("out_path", "?")
+        print(
+            f"[PIL TIMING] split bars TOTAL: {_t1-_t0:.3f}s | {Path(out).name}",
+            flush=True,
+        )
+
+
+_sm_orig_apply_watermark = _gif_apply_watermark
+def _gif_apply_watermark(*args, **kwargs):
+    _t0 = time.perf_counter()
+    try:
+        return _sm_orig_apply_watermark(*args, **kwargs)
+    finally:
+        _t1 = time.perf_counter()
+        out = args[1] if len(args) > 1 else kwargs.get("out_path", "?")
+        print(
+            f"[PIL TIMING] watermark TOTAL: {_t1-_t0:.3f}s | {Path(out).name}",
+            flush=True,
+        )

@@ -926,3 +926,28 @@ input[type="range"]{
 @media(max-width:700px){.top-chrome{border-radius:8px!important}.top-chrome .nav{overflow-x:auto}.top-chrome .nav button.active::after{display:none}.main{width:min(calc(100% - 20px),1280px)!important}.h-title::before{display:block;margin-bottom:8px}}
 /* app.html L946-948  id="sm-shared-tools-final" */
 #ssHeadHost{position:relative;z-index:120;padding-top:2px}.top-chrome{position:sticky!important;top:84px!important;margin-top:22px!important;width:min(calc(100% - 28px),1280px)!important;border-radius:16px!important;background:rgba(5,10,15,.78)!important;backdrop-filter:blur(22px) saturate(140%)!important}.top-chrome-inner{display:block!important}.top-chrome .brand-row{display:block!important}.top-chrome .brand,.top-chrome .top-actions{display:none!important}.top-chrome .nav{width:100%;min-height:70px!important;border-radius:11px!important;background:rgba(0,0,0,.2)!important;overflow-x:auto;justify-content:center}.top-chrome .nav button{font-family:'Mulish',system-ui,sans-serif!important;border-radius:10px!important}.top-chrome .nav button.active{border:1px solid rgba(139,233,255,.22)!important;border-bottom:1px solid rgba(139,233,255,.22)!important;background:rgba(255,255,255,.07)!important;color:#fff!important}.top-chrome .nav button.active::after{display:none!important}.main{padding-top:34px!important}@media(max-width:900px){.top-chrome{top:76px!important}.top-chrome .nav{justify-content:flex-start}.main{padding-top:24px!important}}
+
+
+/* Showcase Maker mobile app extras */
+@media(max-width:900px){
+  .main{width:min(100% - 20px, 1220px) !important; margin:0 auto}
+  .compose-layout,.steam-layout{grid-template-columns:1fr !important}
+  #tab-process{display:block !important}
+  #tab-process>.card{display:block;margin-bottom:12px}
+  .row{display:flex;flex-wrap:wrap}
+  .row>.field{flex:1 1 140px;min-width:0}
+}
+@media(max-width:700px){
+  .top-chrome{position:sticky;top:0;z-index:50}
+  .top-chrome .nav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap}
+  .top-chrome .nav::-webkit-scrollbar{display:none}
+  .h-title{font-size:1.75rem !important}
+  .drop{min-height:130px !important}
+  label.field{width:100%}
+  #dlUrl,#upscaleModel{min-width:0 !important;width:100% !important}
+}
+@media(max-width:480px){
+  .brand-row{gap:8px}
+  .top-actions .btn{padding:8px 10px;font-size:11px}
+  .modes{grid-template-columns:1fr !important}
+}

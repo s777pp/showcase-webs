@@ -1,6 +1,6 @@
 // index.html L2820-2878
 (function(){
-  var FUNPAY_URL = 'https://funpay.com/lots/offer?id=75434891';
+  var FUNPAY_URL = 'https://funpay.com/lots/offer?id=76420307';
   var TG_URL = 'https://t.me/SteamMakerBot';
 
   function i18nBuy(){

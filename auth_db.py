@@ -653,12 +653,15 @@ def _ensure_gallery(c: sqlite3.Connection) -> None:
     return
 
 
-def gallery_add(user_id: int | None, title: str, mode: str, image_path: str, thumb_path: str | None = None) -> int:
+def gallery_add(user_id: int | None, title: str, mode: str, image_path: str, thumb_path: str | None = None, status: str = "pending") -> int:
+    if status not in ("pending", "approved", "rejected"):
+        status = "pending"
+
     c = _conn()
     _ensure_gallery(c)
     cur = c.execute(
-        "INSERT INTO gallery(user_id, title, mode, image_path, thumb_path, status, created_at) VALUES (?,?,?,?,?,'pending',?)",
-        (user_id, (title or "")[:80], mode, image_path, thumb_path, time.time()),
+        "INSERT INTO gallery(user_id, title, mode, image_path, thumb_path, status, created_at) VALUES (?,?,?,?,?,?,?)",
+        (user_id, (title or "")[:80], mode, image_path, thumb_path, status, time.time()),
     )
     c.commit()
     gid = cur.lastrowid
@@ -689,11 +692,11 @@ def gallery_set_status(item_id: int, status: str) -> bool:
         return False
     c = _conn()
     _ensure_gallery(c)
-    c.execute("UPDATE gallery SET status=? WHERE id=?", (status, item_id))
+    cur = c.execute("UPDATE gallery SET status=? WHERE id=?", (status, item_id))
     c.commit()
-    n = c.total_changes
+    changed = cur.rowcount > 0
     c.close()
-    return n > 0
+    return changed
 
 
 def gallery_get(item_id: int) -> dict | None:

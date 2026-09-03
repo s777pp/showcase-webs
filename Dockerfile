@@ -1,3 +1,13 @@
+FROM rust:slim AS gifski-builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    clang \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN cargo install gifski --version 1.34.0 --locked
+
+
 FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -8,14 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gosu \
     && rm -rf /var/lib/apt/lists/*
 
-# gifski Linux amd64
-RUN curl -fsSL -o /tmp/gifski.deb \
-      "https://github.com/ImageOptim/gifski/releases/download/1.32.0/gifski_1.32.0-1_amd64.deb" \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends /tmp/gifski.deb \
-    && rm -f /tmp/gifski.deb \
-    && rm -rf /var/lib/apt/lists/* \
-    && gifski --version
+COPY --from=gifski-builder /usr/local/cargo/bin/gifski /usr/local/bin/gifski
+
+RUN gifski --version
 
 WORKDIR /app
 COPY requirements.txt .

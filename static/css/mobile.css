@@ -1,0 +1,387 @@
+/* =========================================================
+   Showcase Maker — mobile & tablet layout polish
+   Load after page CSS on all pages.
+   ========================================================= */
+
+/* Base safety */
+html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+body{ overflow-x:hidden; }
+img,video,canvas,svg{ max-width:100%; height:auto; }
+button,a,.btn,input,select,textarea{ -webkit-tap-highlight-color:transparent; }
+input,select,textarea,button{ font-size:16px; } /* prevent iOS zoom on focus */
+
+/* Comfortable touch targets */
+@media (max-width:900px){
+  button,.btn,a.btn,.btn-pill,.nav button,.mode,.tabs button{
+    min-height:40px;
+  }
+  input[type="text"],input[type="email"],input[type="password"],input[type="number"],
+  input[type="url"],select,textarea{
+    min-height:44px;
+    font-size:16px !important;
+  }
+}
+
+/* ---------- ≤900px: tablets / large phones ---------- */
+@media (max-width:900px){
+  .shell,.main,.wrap,.ss-wrap{
+    width:100% !important;
+    max-width:100% !important;
+    padding-left:max(12px, env(safe-area-inset-left)) !important;
+    padding-right:max(12px, env(safe-area-inset-right)) !important;
+    box-sizing:border-box !important;
+  }
+
+  /* Shared rows become columns */
+  .row{
+    flex-direction:column !important;
+    align-items:stretch !important;
+    gap:10px !important;
+  }
+  .row > .field,
+  .row > label.field,
+  .row > .btn,
+  .row > button,
+  .row > a.btn{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:100% !important;
+    flex:1 1 auto !important;
+  }
+
+  .field{ min-width:0 !important; }
+
+  /* Cards / panels */
+  .card,.section,.mode-panel{
+    border-radius:16px !important;
+  }
+
+  /* Top chrome / tools nav */
+  .top-chrome{
+    left:8px !important;
+    right:8px !important;
+    width:auto !important;
+    max-width:none !important;
+  }
+  .top-chrome .nav{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    gap:6px !important;
+    padding-bottom:4px !important;
+    justify-content:flex-start !important;
+  }
+  .top-chrome .nav::-webkit-scrollbar{ display:none; }
+  .top-chrome .nav button{
+    flex:0 0 auto !important;
+    white-space:nowrap !important;
+  }
+
+  /* Compose / steam two-col → stack */
+  .compose-layout,
+  .steam-layout{
+    grid-template-columns:1fr !important;
+  }
+  .compose-preview-panel,
+  .steam-video-side{
+    position:relative !important;
+    top:auto !important;
+    sticky:unset;
+  }
+
+  /* Process grid */
+  #tab-process{
+    grid-template-columns:1fr !important;
+  }
+  #tab-process > .card{
+    grid-column:1 !important;
+    grid-row:auto !important;
+  }
+
+  /* Modes */
+  .modes{ grid-template-columns:1fr !important; }
+
+  /* Drop zones */
+  .drop{ min-height:140px !important; padding:20px 14px !important; }
+
+  /* Titles */
+  .h-title{ font-size:clamp(1.6rem, 7vw, 2.4rem) !important; word-break:break-word; }
+  .h-sub{ font-size:13px !important; }
+
+  /* Auth / modals */
+  .modal,.ss-auth__card,.ss-activation__card{
+    width:min(100vw - 24px, 420px) !important;
+    max-height:min(90vh, 720px) !important;
+    overflow:auto !important;
+  }
+}
+
+/* ---------- ≤700px: phones ---------- */
+@media (max-width:700px){
+  body{
+    padding-bottom:max(12px, env(safe-area-inset-bottom));
+  }
+
+  .main{
+    padding:16px 12px 48px !important;
+    padding-top:12px !important;
+  }
+
+  .topbar{
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    gap:8px !important;
+    margin-bottom:14px !important;
+  }
+
+  .back{ font-size:13px !important; }
+
+  .card{
+    padding:14px !important;
+    border-radius:14px !important;
+  }
+  .card h2{ font-size:15px !important; margin-bottom:10px !important; }
+
+  .brand b{ font-size:13px !important; }
+  .brand span{ display:none !important; }
+
+  .top-actions{
+    flex-wrap:wrap !important;
+    gap:6px !important;
+  }
+  .top-actions .pill,
+  #trialTimer{ display:none !important; }
+
+  /* Hide long labels on tiny tool tabs — icons remain via existing CSS */
+  .top-chrome .nav button{
+    font-size:10px !important;
+    padding:8px 10px !important;
+  }
+
+  /* Inputs full width */
+  input,select,textarea{
+    width:100% !important;
+    max-width:100% !important;
+    box-sizing:border-box !important;
+  }
+
+  /* Compare / preview images */
+  .compare-wrap,
+  #wmCanvasWrap,
+  #composePreview,
+  #upscalePreview img{
+    max-width:100% !important;
+  }
+  #wmCanvas{
+    max-height:min(50vh, 320px) !important;
+  }
+
+  /* Upscale model select */
+  #upscaleModel{ min-width:0 !important; width:100% !important; }
+
+  /* Footer */
+  .ss-foot,.app-footer{
+    padding:16px 12px !important;
+    text-align:center !important;
+  }
+
+  /* Status lines */
+  .status{ font-size:12px !important; word-break:break-word; }
+}
+
+/* ---------- ≤480px: small phones ---------- */
+@media (max-width:480px){
+  .h-title{ font-size:1.45rem !important; }
+  .btn,.btn-pill{ font-size:13px !important; }
+  .mode span{ font-size:11px !important; }
+  .mode strong{ font-size:13px !important; }
+
+  /* Stack mode buttons tighter */
+  .modes{ gap:8px !important; }
+
+  .top-chrome{
+    left:6px !important;
+    right:6px !important;
+    border-radius:12px !important;
+    padding:6px !important;
+  }
+}
+
+/* ---------- INDEX (landing) ---------- */
+@media (max-width:768px){
+  .nav{
+    padding:12px 14px !important;
+    gap:8px !important;
+  }
+  .nav-links{ display:none !important; }
+  .logo-menu-btn{ display:inline-flex !important; }
+
+  .hero{
+    padding:48px 16px 40px !important;
+  }
+  .hero h1,.hero-echo-h1{
+    font-size:clamp(1.85rem, 9vw, 2.75rem) !important;
+    line-height:1.05 !important;
+  }
+  .hero p{
+    font-size:14px !important;
+    max-width:100% !important;
+    margin-left:auto; margin-right:auto;
+  }
+  .hero-cta{
+    width:100% !important;
+    align-items:stretch !important;
+  }
+  .hero-cta .btn-pill,
+  .hero-cta a.btn-pill{
+    width:100% !important;
+    justify-content:center !important;
+  }
+
+  .mock{ margin:0 12px !important; padding:32px 0 48px !important; }
+  .mock-body{
+    grid-template-columns:1fr !important;
+    height:auto !important;
+  }
+  .mock-side{ border-right:0 !important; border-bottom:1px solid rgba(255,255,255,.08); }
+
+  .grid2{ grid-template-columns:1fr !important; gap:28px !important; }
+  .q-grid{ grid-template-columns:1fr !important; }
+  .c3-grid{
+    grid-template-columns:1fr !important;
+    transform:none !important;
+  }
+  .logo-grid{ grid-template-columns:repeat(2,1fr) !important; }
+
+  .pricing-grid,
+  .price-grid,
+  .plans{
+    grid-template-columns:1fr !important;
+  }
+
+  section{ padding-left:16px !important; padding-right:16px !important; }
+
+  .extension-promo{
+    margin:0 12px !important;
+    padding:40px 20px !important;
+    min-height:auto !important;
+  }
+}
+
+@media (max-width:480px){
+  .nav-right .btn-pill{ display:none !important; }
+  .nav-right .lang-nav{ display:none !important; }
+}
+
+/* ---------- GALLERY ---------- */
+@media (max-width:900px){
+  .site-header .nav{ padding:12px 14px !important; }
+  .wrap,.gallery-wrap,.gallery-main{
+    padding:72px 12px 32px !important;
+  }
+  .grid,.grid.cols2,.gallery-grid{
+    grid-template-columns:1fr !important;
+    gap:14px !important;
+  }
+  .card img.shot{
+    min-height:180px !important;
+    max-height:360px !important;
+  }
+  .overlay .modal,
+  .modal{
+    width:100% !important;
+    max-width:100% !important;
+    height:100% !important;
+    max-height:100% !important;
+    border-radius:0 !important;
+    flex-direction:column !important;
+  }
+  .modal-media{
+    max-height:42vh !important;
+    flex:0 0 auto !important;
+  }
+  .modal-media img,
+  .modal-media video{
+    max-height:42vh !important;
+    width:100% !important;
+    object-fit:contain !important;
+  }
+  .modal-side{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow:auto !important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .comments{ min-height:100px !important; }
+  .composer textarea{ min-height:48px !important; font-size:16px !important; }
+}
+
+@media (max-width:600px){
+  .toolbar-row{
+    flex-direction:column !important;
+    align-items:stretch !important;
+    gap:10px !important;
+  }
+  .author .name{ font-size:13px !important; }
+  .notif-panel{
+    right:0 !important;
+    left:auto !important;
+    width:min(100vw - 16px, 360px) !important;
+  }
+}
+
+/* ---------- PROFILE builder ---------- */
+@media (max-width:1050px){
+  .workspace{
+    grid-template-columns:1fr !important;
+  }
+  .sidebar{
+    position:static !important;
+    height:auto !important;
+    max-height:none !important;
+  }
+  .panel-scroll{ max-height:none !important; }
+  .sm-stage{
+    height:auto !important;
+    min-height:560px !important;
+  }
+}
+
+@media (max-width:700px){
+  .builder{
+    width:calc(100% - 12px) !important;
+    margin:0 auto !important;
+  }
+  .asset-tabs{
+    grid-template-columns:1fr 1fr !important;
+  }
+  .catalog{
+    grid-template-columns:repeat(2,1fr) !important;
+  }
+  .preview-bar{
+    flex-wrap:wrap !important;
+    height:auto !important;
+    min-height:44px !important;
+    padding:8px 10px !important;
+    gap:6px !important;
+  }
+  .stat-grid{ grid-template-columns:1fr !important; }
+  .sc-row{
+    grid-template-columns:1fr repeat(3, 32px) !important;
+  }
+  .mode-tabs,
+  .tabs{
+    overflow-x:auto !important;
+    flex-wrap:nowrap !important;
+    -webkit-overflow-scrolling:touch;
+  }
+}
+
+/* Landscape phones: keep nav usable */
+@media (max-height:480px) and (orientation:landscape){
+  .hero{ padding-top:24px !important; padding-bottom:24px !important; }
+  .modal-media{ max-height:70vh !important; }
+}

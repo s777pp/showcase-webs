@@ -112,7 +112,7 @@
       '<p class="ss-auth__sub">' + (ru ? 'Ключ привязывается к аккаунту. Один ключ нельзя использовать повторно.' : 'The key is linked to your account and cannot be reused.') + '</p>' +
       '<form class="ss-activation__form" id="ssActivationForm"><label><span>' + (ru ? 'Ключ доступа' : 'Access key') + '</span><div class="ss-activation__entry"><input id="ssActivationCode" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX"><button type="submit">' + (ru ? 'Активировать' : 'Activate') + '</button></div></label><p class="ss-auth__state" id="ssActivationState"></p></form>' +
       '<div class="ss-activation__divide"><span>' + (ru ? 'Купить ключ' : 'Buy a key') + '</span></div>' +
-      '<div class="ss-activation__shops"><a href="https://funpay.com/lots/offer?id=75434891" target="_blank" rel="noopener"><b>FunPay</b><small>' + (ru ? 'Код после оплаты' : 'Code after payment') + '</small><i>↗</i></a><a href="https://t.me/SteamMakerBot" target="_blank" rel="noopener"><b>Telegram</b><small>' + (ru ? 'Покупка через бота' : 'Buy via bot') + '</small><i>↗</i></a></div>' +
+      '<div class="ss-activation__shops" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><a href="https://funpay.com/lots/offer?id=76420307" target="_blank" rel="noopener"><b>FunPay</b><small>' + (ru ? 'Код после оплаты' : 'Code after payment') + '</small><i>↗</i></a><a href="https://t.me/SteamMakerBot" target="_blank" rel="noopener"><b>Telegram</b><small>' + (ru ? 'Покупка через бота' : 'Buy via bot') + '</small><i>↗</i></a><a href="https://store.showcasemaker.com" target="_blank" rel="noopener" style="grid-column:1 / -1"><b>Gumroad</b><small>' + (ru ? 'Купить Pro ключ' : 'Buy Pro key') + '</small><i>↗</i></a></div>' +
     '</div></div>';
   }
 
@@ -170,6 +170,15 @@
     if (pill) {
       pill.hidden = !logged;
       pill.style.display = logged ? 'inline-flex' : 'none';
+
+      // User pill -> PUBLIC profile.
+      // The "Profile" menu item still opens the editor at /profile.
+      var publicUsername = me && (me.profile_username || me.username);
+      if (logged && publicUsername) {
+        pill.href = '/profile/' + encodeURIComponent(publicUsername);
+      } else {
+        pill.href = '/profile';
+      }
     }
     if (login) {
       login.hidden = logged;
@@ -179,6 +188,68 @@
       logout.hidden = !logged;
       logout.style.setProperty('display', logged ? 'inline-flex' : 'none', 'important');
     }
+    var activate = document.getElementById('ssActivate');
+
+    // Activation button state:
+    // FREE -> show Activate
+    // TRIAL -> show live countdown
+    // PERMANENT PRO -> hide activation button
+    if (window.SS_PRO_TIMER) {
+      clearInterval(window.SS_PRO_TIMER);
+      window.SS_PRO_TIMER = null;
+    }
+
+    if (activate) {
+      if (!logged || !me.is_pro) {
+        activate.style.display = 'inline-flex';
+        activate.disabled = false;
+        activate.onclick = openActivation;
+        activate.innerHTML = svg('key') + '<span>' +
+          (lang() === 'ru' ? 'Активация' : 'Activate') + '</span>';
+      } else if (me.pro_until) {
+        var untilMs = Number(me.pro_until) * 1000;
+
+        var renderProTimer = function () {
+          var left = Math.max(0, untilMs - Date.now());
+
+          if (left <= 0) {
+            if (window.SS_PRO_TIMER) {
+              clearInterval(window.SS_PRO_TIMER);
+              window.SS_PRO_TIMER = null;
+            }
+            activate.style.display = 'inline-flex';
+            activate.disabled = false;
+            activate.onclick = openActivation;
+            activate.innerHTML = svg('key') + '<span>' +
+              (lang() === 'ru' ? 'Активация' : 'Activate') + '</span>';
+            return;
+          }
+
+          var total = Math.floor(left / 1000);
+          var hours = Math.floor(total / 3600);
+          var minutes = Math.floor((total % 3600) / 60);
+          var seconds = total % 60;
+
+          var timer =
+            String(hours).padStart(2, '0') + ':' +
+            String(minutes).padStart(2, '0') + ':' +
+            String(seconds).padStart(2, '0');
+
+          activate.style.display = 'inline-flex';
+          activate.disabled = true;
+          activate.onclick = null;
+          activate.innerHTML = '<span>⏱ ' + timer + '</span>';
+        };
+
+        renderProTimer();
+        window.SS_PRO_TIMER = setInterval(renderProTimer, 1000);
+      } else {
+        // Permanent Pro
+        activate.style.display = 'none';
+        activate.onclick = null;
+      }
+    }
+
     if (!logged || !pill) return;
     var name = me.display_name || (me.email || '').split('@')[0] || 'profile';
     var av = me.avatar_url || '';
@@ -408,4 +479,204 @@
 
   loadMe(); });
   } else { mount(); loadMe(); }
+})();
+
+
+
+/* SHOWCASEMAKER_PAYMENT_CARDS_V2 */
+(() => {
+  const STYLE_ID = "sm-payment-card-style-v2";
+
+  function addStyles() {
+    if (document.getElementById(STYLE_ID)) return;
+
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+      .ss-activation__shops .sm-shop-icon-right {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        margin-left: auto;
+        margin-right: 7px;
+        object-fit: contain;
+        display: block;
+      }
+
+      .ss-activation__shops .sm-shop-icon-svg {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        margin-left: auto;
+        margin-right: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .ss-activation__shops a.sm-card-payment {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        max-width: none !important;
+        justify-self: stretch !important;
+        box-sizing: border-box !important;
+      }
+
+      .ss-activation__shops a.sm-shop-fixed {
+        display: flex !important;
+        align-items: center !important;
+      }
+
+      .ss-activation__shops a.sm-shop-fixed > span:last-child {
+        margin-left: 0 !important;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  function telegramIcon() {
+    const span = document.createElement("span");
+    span.className = "sm-shop-icon-svg";
+    span.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="11" fill="#229ED9"/>
+        <path d="M17.7 7.2L6.7 11.45c-.75.3-.74.72-.14.91l2.83.88
+                 1.08 3.36c.14.38.07.53.47.53.31 0 .44-.14.61-.3
+                 l1.36-1.32 2.82 2.08c.52.29.89.14 1.02-.48
+                 l1.85-8.73c.19-.76-.29-1.11-.9-.88z"
+              fill="white"/>
+      </svg>`;
+    return span;
+  }
+
+  function cardIcon() {
+    const span = document.createElement("span");
+    span.className = "sm-shop-icon-svg";
+    span.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2.5" y="5" width="19" height="14" rx="3"
+              stroke="#7DDFFF" stroke-width="1.8"/>
+        <path d="M3 9H21" stroke="#7DDFFF" stroke-width="1.8"/>
+        <path d="M6 15H10" stroke="#7DDFFF" stroke-width="1.8"
+              stroke-linecap="round"/>
+      </svg>`;
+    return span;
+  }
+
+  function decorate() {
+    addStyles();
+
+    const root = document.querySelector(".ss-activation__shops");
+    if (!root) return;
+
+    const links = [...root.querySelectorAll("a")];
+
+    for (const a of links) {
+      if (a.dataset.smPaymentV2 === "1") continue;
+
+      const href = (a.getAttribute("href") || "").toLowerCase();
+      const txt = (a.textContent || "").toLowerCase();
+
+      let type = null;
+
+      if (href.includes("funpay.com") || txt.includes("funpay")) {
+        type = "funpay";
+      } else if (href.includes("t.me") || txt.includes("telegram")) {
+        type = "telegram";
+      } else if (
+        href.includes("store.showcasemaker.com") ||
+        txt.includes("gumroad") ||
+        txt.includes("оплатить картой") ||
+        txt.includes("pay by card")
+      ) {
+        type = "card";
+      }
+
+      if (!type) continue;
+
+      a.classList.add("sm-shop-fixed");
+
+      const arrow = a.lastElementChild;
+
+      let icon;
+
+      if (type === "funpay") {
+        icon = document.createElement("img");
+        icon.className = "sm-shop-icon-right";
+        icon.src = "/static/img/funpay-favicon.ico";
+        icon.alt = "";
+        icon.onerror = function () {
+          if (!this.dataset.pngFallback) {
+            this.dataset.pngFallback = "1";
+            this.src = "/static/img/funpay-favicon.png";
+          }
+        };
+      }
+
+      if (type === "telegram") {
+        icon = telegramIcon();
+      }
+
+      if (type === "card") {
+        icon = cardIcon();
+
+        a.classList.add("sm-card-payment");
+
+        const b = a.querySelector("b");
+        const small = a.querySelector("small");
+
+        if (b) {
+          b.setAttribute("data-ru", "Оплатить картой");
+          b.setAttribute("data-en", "Pay by card");
+
+          const lang =
+            (document.documentElement.lang || "").toLowerCase();
+
+          b.textContent = lang.startsWith("en")
+            ? "Pay by card"
+            : "Оплатить картой";
+        }
+
+        if (small) {
+          small.setAttribute("data-ru", "Купить Pro ключ");
+          small.setAttribute("data-en", "Buy Pro key");
+
+          const lang =
+            (document.documentElement.lang || "").toLowerCase();
+
+          small.textContent = lang.startsWith("en")
+            ? "Buy Pro key"
+            : "Купить Pro ключ";
+        }
+      }
+
+      if (icon) {
+        if (arrow) {
+          a.insertBefore(icon, arrow);
+        } else {
+          a.appendChild(icon);
+        }
+      }
+
+      a.dataset.smPaymentV2 = "1";
+    }
+  }
+
+  const observer = new MutationObserver(decorate);
+
+  function start() {
+    decorate();
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
 })();

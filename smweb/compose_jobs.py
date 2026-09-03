@@ -83,6 +83,7 @@ def _run(jid: str, job: dict) -> None:
 
     rs.job_update(jid, status="running", pct=10, stage="decode")
     animated = _animated(background) or _animated(character)
+    t_total = time.monotonic()
     if animated:
         bg = background
         ch = character
@@ -91,15 +92,20 @@ def _run(jid: str, job: dict) -> None:
             bg = root / "background.gif"
             proc.media_to_gif(background, bg, fps=fps, width=width, duration=8)
         if character.suffix.lower() in VIDEO_EXTS:
+            t = time.monotonic()
             rs.job_update(jid, pct=30, stage="character")
             ch = root / "character.gif"
             proc.media_to_gif(character, ch, fps=fps, width=min(width, 800), duration=8)
+            print(f"[compose {jid}] character media_to_gif: {time.monotonic()-t:.1f}s", flush=True)
+        t = time.monotonic()
         rs.job_update(jid, pct=45, stage="chromakey")
         frames, durations = proc.compose_animated_layers(
             bg, ch, chroma_key=key, chroma_tol=tol, scale=scale,
             offset_x=offset_x, offset_y=offset_y, feather=feather,
             target_width=width, fps=fps, max_seconds=8,
         )
+        print(f"[compose {jid}] chromakey/compose: {time.monotonic()-t:.1f}s, frames={len(frames)}", flush=True)
+        t = time.monotonic()
         rs.job_update(jid, pct=72, stage="encode")
         result = root / "composed.gif"
         if encoder == "pillow":
@@ -107,13 +113,33 @@ def _run(jid: str, job: dict) -> None:
         else:
             frame_dir = root / "frames"
             frame_dir.mkdir(parents=True, exist_ok=True)
+
+            t_png = time.monotonic()
             for i, frame in enumerate(frames):
-                frame.convert("RGBA").save(frame_dir / f"frame_{i:04d}.png")
+                frame.convert("RGBA").save(
+                    frame_dir / f"frame_{i:04d}.png",
+                    compress_level=0,
+                )
+            print(
+                f"[compose {jid}] PNG save: {time.monotonic()-t_png:.1f}s",
+                flush=True,
+            )
+
+            t_encode = time.monotonic()
             try:
                 proc.encode_gif_from_png_sequence(frame_dir, result, fps=fps, encoder=encoder)
             except Exception:
                 proc._save_animated_gif([proc._quantize_rgba_for_gif(f) for f in frames], durations, result)
+
+            print(
+                f"[compose {jid}] GIF encode: {time.monotonic()-t_encode:.1f}s",
+                flush=True,
+            )
+        print(f"[compose {jid}] frame PNG + GIF encode: {time.monotonic()-t:.1f}s", flush=True)
+        t = time.monotonic()
         proc.ensure_under_mb(result)
+        print(f"[compose {jid}] ensure_under_mb: {time.monotonic()-t:.1f}s", flush=True)
+        print(f"[compose {jid}] TOTAL: {time.monotonic()-t_total:.1f}s", flush=True)
         media_type = "image/gif"
     else:
         rs.job_update(jid, pct=45, stage="chromakey")
