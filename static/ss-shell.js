@@ -409,3 +409,203 @@
   loadMe(); });
   } else { mount(); loadMe(); }
 })();
+
+
+
+/* SHOWCASEMAKER_PAYMENT_CARDS_V2 */
+(() => {
+  const STYLE_ID = "sm-payment-card-style-v2";
+
+  function addStyles() {
+    if (document.getElementById(STYLE_ID)) return;
+
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+      .ss-activation__shops .sm-shop-icon-right {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        margin-left: auto;
+        margin-right: 7px;
+        object-fit: contain;
+        display: block;
+      }
+
+      .ss-activation__shops .sm-shop-icon-svg {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        margin-left: auto;
+        margin-right: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .ss-activation__shops a.sm-card-payment {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        max-width: none !important;
+        justify-self: stretch !important;
+        box-sizing: border-box !important;
+      }
+
+      .ss-activation__shops a.sm-shop-fixed {
+        display: flex !important;
+        align-items: center !important;
+      }
+
+      .ss-activation__shops a.sm-shop-fixed > span:last-child {
+        margin-left: 0 !important;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  function telegramIcon() {
+    const span = document.createElement("span");
+    span.className = "sm-shop-icon-svg";
+    span.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="11" fill="#229ED9"/>
+        <path d="M17.7 7.2L6.7 11.45c-.75.3-.74.72-.14.91l2.83.88
+                 1.08 3.36c.14.38.07.53.47.53.31 0 .44-.14.61-.3
+                 l1.36-1.32 2.82 2.08c.52.29.89.14 1.02-.48
+                 l1.85-8.73c.19-.76-.29-1.11-.9-.88z"
+              fill="white"/>
+      </svg>`;
+    return span;
+  }
+
+  function cardIcon() {
+    const span = document.createElement("span");
+    span.className = "sm-shop-icon-svg";
+    span.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2.5" y="5" width="19" height="14" rx="3"
+              stroke="#7DDFFF" stroke-width="1.8"/>
+        <path d="M3 9H21" stroke="#7DDFFF" stroke-width="1.8"/>
+        <path d="M6 15H10" stroke="#7DDFFF" stroke-width="1.8"
+              stroke-linecap="round"/>
+      </svg>`;
+    return span;
+  }
+
+  function decorate() {
+    addStyles();
+
+    const root = document.querySelector(".ss-activation__shops");
+    if (!root) return;
+
+    const links = [...root.querySelectorAll("a")];
+
+    for (const a of links) {
+      if (a.dataset.smPaymentV2 === "1") continue;
+
+      const href = (a.getAttribute("href") || "").toLowerCase();
+      const txt = (a.textContent || "").toLowerCase();
+
+      let type = null;
+
+      if (href.includes("funpay.com") || txt.includes("funpay")) {
+        type = "funpay";
+      } else if (href.includes("t.me") || txt.includes("telegram")) {
+        type = "telegram";
+      } else if (
+        href.includes("store.showcasemaker.com") ||
+        txt.includes("gumroad") ||
+        txt.includes("оплатить картой") ||
+        txt.includes("pay by card")
+      ) {
+        type = "card";
+      }
+
+      if (!type) continue;
+
+      a.classList.add("sm-shop-fixed");
+
+      const arrow = a.lastElementChild;
+
+      let icon;
+
+      if (type === "funpay") {
+        icon = document.createElement("img");
+        icon.className = "sm-shop-icon-right";
+        icon.src = "/static/img/funpay-favicon.ico";
+        icon.alt = "";
+        icon.onerror = function () {
+          if (!this.dataset.pngFallback) {
+            this.dataset.pngFallback = "1";
+            this.src = "/static/img/funpay-favicon.png";
+          }
+        };
+      }
+
+      if (type === "telegram") {
+        icon = telegramIcon();
+      }
+
+      if (type === "card") {
+        icon = cardIcon();
+
+        a.classList.add("sm-card-payment");
+
+        const b = a.querySelector("b");
+        const small = a.querySelector("small");
+
+        if (b) {
+          b.setAttribute("data-ru", "Оплатить картой");
+          b.setAttribute("data-en", "Pay by card");
+
+          const lang =
+            (document.documentElement.lang || "").toLowerCase();
+
+          b.textContent = lang.startsWith("en")
+            ? "Pay by card"
+            : "Оплатить картой";
+        }
+
+        if (small) {
+          small.setAttribute("data-ru", "Купить Pro ключ");
+          small.setAttribute("data-en", "Buy Pro key");
+
+          const lang =
+            (document.documentElement.lang || "").toLowerCase();
+
+          small.textContent = lang.startsWith("en")
+            ? "Buy Pro key"
+            : "Купить Pro ключ";
+        }
+      }
+
+      if (icon) {
+        if (arrow) {
+          a.insertBefore(icon, arrow);
+        } else {
+          a.appendChild(icon);
+        }
+      }
+
+      a.dataset.smPaymentV2 = "1";
+    }
+  }
+
+  const observer = new MutationObserver(decorate);
+
+  function start() {
+    decorate();
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+})();
