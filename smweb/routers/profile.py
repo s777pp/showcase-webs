@@ -79,6 +79,23 @@ def api_profile_me(request: Request):
     }
 
 
+@router.get("/api/profile/account-overview")
+def api_profile_account_overview(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    stats = auth_db.account_activity_stats(int(user["id"]))
+    return {
+        "ok": True,
+        "display_name": user.get("display_name") or "",
+        "email": user.get("email") or "",
+        "avatar_url": f"/api/auth/avatar/{int(user['id'])}" if user.get("avatar_path") else "",
+        "is_pro": bool(auth_db.effective_pro(user)),
+        "gallery_uploads": stats["gallery_uploads"],
+        "showcase_count": stats["showcase_count"],
+    }
+
+
 @router.get("/api/profile/my-library")
 def api_profile_library(request: Request):
     user = _auth_user(request)

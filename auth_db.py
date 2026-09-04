@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import secrets
 import sqlite3
@@ -354,6 +355,46 @@ def login(email: str, password: str) -> tuple[bool, str, Optional[str]]:
     c.commit()
     c.close()
     return True, "OK", token
+
+
+def change_password(user_id: int, current_password: str, new_password: str) -> tuple[bool, str]:
+    """Change an authenticated user's password after verifying the current one."""
+    if len(new_password or "") < 6:
+        return False, "Password min 6 characters"
+    if current_password == new_password:
+        return False, "New password must be different"
+    c = _conn()
+    try:
+        row = c.execute("SELECT password_hash FROM users WHERE id=?", (int(user_id),)).fetchone()
+        if not row or not _check_pw(current_password or "", row["password_hash"]):
+            return False, "Current password is incorrect"
+        c.execute("UPDATE users SET password_hash=? WHERE id=?", (_hash_pw(new_password), int(user_id)))
+        c.commit()
+        return True, "Password changed"
+    finally:
+        c.close()
+
+
+def account_activity_stats(user_id: int) -> dict:
+    """Return exact persisted counts used by the profile account panel."""
+    c = _conn()
+    try:
+        _ensure_gallery(c)
+        gallery_uploads = c.execute(
+            "SELECT COUNT(*) AS n FROM gallery WHERE user_id=? AND lower(COALESCE(status,'')) NOT IN ('deleted','removed')",
+            (int(user_id),),
+        ).fetchone()["n"]
+        row = c.execute("SELECT profile_builder_json FROM users WHERE id=?", (int(user_id),)).fetchone()
+        showcase_count = 0
+        if row and row["profile_builder_json"]:
+            try:
+                snapshot = json.loads(row["profile_builder_json"])
+                showcase_count = len(snapshot.get("showcases") or []) if isinstance(snapshot, dict) else 0
+            except Exception:
+                showcase_count = 0
+        return {"gallery_uploads": int(gallery_uploads or 0), "showcase_count": int(showcase_count or 0)}
+    finally:
+        c.close()
 
 
 def user_by_token(token: str) -> Optional[dict]:

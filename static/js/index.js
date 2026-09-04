@@ -11,10 +11,16 @@ const I18N = {
     nav_google_short: "Google",
     nav_telegram: "Continue with Telegram",
     nav_telegram_short: "Telegram",
+    nav_steam: "Continue with Steam",
     nav_price: "Pricing",
     nav_tools: "Tools",
     nav_reg: "Sign up",
     nav_login: "Log in",
+    nav_logout: "Log out",
+    t_now: "just now",
+    t_min: "m",
+    t_hour: "h",
+    t_day: "d",
     auth_or: "or continue with",
     cta_tools: "Open tools →",
     h1a: "Steam showcases.",
@@ -22,6 +28,13 @@ const I18N = {
     hero_p: "Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool for creators.",
     cta_open: "Open Showcase Maker",
     hero_note: "Free · 5 files/day  ·  Pro · unlimited",
+    studio_preview: "SHOWCASE / PREVIEW",
+    studio_process: "PROCESS",
+    studio_ready: "READY",
+    studio_layers: "LAYERS",
+    studio_effects: "Effects",
+    studio_character: "Character",
+    studio_background: "Background",
     mock_title: "SteamShowcase Helper — Extension",
     compose: "✦ Open tools",
     ext_eyebrow: "Browser extension",
@@ -33,6 +46,8 @@ const I18N = {
     ext_install: "Install extension",
     ext_version: "Version 0.9.3 · ZIP",
     ext_hint: "Download the ZIP, unpack it and select “Load unpacked” on the browser extensions page.",
+    flow_unpack: "2 · UNPACK",
+    flow_load: "3 · LOAD",
     ext_caption: "SteamShowcase Helper · private and local",
     footer_tagline: "Steam showcase tools by n1t1337",
     footer_tools: "Tools",
@@ -46,6 +61,10 @@ const I18N = {
     ext_nav_preview: "Profile preview",
     ext_nav_privacy: "Privacy",
     ext_supports: "Supports",
+    badge_live: "live",
+    badge_local: "local",
+    badge_instant: "instant",
+    badge_safe: "safe",
     ext_list_steam: "Steam integration",
     ext_list_steam_sub: "Tools inside Steam pages",
     ext_list_steam_prev: "Edit showcases without switching tabs",
@@ -65,16 +84,50 @@ const I18N = {
     ext_reader_summary_p: "Showcase preparation, local media processing and live Steam profile preview in one lightweight browser extension.",
     ext_reader_body: "Open a supported Steam page and the required tool appears automatically. Your media is processed locally whenever possible.",
     tri_label: "Process",
+    steam_native: "Steam-native",
     tri_h: "Clear the busywork.<br/>Ship the showcase.",
     tri_p: "Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.",
     tri_today: "Today · showcase pipeline",
+    pipe_process: "Process",
+    pipe_core: "core",
+    pipe_watermark: "Watermark · font · opacity",
+    pipe_download: "Download",
+    pipe_sources: "sources",
+    pipe_preview: "Preview",
+    pipe_profile: "profile",
+    pipe_slots: "Template slots",
+    pipe_animated: "Animated GIF / MP4",
+    pipe_upload: "upload",
+    pipe_console: "Console code",
+    pipe_guide: "Step-by-step guide",
     trust: "Built for Steam profile creators",
+    format_preview: "Preview",
+    format_watermark: "Watermark",
+    aud_artists: "Profile artists",
+    aud_creators: "CREATORS",
+    aud_sellers: "Commission sellers",
+    aud_sellers_badge: "SELLERS",
+    aud_power: "Power users",
+    desktop_web: "Desktop + Web",
     q1: "“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”",
     q2: "“Download + process + preview in one tab. No more juggling five sites.”",
     q3: "“Pro is worth it when you ship showcases every week — no daily limit stress.”",
     price_free_d: "Try the full pipeline with a daily file limit.",
+    price_free: "Free",
+    price_desktop: "Desktop",
     price_pro_d: "Unlimited processing for sellers and daily shippers.",
     price_desk_d: "Full desktop app with offline processing and DeviantArt helpers.",
+    price_files: "5 files / day",
+    price_watermark: "Watermark & preview",
+    price_source: "Source download",
+    price_unlimited: "Unlimited files",
+    price_modes: "All modes + HEX 21",
+    price_account: "Account-bound access code",
+    price_priority: "Priority-ready pipeline",
+    price_same: "Same core pipeline",
+    price_ffmpeg: "Local FFmpeg power",
+    price_license: "License key system",
+    price_update: "Auto-update ready",
     start_free: "Start free",
     buy_fp: "Buy on FunPay",
     get_desk: "Get desktop",
@@ -94,7 +147,12 @@ const I18N = {
     ph_pass: "Password (min 6)",
     auth_ok_reg: "Account created. You can open tools.",
     auth_ok_login: "Logged in. You can open tools.",
-    auth_err: "Error"
+    auth_err: "Error",
+    notif_h: "Notifications",
+    notif_read_all: "Mark all read",
+    notif_empty: "Nothing yet",
+    notif_loading: "Loading…",
+    notif_login: "Sign in to your account"
   },
   ru: {
     menu_label: "Меню",
@@ -107,17 +165,30 @@ const I18N = {
     nav_google_short: "Google",
     nav_telegram: "Продолжить с Telegram",
     nav_telegram_short: "Telegram",
+    nav_steam: "Продолжить со Steam",
     nav_price: "Цены",
     nav_tools: "Инструменты",
     nav_reg: "Регистрация",
     nav_login: "Вход",
+    nav_logout: "Выйти",
+    t_now: "только что",
+    t_min: "мин",
+    t_hour: "ч",
+    t_day: "д",
     auth_or: "или войти через",
     cta_tools: "Открыть →",
     h1a: "Steam-витрины.",
     h1b: "Без рутины",
-    hero_p: "Нарезка Workshop, Featured и Split, watermark, лимиты Steam, скачивание исходников и предпросмотр профиля — один инструмент в браузере.",
+    hero_p: "Нарезка Workshop, Featured и Split, водяной знак, лимиты Steam, скачивание исходников и предпросмотр профиля — один инструмент в браузере.",
     cta_open: "Открыть Showcase Maker",
-    hero_note: "Free · 5 файлов/сутки  ·  Pro · безлимит",
+    hero_note: "Бесплатно · 5 файлов/сутки · Pro · безлимит",
+    studio_preview: "ВИТРИНА / ПРЕДПРОСМОТР",
+    studio_process: "ОБРАБОТКА",
+    studio_ready: "ГОТОВО",
+    studio_layers: "СЛОИ",
+    studio_effects: "Эффекты",
+    studio_character: "Персонаж",
+    studio_background: "Фон",
     mock_title: "SteamShowcase Helper — Расширение",
     compose: "✦ Открыть",
     ext_eyebrow: "Расширение для браузера",
@@ -129,6 +200,8 @@ const I18N = {
     ext_install: "Установить расширение",
     ext_version: "Версия 0.9.3 · ZIP",
     ext_hint: "Скачай ZIP, распакуй его и выбери «Загрузить распакованное расширение» на странице расширений браузера.",
+    flow_unpack: "2 · РАСПАКОВАТЬ",
+    flow_load: "3 · ЗАГРУЗИТЬ",
     ext_caption: "SteamShowcase Helper · приватно и локально",
     footer_tagline: "Инструменты для Steam-витрин от n1t1337",
     footer_tools: "Инструменты",
@@ -138,10 +211,14 @@ const I18N = {
     footer_extension: "Расширение",
     ext_nav_overview: "Обзор",
     ext_nav_steam: "Инструменты Steam",
-    ext_nav_browser: "Browser Engine",
+    ext_nav_browser: "Браузерный движок",
     ext_nav_preview: "Предпросмотр профиля",
     ext_nav_privacy: "Приватность",
     ext_supports: "Поддерживается",
+    badge_live: "активно",
+    badge_local: "локально",
+    badge_instant: "сразу",
+    badge_safe: "безопасно",
     ext_list_steam: "Интеграция со Steam",
     ext_list_steam_sub: "Инструменты внутри страниц Steam",
     ext_list_steam_prev: "Настраивай витрины без переключения вкладок",
@@ -153,7 +230,7 @@ const I18N = {
     ext_list_profile_sub: "Фоны · рамки · аватары",
     ext_list_profile_prev: "Примерь оформление перед применением",
     ext_list_privacy: "Приватность по умолчанию",
-    ext_list_privacy_sub: "Без паролей · без cookies",
+    ext_list_privacy_sub: "Без паролей · без файлов cookie",
     ext_list_privacy_prev: "Только необходимые разрешения для Steam",
     ext_reader_title: "SteamShowcase Helper",
     ext_reader_meta: "расширение · v0.9.3",
@@ -161,16 +238,50 @@ const I18N = {
     ext_reader_summary_p: "Подготовка витрин, локальная обработка медиа и живой предпросмотр профиля Steam в одном лёгком расширении.",
     ext_reader_body: "Открой поддерживаемую страницу Steam — нужный инструмент появится автоматически. Медиа по возможности обрабатываются локально.",
     tri_label: "Обработка",
+    steam_native: "Для Steam",
     tri_h: "Убери рутину.<br/>Отгрузи витрину.",
-    tri_p: "Showcase Maker режет Workshop, Featured и Split, ставит watermark, укладывается в лимиты Steam и собирает ZIP — ты занимаешься артом, а не пиксельной математикой.",
+    tri_p: "Showcase Maker режет Workshop, Featured и Split, ставит водяной знак, укладывается в лимиты Steam и собирает ZIP — ты занимаешься артом, а не пиксельной математикой.",
     tri_today: "Сегодня · конвейер витрин",
+    pipe_process: "Обработка",
+    pipe_core: "основа",
+    pipe_watermark: "Водяной знак · шрифт · прозрачность",
+    pipe_download: "Скачивание",
+    pipe_sources: "исходники",
+    pipe_preview: "Предпросмотр",
+    pipe_profile: "профиль",
+    pipe_slots: "Слоты шаблона",
+    pipe_animated: "Анимация GIF / MP4",
+    pipe_upload: "загрузка",
+    pipe_console: "Код для консоли",
+    pipe_guide: "Пошаговая инструкция",
     trust: "Для авторов Steam-профилей",
+    format_preview: "Предпросмотр",
+    format_watermark: "Водяной знак",
+    aud_artists: "Оформители профилей",
+    aud_creators: "АВТОРЫ",
+    aud_sellers: "Продавцы оформления",
+    aud_sellers_badge: "ПРОДАВЦЫ",
+    aud_power: "Опытные пользователи",
+    desktop_web: "Приложение + сайт",
     q1: "«Режет Workshop на пять частей с hex 21 за секунды. Больше не делаю это руками.»",
     q2: "«Скачать + обработать + превью в одной вкладке. Не прыгаю по пяти сайтам.»",
     q3: "«Pro окупается, если витрины каждую неделю — без дневного лимита.»",
     price_free_d: "Полный пайплайн с дневным лимитом файлов.",
+    price_free: "Бесплатно",
+    price_desktop: "Приложение",
     price_pro_d: "Безлимитная обработка для продавцов и ежедневной отгрузки.",
     price_desk_d: "Десктоп-приложение: офлайн-обработка и помощники DeviantArt.",
+    price_files: "5 файлов в сутки",
+    price_watermark: "Водяной знак и предпросмотр",
+    price_source: "Скачивание исходников",
+    price_unlimited: "Безлимитные файлы",
+    price_modes: "Все режимы + HEX 21",
+    price_account: "Код доступа привязан к аккаунту",
+    price_priority: "Приоритетная обработка",
+    price_same: "Тот же основной конвейер",
+    price_ffmpeg: "Локальная мощность FFmpeg",
+    price_license: "Система лицензионных ключей",
+    price_update: "Автоматические обновления",
     start_free: "Начать бесплатно",
     buy_fp: "Купить на FunPay",
     get_desk: "Взять десктоп",
@@ -190,12 +301,18 @@ const I18N = {
     ph_pass: "Пароль (мин. 6)",
     auth_ok_reg: "Аккаунт создан. Можно открыть инструменты.",
     auth_ok_login: "Вход выполнен. Можно открыть инструменты.",
-    auth_err: "Ошибка"
+    auth_err: "Ошибка",
+    notif_h: "Уведомления",
+    notif_read_all: "Прочитать все",
+    notif_empty: "Пока пусто",
+    notif_loading: "Загрузка…",
+    notif_login: "Войдите в аккаунт"
   }
 };
+function nT(k){var pack=I18N[getLang()]||I18N.en;return pack[k]!=null?pack[k]:I18N.en[k]}
 
 function getLang() {
-  return localStorage.getItem("sm_lang") || "en";
+  return SMLang.get();
 }
 
 function applyLang(L) {
@@ -209,7 +326,7 @@ function applyLang(L) {
     var b = document.getElementById(id);
     if (b) b.textContent = L === "en" ? "RU" : "EN";
   });
-  localStorage.setItem("sm_lang", L);
+  SMLang.set(L);
   try { syncAuthUi(); } catch (e) {}
 }
 
@@ -217,9 +334,13 @@ function wireLangBtn(id) {
   var b = document.getElementById(id);
   if (!b) return;
   b.onclick = function () {
-    applyLang(getLang() === "en" ? "ru" : "en");
+    var next = getLang() === "en" ? "ru" : "en";
+    applyLang(next);
+    window.dispatchEvent(new CustomEvent('sm:langchange', { detail: { lang: next } }));
   };
 }
+
+window.addEventListener('sm:langchange', function(e){ applyLang((e.detail&&e.detail.lang)||getLang()); });
 
 /* ---- Auth on home (no redirect to /app) ---- */
 let authMode = "login"; // register | login
@@ -331,6 +452,7 @@ async function refreshHomeUser(force) {
         const label = (j.display_name || "").trim() || (j.email || "").trim() || "Account";
         pill.textContent = label;
         pill.title = j.email || label;
+        pill.href = "/profile/" + encodeURIComponent(j.profile_username || j.username || (j.email || "profile").split("@")[0]);
         pill.classList.add("visible");
       }
       if (reg) { reg.style.setProperty("display", "none", "important"); reg.hidden = true; }
@@ -468,10 +590,10 @@ document.addEventListener("DOMContentLoaded", function () {
   function timeAgo(ts){
     if(!ts) return '';
     const s=Math.max(0,(Date.now()/1000)-Number(ts));
-    if(s<60) return 'только что';
-    if(s<3600) return Math.floor(s/60)+' мин';
-    if(s<86400) return Math.floor(s/3600)+' ч';
-    if(s<604800) return Math.floor(s/86400)+' д';
+    if(s<60) return nT('t_now');
+    if(s<3600) return Math.floor(s/60)+' '+nT('t_min');
+    if(s<86400) return Math.floor(s/3600)+' '+nT('t_hour');
+    if(s<604800) return Math.floor(s/86400)+' '+nT('t_day');
     return new Date(Number(ts)*1000).toLocaleDateString();
   }
   // live=true forces a fresh read. Without it the first paint comes from the
@@ -507,13 +629,13 @@ document.addEventListener("DOMContentLoaded", function () {
   async function loadNotifs(){
     const list=document.getElementById('smNotifList');
     if(!list) return;
-    list.innerHTML='<div class="sm-notif-empty">Загрузка…</div>';
+    list.innerHTML='<div class="sm-notif-empty">'+esc(nT('notif_loading'))+'</div>';
     try{
       const r=await fetch('/api/notifications?limit=40',{credentials:'include',headers:smHeaders()});
       const d=await r.json().catch(()=>({}));
-      if(!r.ok||!d.ok){list.innerHTML='<div class="sm-notif-empty">Войдите в аккаунт</div>';return;}
+      if(!r.ok||!d.ok){list.innerHTML='<div class="sm-notif-empty">'+esc(nT('notif_login'))+'</div>';return;}
       const items=d.items||[];
-      if(!items.length){list.innerHTML='<div class="sm-notif-empty">Пока пусто</div>';return;}
+      if(!items.length){list.innerHTML='<div class="sm-notif-empty">'+esc(nT('notif_empty'))+'</div>';return;}
       list.innerHTML='';
       items.forEach(it=>{
         const el=document.createElement('div');
@@ -926,7 +1048,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function currentLang(){
     try {
       if (typeof getLang === 'function') return getLang();
-      return localStorage.getItem('sm_lang') || 'en';
+      return SMLang.get();
     } catch(e){ return 'en'; }
   }
   /** Prefer I18N[lang][data-i] so we never race with applyLang timing */

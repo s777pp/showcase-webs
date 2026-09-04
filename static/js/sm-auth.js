@@ -17,7 +17,8 @@
 
   function ru() {
     try {
-      return (localStorage.getItem('sm_lang') || 'en') === 'ru';
+      if (window.SMLang) return SMLang.isRu();
+      return (localStorage.getItem('sm_lang') || localStorage.getItem('ss_lang') || 'en') === 'ru';
     } catch (e) {
       return false;
     }

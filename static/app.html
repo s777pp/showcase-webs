@@ -2,16 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>Tools · Showcase Maker</title>
 <link rel="icon" href="/static/icon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap&subset=cyrillic,cyrillic-ext,latin" rel="stylesheet"/>
 <link rel="stylesheet" href="/static/ss.css?v=20260902a"/>
-<link rel="stylesheet" href="/static/css/app.css?v=20260902a"/>
+<link rel="stylesheet" href="/static/css/app.css?v=20260903d2"/>
 
 
+  <link rel="stylesheet" href="/static/css/mobile.css?v=20260903m"/>
+  <link rel="stylesheet" href="/static/css/redesign.css?v=20260903j"/>
+  <link rel="stylesheet" href="/static/css/creator-os.css?v=20260903o"/>
+<link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260904c">
+<script src="/static/js/layout-refinement.js?v=20260904f"></script>
+<script src="/static/js/i18n.js?v=20260903d"></script>
 </head>
-<body>
+<body class="page-tools">
 <div class="stars-layer" id="starsLayer" aria-hidden="true"></div>
 
 
@@ -35,13 +41,13 @@
         </div>
       </div>
       <nav class="nav" id="nav">
-    <button data-tab="process" data-i="nav_process" class="active" data-i="run">Process</button>
+    <button data-tab="process" data-i="nav_process" class="active">Process</button>
     <button data-tab="compose" data-i="nav_compose">Character</button>
     <button data-tab="download" data-i="nav_download">Download</button>
     <button data-tab="convert" data-i="nav_convert">Converter</button>
     <button data-tab="upscale" data-i="nav_upscale">Upscale</button>
     <button data-tab="hex" data-i="nav_hex">HEX</button>
-    <button data-tab="preview" data-i="nav_preview">Preview</button>
+        <button data-tab="preview" data-i="nav_preview">Profile</button>
     <button data-tab="steam" data-i="nav_steam">Steam</button>
     <button data-tab="da" data-i="nav_da">DeviantArt</button>
     <button data-tab="about" data-i="nav_about">About</button>
@@ -71,7 +77,7 @@
       <h2 data-i="params">Settings</h2>
       <div class="row">
         <label class="field" translate="no"><span class="lbl-fps">FPS</span><input type="number" id="fps" value="12" min="5" max="30"/></label>
-        <label class="field">Width
+        <label class="field"><span data-i="lbl_size">Width</span>
           <select id="size">
             <option value="630">630</option>
             <option value="640">640</option>
@@ -79,8 +85,8 @@
             <option value="800">800</option>
           </select>
         </label>
-        <label class="field">Watermark<input id="wmText" value="n1t1337"/></label>
-        <label class="field">Font<select id="wmFont">
+        <label class="field"><span data-i="lbl_wm">Watermark</span><input id="wmText" value="n1t1337"/></label>
+        <label class="field"><span data-i="lbl_font">Font</span><select id="wmFont">
             <option value="lap">lap</option>
             <option value="rob">rob</option>
             <option value="caratte">caratte</option>
@@ -88,9 +94,9 @@
             <option value="roboto">roboto</option>
             <option value="gothic-rus">gothic-rus</option>
           </select></label>
-        <label class="field">Opacity %<input type="range" id="wmOpacity" min="0" max="100" value="22"/></label>
-        <label class="field">WM size %<input type="range" id="wmScale" min="40" max="250" value="100"/></label>
-        <label class="field">WM corner
+        <label class="field"><span data-i="lbl_op">Opacity %</span><input type="range" id="wmOpacity" min="0" max="100" value="22"/></label>
+        <label class="field"><span data-i="lbl_wm_size">WM size %</span><input type="range" id="wmScale" min="40" max="250" value="100"/></label>
+        <label class="field"><span data-i="lbl_corner">WM corner</span>
           <select id="wmCorner">
             <option value="bl">Bottom left</option>
             <option value="br">Bottom right</option>
@@ -98,33 +104,33 @@
             <option value="tr">Top right</option>
           </select>
         </label>
-        <label class="field">WM color
+        <label class="field"><span data-i="lbl_color">WM color</span>
           <input type="color" id="wmColor" value="#ffffff" style="height:36px;padding:2px;cursor:pointer"/>
         </label>
-        <label class="field">GIF encoder
-          <select id="gifEncoder" title="How GIF is encoded">
+        <label class="field"><span data-i="lbl_enc">GIF encoder</span>
+          <select id="gifEncoder" data-i-title="gif_encoder_title" title="How GIF is encoded">
             <option value="gifski" selected>gifski</option>
             <option value="ffmpeg">ffmpeg (palette)</option>
             <option value="pillow">Pillow</option>
           </select>
         </label>
-        <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="wmEnable" checked/> On</label>
-        <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="allModes"/> All modes</label>
-        <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="autoContrast"/> Auto-contrast</label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="wmEnable" checked/> <span data-i="wm_on">On</span></label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="allModes"/> <span data-i="all_modes">All modes</span></label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="autoContrast"/> <span data-i="auto_contrast">Auto-contrast</span></label>
       </div>
       <div id="wmTip" style="display:none;margin-top:10px;font-size:12px;color:rgba(0,210,255,.9);padding:8px 12px;border-radius:10px;border:1px solid rgba(0,210,255,.25);background:rgba(0,210,255,.06)"></div>
     </div>
     <div class="card" id="wmPreviewCard">
-      <h2>Watermark preview</h2>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Таскай watermark мышкой по превью; позиция применится при «Обработать».</p>
+      <h2 data-i="wm_preview_h">Watermark preview</h2>
+      <p data-i="wm_hint" style="font-size:12px;color:var(--muted);margin:0 0 12px">Add a PNG/JPG/GIF/MP4 in «Files» — for video/GIF the first frame is used. Drag the watermark across the preview; the position is applied on «Process».</p>
       <div id="wmCanvasWrap" style="position:relative;max-width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#111;min-height:160px;display:flex;align-items:center;justify-content:center">
         <canvas id="wmCanvas" style="max-width:100%;max-height:420px;display:none;cursor:grab;touch-action:none"></canvas>
-        <div id="wmCanvasEmpty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center">Нет превью — добавь изображение в «Файлы»</div>
+        <div id="wmCanvasEmpty" data-i="wm_empty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center">No preview — add an image in «Files»</div>
       </div>
       <input type="hidden" id="wmX" value=""/>
       <input type="hidden" id="wmY" value=""/>
       <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">
-        <button type="button" class="btn ghost" id="btnWmReset">Сброс позиции</button>
+        <button type="button" class="btn ghost" id="btnWmReset" data-i="wm_reset">Reset position</button>
       </div>
     </div>
     <div class="card">
@@ -135,12 +141,12 @@
       <div class="row" style="margin-top:16px">
         <button class="btn" id="btnRun" disabled data-i="run">Process</button>
         <button class="btn ghost" id="btnClear" type="button" data-i="clear">Clear</button>
-        <a class="btn ghost" id="dlProcess" style="display:none;text-decoration:none" href="#">Download ZIP</a>
-        <button class="btn ghost" id="btnPublishGallery" type="button" style="display:none">Опубликовать в галерею</button>
+        <a class="btn ghost" id="dlProcess" data-i="dl_zip" style="display:none;text-decoration:none" href="#">Download ZIP</a>
+        <button class="btn ghost" id="btnPublishGallery" type="button" data-i="publish_gallery" style="display:none">Publish to gallery</button>
       </div>
       <div class="sm-progress" id="procProgress" aria-live="polite">
         <div class="sm-prog-top">
-          <span id="procProgLabel">Processing…</span>
+          <span id="procProgLabel" data-i="prog_processing">Processing…</span>
           <span class="sm-prog-pct" id="procProgPct">0%</span>
         </div>
         <div class="sm-prog-track"><div class="sm-prog-fill" id="procProgFill"></div></div>
@@ -288,31 +294,31 @@
   <section class="tab" id="tab-download">
     <div class="card">
       <h2 data-i="dl_h">Download from web</h2>
-      <p class="steps" style="margin-bottom:16px">YouTube · TikTok · X · Reddit · Pinterest — no third-party sites</p>
+      <p class="steps" data-i="dl_body" style="margin-bottom:16px">YouTube · TikTok · X · Reddit · Pinterest — no third-party sites</p>
       <div class="row">
         <input id="dlUrl" placeholder="https://…" style="flex:1;min-width:220px"/>
-        <select id="dlQuality"><option value="best">Best</option><option value="720">≤720p</option><option value="audio">Audio</option></select>
+        <select id="dlQuality"><option value="best" data-i="dl_best">Best</option><option value="720">≤720p</option><option value="audio" data-i="dl_audio">Audio</option></select>
         <button class="btn" id="btnDl" data-i="dl_btn">Download</button>
       </div>
       <div class="sm-progress" id="dlProgress" aria-live="polite">
         <div class="sm-prog-top">
-          <span id="dlProgressLabel">Downloading…</span>
+          <span id="dlProgressLabel" data-i="prog_downloading">Downloading…</span>
           <span class="sm-prog-pct" id="dlProgressPct">0%</span>
         </div>
         <div class="sm-prog-track"><div class="sm-prog-fill" id="dlProgressFill"></div></div>
         <div class="sm-prog-sub" id="dlProgressSub"></div>
       </div>
       <div class="status" id="dlStatus"></div>
-      <a class="btn" id="dlLink" style="display:none;margin-top:14px;text-decoration:none" href="#">Download file</a>
+      <a class="btn" id="dlLink" data-i="dl_file" style="display:none;margin-top:14px;text-decoration:none" href="#">Download file</a>
     </div>
   </section>
 
   <section class="tab" id="tab-convert">
     <div class="card">
       <h2 data-i="convert_h">Converter</h2>
-      <p class="steps" style="margin-bottom:16px">Pick a file and the format you need — Video ↔ GIF, MP4, WEBM, PNG, JPG, WEBP.</p>
+      <p class="steps" data-i="convert_body" style="margin-bottom:16px">Pick a file and the format you need — Video ↔ GIF, MP4, WEBM, PNG, JPG, WEBP.</p>
       <div class="row" style="margin-bottom:12px">
-        <label class="field">Convert to
+        <label class="field"><span data-i="convert_to">Convert to</span>
           <select id="cvTarget">
             <option value="gif">GIF</option>
             <option value="mp4">MP4</option>
@@ -328,11 +334,11 @@
       <div class="files" id="cvFileList"></div>
       <div class="row" style="margin-top:16px">
         <button class="btn" id="btnConvert" data-i="cv_btn" disabled>Convert</button>
-        <a class="btn ghost" id="cvDl" style="display:none;text-decoration:none" href="#">Download</a>
+        <a class="btn ghost" id="cvDl" data-i="compose_dl" style="display:none;text-decoration:none" href="#">Download</a>
       </div>
       <div class="sm-progress" id="cvProgress" aria-live="polite">
         <div class="sm-prog-top">
-          <span id="cvProgressLabel">Converting…</span>
+          <span id="cvProgressLabel" data-i="prog_converting">Converting…</span>
           <span class="sm-prog-pct" id="cvProgressPct">0%</span>
         </div>
         <div class="sm-prog-track"><div class="sm-prog-fill" id="cvProgressFill"></div></div>
@@ -345,23 +351,23 @@
   
   <section class="tab" id="tab-upscale">
     <div class="card">
-      <h2>Upscale</h2>
-      <p class="h-sub" id="upscaleDesc" style="margin:0 0 14px">Увеличивает разрешение изображения с сохранением деталей. Обычно занимает 1–3 минуты.</p>
+      <h2 data-i="up_h">Upscale</h2>
+      <p class="h-sub" id="upscaleDesc" data-i="up_desc" style="margin:0 0 14px">Increases image resolution while keeping the details. Usually takes 1–3 minutes.</p>
 
       <div id="upscaleLock" class="upscale-lock" style="display:none">
         <div class="lock-ico" aria-hidden="true">🔒</div>
-        <h3>Только для Pro</h3>
-        <p>Upscale доступен подписчикам Pro. Оформи подписку или активируй ключ доступа.</p>
-        <button type="button" class="btn" id="upscaleBuyPro">Get Pro</button>
+        <h3 data-i="up_pro_h">Pro only</h3>
+        <p data-i="up_pro_body">Upscale is available to Pro subscribers. Subscribe or activate an access key.</p>
+        <button type="button" class="btn" id="upscaleBuyPro" data-i="get_pro">Get Pro</button>
       </div>
 
       <div id="upscalePanel">
-        <div class="drop" id="upscaleDrop">Перетащи изображение сюда или нажми, чтобы выбрать</div>
+        <div class="drop" id="upscaleDrop" data-i="up_drop">Drop an image here or click to browse</div>
         <input type="file" id="upscaleFile" hidden accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif"/>
         <div class="upscale-file-name" id="upscaleFileName"></div>
         <div class="row" style="flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:14px">
           <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">
-            Модель
+            <span data-i="up_model">Model</span>
             <select id="upscaleModel" style="min-width:240px">
               <option value="4xBHI_dat2_real">Anime / art · fast</option>
               <option value="4xNomosWebPhoto_RealPLKSR">Photo · balanced</option>
@@ -373,10 +379,10 @@
               <option value="4xNomosUniDAT_otf">Uni DAT (slow)</option>
             </select>
           </label>
-          <button class="btn" type="button" id="btnUpscale">Upscale</button>
+          <button class="btn" type="button" id="btnUpscale" data-i="up_btn">Upscale</button>
         </div>
         <div class="upscale-prog" id="upscaleProg"><i></i></div>
-        <div class="upscale-prog-label" id="upscaleProgLabel">Обработка… 1–3 мин</div>
+        <div class="upscale-prog-label" id="upscaleProgLabel" data-i="up_prog">Processing… 1–3 min</div>
         <div id="upscaleStatus" class="status" style="margin-top:10px"></div>
         <div id="upscalePreview" style="display:none">
           <div class="compare-wrap" id="upscaleCompare">
@@ -385,11 +391,11 @@
               <img id="upscaleAfter" alt="after"/>
             </div>
             <div class="compare-handle" id="upscaleHandle"></div>
-            <span class="compare-label before">До</span>
-            <span class="compare-label after">После</span>
+            <span class="compare-label before" data-i="up_before">Before</span>
+            <span class="compare-label after" data-i="up_after">After</span>
           </div>
           <div style="margin-top:12px">
-            <a class="btn" id="upscaleDownload" download="upscaled.png" href="#">Скачать PNG</a>
+            <a class="btn" id="upscaleDownload" data-i="up_dl" download="upscaled.png" href="#">Download PNG</a>
           </div>
         </div>
       </div>
@@ -399,13 +405,13 @@
 <section class="tab" id="tab-hex">
     <div class="card">
       <h2 data-i="hex_h">HEX 21</h2>
-      <p class="steps" style="margin-bottom:16px">Steam trick: set last byte to <code>0x21</code> on PNG / GIF (and other files). Download ZIP with patched files.</p>
+      <p class="steps" data-i="hex_body" style="margin-bottom:16px">Steam trick: set last byte to 0x21 on PNG / GIF (and other files). Download ZIP with patched files.</p>
       <div class="drop" id="hexDrop" data-i="hex_drop">Drop PNG, GIF or images — or click to browse</div>
       <input type="file" id="hexInput" multiple hidden accept="image/gif,image/png,image/jpeg,image/webp,image/*,.gif,.png,.jpg,.jpeg,.webp,.mp4"/>
       <div class="files" id="hexFileList"></div>
       <div class="row" style="margin-top:16px">
         <button class="btn" id="btnHex" data-i="hex_btn" disabled>Apply HEX 21</button>
-        <a class="btn ghost" id="hexDl" style="display:none;text-decoration:none" href="#">Download ZIP</a>
+        <a class="btn ghost" id="hexDl" data-i="dl_zip" style="display:none;text-decoration:none" href="#">Download ZIP</a>
       </div>
       <div class="status" id="hexStatus"></div>
     </div>
@@ -414,9 +420,9 @@
   <section class="tab" id="tab-preview">
     <div class="card">
       <h2 data-i="pv_h">Profile preview</h2>
-      <p class="steps" style="margin-bottom:16px">Pick page mode → file per showcase → open in a new tab (animated GIF and MP4).</p>
+      <p class="steps" data-i="pv_body" style="margin-bottom:16px">Pick page mode → file per showcase → open in a new tab (animated GIF and MP4).</p>
       <div class="row" style="margin-bottom:16px">
-        <label class="field">Mode
+        <label class="field"><span data-i="pv_mode">Mode</span>
           <select id="pvMode">
             <option value="workshop">Workshop</option>
             <option value="featured">Featured</option>
@@ -432,7 +438,7 @@
       <button class="btn" id="btnPv" data-i="pv_open" type="button">Open in browser</button>
       <div class="sm-progress" id="pvProgress" aria-live="polite">
         <div class="sm-prog-top">
-          <span id="pvProgressLabel">Building…</span>
+          <span id="pvProgressLabel" data-i="prog_building">Building…</span>
           <span class="sm-prog-pct" id="pvProgressPct">0%</span>
         </div>
         <div class="sm-prog-track"><div class="sm-prog-fill" id="pvProgressFill"></div></div>
@@ -532,7 +538,7 @@
         <a href="https://www.deviantart.com/developers" target="_blank" style="color:var(--accent)">deviantart.com/developers</a>,
         click Connect, allow access in the popup. Then pick files, set titles, upload to <b>your</b> Sta.sh.
       </p>
-      <p class="steps" style="margin-bottom:12px;font-size:12px">
+        <p class="steps" id="daRedirectText" data-i="da_redirect" style="margin-bottom:12px;font-size:12px">
         Redirect URI in your DA app must be exactly:<br/>
         <code id="daRedirectCode">https://steamshowcase.up.railway.app/api/da/callback</code>
       </p>
@@ -541,23 +547,23 @@
         <label class="field" style="flex:1;min-width:180px">Client Secret<input id="daClientSecret" type="password" autocomplete="off" placeholder="Client Secret"/></label>
       </div>
       <div class="row" style="margin-bottom:14px">
-        <span class="pill" id="daStatusPill">DA: not connected</span>
+        <span class="pill" id="daStatusPill" data-i="da_disconnected">DA: not connected</span>
         <button class="btn" id="daLogin" data-i="da_connect" data-da-connect="1" type="button">Connect</button>
-        <button class="btn ghost" id="daLogout" type="button" style="display:none">Disconnect</button>
+        <button class="btn ghost" id="daLogout" data-i="da_disconnect" type="button" style="display:none">Disconnect</button>
       </div>
       <div id="daConnectedBlock" style="display:none">
         <div class="row" style="margin-bottom:10px">
-          <button class="btn" id="daAddFiles" type="button">Add files</button>
-          <button class="btn ghost" id="daClearFiles" type="button">Clear list</button>
+          <button class="btn" id="daAddFiles" data-i="da_add_files" type="button">Add files</button>
+          <button class="btn ghost" id="daClearFiles" data-i="da_clear_files" type="button">Clear list</button>
           <input type="file" id="daFiles" multiple accept="image/*,image/gif,image/png,image/jpeg,video/mp4,video/webm,.gif,.png,.jpg,.jpeg,.mp4,.webm" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0"/>
         </div>
         <div id="daList" class="files"></div>
         <div class="row" style="margin-top:12px">
-          <button class="btn" id="daUpload" type="button">Upload to Sta.sh</button>
+          <button class="btn" id="daUpload" data-i="da_upload" type="button">Upload to Sta.sh</button>
         </div>
         <div class="da-progress" id="daProgress" aria-live="polite">
           <div class="da-prog-top">
-            <span id="daProgLabel">Uploading…</span>
+            <span id="daProgLabel" data-i="prog_uploading">Uploading…</span>
             <span class="da-prog-pct" id="daProgPct">0%</span>
           </div>
           <div class="da-prog-track"><div class="da-prog-fill" id="daProgFill"></div></div>
@@ -641,7 +647,7 @@
   </div>
 </div>
 
-  <script src="/static/js/app.js?v=20260903023000"></script>
+  <script src="/static/js/app.js?v=20260903g"></script>
 
 
 
@@ -682,14 +688,19 @@
         </span>
         <span class="arrow">→</span>
       </a>
+      <a class="sm-buy-opt card" id="smBuyCard" href="https://store.showcasemaker.com" target="_blank" rel="noopener">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5" width="19" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M6 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        <span class="txt"><span class="t" id="smBuyCardT">Pay by card</span><span class="d" id="smBuyCardD">Bank card · secure checkout</span></span>
+        <span class="arrow">→</span>
+      </a>
     </div>
     <button type="button" class="sm-buy-close" id="smBuyClose">Close</button>
   </div>
 </div>
 
-<script src="/static/js/app-tail.js?v=20260902a"></script>
+<script src="/static/js/app-tail.js?v=20260903g"></script>
 
 
-<script src="/static/ss-shell.js?v=20260903020000"></script>
+<script src="/static/ss-shell.js?v=20260903j"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>Showcase Maker — Steam showcases without the grind</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -10,8 +10,14 @@
 <link rel="stylesheet" href="/static/ss.css?v=20260902a"/>
 <link rel="stylesheet" href="/static/css/index.css?v=20260902e"/>
   <link rel="icon" type="image/png" href="/static/icon.png?v=1">
+  <link rel="stylesheet" href="/static/css/mobile.css?v=20260903m"/>
+  <link rel="stylesheet" href="/static/css/redesign.css?v=20260903j"/>
+  <link rel="stylesheet" href="/static/css/creator-os.css?v=20260903o"/>
+<link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260904e">
+<script src="/static/js/layout-refinement.js?v=20260904d"></script>
+<script src="/static/js/i18n.js?v=20260903d"></script>
 </head>
-<body>
+<body class="page-home">
 <svg width="0" height="0" style="position:absolute">
   <filter id="c3-noise">
     <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
@@ -53,7 +59,7 @@
     </div>
     <div class="nav-right">
       <a href="#" class="btn-shiny-nav" data-i="nav_login" id="navReg" role="button">Log in</a>
-      <button type="button" class="btn-shiny-nav" id="navLogout" hidden style="background:#c0392b;color:#fff;border:none;cursor:pointer">Выйти</button>
+      <button type="button" class="btn-shiny-nav" id="navLogout" data-i="nav_logout" hidden style="background:#c0392b;color:#fff;border:none;cursor:pointer">Log out</button>
       <a href="/profile" class="nav-user-pill" id="navUserPill" title="Profile"></a>
 
 
@@ -64,10 +70,10 @@
         </button>
         <div class="sm-notif-panel" id="smNotifPanel">
           <div class="sm-notif-head">
-            <span>Уведомления</span>
-            <button type="button" class="sm-btn-mini" id="smBtnReadAll">Прочитать все</button>
+            <span data-i="notif_h">Notifications</span>
+            <button type="button" class="sm-btn-mini" id="smBtnReadAll" data-i="notif_read_all">Mark all read</button>
           </div>
-          <div class="sm-notif-list" id="smNotifList"><div class="sm-notif-empty">Пока пусто</div></div>
+          <div class="sm-notif-list" id="smNotifList"><div class="sm-notif-empty" data-i="notif_empty">Nothing yet</div></div>
         </div>
       </div>
 
@@ -91,13 +97,23 @@
       <span class="hero-note" data-i="hero_note">Free · 5 files/day  ·  Pro · unlimited</span>
     </div>
     <div class="hero-studio" aria-hidden="true">
-      <div class="studio-orbit studio-orbit-a"></div><div class="studio-orbit studio-orbit-b"></div>
-      <div class="studio-window studio-main">
-        <div class="studio-bar"><i></i><i></i><i></i><span>SHOWCASE / PREVIEW</span></div>
-        <div class="studio-canvas"><div class="studio-art"><img src="/static/icon.png" alt="" /></div></div>
+      <div class="creator-scene">
+        <img class="creator-scene__art" src="/static/img/hero-creator-cyberpunk.png" alt="" />
+        <div class="creator-scene__scan"></div>
       </div>
-      <div class="studio-window studio-tools"><b>PROCESS</b><span>Workshop ×5</span><span>Featured 630</span><span>Artwork Split</span><em>READY</em></div>
-      <div class="studio-window studio-layers"><b>LAYERS</b><span>Effects</span><span>Character</span><span>Background</span></div>
+      <div class="creator-panel creator-panel--process">
+        <b data-i="studio_process">PROCESS</b>
+        <span>Workshop ×5</span><span>Featured 630</span><span>Artwork Split</span>
+        <em data-i="studio_ready">READY</em>
+      </div>
+      <div class="creator-panel creator-panel--layers">
+        <b data-i="studio_layers">LAYERS</b>
+        <span data-i="studio_effects">Effects</span><span data-i="studio_character">Character</span><span data-i="studio_background">Background</span>
+      </div>
+      <div class="creator-panel creator-panel--adjust">
+        <b data-i="studio_preview">SHOWCASE / PREVIEW</b>
+        <i></i><i></i><i></i>
+      </div>
     </div>
   </section>
 
@@ -122,7 +138,7 @@
         <div class="extension-browser-copy">
           <b data-i="ext_eyebrow">Browser extension</b>
           <p data-i="ext_hint">Download the ZIP, unpack it and select “Load unpacked” on the browser extensions page.</p>
-          <div class="extension-browser-flow" aria-hidden="true"><span>1 · ZIP</span><i>→</i><span>2 · UNPACK</span><i>→</i><span>3 · LOAD</span></div>
+          <div class="extension-browser-flow" aria-hidden="true"><span>1 · ZIP</span><i>→</i><span data-i="flow_unpack">2 · UNPACK</span><i>→</i><span data-i="flow_load">3 · LOAD</span></div>
         </div>
         <a class="extension-browser-cta" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=item-share-cb" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span data-i="ext_install">Install extension</span></a>
       </div>
@@ -142,12 +158,12 @@
         </div>
         <div class="mock-list">
           <div class="msg unread active">
-            <div class="top"><span class="name" data-i="ext_list_steam">Steam integration</span><span class="time">live</span></div>
+            <div class="top"><span class="name" data-i="ext_list_steam">Steam integration</span><span class="time" data-i="badge_live">live</span></div>
             <div class="sub" data-i="ext_list_steam_sub">Tools inside Steam pages</div>
             <div class="prev" data-i="ext_list_steam_prev">Edit showcases without switching tabs</div>
           </div>
           <div class="msg unread">
-            <div class="top"><span class="name">Browser Engine</span><span class="time">local</span></div>
+            <div class="top"><span class="name" data-i="ext_nav_browser">Browser Engine</span><span class="time" data-i="badge_local">local</span></div>
             <div class="sub" data-i="ext_list_engine_sub">PNG · JPG · WEBP · GIF</div>
             <div class="prev" data-i="ext_list_engine_prev">Files stay on your computer</div>
           </div>
@@ -157,12 +173,12 @@
             <div class="prev" data-i="ext_list_modes_prev">Ready-made Steam dimensions and layouts</div>
           </div>
           <div class="msg">
-            <div class="top"><span class="name" data-i="ext_list_profile">Profile preview</span><span class="time">instant</span></div>
+            <div class="top"><span class="name" data-i="ext_list_profile">Profile preview</span><span class="time" data-i="badge_instant">instant</span></div>
             <div class="sub" data-i="ext_list_profile_sub">Backgrounds · frames · avatars</div>
             <div class="prev" data-i="ext_list_profile_prev">Try the look before applying it</div>
           </div>
           <div class="msg">
-            <div class="top"><span class="name" data-i="ext_list_privacy">Private by design</span><span class="time">safe</span></div>
+            <div class="top"><span class="name" data-i="ext_list_privacy">Private by design</span><span class="time" data-i="badge_safe">safe</span></div>
             <div class="sub" data-i="ext_list_privacy_sub">No passwords · no cookies</div>
             <div class="prev" data-i="ext_list_privacy_prev">Only the permissions required for Steam</div>
           </div>
@@ -193,7 +209,7 @@
   <section class="section">
     <div class="grid2">
       <div>
-        <div class="eyebrow"><i></i> <span data-i="tri_label">Process</span> <span class="tag">Steam-native</span></div>
+        <div class="eyebrow"><i></i> <span data-i="tri_label">Process</span> <span class="tag" data-i="steam_native">Steam-native</span></div>
         <h2 data-i="tri_h">Clear the busywork.<br/>Ship the showcase.</h2>
         <p class="lead" data-i="tri_p">Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.</p>
         <div class="chips">
@@ -207,20 +223,20 @@
       <div class="liquid-glass triage-card">
         <div class="t" data-i="tri_today">Today · showcase pipeline</div>
         <div class="liquid-glass subc">
-          <div class="h" style="color:#fff">Process <span>core</span></div>
-          <ul><li>Workshop / Featured / Split</li><li>Watermark · font · opacity</li></ul>
+          <div class="h" style="color:#fff"><span data-i="pipe_process">Process</span> <span data-i="pipe_core">core</span></div>
+          <ul><li>Workshop / Featured / Split</li><li data-i="pipe_watermark">Watermark · font · opacity</li></ul>
         </div>
         <div class="liquid-glass subc">
-          <div class="h" style="color:#e5e5e5">Download <span>sources</span></div>
+          <div class="h" style="color:#e5e5e5"><span data-i="pipe_download">Download</span> <span data-i="pipe_sources">sources</span></div>
           <ul><li>YouTube · TikTok · X</li><li>Reddit · Pinterest</li></ul>
         </div>
         <div class="liquid-glass subc">
-          <div class="h" style="color:#a3a3a3">Preview <span>profile</span></div>
-          <ul><li>Template slots</li><li>Animated GIF / MP4</li></ul>
+          <div class="h" style="color:#a3a3a3"><span data-i="pipe_preview">Preview</span> <span data-i="pipe_profile">profile</span></div>
+          <ul><li data-i="pipe_slots">Template slots</li><li data-i="pipe_animated">Animated GIF / MP4</li></ul>
         </div>
         <div class="liquid-glass subc">
-          <div class="h" style="color:#525252">Steam <span>upload</span></div>
-          <ul><li>Console code</li><li>Step-by-step guide</li></ul>
+          <div class="h" style="color:#525252">Steam <span data-i="pipe_upload">upload</span></div>
+          <ul><li data-i="pipe_console">Console code</li><li data-i="pipe_guide">Step-by-step guide</li></ul>
         </div>
       </div>
     </div>
@@ -237,9 +253,9 @@
           <li class="logoloop__item"><span class="logoloop__pill">GIF</span></li>
           <li class="logoloop__item"><span class="logoloop__pill">MP4</span></li>
           <li class="logoloop__item"><span class="logoloop__pill">HEX21</span></li>
-          <li class="logoloop__item"><span class="logoloop__pill">Preview</span></li>
+          <li class="logoloop__item"><span class="logoloop__pill" data-i="format_preview">Preview</span></li>
           <li class="logoloop__item"><span class="logoloop__pill">FunPay</span></li>
-          <li class="logoloop__item"><span class="logoloop__pill">Watermark</span></li>
+          <li class="logoloop__item"><span class="logoloop__pill" data-i="format_watermark">Watermark</span></li>
           <li class="logoloop__item"><span class="logoloop__pill">Steam</span></li>
         </ul>
       </div>
@@ -250,15 +266,15 @@
     <div class="q-grid">
       <figure class="liquid-glass q-card">
         <blockquote><span data-i="q1">“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”</span></blockquote>
-        <figcaption><div class="n">Profile artists</div><div class="r">Steam Workshop</div><div class="c">CREATORS</div></figcaption>
+        <figcaption><div class="n" data-i="aud_artists">Profile artists</div><div class="r">Steam Workshop</div><div class="c" data-i="aud_creators">CREATORS</div></figcaption>
       </figure>
       <figure class="liquid-glass q-card">
         <blockquote><span data-i="q2">“Download + process + preview in one tab. No more juggling five sites.”</span></blockquote>
-        <figcaption><div class="n">Commission sellers</div><div class="r">FunPay · Discord</div><div class="c">SELLERS</div></figcaption>
+        <figcaption><div class="n" data-i="aud_sellers">Commission sellers</div><div class="r">FunPay · Discord</div><div class="c" data-i="aud_sellers_badge">SELLERS</div></figcaption>
       </figure>
       <figure class="liquid-glass q-card">
         <blockquote><span data-i="q3">“Pro is worth it when you ship showcases every week — no daily limit stress.”</span></blockquote>
-        <figcaption><div class="n">Power users</div><div class="r">Desktop + Web</div><div class="c">PRO</div></figcaption>
+        <figcaption><div class="n" data-i="aud_power">Power users</div><div class="r" data-i="desktop_web">Desktop + Web</div><div class="c">PRO</div></figcaption>
       </figure>
     </div>
   </section>
@@ -274,20 +290,20 @@
     </svg>
     <div class="c3-watermark-container">
       <div class="c3-watermark-main">
-        <span class="c3-watermark-line-1">Steam showcases.</span>
-        <span class="c3-watermark-line-2">Revitalized</span>
+        <span class="c3-watermark-line-1" data-i="h1a">Steam showcases.</span>
+        <span class="c3-watermark-line-2" data-i="h1b">Revitalized</span>
       </div>
     </div>
     <div class="c3-grid">
       <div class="c3-card">
-        <div class="c3-tier-small">Free</div>
-        <div class="c3-tier-large">Free</div>
+        <div class="c3-tier-small" data-i="price_free">Free</div>
+        <div class="c3-tier-large" data-i="price_free">Free</div>
         <p class="c3-desc"><span data-i="price_free_d">Try the full pipeline with a daily file limit.</span></p>
         <ul class="c3-list">
-          <li><span class="c3-check">✓</span> 5 files / day</li>
+          <li><span class="c3-check">✓</span> <span data-i="price_files">5 files / day</span></li>
           <li><span class="c3-check">✓</span> Workshop · Featured · Split</li>
-          <li><span class="c3-check">✓</span> Watermark &amp; preview</li>
-          <li><span class="c3-check">✓</span> Source download</li>
+          <li><span class="c3-check">✓</span> <span data-i="price_watermark">Watermark &amp; preview</span></li>
+          <li><span class="c3-check">✓</span> <span data-i="price_source">Source download</span></li>
         </ul>
         <a class="c3-btn" href="/app" data-i="start_free">Start free</a>
       </div>
@@ -296,22 +312,22 @@
         <div class="c3-tier-large" id="pricePro">FunPay</div>
         <p class="c3-desc"><span data-i="price_pro_d">Unlimited processing for sellers and daily shippers.</span></p>
         <ul class="c3-list">
-          <li><span class="c3-check">✓</span> Unlimited files</li>
-          <li><span class="c3-check">✓</span> All modes + HEX 21</li>
-          <li><span class="c3-check">✓</span> Account-bound access code</li>
-          <li><span class="c3-check">✓</span> Priority-ready pipeline</li>
+          <li><span class="c3-check">✓</span> <span data-i="price_unlimited">Unlimited files</span></li>
+          <li><span class="c3-check">✓</span> <span data-i="price_modes">All modes + HEX 21</span></li>
+          <li><span class="c3-check">✓</span> <span data-i="price_account">Account-bound access code</span></li>
+          <li><span class="c3-check">✓</span> <span data-i="price_priority">Priority-ready pipeline</span></li>
         </ul>
         <a class="c3-btn" href="#" role="button" data-buy-key="1" data-i="buy_fp">Buy on FunPay</a>
       </div>
       <div class="c3-card c3-card-pro">
-        <div class="c3-tier-small">Desktop</div>
+        <div class="c3-tier-small" data-i="price_desktop">Desktop</div>
         <div class="c3-tier-large">EXE</div>
         <p class="c3-desc"><span data-i="price_desk_d">Full desktop app with offline processing and DeviantArt helpers.</span></p>
         <ul class="c3-list">
-          <li><span class="c3-check">✓</span> Same core pipeline</li>
-          <li><span class="c3-check">✓</span> Local FFmpeg power</li>
-          <li><span class="c3-check">✓</span> License key system</li>
-          <li><span class="c3-check">✓</span> Auto-update ready</li>
+          <li><span class="c3-check">✓</span> <span data-i="price_same">Same core pipeline</span></li>
+          <li><span class="c3-check">✓</span> <span data-i="price_ffmpeg">Local FFmpeg power</span></li>
+          <li><span class="c3-check">✓</span> <span data-i="price_license">License key system</span></li>
+          <li><span class="c3-check">✓</span> <span data-i="price_update">Auto-update ready</span></li>
         </ul>
         <a class="c3-btn" href="#" role="button" data-buy-key="1" data-i="get_desk">Get desktop</a>
       </div>
@@ -387,7 +403,7 @@
         <span class="oauth-label" data-i="nav_google">Continue with Google</span>
       </button>
       <button type="button" class="btn-oauth" id="authSteam">
-        <span class="oauth-label">Continue with Steam</span>
+        <span class="oauth-label" data-i="nav_steam">Continue with Steam</span>
       </button>
       <button type="button" class="btn-oauth" id="authTelegram">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#2AABEE" d="M9.78 14.65l-.3 4.2c.43 0 .62-.18.85-.4l2.04-1.94 4.23 3.1c.78.43 1.33.2 1.54-.72l2.8-13.13h.01c.25-1.16-.42-1.61-1.18-1.33L3.3 9.7c-1.13.44-1.11 1.07-.19 1.35l4.37 1.36 10.15-6.4c.48-.29.91-.13.55.18L9.78 14.65z"/></svg>
@@ -400,7 +416,7 @@
 </div>
 
 <button type="button" class="lang" id="langBtn">RU</button>
-<script src="/static/js/index.js?v=20260902a"></script>
+<script src="/static/js/index.js?v=20260903f"></script>
 
 
 
@@ -443,12 +459,17 @@
         </span>
         <span class="arrow">→</span>
       </a>
+      <a class="sm-buy-opt card" id="smBuyCard" href="https://store.showcasemaker.com" target="_blank" rel="noopener">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5" width="19" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M6 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        <span class="txt"><span class="t" id="smBuyCardT">Pay by card</span><span class="d" id="smBuyCardD">Bank card · secure checkout</span></span>
+        <span class="arrow">→</span>
+      </a>
     </div>
     <button type="button" class="sm-buy-close" id="smBuyClose">Close</button>
   </div>
 </div>
 
-<script src="/static/js/index-tail.js?v=20260902a"></script>
-<script src="/static/ss-shell.js?v=20260903020000"></script>
+<script src="/static/js/index-tail.js?v=20260903g"></script>
+<script src="/static/ss-shell.js?v=20260903j"></script>
 </body>
 </html>

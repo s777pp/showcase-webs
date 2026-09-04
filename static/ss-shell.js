@@ -23,7 +23,8 @@
     tools: '<path d="M4 7h16M4 12h10M4 17h7"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>',
     grid: '<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
-    key: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v4"/>'
+    key: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v4"/>',
+    card: '<rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M3 9h18M6 15h4"/>'
   };
 
   var OAUTH_ICONS = {
@@ -34,12 +35,13 @@
   };
 
   function lang() {
-    try { return localStorage.getItem('sm_lang') || localStorage.getItem('ss_lang') || 'ru'; } catch (e) { return 'ru'; }
+    try { return window.SMLang ? SMLang.get() : (localStorage.getItem('sm_lang') || localStorage.getItem('ss_lang') || 'en'); } catch (e) { return 'en'; }
   }
   function t(obj) { return obj[lang()] || obj.ru; }
   function svg(name) {
-    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
-      'stroke-linecap="round" stroke-linejoin="round">' + (ICONS[name] || '') + '</svg>';
+    return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:18px;height:18px;flex:none">' +
+      (ICONS[name] || '') + '</svg>';
   }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -58,7 +60,7 @@
     return NAV.map(function (n) {
       return '<a class="ss-nav__i' + (active(n.href) ? ' is-on' : '') + '" href="' + n.href + '">' +
         svg(n.icon) + '<span>' + esc(t(n.label)) + '</span>' +
-        (n.tag ? '<i class="ss-nav__tag">' + esc(n.tag) + '</i>' : '') + '</a>';
+        (n.tag ? '<i class="ss-nav__tag">' + esc(lang() === 'ru' ? 'новое' : n.tag) + '</i>' : '') + '</a>';
     }).join('');
   }
 
@@ -81,13 +83,13 @@
   function langHTML() {
     var cur = lang();
     return '<button class="ss-lang__btn" id="ssLangToggle" type="button" aria-label="' +
-      (cur === 'ru' ? 'Switch to English' : 'Переключить на русский') + '">' + cur.toUpperCase() + '</button>';
+      (cur === 'ru' ? 'Переключить на английский' : 'Switch to Russian') + '">' + cur.toUpperCase() + '</button>';
   }
 
   function headerHTML() {
     return '<header class="ss-head"><div class="ss-wrap ss-head__in">' +
       '<a class="ss-logo" href="/"><span class="ss-logo__mark"><img src="/static/icon.png" alt=""></span>' +
-      '<span class="ss-logo__txt">Showcase <span>Maker</span></span></a>' +
+      '<span class="ss-logo__txt"><b>Showcase</b><span>Maker</span></span></a>' +
       '<nav class="ss-nav">' + navHTML() + '</nav>' +
       '<span class="ss-head__sp"></span>' +
       '<div class="ss-head__right"><button class="ss-activate" id="ssActivate" type="button">' + svg('key') + '<span>' +
@@ -112,7 +114,7 @@
       '<p class="ss-auth__sub">' + (ru ? 'Ключ привязывается к аккаунту. Один ключ нельзя использовать повторно.' : 'The key is linked to your account and cannot be reused.') + '</p>' +
       '<form class="ss-activation__form" id="ssActivationForm"><label><span>' + (ru ? 'Ключ доступа' : 'Access key') + '</span><div class="ss-activation__entry"><input id="ssActivationCode" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX"><button type="submit">' + (ru ? 'Активировать' : 'Activate') + '</button></div></label><p class="ss-auth__state" id="ssActivationState"></p></form>' +
       '<div class="ss-activation__divide"><span>' + (ru ? 'Купить ключ' : 'Buy a key') + '</span></div>' +
-      '<div class="ss-activation__shops" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><a href="https://funpay.com/lots/offer?id=76420307" target="_blank" rel="noopener"><b>FunPay</b><small>' + (ru ? 'Код после оплаты' : 'Code after payment') + '</small><i>↗</i></a><a href="https://t.me/SteamMakerBot" target="_blank" rel="noopener"><b>Telegram</b><small>' + (ru ? 'Покупка через бота' : 'Buy via bot') + '</small><i>↗</i></a><a href="https://store.showcasemaker.com" target="_blank" rel="noopener" style="grid-column:1 / -1"><b>Gumroad</b><small>' + (ru ? 'Купить Pro ключ' : 'Buy Pro key') + '</small><i>↗</i></a></div>' +
+      '<div class="ss-activation__shops"><a class="ss-shop ss-shop--funpay" href="https://funpay.com/lots/offer?id=76420307" target="_blank" rel="noopener"><span class="ss-shop__icon"><img src="/static/img/funpay-favicon.ico" alt=""></span><span><b>FunPay</b><small>' + (ru ? 'Код сразу после оплаты' : 'Instant code after payment') + '</small></span><i>↗</i></a><a class="ss-shop ss-shop--telegram" href="https://t.me/SteamMakerBot" target="_blank" rel="noopener"><span class="ss-shop__icon ss-shop__icon--telegram">➤</span><span><b>Telegram</b><small>' + (ru ? 'Покупка через бота' : 'Buy via bot') + '</small></span><i>↗</i></a><a class="ss-shop ss-shop--card" href="https://store.showcasemaker.com" target="_blank" rel="noopener"><span class="ss-shop__icon">' + svg('card') + '</span><span><b>' + (ru ? 'Оплата картой' : 'Pay by card') + '</b><small>' + (ru ? 'Банковская карта · защищённая оплата' : 'Bank card · secure checkout') + '</small></span><i>↗</i></a></div>' +
     '</div></div>';
   }
 
@@ -155,8 +157,8 @@
       '<nav class="ss-foot__nav">' + links.map(function (l) {
         return '<a href="' + l[0] + '">' + esc(l[1]) + '</a>';
       }).join('') + '</nav>' +
-      '<p class="ss-foot__note">Steam and Valve are trademarks of Valve Corporation. ' +
-      (ru ? 'Проект неофициальный и не связан с Valve.' : 'This project is unofficial and not affiliated with Valve.') +
+      '<p class="ss-foot__note">' +
+      (ru ? 'Steam и Valve — товарные знаки Valve Corporation. Проект неофициальный и не связан с Valve.' : 'Steam and Valve are trademarks of Valve Corporation. This project is unofficial and not affiliated with Valve.') +
       '</p></div></footer>';
   }
 
@@ -177,7 +179,10 @@
       if (logged && publicUsername) {
         pill.href = '/profile/' + encodeURIComponent(publicUsername);
       } else {
-        pill.href = '/profile';
+        /* Never send a user-pill click to the editor. Bootstrap normally
+           supplies profile_username; keep the fallback on the public route. */
+        var fallbackName = me && ((me.email || '').split('@')[0] || me.display_name);
+        pill.href = '/profile/' + encodeURIComponent(fallbackName || 'profile');
       }
     }
     if (login) {
@@ -295,13 +300,15 @@
     var langToggle = document.getElementById('ssLangToggle');
     if (langToggle) {
       langToggle.addEventListener('click', function () {
+        var activationWasOpen = !!document.querySelector('#ssActivation.is-open');
+        var authWasOpen = !!document.querySelector('#ssAuth.is-open');
         var code = lang() === 'ru' ? 'en' : 'ru';
-        try { localStorage.setItem('ss_lang', code); localStorage.setItem('sm_lang', code); } catch (e) {}
-        if (typeof window.ssApplyLang === 'function') window.ssApplyLang(code);
-        else if (typeof window.applyAppLang === 'function') window.applyAppLang(code);
-        else if (typeof window.applyLang === 'function') window.applyLang(code);
-        else { location.reload(); return; }
+        if (window.SMLang) SMLang.set(code);
+        else { try { localStorage.setItem('ss_lang', code); localStorage.setItem('sm_lang', code); } catch (e) {} }
         mount();
+        if (activationWasOpen) openActivation();
+        else if (authWasOpen) openAuth('login');
+        window.dispatchEvent(new CustomEvent('sm:langchange', { detail: { lang: code } }));
       });
     }
     wireAuth();
@@ -479,204 +486,4 @@
 
   loadMe(); });
   } else { mount(); loadMe(); }
-})();
-
-
-
-/* SHOWCASEMAKER_PAYMENT_CARDS_V2 */
-(() => {
-  const STYLE_ID = "sm-payment-card-style-v2";
-
-  function addStyles() {
-    if (document.getElementById(STYLE_ID)) return;
-
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
-    style.textContent = `
-      .ss-activation__shops .sm-shop-icon-right {
-        width: 20px;
-        height: 20px;
-        min-width: 20px;
-        margin-left: auto;
-        margin-right: 7px;
-        object-fit: contain;
-        display: block;
-      }
-
-      .ss-activation__shops .sm-shop-icon-svg {
-        width: 20px;
-        height: 20px;
-        min-width: 20px;
-        margin-left: auto;
-        margin-right: 7px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .ss-activation__shops a.sm-card-payment {
-        grid-column: 1 / -1 !important;
-        width: 100% !important;
-        max-width: none !important;
-        justify-self: stretch !important;
-        box-sizing: border-box !important;
-      }
-
-      .ss-activation__shops a.sm-shop-fixed {
-        display: flex !important;
-        align-items: center !important;
-      }
-
-      .ss-activation__shops a.sm-shop-fixed > span:last-child {
-        margin-left: 0 !important;
-      }
-    `;
-
-    document.head.appendChild(style);
-  }
-
-  function telegramIcon() {
-    const span = document.createElement("span");
-    span.className = "sm-shop-icon-svg";
-    span.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="11" fill="#229ED9"/>
-        <path d="M17.7 7.2L6.7 11.45c-.75.3-.74.72-.14.91l2.83.88
-                 1.08 3.36c.14.38.07.53.47.53.31 0 .44-.14.61-.3
-                 l1.36-1.32 2.82 2.08c.52.29.89.14 1.02-.48
-                 l1.85-8.73c.19-.76-.29-1.11-.9-.88z"
-              fill="white"/>
-      </svg>`;
-    return span;
-  }
-
-  function cardIcon() {
-    const span = document.createElement("span");
-    span.className = "sm-shop-icon-svg";
-    span.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <rect x="2.5" y="5" width="19" height="14" rx="3"
-              stroke="#7DDFFF" stroke-width="1.8"/>
-        <path d="M3 9H21" stroke="#7DDFFF" stroke-width="1.8"/>
-        <path d="M6 15H10" stroke="#7DDFFF" stroke-width="1.8"
-              stroke-linecap="round"/>
-      </svg>`;
-    return span;
-  }
-
-  function decorate() {
-    addStyles();
-
-    const root = document.querySelector(".ss-activation__shops");
-    if (!root) return;
-
-    const links = [...root.querySelectorAll("a")];
-
-    for (const a of links) {
-      if (a.dataset.smPaymentV2 === "1") continue;
-
-      const href = (a.getAttribute("href") || "").toLowerCase();
-      const txt = (a.textContent || "").toLowerCase();
-
-      let type = null;
-
-      if (href.includes("funpay.com") || txt.includes("funpay")) {
-        type = "funpay";
-      } else if (href.includes("t.me") || txt.includes("telegram")) {
-        type = "telegram";
-      } else if (
-        href.includes("store.showcasemaker.com") ||
-        txt.includes("gumroad") ||
-        txt.includes("оплатить картой") ||
-        txt.includes("pay by card")
-      ) {
-        type = "card";
-      }
-
-      if (!type) continue;
-
-      a.classList.add("sm-shop-fixed");
-
-      const arrow = a.lastElementChild;
-
-      let icon;
-
-      if (type === "funpay") {
-        icon = document.createElement("img");
-        icon.className = "sm-shop-icon-right";
-        icon.src = "/static/img/funpay-favicon.ico";
-        icon.alt = "";
-        icon.onerror = function () {
-          if (!this.dataset.pngFallback) {
-            this.dataset.pngFallback = "1";
-            this.src = "/static/img/funpay-favicon.png";
-          }
-        };
-      }
-
-      if (type === "telegram") {
-        icon = telegramIcon();
-      }
-
-      if (type === "card") {
-        icon = cardIcon();
-
-        a.classList.add("sm-card-payment");
-
-        const b = a.querySelector("b");
-        const small = a.querySelector("small");
-
-        if (b) {
-          b.setAttribute("data-ru", "Оплатить картой");
-          b.setAttribute("data-en", "Pay by card");
-
-          const lang =
-            (document.documentElement.lang || "").toLowerCase();
-
-          b.textContent = lang.startsWith("en")
-            ? "Pay by card"
-            : "Оплатить картой";
-        }
-
-        if (small) {
-          small.setAttribute("data-ru", "Купить Pro ключ");
-          small.setAttribute("data-en", "Buy Pro key");
-
-          const lang =
-            (document.documentElement.lang || "").toLowerCase();
-
-          small.textContent = lang.startsWith("en")
-            ? "Buy Pro key"
-            : "Купить Pro ключ";
-        }
-      }
-
-      if (icon) {
-        if (arrow) {
-          a.insertBefore(icon, arrow);
-        } else {
-          a.appendChild(icon);
-        }
-      }
-
-      a.dataset.smPaymentV2 = "1";
-    }
-  }
-
-  const observer = new MutationObserver(decorate);
-
-  function start() {
-    decorate();
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
-  } else {
-    start();
-  }
 })();

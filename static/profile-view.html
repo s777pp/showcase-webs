@@ -1,9 +1,25 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Профиль — Showcase Maker</title><link rel="icon" href="/static/icon.png">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profile — Showcase Maker</title><link rel="icon" href="/static/icon.png">
 <link rel="stylesheet" href="/static/ss.css?v=20260902a"><link rel="stylesheet" href="/static/steam-mockup/motiva_sans.css"><link rel="stylesheet" href="/static/steam-mockup/steam_profile.css"><link rel="stylesheet" href="/static/steam-mockup/builder.css?v=20260902a">
-<style>html,body{margin:0;min-height:100%;background:#000}.public-wrap{position:relative;min-height:calc(100vh - 72px);background:#000}.public-wrap .sm-stage{min-height:calc(100vh - 72px);overflow:visible}.public-wrap .profile_page{padding-top:38px;min-height:calc(100vh - 72px)}.public-state{display:grid;place-items:center;min-height:65vh;color:#8f98a0;font:14px "Motiva Sans",sans-serif}.owner-edit{position:fixed;right:22px;bottom:22px;z-index:20;padding:10px 15px;border-radius:4px;background:linear-gradient(90deg,#47bfff,#2d74ff);color:#fff;text-decoration:none;font:600 12px "Motiva Sans",sans-serif;box-shadow:0 12px 30px rgba(0,0,0,.4)}.public-wrap .sm-media-slot{pointer-events:none}.public-wrap .sm-media-slot__action{display:none}</style></head>
-<body><div id="ssHeadHost"></div><main class="public-wrap"><div class="sm-stage" id="publicStage"><div class="public-state">Загрузка профиля…</div></div><a class="owner-edit" id="editLink" href="/profile" hidden>Редактировать профиль</a></main><div id="ssFootHost"></div>
-<script src="/static/ss-shell.js?v=20260903020000"></script><script src="/static/js/steam-mockup.js?v=20260902a"></script><script>
-(function(){var stage=document.getElementById('publicStage'),m=location.pathname.match(/^\/profile\/([^/]+)\/?$/i),name=m?decodeURIComponent(m[1]):'';if(!name){stage.innerHTML='<div class="public-state">Профиль не найден</div>';return}fetch('/api/profile/'+encodeURIComponent(name),{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){if(!d.ok)throw Error(d.msg||'Профиль не найден');var p=d.profile||{},state=p.snapshot;if(!state&&p.steam)state=SteamMockup.applySteamProfile(p.steam,SteamMockup.defaultState());if(!state){state=SteamMockup.defaultState();state.name=p.display_name||p.username||name;state.summary=p.profile_summary||'';state.level=p.profile_level||1;state.avatar=p.avatar_url||'';state.background=p.background_url||''}SteamMockup.render(state,stage);document.title=(state.name||name)+' — Showcase Maker';document.getElementById('editLink').hidden=!d.is_owner}).catch(function(e){stage.innerHTML='<div class="public-state">'+SteamMockup.esc(e.message)+'</div>'})})();
+<style>html,body{margin:0;min-height:100%;background:#000}.public-wrap{position:relative;min-height:calc(100vh - 72px);background:#000}.public-wrap .sm-stage{min-height:calc(100vh - 72px);overflow:visible}.public-wrap .profile_page{padding-top:38px;min-height:calc(100vh - 72px)}.public-state{display:grid;place-items:center;min-height:65vh;color:#8f98a0;font:14px "Motiva Sans",sans-serif}.owner-edit{position:fixed;right:22px;bottom:22px;z-index:20;padding:10px 15px;border-radius:4px;background:linear-gradient(90deg,#47bfff,#2d74ff);color:#fff;text-decoration:none;font:600 12px "Motiva Sans",sans-serif;box-shadow:0 12px 30px rgba(0,0,0,.4)}.public-wrap .sm-media-slot{pointer-events:none}.public-wrap .sm-media-slot__action{display:none}</style><link rel="stylesheet" href="/static/css/redesign.css?v=20260903j"><link rel="stylesheet" href="/static/css/creator-os.css?v=20260903o"><script src="/static/js/i18n.js?v=20260903d"></script>
+<link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260904c">
+<script src="/static/js/layout-refinement.js?v=20260904c"></script>
+</head>
+<body><div id="ssHeadHost"></div><main class="public-wrap"><div class="sm-stage" id="publicStage"><div class="public-state" data-i="pv_loading">Loading the profile…</div></div><a class="owner-edit" id="editLink" href="/profile" hidden data-i="pv_edit">Edit profile</a></main><div id="ssFootHost"></div>
+<script src="/static/ss-shell.js?v=20260903j"></script><script src="/static/js/steam-mockup.js?v=20260904g"></script><script>
+(function(){
+var VDICT={
+ en:{pv_loading:'Loading the profile…',pv_edit:'Edit profile',pv_notfound:'Profile not found'},
+ ru:{pv_loading:'Загрузка профиля…',pv_edit:'Редактировать профиль',pv_notfound:'Профиль не найден'}
+};
+function vLang(){try{return window.SMLang?SMLang.get():'en'}catch(e){return 'en'}}
+function vT(k){var pack=VDICT[vLang()]||VDICT.en;return pack[k]!=null?pack[k]:VDICT.en[k]}
+function applyViewLang(){var pack=VDICT[vLang()]||VDICT.en;
+ if(window.SMLang&&SMLang.apply){SMLang.apply(pack);return}
+ Array.prototype.forEach.call(document.querySelectorAll('[data-i]'),function(el){var v=pack[el.getAttribute('data-i')];if(v!=null)el.textContent=v})}
+applyViewLang();
+var stage=document.getElementById('publicStage'),profileState=null,m=location.pathname.match(/^\/profile\/([^/]+)\/?$/i),name=m?decodeURIComponent(m[1]):'';
+window.addEventListener('sm:langchange',function(){applyViewLang();if(profileState)SteamMockup.render(profileState,stage)});
+if(!name){stage.innerHTML='<div class="public-state">'+SteamMockup.esc(vT('pv_notfound'))+'</div>';return}fetch('/api/profile/'+encodeURIComponent(name),{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){if(!d.ok)throw Error(d.msg||vT('pv_notfound'));var p=d.profile||{},state=p.snapshot;if(!state&&p.steam)state=SteamMockup.applySteamProfile(p.steam,SteamMockup.defaultState());if(!state){state=SteamMockup.defaultState();state.name=p.display_name||p.username||name;state.summary=p.profile_summary||'';state.level=p.profile_level||1;state.avatar=p.avatar_url||'';state.background=p.background_url||''}profileState=state;SteamMockup.render(state,stage);document.title=(state.name||name)+' — Showcase Maker';document.getElementById('editLink').hidden=!d.is_owner}).catch(function(e){stage.innerHTML='<div class="public-state">'+SteamMockup.esc(e.message)+'</div>'})})();
 </script></body></html>

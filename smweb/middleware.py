@@ -82,7 +82,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         "img-src 'self' data: blob: https:",
         "media-src 'self' data: blob: https:",
         "connect-src 'self' https:",
-        "frame-src https://telegram.org https://oauth.telegram.org",
+        "frame-src 'self' https://telegram.org https://oauth.telegram.org",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",

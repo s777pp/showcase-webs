@@ -3,6 +3,15 @@
  * Shared by /profile (editor) and /profile/{user} (public).
  */
 (function (global) {
+  var UI = {
+    en: {steam_user:'Steam User',replace_media:'Replace media',replace:'Replace',upload:'＋ Upload',featured:'Featured Artwork Showcase',artwork:'Artwork Showcase',workshop:'Workshop Showcase',guide:'Favorite Guide',info:'Info',favorite_art:'Favorite Artwork',showcase:'Showcase',submissions:'Submissions',followers:'Followers',created_by:'Created by — ',ratings:' ratings',level:'Level',favorite_badge:'Favorite Badge',offline:'Currently Offline',online:'Currently Online',ingame:'Currently In-Game',awards:'Profile Awards',badges:'Badges',groups:'Groups',no_groups:'No groups',games:'Games',inventory:'Inventory',screenshots:'Screenshots',videos:'Videos',workshop_items:'Workshop Items',reviews:'Reviews',guides:'Guides',artwork_stat:'Artwork'},
+    ru: {steam_user:'Пользователь Steam',replace_media:'Заменить медиа',replace:'Заменить',upload:'＋ Загрузить',featured:'Избранная иллюстрация',artwork:'Витрина иллюстраций',workshop:'Витрина Workshop',guide:'Избранное руководство',info:'Информация',favorite_art:'Избранная иллюстрация',showcase:'Витрина',submissions:'Работы',followers:'Подписчики',created_by:'Автор — ',ratings:' оценок',level:'Уровень',favorite_badge:'Избранный значок',offline:'Не в сети',online:'В сети',ingame:'В игре',awards:'Награды профиля',badges:'Значки',groups:'Группы',no_groups:'Нет групп',games:'Игры',inventory:'Инвентарь',screenshots:'Скриншоты',videos:'Видео',workshop_items:'Работы Workshop',reviews:'Обзоры',guides:'Руководства',artwork_stat:'Иллюстрации'}
+  };
+  function tr(k) { var l='en'; try{l=global.SMLang&&SMLang.get()==='ru'?'ru':'en'}catch(e){} return UI[l][k] || UI.en[k] || k; }
+  function localizedKnown(s) {
+    var map={'Steam User':'steam_user','Пользователь Steam':'steam_user','Featured Artwork Showcase':'featured','Artwork Showcase':'artwork','Workshop Showcase':'workshop','Favorite Guide':'guide','Info':'info','Favorite Artwork':'favorite_art','Favorite Badge':'favorite_badge','Currently Offline':'offline','Currently Online':'online','Currently In-Game':'ingame'};
+    return map[String(s||'')] ? tr(map[String(s||'')]) : s;
+  }
   function esc(s) {
     return String(s == null ? "" : s)
       .replace(/&/g, "&amp;")
@@ -53,8 +62,8 @@
   }
   function slotTag(url, cls, alt, slot, index) {
     return '<button type="button" class="sm-media-slot" data-slot="' + esc(slot) + '" data-index="' +
-      esc(index == null ? 0 : index) + '" aria-label="Replace media">' + mediaTag(url, cls, alt) +
-      '<span class="sm-media-slot__action">' + (url ? 'Replace' : '＋ Upload') + '</span></button>';
+      esc(index == null ? 0 : index) + '" aria-label="' + esc(tr('replace_media')) + '">' + mediaTag(url, cls, alt) +
+      '<span class="sm-media-slot__action">' + (url ? tr('replace') : tr('upload')) + '</span></button>';
   }
 
   function defaultState() {
@@ -102,7 +111,7 @@
       return (
         '<div class="profile_main_banner profile_main_banner--featured" data-sc="' + idx + '">' +
         '<div class="profile_main_banner_up"><div class="profile_main_banner_up_content">' +
-        '<div class="profile_main_banner_title">' + esc(sc.title || "Featured Artwork Showcase") +
+        '<div class="profile_main_banner_title">' + esc(localizedKnown(sc.title || "Featured Artwork Showcase")) +
         '</div></div></div><div class="profile_main_banner_main"><div class="profile_main_banner_main_content">' +
         '<div class="profile_main_featured">' +
         slotTag((sc.images && sc.images[0]) || "", "profile_main_featured_img", "featured artwork", "showcase", idx + ':0') +
@@ -119,7 +128,7 @@
         '">' +
         '<div class="profile_main_banner_up"><div class="profile_main_banner_up_content">' +
         '<div class="profile_main_banner_title">' +
-        esc(sc.title || "Artwork Showcase") +
+        esc(localizedKnown(sc.title || "Artwork Showcase")) +
         "</div></div></div>" +
         '<div class="profile_main_banner_main"><div class="profile_main_banner_main_content">' +
         '<div class="profile_main_banners">' +
@@ -151,7 +160,7 @@
         '">' +
         '<div class="profile_main_workshop_up"><div class="profile_main_workshop_up_content">' +
         '<div class="profile_main_workshop_title">' +
-        esc(sc.title || "Workshop Showcase") +
+        esc(localizedKnown(sc.title || "Workshop Showcase")) +
         "</div></div></div>" +
         '<div class="profile_main_workshop_main"><div class="profile_main_workshop_main_content">' +
 '<div class="profile_main_workshop_main_title">' +
@@ -165,12 +174,12 @@
         '<div class="profile_main_workshop_main_stat_item_number">' +
         esc(sc.subs || 0) +
         "</div>" +
-        '<div class="profile_main_workshop_main_stat_item_text">Submissions</div></div>' +
+        '<div class="profile_main_workshop_main_stat_item_text">' + tr('submissions') + '</div></div>' +
         '<div class="profile_main_workshop_main_stat_item">' +
         '<div class="profile_main_workshop_main_stat_item_number">' +
         esc(sc.followers || 0) +
         "</div>" +
-        '<div class="profile_main_workshop_main_stat_item_text">Followers</div></div>' +
+        '<div class="profile_main_workshop_main_stat_item_text">' + tr('followers') + '</div></div>' +
         "</div></div></div></div>"
       );
     }
@@ -181,17 +190,17 @@
         '">' +
         '<div class="profile_main_guide_inner">' +
         '<div class="profile_main_guide_title">' +
-        esc(sc.title || "Favorite Guide") +
+        esc(localizedKnown(sc.title || "Favorite Guide")) +
         "</div>" +
         '<div class="profile_main_guide_row">' +
         slotTag((sc.images && sc.images[0]) || "", "profile_main_guide_img", "guide", "showcase", idx + ':0') +
         '<div class="profile_main_guide_meta">' +
-        "<div>Created by — " +
+        "<div>" + tr('created_by') +
         esc(sc.author || "") +
         "</div>" +
         "<div>★★★☆☆ " +
         esc(sc.ratings || 0) +
-        " ratings</div>" +
+        tr('ratings') + "</div>" +
         "</div></div></div></div>"
       );
     }
@@ -201,7 +210,7 @@
         idx +
         '">' +
         '<div class="profile_main_info_title">' +
-        esc(sc.title || "Info") +
+        esc(localizedKnown(sc.title || "Info")) +
         "</div>" +
         '<div class="profile_main_info_body">' +
         esc(sc.text || "") +
@@ -221,7 +230,7 @@
         idx +
         '">' +
         '<div class="profile_main_illustration_title">' +
-        esc(sc.title || "Favorite Artwork") +
+        esc(localizedKnown(sc.title || "Favorite Artwork")) +
         "</div>" +
         slotTag((sc.images && sc.images[0]) || "", "profile_main_illustration_img", "fav", "showcase", idx + ':0') +
         "</div>"
@@ -236,7 +245,7 @@
       '<div class="profile_main_banner" data-sc="' +
       idx +
       '"><div class="profile_main_banner_up_content"><div class="profile_main_banner_title">' +
-      esc(sc.title || sc.type || "Showcase") +
+      esc(localizedKnown(sc.title || sc.type || tr('showcase'))) +
       "</div></div>" +
       '<div class="sm-generic-grid sm-generic-grid--' + esc(t || "other") + '">' + genericSlots.map(function(url, n) {
         return slotTag(url, "sm-generic-grid__media", "showcase item", "showcase", idx + ':' + n);
@@ -293,14 +302,14 @@
 
     var stats = state.stats || {};
     var statRows = [
-      ["Games", stats.games],
-      ["Inventory", stats.inventory || stats.inv],
-      ["Screenshots", stats.screenshots || stats.screens],
-      ["Videos", stats.videos],
-      ["Workshop Items", stats.workshop],
-      ["Reviews", stats.reviews],
-      ["Guides", stats.guides],
-      ["Artwork", stats.artwork || stats.art],
+      [tr('games'), stats.games],
+      [tr('inventory'), stats.inventory || stats.inv],
+      [tr('screenshots'), stats.screenshots || stats.screens],
+      [tr('videos'), stats.videos],
+      [tr('workshop_items'), stats.workshop],
+      [tr('reviews'), stats.reviews],
+      [tr('guides'), stats.guides],
+      [tr('artwork_stat'), stats.artwork || stats.art],
     ]
       .map(function (row) {
         return (
@@ -337,7 +346,7 @@
       "</div>" +
       '<div class="profile_up_items">' +
       '<div class="profile_up_name">' +
-      esc(state.name) +
+      esc(localizedKnown(state.name)) +
       "</div>" +
       (state.summary
         ? '<div class="profile_up_summary">' + esc(state.summary) + "</div>"
@@ -347,7 +356,7 @@
       showHtml +
       "</div></div>" +
       '<div class="profile_section_right">' +
-      '<div class="profile_right_level"><em>Level</em><span>' +
+      '<div class="profile_right_level"><em>' + tr('level') + '</em><span>' +
       esc(state.level || 0) +
       "</span></div>" +
       '<div class="profile_right_achievement">' +
@@ -355,7 +364,7 @@
       slotTag((state.favBadge && state.favBadge.image) || "", "profile_right_achievement_icon", "", "favBadge", 0) +
       '<div class="profile_right_achievement_texts">' +
       '<div class="profile_right_achievement_title">' +
-      esc((state.favBadge && state.favBadge.title) || "Favorite Badge") +
+      esc(localizedKnown((state.favBadge && state.favBadge.title) || "Favorite Badge")) +
       "</div>" +
       '<div class="profile_right_achievement_exp">' +
       esc((state.favBadge && state.favBadge.xp) || "") +
@@ -363,19 +372,19 @@
       '<div class="profile_right_menu">' +
       '<div class="profile_right_menu_content">' +
       '<div class="profile_right_menu_status">' +
-      esc(state.status || "Currently Offline") +
+      esc(localizedKnown(state.status || "Currently Offline")) +
       "</div>" +
-      '<div class="profile_right_awards_block"><div class="profile_right_block_title">Profile Awards <span>' + esc((state.awards || []).length) + '</span></div><div class="profile_right_awards">' +
+      '<div class="profile_right_awards_block"><div class="profile_right_block_title">' + tr('awards') + ' <span>' + esc((state.awards || []).length) + '</span></div><div class="profile_right_awards">' +
       (awards || '<div class="sm-slot-empty"></div>') +
       "</div></div>" +
-      '<div class="profile_right_badges_block"><div class="profile_right_block_title">Badges <span>' + esc((state.badges || []).length) + '</span></div><div class="profile_right_badges">' +
+      '<div class="profile_right_badges_block"><div class="profile_right_block_title">' + tr('badges') + ' <span>' + esc((state.badges || []).length) + '</span></div><div class="profile_right_badges">' +
       (badges || '<div class="sm-slot-empty"></div>') +
       "</div></div>" +
       '<div class="profile_right_stats">' +
       statRows +
       "</div>" +
-      '<div class="profile_groups"><div class="profile_right_block_title">Groups <span>' + esc((state.groups || []).length) + '</span></div>' +
-      (groups || '<div class="profile_groups_empty">No groups</div>') +
+      '<div class="profile_groups"><div class="profile_right_block_title">' + tr('groups') + ' <span>' + esc((state.groups || []).length) + '</span></div>' +
+      (groups || '<div class="profile_groups_empty">' + tr('no_groups') + '</div>') +
       "</div>" +
       "</div></div>" +
       "</div></div></div></div>";
@@ -445,7 +454,10 @@
       var list = [];
       var artN = 0;
       imported.forEach(function (sc) {
-        var images = (sc.images || []).filter(Boolean);
+        // Also sanitize older cached imports and extension-supplied catalogs.
+        var images = (sc.images || []).filter(function (url) {
+          return url && !/^(?:https?:)?\/\/avatars\./i.test(url) && !/\/avatars\//i.test(url);
+        });
         var typ = (sc.type || "other").toLowerCase();
         if (typ.indexOf("workshop") >= 0) {
           list.push({

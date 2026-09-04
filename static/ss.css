@@ -143,7 +143,19 @@ img,video{max-width:100%;display:block}
   display:flex;align-items:center;gap:11px;padding:13px 14px;border-radius:12px;
   font-size:14.5px;font-weight:600;color:var(--txt-2);border:1px solid transparent;
 }
+.ss-drawer a svg{
+  width:18px !important;
+  height:18px !important;
+  min-width:18px;
+  min-height:18px;
+  max-width:18px;
+  max-height:18px;
+  flex:none !important;
+  opacity:.9;
+  display:block;
+}
 .ss-drawer a:hover,.ss-drawer a.is-on{background:rgba(255,255,255,.05);color:var(--txt);border-color:var(--line)}
+.ss-drawer a.is-on svg{opacity:1;color:var(--brand-2)}
 
 /* shared authentication dialog */
 .ss-auth{position:fixed;inset:0;z-index:200;display:none;place-items:center;padding:20px;background:rgba(1,5,8,.7);backdrop-filter:blur(18px)}

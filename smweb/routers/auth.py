@@ -117,6 +117,21 @@ async def auth_login(request: Request):
     return resp
 
 
+@router.post("/api/auth/change-password")
+async def auth_change_password(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    current_password = str(body.get("current_password") or "")
+    new_password = str(body.get("new_password") or "")
+    ok, msg = auth_db.change_password(int(user["id"]), current_password, new_password)
+    return JSONResponse({"ok": ok, "msg": msg}, status_code=200 if ok else 400)
+
+
 @router.post("/api/admin/wipe-users")
 async def admin_wipe_users(request: Request):
     """Delete all accounts. Requires header X-Admin-Secret = ADMIN_SECRET env."""

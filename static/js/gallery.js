@@ -3,6 +3,53 @@
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 
+  /* ---- i18n ---- */
+  const GDICT = {
+    en: {
+      gal_carousel: 'Carousel',
+      gal_feed: 'Feed',
+      gal_loading: 'Loading the gallery…',
+      gal_hint: 'Click a card · scroll or drag · hover to pause',
+      gal_ph_comment: 'Write a comment…',
+      gal_send: 'Send',
+      c_loading: 'Loading…',
+      c_empty: 'No comments yet',
+      c_fail: 'Could not load comments',
+      c_need_login: 'Sign in to leave a comment',
+      c_send_fail: 'Could not send the comment',
+      gal_fail: 'Could not load the gallery',
+      untitled: 'Untitled', anonymous: 'anonymous', by: 'by', showcase: 'Showcase'
+    },
+    ru: {
+      gal_carousel: 'Карусель',
+      gal_feed: 'Лента',
+      gal_loading: 'Загрузка галереи…',
+      gal_hint: 'Кликни по карточке · колёсико или перетаскивание · пауза при наведении',
+      gal_ph_comment: 'Написать комментарий…',
+      gal_send: 'Отправить',
+      c_loading: 'Загрузка…',
+      c_empty: 'Пока нет комментариев',
+      c_fail: 'Не удалось загрузить',
+      c_need_login: 'Войдите, чтобы комментировать',
+      c_send_fail: 'Ошибка отправки',
+      gal_fail: 'Не удалось загрузить галерею',
+      untitled: 'Без названия', anonymous: 'аноним', by: 'автор:', showcase: 'Витрина'
+    }
+  };
+  function gLang() { try { return window.SMLang ? SMLang.get() : 'en'; } catch (e) { return 'en'; } }
+  function gT(k) { const p = GDICT[gLang()] || GDICT.en; return p[k] != null ? p[k] : (GDICT.en[k] || ''); }
+  function applyGalleryLang() {
+    const pack = GDICT[gLang()] || GDICT.en;
+    if (window.SMLang && SMLang.apply) { SMLang.apply(pack); return; }
+    $$('[data-i]').forEach((el) => { const v = pack[el.getAttribute('data-i')]; if (v != null) el.textContent = v; });
+    $$('[data-i-ph]').forEach((el) => { const v = pack[el.getAttribute('data-i-ph')]; if (v != null) el.placeholder = v; });
+  }
+  applyGalleryLang();
+  window.addEventListener('sm:langchange', () => {
+    applyGalleryLang();
+    if (items.length) { buildCarousel(); buildFeed(); }
+  });
+
   // mobile menu
   const menuBtn = $('#logoMenuBtn');
   const mobileMenu = $('#mobileMenu');
@@ -112,10 +159,10 @@
             <img src="${item.url}" alt="${escapeHtml(item.title)}" draggable="false" loading="lazy"/>
             <div class="face-grad"></div>
             <div class="face-logo">S</div>
-            <div class="face-badge">${escapeHtml(item.mode || 'Showcase')}</div>
+            <div class="face-badge">${escapeHtml(item.mode || gT('showcase'))}</div>
             <div class="face-meta">
-              <div class="face-title">${escapeHtml(item.title || 'Untitled')}</div>
-              <div class="face-author">by ${escapeHtml(item.author || 'anon')}</div>
+              <div class="face-title">${escapeHtml(item.title || gT('untitled'))}</div>
+              <div class="face-author">${escapeHtml(gT('by'))} ${escapeHtml(item.author || gT('anonymous'))}</div>
             </div>`;
         } else {
           layer.classList.add('layer-face');
@@ -125,10 +172,10 @@
             <div class="back-dim"></div>
             <div class="back-stripe"></div>
             <div class="back-info">
-              <div class="face-title">${escapeHtml(item.title || 'Untitled')}</div>
-              <div class="face-author">@${escapeHtml(item.author || 'anon')}</div>
+              <div class="face-title">${escapeHtml(item.title || gT('untitled'))}</div>
+              <div class="face-author">@${escapeHtml(item.author || gT('anonymous'))}</div>
               <div class="back-tags">
-                <span>${escapeHtml(item.mode || 'Showcase')}</span>
+                <span>${escapeHtml(item.mode || gT('showcase'))}</span>
                 <span>Steam</span>
                 ${item.likes ? `<span>♥ ${item.likes}</span>` : ''}
               </div>
@@ -174,8 +221,8 @@
       <article class="feed-card" data-id="${item.id}">
         <img src="${item.url}" alt="${escapeHtml(item.title)}" loading="lazy"/>
         <div class="info">
-          <div class="t">${escapeHtml(item.title || 'Untitled')}</div>
-          <div class="a">by ${escapeHtml(item.author || 'anon')}</div>
+          <div class="t">${escapeHtml(item.title || gT('untitled'))}</div>
+          <div class="a">${escapeHtml(gT('by'))} ${escapeHtml(item.author || gT('anonymous'))}</div>
           <div class="stats">
             <span>♥ ${item.likes || 0}</span>
             <span>${escapeHtml(item.mode || '')}</span>
@@ -322,12 +369,12 @@
   function openModal(item) {
     currentItem = item;
     $('#mImg').src = item.url;
-    $('#mTitle').textContent = item.title || 'Untitled';
-    $('#mMode').textContent = item.mode || 'Showcase';
+    $('#mTitle').textContent = item.title || gT('untitled');
+    $('#mMode').textContent = item.mode || gT('showcase');
     $('#mLikes').textContent = item.likes || 0;
     $('#mLike').classList.toggle('liked', !!item.liked);
 
-    const author = item.author || 'anon';
+    const author = item.author || gT('anonymous');
     const profileUrl = item.profile_url || (item.username ? '/profile/' + encodeURIComponent(item.username) : '#');
     $('#mAuthor').textContent = author;
     $('#mAuthor').href = profileUrl;
@@ -355,23 +402,23 @@
 
   async function loadComments(id) {
     const box = $('#mComments');
-    box.innerHTML = '<div class="comment-empty">Загрузка…</div>';
+    box.innerHTML = '<div class="comment-empty">' + escapeHtml(gT('c_loading')) + '</div>';
     try {
       const r = await fetch(`/api/gallery/${id}/comments`, { credentials: 'include' });
       const d = await r.json();
       const list = d.comments || d.items || [];
       if (!list.length) {
-        box.innerHTML = '<div class="comment-empty">Пока нет комментариев</div>';
+        box.innerHTML = '<div class="comment-empty">' + escapeHtml(gT('c_empty')) + '</div>';
         return;
       }
       box.innerHTML = list.map((c) => `
         <div class="comment">
-          <div class="c-author">${escapeHtml(c.author || c.display_name || 'anon')}</div>
+          <div class="c-author">${escapeHtml(c.author || c.display_name || gT('anonymous'))}</div>
           <div class="c-text">${escapeHtml(c.text || c.body || '')}</div>
         </div>
       `).join('');
     } catch {
-      box.innerHTML = '<div class="comment-empty">Не удалось загрузить</div>';
+      box.innerHTML = '<div class="comment-empty">' + escapeHtml(gT('c_fail')) + '</div>';
     }
   }
 
@@ -408,10 +455,10 @@
         input.value = '';
         loadComments(currentItem.id);
       } else {
-        alert(d.msg || 'Войдите, чтобы комментировать');
+        alert(d.msg || gT('c_need_login'));
       }
     } catch {
-      alert('Ошибка отправки');
+      alert(gT('c_send_fail'));
     }
   });
 
@@ -422,12 +469,12 @@
       const list = d.items || d.gallery || [];
       items = list.map((it) => ({
         id: it.id,
-        title: it.title || 'Untitled',
-        author: it.author || it.username || 'anon',
+        title: it.title || gT('untitled'),
+        author: it.author || it.username || gT('anonymous'),
         username: it.username || '',
         profile_url: it.profile_url || (it.username ? '/profile/' + encodeURIComponent(it.username) : '#'),
         avatar_url: it.avatar_url || '',
-        mode: it.mode || 'Showcase',
+        mode: it.mode || gT('showcase'),
         url: it.url || (it.id ? '/api/gallery/image/' + it.id : ''),
         likes: it.likes || 0,
         liked: !!it.liked,
@@ -451,7 +498,7 @@
       startLoop();
     } catch (e) {
       console.error(e);
-      loadingEl.innerHTML = '<div>Не удалось загрузить галерею</div>';
+      loadingEl.innerHTML = '<div>' + escapeHtml(gT('gal_fail')) + '</div>';
     }
   }
 

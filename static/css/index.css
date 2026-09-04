@@ -996,3 +996,22 @@ html[lang="ru"] .echo-text{padding:0 .08em .14em;margin:0 -.08em -.14em;contain:
   padding-bottom: 12px !important;
   margin-bottom: -12px !important;
 }
+
+
+/* Showcase Maker mobile index extras */
+@media(max-width:767px){
+  .logo-link{display:none !important}
+  .logo-menu-btn{display:inline-flex !important}
+  .nav-links{display:none !important}
+  .hero{padding:48px 16px 40px !important}
+  .hero h1{font-size:clamp(1.9rem,9vw,2.8rem) !important}
+  .mock{margin:0 12px;padding:28px 0 48px}
+  .mock-body{grid-template-columns:1fr !important;height:auto !important}
+  .grid2,.q-grid,.c3-grid{grid-template-columns:1fr !important;transform:none !important}
+  .logo-grid{grid-template-columns:repeat(2,1fr) !important}
+}
+@media(max-width:480px){
+  .nav-right .btn-pill{display:none !important}
+  .hero-cta{width:100%}
+  .hero-cta .btn-pill{width:100%;justify-content:center}
+}

@@ -4,12 +4,14 @@
   var TG_URL = 'https://t.me/SteamMakerBot';
 
   function i18nBuy(){
-    var lang = (localStorage.getItem('sm_lang') || document.documentElement.lang || 'en').slice(0,2).toLowerCase();
+    var lang = SMLang.get();
     var ru = lang === 'ru';
     var t = document.getElementById('smBuyTitle');
     var s = document.getElementById('smBuySub');
     var fd = document.getElementById('smBuyFunpayD');
     var td = document.getElementById('smBuyTgD');
+    var ct = document.getElementById('smBuyCardT');
+    var cd = document.getElementById('smBuyCardD');
     var c = document.getElementById('smBuyClose');
     if (t) t.textContent = ru ? 'Купить Pro-ключ' : 'Buy Pro key';
     if (s) s.textContent = ru
@@ -17,18 +19,26 @@
       : 'Choose where to buy. After payment, activate the code in your account.';
     if (fd) fd.textContent = ru ? 'Код сразу после оплаты' : 'Instant code after payment';
     if (td) td.textContent = ru ? 'Через бота / поддержку' : 'Buy via bot / support';
+    if (ct) ct.textContent = ru ? 'Оплата картой' : 'Pay by card';
+    if (cd) cd.textContent = ru ? 'Банковская карта · защищённая оплата' : 'Bank card · secure checkout';
     if (c) c.textContent = ru ? 'Закрыть' : 'Close';
   }
 
   window.openBuyKeyModal = function openBuyKeyModal(e){
     if (e && e.preventDefault) e.preventDefault();
+    if (window.SSShell && typeof window.SSShell.openActivation === 'function') {
+      window.SSShell.openActivation();
+      return;
+    }
     var ov = document.getElementById('smBuyOverlay');
     if (!ov) return;
     i18nBuy();
     var fp = document.getElementById('smBuyFunpay');
     var tg = document.getElementById('smBuyTg');
+    var card = document.getElementById('smBuyCard');
     if (fp) fp.href = FUNPAY_URL;
     if (tg) tg.href = TG_URL;
+    if (card) card.href = 'https://store.showcasemaker.com';
     ov.classList.add('open');
     ov.setAttribute('aria-hidden', 'false');
   };
@@ -187,15 +197,17 @@
   if (imgAfter) imgAfter.addEventListener('load', fitAfterImage);
   window.addEventListener('resize', fitAfterImage);
 
+  function upT(ru, en){ try { return SMLang.isRu() ? ru : en; } catch (e) { return en; } }
+
   btn.addEventListener('click', async function(){
     if (!isPro()) { syncLock(); return; }
     const f = selectedFile || (fileInp.files && fileInp.files[0]);
     const model = document.getElementById('upscaleModel')?.value || '4xBHI_dat2_real';
-    if (!f) { if (st) st.textContent = 'Выбери изображение'; return; }
+    if (!f) { if (st) st.textContent = upT('Выбери изображение', 'Choose an image'); return; }
     btn.disabled = true;
     if (st) st.textContent = '';
     if (prev) prev.style.display = 'none';
-    setProg(true, 'Увеличение… обычно 1–3 минуты');
+    setProg(true, upT('Увеличение… обычно 1–3 минуты', 'Upscaling… usually 1–3 minutes'));
     try {
       if (!beforeUrl) beforeUrl = URL.createObjectURL(f);
       const fd = new FormData();
@@ -222,7 +234,7 @@
       if (prev) prev.style.display = 'block';
       setSplit(50);
       setTimeout(fitAfterImage, 50);
-      if (st) st.textContent = 'Готово — двигай ползунок, чтобы сравнить до/после';
+      if (st) st.textContent = upT('Готово — двигай ползунок, чтобы сравнить до/после', 'Done — drag the slider to compare before / after');
     } catch (e) {
       if (st) st.textContent = String(e.message || e);
     } finally {
@@ -261,17 +273,21 @@
       return '<div class="sm-upload-file-card">' +
         '<div class="sm-upload-file-name">' + escapeHtml(f.name || 'file') + '</div>' +
         '<div class="sm-upload-file-size">' + formatBytes(f.size) + '</div>' +
-        '<div class="sm-upload-file-info"><span><strong>Type</strong> ' + escapeHtml(prettyType(f)) + '</span><span><strong>Modified</strong> ' + escapeHtml(modified) + '</span></div>' +
+        '<div class="sm-upload-file-info"><span><strong>' + escapeHtml(smUploadT('Тип','Type')) + '</strong> ' + escapeHtml(prettyType(f)) + '</span><span><strong>' + escapeHtml(smUploadT('Изменён','Modified')) + '</strong> ' + escapeHtml(modified) + '</span></div>' +
       '</div>';
     }).join('');
     if (arr.length > 4) {
-      return items + '<div style="margin-top:7px;color:rgba(255,255,255,.4);font-size:10px">+' + (arr.length-4) + ' more file(s)</div>';
+      return items + '<div style="margin-top:7px;color:rgba(255,255,255,.4);font-size:10px">+' + (arr.length-4) + ' ' + escapeHtml(smUploadT('ещё файл(ов)','more file(s)')) + '</div>';
     }
     return items;
   }
 
   function escapeHtml(s){
     return String(s).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[ch]));
+  }
+
+  function smUploadT(ru,en){
+    try { return SMLang.isRu() ? ru : en; } catch (_) { return en; }
   }
 
   function ensureSurfaceContents(surface, multi){
@@ -284,9 +300,11 @@
           '<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/>' +
         '</svg>' +
       '</div>' +
-      '<div class="sm-upload-title">Upload file</div>' +
-      '<div class="sm-upload-subtitle">Drag or drop your ' + (multi ? 'files' : 'file') + ' here or click to upload</div>' +
-      '<div class="sm-upload-meta"><span>Drag &amp; drop</span><span>Browse</span></div>';
+      '<div class="sm-upload-title">' + smUploadT('Загрузить файл','Upload file') + '</div>' +
+      '<div class="sm-upload-subtitle">' + (multi
+        ? smUploadT('Перетащи файлы сюда или нажми для выбора','Drag or drop your files here or click to upload')
+        : smUploadT('Перетащи файл сюда или нажми для выбора','Drag or drop your file here or click to upload')) + '</div>' +
+      '<div class="sm-upload-meta"><span>' + smUploadT('Перетащить','Drag &amp; drop') + '</span><span>' + smUploadT('Выбрать','Browse') + '</span></div>';
     surface.appendChild(content);
     return content;
   }
@@ -296,7 +314,7 @@
     const sub=$('.sm-upload-subtitle', surface);
     const meta=$('.sm-upload-meta', surface);
     if (!title || !sub) return;
-    const ru = (localStorage.getItem('sm_lang') || 'en') === 'ru';
+    const ru = SMLang.isRu();
     if (!fileCount) {
       title.textContent = ru ? 'Загрузить файл' : 'Upload file';
       sub.textContent = custom || (ru ? 'Перетащи файл сюда или нажми для выбора' : 'Drag or drop your files here or click to upload');
@@ -422,7 +440,7 @@
     surface.className='sm-upload-surface sm-upload-mini';
     surface.setAttribute('role','button');
     surface.setAttribute('tabindex','0');
-    surface.setAttribute('aria-label','Upload file');
+    surface.setAttribute('aria-label',smUploadT('Загрузить файл','Upload file'));
     ensureSurfaceContents(surface, !!input.multiple);
     parent.insertBefore(surface,input);
     input.dataset.smEnhanced='1';
@@ -522,6 +540,14 @@
     setTimeout(refreshUploads,200);
     setTimeout(refreshUploads,900);
   }
+
+  window.addEventListener('sm:langchange', function(){
+    $$('.sm-upload-surface').forEach(function(surface){
+      var panel=surface.querySelector('.sm-upload-selection');
+      var count=panel&&panel.classList.contains('show')?panel.querySelectorAll('.sm-upload-file-card').length:0;
+      setSurfaceText(surface,count);
+    });
+  });
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
   else start();

@@ -20,7 +20,7 @@ import unicodedata
 from html import unescape
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import requests
 import xml.etree.ElementTree as ET
@@ -678,7 +678,10 @@ def _normalise_showcase(item: dict) -> dict:
     images = []
     for raw in item.get("images") or []:
         url = unescape(str(raw or "")).strip()
-        if not url or any(noise in url.lower() for noise in (
+        # Steam serves author avatars from several CDN hosts, not only Akamai.
+        # These appear inside Workshop headers but are not showcase tiles.
+        avatar_host = (urlsplit(url).hostname or "").lower().startswith("avatars.")
+        if not url or avatar_host or any(noise in url.lower() for noise in (
             "avatars.akamai", "/avatars/", "steamcommunity/public/images/skin",
             "blank.gif", "pixel.gif", "trans.gif",
         )):

@@ -16,6 +16,8 @@ const titles = {
   account:['Account','Sign up, log in and buy Pro'],
   about:['About','Limits, Pro and contacts']
 };
+function smT(ru, en) { return SMLang.isRu() ? ru : en; }
+window.smT = smT;
 function headers() {
   // re-read every time so navigation/home→tools keeps login
   state.session = localStorage.getItem('sm_session') || state.session || '';
@@ -115,20 +117,20 @@ async function refreshQuota() {
       badge.textContent = 'Trial'; badge.className = 'pill pro';
       setTrialTimer(j.remaining_sec);
     } else {
-      el.innerHTML = `<b>Pro</b> · unlimited`;
+      el.innerHTML = `<b>Pro</b> · ` + smT('без лимита', 'unlimited');
       badge.textContent = j.label || 'Pro'; badge.className = 'pill pro';
       setTrialTimer(null);
     }
     btnUp.style.display = 'none';
   } else {
-    el.innerHTML = `Today <b>${j.used}</b> / ${j.limit}`;
+    el.innerHTML = smT('Сегодня', 'Today') + ` <b>${j.used}</b> / ${j.limit}`;
     badge.textContent = 'Free'; badge.className = 'pill';
     btnUp.style.display = state.session ? 'inline-block' : 'none';
     setTrialTimer(null);
   }
   if (j.email || state.session) {
     userPill.style.display = 'inline-block';
-    userPill.textContent = (j.display_name || '').trim() || j.email || 'Account';
+    userPill.textContent = (j.display_name || '').trim() || j.email || smT('Аккаунт', 'Account');
     btnAuth.style.display = 'none'; btnOut.style.display = 'inline-block';
   } else {
     userPill.style.display = 'none';
@@ -145,7 +147,7 @@ window.openAuthModal = function openAuthModal(mode) {
   try { if (typeof syncAuthUi === 'function') syncAuthUi(); } catch (e) { console.warn('syncAuthUi', e); }
   try {
     if (typeof syncAuthUiLang === 'function') {
-      const L = (typeof appLang === 'function') ? appLang() : (localStorage.getItem('sm_lang') || 'en');
+      const L = (typeof appLang === 'function') ? appLang() : (SMLang.get());
       syncAuthUiLang(L);
     }
   } catch (e) { console.warn('syncAuthUiLang', e); }
@@ -192,7 +194,7 @@ wireAuthOpeners();
 
 function syncAuthUi() {
   const reg = state.authMode === 'register';
-  const L = (typeof appLang === 'function') ? appLang() : (localStorage.getItem('sm_lang') || 'en');
+  const L = (typeof appLang === 'function') ? appLang() : (SMLang.get());
   const isRu = L === 'ru';
   const title = document.getElementById('authTitle');
   const sub = document.getElementById('authSub');
@@ -249,7 +251,8 @@ document.getElementById('btnLogout').onclick = async () => {
   refreshQuota();
 };
 function openFunPayBuy(e) {
-  if (typeof openBuyKeyModal === 'function') openBuyKeyModal(e);
+  if (window.SSShell && typeof window.SSShell.openActivation === 'function') window.SSShell.openActivation();
+  else if (typeof openBuyKeyModal === 'function') openBuyKeyModal(e);
   else window.open('https://funpay.com/lots/offer?id=76420307', '_blank');
 }
 ['btnBuyKeyAbout','btnBuyKeyAccount','btnBuyKeyGuest','btnUpgrade'].forEach(function(id) {
@@ -304,14 +307,22 @@ document.getElementById('btnUnlock2')?.addEventListener('click', () => {
 
 document.querySelectorAll('#nav button').forEach(btn => {
   btn.onclick = () => {
+    /* nav items that carry data-href are plain links (Profile -> /profile) */
+    const href = btn.getAttribute('data-href');
+    if (href) { window.location.href = href; return; }
     document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    const pane = document.getElementById('tab-' + btn.dataset.tab);
+    if (pane) pane.classList.add('active');
     if (btn.dataset.tab === 'account') refreshAccountUI();
-    const t = titles[btn.dataset.tab] || ['',''];
-    document.getElementById('pageTitle').textContent = t[0];
-    document.getElementById('pageSub').textContent = t[1];
+    /* pageTitle/pageSub are painted from the dictionary (title_/sub_<tab>) */
+    if (typeof window.__smApplyDict === 'function') window.__smApplyDict();
+    else {
+      const t = titles[btn.dataset.tab] || ['', ''];
+      document.getElementById('pageTitle').textContent = t[0];
+      document.getElementById('pageSub').textContent = t[1];
+    }
   };
 });
 document.querySelectorAll('.mode').forEach(btn => {
@@ -354,7 +365,7 @@ document.getElementById('btnRun').onclick = async () => {
   const pctEl = document.getElementById('procProgPct');
   const label = document.getElementById('procProgLabel');
   const sub = document.getElementById('procProgSub');
-  const ru = (localStorage.getItem('sm_lang') === 'ru');
+  const ru = (SMLang.isRu());
   let tickTimer = null;
   let fakePct = 0;
 
@@ -429,7 +440,7 @@ document.getElementById('btnRun').onclick = async () => {
       };
       xhr.upload.onload = function () {
         fakePct = 55;
-        setProg(55, ru ? 'Обработка на сервере…' : 'Processing on server…', ru ? 'нарезка, watermark, ZIP…' : 'cuts, watermark, ZIP…');
+        setProg(55, ru ? 'Обработка на сервере…' : 'Processing on server…', ru ? 'нарезка, водяной знак, ZIP…' : 'cuts, watermark, ZIP…');
         stopTick();
         tickTimer = setInterval(function () {
           // creep 55 → 92 while waiting
@@ -466,7 +477,7 @@ document.getElementById('btnRun').onclick = async () => {
             if (pg) {
               pg.style.display = 'inline-flex';
               pg.disabled = false;
-              const ruBtn = (localStorage.getItem('sm_lang') === 'ru');
+              const ruBtn = (SMLang.isRu());
               pg.textContent = ruBtn ? 'Опубликовать в галерею' : 'Publish to gallery';
             }
             window.__lastPublishReady = true;
@@ -507,7 +518,7 @@ document.getElementById('btnRun').onclick = async () => {
               if (pg) {
                 pg.style.display = 'inline-flex';
                 pg.disabled = false;
-                const ruBtn = (localStorage.getItem('sm_lang') === 'ru');
+                const ruBtn = (SMLang.isRu());
                 pg.textContent = ruBtn ? 'Опубликовать в галерею' : 'Publish to gallery';
               }
               window.__lastPublishReady = true;
@@ -560,7 +571,7 @@ document.getElementById('btnDl').onclick = async () => {
   const pctEl = document.getElementById('dlProgressPct');
   const label = document.getElementById('dlProgressLabel');
   const sub = document.getElementById('dlProgressSub');
-  const ru = (localStorage.getItem('sm_lang') === 'ru');
+  const ru = (SMLang.isRu());
   let tickTimer = null;
   let fakePct = 0;
 
@@ -643,13 +654,14 @@ async function loadPvSlots() {
   (j.slots || []).forEach(s => {
     const row = document.createElement('div'); row.className = 'fi';
     const name = document.createElement('span'); name.style.flex = '1';
-    name.textContent = s.label + (pvFiles[s.id] ? ' · ' + pvFiles[s.id].name : ' · файл не выбран');
-    const pick = document.createElement('button'); pick.type='button'; pick.className='btn ghost'; pick.style.padding='6px 12px'; pick.textContent='Choose';
+    const noFile = ' · ' + smT('файл не выбран', 'no file selected');
+    name.textContent = s.label + (pvFiles[s.id] ? ' · ' + pvFiles[s.id].name : noFile);
+    const pick = document.createElement('button'); pick.type='button'; pick.className='btn ghost'; pick.style.padding='6px 12px'; pick.textContent = smT('Выбрать', 'Choose');
     const inp = document.createElement('input'); inp.type='file'; inp.accept='image/*,.gif,video/*'; inp.style.display='none';
     inp.onchange = () => { if (inp.files[0]) { pvFiles[s.id]=inp.files[0]; name.textContent=s.label+' · '+inp.files[0].name; } };
     pick.onclick = (e) => { e.preventDefault(); inp.click(); };
     const clr = document.createElement('button'); clr.type='button'; clr.textContent='✕';
-    clr.onclick = () => { delete pvFiles[s.id]; name.textContent=s.label+' · файл не выбран'; };
+    clr.onclick = () => { delete pvFiles[s.id]; name.textContent = s.label + noFile; };
     row.appendChild(name); row.appendChild(inp); row.appendChild(pick); row.appendChild(clr);
     box.appendChild(row);
   });
@@ -668,7 +680,7 @@ document.getElementById('btnPv').onclick = async () => {
   const pctEl = document.getElementById('pvProgressPct');
   const label = document.getElementById('pvProgressLabel');
   const sub = document.getElementById('pvProgressSub');
-  const ru = (localStorage.getItem('sm_lang') === 'ru');
+  const ru = (SMLang.isRu());
   let tickTimer = null;
   let fakePct = 0;
 
@@ -946,7 +958,8 @@ async function init(){
     openAuthModal('register');
   }
   if (new URLSearchParams(location.search).get('billing') === 'success') {
-    alert('Оплата прошла. Обнови страницу через пару секунд, если Pro ещё не активен.');
+    alert(smT('Оплата прошла. Обнови страницу через пару секунд, если Pro ещё не активен.',
+              'Payment went through. Reload the page in a couple of seconds if Pro is not active yet.'));
     history.replaceState({}, '', '/app');
   }
 }
@@ -978,7 +991,7 @@ const STEAM_MODE_LABELS = {
 };
 
 function steamLang() {
-  return (localStorage.getItem("sm_lang") || "en");
+  return (SMLang.get());
 }
 
 function refreshSteamUI() {
@@ -1073,7 +1086,7 @@ const APP_I18N = window.APP_I18N = {
       preview: "Предпросмотр", steam: "Steam", da: "DeviantArt", account: "Аккаунт", about: "О сервисе"
     },
     titles: {
-      process: ["Обработка", "Нарезка Workshop / Featured / Split, watermark и ZIP для Steam"],
+      process: ["Обработка", "Нарезка Workshop / Featured / Split, водяной знак и ZIP для Steam"],
       download: ["Скачать", "Исходники с YouTube, TikTok, X, Reddit и Pinterest"],
       convert: ["Конвертер", "Видео ↔ GIF и другие форматы"],
       hex: ["HEX", "Последний байт 0x21 для загрузки в Steam"],
@@ -1088,12 +1101,12 @@ const APP_I18N = window.APP_I18N = {
     drop: "Перетащи PNG, JPG, GIF, MP4 или AVI — или нажми для выбора",
     run: "Обработать", clear: "Очистить",
     lbl_fps: "Кадр/с", lbl_width: "Ширина", lbl_wm: "Вотермарка", lbl_font: "Шрифт",
-    lbl_opacity: "Прозрачность %", lbl_wm_size: "Размер WM %", lbl_corner: "Угол WM",
-    lbl_color: "Цвет WM", lbl_encoder: "Кодек GIF", lbl_on: "Вкл",
+    lbl_opacity: "Прозрачность %", lbl_wm_size: "Размер знака %", lbl_corner: "Положение знака",
+    lbl_color: "Цвет знака", lbl_encoder: "Кодек GIF", lbl_on: "Вкл",
     corner_bl: "Левый нижний", corner_br: "Правый нижний", corner_tl: "Левый верхний", corner_tr: "Правый верхний",
     all_modes: "Все режимы",
     mode_ws: "5 частей для витрины мастерской",
-    mode_ft: "Artwork шириной 630 px",
+    mode_ft: "Иллюстрация шириной 630 px",
     mode_sp: "Центр 506 + боковая 100",
     acc_guest: "Войди или зарегистрируйся",
     acc_guest_p: "Создай аккаунт, чтобы купить Pro и сохранить доступ.",
@@ -1211,36 +1224,19 @@ const APP_I18N = window.APP_I18N = {
 };
 
 function appLang() {
-  return localStorage.getItem('sm_lang') || 'en';
+  return SMLang.get();
 }
 
 window.applyAppLang = function applyAppLang(lang) {
 
   const pack = APP_I18N[lang] || APP_I18N.ru;
-  localStorage.setItem('sm_lang', lang);
+  SMLang.set(lang);
   document.documentElement.lang = lang;
   const lb = document.getElementById('langBtn');
   if (lb) lb.textContent = lang === 'en' ? 'RU' : 'EN';
 
-  document.querySelectorAll('#nav button').forEach(btn => {
-    const k = btn.dataset.tab;
-    if (pack.nav && pack.nav[k]) btn.textContent = pack.nav[k];
-  });
-
-  if (typeof titles !== 'undefined' && pack.titles) {
-    Object.assign(titles, pack.titles);
-    const active = document.querySelector('#nav button.active');
-    if (active) {
-      const key = active.dataset.tab;
-      const pair = pack.titles[key];
-      if (pair) {
-        const pt = document.getElementById('pageTitle');
-        const ps = document.getElementById('pageSub');
-        if (pt) pt.textContent = pair[0];
-        if (ps) ps.textContent = pair[1];
-      }
-    }
-  }
+  /* nav labels and pageTitle/pageSub are painted from DICT via data-i in applyDict();
+     re-writing them here used to revert nav_preview and blank the Upscale tab title. */
 
   const back = document.querySelector('a.back');
   if (back && pack.back) back.textContent = pack.back;
@@ -1259,7 +1255,6 @@ window.applyAppLang = function applyAppLang(lang) {
   setTxt('btnRun', pack.run);
   setTxt('btnClear', pack.clear);
   setTxt('btnProcess', pack.run);
-  setTxt('dlProcess', pack.dlzip);
   setTxt('accLogin', pack.login);
   setTxt('accRegister', pack.reg);
   setTxt('btnUnlock2', pack.apply);
@@ -1270,11 +1265,8 @@ window.applyAppLang = function applyAppLang(lang) {
   const dropEl = document.getElementById('drop');
   if (dropEl && pack.drop) dropEl.textContent = pack.drop;
 
-  // process card titles
-  const ph = document.querySelectorAll('#tab-process .card h2');
-  if (ph[0] && pack.mode) ph[0].textContent = pack.mode;
-  if (ph[1] && pack.params) ph[1].textContent = pack.params;
-  if (ph[2] && pack.files) ph[2].textContent = pack.files;
+  /* process card titles come from data-i (mode / params / wm_preview_h / files).
+     The old positional lookup clobbered the watermark-preview heading with "Files". */
 
   // mode descriptions
   const modes = document.querySelectorAll('.mode span');
@@ -1441,7 +1433,7 @@ async function refreshDa() {
       login.style.cursor = 'pointer';
     }
     if (!pill) return;
-    const ru = (localStorage.getItem('sm_lang') === 'ru');
+    const ru = (SMLang.isRu());
     if (!j.logged_in) {
       pill.textContent = ru ? 'DA: сначала войди в аккаунт Showcase' : 'DA: log in to Showcase account first';
       if (logout) logout.style.display = 'none';
@@ -1468,7 +1460,7 @@ window.addEventListener('message', function (ev) {
     const st = document.getElementById('daMsg');
     if (st) {
       st.className = 'status ok';
-      st.textContent = (localStorage.getItem('sm_lang') === 'ru')
+      st.textContent = (SMLang.isRu())
         ? 'Подключено. Добавь файлы и загрузи.'
         : 'Connected. Add files and upload.';
     }
@@ -1486,7 +1478,7 @@ window.daDoConnect = async function daDoConnect() {
     st.className = 'status' + (cls ? ' ' + cls : '');
     st.textContent = text;
   }
-  var ru = (localStorage.getItem('sm_lang') === 'ru');
+  var ru = (SMLang.isRu());
   setMsg('', ru ? 'Подключение…' : 'Connecting…');
   try {
     var sess = '';
@@ -1732,7 +1724,7 @@ document.getElementById('btnConvert')?.addEventListener('click', async () => {
   const pctEl = document.getElementById('cvProgressPct');
   const label = document.getElementById('cvProgressLabel');
   const sub = document.getElementById('cvProgressSub');
-  const ru = (localStorage.getItem('sm_lang') === 'ru');
+  const ru = (SMLang.isRu());
   let tickTimer = null;
   let fakePct = 0;
 
@@ -1927,7 +1919,25 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   var DICT = {
     en: {
       nav_process: "Process", nav_compose: "Character", nav_download: "Download", nav_convert: "Converter", nav_hex: "HEX",
-      nav_preview: "Preview", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Account", nav_about: "About",
+      nav_preview: "Profile", nav_upscale: "Upscale", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Account", nav_about: "About",
+      title_upscale: "Upscale", sub_upscale: "AI upscaling with detail preserved — Pro feature",
+      wm_preview_h: "Watermark preview",
+      wm_hint: "Add a PNG/JPG/GIF/MP4 in «Files» — for video/GIF the first frame is used. Drag the watermark across the preview; the position is applied on «Process».",
+      wm_empty: "No preview — add an image in «Files»",
+      wm_reset: "Reset position",
+      auto_contrast: "Auto-contrast",
+      dl_zip: "Download ZIP", publish_gallery: "Publish to gallery", get_pro: "Get Pro",
+      prog_processing: "Processing…", prog_downloading: "Downloading…", prog_converting: "Converting…",
+      prog_building: "Building…", prog_uploading: "Uploading…",
+      up_h: "Upscale",
+      up_desc: "Increases image resolution while keeping the details. Usually takes 1–3 minutes.",
+      up_pro_h: "Pro only",
+      up_pro_body: "Upscale is available to Pro subscribers. Subscribe or activate an access key.",
+      up_drop: "Drop an image here or click to browse",
+      up_model: "Model", up_btn: "Upscale", up_prog: "Processing… 1–3 min",
+      up_before: "Before", up_after: "After", up_dl: "Download PNG",
+      up_pick: "Pick an image", up_wait: "Upscaling… usually 1–3 minutes",
+      up_done: "Done — drag the slider to compare before/after",
       login: "Log in", logout: "Log out", buy: "Buy Pro", buy_key: "Buy Key", reg: "Sign up", apply: "Apply",
       save_profile: "Save profile", back: "← Home",
       title_process: "Process", sub_process: "Workshop / Featured / Split cuts, watermark and Steam ZIP",
@@ -2034,12 +2044,33 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       dl_body: "YouTube · TikTok · X · Reddit · Pinterest — no third-party sites",
       dl_btn: "Download",
       dl_best: "Best",
+      dl_audio: "Audio", dl_file: "Download file", gif_encoder_title: "How GIF is encoded",
+      da_disconnected: "DA: not connected", da_connected: "DA: connected", da_disconnect: "Disconnect",
+      da_add_files: "Add files", da_clear_files: "Clear list", da_upload: "Upload to Sta.sh",
       ph_code: "Access code",
       free: "Free", pro: "Pro"
     },
     ru: {
       nav_process: "Обработка", nav_compose: "Персонаж", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
-      nav_preview: "Предпросмотр", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе",
+      nav_preview: "Профиль", nav_upscale: "Апскейл", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе",
+      title_upscale: "Апскейл", sub_upscale: "ИИ-увеличение с сохранением деталей — функция Pro",
+      wm_preview_h: "Превью водяного знака",
+      wm_hint: "Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Перетаскивай водяной знак по предпросмотру; позиция применится при «Обработать».",
+      wm_empty: "Нет превью — добавь изображение в «Файлы»",
+      wm_reset: "Сброс позиции",
+      auto_contrast: "Автоконтраст",
+      dl_zip: "Скачать ZIP", publish_gallery: "Опубликовать в галерею", get_pro: "Купить Pro",
+      prog_processing: "Обработка…", prog_downloading: "Скачивание…", prog_converting: "Конвертация…",
+      prog_building: "Сборка…", prog_uploading: "Загрузка…",
+      up_h: "Апскейл",
+      up_desc: "Увеличивает разрешение изображения с сохранением деталей. Обычно занимает 1–3 минуты.",
+      up_pro_h: "Только для Pro",
+      up_pro_body: "Upscale доступен подписчикам Pro. Оформи подписку или активируй ключ доступа.",
+      up_drop: "Перетащи изображение сюда или нажми, чтобы выбрать",
+      up_model: "Модель", up_btn: "Увеличить", up_prog: "Обработка… 1–3 мин",
+      up_before: "До", up_after: "После", up_dl: "Скачать PNG",
+      up_pick: "Выбери изображение", up_wait: "Увеличение… обычно 1–3 минуты",
+      up_done: "Готово — двигай ползунок, чтобы сравнить до/после",
       login: "Войти", logout: "Выйти", buy: "Купить Pro", buy_key: "Купить ключ", reg: "Регистрация", apply: "Применить",
       save_profile: "Сохранить профиль", back: "← На главную",
       title_process: "Обработка", sub_process: "Нарезка Workshop / Featured / Split, водяной знак и ZIP для Steam",
@@ -2084,14 +2115,14 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       compose_final_hint: "Нажми на готовое изображение — откроется в новой вкладке",
       compose_prog: "Склеиваем…",
       mode: "Режим", params: "Параметры", files: "Файлы",
-      mode_ws: "5 панелей для витрины Workshop", mode_ft: "Artwork шириной 630px", mode_sp: "Центр 506 + бок 100",
+      mode_ws: "5 панелей для витрины Workshop", mode_ft: "Иллюстрация шириной 630px", mode_sp: "Центр 506 + бок 100",
       run: "Обработать", clear: "Очистить",
       drop: "Перетащи PNG, JPG, GIF, MP4 или AVI — или нажми для выбора",
       cv_drop: "Перетащи файл или нажми для выбора",
       hex_drop: "Перетащи PNG, GIF или изображения — или нажми для выбора",
       lbl_fps: "Кадр/с", lbl_size: "Ширина", lbl_wm: "Водяной знак", lbl_font: "Шрифт",
-      lbl_op: "Прозрачность %", lbl_wm_size: "Размер WM %", lbl_corner: "Угол WM",
-      lbl_color: "Цвет WM", lbl_enc: "Кодер GIF",
+      lbl_op: "Прозрачность %", lbl_wm_size: "Размер знака %", lbl_corner: "Положение знака",
+      lbl_color: "Цвет знака", lbl_enc: "Кодер GIF",
       all_modes: "Все режимы", wm_on: "Вкл",
       corner_bl: "Левый низ", corner_br: "Правый низ", corner_tl: "Левый верх", corner_tr: "Правый верх",
       about_h: "О сервисе",
@@ -2146,16 +2177,19 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       dl_body: "YouTube · TikTok · X · Reddit · Pinterest — без сторонних сайтов",
       dl_btn: "Скачать",
       dl_best: "Лучшее",
+      dl_audio: "Аудио", dl_file: "Скачать файл", gif_encoder_title: "Способ кодирования GIF",
+      da_disconnected: "DA: не подключено", da_connected: "DA: подключено", da_disconnect: "Отключить",
+      da_add_files: "Добавить файлы", da_clear_files: "Очистить список", da_upload: "Загрузить в Sta.sh",
       ph_code: "Код доступа",
       free: "Free", pro: "Pro"
     }
   };
 
   function getLang() {
-    try { return localStorage.getItem("sm_lang") || "en"; } catch (e) { return "en"; }
+    try { return SMLang.get(); } catch (e) { return "en"; }
   }
   function setLang(L) {
-    try { localStorage.setItem("sm_lang", L); } catch (e) {}
+    try { SMLang.set(L); } catch (e) {}
   }
 
   function setLabelFor(inputId, text) {
@@ -2186,6 +2220,10 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     document.querySelectorAll("[data-i-ph]").forEach(function (el) {
       var k = el.getAttribute("data-i-ph");
       if (k && pack[k] != null) el.placeholder = pack[k];
+    });
+    document.querySelectorAll("[data-i-title]").forEach(function (el) {
+      var k = el.getAttribute("data-i-title");
+      if (k && pack[k] != null) el.title = pack[k];
     });
     document.querySelectorAll("[data-i-opt]").forEach(function (el) {
       var k = el.getAttribute("data-i-opt");
@@ -2346,12 +2384,21 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     try { if (typeof window.applyAppLang === "function") window.applyAppLang(L); } catch (e) {}
   }
 
+  window.__smApplyDict = function () { applyDict(getLang()); };
+
   function toggle(e) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     var next = getLang() === "en" ? "ru" : "en";
     setLang(next);
     applyDict(next);
+    window.dispatchEvent(new CustomEvent('sm:langchange', { detail: { lang: next } }));
   }
+
+  window.addEventListener('sm:langchange', function (e) {
+    applyDict((e.detail && e.detail.lang) || getLang());
+    try { syncAuthUi(); } catch (_) {}
+    try { refreshQuota(); } catch (_) {}
+  });
 
   function bind() {
     var lb = document.getElementById("langBtn");
@@ -2455,7 +2502,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   }
   window.__daConnect = async function () {
     var ru = false;
-    try { ru = localStorage.getItem("sm_lang") === "ru"; } catch (e) {}
+    try { ru = SMLang.isRu(); } catch (e) {}
     msg(ru ? "Подключение…" : "Connecting…", "");
     try {
       var sess = null;
@@ -2650,7 +2697,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     var upBtn = document.getElementById("daUpload");
     var items = window.__daItems || [];
     var ru = false;
-    try { ru = localStorage.getItem("sm_lang") === "ru"; } catch (e) {}
+    try { ru = SMLang.isRu(); } catch (e) {}
 
     function setProg(pct, lab, subText) {
       pct = Math.max(0, Math.min(100, Math.round(pct)));
@@ -2810,12 +2857,49 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     'gothic-rus': '/fonts/gothic-rus.ttf'
   };
 
+  var WM_TIPS = {
+    en: {
+      frame_fail: 'Could not open the frame',
+      video_ok: 'Preview: first video frame. Drag the watermark — the position applies to every frame.',
+      video_fail: 'Could not grab a frame from the video',
+      video_open_fail: 'The browser could not open this video',
+      gif_ok: 'Preview: first GIF frame. Drag the watermark — the position applies to every frame.',
+      not_in_list: 'File is not in the list. Remove it and add the PNG/JPG again.',
+      drag_hint: 'Drag the watermark across the image. The position is kept for «Process».',
+      reset_done: 'Position reset — the selected WM corner will be used.',
+      opacity_high: 'Opacity is high — 15–25% works better for a subtle watermark.',
+      need_file: 'Add a PNG/JPG in «Files»',
+      srv_wait: 'Server preview…',
+      srv_fail: 'Preview failed',
+      srv_ok: 'Server preview (exact font from the server)'
+    },
+    ru: {
+      frame_fail: 'Не удалось открыть кадр',
+      video_ok: 'Предпросмотр: первый кадр видео. Перетаскивай водяной знак — позиция применится ко всем кадрам.',
+      video_fail: 'Не удалось взять кадр из видео',
+      video_open_fail: 'Браузер не смог открыть видео',
+      gif_ok: 'Предпросмотр: первый кадр GIF. Перетаскивай водяной знак — позиция применится ко всем кадрам.',
+      not_in_list: 'Файл не найден в списке. Удали и добавь PNG/JPG ещё раз.',
+      drag_hint: 'Перетаскивай водяной знак по изображению. Позиция сохранится для «Обработать».',
+      reset_done: 'Позиция сброшена — будет использован выбранный угол WM.',
+      opacity_high: 'Прозрачность высокая — для ненавязчивого водяного знака лучше 15–25%.',
+      need_file: 'Добавь PNG/JPG в «Файлы»',
+      srv_wait: 'Серверное превью…',
+      srv_fail: 'Ошибка превью',
+      srv_ok: 'Серверное превью (точный шрифт с сервера)'
+    }
+  };
+  function wmT(key){
+    var pack = WM_TIPS[SMLang.get()] || WM_TIPS.en;
+    return pack[key] || WM_TIPS.en[key] || '';
+  }
   function tip(msg){
     const el = document.getElementById('wmTip');
     if (!el) return;
     if (!msg){ el.style.display='none'; el.textContent=''; return; }
     el.style.display='block'; el.textContent = msg;
   }
+  function tipK(key){ tip(wmT(key)); }
   function opacityVal(){ return (parseInt(document.getElementById('wmOpacity')?.value||'22',10)||22)/100; }
   function scaleVal(){
     let raw = parseFloat(document.getElementById('wmScale')?.value||'100');
@@ -2913,7 +2997,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
         if (revoke) URL.revokeObjectURL(url);
       };
       im.onerror = function(){
-        tip('Не удалось открыть кадр');
+        tipK('frame_fail');
         if (revoke) URL.revokeObjectURL(url);
         resolve(false);
       };
@@ -2951,17 +3035,17 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
               cx.drawImage(v, 0, 0, w, h);
               const dataUrl = c.toDataURL('image/jpeg', 0.92);
               loadFromImageUrl(dataUrl, false).then(function(ok){
-                if (ok) tip('Превью: первый кадр видео. Таскай watermark — позиция применится ко всем кадрам.');
+                if (ok) tipK('video_ok');
                 finish(ok);
               });
             } catch (err) {
-              tip('Не удалось взять кадр из видео');
+              tipK('video_fail');
               finish(false);
             }
           }, 120);
         } catch (e) { finish(false); }
       });
-      v.addEventListener('error', function(){ tip('Браузер не смог открыть видео'); finish(false); });
+      v.addEventListener('error', function(){ tipK('video_open_fail'); finish(false); });
       v.src = url;
       try { v.load(); } catch(e){}
     });
@@ -2976,7 +3060,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const url = URL.createObjectURL(file);
     return loadFromImageUrl(url, true).then(function(ok){
       if (ok && (type.indexOf('gif') >= 0 || name.endsWith('.gif'))) {
-        tip('Превью: первый кадр GIF. Таскай watermark — позиция применится ко всем кадрам.');
+        tipK('gif_ok');
       }
       return ok;
     });
@@ -2997,13 +3081,13 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   document.getElementById('btnWmManual')?.addEventListener('click', async function(){
     const f = firstImageFile();
     if (!f && !img) {
-      tip('Файл не найден в списке. Удали и добавь PNG/JPG ещё раз.');
+      tipK('not_in_list');
       return;
     }
     if (f) await loadFile(f);
     await ensureFont(fontKey());
     draw();
-    tip('Таскай watermark мышкой по картинке. Позиция сохранится для «Обработать».');
+    tipK('drag_hint');
   });
 
   document.getElementById('btnWmReset')?.addEventListener('click', function(){
@@ -3013,7 +3097,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     if (elx) elx.value = '';
     if (ely) ely.value = '';
     draw();
-    tip('Позиция сброшена — будет использован выбранный угол WM.');
+    tipK('reset_done');
   });
 
   function pointerPos(e){
@@ -3062,12 +3146,12 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   });
   document.getElementById('wmOpacity')?.addEventListener('input', function(){
     const v = parseInt(document.getElementById('wmOpacity').value,10);
-    if (v > 45) tip('Прозрачность высокая — для незаметного watermark лучше 15–25%.');
+    if (v > 45) tipK('opacity_high');
   });
 
   document.getElementById('btnWmServerPreview')?.addEventListener('click', async function(){
     const f = firstImageFile();
-    if (!f) { tip('Добавь PNG/JPG в «Файлы»'); return; }
+    if (!f) { tipK('need_file'); return; }
     const fd = new FormData();
     fd.append('file', f);
     fd.append('wm_text', textVal());
@@ -3080,12 +3164,12 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     fd.append('wm_x', document.getElementById('wmX')?.value || '');
     fd.append('wm_y', document.getElementById('wmY')?.value || '');
     fd.append('auto_contrast', document.getElementById('autoContrast')?.checked ? '1' : '0');
-    tip('Серверное превью…');
+    tipK('srv_wait');
     try {
       const r = await fetch('/api/preview_wm', { method:'POST', body: fd, credentials:'include' });
-      if (!r.ok) { tip('Ошибка превью'); return; }
+      if (!r.ok) { tipK('srv_fail'); return; }
       const sug = r.headers.get('X-WM-Suggestion');
-      tip(sug || 'Серверное превью (точный шрифт с сервера)');
+      tip(sug || wmT('srv_ok'));
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
       const im = new Image();
@@ -3095,103 +3179,35 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   });
 
   // Publish to gallery
-  function openGalleryPublishModal(onSubmit) {
-    const ru = (localStorage.getItem('sm_lang') === 'ru');
+  function openGalleryPublishModal(onSubmit, previewFile) {
+    const ru = (SMLang.isRu());
 
     let old = document.getElementById('galleryPublishModal');
     if (old) old.remove();
 
     const overlay = document.createElement('div');
     overlay.id = 'galleryPublishModal';
-
-    overlay.style.cssText = `
-      position:fixed;
-      inset:0;
-      z-index:99999;
-      background:rgba(0,0,0,.68);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:20px;
-      backdrop-filter:blur(4px);
-    `;
+    overlay.className = 'gallery-publish-overlay';
+    const previewUrl = previewFile ? URL.createObjectURL(previewFile) : '';
 
     overlay.innerHTML = `
-      <div style="
-        width:min(440px,100%);
-        background:#07141d;
-        border:1px solid rgba(80,210,255,.22);
-        border-radius:16px;
-        box-shadow:0 24px 80px rgba(0,0,0,.55);
-        padding:22px;
-        color:#eaf8ff;
-        font-family:inherit;
-      ">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-          <div style="font-size:18px;font-weight:700;">
-            ${ru ? 'Опубликовать в галерею' : 'Publish to gallery'}
-          </div>
-          <button id="galleryModalClose" type="button" style="
-            background:transparent;border:0;color:#8fa6b3;
-            font-size:24px;cursor:pointer;line-height:1;
-          ">×</button>
+      <div class="gallery-publish-card" role="dialog" aria-modal="true" aria-labelledby="galleryPublishTitle">
+        <button class="gallery-publish-close" id="galleryModalClose" type="button" aria-label="${ru ? 'Закрыть' : 'Close'}">×</button>
+        <div class="gallery-publish-preview">
+          ${previewUrl ? `<img src="${previewUrl}" alt="">` : ''}
+          <span>${ru ? 'Предпросмотр исходника · обработка применится при публикации' : 'Source preview · processing is applied on publish'}</span>
         </div>
-
-        <label style="
-          display:block;font-size:12px;font-weight:700;color:#8fa6b3;
-          margin-bottom:7px;text-transform:uppercase;letter-spacing:.06em;
-        ">
-          ${ru ? 'Название' : 'Title'}
-        </label>
-
-        <input id="galleryModalTitle"
-          maxlength="80"
-          placeholder="${ru ? 'Необязательно' : 'Optional'}"
-          style="
-            width:100%;box-sizing:border-box;background:#020b10;
-            border:1px solid #24404f;border-radius:9px;color:#fff;
-            padding:12px 13px;outline:none;font:inherit;
-          "
-        >
-
-        <div id="galleryModalProgressWrap" style="display:none;margin-top:18px;">
-          <div id="galleryModalStatus" style="
-            font-size:13px;color:#9eb4c0;margin-bottom:8px;
-          ">
-            ${ru ? 'Подготовка…' : 'Preparing…'}
+        <div class="gallery-publish-body">
+          <div class="gallery-publish-kicker">${ru ? 'Галерея сообщества' : 'Community gallery'}</div>
+          <h2 class="gallery-publish-title" id="galleryPublishTitle">${ru ? 'Опубликовать работу' : 'Publish artwork'}</h2>
+          <p class="gallery-publish-copy">${ru ? 'Добавьте короткое название. После загрузки работа появится в галерее согласно правилам модерации.' : 'Add a short title. After upload, the artwork will appear in the gallery according to moderation rules.'}</p>
+          <label class="gallery-publish-field"><span>${ru ? 'Название работы' : 'Artwork title'}</span><input id="galleryModalTitle" maxlength="80" placeholder="${ru ? 'Например: Неоновая ночь' : 'For example: Neon night'}"></label>
+          <div class="gallery-publish-progress" id="galleryModalProgressWrap">
+            <div class="gallery-publish-progress__label" id="galleryModalStatus">${ru ? 'Подготовка…' : 'Preparing…'}</div>
+            <div class="gallery-publish-track"><i id="galleryModalProgress"></i></div>
           </div>
-
-          <div style="
-            height:8px;background:#10232d;border-radius:999px;overflow:hidden;
-          ">
-            <div id="galleryModalProgress" style="
-              width:0%;height:100%;background:#39d7ff;
-              transition:width .18s ease;
-            "></div>
-          </div>
-        </div>
-
-        <div id="galleryModalMessage" style="
-          min-height:18px;margin-top:14px;font-size:13px;
-        "></div>
-
-        <div style="
-          display:flex;justify-content:flex-end;gap:10px;margin-top:18px;
-        ">
-          <button id="galleryModalCancel" type="button" style="
-            padding:10px 15px;border-radius:8px;border:1px solid #294654;
-            background:#10202a;color:#dcecf3;cursor:pointer;font:inherit;
-          ">
-            ${ru ? 'Отмена' : 'Cancel'}
-          </button>
-
-          <button id="galleryModalSubmit" type="button" style="
-            padding:10px 16px;border-radius:8px;border:1px solid #43d7ff;
-            background:#103746;color:#eafcff;cursor:pointer;
-            font:inherit;font-weight:700;
-          ">
-            ${ru ? 'Загрузить' : 'Upload'}
-          </button>
+          <div class="gallery-publish-message" id="galleryModalMessage" aria-live="polite"></div>
+          <div class="gallery-publish-actions"><button class="gallery-publish-cancel" id="galleryModalCancel" type="button">${ru ? 'Отмена' : 'Cancel'}</button><button class="gallery-publish-submit" id="galleryModalSubmit" type="button">${ru ? 'Опубликовать' : 'Publish'}</button></div>
         </div>
       </div>
     `;
@@ -3210,7 +3226,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     let busy = false;
 
     function close() {
-      if (!busy) overlay.remove();
+      if (!busy) { if (previewUrl) URL.revokeObjectURL(previewUrl); overlay.remove(); }
     }
 
     closeBtn.onclick = close;
@@ -3267,7 +3283,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
   document.getElementById('btnPublishGallery')?.addEventListener('click', function(){
     const f = firstImageFile();
-    const ru = (localStorage.getItem('sm_lang') === 'ru');
+    const ru = (SMLang.isRu());
 
     if (!f) {
       tip(ru ? 'Нет файла для публикации' : 'No file to publish');
@@ -3339,16 +3355,16 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       }
 
       setTimeout(function(){
-        document.getElementById('galleryPublishModal')?.remove();
+        document.getElementById('galleryModalCancel')?.click();
       }, 1200);
-    });
+    }, f);
   });
 
   async function startDiscord(){
     try {
       const r = await fetch('/api/auth/discord/login');
       const d = await r.json();
-      if (!d.ok || !d.url) { alert(d.msg || 'Discord не настроен'); return; }
+      if (!d.ok || !d.url) { alert(d.msg || smT('Discord не настроен', 'Discord is not configured')); return; }
       window.open(d.url, 'discord_oauth', 'width=520,height=720');
     } catch (e) { alert(String(e)); }
   }
@@ -3724,7 +3740,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   async function onBgChange() {
     const f = document.getElementById('composeBg')?.files?.[0];
     const el = document.getElementById('composeBgName');
-    if (el) el.textContent = f ? f.name : 'файл не выбран';
+    if (el) el.textContent = f ? f.name : smT('файл не выбран', 'no file selected');
     if (bgImg && bgImg.__objectUrl) { try { bgImg.pause(); URL.revokeObjectURL(bgImg.__objectUrl); } catch(e){} }
     bgImg = f ? await loadImageFromFile(f) : null;
     ensureAnimationPreview();
@@ -3733,7 +3749,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   async function onCharChange() {
     const f = document.getElementById('composeChar')?.files?.[0];
     const el = document.getElementById('composeCharName');
-    if (el) el.textContent = f ? f.name : 'файл не выбран';
+    if (el) el.textContent = f ? f.name : smT('файл не выбран', 'no file selected');
     if (charImg && charImg.__objectUrl) { try { charImg.pause(); URL.revokeObjectURL(charImg.__objectUrl); } catch(e){} }
     charImg = f ? await loadImageFromFile(f) : null;
     ensureAnimationPreview();
@@ -3767,7 +3783,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const bg = document.getElementById('composeBg')?.files?.[0];
     const ch = document.getElementById('composeChar')?.files?.[0];
     if (!bg || !ch) {
-      if (st) { st.className = 'status err'; st.textContent = 'Добавь оба файла: сначала фон, потом персонажа'; }
+      if (st) { st.className = 'status err'; st.textContent = smT('Добавь оба файла: сначала фон, потом персонажа', 'Add both files: background first, then the character'); }
       return;
     }
     const fd = new FormData();
@@ -3801,15 +3817,17 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     }
     function stopTick() { if (tick) { clearInterval(tick); tick = null; } }
     if (btn) btn.disabled = true;
-    if (st) { st.className = 'status'; st.textContent = 'Склеиваем…'; }
-    setProg(3, 'Загрузка файлов…', bg.name + ' + ' + ch.name);
+    if (st) { st.className = 'status'; st.textContent = smT('Склеиваем…', 'Compositing…'); }
+    setProg(3, smT('Загрузка файлов…', 'Uploading files…'), bg.name + ' + ' + ch.name);
     fake = 3;
     tick = setInterval(function(){
       if (fake < 90) {
         fake += (90 - fake) * 0.04 + 0.25;
         if (fake > 90) fake = 90;
-        const stage = fake < 25 ? 'Загрузка…' : (fake < 55 ? 'Убираем фон / хромакей…' : 'Собираем кадры и GIF…');
-        setProg(fake, stage, 'Это может занять 10–60 сек для видео');
+        const stage = fake < 25 ? smT('Загрузка…', 'Uploading…')
+          : (fake < 55 ? smT('Убираем фон / хромакей…', 'Removing background / chromakey…')
+                       : smT('Собираем кадры и GIF…', 'Assembling frames and GIF…'));
+        setProg(fake, stage, smT('Это может занять 10–60 сек для видео', 'Video can take 10–60 s'));
       }
     }, 350);
 
@@ -3821,7 +3839,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       if (!ev.lengthComputable) return;
       const up = 5 + (ev.loaded / Math.max(1, ev.total)) * 20;
       fake = Math.max(fake, up);
-      setProg(fake, 'Загрузка на сервер…', Math.round(ev.loaded/1024) + ' KB');
+      setProg(fake, smT('Загрузка на сервер…', 'Uploading to server…'), Math.round(ev.loaded/1024) + ' KB');
     };
     xhr.onload = async function(){
       stopTick();
@@ -3830,18 +3848,20 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
         if (btn) btn.disabled = false;
         const msg = body.msg || ('HTTP ' + xhr.status);
         if (st) { st.className = 'status err'; st.textContent = msg; }
-        setProg(0, 'Ошибка', String(msg).slice(0,80));
+        setProg(0, smT('Ошибка', 'Error'), String(msg).slice(0,80));
         return;
       }
       const jid = body.job_id;
-      const labels = {queued:'В очереди…',prepare:'Подготовка…',decode:'Читаем медиа…',background:'Конвертируем фон…',character:'Конвертируем персонажа…',chromakey:'Удаляем фон и собираем кадры…',encode:'Кодируем GIF…',upload:'Сохраняем результат…'};
+      const labels = SMLang.isRu()
+        ? {queued:'В очереди…',prepare:'Подготовка…',decode:'Читаем медиа…',background:'Конвертируем фон…',character:'Конвертируем персонажа…',chromakey:'Удаляем фон и собираем кадры…',encode:'Кодируем GIF…',upload:'Сохраняем результат…'}
+        : {queued:'Queued…',prepare:'Preparing…',decode:'Reading media…',background:'Converting background…',character:'Converting character…',chromakey:'Removing background and building frames…',encode:'Encoding GIF…',upload:'Saving result…'};
       try {
         while (true) {
           await new Promise(function(resolve){ setTimeout(resolve, 1200); });
           const response = await fetch('/api/compose/status/' + encodeURIComponent(jid), {credentials:'include', cache:'no-store'});
           const job = await response.json();
           if (!response.ok || !job.ok) throw new Error(job.msg || 'Задача потеряна');
-          setProg(job.pct || 3, labels[job.stage] || 'Обрабатываем…', 'Можно оставить эту вкладку открытой');
+          setProg(job.pct || 3, labels[job.stage] || smT('Обрабатываем…', 'Processing…'), smT('Можно оставить эту вкладку открытой', 'You can leave this tab open'));
           if (job.status === 'error') throw new Error(job.error || 'Ошибка обработки');
           if (job.status === 'done') {
             const result = await fetch('/api/compose/download/' + encodeURIComponent(jid), {credentials:'include', cache:'no-store'});
@@ -3855,8 +3875,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
             if (empty) empty.style.display = 'none';
             if (dl) { dl.href = url; dl.download = lastName; dl.style.display = 'inline-flex'; }
             if (toProc) toProc.style.display = 'inline-flex';
-            if (st) { st.className = 'status ok'; st.textContent = 'Готово! Скачай результат или отправь его в Обработку'; }
-            setProg(100, 'Готово!', '');
+            if (st) { st.className = 'status ok'; st.textContent = smT('Готово! Скачай результат или отправь его в Обработку', 'Done! Download the result or send it to Process'); }
+            setProg(100, smT('Готово!', 'Done!'), '');
             setTimeout(function(){ if (prog) prog.classList.remove('show'); }, 2500);
             break;
           }
@@ -3864,7 +3884,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       } catch (error) {
         const msg = error && error.message ? error.message : String(error);
         if (st) { st.className = 'status err'; st.textContent = msg; }
-        setProg(0, 'Ошибка', msg.slice(0,80));
+        setProg(0, smT('Ошибка', 'Error'), msg.slice(0,80));
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -3872,8 +3892,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     xhr.onerror = function(){
       stopTick();
       if (btn) btn.disabled = false;
-      if (st) { st.className = 'status err'; st.textContent = 'Сеть / сервер недоступны'; }
-      setProg(0, 'Ошибка', '');
+      if (st) { st.className = 'status err'; st.textContent = smT('Сеть / сервер недоступны', 'Network / server unavailable'); }
+      setProg(0, smT('Ошибка', 'Error'), '');
     };
     xhr.send(fd);
   });
@@ -3889,7 +3909,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       }
       const btn = document.querySelector('#nav button[data-tab="process"]');
       if (btn) btn.click();
-      if (st) { st.className = 'status ok'; st.textContent = 'Отправлено во вкладку Обработка'; }
+      if (st) { st.className = 'status ok'; st.textContent = smT('Отправлено во вкладку Обработка', 'Sent to the Process tab'); }
     } catch (e) {
       if (st) { st.className = 'status err'; st.textContent = String(e); }
     }
