@@ -18,6 +18,7 @@ data/avatars/
 data/profile_sc/
 
 # python
+data/steam_profiles.sqlite3*
 __pycache__/
 *.py[cod]
 .venv/

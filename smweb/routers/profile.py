@@ -735,7 +735,8 @@ async def api_profile_steam_import(request: Request):
             return JSONResponse(pr, status_code=400)
         profile = _merge_steam_api(pr["profile"])
         auth_db.save_steam_profile_snapshot(int(user["id"]), profile)
-        return {"ok": True, "profile": profile}
+        return {"ok": True, "profile": profile,
+                **{k: pr[k] for k in ('cached', 'stale', 'warning_code', 'retry_after') if k in pr}}
     except Exception as e:
         return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
 

@@ -23,6 +23,7 @@ from typing import Any, Optional
 from urllib.parse import quote, urlsplit
 
 import requests
+import steam_profile_guard
 import xml.etree.ElementTree as ET
 
 LOGGER = logging.getLogger("sm.steam")
@@ -723,11 +724,21 @@ def profile(url: str) -> dict:
             return {"ok": False, "msg": "Enter a public steamcommunity.com profile URL"}
         canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
 
-    key = f"profile9:{canonical.lower()}"
-    cached = _get(key)
-    if cached is not None:
-        return cached
-    r = _fetch(canonical + "/?xml=1")
+    cache_dir = _CACHE_PATH.parent if _CACHE_PATH else Path(os.environ.get('DATA_DIR', 'data'))
+    return steam_profile_guard.run(cache_dir / 'steam_profiles.sqlite3', canonical.lower(),
+                                   lambda: _load_profile(canonical))
+
+
+def _profile_fetch(url):
+    response = requests.get(url, timeout=TIMEOUT,
+                            headers={'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9'})
+    if response.status_code == 429:
+        raise steam_profile_guard.RateLimited(response.headers.get('Retry-After'))
+    return response if response.status_code == 200 else None
+
+
+def _load_profile(canonical):
+    r = _profile_fetch(canonical + "/?xml=1")
     if r is None:
         return {"ok": False, "msg": "Steam profile is unavailable or private"}
     try:
@@ -743,18 +754,11 @@ def profile(url: str) -> dict:
                 "name": (group.findtext("groupName") or "").strip(),
                 "avatar": (group.findtext("avatarMedium") or "").strip(),
             })
-        page = _fetch(canonical)
-        if page is None and "/id/" in canonical:
-            # resolve vanity via XML first, then fetch by steamid64 (sometimes less throttled)
-            sid = txt("steamID64")
-            if sid:
-                page = _fetch(f"https://steamcommunity.com/profiles/{sid}")
-        if page is None:
-            time.sleep(1.5)
-            page = _fetch(canonical + "/")
+        page = _profile_fetch(canonical + '/?l=english')
         page_html = page.text if page is not None else ""
-        if not page_html:
-            LOGGER.warning("profile HTML empty for %s — showcases/level/bg unavailable (Steam throttle)", canonical)
+        if not page_html or not re.search(r'class=[\"\'][^\"\']*\bprofile_page\b', page_html, re.I):
+            return {'ok': False, 'code': 'steam_profile_incomplete',
+                    'msg': 'Steam did not return the full public profile. Try later or use the extension.'}
         level_match = re.search(r'friendPlayerLevelNum[^>]*>\s*(\d+)', page_html, re.I)
         bg_match = re.search(r'profile_page[^>]+style="[^"]*background-image:\s*url\([\'\"]?([^\)\'\"]+)', page_html, re.I)
         counts = [int(x.replace(',', '')) for x in re.findall(r'profile_count_link_total[^>]*>\s*([\d,]+)', page_html, re.I)]
@@ -860,8 +864,9 @@ def profile(url: str) -> dict:
                 out["profile"]["stats_map"]["games"] = int(owned.get("game_count") or len(games))
             except Exception as exc:
                 LOGGER.info("Steam GetOwnedGames unavailable/private: %s", exc)
-        _put(key, out, TTL_PROFILE)
         return out
+    except steam_profile_guard.RateLimited:
+        raise
     except Exception as e:
         LOGGER.warning("steam profile parse failed: %s", e)
         return {"ok": False, "msg": "Steam returned an unexpected profile page"}
