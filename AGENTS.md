@@ -6,15 +6,15 @@ This is the root handoff and operating guide for coding agents. Read it before c
 
 SteamShowcase Maker is a bilingual (RU/EN) web application for preparing Steam profile showcases. It provides image/GIF/video processing, Workshop/Featured/Artwork Split output, profile design and import, gallery publishing, downloads, character composition, HEX 21 handling, Pro access, and Modal GPU upscaling.
 
-Current state as of 2026-09-05:
+Current state as of 2026-09-06:
 
 - Production is an OVH Ubuntu VPS at `/opt/showcasemaker`, deployed with Docker Compose and exposed only through a Cloudflare Tunnel.
-- The local branch is `main`; the committed base before the latest feature was `792edde` (`Fix Real-ESRGAN model initialization`).
+- The local branch is `main`; the committed base before the current uncommitted Steam upload-flow work is `7ba1089` (`Add Pro Steam readiness checker and project handoff`).
 - Modal upscaling works for images, GIFs, and short videos.
 - Async CPU processing and shared result storage work in production.
 - Public Steam profile import uses a Bright Data remote browser because direct Steam requests from the VPS are frequently HTTP 429.
-- The latest feature is the first version of the Pro-only **Steam Check / Готово для Steam** tool. It inspects finished files but does not repair or recompress them yet.
-- The complete test suite currently contains 24 tests and passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`.
+- The latest work embeds the Pro-only **Steam Check / Готово для Steam** report at the end of normal Process jobs and adds a guided handoff to SteamShowcase Helper 0.9.8. It still does not repair or recompress failed output automatically.
+- The complete test suite currently contains 26 tests and passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`.
 
 Do not trust older notes claiming `processor.py` or `requirements.txt` are currently modified. Always run `git status --short` for live state.
 
@@ -175,13 +175,13 @@ The browser extension remains a supported alternative and can import from the us
 
 ## 6. Steam Check / “Готово для Steam” (Latest Feature)
 
-First version is implemented as a separate Pro-only Tools tab so it can be tested before merging into Process.
+The checker remains available as a separate Pro-only Tools tab and is also used as the final report for Pro Process jobs. The analyzer is the shared source of truth.
 
 Files:
 
 - `smweb/steam_readiness.py`: pure, reusable analyzer with no HTTP/UI dependency.
 - `smweb/routers/steam_check.py`: `POST /api/steam-check`, server-side Pro gate, bounded upload and safe ZIP handling.
-- `static/js/steam-check.js`: upload, RU/EN UI, report rendering, direct-file transfer to Process.
+- `static/js/steam-check.js`: upload, RU/EN UI, report rendering, direct-file transfer to Process, processed-ZIP download, and extension handoff.
 - `static/css/steam-check.css`: isolated responsive visual module.
 - `static/img/tool-icons/check.svg`: Tools navigation icon.
 - `tests/test_steam_readiness.py`: generated PNG/GIF and mode checks.
@@ -190,7 +190,7 @@ Checks currently performed:
 
 - PNG/JPEG/GIF readability and format;
 - per-file 5 MiB limit;
-- animation duration <=8 seconds and defensive frame cap;
+- animation duration (over 8 seconds is a recommendation/warning, not an automatic failure) and defensive frame cap;
 - Workshop/Featured/Artwork Split auto-detection;
 - expected set count and geometry;
 - generated naming/order conventions;
@@ -206,12 +206,27 @@ Security boundaries:
 
 Deliberate first-version limitations:
 
-- It reports problems but does not resize, compress, resynchronize, rename, or apply HEX automatically.
+- It reports problems but does not yet resize, compress, resynchronize, rename, or apply HEX automatically.
 - Separate original files can be sent to Process using `window.state` and `window.renderFiles()`.
 - ZIP contents cannot yet be transferred to Process; the button is disabled for ZIP input until the repair/extraction stage exists.
 - Only finished PNG/JPG/GIF files are checked. Raw video belongs in Process, not this final-output checker.
 
-The analyzer is intentionally independent so the next version can be embedded inside Process without copying validation logic.
+For Pro users, `process.py` adds `steam_check` to the queued options, `smweb/jobs.py` analyzes generated image/GIF ZIP entries after encoding, and the status endpoint returns `readiness`. `static/js/app.js` opens the final report instead of immediately downloading the ZIP. Free processing retains the previous automatic-download behavior.
+
+### Browser extension upload flow
+
+The extension source is maintained outside this repository at `C:\Users\n1t1337\Downloads\0.9.7` (the manifest now identifies it as version 0.9.8). Do not assume Git deployment updates the Chrome extension.
+
+Version 0.9.8 adds a constrained website-to-extension protocol:
+
+- `START_STEAM_UPLOAD` accepts only sanitized display metadata, stores a short local upload flow, and opens one of the hard-coded trusted Steam uploader URLs;
+- the user always selects each local file manually; the website and extension cannot silently attach local files;
+- existing artwork/workshop content scripts continue applying the transparent title, long-showcase dimensions/settings, visibility/type, and terms;
+- `content-upload-flow.js` shows the expected filename and progress, lets the user advance manually, and opens Steam's showcase-selection page after the final file;
+- `OPEN_SHOWCASE_PICKER` opens `https://steamcommunity.com/my/edit/showcases`;
+- arbitrary URLs from site messages must never be opened.
+
+The Chrome Web Store extension ID is referenced client-side so the site can detect the installed helper. Site deployment requiring 0.9.8 should be coordinated with publishing/testing the 0.9.8 extension package; until the store update is available, users receive the install/update prompt.
 
 ## 7. Security and Operational Decisions
 
@@ -258,6 +273,8 @@ Static files are served by nginx from the repository mount, but backend/router c
 
 - Steam Check has no repair/compression stage yet; this is the main planned next feature.
 - Steam Check ZIP input cannot yet be handed directly to Process.
+- The integrated Process report has automated unit/syntax coverage but still needs production browser testing with real Workshop, Featured, and Artwork Split outputs and the unpacked 0.9.8 extension.
+- Chrome extension publishing is a separate manual release. A Git/VPS deployment alone does not distribute extension 0.9.8.
 - Direct Steam profile scraping from OVH is unreliable due to Steam HTTP 429; Bright Data browser import is the current workaround and has latency/cost.
 - Modal `min_containers=0` means the first upscale after idle can be noticeably slower. Do not raise warm containers without discussing cost.
 - CPU media processing capacity remains limited by 6 vCPU. Keep heavy work out of Uvicorn and avoid raising media concurrency blindly.
@@ -299,14 +316,14 @@ Static files are served by nginx from the repository mount, but backend/router c
 
 Recommended order for the next coding agent:
 
-1. Test Steam Check on production with a real Pro account using generated output from each Process mode: Workshop PNG/GIF, Featured, and Artwork Split.
-2. Collect mismatches between analyzer rules and actual `processor.py` output; add regression tests before changing rules.
-3. Design a repair plan/result contract in `smweb/steam_readiness.py` so analysis remains shared between the standalone tab and Process.
-4. Add optional Pro-only automatic fixes incrementally: safe naming/order; HEX 21; geometry correction using existing processor functions; animation trim/synchronization; size reduction to <=5 MiB with explicit quality reporting.
-5. Add safe server-side ZIP-to-Process transfer/extraction; do not reconstruct browser `File` objects from server results without ownership and expiry controls.
-6. Once stable, embed the checker as a final stage in Process while keeping the pure analyzer as the single source of truth. The separate tab can remain as a standalone final-file validator.
-7. Update or replace stale `UPSCALER_SETUP.md` and expand the incomplete root README after functional work is stable.
-8. Add browser E2E coverage for Pro gating, file selection, report rendering, RU/EN switching, and “Send originals to Process”.
+1. Load extension 0.9.8 unpacked and test the complete Process -> final report -> correct Steam uploader -> sequential file guidance -> showcase selection path.
+2. Test the integrated report on production with generated Workshop PNG/GIF, Featured, and Artwork Split output; verify ZIP download still works before the job TTL expires.
+3. Collect mismatches between analyzer rules and actual `processor.py` output; add regression tests before changing rules.
+4. Design a repair plan/result contract in `smweb/steam_readiness.py`, then add optional Pro-only fixes incrementally: naming/order; HEX 21; geometry/upscale confirmation; animation synchronization; <=5 MiB compression with quality reporting.
+5. Implement the agreed Profile Doctor separately: public Steam URL via existing Bright Data import, Gemini-backed analysis, authenticated Free 1/week and Pro access, 7-day history/expiry, and safe deterministic fallback. Never confuse a Google AI subscription with API billing/quota.
+6. Implement Smart Design as a separate Pro tab using static showcase references only (not generated full profiles), with user-selected style and clearly labeled AI estimates.
+7. Implement seamless-loop creation as a separate later media feature; warn when source duration is likely unsuitable and reuse async processing/storage boundaries.
+8. Update or replace stale `UPSCALER_SETUP.md`, expand README, and add browser E2E coverage for RU/EN, report actions, extension detection, and auth/Pro gates.
 
 ## 13. Verification Commands
 

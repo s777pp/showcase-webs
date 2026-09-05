@@ -174,6 +174,7 @@ async def api_process_start(
         "fps": fps,
         "enc": enc,
         "wm_font": wm_font,
+        "steam_check": bool(q.get("pro")),
     }
     user_key = ""
     try:
@@ -283,6 +284,8 @@ def api_process_status(job_id: str, request: Request):
     }
     if j.get("status") == "done":
         out["download"] = f"/api/process/download/{job_id}"
+        if j.get("readiness"):
+            out["readiness"] = j.get("readiness")
     return out
 
 

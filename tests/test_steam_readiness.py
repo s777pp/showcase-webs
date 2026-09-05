@@ -58,6 +58,22 @@ class SteamReadinessTests(unittest.TestCase):
         self.assertEqual(report["frames"], 3)
         self.assertEqual(report["duration_ms"], 300)
 
+    def test_workshop_parts_wider_than_minimum_are_ready(self):
+        files = [Candidate(f"part_{index}.png", png_bytes((180 + index, 100))) for index in range(1, 6)]
+        report = analyze_group("Files", files, "workshop")
+        geometry = next(check for check in report["checks"] if check["id"] == "geometry")
+        self.assertEqual(geometry["state"], "pass")
+
+    def test_long_animation_is_a_recommendation(self):
+        report = analyze_group(
+            "Files",
+            [Candidate("featured_630.gif", gif_bytes((630, 100), durations=(4100, 4100)))],
+            "featured",
+        )
+        animation = next(check for check in report["checks"] if check["id"] == "animation")
+        self.assertEqual(animation["state"], "warn")
+        self.assertEqual(report["failures"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

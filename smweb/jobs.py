@@ -41,6 +41,7 @@ import auth_db
 
 
 from smweb.core import JOBS, MAX_UPLOAD_MB
+from smweb.steam_readiness import Candidate, analyze_groups
 
 
 JOB_RESULT_TTL_SECONDS = max(120, int(os.environ.get("JOB_RESULT_TTL_SECONDS") or 900))
@@ -382,6 +383,21 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
             shutil.rmtree(job_dir, ignore_errors=True)
             return
         print(f"[JOB TIMING] ZIP size={zip_path.stat().st_size / 1024 / 1024:.2f}MB", flush=True)
+        readiness = None
+        if opts.get("steam_check"):
+            try:
+                groups: dict[str, list[Candidate]] = {}
+                with zipfile.ZipFile(zip_path, "r") as result_zip:
+                    for entry in result_zip.infolist():
+                        if entry.is_dir() or Path(entry.filename).suffix.lower() not in (".png", ".jpg", ".jpeg", ".gif"):
+                            continue
+                        parent = str(Path(entry.filename).parent).replace("\\", "/")
+                        groups.setdefault(parent if parent not in ("", ".") else "Files", []).append(
+                            Candidate(entry.filename, result_zip.read(entry))
+                        )
+                readiness = analyze_groups(groups, "auto") if groups else None
+            except Exception as check_error:
+                print(f"[job {jid[:8]}] readiness check failed: {type(check_error).__name__}", flush=True)
         # quota already counted on start
         _job_set(
             jid,
@@ -392,6 +408,7 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
             processed=processed,
             errors=errors,
             listed=listed,
+            readiness=readiness,
         )
         print(
             f"[JOB TIMING] TOTAL: {_sm_time.perf_counter()-_sm_job_t0:.3f}s | jid={jid}",

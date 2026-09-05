@@ -86,7 +86,7 @@ def inspect_file(candidate: Candidate) -> dict:
                     result["issues"].append({"code": "too_many_frames", "severity": "fail", "actual": frames})
                 if total_ms > int(STEAM_ANIMATION_LIMIT_SECONDS * 1000) + 50:
                     result["issues"].append({
-                        "code": "animation_too_long", "severity": "fail",
+                        "code": "animation_too_long", "severity": "warn",
                         "actual": total_ms, "limit": int(STEAM_ANIMATION_LIMIT_SECONDS * 1000),
                     })
     except Exception:
@@ -141,8 +141,8 @@ def analyze_group(name: str, candidates: list[Candidate], requested_mode: str = 
     if mode == "workshop":
         set_state = "pass" if len(primary) == 5 else "fail"
         same_height = len({item["height"] for item in primary}) == 1 if primary else False
-        same_width = len({item["width"] for item in primary}) == 1 if primary else False
-        geometry_state = "pass" if len(primary) == 5 and same_height and same_width else "fail"
+        wide_enough = all(item["width"] >= 150 for item in primary)
+        geometry_state = "pass" if len(primary) == 5 and same_height and wide_enough else "fail"
         part_numbers = sorted(
             int(match.group(1)) for item in primary
             if (match := re.search(r"part[_ -]?([1-5])", PurePosixPath(item["name"]).name, re.I))
@@ -166,7 +166,7 @@ def analyze_group(name: str, candidates: list[Candidate], requested_mode: str = 
     gifs = [item for item in primary if item["format"] == "GIF" and item["animated"]]
     animation_state = "pass"
     if any(item["duration_ms"] > int(STEAM_ANIMATION_LIMIT_SECONDS * 1000) + 50 for item in gifs):
-        animation_state = "fail"
+        animation_state = "warn"
     checks.append(_check("animation", animation_state, animated=len(gifs)))
 
     sync_state = "pass"

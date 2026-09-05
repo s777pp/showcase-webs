@@ -72,7 +72,9 @@
 .steam-check__datum{color:#738699;font:10px Consolas,monospace;text-align:right}
 .steam-check__issue{grid-column:1/-1;margin-top:1px;color:#ffbd65;font-size:11px;line-height:1.5}
 .steam-check__issue.is-fail{color:#ff6f78}
-.steam-check__result-actions{display:flex;gap:9px;padding:0 18px 20px}
+.steam-check__extension-note{position:relative;display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 18px 14px;padding:13px 14px;border:1px solid rgba(85,217,255,.24);background:rgba(85,217,255,.06);color:#8fa6b5;font-size:12px;line-height:1.45}
+.steam-check__extension-note[hidden]{display:none!important}.steam-check__extension-note a{flex:none;color:#55d9ff;font-weight:800;text-decoration:none}
+.steam-check__result-actions{display:flex;flex-wrap:wrap;gap:9px;padding:0 18px 20px}
 .steam-check__gate{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:20px;align-items:center;padding:26px;border:1px solid rgba(85,217,255,.22);background:#0a121b;box-shadow:8px 8px 0 rgba(53,120,255,.22)}
 .steam-check__gate[hidden]{display:none!important}
 .steam-check__gate-mark{display:grid;place-items:center;width:70px;height:70px;background:#55d9ff;color:#061018;font:900 18px Mulish,sans-serif;box-shadow:7px 7px 0 #315fff}

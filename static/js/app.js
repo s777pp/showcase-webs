@@ -472,6 +472,15 @@ document.getElementById('btnRun').onclick = async () => {
             await new Promise(function (done) { setTimeout(done, 850); });
           }
           if (!job || job.status !== 'done') throw new Error(ru ? 'Превышено время ожидания' : 'Processing timed out');
+          if (job.readiness && window.SteamCheckResult && window.SteamCheckResult.open(job.readiness, job.download || ('/api/process/download/' + encodeURIComponent(jid)))) {
+            setProg(100, ru ? 'Проверка завершена' : 'Check complete', ru ? 'Открой итоговый отчёт' : 'Review the final report');
+            st.className = 'status ok';
+            st.textContent = ru ? 'Обработка завершена. Проверь готовность комплекта к Steam.' : 'Processing complete. Review Steam readiness.';
+            dl.style.display = 'none';
+            window.__lastPublishReady = true;
+            try { refreshQuota(); } catch (e) {}
+            hideProgLater(); resolve(); return;
+          }
           setProg(99, ru ? 'Подготавливаем ZIP…' : 'Preparing ZIP…', '');
           const result = await fetch('/api/process/download/' + encodeURIComponent(jid), {
             credentials: 'include', cache: 'no-store', headers: headers()
