@@ -43,9 +43,13 @@ import auth_db
 from smweb.core import JOBS, MAX_UPLOAD_MB
 
 
-def _cleanup_old_jobs(max_age_sec: float = 120.0) -> int:
-    """Delete job folders older than max_age_sec (default 2 minutes)."""
+JOB_RESULT_TTL_SECONDS = max(120, int(os.environ.get("JOB_RESULT_TTL_SECONDS") or 900))
+
+
+def _cleanup_old_jobs(max_age_sec: float | None = None) -> int:
+    """Delete expired shared job folders without touching queued/running work."""
     import time as _time
+    max_age_sec = float(max_age_sec or JOB_RESULT_TTL_SECONDS)
     removed = 0
     try:
         if not JOBS.is_dir():
@@ -59,8 +63,14 @@ def _cleanup_old_jobs(max_age_sec: float = 120.0) -> int:
                         p.unlink(missing_ok=True)
                         removed += 1
                     continue
-                mtime = p.stat().st_mtime
-                if now - mtime >= max_age_sec:
+                job = rs.job_get(p.name)
+                if job and job.get("status") in ("queued", "running"):
+                    continue
+                # Redis's update timestamp marks actual completion. Directory
+                # mtime can be much older when a long GIF job finishes.
+                updated = float((job or {}).get("updated") or 0)
+                touched = max(p.stat().st_mtime, updated)
+                if now - touched >= max_age_sec:
                     shutil.rmtree(p, ignore_errors=True)
                     removed += 1
             except Exception:
@@ -74,7 +84,7 @@ def _cleanup_loop():
     import time as _time
     while True:
         try:
-            n = _cleanup_old_jobs(120.0)
+            n = _cleanup_old_jobs()
             if n:
                 print(f"cleanup: removed {n} old job(s)")
         except Exception as e:
@@ -198,11 +208,13 @@ def _run_process_job_from_payload(jid: str, job: dict) -> None:
 
 def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts: dict) -> None:
     """Background worker: same pipeline as /api/process, updates progress."""
-    import tempfile
     import time as _sm_time
     _sm_job_t0 = _sm_time.perf_counter()
     print(f"[JOB TIMING] START jid={jid}", flush=True)
-    job_dir = Path(tempfile.mkdtemp(prefix="sm_job_"))
+    # The API and external worker are different containers. Results must live
+    # in their shared /data volume, never in the worker-only /tmp filesystem.
+    job_dir = JOBS / jid
+    job_dir.mkdir(parents=True, exist_ok=True)
     _job_set(jid, status="running", pct=5, stage="prepare", job_dir=str(job_dir), error=None)
     zip_path = job_dir / "result.zip"
     processed = 0
