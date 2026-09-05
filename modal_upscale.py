@@ -24,22 +24,19 @@ import modal
 
 APP_NAME = "showcasemaker-upscale"
 MAX_INPUT_BYTES = 40 * 1024 * 1024
-MAX_VIDEO_SECONDS = 60.0
-MAX_VIDEO_FRAMES = 1800
-MAX_INPUT_PIXELS = 1920 * 1080
+MAX_VIDEO_SECONDS = 30.0
+MAX_VIDEO_FRAMES = 900
+MAX_INPUT_PIXELS = 1280 * 720
 
 MODEL_URLS = {
     "general_x2": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth",
     "general_x4": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth",
-    "anime_x4":   "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth",
+    "anime_x4": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth",
 }
 
 runtime = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("ffmpeg", "curl", "libgl1", "libglib2.0-0")
-    # Install torch stack first so basicsr's setup_requires can resolve against
-    # the already-present torch/torchvision rather than fetching conflicting CUDA
-    # packages (the root cause of the nvidia-cublas VersionConflict error).
     .pip_install(
         "fastapi[standard]==0.115.6",
         "requests==2.32.3",
@@ -48,16 +45,21 @@ runtime = (
         "opencv-python-headless==4.10.0.84",
         "torch==2.1.2",
         "torchvision==0.16.2",
+        "addict==2.4.0",
+        "future==1.0.0",
+        "lmdb==1.5.1",
+        "PyYAML==6.0.2",
+        "scipy==1.14.1",
+        "tqdm==4.67.1",
+        "yapf==0.43.0",
     )
-    # basicsr must come after torch because its setup.py resolves cuda packages
-    # against whatever is already installed. --no-build-isolation prevents pip
-    # from spinning up a fresh build environment where torch is absent and the
-    # cuda conflict reappears.
+    # basicsr 1.4.2 imports a torchvision module removed in newer releases.
+    # The pinned torchvision still exposes the implementation under transforms.functional.
     .run_commands(
-        "pip install --no-build-isolation basicsr==1.4.2 realesrgan==0.3.0",
-        # basicsr 1.4.2 imports a torchvision module removed in newer releases.
-        # The pinned torchvision still exposes the implementation under
-        # transforms.functional, so we patch the import path.
+        # Their legacy setup.py requests a CUDA toolkit independently of
+        # PyTorch. Installing without dependency resolution avoids conflicting
+        # CUDA 13 wheels; every runtime dependency we use is pinned above.
+        "python -m pip install --no-deps basicsr==1.4.2 realesrgan==0.3.0",
         "python - <<'PY'\n"
         "from pathlib import Path\n"
         "p=Path('/usr/local/lib/python3.11/site-packages/basicsr/data/degradations.py')\n"
@@ -125,11 +127,11 @@ def _probe_video(path: Path) -> tuple[float, float, int, int]:
     if width <= 0 or height <= 0 or fps <= 0 or duration <= 0:
         raise ValueError("Incomplete video metadata")
     if width * height > MAX_INPUT_PIXELS:
-        raise ValueError("Video input exceeds 1920x1080")
+        raise ValueError("Video input exceeds 1280x720")
     if duration > MAX_VIDEO_SECONDS + 0.25:
-        raise ValueError("Video is longer than 60 seconds")
+        raise ValueError("Video is longer than 30 seconds")
     if duration * fps > MAX_VIDEO_FRAMES + 1:
-        raise ValueError("Video contains more than 1800 frames")
+        raise ValueError("Video contains more than 900 frames")
     return duration, fps, width, height
 
 
@@ -200,9 +202,9 @@ def _process_gif(source: Path, output: Path, upsampler, scale: int, work: Path) 
     with Image.open(source) as image:
         frame_count = int(getattr(image, "n_frames", 1))
         if frame_count > MAX_VIDEO_FRAMES:
-            raise ValueError("GIF contains more than 1800 frames")
+            raise ValueError("GIF contains more than 900 frames")
         if image.width * image.height > MAX_INPUT_PIXELS:
-            raise ValueError("GIF input exceeds 1920x1080")
+            raise ValueError("GIF input exceeds 1280x720")
         for index in range(frame_count):
             image.seek(index)
             durations.append(max(20, int(image.info.get("duration") or 100)))
@@ -251,7 +253,7 @@ def _process_video(source: Path, output: Path, upsampler, scale: int, work: Path
     timeout=3600,
     startup_timeout=600,
     min_containers=0,
-    max_containers=1,
+    max_containers=2,
     buffer_containers=0,
     scaledown_window=60,
     memory=(4096, 16384),
@@ -269,6 +271,8 @@ def upscale_job(payload: dict) -> dict:
         raise ValueError("Unsupported media kind")
     if preset not in {"general", "anime"} or scale not in {2, 4}:
         raise ValueError("Unsupported upscale settings")
+    if media_kind == "video" and scale != 2:
+        raise ValueError("Video upscale supports 2x only")
 
     work = Path(tempfile.mkdtemp(prefix="showcasemaker-upscale-"))
     try:

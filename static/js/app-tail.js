@@ -138,6 +138,12 @@
     if (fileName) fileName.textContent = f.name + ' · ' + Math.round(f.size/1024) + ' KB';
     if (beforeUrl) URL.revokeObjectURL(beforeUrl);
     beforeUrl = URL.createObjectURL(f);
+    const scaleSelect = document.getElementById('upscaleScale');
+    const isVideo = String(f.type || '').startsWith('video/') || /\.(mp4|webm|avi)$/i.test(f.name || '');
+    if (scaleSelect) {
+      scaleSelect.querySelectorAll('option').forEach(function(option){ option.disabled = isVideo && option.value === '4'; });
+      if (isVideo) scaleSelect.value = '2';
+    }
   }
 
   if (drop) {
@@ -161,6 +167,8 @@
   const handle = document.getElementById('upscaleHandle');
   const imgBefore = document.getElementById('upscaleBefore');
   const imgAfter = document.getElementById('upscaleAfter');
+  const videoWrap = document.getElementById('upscaleVideoPreview');
+  const videoAfter = document.getElementById('upscaleVideoAfter');
 
   function setSplit(pct){
     pct = Math.max(2, Math.min(98, pct));
@@ -199,77 +207,75 @@
 
   function upT(ru, en){ try { return SMLang.isRu() ? ru : en; } catch (e) { return en; } }
 
+  function wait(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+
+  async function readJson(r){
+    let j = {};
+    try { j = await r.json(); } catch(e) {}
+    if (!r.ok || !j.ok) {
+      const err = new Error(j.msg || j.error || ('Request failed (' + r.status + ')'));
+      err.code = j.code || '';
+      err.status = r.status;
+      throw err;
+    }
+    return j;
+  }
+
   btn.addEventListener('click', async function(){
     if (!isPro()) { syncLock(); return; }
     const f = selectedFile || (fileInp.files && fileInp.files[0]);
-    const model = document.getElementById('upscaleModel')?.value || 'general_x4';
-    if (!f) { if (st) st.textContent = upT('Выбери изображение', 'Choose an image'); return; }
+    const preset = document.getElementById('upscaleModel')?.value || 'general';
+    const scale = document.getElementById('upscaleScale')?.value || '2';
+    if (!f) { if (st) st.textContent = upT('Выбери изображение, GIF или видео', 'Choose an image, GIF or video'); return; }
     btn.disabled = true;
     if (st) st.textContent = '';
     if (prev) prev.style.display = 'none';
-    setProg(true, upT('Увеличение… обычно 1–3 минуты', 'Upscaling… usually 1–3 minutes'));
+    setProg(true, upT('Загрузка и постановка в очередь…', 'Uploading and queueing…'));
     try {
       if (!beforeUrl) beforeUrl = URL.createObjectURL(f);
       const fd = new FormData();
       fd.append('file', f);
-      fd.append('model', model);
-      const r = await fetch('/api/upscale/start', {
+      fd.append('preset', preset);
+      fd.append('scale', scale);
+      const start = await fetch('/api/upscale/start', {
         method: 'POST', body: fd, credentials: 'include',
         headers: (typeof headers === 'function' ? headers() : {})
       });
-      if (!r.ok) {
-        let msg = 'Upscale failed';
-        let code = '';
-        try { const j = await r.json(); msg = j.msg || msg; code = j.code || ''; } catch(e){}
-        if (code === 'pro' || r.status === 403) { syncLock(); }
-        throw new Error(msg);
-      }
-      const j = await r.json();
-      const jid = j.job_id;
-      
-      let done = false;
-      while (!done) {
-        await new Promise(res => setTimeout(res, 3000));
-        const sr = await fetch('/api/upscale/status/' + jid, {credentials: 'include'});
-        if (!sr.ok) throw new Error('Status failed');
-        const sj = await sr.json();
-        if (sj.status === 'error') throw new Error(sj.error || 'Upscale failed on server');
-        if (sj.status === 'done') {
-          done = true;
-        } else {
-          setProg(true, upT('Обработка… ' + (sj.pct||0) + '%', 'Processing… ' + (sj.pct||0) + '%'));
+      const queued = await readJson(start);
+      const jid = queued.job_id;
+      let result = null;
+      const deadline = Date.now() + 65 * 60 * 1000;
+      while (Date.now() < deadline) {
+        await wait(2000);
+        const response = await fetch('/api/upscale/status/' + encodeURIComponent(jid), { credentials:'include' });
+        result = await readJson(response);
+        const pct = Math.max(0, Math.min(100, Number(result.pct) || 0));
+        setProg(true, upT('Обработка на GPU: ', 'GPU processing: ') + pct + '%');
+        if (result.status === 'done') break;
+        if (result.status === 'error' || result.status === 'cancelled') {
+          throw new Error(result.error || upT('Апскейл не выполнен', 'Upscale failed'));
         }
       }
-
-      const dlUrl = '/api/upscale/download/' + jid;
-      const isVideo = f.type.startsWith('video/') || f.name.toLowerCase().endsWith('.mp4');
-      const isGif = f.type === 'image/gif' || f.name.toLowerCase().endsWith('.gif');
-      
-      if (isVideo || isGif) {
-        // Sliders can't play videos smoothly, so we just provide the download button.
-        if (prev) prev.style.display = 'block';
-        if (wrap) wrap.style.display = 'none'; // hide the before/after slider
-        const dl = document.getElementById('upscaleDownload');
-        if (dl) { dl.href = dlUrl; dl.download = ''; dl.textContent = upT('Скачать результат', 'Download Result'); }
-        if (st) st.textContent = upT('Готово! Файл доступен для скачивания.', 'Done! File is ready for download.');
+      if (!result || result.status !== 'done') throw new Error(upT('Превышено время ожидания результата', 'Result wait timed out'));
+      afterUrl = result.preview_url || result.download_url;
+      const isVideo = result.media_kind === 'video';
+      if (wrap) wrap.style.display = isVideo ? 'none' : '';
+      if (videoWrap) videoWrap.style.display = isVideo ? 'block' : 'none';
+      if (isVideo) {
+        if (videoAfter) { videoAfter.src = afterUrl; videoAfter.load(); }
       } else {
-        // For images, we can fetch the blob and show the slider
-        const br = await fetch(dlUrl, {credentials: 'include'});
-        if (!br.ok) throw new Error('Download failed');
-        const blob = await br.blob();
-        if (afterUrl) URL.revokeObjectURL(afterUrl);
-        afterUrl = URL.createObjectURL(blob);
         if (imgBefore) imgBefore.src = beforeUrl;
         if (imgAfter) imgAfter.src = afterUrl;
-        const dl = document.getElementById('upscaleDownload');
-        if (dl) { dl.href = afterUrl; dl.download = 'upscaled_' + model + '.png'; dl.textContent = 'Download PNG'; }
-        if (wrap) wrap.style.display = 'block';
-        if (prev) prev.style.display = 'block';
-        setSplit(50);
-        setTimeout(fitAfterImage, 50);
-        if (st) st.textContent = upT('Готово — двигай ползунок, чтобы сравнить до/после', 'Done — drag the slider to compare before / after');
       }
+      const dl = document.getElementById('upscaleDownload');
+      if (dl) { dl.href = result.download_url; dl.removeAttribute('download'); }
+      if (prev) prev.style.display = 'block';
+      if (!isVideo) { setSplit(50); setTimeout(fitAfterImage, 50); }
+      if (st) st.textContent = isVideo
+        ? upT('Готово — видео можно посмотреть или скачать', 'Done — preview or download the video')
+        : upT('Готово — двигай ползунок, чтобы сравнить до/после', 'Done — drag the slider to compare before / after');
     } catch (e) {
+      if (e.code === 'pro' || e.status === 403) syncLock();
       if (st) st.textContent = String(e.message || e);
     } finally {
       setProg(false);

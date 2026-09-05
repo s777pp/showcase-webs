@@ -30,6 +30,7 @@ _last_error: Optional[str] = None
 
 JOB_QUEUE = "sm:jobs:queue"
 PROFILE_JOB_QUEUE = "sm:jobs:profile-queue"
+UPSCALE_JOB_QUEUE = "sm:jobs:upscale-queue"
 JOB_KEY = "sm:job:{}"
 USER_JOBS_KEY = "sm:jobs:user:{}"
 WORKER_BEAT_KEY = "sm:worker:beat"
@@ -142,7 +143,12 @@ def job_create(jid: str, data: dict, enqueue: bool = True) -> None:
                 pipe.sadd(USER_JOBS_KEY.format(uk), jid)
                 pipe.expire(USER_JOBS_KEY.format(uk), JOB_TTL)
             if enqueue:
-                queue = PROFILE_JOB_QUEUE if data.get("kind") == "steam_profile_import" else JOB_QUEUE
+                if data.get("kind") == "steam_profile_import":
+                    queue = PROFILE_JOB_QUEUE
+                elif data.get("kind") == "upscale":
+                    queue = UPSCALE_JOB_QUEUE
+                else:
+                    queue = JOB_QUEUE
                 pipe.lpush(queue, jid)
             pipe.execute()
             return
@@ -217,6 +223,19 @@ def profile_job_pop(timeout: int = 1) -> Optional[str]:
     if r:
         try:
             item = r.brpop(PROFILE_JOB_QUEUE, timeout=timeout)
+            return item[1] if item else None
+        except Exception as e:
+            _note(e)
+            time.sleep(1)
+    return None
+
+
+def upscale_job_pop(timeout: int = 1) -> Optional[str]:
+    """Pop lightweight Modal coordination jobs without blocking CPU encoders."""
+    r = _r()
+    if r:
+        try:
+            item = r.brpop(UPSCALE_JOB_QUEUE, timeout=timeout)
             return item[1] if item else None
         except Exception as e:
             _note(e)

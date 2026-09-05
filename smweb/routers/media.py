@@ -29,18 +29,20 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, Form, Request, UploadFile, APIRouter
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
+from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from PIL import Image
 
 import processor as proc
 import redis_store as rs
+
 import auth_db
 
-from smweb import object_store
-from smweb import modal_upscale_client as modal_client
+
+from fastapi import APIRouter
+
 
 from smweb.core import (
     DATA,
@@ -56,7 +58,8 @@ from smweb.core import (
 )
 from smweb.downloads import _download_pinterest
 from smweb.jobs import _job_pool, _worker_mode
-from smweb.upscale_models import _UPSCALE_MODELS, _UPSCALE_MODEL_META
+from smweb import modal_upscale_client, object_store
+
 
 
 router = APIRouter()
@@ -443,29 +446,53 @@ async def preview_wm(
         return JSONResponse({"ok": False, "msg": "Preview failed", "request_id": rid}, status_code=500)
 
 
-# ====================== Upscale API (async Modal GPU pipeline) ======================
-
 @router.get("/api/upscale/models")
 def upscale_models():
     return {
         "ok": True,
         "models": [
-            {"id": m, "label": (_UPSCALE_MODEL_META.get(m) or {}).get("label") or m,
-             "group": (_UPSCALE_MODEL_META.get(m) or {}).get("group") or "general"}
-            for m in _UPSCALE_MODELS
+            {"id": "general", "label": "Photo / general", "group": "general"},
+            {"id": "anime", "label": "Anime / artwork", "group": "art"},
         ],
-        "default": _UPSCALE_MODELS[0],
+        "default": "general",
+        "scales": [2, 4],
+        "media": ["image", "gif", "video"],
+        "configured": modal_upscale_client.configured() and object_store.configured(),
     }
+
+
+def _upscale_media(raw: bytes) -> tuple[str, str, str] | None:
+    """Return (kind, source extension, result content type) from trusted magic bytes."""
+    head = raw[:32]
+    if head[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image", ".png", "image/png"
+    if head[:3] == b"\xff\xd8\xff":
+        return "image", ".jpg", "image/png"
+    if head[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "image", ".webp", "image/png"
+    if head[:6] in (b"GIF87a", b"GIF89a"):
+        return "gif", ".gif", "image/gif"
+    if len(raw) >= 12 and raw[4:8] == b"ftyp":
+        return "video", ".mp4", "video/mp4"
+    if head[:4] == b"\x1aE\xdf\xa3":
+        return "video", ".webm", "video/mp4"
+    if head[:4] == b"RIFF" and raw[8:12] == b"AVI ":
+        return "video", ".avi", "video/mp4"
+    return None
+
+
+def _upscale_owner(user: dict) -> str:
+    return str(int(user["id"]))
 
 
 @router.post("/api/upscale/start")
 async def api_upscale_start(
     request: Request,
     file: UploadFile = File(...),
-    model: str = Form("general_x4"),
+    preset: str = Form("general"),
     scale: int = Form(2),
 ):
-    """Start an async GPU upscale job via Modal. Requires Pro + R2 configured."""
+    """Queue an authenticated image/GIF/video upscale on Modal (Pro only)."""
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
@@ -474,150 +501,105 @@ async def api_upscale_start(
             {"ok": False, "msg": "Upscale is available for Pro subscribers", "code": "pro"},
             status_code=403,
         )
-    if not modal_client.configured():
-        return JSONResponse(
-            {"ok": False, "msg": "Upscale service is not configured (MODAL_UPSCALE_URL missing)"},
-            status_code=503,
-        )
-    if not object_store.configured():
-        return JSONResponse(
-            {"ok": False, "msg": "Storage is not configured (R2 credentials missing)"},
-            status_code=503,
-        )
+    if not modal_upscale_client.configured() or not object_store.configured():
+        return JSONResponse({"ok": False, "msg": "Upscale service is not configured"}, status_code=503)
+    if not (rs.redis_ok() and rs.worker_alive()):
+        return JSONResponse({"ok": False, "msg": "Upscale worker is temporarily unavailable"}, status_code=503)
+
+    user_key = _upscale_owner(user)
+    if rs.job_count_user(user_key) >= int(os.environ.get("MAX_JOBS_PER_USER", "2")):
+        return JSONResponse({"ok": False, "msg": "Too many active jobs. Wait for the current job."}, status_code=429)
+    allowed, _ = rs.rate_limit(f"upscale-start:{user_key}", 8, 3600)
+    if not allowed:
+        return JSONResponse({"ok": False, "msg": "Too many upscale requests. Try again later."}, status_code=429)
 
     raw = await file.read()
     if not raw:
         return JSONResponse({"ok": False, "msg": "Empty file"}, status_code=400)
-    if len(raw) > min(MAX_UPLOAD_MB, 40) * 1024 * 1024:
-        return JSONResponse(
-            {"ok": False, "msg": f"File too large for upscale (max {min(MAX_UPLOAD_MB, 40)}MB)"},
-            status_code=400,
-        )
+    max_mb = min(MAX_UPLOAD_MB, int(os.environ.get("MODAL_UPSCALE_MAX_UPLOAD_MB", "40")))
+    if len(raw) > max_mb * 1024 * 1024:
+        return JSONResponse({"ok": False, "msg": f"File too large for upscale (max {max_mb}MB)"}, status_code=413)
+    media = _upscale_media(raw)
+    if not media:
+        return JSONResponse({"ok": False, "msg": "PNG/JPG/WEBP/GIF/MP4/WEBM/AVI only"}, status_code=400)
+    media_kind, source_ext, result_type = media
+    preset = (preset or "general").strip().lower()
+    if preset not in ("general", "anime"):
+        return JSONResponse({"ok": False, "msg": "Unknown upscale preset"}, status_code=400)
+    if scale not in (2, 4):
+        return JSONResponse({"ok": False, "msg": "Scale must be 2 or 4"}, status_code=400)
+    if media_kind == "video" and scale != 2:
+        return JSONResponse({"ok": False, "msg": "Video upscale supports 2x only"}, status_code=400)
 
-    head = raw[:16]
-    is_gif = head[:6] in (b"GIF87a", b"GIF89a")
-    is_mp4 = raw[4:8] == b"ftyp"
-    is_webm = head[:4] == b"\x1aE\xdf\xa3"
-    is_image = (
-        head[:8] == b"\x89PNG\r\n\x1a\n"
-        or head[:3] == b"\xff\xd8\xff"
-        or (head[:4] == b"RIFF" and raw[8:12] == b"WEBP")
-    )
-    if not (is_image or is_gif or is_mp4 or is_webm):
-        return JSONResponse({"ok": False, "msg": "PNG/JPG/WEBP/GIF/MP4/WEBM only"}, status_code=400)
-
-    ext = Path(file.filename or "in.bin").suffix.lower()
-    if not ext:
-        ext = ".gif" if is_gif else (".mp4" if is_mp4 else ".webm" if is_webm else ".png")
-    media_kind = "gif" if is_gif else ("video" if (is_mp4 or is_webm) else "image")
-
-    jid = secrets.token_urlsafe(18)
-    source_key = f"upscale/{jid}/source{ext}"
-    result_key = f"upscale/{jid}/result{ext}"
-
+    jid = secrets.token_hex(16)
+    result_ext = ".gif" if media_kind == "gif" else ".mp4" if media_kind == "video" else ".png"
+    source_key = f"upscale/input/{jid}{source_ext}"
+    result_key = f"upscale/result/{jid}{result_ext}"
+    safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(file.filename or "upscale").stem)[:80] or "upscale"
     try:
-        object_store.put_bytes(source_key, raw, public=False)
-    except Exception as exc:
-        LOGGER.exception("upscale R2 upload failed jid=%s", jid)
-        return JSONResponse(
-            {"ok": False, "msg": f"Storage upload failed: {type(exc).__name__}: {exc}"[:300]},
-            status_code=502,
-        )
-
-    user_key = str(user.get("id") or _ip(request))
-    model = (model or _UPSCALE_MODELS[0]).strip()
-    scale = max(1, min(4, int(scale)))
-    payload = {
-        "kind": "upscale",
-        "source_key": source_key,
-        "result_key": result_key,
-        "filename": (file.filename or f"upscaled{ext}")[:160],
-        "media_kind": media_kind,
-        "preset": model,
-        "scale": scale,
-        "content_type": file.content_type or "application/octet-stream",
-        "status": "queued",
-        "pct": 2,
-        "stage": "queued",
-        "user_key": user_key,
-        "created": time.time(),
-    }
-
-    mode = _worker_mode()
-    external = mode == "external" and rs.redis_ok() and rs.worker_alive()
-    if mode == "external" and not external:
-        LOGGER.warning("[upscale %s] WORKER_MODE=external but no live worker — running embedded", jid[:8])
-
-    rs.job_create(jid, payload, enqueue=external)
-    if not external:
-        from smweb.upscale_jobs import run as _upscale_run
-        _job_pool.submit(_upscale_run, jid, dict(payload))
-
-    return JSONResponse({"ok": True, "job_id": jid}, status_code=202)
-
-
-def _upscale_job_for(request: Request, job_id: str) -> dict | None:
-    """Fetch an upscale job belonging to the caller."""
-    job = rs.job_get(job_id)
-    if not job or job.get("kind") != "upscale":
-        return None
-    owner = str(job.get("user_key") or "")
-    if owner:
-        try:
-            user = _auth_user(request)
-        except Exception:
-            user = None
-        caller = str(user.get("id") or _ip(request)) if user else _ip(request)
-        if caller != owner:
-            return None
-    return job
+        object_store.put_bytes(source_key, raw, public=False, media_type=file.content_type or "application/octet-stream")
+        rs.job_create(jid, {
+            "kind": "upscale", "user_key": user_key, "status": "queued", "pct": 1,
+            "stage": "queued", "source_key": source_key, "result_key": result_key,
+            "filename": f"{safe_stem}{source_ext}", "download_name": f"{safe_stem}_upscaled{result_ext}",
+            "media_kind": media_kind, "content_type": result_type,
+            "preset": preset, "scale": scale, "input_size": len(raw),
+        }, enqueue=True)
+    except Exception:
+        object_store.delete(source_key, public=False)
+        LOGGER.exception("upscale queue failed jid=%s", jid)
+        return JSONResponse({"ok": False, "msg": "Could not queue upscale job"}, status_code=503)
+    return JSONResponse({"ok": True, "job_id": jid, "status": "queued"}, status_code=202)
 
 
 @router.get("/api/upscale/status/{job_id}")
 def api_upscale_status(request: Request, job_id: str):
-    job = _upscale_job_for(request, job_id)
-    if not job:
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
+    job = rs.job_get(job_id) if re.fullmatch(r"[a-f0-9]{32}", job_id or "") else None
+    if not job or job.get("kind") != "upscale" or job.get("user_key") != _upscale_owner(user):
         return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
     return {
-        "ok": True,
-        "status": job.get("status"),
-        "pct": job.get("pct", 0),
-        "stage": job.get("stage", ""),
-        "error": job.get("error") or "",
-        "gpu_elapsed": job.get("gpu_elapsed") or 0,
-        "frames": job.get("frames") or 0,
+        "ok": True, "status": job.get("status", "queued"), "pct": int(job.get("pct") or 0),
+        "stage": job.get("stage", "queued"), "error": job.get("error", ""),
+        "media_kind": job.get("media_kind", "image"),
+        "download_url": f"/api/upscale/download/{job_id}" if job.get("status") == "done" else "",
+        "preview_url": f"/api/upscale/download/{job_id}?inline=1" if job.get("status") == "done" else "",
     }
 
 
 @router.get("/api/upscale/download/{job_id}")
-def api_upscale_download(request: Request, job_id: str):
-    from fastapi.responses import RedirectResponse
-    job = _upscale_job_for(request, job_id)
-    if not job:
+def api_upscale_download(request: Request, job_id: str, inline: bool = False):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
+    job = rs.job_get(job_id) if re.fullmatch(r"[a-f0-9]{32}", job_id or "") else None
+    if not job or job.get("kind") != "upscale" or job.get("user_key") != _upscale_owner(user):
         return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
-    if job.get("status") == "error":
-        err = str(job.get("error") or "Upscale failed")
-        return JSONResponse(
-            {"ok": False, "msg": f"Upscale failed: {err}"},
-            status_code=500,
-        )
     if job.get("status") != "done":
-        return JSONResponse({"ok": False, "msg": "Result is not ready yet"}, status_code=202)
-    result_key = str(job.get("result_key") or "")
-    if not result_key:
-        return JSONResponse({"ok": False, "msg": "Result key missing"}, status_code=500)
+        return JSONResponse({"ok": False, "msg": "Result is not ready"}, status_code=409)
     try:
         url = object_store.presigned_get_url(
-            result_key,
-            public=False,
-            expires=1800,
-            download_name=str(job.get("filename") or "upscaled.png"),
+            str(job["result_key"]), expires=600,
+            download_name=None if inline else str(job.get("download_name") or "upscaled-result"),
+            media_type=str(job.get("content_type") or "application/octet-stream"),
         )
-        return RedirectResponse(url, status_code=302)
-    except Exception as exc:
-        LOGGER.exception("upscale download failed for %s", job_id)
-        return JSONResponse({"ok": False, "msg": f"Download unavailable: {type(exc).__name__}"}, status_code=500)
+    except Exception:
+        LOGGER.exception("upscale download URL failed jid=%s", job_id)
+        return JSONResponse({"ok": False, "msg": "Result is unavailable"}, status_code=503)
+    return RedirectResponse(url, status_code=302, headers={"Cache-Control": "private, no-store"})
 
+
+@router.post("/api/upscale")
+def api_upscale_legacy():
+    return JSONResponse(
+        {"ok": False, "msg": "Synchronous upscale is disabled; use /api/upscale/start"},
+        status_code=410,
+    )
+
+
+# ====================== Character + background compose ======================
 
 def _compose_user_key(request, user) -> str:
     try:

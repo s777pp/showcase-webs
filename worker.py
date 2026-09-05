@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT))
 
 MAX_WORKERS = int(os.environ.get("MAX_JOB_WORKERS", "1"))
 MAX_PROFILE_WORKERS = max(1, int(os.environ.get("MAX_PROFILE_WORKERS", "1")))
+MAX_UPSCALE_WORKERS = max(1, int(os.environ.get("MAX_UPSCALE_WORKERS", "4")))
 BEAT_TTL = 30
 BEAT_EVERY = 10.0
 
@@ -52,6 +53,10 @@ def _process_one(jid: str) -> None:
             from smweb.compose_jobs import run
             run(jid, job)
             return
+        if job.get("kind") == "upscale":
+            from smweb.upscale_jobs import run
+            run(jid, job)
+            return
         from smweb.jobs import _run_process_job_from_payload
 
         _run_process_job_from_payload(jid, job)
@@ -70,12 +75,17 @@ def main() -> None:
         print(f"[worker] Redis unreachable at {rs.redis_host()}: {rs.last_error()}", flush=True)
         print("[worker] retrying...", flush=True)
 
-    print(f"[worker] starting media={MAX_WORKERS} profile={MAX_PROFILE_WORKERS} redis={rs.redis_host()}", flush=True)
+    print(
+        f"[worker] starting media={MAX_WORKERS} profile={MAX_PROFILE_WORKERS} "
+        f"upscale={MAX_UPSCALE_WORKERS} redis={rs.redis_host()}", flush=True,
+    )
     last_beat = 0.0
     with (ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="media") as media_pool,
-          ThreadPoolExecutor(max_workers=MAX_PROFILE_WORKERS, thread_name_prefix="profile") as profile_pool):
+          ThreadPoolExecutor(max_workers=MAX_PROFILE_WORKERS, thread_name_prefix="profile") as profile_pool,
+          ThreadPoolExecutor(max_workers=MAX_UPSCALE_WORKERS, thread_name_prefix="upscale") as upscale_pool):
         media_inflight = set()
         profile_inflight = set()
+        upscale_inflight = set()
         while True:
             now = time.time()
             # Publish liveness so the API knows an external worker exists; without
@@ -84,7 +94,7 @@ def main() -> None:
                 rs.worker_beat(ttl=BEAT_TTL)
                 last_beat = now
 
-            inflight = media_inflight | profile_inflight
+            inflight = media_inflight | profile_inflight | upscale_inflight
             done = {f for f in inflight if f.done()}
             for f in done:
                 try:
@@ -93,8 +103,11 @@ def main() -> None:
                     traceback.print_exc()
             media_inflight -= done
             profile_inflight -= done
+            upscale_inflight -= done
 
-            if len(media_inflight) >= MAX_WORKERS and len(profile_inflight) >= MAX_PROFILE_WORKERS:
+            if (len(media_inflight) >= MAX_WORKERS and
+                    len(profile_inflight) >= MAX_PROFILE_WORKERS and
+                    len(upscale_inflight) >= MAX_UPSCALE_WORKERS):
                 time.sleep(0.3)
                 continue
             if len(profile_inflight) < MAX_PROFILE_WORKERS:
@@ -107,6 +120,11 @@ def main() -> None:
                 if jid:
                     print(f"[worker] media pick {jid}", flush=True)
                     media_inflight.add(media_pool.submit(_process_one, jid))
+            if len(upscale_inflight) < MAX_UPSCALE_WORKERS:
+                jid = rs.upscale_job_pop(timeout=1)
+                if jid:
+                    print(f"[worker] upscale pick {jid}", flush=True)
+                    upscale_inflight.add(upscale_pool.submit(_process_one, jid))
 
 
 if __name__ == "__main__":

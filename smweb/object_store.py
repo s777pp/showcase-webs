@@ -119,6 +119,7 @@ def presigned_get_url(
     public: bool = False,
     expires: int = 3600,
     download_name: str | None = None,
+    media_type: str | None = None,
 ) -> str:
     """Create a short-lived URL for one object without exposing R2 credentials."""
     c = client()
@@ -131,6 +132,8 @@ def presigned_get_url(
     if download_name:
         safe_name = str(download_name).replace('"', "").replace("\r", "").replace("\n", "")[:160]
         params["ResponseContentDisposition"] = f'attachment; filename="{safe_name}"'
+    if media_type:
+        params["ResponseContentType"] = str(media_type).replace("\r", "").replace("\n", "")[:100]
     return c.generate_presigned_url(
         "get_object",
         Params=params,
