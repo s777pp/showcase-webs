@@ -13,7 +13,7 @@
       run: 'Run checks', clear: 'Clear', emptyTitle: 'Steam admission report', emptyBody: 'The format, dimensions, weight, animation, HEX and completeness checks will appear here.',
       checking: 'Inspecting files…', ready: 'Ready for Steam', warn: 'Check warnings', fail: 'Not ready',
       files: 'Files', groups: 'Sets', problems: 'Problems', statusLine: '{groups} set(s) · {files} file(s)',
-      remove: 'Remove', toProcess: 'Send originals to Process', newCheck: 'New check', downloadSet: 'Download ready set', zipNoTransfer: 'ZIP contents will be transferable when the repair stage is added.',
+      remove: 'Remove', toProcess: 'Send originals to Process', newCheck: 'New check', downloadSet: 'Download ready set', safeFix: 'Fix names + HEX 21', fixing: 'Preparing a lossless fix…', fixed: 'Safe fix downloaded. No pixels or animation frames were changed.', zipNoTransfer: 'ZIP contents will be transferable when the repair stage is added.',
       uploadSteam: 'Upload through extension', chooseShowcases: 'Choose showcases', extensionMissing: 'Install SteamShowcase Helper to open the correct Steam uploader and apply long-showcase settings automatically.',
       installExtension: 'Install extension', extensionOld: 'Update SteamShowcase Helper to version 0.9.8 or newer.', extensionStarting: 'Opening Steam…', extensionFailed: 'The extension could not start the Steam upload.',
       mode: { auto: 'Auto', workshop: 'Workshop', featured: 'Featured', split: 'Artwork Split', unknown: 'Unknown set' },
@@ -39,7 +39,7 @@
       run: 'Начать проверку', clear: 'Очистить', emptyTitle: 'Отчёт допуска Steam', emptyBody: 'Здесь появятся формат, размеры, вес, анимация, HEX и комплектность файлов.',
       checking: 'Проверяем файлы…', ready: 'Готово для Steam', warn: 'Проверь замечания', fail: 'Не готово',
       files: 'Файлов', groups: 'Комплектов', problems: 'Проблем', statusLine: 'Комплектов: {groups} · файлов: {files}',
-      remove: 'Удалить', toProcess: 'Передать исходники в Обработку', newCheck: 'Новая проверка', downloadSet: 'Скачать готовый комплект', zipNoTransfer: 'Передача содержимого ZIP появится вместе с этапом исправлений.',
+      remove: 'Удалить', toProcess: 'Передать исходники в Обработку', newCheck: 'Новая проверка', downloadSet: 'Скачать готовый комплект', safeFix: 'Исправить названия + HEX 21', fixing: 'Готовим исправление без потери качества…', fixed: 'Исправленный ZIP скачан. Пиксели и кадры анимации не изменялись.', zipNoTransfer: 'Передача содержимого ZIP появится вместе с этапом исправлений.',
       uploadSteam: 'Загрузить через расширение', chooseShowcases: 'Перейти к выбору витрин', extensionMissing: 'Установи SteamShowcase Helper: он откроет нужный загрузчик Steam и автоматически применит настройки длинной витрины.',
       installExtension: 'Установить расширение', extensionOld: 'Обнови SteamShowcase Helper до версии 0.9.8 или новее.', extensionStarting: 'Открываем Steam…', extensionFailed: 'Расширение не смогло начать загрузку в Steam.',
       mode: { auto: 'Авто', workshop: 'Workshop', featured: 'Featured', split: 'Artwork Split', unknown: 'Тип не определён' },
@@ -216,6 +216,7 @@
     lastReport = report;
     const hasZip = selected.some((file) => /\.zip$/i.test(file.name));
     const uploadGroup = report.groups.find((group) => group.mode !== 'unknown' && group.status !== 'fail');
+    const canSafeFix = selected.length && report.groups.length && report.groups.every((group) => group.mode !== 'unknown');
     $('steamCheckResults').innerHTML =
       '<div class="steam-check__summary"><div class="steam-check__verdict"><small>STEAM / PREFLIGHT</small><strong>' + esc(verdict) + '</strong><span>' + esc(p.statusLine.replace('{groups}', report.group_count).replace('{files}', report.file_count)) + '</span></div>' +
       '<div class="steam-check__metrics"><div class="steam-check__metric"><b>' + report.file_count + '</b><span>' + esc(p.files) + '</span></div><div class="steam-check__metric"><b>' + report.group_count + '</b><span>' + esc(p.groups) + '</span></div><div class="steam-check__metric"><b>' + problemCount + '</b><span>' + esc(p.problems) + '</span></div></div></div>' +
@@ -223,6 +224,7 @@
       '<div class="steam-check__extension-note" id="steamCheckExtensionNote" hidden></div>' +
       '<div class="steam-check__result-actions">' + (resultDownload ? '<a class="btn" href="' + esc(resultDownload) + '">' + esc(p.downloadSet) + '</a>' : '') +
       (uploadGroup ? '<button class="btn" type="button" id="steamCheckUploadSteam">' + esc(p.uploadSteam) + '</button>' : '') +
+      (canSafeFix ? '<button class="btn ghost" type="button" id="steamCheckSafeFix">' + esc(p.safeFix) + '</button>' : '') +
       '<button class="btn ghost" type="button" id="steamCheckChooseShowcases">' + esc(p.chooseShowcases) + '</button>' +
       (!resultDownload ? '<button class="btn ghost" type="button" id="steamCheckToProcess"' + (hasZip ? ' disabled title="' + esc(p.zipNoTransfer) + '"' : '') + '>' + esc(p.toProcess) + '</button>' : '') +
       '<button class="btn ghost" type="button" id="steamCheckAgain">' + esc(p.newCheck) + '</button></div>';
@@ -231,7 +233,41 @@
     $('steamCheckAgain').onclick = reset;
     if ($('steamCheckToProcess')) $('steamCheckToProcess').onclick = transferToProcess;
     if ($('steamCheckUploadSteam')) $('steamCheckUploadSteam').onclick = startSteamUpload;
+    if ($('steamCheckSafeFix')) $('steamCheckSafeFix').onclick = runSafeFix;
     $('steamCheckChooseShowcases').onclick = openShowcasePicker;
+  }
+
+  async function runSafeFix() {
+    if (!selected.length) return;
+    const p = t();
+    const button = $('steamCheckSafeFix');
+    button.disabled = true;
+    $('steamCheckStatus').className = 'status';
+    $('steamCheckStatus').textContent = p.fixing;
+    const body = new FormData();
+    body.append('mode', $('steamCheckMode').value);
+    selected.forEach((file) => body.append('files', file));
+    try {
+      const response = await fetch('/api/steam-check/fix-safe', { method: 'POST', body, credentials: 'include' });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.msg || p.requestFailed);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'steam_ready_safe_fix.zip';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      $('steamCheckStatus').className = 'status ok';
+      $('steamCheckStatus').textContent = p.fixed;
+    } catch (error) {
+      $('steamCheckStatus').className = 'status err';
+      $('steamCheckStatus').textContent = error && error.message ? error.message : p.requestFailed;
+    } finally { button.disabled = false; }
   }
 
   function uploadPayload() {

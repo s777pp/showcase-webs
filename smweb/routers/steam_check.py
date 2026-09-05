@@ -8,11 +8,11 @@ import zipfile
 from pathlib import PurePosixPath
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from smweb.core import MAX_UPLOAD_MB, quota_state
-from smweb.steam_readiness import Candidate, analyze_groups
+from smweb.steam_readiness import Candidate, analyze_groups, apply_safe_fixes
 
 
 router = APIRouter()
@@ -110,3 +110,69 @@ async def steam_check(
             "archive_ratio": "Unsafe ZIP compression ratio",
         }
         return JSONResponse({"ok": False, "msg": messages.get(str(exc), "Could not inspect ZIP"), "code": "zip"}, status_code=400)
+
+
+@router.post("/api/steam-check/fix-safe")
+async def steam_check_fix_safe(
+    request: Request,
+    mode: str = Form("auto"),
+    files: list[UploadFile] = File(...),
+):
+    quota = quota_state(request)
+    if not quota.get("email"):
+        return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
+    if not quota.get("pro"):
+        return JSONResponse({"ok": False, "msg": "Steam Check is available with Pro", "code": "pro"}, status_code=403)
+    mode = (mode or "auto").strip().lower()
+    if mode not in {"auto", "workshop", "featured", "split"}:
+        return JSONResponse({"ok": False, "msg": "Unknown showcase type"}, status_code=400)
+    if not files or len(files) > int(os.environ.get("STEAM_CHECK_MAX_UPLOADS", "20")):
+        return JSONResponse({"ok": False, "msg": "Upload between 1 and 20 files"}, status_code=400)
+
+    total = 0
+    limit = int(os.environ.get("STEAM_CHECK_MAX_REQUEST_MB", "120")) * 1024 * 1024
+    groups: dict[str, list[Candidate]] = {}
+    try:
+        for upload in files:
+            raw = await upload.read(limit + 1)
+            total += len(raw)
+            if total > limit:
+                return JSONResponse({"ok": False, "msg": "Total upload is too large", "code": "size"}, status_code=413)
+            name = _safe_archive_name(upload.filename or "file")
+            if name.lower().endswith(".zip"):
+                nested = await run_in_threadpool(_archive_groups, raw)
+                for group, items in nested.items():
+                    groups.setdefault(group, []).extend(items)
+            elif PurePosixPath(name).suffix.lower() in _MEDIA_EXTENSIONS:
+                groups.setdefault("Files", []).append(Candidate(name, raw))
+            else:
+                return JSONResponse({"ok": False, "msg": f"Unsupported file: {name}", "code": "format"}, status_code=400)
+
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED) as archive:
+            for group_name, candidates in sorted(groups.items()):
+                fixed_mode, fixed = await run_in_threadpool(apply_safe_fixes, candidates, mode)
+                folder = re.sub(r"[^A-Za-z0-9._-]+", "_", group_name).strip("._") or fixed_mode
+                for candidate in fixed:
+                    archive.writestr(f"{folder}/{candidate.name}", candidate.data)
+        return Response(
+            output.getvalue(),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": 'attachment; filename="steam_ready_safe_fix.zip"',
+                "Cache-Control": "private, no-store",
+            },
+        )
+    except zipfile.BadZipFile:
+        return JSONResponse({"ok": False, "msg": "The ZIP archive is damaged", "code": "zip"}, status_code=400)
+    except ValueError as exc:
+        messages = {
+            "unknown_mode": "Could not determine showcase type",
+            "unsupported_format": "A file cannot be repaired safely",
+            "incomplete_set": "The showcase set is incomplete",
+            "archive_file_limit": "The ZIP contains too many files",
+            "archive_size_limit": "The unpacked ZIP is too large",
+            "archive_entry_too_large": "A file inside the ZIP is too large",
+            "archive_ratio": "Unsafe ZIP compression ratio",
+        }
+        return JSONResponse({"ok": False, "msg": messages.get(str(exc), "Could not repair files"), "code": "fix"}, status_code=400)

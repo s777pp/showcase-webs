@@ -13,8 +13,8 @@ Current state as of 2026-09-06:
 - Modal upscaling works for images, GIFs, and short videos.
 - Async CPU processing and shared result storage work in production.
 - Public Steam profile import uses a Bright Data remote browser because direct Steam requests from the VPS are frequently HTTP 429.
-- The latest work embeds the Pro-only **Steam Check / Готово для Steam** report at the end of normal Process jobs and adds a guided handoff to SteamShowcase Helper 0.9.8. It still does not repair or recompress failed output automatically.
-- The complete test suite currently contains 26 tests and passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`.
+- The latest work embeds the Pro-only **Steam Check / Готово для Steam** report at the end of normal Process jobs, adds a guided handoff to SteamShowcase Helper 0.9.8, and adds a lossless safe-fix download for naming/order and HEX 21. It does not silently resize or recompress failed output.
+- The complete test suite currently contains 27 tests and passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`.
 
 Do not trust older notes claiming `processor.py` or `requirements.txt` are currently modified. Always run `git status --short` for live state.
 
@@ -213,6 +213,8 @@ Deliberate first-version limitations:
 
 For Pro users, `process.py` adds `steam_check` to the queued options, `smweb/jobs.py` analyzes generated image/GIF ZIP entries after encoding, and the status endpoint returns `readiness`. `static/js/app.js` opens the final report instead of immediately downloading the ZIP. Free processing retains the previous automatic-download behavior.
 
+`POST /api/steam-check/fix-safe` is the first repair endpoint. It is Pro-gated and uses the same bounded direct/ZIP input rules. It produces a stored ZIP containing only the final set, normalizes Workshop/Featured/Split names and order, and applies HEX 21 without decoding or modifying pixels/frames. It deliberately does not fix geometry, upscale, synchronize, or compress; those actions require an explicit comparison/confirmation flow.
+
 ### Browser extension upload flow
 
 The extension source is maintained outside this repository at `C:\Users\n1t1337\Downloads\0.9.7` (the manifest now identifies it as version 0.9.8). Do not assume Git deployment updates the Chrome extension.
@@ -271,7 +273,7 @@ Static files are served by nginx from the repository mount, but backend/router c
 
 ## 9. Known Bugs, Risks, and Unresolved Work
 
-- Steam Check has no repair/compression stage yet; this is the main planned next feature.
+- Steam Check only has the lossless safe-fix stage. Geometry correction, upscale confirmation, synchronization, and <=5 MiB compression are unresolved.
 - Steam Check ZIP input cannot yet be handed directly to Process.
 - The integrated Process report has automated unit/syntax coverage but still needs production browser testing with real Workshop, Featured, and Artwork Split outputs and the unpacked 0.9.8 extension.
 - Chrome extension publishing is a separate manual release. A Git/VPS deployment alone does not distribute extension 0.9.8.

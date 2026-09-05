@@ -204,3 +204,43 @@ def analyze_groups(groups: dict[str, list[Candidate]], requested_mode: str = "au
         "failures": failures, "warnings": warnings,
         "limits": {"file_bytes": STEAM_FILE_LIMIT, "animation_ms": int(STEAM_ANIMATION_LIMIT_SECONDS * 1000)},
     }
+
+
+def apply_safe_fixes(candidates: list[Candidate], requested_mode: str = "auto") -> tuple[str, list[Candidate]]:
+    """Normalize final-set names/order and HEX21 without changing pixels."""
+    report = analyze_group("Files", candidates, requested_mode)
+    mode = report["mode"]
+    primary = [item for item in candidates if not _AUXILIARY.search(_display_name(item.name))]
+    if mode not in {"workshop", "featured", "split"} or not primary:
+        raise ValueError("unknown_mode")
+
+    inspected = [(item, inspect_file(item)) for item in primary]
+    if any(info["format"] not in SUPPORTED_FORMATS for _, info in inspected):
+        raise ValueError("unsupported_format")
+
+    if mode == "workshop":
+        if len(inspected) != 5:
+            raise ValueError("incomplete_set")
+
+        def workshop_key(pair):
+            match = re.search(r"(?:part[_ -]?)?([1-5])", PurePosixPath(pair[0].name).name, re.I)
+            return (int(match.group(1)) if match else 99, PurePosixPath(pair[0].name).name.lower())
+
+        inspected.sort(key=workshop_key)
+        stems = [f"part_{index}" for index in range(1, 6)]
+    elif mode == "featured":
+        if len(inspected) != 1:
+            raise ValueError("incomplete_set")
+        stems = ["featured_630"]
+    else:
+        if len(inspected) != 2:
+            raise ValueError("incomplete_set")
+        inspected.sort(key=lambda pair: int(pair[1]["width"]), reverse=True)
+        stems = ["center_506", "side_100"]
+
+    fixed = []
+    for stem, (candidate, info) in zip(stems, inspected):
+        extension = {"PNG": ".png", "JPEG": ".jpg", "GIF": ".gif"}[info["format"]]
+        data = candidate.data if candidate.data.endswith(b"\x21") else candidate.data[:-1] + b"\x21"
+        fixed.append(Candidate(stem + extension, data))
+    return mode, fixed

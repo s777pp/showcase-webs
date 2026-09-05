@@ -4,7 +4,7 @@ import unittest
 from PIL import Image
 
 import processor
-from smweb.steam_readiness import Candidate, analyze_group, inspect_file
+from smweb.steam_readiness import Candidate, analyze_group, apply_safe_fixes, inspect_file
 
 
 def png_bytes(size=(150, 100), hex21=True):
@@ -73,6 +73,14 @@ class SteamReadinessTests(unittest.TestCase):
         animation = next(check for check in report["checks"] if check["id"] == "animation")
         self.assertEqual(animation["state"], "warn")
         self.assertEqual(report["failures"], 0)
+
+    def test_safe_fix_normalizes_workshop_names_and_hex(self):
+        source = [Candidate(f"tile-{index}.png", png_bytes((180, 100), hex21=False)) for index in range(1, 6)]
+        mode, fixed = apply_safe_fixes(source, "workshop")
+        self.assertEqual(mode, "workshop")
+        self.assertEqual([item.name for item in fixed], [f"part_{index}.png" for index in range(1, 6)])
+        self.assertTrue(all(item.data.endswith(b"\x21") for item in fixed))
+        self.assertEqual(analyze_group("Files", fixed, "workshop")["status"], "ready")
 
 
 if __name__ == "__main__":
