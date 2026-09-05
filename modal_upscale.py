@@ -334,7 +334,9 @@ def api():
     web = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
     class Submit(BaseModel):
-        request_id: str = Field(pattern=r"^[a-f0-9]{24,64}$")
+        # Accept both the current hex job IDs and IDs created by the earlier
+        # token_urlsafe implementation during a rolling VPS/Modal deployment.
+        request_id: str = Field(pattern=r"^[A-Za-z0-9_-]{20,80}$")
         source_url: str
         result_url: str
         filename: str = Field(max_length=160)
