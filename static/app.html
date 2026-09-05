@@ -363,20 +363,15 @@
 
       <div id="upscalePanel">
         <div class="drop" id="upscaleDrop" data-i="up_drop">Drop an image here or click to browse</div>
-        <input type="file" id="upscaleFile" hidden accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif"/>
+        <input type="file" id="upscaleFile" hidden accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,.png,.jpg,.jpeg,.webp,.gif,.mp4,.webm"/>
         <div class="upscale-file-name" id="upscaleFileName"></div>
         <div class="row" style="flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:14px">
           <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">
             <span data-i="up_model">Model</span>
             <select id="upscaleModel" style="min-width:240px">
-              <option value="4xBHI_dat2_real">Anime / art · fast</option>
-              <option value="4xNomosWebPhoto_RealPLKSR">Photo · balanced</option>
-              <option value="4xNomos2_hq_drct-l">General HQ</option>
-              <option value="4xRealWebPhoto_v4_dat2">Photo v4</option>
-              <option value="4xNomosUni_rgt_multijpg">Universal / jpg</option>
-              <option value="4xLSDIRDAT">Detail (slower)</option>
-              <option value="4xNomos8kHAT-L_otf">8k HAT (slow)</option>
-              <option value="4xNomosUniDAT_otf">Uni DAT (slow)</option>
+              <option value="general_x4">General x4 (High Quality)</option>
+              <option value="general_x2">General x2 (Fast)</option>
+              <option value="anime_x4">Anime / Art x4</option>
             </select>
           </label>
           <button class="btn" type="button" id="btnUpscale" data-i="up_btn">Upscale</button>
