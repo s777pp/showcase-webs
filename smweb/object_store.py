@@ -113,6 +113,46 @@ def public_url(key: str) -> str:
     return f"{PUBLIC_BASE}/{key}" if PUBLIC_BASE else ""
 
 
+def presigned_get_url(
+    key: str,
+    *,
+    public: bool = False,
+    expires: int = 3600,
+    download_name: str | None = None,
+) -> str:
+    """Create a short-lived URL for one object without exposing R2 credentials."""
+    c = client()
+    if not c:
+        raise RuntimeError("R2 is not configured")
+    params: dict[str, str] = {
+        "Bucket": PUBLIC_BUCKET if public else PRIVATE_BUCKET,
+        "Key": clean_key(key),
+    }
+    if download_name:
+        safe_name = str(download_name).replace('"', "").replace("\r", "").replace("\n", "")[:160]
+        params["ResponseContentDisposition"] = f'attachment; filename="{safe_name}"'
+    return c.generate_presigned_url(
+        "get_object",
+        Params=params,
+        ExpiresIn=max(60, min(int(expires), 86400)),
+    )
+
+
+def presigned_put_url(key: str, *, public: bool = False, expires: int = 3600) -> str:
+    """Create a short-lived upload URL restricted to one exact object key."""
+    c = client()
+    if not c:
+        raise RuntimeError("R2 is not configured")
+    return c.generate_presigned_url(
+        "put_object",
+        Params={
+            "Bucket": PUBLIC_BUCKET if public else PRIVATE_BUCKET,
+            "Key": clean_key(key),
+        },
+        ExpiresIn=max(60, min(int(expires), 86400)),
+    )
+
+
 _health_lock = threading.Lock()
 _health_cache: tuple[float, bool, str | None] = (0.0, False, None)
 _HEALTH_TTL = 30.0

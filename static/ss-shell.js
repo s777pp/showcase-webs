@@ -60,7 +60,7 @@
     return NAV.map(function (n) {
       return '<a class="ss-nav__i' + (active(n.href) ? ' is-on' : '') + '" href="' + n.href + '">' +
         svg(n.icon) + '<span>' + esc(t(n.label)) + '</span>' +
-        (n.tag ? '<i class="ss-nav__tag">' + esc(lang() === 'ru' ? 'новое' : n.tag) + '</i>' : '') + '</a>';
+        (n.tag ? '<i class="ss-nav__tag">' + esc(n.tag) + '</i>' : '') + '</a>';
     }).join('');
   }
 
@@ -89,16 +89,14 @@
   function headerHTML() {
     return '<header class="ss-head"><div class="ss-wrap ss-head__in">' +
       '<a class="ss-logo" href="/"><span class="ss-logo__mark"><img src="/static/icon.png" alt=""></span>' +
-      '<span class="ss-logo__txt"><b>Showcase</b><span>Maker</span></span></a>' +
-      '<div class="ss-account-primary">' +
-        '<a class="ss-pill" id="ssUser" href="/profile" hidden></a>' +
-        '<button class="ss-btn ss-btn--sm ss-login-primary" id="ssLogin" type="button">' + svg('user') + '<span>' +
-          (lang() === 'ru' ? 'Войти' : 'Log in') + '</span></button>' +
-      '</div>' +
+      '<span class="ss-logo__txt">Showcase <span>Maker</span></span></a>' +
       '<nav class="ss-nav">' + navHTML() + '</nav>' +
       '<span class="ss-head__sp"></span>' +
       '<div class="ss-head__right"><button class="ss-activate" id="ssActivate" type="button">' + svg('key') + '<span>' +
         (lang() === 'ru' ? 'Активация' : 'Activate') + '</span></button>' + langHTML() +
+        '<a class="ss-pill" id="ssUser" href="/profile" hidden></a>' +
+        '<button class="ss-btn ss-btn--sm" id="ssLogin" type="button">' +
+          (lang() === 'ru' ? 'Войти' : 'Log in') + '</button>' +
         '<button class="ss-btn ss-btn--sm ss-btn--logout" id="ssLogout" type="button" hidden style="background:#c0392b;color:#fff;border-color:#c0392b">' +
           (lang() === 'ru' ? 'Выйти' : 'Log out') + '</button>' +
         '<button class="ss-burger" id="ssBurger" type="button" aria-label="Menu"><span></span></button>' +
@@ -130,7 +128,7 @@
       '<p class="ss-auth__sub" id="ssAuthSub">' + (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.') + '</p>' +
       '<form class="ss-auth__form" id="ssAuthForm">' +
         '<label><span>Email</span><input id="ssAuthEmail" type="email" autocomplete="email" required placeholder="name@example.com"></label>' +
-        '<label><span>' + (ru ? 'Пароль' : 'Password') + '</span><input id="ssAuthPass" type="password" autocomplete="current-password" minlength="10" required placeholder="••••••••••"></label>' +
+        '<label><span>' + (ru ? 'Пароль' : 'Password') + '</span><input id="ssAuthPass" type="password" autocomplete="current-password" minlength="6" required placeholder="••••••••"></label>' +
         '<p class="ss-auth__state" id="ssAuthState"></p>' +
         '<button class="ss-auth__submit" id="ssAuthSubmit" type="submit">' + (ru ? 'Войти' : 'Log in') + '</button>' +
       '</form>' +
@@ -175,25 +173,11 @@
       pill.hidden = !logged;
       pill.style.display = logged ? 'inline-flex' : 'none';
 
-      // User pill -> PUBLIC profile (/profile/{username}).
-      // Nav item "Profile" still opens the editor at /profile.
-      var publicUsername = '';
-      if (me) {
-        publicUsername = (me.profile_username || me.username || '').trim();
-        if (!publicUsername && me.display_name) {
-          publicUsername = String(me.display_name).trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '').slice(0, 24);
-        }
-        if (!publicUsername && me.email) {
-          publicUsername = String(me.email).split('@')[0].toLowerCase().replace(/[^a-z0-9_-]+/g, '').slice(0, 24);
-        }
-      }
+      // User pill -> PUBLIC profile.
+      // The "Profile" menu item still opens the editor at /profile.
+      var publicUsername = me && (me.profile_username || me.username);
       if (logged && publicUsername) {
         pill.href = '/profile/' + encodeURIComponent(publicUsername);
-        pill.title = (lang() === 'ru' ? 'Публичный профиль' : 'Public profile');
-      } else if (logged) {
-        // last resort: still avoid editor — API will ensure username on next load
-        pill.href = '/profile';
-        pill.title = (lang() === 'ru' ? 'Профиль' : 'Profile');
       } else {
         /* Never send a user-pill click to the editor. Bootstrap normally
            supplies profile_username; keep the fallback on the public route. */
@@ -329,6 +313,7 @@
     }
     wireAuth();
     wireActivation();
+    wireOAuth();
   }
 
   function openActivation() {
@@ -411,6 +396,11 @@
       fetch(authMode === 'register' ? '/api/auth/register' : '/api/auth/login', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:email,password:password}) })
         .then(function (r) { return r.json(); }).then(function (j) {
           if (!j || !j.ok) throw new Error((j && j.msg) || 'Authentication failed');
+          if (j.token) {
+            try { localStorage.setItem('sm_session', j.token); } catch (e) {}
+            var secure = location.protocol === 'https:' ? '; Secure' : '';
+            document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax' + secure;
+          }
           state.textContent = lang() === 'ru' ? 'Готово' : 'Done'; state.className = 'ss-auth__state is-ok';
           return loadMe().then(function () { setTimeout(closeAuth, 350); });
         }).catch(function (err) { state.textContent = err.message; state.className = 'ss-auth__state is-bad'; })
@@ -418,21 +408,14 @@
     };
   }
 
-  function mount() {
-    var head = document.getElementById('ssHeadHost');
-    var foot = document.getElementById('ssFootHost');
-    if (head) head.innerHTML = headerHTML() + authHTML() + activationHTML();
-    if (foot) foot.innerHTML = footerHTML();
-    wire();
-    paintUser(window.SS_ME);
-  }
-
-  window.SSShell = { mount: mount, loadMe: loadMe, me: me, lang: lang, t: t, esc: esc, openAuth: openAuth, closeAuth: closeAuth, openActivation: openActivation, closeActivation: closeActivation };
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { mount(); 
+  /* wireOAuth — extracted from the DOMContentLoaded callback so it also runs
+     in the else-branch (DOM already ready: browser cache / bfcache restore).
+     Previously OAuth buttons had no onclick when the script executed after DOM
+     was loaded, causing the "click does nothing" bug on fast / cached loads. */
+  function wireOAuth() {
     var logoutBtn = document.getElementById('ssLogout');
-    if (logoutBtn) {
+    if (logoutBtn && !logoutBtn._ssBound) {
+      logoutBtn._ssBound = true;
       logoutBtn.addEventListener('click', function () {
         fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
           .then(function () {
@@ -472,7 +455,7 @@
             credentials: 'same-origin',
             body: JSON.stringify(user),
           }).then(function (r) { return r.json(); }).then(function (j) {
-            if (!j.ok) { alert(j.msg || 'Telegram auth failed'); return; }
+            if (j.token) try { localStorage.setItem('sm_session', j.token); } catch (e) {}
             location.reload();
           });
         };
@@ -486,15 +469,37 @@
         host.appendChild(s);
       });
     };
-    window.addEventListener('message', function (ev) {
-      if (ev.origin !== location.origin || !ev.data) return;
-      if (ev.data.type === 'discord_login' || ev.data.type === 'google_login' ||
-          ev.data.type === 'telegram_login' || ev.data.type === 'steam_login') {
-        location.reload();
-      }
-    });
+    if (!window._ssOAuthMsgBound) {
+      window._ssOAuthMsgBound = true;
+      window.addEventListener('message', function (ev) {
+        if (!ev.data) return;
+        if (ev.data.type === 'discord_login' || ev.data.type === 'google_login' ||
+            ev.data.type === 'telegram_login' || ev.data.type === 'steam_login') {
+          if (ev.data.token) try { localStorage.setItem('sm_session', ev.data.token); } catch (e) {}
+          location.reload();
+        }
+      });
+    }
+  }
 
-  try { localStorage.removeItem('sm_session'); } catch (e) {}
-  loadMe(); });
-  } else { mount(); loadMe(); }
+  function mount() {
+    var head = document.getElementById('ssHeadHost');
+    var foot = document.getElementById('ssFootHost');
+    if (head) head.innerHTML = headerHTML() + authHTML() + activationHTML();
+    if (foot) foot.innerHTML = footerHTML();
+    wire();
+    paintUser(window.SS_ME);
+  }
+
+  window.SSShell = { mount: mount, loadMe: loadMe, me: me, lang: lang, t: t, esc: esc, openAuth: openAuth, closeAuth: closeAuth, openActivation: openActivation, closeActivation: closeActivation };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      mount();
+      loadMe();
+    });
+  } else {
+    mount();
+    loadMe();
+  }
 })();
