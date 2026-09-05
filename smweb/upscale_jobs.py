@@ -68,6 +68,7 @@ def run(jid: str, job: dict) -> None:
     except modal_client.ModalUpscaleHTTPError as exc:
         # This exception is deliberately sanitized by modal_upscale_client:
         # it contains only the HTTP status and safe validation metadata.
+        print(f"[upscale] {jid} {exc}", flush=True)
         rs.job_update(jid, status="error", pct=100, stage="error", error=str(exc)[:500])
         return
     except Exception as exc:
