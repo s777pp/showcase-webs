@@ -29,6 +29,7 @@ _ok_ts = 0.0
 _last_error: Optional[str] = None
 
 JOB_QUEUE = "sm:jobs:queue"
+PROFILE_JOB_QUEUE = "sm:jobs:profile-queue"
 JOB_KEY = "sm:job:{}"
 USER_JOBS_KEY = "sm:jobs:user:{}"
 WORKER_BEAT_KEY = "sm:worker:beat"
@@ -141,7 +142,8 @@ def job_create(jid: str, data: dict, enqueue: bool = True) -> None:
                 pipe.sadd(USER_JOBS_KEY.format(uk), jid)
                 pipe.expire(USER_JOBS_KEY.format(uk), JOB_TTL)
             if enqueue:
-                pipe.lpush(JOB_QUEUE, jid)
+                queue = PROFILE_JOB_QUEUE if data.get("kind") == "steam_profile_import" else JOB_QUEUE
+                pipe.lpush(queue, jid)
             pipe.execute()
             return
         except Exception as e:
@@ -206,6 +208,19 @@ def job_pop(timeout: int = 3) -> Optional[str]:
                 j["status"] = "running"
                 return jid
     time.sleep(min(timeout, 1))
+    return None
+
+
+def profile_job_pop(timeout: int = 1) -> Optional[str]:
+    """Pop a network-heavy Steam import independently of media encoding."""
+    r = _r()
+    if r:
+        try:
+            item = r.brpop(PROFILE_JOB_QUEUE, timeout=timeout)
+            return item[1] if item else None
+        except Exception as e:
+            _note(e)
+            time.sleep(1)
     return None
 
 
@@ -276,7 +291,7 @@ def queue_depth() -> int:
     if not r:
         return 0
     try:
-        return int(r.llen(JOB_QUEUE))
+        return int(r.llen(JOB_QUEUE)) + int(r.llen(PROFILE_JOB_QUEUE))
     except Exception as e:
         _note(e)
         return 0

@@ -130,7 +130,7 @@
       '<p class="ss-auth__sub" id="ssAuthSub">' + (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.') + '</p>' +
       '<form class="ss-auth__form" id="ssAuthForm">' +
         '<label><span>Email</span><input id="ssAuthEmail" type="email" autocomplete="email" required placeholder="name@example.com"></label>' +
-        '<label><span>' + (ru ? 'Пароль' : 'Password') + '</span><input id="ssAuthPass" type="password" autocomplete="current-password" minlength="6" required placeholder="••••••••"></label>' +
+        '<label><span>' + (ru ? 'Пароль' : 'Password') + '</span><input id="ssAuthPass" type="password" autocomplete="current-password" minlength="10" required placeholder="••••••••••"></label>' +
         '<p class="ss-auth__state" id="ssAuthState"></p>' +
         '<button class="ss-auth__submit" id="ssAuthSubmit" type="submit">' + (ru ? 'Войти' : 'Log in') + '</button>' +
       '</form>' +
@@ -411,11 +411,6 @@
       fetch(authMode === 'register' ? '/api/auth/register' : '/api/auth/login', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:email,password:password}) })
         .then(function (r) { return r.json(); }).then(function (j) {
           if (!j || !j.ok) throw new Error((j && j.msg) || 'Authentication failed');
-          if (j.token) {
-            try { localStorage.setItem('sm_session', j.token); } catch (e) {}
-            var secure = location.protocol === 'https:' ? '; Secure' : '';
-            document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax' + secure;
-          }
           state.textContent = lang() === 'ru' ? 'Готово' : 'Done'; state.className = 'ss-auth__state is-ok';
           return loadMe().then(function () { setTimeout(closeAuth, 350); });
         }).catch(function (err) { state.textContent = err.message; state.className = 'ss-auth__state is-bad'; })
@@ -477,7 +472,7 @@
             credentials: 'same-origin',
             body: JSON.stringify(user),
           }).then(function (r) { return r.json(); }).then(function (j) {
-            if (j.token) try { localStorage.setItem('sm_session', j.token); } catch (e) {}
+            if (!j.ok) { alert(j.msg || 'Telegram auth failed'); return; }
             location.reload();
           });
         };
@@ -492,14 +487,14 @@
       });
     };
     window.addEventListener('message', function (ev) {
-      if (!ev.data) return;
+      if (ev.origin !== location.origin || !ev.data) return;
       if (ev.data.type === 'discord_login' || ev.data.type === 'google_login' ||
           ev.data.type === 'telegram_login' || ev.data.type === 'steam_login') {
-        if (ev.data.token) try { localStorage.setItem('sm_session', ev.data.token); } catch (e) {}
         location.reload();
       }
     });
 
+  try { localStorage.removeItem('sm_session'); } catch (e) {}
   loadMe(); });
   } else { mount(); loadMe(); }
 })();

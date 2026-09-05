@@ -46,10 +46,17 @@ services:
       WORKER_MODE: external
       UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
       MAX_JOBS_PER_USER: ${MAX_JOBS_PER_USER:-2}
+      MAX_FILES_PER_JOB: ${MAX_FILES_PER_JOB:-10}
+      ALLOW_SYNC_PROCESS: ${ALLOW_SYNC_PROCESS:-0}
       FREE_LIMIT: ${FREE_LIMIT:-5}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-40}
       APP_URL: ${APP_URL:-http://localhost}
-      SECRET_KEY: ${SECRET_KEY:-change-me}
+      SECRET_KEY: ${SECRET_KEY:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-1}
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-30}
+      PASSWORD_PBKDF2_ITERATIONS: ${PASSWORD_PBKDF2_ITERATIONS:-600000}
+      TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
@@ -75,9 +82,9 @@ services:
     expose:
       - "8080"
     healthcheck:
-      # /api/health also probes PostgreSQL, Redis and R2, so an unhealthy app
-      # means a dependency is down, not just a dead process.
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/api/health >/dev/null || exit 1"]
+      # Readiness validates the production secret, PostgreSQL and Redis,
+      # so a misconfigured container never starts accepting traffic.
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/api/ready >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       start_period: 40s
@@ -93,8 +100,10 @@ services:
       DATA_DIR: /data
       REDIS_URL: redis://redis:6379/0
       WORKER_MODE: external
-      MAX_JOB_WORKERS: ${MAX_JOB_WORKERS:-2}
+      MAX_JOB_WORKERS: ${MAX_JOB_WORKERS:-1}
+      MAX_PROFILE_WORKERS: ${MAX_PROFILE_WORKERS:-1}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-40}
+      MAX_IMAGE_PIXELS: ${MAX_IMAGE_PIXELS:-40000000}
       DATABASE_URL: ${DATABASE_URL:-}
       BRIGHTDATA_BROWSER_USERNAME: ${BRIGHTDATA_BROWSER_USERNAME:-}
       BRIGHTDATA_BROWSER_PASSWORD: ${BRIGHTDATA_BROWSER_PASSWORD:-}

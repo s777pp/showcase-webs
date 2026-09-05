@@ -53,7 +53,7 @@ LOGGER = logging.getLogger("sm")
 # decoding it allocates tens of GB and takes the container down. Pillow only
 # WARNS above this limit and raises above 2x it, so promote the warning to an
 # error and let the handler above turn it into a 400.
-Image.MAX_IMAGE_PIXELS = int(os.environ.get("MAX_IMAGE_PIXELS", "100000000"))
+Image.MAX_IMAGE_PIXELS = int(os.environ.get("MAX_IMAGE_PIXELS", "40000000"))
 
 
 warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -354,6 +354,13 @@ def _check_public_url(url: str) -> tuple[bool, str]:
     host = parsed.hostname or ""
     if not host:
         return False, "Bad URL: no host"
+    supported = (
+        "youtube.com", "youtu.be", "tiktok.com", "twitter.com", "x.com",
+        "reddit.com", "redd.it", "pinterest.com", "pin.it",
+    )
+    host = host.rstrip(".").lower()
+    if not any(host == domain or host.endswith("." + domain) for domain in supported):
+        return False, "Unsupported source"
     try:
         infos = socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80),
                                    proto=socket.IPPROTO_TCP)
@@ -375,15 +382,15 @@ def _check_public_url(url: str) -> tuple[bool, str]:
 
 def _attach_session_cookie(resp, token: str, request: Request | None = None):
     """Persist login across pages. secure=True only on HTTPS."""
-    secure = False
+    secure = (os.environ.get("COOKIE_SECURE") or "").strip().lower() in ("1", "true", "yes", "on")
     if request is not None:
         # Render/Railway terminate TLS; x-forwarded-proto or url scheme
         proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "").lower()
-        secure = proto == "https"
+        secure = secure or proto == "https"
     resp.set_cookie(
         key="sm_session",
         value=token,
-        max_age=60 * 60 * 24 * 90,
+        max_age=60 * 60 * 24 * max(1, int(os.environ.get("SESSION_TTL_DAYS") or 30)),
         path="/",
         # HttpOnly: script on the page cannot read this cookie, so an XSS that
         # gets code onto a page still cannot walk off with the session. Every

@@ -32,6 +32,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from PIL import Image
 
 import processor as proc
@@ -101,7 +102,8 @@ async def api_convert(
         src.write_bytes(raw)
         out_name = f"{Path(name).stem[:40]}.{target}"
         dest = work / out_name
-        proc.convert_media(src, dest, target, fps=fps, width=width, duration=duration)
+        # Waiting for FFmpeg in the event-loop thread stalls unrelated pages.
+        await run_in_threadpool(proc.convert_media, src, dest, target, fps, width, duration)
         data = dest.read_bytes()
         quota_inc(request, 1)
         media = {
@@ -438,8 +440,10 @@ async def preview_wm(
             headers["X-WM-Suggestion"] = suggestion.encode("latin-1", "replace").decode("latin-1")
         from fastapi.responses import Response
         return Response(content=buf.getvalue(), media_type="image/png", headers=headers)
-    except Exception as e:
-        return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
+    except Exception:
+        rid = getattr(request.state, "request_id", "-")
+        LOGGER.exception("watermark preview failed rid=%s", rid)
+        return JSONResponse({"ok": False, "msg": "Preview failed", "request_id": rid}, status_code=500)
 
 
 @router.get("/api/upscale/models")

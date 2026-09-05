@@ -37,6 +37,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from PIL import Image
 
 import processor as proc
@@ -61,6 +62,7 @@ from smweb.core import (
 from smweb.middleware import (
     CachedStaticFiles,
     GZipMiddleware,
+    OriginGuardMiddleware,
     RateLimitMiddleware,
     RequestIdMiddleware,
     SecurityHeadersMiddleware,
@@ -87,8 +89,18 @@ from smweb.routers import (
 
 app = FastAPI(title="Showcase Maker Web")
 
+_app_host = urlparse((os.environ.get("APP_URL") or "").strip()).hostname
+_allowed_hosts = {"localhost", "127.0.0.1", "app", "testserver"}
+if _app_host:
+    _allowed_hosts.update({_app_host, f"www.{_app_host}" if not _app_host.startswith("www.") else _app_host[4:]})
+_allowed_hosts.update(x.strip() for x in (os.environ.get("ALLOWED_HOSTS") or "").split(",") if x.strip())
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=sorted(_allowed_hosts))
+
 
 app.add_middleware(SecurityHeadersMiddleware)
+
+
+app.add_middleware(OriginGuardMiddleware)
 
 
 app.add_middleware(RateLimitMiddleware)

@@ -84,14 +84,21 @@ def _avatar_files(user_id) -> list[Path]:
 
 @router.post("/api/auth/register")
 async def auth_register(request: Request):
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
     email = str(body.get("email") or "")
     password = str(body.get("password") or "")
+    identity = hashlib.sha256(email.strip().lower().encode()).hexdigest()[:24]
+    if not rs.rate_limit(f"auth-register-email:{identity}", 3, 3600)[0]:
+        return JSONResponse({"ok": False, "msg": "Too many requests. Try later."}, status_code=429)
     ok, msg = auth_db.register(email, password)
     if not ok:
+        LOGGER.warning("auth register rejected identity=%s ip=%s", identity, request.client.host if request.client else "-")
         return JSONResponse({"ok": False, "msg": msg}, status_code=400)
     ok2, msg2, token = auth_db.login(email, password)
-    resp = JSONResponse({"ok": True, "msg": msg, "token": token})
+    resp = JSONResponse({"ok": True, "msg": msg, "session": bool(token)})
     if token:
         _attach_session_cookie(resp, token, request)
     return resp
@@ -99,21 +106,29 @@ async def auth_register(request: Request):
 
 @router.post("/api/auth/login")
 async def auth_login(request: Request):
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
     email = str(body.get("email") or "")
     password = str(body.get("password") or "")
+    identity = hashlib.sha256(email.strip().lower().encode()).hexdigest()[:24]
+    if not rs.rate_limit(f"auth-login-email:{identity}", 8, 300)[0]:
+        return JSONResponse({"ok": False, "msg": "Too many requests. Try later."}, status_code=429)
     ok, msg, token = auth_db.login(email, password)
     if not ok:
+        LOGGER.warning("auth login failed identity=%s ip=%s", identity, request.client.host if request.client else "-")
         return JSONResponse({"ok": False, "msg": msg}, status_code=400)
     user = auth_db.user_by_token(token) if token else None
     resp = JSONResponse({
         "ok": True,
-        "token": token,
+        "session": bool(token),
         "email": user.get("email") if user else None,
         "is_pro": bool(user and auth_db.effective_pro(user)),
     })
     if token:
         _attach_session_cookie(resp, token, request)
+    LOGGER.info("auth login success user_id=%s", user.get("id") if user else "-")
     return resp
 
 
@@ -128,7 +143,11 @@ async def auth_change_password(request: Request):
         body = {}
     current_password = str(body.get("current_password") or "")
     new_password = str(body.get("new_password") or "")
-    ok, msg = auth_db.change_password(int(user["id"]), current_password, new_password)
+    token = (request.headers.get("x-session-token") or request.cookies.get("sm_session") or "").strip()
+    if not rs.rate_limit(f"auth-change-password:{int(user['id'])}", 5, 900)[0]:
+        return JSONResponse({"ok": False, "msg": "Too many requests. Try later."}, status_code=429)
+    ok, msg = auth_db.change_password(int(user["id"]), current_password, new_password, token)
+    LOGGER.info("auth password_change user_id=%s ok=%s", user["id"], ok)
     return JSONResponse({"ok": ok, "msg": msg}, status_code=200 if ok else 400)
 
 
@@ -216,8 +235,10 @@ async def auth_profile(request: Request):
             "display_name": (display_name or "").strip()[:40],
             "avatar_url": av_url,
         }
-    except Exception as e:
-        return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
+    except Exception:
+        rid = getattr(request.state, "request_id", "-")
+        LOGGER.exception("profile update failed rid=%s user_id=%s", rid, user["id"])
+        return JSONResponse({"ok": False, "msg": "Profile update failed", "request_id": rid}, status_code=500)
 
 
 @router.get("/api/auth/avatar/{user_id}")

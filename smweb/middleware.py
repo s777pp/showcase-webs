@@ -74,9 +74,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     CSP = "; ".join((
         "default-src 'self'",
-        # 'unsafe-inline'/'unsafe-eval' are required by the current inline JS.
+        # 'unsafe-inline' is required by the current HTML monoliths. There is no
+        # dynamic code evaluation, so unsafe-eval stays disabled.
         # telegram.org is the login widget, injected at runtime by sm-auth.js.
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org",
+        "script-src 'self' 'unsafe-inline' https://telegram.org",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com data:",
         "img-src 'self' data: blob: https:",
@@ -103,6 +104,38 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class OriginGuardMiddleware(BaseHTTPMiddleware):
+    """Reject cross-site, cookie-authenticated state changes.
+
+    SameSite=Lax is useful defence in depth, but it is not a replacement for
+    checking Origin. Token/ticket based extension and webhook calls do not use
+    the session cookie and therefore remain unaffected.
+    """
+    UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
+
+    async def dispatch(self, request, call_next):
+        if request.method not in self.UNSAFE or not request.cookies.get("sm_session"):
+            return await call_next(request)
+        origin = (request.headers.get("origin") or "").rstrip("/")
+        if not origin:
+            referer = request.headers.get("referer") or ""
+            try:
+                p = urlparse(referer)
+                origin = f"{p.scheme}://{p.netloc}" if p.scheme and p.netloc else ""
+            except Exception:
+                origin = ""
+        proto = (request.headers.get("x-forwarded-proto") or request.url.scheme).split(",")[0].strip()
+        host = (request.headers.get("host") or request.url.netloc).strip()
+        allowed = {f"{proto}://{host}".rstrip("/")}
+        app_url = (os.environ.get("APP_URL") or "").strip().rstrip("/")
+        if app_url:
+            allowed.add(app_url)
+        allowed.update(x.strip().rstrip("/") for x in (os.environ.get("TRUSTED_ORIGINS") or "").split(",") if x.strip())
+        if not origin or origin not in allowed:
+            return JSONResponse({"ok": False, "msg": "Invalid request origin"}, status_code=403)
+        return await call_next(request)
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Light Redis/local rate limits on sensitive paths."""
     RULES = (
@@ -116,6 +149,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/admin/", 5, 60),
         ("/api/process", 8, 60),
         ("/api/process/start", 8, 60),
+        ("/api/profile/steam-import", 6, 300),
+        ("/api/profile/extension-import", 6, 300),
+        ("/api/profile/asset", 20, 60),
+        ("/api/profile/showcase/add", 12, 60),
         # Compose is the most expensive route in the app (minutes of FFmpeg per
         # call) and, like the endpoint it replaced, does not consume the daily
         # quota -- so this rule is what keeps it from being a free CPU faucet.

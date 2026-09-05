@@ -58,6 +58,7 @@ from smweb.jobs import (
     _job_pool,
     _job_set,
     _run_process_job,
+    _run_process_job_from_payload,
     _worker_mode,
 )
 
@@ -151,14 +152,9 @@ async def api_process_start(
         size_i = 750
     if size_i not in (630, 640, 750, 800):
         size_i = min((630, 640, 750, 800), key=lambda s: abs(s - size_i))
-    left = 999 if q["pro"] else q["left"]
-    files = files[: max(1, left)]
-    files_data: list[tuple[str, bytes]] = []
-    for uf in files:
-        name = uf.filename or "file"
-        raw = await uf.read()
-        files_data.append((name, raw))
-    if not files_data:
+    left = int(os.environ.get("MAX_FILES_PER_JOB", "10")) if q["pro"] else q["left"]
+    files = files[: max(1, min(left, int(os.environ.get("MAX_FILES_PER_JOB", "10"))))]
+    if not files:
         return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
     enc = (gif_encoder or "ffmpeg").strip().lower()
     if enc not in ("ffmpeg", "gifski", "pillow"):
@@ -196,15 +192,39 @@ async def api_process_start(
             status_code=429,
         )
 
-    # persist uploads to disk (the worker — embedded or external — reads them back)
+    # Persist directly to the shared volume. Do not retain every upload in RAM:
+    # several users sending 40 MB files otherwise exhaust the API container
+    # before the worker even starts.
     job_upload_dir = JOBS / jid
     job_upload_dir.mkdir(parents=True, exist_ok=True)
     files_meta = []
-    for name, raw in files_data:
+    per_file_limit = MAX_UPLOAD_MB * 1024 * 1024
+    for index, uf in enumerate(files):
+        name = uf.filename or "file"
         safe = re.sub(r"[^a-zA-Z0-9._-]", "_", name)[:80] or "file"
-        p = job_upload_dir / safe
-        p.write_bytes(raw)
+        p = job_upload_dir / f"{index:02d}_{safe}"
+        written = 0
+        too_large = False
+        with p.open("wb") as destination:
+            while True:
+                chunk = await uf.read(1024 * 1024)
+                if not chunk:
+                    break
+                written += len(chunk)
+                if written > per_file_limit:
+                    too_large = True
+                    break
+                destination.write(chunk)
+        if too_large:
+            shutil.rmtree(job_upload_dir, ignore_errors=True)
+            return JSONResponse({"ok": False, "msg": f"{name}: >{MAX_UPLOAD_MB}MB"}, status_code=413)
+        if not written:
+            p.unlink(missing_ok=True)
+            continue
         files_meta.append({"name": name, "path": str(p)})
+    if not files_meta:
+        shutil.rmtree(job_upload_dir, ignore_errors=True)
+        return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
 
     # Only hand the job to an external worker if one is actually alive; otherwise
     # the entry would sit in the Redis queue forever with nobody to pop it.
@@ -225,17 +245,31 @@ async def api_process_start(
     rs.job_create(jid, payload, enqueue=external)
     _job_set(jid, status="queued", pct=1, stage="queued", created=time.time(), user_key=user_key)
     try:
-        quota_inc(request, len(files_data))
+        quota_inc(request, len(files_meta))
     except Exception:
         pass
     if not external:
-        _job_pool.submit(_run_process_job, jid, files_data, opts)
+        _job_pool.submit(_run_process_job_from_payload, jid, payload)
     return {"ok": True, "job_id": jid}
 
 
+def _process_job_for(request: Request, job_id: str) -> dict | None:
+    """Return a process job only to the user/IP that created it."""
+    job = _job_get(job_id)
+    if not job:
+        return None
+    owner = str(job.get("user_key") or "")
+    if owner:
+        user = _auth_user(request)
+        caller = str(user.get("id") or "") if user else _ip(request)
+        if not secrets.compare_digest(owner, caller):
+            return None
+    return job
+
+
 @router.get("/api/process/status/{job_id}")
-def api_process_status(job_id: str):
-    j = _job_get(job_id)
+def api_process_status(job_id: str, request: Request):
+    j = _process_job_for(request, job_id)
     if not j:
         return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
     out = {
@@ -253,8 +287,8 @@ def api_process_status(job_id: str):
 
 
 @router.get("/api/process/download/{job_id}")
-def api_process_download(job_id: str):
-    j = _job_get(job_id)
+def api_process_download(job_id: str, request: Request):
+    j = _process_job_for(request, job_id)
     if not j:
         return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
     if j.get("status") != "done" or not j.get("zip_path"):
@@ -298,6 +332,13 @@ async def api_process(
     files: list[UploadFile] = File(...),
 ):
     """Process → ZIP download → delete temps."""
+    # Kept only as an opt-in compatibility escape hatch. Running encoders in
+    # Uvicorn is enough to stall every page for all visitors on a small VPS.
+    if (os.environ.get("ALLOW_SYNC_PROCESS") or "0").strip().lower() not in ("1", "true", "yes", "on"):
+        return JSONResponse(
+            {"ok": False, "msg": "Synchronous processing is disabled; use /api/process/start"},
+            status_code=410,
+        )
     import tempfile
     import time as _sm_time
     _sm_req_t0 = _sm_time.perf_counter()

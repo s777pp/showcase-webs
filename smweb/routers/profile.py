@@ -553,8 +553,10 @@ async def api_profile_showcase_add(request: Request):
                     pass
 
         shutil.rmtree(tmp, ignore_errors=True)
-    except Exception as e:
-        return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
+    except Exception:
+        rid = getattr(request.state, "request_id", "-")
+        LOGGER.exception("showcase upload failed rid=%s", rid)
+        return JSONResponse({"ok": False, "msg": "Showcase upload failed", "request_id": rid}, status_code=500)
 
     if not files_saved:
         return JSONResponse({"ok": False, "msg": "No output files"}, status_code=500)
@@ -701,9 +703,9 @@ async def api_profile_extension_import(request: Request):
             except Exception:
                 LOGGER.warning("Could not cache imported Steam avatar", exc_info=True)
         return {"ok": True, "profile": profile, "showcases": len(profile.get("showcase_instances") or [])}
-    except Exception as exc:
+    except Exception:
         LOGGER.exception("extension Steam profile import failed")
-        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=500)
+        return JSONResponse({"ok": False, "msg": "Steam profile import failed"}, status_code=500)
 
 
 @router.post("/api/profile/steam-import")
@@ -764,8 +766,9 @@ async def api_profile_steam_import(request: Request):
         auth_db.save_steam_profile_snapshot(int(user["id"]), profile)
         return {"ok": True, "profile": profile,
                 **{k: pr[k] for k in ('cached', 'stale', 'warning_code', 'retry_after') if k in pr}}
-    except Exception as e:
-        return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
+    except Exception:
+        LOGGER.exception("Steam profile import start failed")
+        return JSONResponse({"ok": False, "msg": "Steam profile import failed"}, status_code=500)
 
 
 @router.get("/api/profile/steam-import/status/{job_id}")

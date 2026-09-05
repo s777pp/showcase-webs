@@ -48,6 +48,9 @@ from smweb.core import DATA, LOGGER, _attach_session_cookie, _esc_html
 from smweb.oauth_util import (
     _discord_redirect_uri,
     _google_redirect_uri,
+    _app_origin,
+    _oauth_state_create,
+    _oauth_state_verify,
     _telegram_bot_token,
     _telegram_bot_username,
     _verify_telegram_login,
@@ -70,11 +73,10 @@ def discord_login_start(request: Request):
             status_code=503,
         )
     from urllib.parse import urlencode
-    state = secrets.token_hex(16)
-    # store state briefly in memory
-    if not hasattr(request.app.state, "discord_pending"):
-        request.app.state.discord_pending = {}
-    request.app.state.discord_pending[state] = time.time()
+    try:
+        state = _oauth_state_create("discord")
+    except RuntimeError as exc:
+        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=503)
     q = urlencode({
         "client_id": cid,
         "redirect_uri": redirect,
@@ -88,10 +90,8 @@ def discord_login_start(request: Request):
 
 @router.get("/api/auth/discord/callback")
 async def discord_callback(request: Request, code: str = "", state: str = ""):
-    pending = getattr(request.app.state, "discord_pending", {})
-    if state not in pending:
+    if not _oauth_state_verify(state, "discord"):
         return HTMLResponse("<h3>Discord auth failed (bad state)</h3>", status_code=400)
-    pending.pop(state, None)
     cid = (os.environ.get("DISCORD_CLIENT_ID") or "").strip()
     secret = (os.environ.get("DISCORD_CLIENT_SECRET") or "").strip()
     redirect = _discord_redirect_uri()
@@ -110,7 +110,8 @@ async def discord_callback(request: Request, code: str = "", state: str = ""):
             timeout=30,
         )
         if tok.status_code != 200:
-            return HTMLResponse(f"<h3>Token error</h3><pre>{_esc_html(tok.text[:400])}</pre>", status_code=400)
+            LOGGER.warning("discord token exchange failed status=%s", tok.status_code)
+            return HTMLResponse("<h3>Discord sign-in failed</h3>", status_code=400)
         access = tok.json().get("access_token")
         me = rq.get(
             "https://discord.com/api/users/@me",
@@ -118,7 +119,8 @@ async def discord_callback(request: Request, code: str = "", state: str = ""):
             timeout=20,
         )
         if me.status_code != 200:
-            return HTMLResponse(f"<h3>User error</h3><pre>{_esc_html(me.text[:400])}</pre>", status_code=400)
+            LOGGER.warning("discord user lookup failed status=%s", me.status_code)
+            return HTMLResponse("<h3>Discord sign-in failed</h3>", status_code=400)
         u = me.json()
         did = str(u.get("id") or "")
         uname = u.get("global_name") or u.get("username") or "discord"
@@ -126,16 +128,16 @@ async def discord_callback(request: Request, code: str = "", state: str = ""):
         ok, msg, token = auth_db.register_or_login_discord(did, uname, email)
         if not ok or not token:
             return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
-        app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
+        app_url = _app_origin()
+        target_origin = json.dumps(app_url)
         resp = HTMLResponse(
             f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>OK</title></head>
 <body style="font-family:system-ui;background:#0b0b12;color:#eee;display:grid;place-items:center;min-height:100vh;margin:0">
 <div style="text-align:center"><h1>Discord connected</h1>
 <p>You can close this window.</p>
-<a href="{app_url}/app" style="color:#7b5cff">Back to app</a></div>
+<a href="{_esc_html(app_url)}/app" style="color:#7b5cff">Back to app</a></div>
 <script>
-try {{ localStorage.setItem('sm_session', {token!r}); }} catch(e) {{}}
-try {{ if (window.opener) window.opener.postMessage({{type:'discord_login', token:{token!r}}}, '*'); }} catch(e) {{}}
+try {{ if (window.opener) window.opener.postMessage({{type:'discord_login'}}, {target_origin}); }} catch(e) {{}}
 setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
 </script></body></html>"""
         )
@@ -156,10 +158,10 @@ def google_login_start(request: Request):
             status_code=503,
         )
     from urllib.parse import urlencode
-    state = secrets.token_hex(16)
-    if not hasattr(request.app.state, "google_pending"):
-        request.app.state.google_pending = {}
-    request.app.state.google_pending[state] = time.time()
+    try:
+        state = _oauth_state_create("google")
+    except RuntimeError as exc:
+        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=503)
     q = urlencode({
         "client_id": cid,
         "redirect_uri": redirect,
@@ -174,10 +176,8 @@ def google_login_start(request: Request):
 
 @router.get("/api/auth/google/callback")
 async def google_callback(request: Request, code: str = "", state: str = ""):
-    pending = getattr(request.app.state, "google_pending", {})
-    if state not in pending:
+    if not _oauth_state_verify(state, "google"):
         return HTMLResponse("<h3>Google auth failed (bad state)</h3>", status_code=400)
-    pending.pop(state, None)
     cid = (os.environ.get("GOOGLE_CLIENT_ID") or "").strip()
     secret = (os.environ.get("GOOGLE_CLIENT_SECRET") or "").strip()
     redirect = _google_redirect_uri()
@@ -196,7 +196,8 @@ async def google_callback(request: Request, code: str = "", state: str = ""):
             timeout=30,
         )
         if tok.status_code != 200:
-            return HTMLResponse(f"<h3>Token error</h3><pre>{_esc_html(tok.text[:400])}</pre>", status_code=400)
+            LOGGER.warning("google token exchange failed status=%s", tok.status_code)
+            return HTMLResponse("<h3>Google sign-in failed</h3>", status_code=400)
         access = tok.json().get("access_token")
         me = rq.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
@@ -204,7 +205,8 @@ async def google_callback(request: Request, code: str = "", state: str = ""):
             timeout=20,
         )
         if me.status_code != 200:
-            return HTMLResponse(f"<h3>User error</h3><pre>{_esc_html(me.text[:400])}</pre>", status_code=400)
+            LOGGER.warning("google user lookup failed status=%s", me.status_code)
+            return HTMLResponse("<h3>Google sign-in failed</h3>", status_code=400)
         u = me.json()
         gid = str(u.get("sub") or "")
         uname = u.get("name") or (u.get("email") or "google").split("@")[0]
@@ -212,16 +214,16 @@ async def google_callback(request: Request, code: str = "", state: str = ""):
         ok, msg, token = auth_db.register_or_login_google(gid, email, uname)
         if not ok or not token:
             return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
-        app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
+        app_url = _app_origin()
+        target_origin = json.dumps(app_url)
         resp = HTMLResponse(
             f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>OK</title></head>
 <body style="font-family:system-ui;background:#0b0b12;color:#eee;display:grid;place-items:center;min-height:100vh;margin:0">
 <div style="text-align:center"><h1>Google connected</h1>
 <p>You can close this window.</p>
-<a href="{app_url}/app" style="color:#7b5cff">Back to app</a></div>
+<a href="{_esc_html(app_url)}/app" style="color:#7b5cff">Back to app</a></div>
 <script>
-try {{ localStorage.setItem('sm_session', {token!r}); }} catch(e) {{}}
-try {{ if (window.opener) window.opener.postMessage({{type:'google_login', token:{token!r}}}, '*'); }} catch(e) {{}}
+try {{ if (window.opener) window.opener.postMessage({{type:'google_login'}}, {target_origin}); }} catch(e) {{}}
 setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
 </script></body></html>"""
         )
@@ -267,7 +269,7 @@ async def telegram_auth(request: Request):
     )
     if not ok or not token:
         return JSONResponse({"ok": False, "msg": msg or "Auth failed"}, status_code=400)
-    resp = JSONResponse({"ok": True, "token": token, "msg": "OK"})
+    resp = JSONResponse({"ok": True, "session": True, "msg": "OK"})
     return _attach_session_cookie(resp, token, request)
 
 
@@ -287,16 +289,16 @@ async def telegram_callback(request: Request):
     )
     if not ok or not token:
         return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
-    app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
+    app_url = _app_origin()
+    target_origin = json.dumps(app_url)
     resp = HTMLResponse(
         f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>OK</title></head>
 <body style="font-family:system-ui;background:#0b0b12;color:#eee;display:grid;place-items:center;min-height:100vh;margin:0">
 <div style="text-align:center"><h1>Telegram connected</h1>
 <p>You can close this window.</p>
-<a href="{app_url}/app" style="color:#7b5cff">Back to app</a></div>
+<a href="{_esc_html(app_url)}/app" style="color:#7b5cff">Back to app</a></div>
 <script>
-try {{ localStorage.setItem('sm_session', {token!r}); }} catch(e) {{}}
-try {{ if (window.opener) window.opener.postMessage({{type:'telegram_login', token:{token!r}}}, '*'); }} catch(e) {{}}
+try {{ if (window.opener) window.opener.postMessage({{type:'telegram_login'}}, {target_origin}); }} catch(e) {{}}
 setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
 </script></body></html>"""
     )
@@ -383,16 +385,17 @@ async def steam_callback(request: Request):
                         LOGGER.exception("steam avatar download")
             except Exception:
                 LOGGER.exception("save steam snapshot")
+        app_origin = _app_origin()
+        target_origin = json.dumps(app_origin)
         resp = HTMLResponse(
             f"""<!doctype html><html><body style="background:#0b0f14;color:#fff;font-family:sans-serif;display:grid;place-items:center;height:100vh">
 <p>Steam OK — можно закрыть окно</p>
 <script>
-try {{ if (window.opener) window.opener.postMessage({{type:'steam_login', token:{token!r}}}, '*'); }} catch(e) {{}}
-try {{ localStorage.setItem('sm_session', {token!r}); }} catch(e) {{}}
+try {{ if (window.opener) window.opener.postMessage({{type:'steam_login'}}, {target_origin}); }} catch(e) {{}}
 setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} location.href='/profile'; }}, 600);
 </script></body></html>"""
         )
         return _attach_session_cookie(resp, token, request)
-    except Exception as e:
+    except Exception:
         LOGGER.exception("steam callback")
-        return HTMLResponse(f"<h3>Steam error: {html.escape(str(e))}</h3>", status_code=500)
+        return HTMLResponse("<h3>Steam sign-in failed</h3>", status_code=500)

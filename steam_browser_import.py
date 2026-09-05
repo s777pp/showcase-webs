@@ -69,6 +69,16 @@ def fetch_html(url: str, progress=None) -> str:
             try:
                 context = browser.contexts[0] if browser.contexts else browser.new_context()
                 page = context.pages[0] if context.pages else context.new_page()
+                # The parser needs DOM attributes and Steam's scripts, not the
+                # image/video bytes themselves. Blocking heavy media makes the
+                # profile interactive sooner and sharply reduces Browser API
+                # traffic without losing showcase URLs from page.content().
+                page.route(
+                    "**/*",
+                    lambda route: route.abort()
+                    if route.request.resource_type in {"image", "media", "font"}
+                    else route.continue_(),
+                )
                 report("steam_open", 24)
                 response = page.goto(target, wait_until="domcontentloaded", timeout=timeout_ms)
                 if response and response.status >= 400:
@@ -78,36 +88,23 @@ def fetch_html(url: str, progress=None) -> str:
 
                 stable = 0
                 previous = (-1, -1)
-                for _ in range(24):
+                for _ in range(16):
                     current = page.evaluate("""() => {
                       const root = document.scrollingElement || document.documentElement;
                       window.scrollTo(0, root.scrollHeight);
                       return [root.scrollHeight, document.querySelectorAll('.profile_customization').length];
                     }""")
-                    page.wait_for_timeout(350)
+                    page.wait_for_timeout(180)
                     current_pair = (int(current[0]), int(current[1]))
                     stable = stable + 1 if current_pair == previous else 0
                     previous = current_pair
-                    if stable >= 3:
+                    if stable >= 2:
                         break
 
                 report("steam_media", 68)
-                page.wait_for_timeout(800)
-                page.evaluate("""async () => {
-                  const media = Array.from(document.querySelectorAll('img,video'));
-                  await Promise.race([
-                    Promise.all(media.map(el => {
-                      if ((el.tagName === 'IMG' && el.complete) ||
-                          (el.tagName === 'VIDEO' && el.readyState >= 2)) return Promise.resolve();
-                      return new Promise(resolve => {
-                        el.addEventListener('load', resolve, {once:true});
-                        el.addEventListener('loadeddata', resolve, {once:true});
-                        el.addEventListener('error', resolve, {once:true});
-                      });
-                    })),
-                    new Promise(resolve => setTimeout(resolve, 3500))
-                  ]);
-                }""")
+                # One short settle is enough for DOM mutations triggered by the
+                # final scroll; actual media downloads were blocked above.
+                page.wait_for_timeout(250)
                 html = page.content()
             finally:
                 browser.close()

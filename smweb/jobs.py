@@ -99,7 +99,7 @@ _process_jobs_lock = __import__("threading").Lock()
 
 # Bounded pool for heavy FFmpeg/gifski work. Raw threads let N parallel GIF
 # encodes saturate the CPU and stall the API for everyone else.
-MAX_JOB_WORKERS = max(1, int(os.environ.get("MAX_JOB_WORKERS") or 2))
+MAX_JOB_WORKERS = max(1, int(os.environ.get("MAX_JOB_WORKERS") or 1))
 
 
 _job_pool = ThreadPoolExecutor(max_workers=MAX_JOB_WORKERS, thread_name_prefix="job")
@@ -171,14 +171,14 @@ def _job_cleanup_old(max_age: float = 600.0) -> None:
 
 
 def _run_process_job_from_payload(jid: str, job: dict) -> None:
-    """Worker entry: job must contain files_data (list of [name, path]) and opts."""
+    """Worker entry: keep file paths lazy so a batch is not all resident in RAM."""
     import redis_store as _rs
     files_data = []
     for item in job.get("files") or []:
         name = item.get("name") or "file"
         path = item.get("path")
         if path and Path(path).is_file():
-            files_data.append((name, Path(path).read_bytes()))
+            files_data.append((name, Path(path)))
     opts = job.get("opts") or {}
     if not files_data:
         _rs.job_update(jid, status="error", pct=100, stage="error", error="No files")
@@ -196,7 +196,7 @@ def _run_process_job_from_payload(jid: str, job: dict) -> None:
     # upserts into Redis on every progress step.
 
 
-def _run_process_job(jid: str, files_data: list[tuple[str, bytes]], opts: dict) -> None:
+def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts: dict) -> None:
     """Background worker: same pipeline as /api/process, updates progress."""
     import tempfile
     import time as _sm_time
@@ -204,7 +204,7 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes]], opts: dict) 
     print(f"[JOB TIMING] START jid={jid}", flush=True)
     job_dir = Path(tempfile.mkdtemp(prefix="sm_job_"))
     _job_set(jid, status="running", pct=5, stage="prepare", job_dir=str(job_dir), error=None)
-    zip_buf = io.BytesIO()
+    zip_path = job_dir / "result.zip"
     processed = 0
     errors: list[str] = []
     listed: list[dict] = []
@@ -222,8 +222,10 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes]], opts: dict) 
     enc = opts["enc"]
     n_files = max(1, len(files_data))
     try:
-        zf = zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED)
+        zf = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
         for fi, (name, raw) in enumerate(files_data):
+            if isinstance(raw, Path):
+                raw = raw.read_bytes()
             base_pct = 8 + int(80 * fi / n_files)
             _job_set(jid, pct=base_pct, stage=f"file:{name}")
             try:
@@ -338,10 +340,10 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes]], opts: dict) 
                             pth = Path(pth)
                             if not pth.is_file():
                                 continue
-                            data = pth.read_bytes()
-                            zf.writestr(f"{folder}/{pname}", data)
+                            size_bytes = pth.stat().st_size
+                            zf.write(pth, f"{folder}/{pname}")
                             if len(listed) < 20:
-                                listed.append({"name": f"{folder}/{pname}", "size": len(data)})
+                                listed.append({"name": f"{folder}/{pname}", "size": size_bytes})
                             try:
                                 pth.unlink(missing_ok=True)
                             except Exception:
@@ -367,14 +369,7 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes]], opts: dict) 
             _job_set(jid, status="error", pct=100, stage="error", error=f"Failed: {detail}", errors=errors)
             shutil.rmtree(job_dir, ignore_errors=True)
             return
-        zip_path = job_dir / "result.zip"
-        _sm_zipwrite_t0 = _sm_time.perf_counter()
-        zip_path.write_bytes(zip_buf.getvalue())
-        print(
-            f"[JOB TIMING] ZIP write: {_sm_time.perf_counter()-_sm_zipwrite_t0:.3f}s | "
-            f"size={zip_path.stat().st_size / 1024 / 1024:.2f}MB",
-            flush=True,
-        )
+        print(f"[JOB TIMING] ZIP size={zip_path.stat().st_size / 1024 / 1024:.2f}MB", flush=True)
         # quota already counted on start
         _job_set(
             jid,

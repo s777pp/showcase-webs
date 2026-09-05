@@ -2,10 +2,11 @@
 const state = {
   mode: 'workshop', files: [],
   token: localStorage.getItem('sm_token') || '',
-  session: localStorage.getItem('sm_session') || '',
+  session: '',
   authMode: 'login'
 };
 window.state = state;
+try { localStorage.removeItem('sm_session'); } catch (e) {}
 const titles = {
   process:['Process','Workshop / Featured / Split cuts, watermark and Steam ZIP'],
   compose:['Character + BG','Composite character on background, then send to Process'],
@@ -20,11 +21,9 @@ function smT(ru, en) { return SMLang.isRu() ? ru : en; }
 window.smT = smT;
 function headers() {
   // re-read every time so navigation/home→tools keeps login
-  state.session = localStorage.getItem('sm_session') || state.session || '';
   state.token = localStorage.getItem('sm_token') || state.token || '';
   const h = {};
   if (state.token) h['X-Access-Token'] = state.token;
-  if (state.session) h['X-Session-Token'] = state.session;
   return h;
 }
 const fetchOpts = { credentials: 'include' };
@@ -110,6 +109,7 @@ async function refreshQuota() {
   const btnUp = document.getElementById('btnUpgrade');
   const btnOut = document.getElementById('btnLogout');
   const btnAuth = document.getElementById('btnAuth');
+  state.session = j.email ? 'cookie' : '';
   syncWatermarkAccess(!!j.pro);
   if (j.pro) {
     if (j.is_trial && j.remaining_sec != null) {
@@ -125,10 +125,10 @@ async function refreshQuota() {
   } else {
     el.innerHTML = smT('Сегодня', 'Today') + ` <b>${j.used}</b> / ${j.limit}`;
     badge.textContent = 'Free'; badge.className = 'pill';
-    btnUp.style.display = state.session ? 'inline-block' : 'none';
+    btnUp.style.display = j.email ? 'inline-block' : 'none';
     setTrialTimer(null);
   }
-  if (j.email || state.session) {
+  if (j.email) {
     userPill.style.display = 'inline-block';
     userPill.textContent = (j.display_name || '').trim() || j.email || smT('Аккаунт', 'Account');
     btnAuth.style.display = 'none'; btnOut.style.display = 'inline-block';
@@ -229,13 +229,7 @@ document.getElementById('authSubmit').onclick = async () => {
   let j;
   try { j = await r.json(); } catch(e) { alert('Server error'); return; }
   if (!j.ok) { alert(j.msg || 'Error'); return; }
-  if (!j.token) { alert('No session token returned'); return; }
-  state.session = j.token;
-  localStorage.setItem('sm_session', j.token);
-  try {
-    const secure = location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = 'sm_session=' + encodeURIComponent(j.token) + '; path=/; max-age=' + (90*24*3600) + '; SameSite=Lax' + secure;
-  } catch(e) {}
+  state.session = j.session ? 'cookie' : '';
   if (typeof closeAuthModal === 'function') closeAuthModal(); else { try { modal.classList.remove('open'); } catch(e) {} }
   try { refreshAccountUI(); } catch(e) {}
   refreshQuota();
@@ -265,11 +259,6 @@ async function doUnlock(code, statusEl) {
   if (!code) {
     if (statusEl) { statusEl.className = 'status err'; statusEl.textContent = 'Enter a code'; }
     else alert('Enter a code');
-    return;
-  }
-  if (!localStorage.getItem('sm_session') && !state.session) {
-    if (statusEl) { statusEl.className = 'status err'; statusEl.textContent = 'Log in first'; }
-    else alert('Log in first');
     return;
   }
   if (statusEl) { statusEl.className = 'status'; statusEl.textContent = 'Activating…'; }
@@ -417,8 +406,11 @@ document.getElementById('btnRun').onclick = async () => {
   try {
     await new Promise(function (resolve, reject) {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/process');
-      xhr.responseType = 'blob';
+      // Heavy FFmpeg/gifski work belongs to the external worker. The legacy
+      // /api/process endpoint performed it inside Uvicorn and stalled the site
+      // for every visitor while a GIF was being encoded.
+      xhr.open('POST', '/api/process/start');
+      xhr.responseType = 'json';
       xhr.withCredentials = true;
       try {
         const hdr = headers();
@@ -452,94 +444,63 @@ document.getElementById('btnRun').onclick = async () => {
         }, 400);
       };
 
-      xhr.onload = function () {
+      xhr.onload = async function () {
         stopTick();
-        const ct = (xhr.getResponseHeader('content-type') || '');
-        if (xhr.status >= 200 && xhr.status < 300 && (ct.includes('application/zip') || ct.includes('application/octet-stream') || ct.includes('application/x-zip'))) {
-          setProg(100, ru ? 'Готово!' : 'Done!', ru ? 'скачивание ZIP…' : 'downloading ZIP…');
-          const blob = xhr.response;
+        const started = xhr.response || {};
+        if (xhr.status < 200 || xhr.status >= 300 || !started.ok || !started.job_id) {
+          const msg = started.msg || ('HTTP ' + xhr.status);
+          st.className = 'status err'; st.textContent = msg;
+          setProg(0, ru ? 'Ошибка' : 'Error', msg.slice(0, 100));
+          reject(new Error(msg)); return;
+        }
+        const jid = started.job_id;
+        try {
+          let job = null;
+          const deadline = Date.now() + 15 * 60 * 1000;
+          while (Date.now() < deadline) {
+            const response = await fetch('/api/process/status/' + encodeURIComponent(jid), {
+              credentials: 'include', cache: 'no-store', headers: headers()
+            });
+            job = await response.json();
+            if (!response.ok || !job.ok) throw new Error(job.msg || ('HTTP ' + response.status));
+            if (job.status === 'error') throw new Error(job.error || (job.errors || []).join(' · ') || 'Processing failed');
+            if (job.status === 'done') break;
+            const realPct = Math.max(0, Math.min(99, Number(job.pct) || 0));
+            setProg(40 + realPct * .58,
+              ru ? 'Обработка в очереди…' : 'Processing in queue…',
+              ru ? 'сайт остаётся доступным во время обработки' : 'the site stays responsive while this runs');
+            await new Promise(function (done) { setTimeout(done, 850); });
+          }
+          if (!job || job.status !== 'done') throw new Error(ru ? 'Превышено время ожидания' : 'Processing timed out');
+          setProg(99, ru ? 'Подготавливаем ZIP…' : 'Preparing ZIP…', '');
+          const result = await fetch('/api/process/download/' + encodeURIComponent(jid), {
+            credentials: 'include', cache: 'no-store', headers: headers()
+          });
+          if (!result.ok) {
+            let problem = {}; try { problem = await result.json(); } catch (e) {}
+            throw new Error(problem.msg || ('HTTP ' + result.status));
+          }
+          const blob = await result.blob();
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url;
-          a.download = 'showcase_' + (state.mode || 'out') + '.zip';
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
+          a.href = url; a.download = 'showcase_' + (state.mode || 'out') + '.zip';
+          document.body.appendChild(a); a.click(); a.remove();
           setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-          const n = xhr.getResponseHeader('X-Processed') || '';
+          setProg(100, ru ? 'Готово!' : 'Done!', ru ? 'ZIP скачан' : 'ZIP downloaded');
           st.className = 'status ok';
-          st.textContent = n
-            ? ((ru ? 'Готово: ' : 'Done: ') + n + (ru ? ' файл(ов) — скачано' : ' file(s) — downloaded'))
-            : (ru ? 'Готово — ZIP скачан' : 'Done — ZIP downloaded');
+          st.textContent = (ru ? 'Готово: ' : 'Done: ') + (job.processed || state.files.length) + (ru ? ' файл(ов) — скачано' : ' file(s) — downloaded');
           dl.style.display = 'none';
-          try {
-            const pg = document.getElementById('btnPublishGallery');
-            if (pg) {
-              pg.style.display = 'inline-flex';
-              pg.disabled = false;
-              const ruBtn = (SMLang.isRu());
-              pg.textContent = ruBtn ? 'Опубликовать в галерею' : 'Publish to gallery';
-            }
-            window.__lastPublishReady = true;
-          } catch (e) {}
+          const pg = document.getElementById('btnPublishGallery');
+          if (pg) { pg.style.display = 'inline-flex'; pg.disabled = false; pg.textContent = ru ? 'Опубликовать в галерею' : 'Publish to gallery'; }
+          window.__lastPublishReady = true;
           try { refreshQuota(); } catch (e) {}
-          hideProgLater();
-          resolve();
-          return;
+          hideProgLater(); resolve();
+        } catch (error) {
+          const msg = String(error && error.message ? error.message : error);
+          st.className = 'status err'; st.textContent = msg;
+          setProg(0, ru ? 'Ошибка' : 'Error', msg.slice(0, 100));
+          reject(error);
         }
-        // JSON error or legacy
-        const reader = new FileReader();
-        reader.onload = function () {
-          const raw = String(reader.result || '');
-          let j;
-          try { j = JSON.parse(raw); }
-          catch (parseErr) {
-            st.className = 'status err';
-            st.textContent = (raw || ('HTTP ' + xhr.status)).slice(0, 300);
-            setProg(0, ru ? 'Ошибка' : 'Error', st.textContent.slice(0, 80));
-            reject(new Error(st.textContent));
-            return;
-          }
-          if (!j.ok) {
-            st.className = 'status err';
-            let msg = j.msg || 'Error';
-            if (j.errors && j.errors.length) msg = j.errors.join(' · ');
-            st.textContent = msg;
-            setProg(0, ru ? 'Ошибка' : 'Error', msg.slice(0, 100));
-            reject(new Error(msg));
-          } else if (j.download) {
-            setProg(100, ru ? 'Готово!' : 'Done!', '');
-            st.className = 'status ok';
-            st.textContent = (ru ? 'Готово: ' : 'Done: ') + (j.processed || '') + (ru ? ' файл(ов)' : ' file(s)');
-            dl.href = j.download;
-            dl.style.display = 'inline-block';
-            try {
-              const pg = document.getElementById('btnPublishGallery');
-              if (pg) {
-                pg.style.display = 'inline-flex';
-                pg.disabled = false;
-                const ruBtn = (SMLang.isRu());
-                pg.textContent = ruBtn ? 'Опубликовать в галерею' : 'Publish to gallery';
-              }
-              window.__lastPublishReady = true;
-            } catch (e) {}
-            try { refreshQuota(); } catch (e) {}
-            hideProgLater();
-            resolve();
-          } else {
-            st.className = 'status err';
-            st.textContent = j.msg || 'Unknown response';
-            setProg(0, ru ? 'Ошибка' : 'Error', st.textContent);
-            reject(new Error(st.textContent));
-          }
-        };
-        reader.onerror = function () {
-          st.className = 'status err';
-          st.textContent = 'HTTP ' + xhr.status;
-          setProg(0, ru ? 'Ошибка' : 'Error', st.textContent);
-          reject(new Error(st.textContent));
-        };
-        reader.readAsText(xhr.response);
       };
       xhr.onerror = function () {
         stopTick();
@@ -798,7 +759,7 @@ async function refreshAccountUI() {
   const user = document.getElementById('accUser');
   if (!guest || !user) return;
   // session in localStorage → show profile shell immediately
-  const hasSess = !!(localStorage.getItem('sm_session') || state.session);
+  const hasSess = !!state.session;
   if (hasSess) {
     guest.style.display = 'none';
     user.style.display = '';
@@ -929,8 +890,7 @@ document.getElementById('accLogin')?.addEventListener('click', () => openAuthMod
     } catch (e) { alert(String(e)); }
   });
   window.addEventListener('message', (ev) => {
-    if (ev.data && (ev.data.type === 'discord_login' || ev.data.type === 'telegram_login') && ev.data.token) {
-      try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
+    if (ev.origin === location.origin && ev.data && (ev.data.type === 'discord_login' || ev.data.type === 'google_login' || ev.data.type === 'telegram_login' || ev.data.type === 'steam_login')) {
       location.reload();
     }
   });
@@ -938,7 +898,7 @@ document.getElementById('accRegister')?.addEventListener('click', () => openAuth
 
 async function init(){
   // restore session after navigating from home
-  state.session = localStorage.getItem('sm_session') || '';
+  state.session = '';
   state.token = localStorage.getItem('sm_token') || '';
 
   const m = await fetch('/api/meta').then(r=>r.json());
@@ -1213,7 +1173,7 @@ const APP_I18N = window.APP_I18N = {
     auth_sub_l: "Log in to buy Pro and keep access",
     auth_sub_r: "Create an account to buy Pro and keep access",
     no_acc: "No account?", has_acc: "Already have an account?",
-    ph_email: "Email", ph_pass: "Password (min 6)",
+    ph_email: "Email", ph_pass: "Password (min 10)",
     nick: "Nickname", save_profile: "Save profile",
     activate_pro: "Activate Pro code",
     convert_h: "Converter", convert_p: "Pick a file and target format.",
@@ -1481,14 +1441,6 @@ window.daDoConnect = async function daDoConnect() {
   var ru = (SMLang.isRu());
   setMsg('', ru ? 'Подключение…' : 'Connecting…');
   try {
-    var sess = '';
-    try { sess = localStorage.getItem('sm_session') || ''; } catch (e) {}
-    try { if (!sess && typeof state !== 'undefined') sess = state.session || ''; } catch (e) {}
-    if (!sess) {
-      setMsg('err', ru ? 'Сначала войди в аккаунт Showcase (кнопка Войти сверху)' : 'Log in to Showcase first (Log in button at top)');
-      try { if (typeof openAuthModal === 'function') openAuthModal('login'); } catch (e) {}
-      return;
-    }
     var cidEl = document.getElementById('daClientId');
     var secEl = document.getElementById('daClientSecret');
     var cid = (cidEl && cidEl.value || '').trim();
@@ -1500,7 +1452,6 @@ window.daDoConnect = async function daDoConnect() {
     setMsg('', ru ? 'Сохраняю ключи…' : 'Saving keys…');
     var hdr = {};
     try { hdr = headers(); } catch (e) { hdr = {}; }
-    if (sess) hdr['X-Session-Token'] = sess;
     try {
       var tok = localStorage.getItem('sm_token');
       if (tok) hdr['X-Access-Token'] = tok;
@@ -2493,8 +2444,6 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   function sessionHeaders() {
     var h = { "Content-Type": "application/json" };
     try {
-      var s = localStorage.getItem("sm_session");
-      if (s) h["X-Session-Token"] = s;
       var tk = localStorage.getItem("sm_token");
       if (tk) h["X-Access-Token"] = tk;
     } catch (e) {}
@@ -2505,12 +2454,6 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     try { ru = SMLang.isRu(); } catch (e) {}
     msg(ru ? "Подключение…" : "Connecting…", "");
     try {
-      var sess = null;
-      try { sess = localStorage.getItem("sm_session"); } catch (e) {}
-      if (!sess) {
-        msg(ru ? "Сначала войди в аккаунт (кнопка сверху)" : "Log in first (button at top)", "err");
-        return;
-      }
       var cid = String((document.getElementById("daClientId") || {}).value || "").trim();
       var sec = String((document.getElementById("daClientSecret") || {}).value || "").trim();
       if (!cid || !sec) {
@@ -2729,8 +2672,6 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     });
     var hdr = {};
     try {
-      var s = localStorage.getItem("sm_session");
-      if (s) hdr["X-Session-Token"] = s;
       var tk = localStorage.getItem("sm_token");
       if (tk) hdr["X-Access-Token"] = tk;
     } catch (e) {}
@@ -3310,11 +3251,6 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
       const hdr = {};
 
-      try {
-        const s = localStorage.getItem('sm_session') || '';
-        if (s) hdr['X-Session-Token'] = s;
-      } catch(e){}
-
       ui.setProgress(
         20,
         ru ? 'Загрузка на сервер…' : 'Uploading to server…'
@@ -3389,8 +3325,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
             body: JSON.stringify(user)
           });
           const j = await res.json();
-          if (!j.ok || !j.token) { alert(j.msg || 'Telegram auth failed'); return; }
-          try { localStorage.setItem('sm_session', j.token); } catch(e){}
+          if (!j.ok) { alert(j.msg || 'Telegram auth failed'); return; }
           location.reload();
         } catch(e) { alert(String(e)); }
       };
@@ -3407,8 +3342,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     } catch(e) { alert(String(e)); }
   });
   window.addEventListener('message', function(ev){
-    if (ev.data && (ev.data.type === 'discord_login' || ev.data.type === 'telegram_login') && ev.data.token) {
-      try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
+    if (ev.origin === location.origin && ev.data && (ev.data.type === 'discord_login' || ev.data.type === 'google_login' || ev.data.type === 'telegram_login' || ev.data.type === 'steam_login')) {
       location.reload();
     }
   });

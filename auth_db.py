@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import base64
 import json
 import os
 import secrets
@@ -306,26 +307,81 @@ def _conn():
     return c
 
 
-def _hash_pw(password: str, salt: str | None = None) -> str:
-    salt = salt or secrets.token_hex(8)
-    h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 120_000)
-    return f"{salt}${h.hex()}"
+_PBKDF2_ITERATIONS = max(210_000, int(os.environ.get("PASSWORD_PBKDF2_ITERATIONS") or 600_000))
+_DUMMY_PASSWORD_HASH = "pbkdf2_sha256$600000$0123456789abcdef0123456789abcdef$0d21a27339bd86056b75c68bd8bd447cc4659127f99fd44d87fb77138ac2050e"
+
+
+def _credential_cipher():
+    secret = (os.environ.get("SECRET_KEY") or "").strip()
+    if len(secret) < 32:
+        return None
+    from cryptography.fernet import Fernet
+    key = base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())
+    return Fernet(key)
+
+
+def _protect_credential(value: str | None) -> str | None:
+    value = (value or "").strip()
+    if not value or value.startswith("enc:v1:"):
+        return value or None
+    cipher = _credential_cipher()
+    return "enc:v1:" + cipher.encrypt(value.encode()).decode() if cipher else value
+
+
+def _unprotect_credential(value: str | None) -> str | None:
+    value = (value or "").strip()
+    if not value or not value.startswith("enc:v1:"):
+        return value or None
+    cipher = _credential_cipher()
+    if not cipher:
+        return None
+    try:
+        return cipher.decrypt(value[7:].encode()).decode()
+    except Exception:
+        return None
+
+
+def _hash_pw(password: str, salt: str | None = None, iterations: int | None = None) -> str:
+    salt = salt or secrets.token_hex(16)
+    rounds = int(iterations or _PBKDF2_ITERATIONS)
+    h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), rounds)
+    return f"pbkdf2_sha256${rounds}${salt}${h.hex()}"
 
 
 def _check_pw(password: str, stored: str) -> bool:
     try:
-        salt, _ = stored.split("$", 1)
-        return secrets.compare_digest(_hash_pw(password, salt), stored)
+        parts = stored.split("$")
+        if len(parts) == 4 and parts[0] == "pbkdf2_sha256":
+            rounds, salt, expected = int(parts[1]), parts[2], parts[3]
+            actual = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), rounds).hex()
+            return secrets.compare_digest(actual, expected)
+        # Backward compatibility for accounts created with the former
+        # ``salt$hash`` / 120k format. Successful logins are upgraded below.
+        salt, expected = stored.split("$", 1)
+        actual = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 120_000).hex()
+        return secrets.compare_digest(actual, expected)
     except Exception:
         return False
+
+
+def _password_hash_needs_upgrade(stored: str) -> bool:
+    try:
+        parts = stored.split("$")
+        return len(parts) != 4 or parts[0] != "pbkdf2_sha256" or int(parts[1]) < _PBKDF2_ITERATIONS
+    except Exception:
+        return True
+
+
+def _session_key(token: str) -> str:
+    return "sha256:" + hashlib.sha256((token or "").encode()).hexdigest()
 
 
 def register(email: str, password: str) -> tuple[bool, str]:
     email = email.strip().lower()
     if not email or "@" not in email:
         return False, "Invalid email"
-    if len(password) < 6:
-        return False, "Password min 6 characters"
+    if len(password) < 10:
+        return False, "Password min 10 characters"
     c = _conn()
     try:
         c.execute(
@@ -344,23 +400,27 @@ def login(email: str, password: str) -> tuple[bool, str, Optional[str]]:
     email = email.strip().lower()
     c = _conn()
     row = c.execute("SELECT id, password_hash FROM users WHERE email=?", (email,)).fetchone()
-    if not row or not _check_pw(password, row["password_hash"]):
+    stored = row["password_hash"] if row else _DUMMY_PASSWORD_HASH
+    password_ok = _check_pw(password, stored)
+    if not row or not password_ok:
         c.close()
         return False, "Wrong email or password", None
+    if _password_hash_needs_upgrade(stored):
+        c.execute("UPDATE users SET password_hash=? WHERE id=?", (_hash_pw(password), row["id"]))
     token = secrets.token_hex(24)
     c.execute(
         "INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)",
-        (token, row["id"], time.time()),
+        (_session_key(token), row["id"], time.time()),
     )
     c.commit()
     c.close()
     return True, "OK", token
 
 
-def change_password(user_id: int, current_password: str, new_password: str) -> tuple[bool, str]:
+def change_password(user_id: int, current_password: str, new_password: str, current_token: str = "") -> tuple[bool, str]:
     """Change an authenticated user's password after verifying the current one."""
-    if len(new_password or "") < 6:
-        return False, "Password min 6 characters"
+    if len(new_password or "") < 10:
+        return False, "Password min 10 characters"
     if current_password == new_password:
         return False, "New password must be different"
     c = _conn()
@@ -369,6 +429,10 @@ def change_password(user_id: int, current_password: str, new_password: str) -> t
         if not row or not _check_pw(current_password or "", row["password_hash"]):
             return False, "Current password is incorrect"
         c.execute("UPDATE users SET password_hash=? WHERE id=?", (_hash_pw(new_password), int(user_id)))
+        if current_token:
+            c.execute("DELETE FROM sessions WHERE user_id=? AND token NOT IN (?,?)", (int(user_id), current_token, _session_key(current_token)))
+        else:
+            c.execute("DELETE FROM sessions WHERE user_id=?", (int(user_id),))
         c.commit()
         return True, "Password changed"
     finally:
@@ -401,51 +465,55 @@ def user_by_token(token: str) -> Optional[dict]:
     if not token:
         return None
     c = _conn()
-    # ensure profile columns exist
-    try:
-        for col, typ in (
-            ("profile_username", "TEXT"), ("profile_summary", "TEXT"), ("profile_background", "TEXT"),
-            ("profile_bg_x", "REAL"), ("profile_bg_y", "REAL"), ("profile_bg_scale", "REAL"),
-            ("profile_bg_overlay", "REAL"), ("profile_level", "INTEGER"), ("profile_xp", "INTEGER"),
-            ("profile_location", "TEXT"), ("profile_status", "TEXT"), ("profile_visibility", "TEXT"),
-            ("steam_id", "TEXT"), ("steam_username", "TEXT"), ("steam_profile_json", "TEXT"),
-            ("profile_builder_json", "TEXT"),
-        ):
-            try:
-                c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
-                c.commit()
-            except Exception:
-                pass
-    except Exception:
-        pass
+    session_cutoff = time.time() - max(1, int(os.environ.get("SESSION_TTL_DAYS") or 30)) * 86400
     try:
         row = c.execute(
             """
-            SELECT u.id, u.email, u.is_pro, u.pro_code, u.pro_until, u.stripe_customer_id,
+            SELECT s.token AS session_key, u.id, u.email, u.is_pro, u.pro_code, u.pro_until, u.stripe_customer_id,
                    u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret, u.display_name, u.avatar_path,
                    COALESCE(u.email_verified, 0) AS email_verified,
                    u.profile_username, u.profile_summary, u.profile_background,
                    u.profile_bg_x, u.profile_bg_y, u.profile_bg_scale, u.profile_bg_overlay,
                    u.profile_level, u.profile_xp, u.profile_location, u.profile_status, u.profile_visibility
             FROM sessions s JOIN users u ON u.id = s.user_id
-            WHERE s.token=?
+            WHERE s.token IN (?,?) AND s.created_at>=?
             """,
-            (token,),
+            (_session_key(token), token, session_cutoff),
         ).fetchone()
     except Exception:
         row = c.execute(
             """
-            SELECT u.id, u.email, u.is_pro, u.pro_code, u.pro_until, u.stripe_customer_id,
+            SELECT s.token AS session_key, u.id, u.email, u.is_pro, u.pro_code, u.pro_until, u.stripe_customer_id,
                    u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret, u.display_name, u.avatar_path,
                    COALESCE(u.email_verified, 0) AS email_verified
             FROM sessions s JOIN users u ON u.id = s.user_id
-            WHERE s.token=?
+            WHERE s.token IN (?,?) AND s.created_at>=?
             """,
-            (token,),
+            (_session_key(token), token, session_cutoff),
         ).fetchone()
-    c.close()
     if not row:
+        c.close()
         return None
+    # Encrypt credentials written by older releases the first time their owner
+    # authenticates. This is intentionally a one-off write, not a hot-path task.
+    try:
+        upgrades = {}
+        if row["session_key"] == token:
+            c.execute("UPDATE sessions SET token=? WHERE token=?", (_session_key(token), token))
+        for key in ("da_access_token", "da_refresh_token", "da_client_secret"):
+            raw = row[key] if key in row.keys() else None
+            if raw and not str(raw).startswith("enc:v1:"):
+                protected = _protect_credential(str(raw))
+                if protected != raw:
+                    upgrades[key] = protected
+        if upgrades:
+            sets = ", ".join(f"{key}=?" for key in upgrades)
+            c.execute(f"UPDATE users SET {sets} WHERE id=?", (*upgrades.values(), row["id"]))
+        if upgrades or row["session_key"] == token:
+            c.commit()
+    except Exception:
+        pass
+    c.close()
     def _g(k, default=None):
         try:
             return row[k] if k in row.keys() else default
@@ -458,10 +526,10 @@ def user_by_token(token: str) -> Optional[dict]:
         "pro_code": row["pro_code"],
         "pro_until": row["pro_until"],
         "stripe_customer_id": _g("stripe_customer_id"),
-        "da_access_token": _g("da_access_token"),
-        "da_refresh_token": _g("da_refresh_token"),
+        "da_access_token": _unprotect_credential(_g("da_access_token")),
+        "da_refresh_token": _unprotect_credential(_g("da_refresh_token")),
         "da_client_id": _g("da_client_id"),
-        "da_client_secret": _g("da_client_secret"),
+        "da_client_secret": _unprotect_credential(_g("da_client_secret")),
         "display_name": _g("display_name"),
         "avatar_path": _g("avatar_path"),
         "email_verified": bool(_g("email_verified", 0)),
@@ -543,7 +611,7 @@ def set_da_tokens(user_id: int, access: str | None, refresh: str | None = None) 
     c = _conn()
     c.execute(
         "UPDATE users SET da_access_token=?, da_refresh_token=? WHERE id=?",
-        (access, refresh, user_id),
+        (_protect_credential(access), _protect_credential(refresh), user_id),
     )
     c.commit()
     c.close()
@@ -561,7 +629,7 @@ def set_stripe_customer(user_id: int, customer_id: str) -> None:
 
 def logout(token: str) -> None:
     c = _conn()
-    c.execute("DELETE FROM sessions WHERE token=?", (token,))
+    c.execute("DELETE FROM sessions WHERE token IN (?,?)", (_session_key(token), token))
     c.commit()
     c.close()
 
@@ -570,7 +638,7 @@ def set_da_keys(user_id: int, client_id: str | None, client_secret: str | None) 
     c = _conn()
     c.execute(
         "UPDATE users SET da_client_id=?, da_client_secret=? WHERE id=?",
-        ((client_id or "").strip() or None, (client_secret or "").strip() or None, user_id),
+        ((client_id or "").strip() or None, _protect_credential(client_secret), user_id),
     )
     c.commit()
     c.close()
@@ -795,7 +863,7 @@ def register_or_login_discord(discord_id: str, username: str, email: str | None 
             c.execute("UPDATE users SET discord_id=?, discord_username=? WHERE id=?", (discord_id, username, uid))
             c.commit()
     token = secrets.token_hex(24)
-    c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (token, uid, time.time()))
+    c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (_session_key(token), uid, time.time()))
     c.commit()
     c.close()
     return True, "OK", token
@@ -853,7 +921,7 @@ def register_or_login_google(google_id: str, email: str | None, name: str | None
                 )
             c.commit()
     token = secrets.token_hex(24)
-    c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (token, uid, time.time()))
+    c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (_session_key(token), uid, time.time()))
     c.commit()
     c.close()
     return True, "OK", token
@@ -921,7 +989,7 @@ def register_or_login_telegram(
     token = secrets.token_hex(24)
     c.execute(
         "INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)",
-        (token, uid, time.time()),
+        (_session_key(token), uid, time.time()),
     )
     c.commit()
     c.close()
@@ -1505,7 +1573,7 @@ def register_or_login_steam(steam_id: str, persona_name: str | None = None) -> t
                 )
             uid = int(c.execute("SELECT id FROM users WHERE steam_id=?", (steam_id,)).fetchone()["id"])
         token = secrets.token_hex(24)
-        c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (token, uid, time.time()))
+        c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (_session_key(token), uid, time.time()))
         c.commit()
         return True, "OK", token
     except Exception as e:

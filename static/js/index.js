@@ -144,7 +144,7 @@ const I18N = {
     auth_switch_reg: "Already have an account? <a id=\"authToggle\">Log in</a>",
     auth_switch_login: "No account? <a id=\"authToggle\">Sign up</a>",
     ph_email: "Email",
-    ph_pass: "Password (min 6)",
+    ph_pass: "Password (min 10)",
     auth_ok_reg: "Account created. You can open tools.",
     auth_ok_login: "Logged in. You can open tools.",
     auth_err: "Error",
@@ -412,13 +412,6 @@ async function submitAuth() {
       st.textContent = j.msg || pack.auth_err;
       return;
     }
-    if (j.token) {
-      try {
-        localStorage.setItem("sm_session", j.token);
-        const secure = location.protocol === "https:" ? "; Secure" : "";
-        document.cookie = "sm_session=" + encodeURIComponent(j.token) + "; path=/; max-age=" + (90*24*3600) + "; SameSite=Lax" + secure;
-      } catch (e) {}
-    }
     st.className = "status ok";
     st.textContent = authMode === "register" ? pack.auth_ok_reg : pack.auth_ok_login;
     try { refreshHomeUser(true); } catch (e) {}
@@ -554,8 +547,7 @@ document.addEventListener("DOMContentLoaded", function () {
             body: JSON.stringify(user)
           });
           var j = await res.json();
-          if (!j.ok || !j.token) { alert(j.msg || 'Telegram auth failed'); return; }
-          try { localStorage.setItem('sm_session', j.token); } catch(e){}
+          if (!j.ok) { alert(j.msg || 'Telegram auth failed'); return; }
           location.reload();
         } catch(e) { alert(String(e)); }
       };
@@ -572,9 +564,8 @@ document.addEventListener("DOMContentLoaded", function () {
     } catch(e) { alert(String(e)); }
   });
   window.addEventListener('message', function(ev){
-    if (!ev.data) return;
-    if ((ev.data.type === 'discord_login' || ev.data.type === 'google_login' || ev.data.type === 'telegram_login') && ev.data.token) {
-      try { localStorage.setItem('sm_session', ev.data.token); } catch(e) {}
+    if (ev.origin !== location.origin || !ev.data) return;
+    if (ev.data.type === 'discord_login' || ev.data.type === 'google_login' || ev.data.type === 'telegram_login' || ev.data.type === 'steam_login') {
       location.href = '/app';
     }
   });
@@ -583,7 +574,6 @@ document.addEventListener("DOMContentLoaded", function () {
 (function(){
   function smHeaders(){
     const h = {};
-    try { const s = localStorage.getItem('sm_session')||''; if (s) h['X-Session-Token']=s; } catch(e){}
     return h;
   }
   function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }

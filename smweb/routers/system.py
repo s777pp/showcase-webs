@@ -73,11 +73,15 @@ LOGGER = logging.getLogger("sm")
 
 @router.get("/api/ready")
 def api_ready():
-    """Readiness: DB must answer."""
+    """Readiness: secure configuration, DB and Redis must be available."""
+    if len((os.environ.get("SECRET_KEY") or "").strip()) < 32:
+        return JSONResponse({"ok": False, "reason": "configuration"}, status_code=503)
     try:
         c = auth_db._conn()
         c.execute("SELECT 1")
         c.close()
+        if not rs.redis_ok():
+            return JSONResponse({"ok": False, "reason": "redis"}, status_code=503)
         return {"ok": True}
     except Exception:
         from fastapi.responses import JSONResponse
@@ -97,20 +101,19 @@ def api_health_prod():
         redis_ok = rs.redis_ok()
     except Exception:
         redis_ok = False
-    r2_ok, r2_error = object_store.health()
+    r2_ok, _r2_error = object_store.health()
     mode = _worker_mode()
     # writability, not just readability: a readonly volume still answers SELECT 1,
     # which is why the old db:true hid the "readonly database" failure entirely.
     db_writable = False
-    db_write_error = None
     try:
         c = auth_db._conn()
         c.execute("CREATE TABLE IF NOT EXISTS _health_probe (id INTEGER PRIMARY KEY)")
         c.commit()
         c.close()
         db_writable = True
-    except Exception as e:
-        db_write_error = f"{type(e).__name__}: {e}"
+    except Exception:
+        pass
     ff = None
     gs = None
     try:
@@ -124,24 +127,10 @@ def api_health_prod():
     return {
         "ok": True,
         "db": db_ok,
-        "storage": {
-            "dir": str(DATA),
-            "writable": auth_db.DATA_WRITABLE,
-            "error": auth_db.DATA_ERROR,
-            "db_path": str(auth_db.DB),
-            "db_writable": db_writable,
-            "db_write_error": db_write_error,
-            "database_backend": "postgresql" if auth_db.USING_POSTGRES else "sqlite",
-        },
-        "r2": {"configured": object_store.configured(), "ok": r2_ok, "error": r2_error},
+        "storage": {"writable": db_writable},
+        "r2": {"configured": object_store.configured(), "ok": r2_ok},
         "redis": redis_ok,
         # why Redis is down — the old endpoint only ever said "false"
-        "redis_detail": {
-            "configured": rs.configured(),
-            "ok": redis_ok,
-            "host": rs.redis_host(),
-            "error": rs.last_error(),
-        },
         "worker": {
             "mode": mode,
             "external_alive": rs.worker_alive() if redis_ok else False,
@@ -150,8 +139,6 @@ def api_health_prod():
         },
         "ffmpeg": bool(ff),
         "gifski": bool(gs),
-        "ffmpeg_path": ff or None,
-        "gifski_path": gs or None,
         "version": "prod-opt-2",
     }
 

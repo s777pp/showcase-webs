@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import base64
 import html
 import io
 import ipaddress
@@ -100,3 +101,63 @@ def _verify_telegram_login(data: dict) -> bool:
     if abs(int(time.time()) - auth_date) > 86400:
         return False
     return True
+# OAuth state must survive routing to another Uvicorn process. A short-lived,
+# HMAC-signed value avoids per-process dictionaries and rejects forged state.
+def _oauth_state_create(provider: str) -> str:
+    secret = (os.environ.get("SECRET_KEY") or "").strip()
+    if len(secret) < 32:
+        raise RuntimeError("SECRET_KEY must contain at least 32 characters")
+    payload = f"{provider}:{int(time.time())}:{secrets.token_urlsafe(24)}"
+    sig = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).digest()
+    raw = payload.encode() + b"." + sig.hex().encode()
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def _oauth_state_verify(state: str, provider: str, max_age: int = 600) -> bool:
+    secret = (os.environ.get("SECRET_KEY") or "").strip()
+    try:
+        raw = base64.urlsafe_b64decode(state + "=" * (-len(state) % 4))
+        payload, supplied_hex = raw.rsplit(b".", 1)
+        supplied = bytes.fromhex(supplied_hex.decode())
+        expected = hmac.new(secret.encode(), payload, hashlib.sha256).digest()
+        if len(secret) < 32 or not secrets.compare_digest(supplied, expected):
+            return False
+        p, ts, _nonce = payload.decode().split(":", 2)
+        age = int(time.time()) - int(ts)
+        return p == provider and 0 <= age <= max_age
+    except Exception:
+        return False
+
+
+def _app_origin() -> str:
+    value = (os.environ.get("APP_URL") or "").strip().rstrip("/")
+    parsed = urlparse(value)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise RuntimeError("APP_URL must be an absolute http(s) URL")
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _oauth_payload_create(values: dict) -> str:
+    """Encrypt short-lived provider state that must cross API processes."""
+    from cryptography.fernet import Fernet
+    secret = (os.environ.get("SECRET_KEY") or "").strip()
+    if len(secret) < 32:
+        raise RuntimeError("SECRET_KEY must contain at least 32 characters")
+    key = base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())
+    payload = dict(values)
+    payload["ts"] = int(time.time())
+    return Fernet(key).encrypt(json.dumps(payload, separators=(",", ":")).encode()).decode()
+
+
+def _oauth_payload_verify(value: str, max_age: int = 600) -> dict | None:
+    from cryptography.fernet import Fernet, InvalidToken
+    secret = (os.environ.get("SECRET_KEY") or "").strip()
+    if len(secret) < 32:
+        return None
+    key = base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())
+    try:
+        payload = json.loads(Fernet(key).decrypt(value.encode(), ttl=max_age).decode())
+        age = int(time.time()) - int(payload.get("ts") or 0)
+        return payload if 0 <= age <= max_age else None
+    except (InvalidToken, ValueError, TypeError, json.JSONDecodeError):
+        return None

@@ -7,7 +7,8 @@ Only needed when the API runs with WORKER_MODE=external (see docker-compose.yml)
 In the default embedded mode the API processes jobs in its own thread pool and
 this file is not used at all.
 
-Concurrency: MAX_JOB_WORKERS (default 2).
+Concurrency: MAX_JOB_WORKERS (default 1). Media encoders already use multiple
+CPU threads internally, so a second simultaneous job hurts latency on small VPS.
 
 IMPORTANT: this process must share the /data volume with the API, otherwise the
 API cannot serve the resulting ZIP. On Railway a volume cannot be mounted into
@@ -26,7 +27,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-MAX_WORKERS = int(os.environ.get("MAX_JOB_WORKERS", "2"))
+MAX_WORKERS = int(os.environ.get("MAX_JOB_WORKERS", "1"))
+MAX_PROFILE_WORKERS = max(1, int(os.environ.get("MAX_PROFILE_WORKERS", "1")))
 BEAT_TTL = 30
 BEAT_EVERY = 10.0
 
@@ -50,7 +52,7 @@ def _process_one(jid: str) -> None:
             from smweb.compose_jobs import run
             run(jid, job)
             return
-        from main import _run_process_job_from_payload
+        from smweb.jobs import _run_process_job_from_payload
 
         _run_process_job_from_payload(jid, job)
     except Exception as e:
@@ -68,10 +70,12 @@ def main() -> None:
         print(f"[worker] Redis unreachable at {rs.redis_host()}: {rs.last_error()}", flush=True)
         print("[worker] retrying...", flush=True)
 
-    print(f"[worker] starting MAX_JOB_WORKERS={MAX_WORKERS} redis={rs.redis_host()}", flush=True)
+    print(f"[worker] starting media={MAX_WORKERS} profile={MAX_PROFILE_WORKERS} redis={rs.redis_host()}", flush=True)
     last_beat = 0.0
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        inflight = set()
+    with (ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="media") as media_pool,
+          ThreadPoolExecutor(max_workers=MAX_PROFILE_WORKERS, thread_name_prefix="profile") as profile_pool):
+        media_inflight = set()
+        profile_inflight = set()
         while True:
             now = time.time()
             # Publish liveness so the API knows an external worker exists; without
@@ -80,22 +84,29 @@ def main() -> None:
                 rs.worker_beat(ttl=BEAT_TTL)
                 last_beat = now
 
+            inflight = media_inflight | profile_inflight
             done = {f for f in inflight if f.done()}
             for f in done:
                 try:
                     f.result()
                 except Exception:
                     traceback.print_exc()
-            inflight -= done
+            media_inflight -= done
+            profile_inflight -= done
 
-            if len(inflight) >= MAX_WORKERS:
+            if len(media_inflight) >= MAX_WORKERS and len(profile_inflight) >= MAX_PROFILE_WORKERS:
                 time.sleep(0.3)
                 continue
-            jid = rs.job_pop(timeout=3)
-            if not jid:
-                continue
-            print(f"[worker] pick {jid}", flush=True)
-            inflight.add(pool.submit(_process_one, jid))
+            if len(profile_inflight) < MAX_PROFILE_WORKERS:
+                jid = rs.profile_job_pop(timeout=1)
+                if jid:
+                    print(f"[worker] profile pick {jid}", flush=True)
+                    profile_inflight.add(profile_pool.submit(_process_one, jid))
+            if len(media_inflight) < MAX_WORKERS:
+                jid = rs.job_pop(timeout=1)
+                if jid:
+                    print(f"[worker] media pick {jid}", flush=True)
+                    media_inflight.add(media_pool.submit(_process_one, jid))
 
 
 if __name__ == "__main__":

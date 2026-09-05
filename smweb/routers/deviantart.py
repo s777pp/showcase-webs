@@ -44,7 +44,8 @@ from fastapi import APIRouter
 
 
 from smweb.core import LOGGER, _auth_user, _esc_html
-from smweb.da_client import _da_guess_mime, _da_pending, _da_refresh_token
+from smweb.da_client import _da_guess_mime, _da_refresh_token
+from smweb.oauth_util import _app_origin, _oauth_payload_create, _oauth_payload_verify
 
 
 
@@ -370,15 +371,13 @@ def da_login_start(request: Request):
 
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
-    state = secrets.token_hex(16)
-    _da_pending[state] = {
+    state = _oauth_payload_create({
         "verifier": verifier,
         "user_id": int(user["id"]),
         "client_id": cid,
         "client_secret": sec,
         "redirect": redirect,
-        "ts": time.time(),
-    }
+    })
     q = urlencode(
         {
             "response_type": "code",
@@ -396,7 +395,7 @@ def da_login_start(request: Request):
 
 @router.get("/api/da/callback")
 async def da_callback(request: Request, code: str = "", state: str = ""):
-    pend = _da_pending.pop(state, None)
+    pend = _oauth_payload_verify(state)
     if not pend or not code:
         return HTMLResponse("<h3>DeviantArt auth failed</h3><p>Close this tab and try again.</p>", status_code=400)
     try:
@@ -415,7 +414,8 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
             timeout=30,
         )
         if r.status_code != 200:
-            return HTMLResponse(f"<h3>Token error</h3><pre>{_esc_html(r.text[:500])}</pre>", status_code=400)
+            LOGGER.warning("DeviantArt token exchange failed status=%s", r.status_code)
+            return HTMLResponse("<h3>DeviantArt sign-in failed</h3>", status_code=400)
         data = r.json()
         auth_db.set_da_tokens(
             int(pend["user_id"]),
@@ -425,7 +425,8 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
     except Exception:
         LOGGER.exception("oauth callback failed")
         return HTMLResponse("<h3>Error</h3><p>Sign-in failed. Please try again.</p>", status_code=500)
-    app_url = (os.environ.get("APP_URL") or "/").rstrip("/")
+    app_url = _app_origin()
+    target_origin = json.dumps(app_url)
     # Same idea as desktop localhost page: "Success! You can close this window."
     return HTMLResponse(
         f"""<!DOCTYPE html>
@@ -435,10 +436,10 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
     <h1 style="font-size:1.6rem;margin:0 0 12px">Success!</h1>
     <p style="opacity:.8;margin:0 0 20px">You can close this window.</p>
     <p style="font-size:13px;opacity:.55">DeviantArt access granted · Showcase Maker</p>
-    <p style="margin-top:24px"><a href="{app_url}/app#da" style="color:#7b5cff">Back to tools</a></p>
+    <p style="margin-top:24px"><a href="{_esc_html(app_url)}/app#da" style="color:#7b5cff">Back to tools</a></p>
   </div>
   <script>
-    try {{ if (window.opener) window.opener.postMessage({{type:'da_connected'}}, '*'); }} catch(e) {{}}
+    try {{ if (window.opener) window.opener.postMessage({{type:'da_connected'}}, {target_origin}); }} catch(e) {{}}
     setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1500);
   </script>
 </body></html>"""

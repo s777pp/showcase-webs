@@ -905,8 +905,18 @@ def _load_profile(canonical, progress=None):
                                         timeout=TIMEOUT, headers={"User-Agent": UA})
                 response.raise_for_status()
                 return response.json().get("response") or {}
+            # These endpoints are independent. Fetching them serially added up
+            # to three network round trips after the browser had already
+            # rendered the page.
+            with ThreadPoolExecutor(max_workers=3, thread_name_prefix="steam-api") as pool:
+                summaries_f = pool.submit(api, "/ISteamUser/GetPlayerSummaries/v2/", steamids=steam_id)
+                level_f = pool.submit(api, "/IPlayerService/GetSteamLevel/v1/")
+                owned_f = pool.submit(
+                    api, "/IPlayerService/GetOwnedGames/v1/",
+                    include_appinfo=1, include_played_free_games=1,
+                )
             try:
-                players = api("/ISteamUser/GetPlayerSummaries/v2/", steamids=steam_id).get("players") or []
+                players = summaries_f.result().get("players") or []
                 if players:
                     player = players[0]
                     out["profile"]["name"] = player.get("personaname") or out["profile"]["name"]
@@ -917,14 +927,13 @@ def _load_profile(canonical, progress=None):
             except Exception as exc:
                 LOGGER.info("Steam GetPlayerSummaries unavailable: %s", exc)
             try:
-                level = api("/IPlayerService/GetSteamLevel/v1/").get("player_level")
+                level = level_f.result().get("player_level")
                 if level is not None:
                     out["profile"]["level"] = int(level)
             except Exception as exc:
                 LOGGER.info("Steam GetSteamLevel unavailable: %s", exc)
             try:
-                owned = api("/IPlayerService/GetOwnedGames/v1/", include_appinfo=1,
-                            include_played_free_games=1)
+                owned = owned_f.result()
                 games = owned.get("games") or []
                 out["profile"]["games"] = games[:500]
                 out["profile"]["stats_map"]["games"] = int(owned.get("game_count") or len(games))

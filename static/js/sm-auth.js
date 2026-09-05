@@ -63,7 +63,7 @@
       '<h3 id="smAuthTitle">Log in</h3>' +
       '<p class="sub" id="smAuthSub">Log in to buy Pro and keep access</p>' +
       '<input id="smAuthEmail" type="email" placeholder="Email" autocomplete="email"/>' +
-      '<input id="smAuthPass" type="password" placeholder="Password (min 6)" autocomplete="current-password"/>' +
+      '<input id="smAuthPass" type="password" placeholder="Password (min 10)" minlength="10" autocomplete="current-password"/>' +
       '<button type="button" class="btn-auth" id="smAuthSubmit">Log in</button>' +
       '<div class="status" id="smAuthStatus"></div>' +
       '<div class="sm-auth-div"><span id="smAuthOr">or continue with</span></div>' +
@@ -165,11 +165,6 @@
           }
           return;
         }
-        if (j.token) {
-          try {
-            localStorage.setItem('sm_session', j.token);
-          } catch (e) {}
-        }
         location.reload();
       } catch (err) {
         if (st) {
@@ -209,9 +204,6 @@
         var onMsg = function (ev) {
           if (!ev.data || ev.data.type !== 'steam_login') return;
           window.removeEventListener('message', onMsg);
-          if (ev.data.token) {
-            try { localStorage.setItem('sm_session', ev.data.token); } catch (e) {}
-          }
           location.reload();
         };
         window.addEventListener('message', onMsg);
@@ -239,13 +231,10 @@
               body: JSON.stringify(user),
             });
             var j = await res.json();
-            if (!j.ok || !j.token) {
+            if (!j.ok) {
               alert(j.msg || 'Telegram auth failed');
               return;
             }
-            try {
-              localStorage.setItem('sm_session', j.token);
-            } catch (e) {}
             location.reload();
           } catch (e) {
             alert(String(e));
@@ -266,16 +255,13 @@
       }
     };
     window.addEventListener('message', function (ev) {
-      if (!ev.data) return;
+      if (ev.origin !== location.origin || !ev.data) return;
       if (
         (ev.data.type === 'discord_login' ||
           ev.data.type === 'google_login' ||
           ev.data.type === 'telegram_login') &&
-        ev.data.token
+        true
       ) {
-        try {
-          localStorage.setItem('sm_session', ev.data.token);
-        } catch (e) {}
         location.reload();
       }
     });
