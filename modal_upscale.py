@@ -348,8 +348,7 @@ def api():
     async def health():
         return {"ok": True, "service": APP_NAME}
 
-    @web.post("/submit")
-    async def submit(payload: Submit):
+    async def submit(payload):
         data = payload.model_dump()
         _safe_r2_url(data["source_url"])
         _safe_r2_url(data["result_url"])
@@ -359,6 +358,13 @@ def api():
         call = await upscale_job.spawn.aio(data)
         calls[data["request_id"]] = {"call_id": call.object_id, "created": int(time.time())}
         return {"ok": True, "call_id": call.object_id}
+
+    # `Submit` is local to this Modal ASGI factory. With postponed annotations,
+    # decorating `payload: Submit` directly leaves FastAPI a string it cannot
+    # resolve and it incorrectly treats `payload` as a required query field.
+    # Install the concrete model annotation before FastAPI inspects the route.
+    submit.__annotations__["payload"] = Submit
+    web.post("/submit")(submit)
 
     @web.get("/result/{call_id}")
     async def result(call_id: str):
