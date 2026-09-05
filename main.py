@@ -84,6 +84,7 @@ from smweb.routers import (
     media,
     preview,
     deviantart,
+    steam_check,
 )
 
 
@@ -155,6 +156,7 @@ app.include_router(process.router)
 app.include_router(media.router)
 app.include_router(preview.router)
 app.include_router(deviantart.router)
+app.include_router(steam_check.router)
 
 
 # ====================== Profile builder API (Steam catalogs, projects) ======================

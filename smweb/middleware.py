@@ -149,6 +149,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/admin/", 5, 60),
         ("/api/process", 8, 60),
         ("/api/process/start", 8, 60),
+        # The preflight reads and decodes complete showcase sets. It is Pro-only,
+        # but a compromised account must not become an unbounded CPU/RAM source.
+        ("/api/steam-check", 12, 300),
         ("/api/profile/steam-import", 6, 300),
         ("/api/profile/extension-import", 6, 300),
         ("/api/profile/asset", 20, 60),

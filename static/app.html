@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/static/css/mobile.css?v=20260903m"/>
   <link rel="stylesheet" href="/static/css/redesign.css?v=20260903j"/>
   <link rel="stylesheet" href="/static/css/creator-os.css?v=20260905a"/>
+  <link rel="stylesheet" href="/static/css/steam-check.css?v=20260905d"/>
 <link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260904c">
 <script src="/static/js/layout-refinement.js?v=20260904f"></script>
 <script src="/static/js/i18n.js?v=20260903d"></script>
@@ -47,6 +48,7 @@
     <button data-tab="convert" data-i="nav_convert">Converter</button>
     <button data-tab="upscale" data-i="nav_upscale">Upscale</button>
     <button data-tab="hex" data-i="nav_hex">HEX</button>
+    <button data-tab="check">Steam Check</button>
         <button data-tab="preview" data-i="nav_preview">Profile</button>
     <button data-tab="steam" data-i="nav_steam">Steam</button>
     <button data-tab="da" data-i="nav_da">DeviantArt</button>
@@ -531,6 +533,63 @@
     </div>
   </section>
 
+  <section class="tab" id="tab-check">
+    <div class="steam-check" id="steamCheckRoot">
+      <div class="steam-check__gate" id="steamCheckGate" hidden>
+        <span class="steam-check__gate-mark" aria-hidden="true">PRO</span>
+        <div>
+          <h2 data-sc="gateTitle">Steam Check is a Pro tool</h2>
+          <p data-sc="gateBody">Log in to a Pro account to inspect finished showcase files.</p>
+        </div>
+        <button class="btn" type="button" id="steamCheckGateAction" data-sc="gateAction">Log in</button>
+      </div>
+
+      <div class="steam-check__workspace" id="steamCheckWorkspace">
+        <aside class="steam-check__input card">
+          <div class="steam-check__kicker"><span data-sc="kicker">Preflight</span><b>PRO</b></div>
+          <h2 data-sc="inputTitle">Check finished files</h2>
+          <p class="steam-check__intro" data-sc="inputBody">Upload a ZIP or separate PNG, JPG and GIF files. Nothing is modified.</p>
+
+          <label class="field steam-check__mode">
+            <span data-sc="modeLabel">Showcase type</span>
+            <select id="steamCheckMode">
+              <option value="auto" data-sc="modeAuto">Detect automatically</option>
+              <option value="workshop">Workshop · 5</option>
+              <option value="featured">Featured · 630</option>
+              <option value="split">Artwork Split · 506 + 100</option>
+            </select>
+          </label>
+
+          <div class="steam-check__drop" id="steamCheckDrop" role="button" tabindex="0" aria-describedby="steamCheckDropHint">
+            <span class="steam-check__upload-icon" aria-hidden="true"></span>
+            <strong data-sc="dropTitle">Drop the final set here</strong>
+            <span id="steamCheckDropHint" data-sc="dropHint">ZIP or up to 20 files</span>
+          </div>
+          <input id="steamCheckFiles" type="file" multiple hidden data-sm-enhanced="1" accept=".zip,.png,.jpg,.jpeg,.gif,image/png,image/jpeg,image/gif,application/zip"/>
+          <div class="steam-check__files" id="steamCheckFileList"></div>
+
+          <div class="steam-check__actions">
+            <button class="btn" type="button" id="steamCheckRun" disabled data-sc="run">Run checks</button>
+            <button class="btn ghost" type="button" id="steamCheckClear" data-sc="clear">Clear</button>
+          </div>
+          <div class="status" id="steamCheckStatus" aria-live="polite"></div>
+        </aside>
+
+        <div class="steam-check__report" id="steamCheckReport" aria-live="polite">
+          <div class="steam-check__empty" id="steamCheckEmpty">
+            <span class="steam-check__empty-code">READY?</span>
+            <h2 data-sc="emptyTitle">Steam admission report</h2>
+            <p data-sc="emptyBody">The format, dimensions, weight, animation, HEX and completeness checks will appear here.</p>
+            <div class="steam-check__route" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </div>
+          <div id="steamCheckResults" hidden></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
 <section class="tab" id="tab-da">
     <div class="card">
       <h2><span data-i="da_h">DeviantArt</span></h2>
@@ -700,6 +759,7 @@
 </div>
 
 <script src="/static/js/app-tail.js?v=20260905-modal"></script>
+<script src="/static/js/steam-check.js?v=20260905d"></script>
 
 
 <script src="/static/ss-shell.js?v=20260905b"></script>
