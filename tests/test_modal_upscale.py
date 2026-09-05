@@ -35,6 +35,25 @@ class ModalUpscaleTests(unittest.TestCase):
              patch.object(modal_upscale_client, "TOKEN_SECRET", "ws-test"):
             self.assertFalse(modal_upscale_client.configured())
 
+    def test_modal_validation_error_is_useful_without_leaking_input(self):
+        response = Mock()
+        response.ok = False
+        response.status_code = 422
+        response.json.return_value = {
+            "detail": [{
+                "loc": ["body", "request_id"],
+                "msg": "String should match pattern",
+                "type": "string_pattern_mismatch",
+                "input": "secret-signed-url-or-value",
+            }]
+        }
+        with self.assertRaises(modal_upscale_client.ModalUpscaleHTTPError) as caught:
+            modal_upscale_client._raise_safe_http_error(response)
+        message = str(caught.exception)
+        self.assertIn("HTTP 422", message)
+        self.assertIn("body.request_id", message)
+        self.assertNotIn("secret-signed-url-or-value", message)
+
 
 if __name__ == "__main__":
     unittest.main()
