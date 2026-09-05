@@ -202,7 +202,7 @@
   btn.addEventListener('click', async function(){
     if (!isPro()) { syncLock(); return; }
     const f = selectedFile || (fileInp.files && fileInp.files[0]);
-    const model = document.getElementById('upscaleModel')?.value || '4xBHI_dat2_real';
+    const model = document.getElementById('upscaleModel')?.value || 'general_x4';
     if (!f) { if (st) st.textContent = upT('Выбери изображение', 'Choose an image'); return; }
     btn.disabled = true;
     if (st) st.textContent = '';
@@ -213,7 +213,7 @@
       const fd = new FormData();
       fd.append('file', f);
       fd.append('model', model);
-      const r = await fetch('/api/upscale', {
+      const r = await fetch('/api/upscale/start', {
         method: 'POST', body: fd, credentials: 'include',
         headers: (typeof headers === 'function' ? headers() : {})
       });
@@ -224,17 +224,51 @@
         if (code === 'pro' || r.status === 403) { syncLock(); }
         throw new Error(msg);
       }
-      const blob = await r.blob();
-      if (afterUrl) URL.revokeObjectURL(afterUrl);
-      afterUrl = URL.createObjectURL(blob);
-      if (imgBefore) imgBefore.src = beforeUrl;
-      if (imgAfter) imgAfter.src = afterUrl;
-      const dl = document.getElementById('upscaleDownload');
-      if (dl) { dl.href = afterUrl; dl.download = 'upscaled_' + model + '.png'; }
-      if (prev) prev.style.display = 'block';
-      setSplit(50);
-      setTimeout(fitAfterImage, 50);
-      if (st) st.textContent = upT('Готово — двигай ползунок, чтобы сравнить до/после', 'Done — drag the slider to compare before / after');
+      const j = await r.json();
+      const jid = j.job_id;
+      
+      let done = false;
+      while (!done) {
+        await new Promise(res => setTimeout(res, 3000));
+        const sr = await fetch('/api/upscale/status/' + jid, {credentials: 'include'});
+        if (!sr.ok) throw new Error('Status failed');
+        const sj = await sr.json();
+        if (sj.status === 'error') throw new Error(sj.error || 'Upscale failed on server');
+        if (sj.status === 'done') {
+          done = true;
+        } else {
+          setProg(true, upT('Обработка… ' + (sj.pct||0) + '%', 'Processing… ' + (sj.pct||0) + '%'));
+        }
+      }
+
+      const dlUrl = '/api/upscale/download/' + jid;
+      const isVideo = f.type.startsWith('video/') || f.name.toLowerCase().endsWith('.mp4');
+      const isGif = f.type === 'image/gif' || f.name.toLowerCase().endsWith('.gif');
+      
+      if (isVideo || isGif) {
+        // Sliders can't play videos smoothly, so we just provide the download button.
+        if (prev) prev.style.display = 'block';
+        if (wrap) wrap.style.display = 'none'; // hide the before/after slider
+        const dl = document.getElementById('upscaleDownload');
+        if (dl) { dl.href = dlUrl; dl.download = ''; dl.textContent = upT('Скачать результат', 'Download Result'); }
+        if (st) st.textContent = upT('Готово! Файл доступен для скачивания.', 'Done! File is ready for download.');
+      } else {
+        // For images, we can fetch the blob and show the slider
+        const br = await fetch(dlUrl, {credentials: 'include'});
+        if (!br.ok) throw new Error('Download failed');
+        const blob = await br.blob();
+        if (afterUrl) URL.revokeObjectURL(afterUrl);
+        afterUrl = URL.createObjectURL(blob);
+        if (imgBefore) imgBefore.src = beforeUrl;
+        if (imgAfter) imgAfter.src = afterUrl;
+        const dl = document.getElementById('upscaleDownload');
+        if (dl) { dl.href = afterUrl; dl.download = 'upscaled_' + model + '.png'; dl.textContent = 'Download PNG'; }
+        if (wrap) wrap.style.display = 'block';
+        if (prev) prev.style.display = 'block';
+        setSplit(50);
+        setTimeout(fitAfterImage, 50);
+        if (st) st.textContent = upT('Готово — двигай ползунок, чтобы сравнить до/после', 'Done — drag the slider to compare before / after');
+      }
     } catch (e) {
       if (st) st.textContent = String(e.message || e);
     } finally {

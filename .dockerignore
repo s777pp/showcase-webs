@@ -45,3 +45,7 @@ scripts/_*.py
 .vscode
 .idea
 .claude
+
+# Backups
+backups/
+backups
