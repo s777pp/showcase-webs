@@ -142,15 +142,24 @@ def _build_upsampler(preset: str, scale: int):
     if preset == "anime":
         model_scale = 4
         model_key = "anime_x4"
-        model = RRDBNet(3, 3, 64, 6, 32, scale=4)
+        model = RRDBNet(
+            num_in_ch=3, num_out_ch=3, scale=4,
+            num_feat=64, num_block=6, num_grow_ch=32,
+        )
     elif scale == 2:
         model_scale = 2
         model_key = "general_x2"
-        model = RRDBNet(3, 3, 64, 23, 32, scale=2)
+        model = RRDBNet(
+            num_in_ch=3, num_out_ch=3, scale=2,
+            num_feat=64, num_block=23, num_grow_ch=32,
+        )
     else:
         model_scale = 4
         model_key = "general_x4"
-        model = RRDBNet(3, 3, 64, 23, 32, scale=4)
+        model = RRDBNet(
+            num_in_ch=3, num_out_ch=3, scale=4,
+            num_feat=64, num_block=23, num_grow_ch=32,
+        )
     return RealESRGANer(
         scale=model_scale,
         model_path=f"/models/{model_key}.pth",
