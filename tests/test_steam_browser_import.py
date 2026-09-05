@@ -58,6 +58,32 @@ class BrowserImportTests(unittest.TestCase):
         self.assertEqual(result["profile"]["showcase_order"], ["artwork"])
         direct.assert_not_called()
 
+    def test_rendered_profile_can_be_enriched_with_steam_api(self):
+        def api_response(url, **_kwargs):
+            response = mock.MagicMock()
+            response.raise_for_status.return_value = None
+            if "GetPlayerSummaries" in url:
+                payload = {"players": [{"personaname": "API User", "avatarfull": "api-avatar"}]}
+            elif "GetSteamLevel" in url:
+                payload = {"player_level": 55}
+            else:
+                payload = {"game_count": 3, "games": [{"appid": 10}]}
+            response.json.return_value = {"response": payload}
+            return response
+
+        with mock.patch.dict(os.environ, {"STEAM_API_KEY": "test-key"}, clear=False), \
+             mock.patch.object(steam_catalog.steam_browser_import, "configured", return_value=True), \
+             mock.patch.object(steam_catalog.steam_browser_import, "fetch_html", return_value=PROFILE_HTML), \
+             mock.patch.object(steam_catalog.requests, "get", side_effect=api_response), \
+             mock.patch.object(steam_catalog, "_profile_fetch") as direct:
+            result = steam_catalog._load_profile("https://steamcommunity.com/id/n1t1337")
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["profile"]["name"], "API User")
+        self.assertEqual(result["profile"]["level"], 55)
+        self.assertEqual(result["profile"]["stats_map"]["games"], 3)
+        direct.assert_not_called()
+
     def test_browser_connection_error_never_exposes_credentials(self):
         playwright = mock.MagicMock()
         playwright.__enter__.return_value.chromium.connect_over_cdp.side_effect = RuntimeError(

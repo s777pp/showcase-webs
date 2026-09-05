@@ -117,6 +117,11 @@ def _oauth_state_verify(state: str, provider: str, max_age: int = 600) -> bool:
     secret = (os.environ.get("SECRET_KEY") or "").strip()
     try:
         raw = base64.urlsafe_b64decode(state + "=" * (-len(state) % 4))
+        # Reject alternate non-canonical Base64 spellings whose unused tail
+        # bits decode to the same signed bytes.
+        canonical = base64.urlsafe_b64encode(raw).decode().rstrip("=")
+        if not secrets.compare_digest(canonical, state):
+            return False
         payload, supplied_hex = raw.rsplit(b".", 1)
         supplied = bytes.fromhex(supplied_hex.decode())
         expected = hmac.new(secret.encode(), payload, hashlib.sha256).digest()
