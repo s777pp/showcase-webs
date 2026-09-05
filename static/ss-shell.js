@@ -90,13 +90,15 @@
     return '<header class="ss-head"><div class="ss-wrap ss-head__in">' +
       '<a class="ss-logo" href="/"><span class="ss-logo__mark"><img src="/static/icon.png" alt=""></span>' +
       '<span class="ss-logo__txt"><b>Showcase</b><span>Maker</span></span></a>' +
+      '<div class="ss-account-primary">' +
+        '<a class="ss-pill" id="ssUser" href="/profile" hidden></a>' +
+        '<button class="ss-btn ss-btn--sm ss-login-primary" id="ssLogin" type="button">' + svg('user') + '<span>' +
+          (lang() === 'ru' ? 'Войти' : 'Log in') + '</span></button>' +
+      '</div>' +
       '<nav class="ss-nav">' + navHTML() + '</nav>' +
       '<span class="ss-head__sp"></span>' +
       '<div class="ss-head__right"><button class="ss-activate" id="ssActivate" type="button">' + svg('key') + '<span>' +
         (lang() === 'ru' ? 'Активация' : 'Activate') + '</span></button>' + langHTML() +
-        '<a class="ss-pill" id="ssUser" href="/profile" hidden></a>' +
-        '<button class="ss-btn ss-btn--sm" id="ssLogin" type="button">' +
-          (lang() === 'ru' ? 'Войти' : 'Log in') + '</button>' +
         '<button class="ss-btn ss-btn--sm ss-btn--logout" id="ssLogout" type="button" hidden style="background:#c0392b;color:#fff;border-color:#c0392b">' +
           (lang() === 'ru' ? 'Выйти' : 'Log out') + '</button>' +
         '<button class="ss-burger" id="ssBurger" type="button" aria-label="Menu"><span></span></button>' +

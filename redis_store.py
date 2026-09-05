@@ -243,6 +243,34 @@ def job_count_user(user_key: str, statuses: tuple[str, ...] = ("queued", "runnin
     return n
 
 
+def job_find_active(user_key: str, kind: str, source_key: str = "") -> Optional[tuple[str, dict]]:
+    """Find an equivalent active job without exposing another user's result."""
+    if not user_key:
+        return None
+    r = _r()
+    if r:
+        try:
+            for jid in r.smembers(USER_JOBS_KEY.format(user_key)):
+                raw = r.get(JOB_KEY.format(jid))
+                if not raw:
+                    continue
+                job = json.loads(raw) or {}
+                if (job.get("status") in ("queued", "running") and
+                        job.get("kind") == kind and
+                        (not source_key or job.get("source_key") == source_key)):
+                    return jid, job
+            return None
+        except Exception as e:
+            _note(e)
+    with _local_lock:
+        for jid, job in _local_jobs.items():
+            if (job.get("user_key") == user_key and job.get("status") in ("queued", "running") and
+                    job.get("kind") == kind and
+                    (not source_key or job.get("source_key") == source_key)):
+                return jid, dict(job)
+    return None
+
+
 def queue_depth() -> int:
     r = _r()
     if not r:

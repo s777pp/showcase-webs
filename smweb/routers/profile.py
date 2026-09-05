@@ -50,6 +50,7 @@ from smweb.steam import _clean_extension_profile, _merge_nonempty_profile, _merg
 
 
 router = APIRouter()
+_profile_import_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="steam-profile")
 
 
 @router.get("/api/profile/me")
@@ -730,6 +731,32 @@ async def api_profile_steam_import(request: Request):
         return JSONResponse({"ok": False, "msg": "No Steam URL"}, status_code=400)
     try:
         import steam_catalog
+        import steam_browser_import
+
+        # Browser imports can take up to a minute.  When Browser API is active,
+        # return immediately and let the shared worker queue do the expensive
+        # rendered-page collection.  The extension route above is untouched.
+        if steam_browser_import.configured():
+            uid = int(user["id"])
+            user_key = f"steam:{uid}"
+            source_key = hashlib.sha256(url.lower().encode("utf-8")).hexdigest()[:24]
+            existing = rs.job_find_active(user_key, "steam_profile_import", source_key)
+            if existing:
+                return {"ok": True, "queued": True, "job_id": existing[0]}
+            jid = secrets.token_hex(12)
+            external = ((os.environ.get("WORKER_MODE") or "embedded").strip().lower() == "external" and
+                        rs.redis_ok() and rs.worker_alive())
+            payload = {
+                "kind": "steam_profile_import", "status": "queued", "pct": 1,
+                "stage": "queued", "user_key": user_key, "user_id": uid,
+                "source_key": source_key, "url": url, "created": time.time(),
+            }
+            rs.job_create(jid, payload, enqueue=external)
+            if not external:
+                from smweb.profile_import_jobs import run as run_profile_import
+                _profile_import_pool.submit(run_profile_import, jid, payload)
+            return {"ok": True, "queued": True, "job_id": jid}
+
         pr = steam_catalog.profile(url)
         if not pr.get("ok"):
             return JSONResponse(pr, status_code=400)
@@ -739,6 +766,28 @@ async def api_profile_steam_import(request: Request):
                 **{k: pr[k] for k in ('cached', 'stale', 'warning_code', 'retry_after') if k in pr}}
     except Exception as e:
         return JSONResponse({"ok": False, "msg": str(e)}, status_code=500)
+
+
+@router.get("/api/profile/steam-import/status/{job_id}")
+def api_profile_steam_import_status(job_id: str, request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    job = rs.job_get(job_id)
+    if not job or job.get("kind") != "steam_profile_import":
+        return JSONResponse({"ok": False, "msg": "Import job not found"}, status_code=404)
+    if int(job.get("user_id") or 0) != int(user["id"]):
+        return JSONResponse({"ok": False, "msg": "Import job not found"}, status_code=404)
+    response = {
+        "ok": True, "status": job.get("status") or "queued",
+        "pct": int(job.get("pct") or 0), "stage": job.get("stage") or "queued",
+    }
+    if job.get("status") == "done":
+        response["result"] = job.get("result") or {}
+    elif job.get("status") == "error":
+        response.update({"error": job.get("error"), "code": job.get("error_code"),
+                         "retry_after": job.get("retry_after")})
+    return response
 
 
 @router.get("/api/profile/{username}")

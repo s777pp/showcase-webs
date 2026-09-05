@@ -42,6 +42,10 @@ def _process_one(jid: str) -> None:
         return
     rs.job_update(jid, status="running", pct=5, stage="prepare")
     try:
+        if job.get("kind") == "steam_profile_import":
+            from smweb.profile_import_jobs import run
+            run(jid, job)
+            return
         if job.get("kind") == "compose":
             from smweb.compose_jobs import run
             run(jid, job)

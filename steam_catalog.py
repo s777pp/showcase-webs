@@ -24,6 +24,7 @@ from urllib.parse import quote, urlsplit
 
 import requests
 import steam_profile_guard
+import steam_browser_import
 import xml.etree.ElementTree as ET
 
 LOGGER = logging.getLogger("sm.steam")
@@ -705,7 +706,7 @@ def _normalise_showcase(item: dict) -> dict:
     return result
 
 
-def profile(url: str) -> dict:
+def profile(url: str, progress=None) -> dict:
     """Load the public part of a Steam profile without a Web API key.
 
     Accepts full URL, /id/vanity, /profiles/steamid64, bare vanity or SteamID64.
@@ -725,8 +726,12 @@ def profile(url: str) -> dict:
         canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
 
     cache_dir = _CACHE_PATH.parent if _CACHE_PATH else Path(os.environ.get('DATA_DIR', 'data'))
-    return steam_profile_guard.run(cache_dir / 'steam_profiles.sqlite3', canonical.lower(),
-                                   lambda: _load_profile(canonical))
+    browser_configured = steam_browser_import.configured()
+    return steam_profile_guard.run(
+        cache_dir / 'steam_profiles.sqlite3', canonical.lower(),
+        lambda: _load_profile(canonical, progress=progress),
+        use_global_gate=not browser_configured,
+    )
 
 
 def _profile_fetch(url):
@@ -737,25 +742,86 @@ def _profile_fetch(url):
     return response if response.status_code == 200 else None
 
 
-def _load_profile(canonical):
-    r = _profile_fetch(canonical + "/?xml=1")
-    if r is None:
-        return {"ok": False, "msg": "Steam profile is unavailable or private"}
+def _html_text(page_html: str, class_name: str) -> str:
+    match = re.search(
+        r'<[^>]+class=["\'][^"\']*\b' + re.escape(class_name) + r'\b[^"\']*["\'][^>]*>(.*?)</[^>]+>',
+        page_html or "", re.S | re.I,
+    )
+    if not match:
+        return ""
+    value = re.sub(r"<br\s*/?>", "\n", match.group(1), flags=re.I)
+    return _clean(unescape(re.sub(r"<[^>]+>", " ", value)))
+
+
+def _html_profile_fields(page_html: str) -> dict:
+    """Identity fields used when Browser API replaces Steam's XML endpoint."""
+    data = {}
+    match = re.search(r"g_rgProfileData\s*=\s*(\{.*?\})\s*;", page_html or "", re.S)
+    if match:
+        try:
+            data = json.loads(match.group(1))
+        except (TypeError, ValueError):
+            data = {}
+    steam_id = str(data.get("steamid") or "")
+    if not steam_id:
+        found = re.search(r'\b(?:steamid|steamID64)["\']?\s*[:=]\s*["\'](\d{17})', page_html or "", re.I)
+        steam_id = found.group(1) if found else ""
+    avatar = ""
+    found = re.search(r'class=["\'][^"\']*playerAvatarAutoSizeInner[^"\']*["\'][^>]*>.*?<img[^>]+src=["\']([^"\']+)', page_html or "", re.S | re.I)
+    if found:
+        avatar = unescape(found.group(1))
+    return {
+        "steamID64": steam_id,
+        "steamID": str(data.get("personaname") or _html_text(page_html, "actual_persona_name")),
+        "avatarFull": avatar,
+        "avatarMedium": avatar,
+        "summary": _html_text(page_html, "profile_summary"),
+        "headline": "",
+        "location": _html_text(page_html, "header_real_name"),
+        "realname": "",
+        "onlineState": "online" if "profile_in_game" in (page_html or "") else "offline",
+        "memberSince": "",
+    }
+
+
+def _load_profile(canonical, progress=None):
+    page_html = ""
+    root = None
+    r = None
+    browser_error = None
+    if steam_browser_import.configured():
+        try:
+            page_html = steam_browser_import.fetch_html(canonical, progress=progress)
+        except steam_browser_import.BrowserImportError as exc:
+            browser_error = exc
+
+    if not page_html:
+        r = _profile_fetch(canonical + "/?xml=1")
+        if r is None:
+            if browser_error:
+                return {"ok": False, "code": browser_error.code, "msg": str(browser_error)}
+            return {"ok": False, "msg": "Steam profile is unavailable or private"}
     try:
-        root = ET.fromstring(r.content)
+        if r is not None and not page_html:
+            root = ET.fromstring(r.content)
+        html_fields = _html_profile_fields(page_html) if page_html else {}
         def txt(name: str) -> str:
+            if root is None:
+                return str(html_fields.get(name) or "").strip()
             node = root.find(name)
             return (node.text or "").strip() if node is not None else ""
-        if root.tag == "response" or txt("error"):
+        if root is not None and (root.tag == "response" or txt("error")):
             return {"ok": False, "msg": txt("error") or "Steam profile is private"}
         groups = []
-        for group in root.findall("./groups/group")[:6]:
-            groups.append({
-                "name": (group.findtext("groupName") or "").strip(),
-                "avatar": (group.findtext("avatarMedium") or "").strip(),
-            })
-        page = _profile_fetch(canonical + '/?l=english')
-        page_html = page.text if page is not None else ""
+        if root is not None:
+            for group in root.findall("./groups/group")[:6]:
+                groups.append({
+                    "name": (group.findtext("groupName") or "").strip(),
+                    "avatar": (group.findtext("avatarMedium") or "").strip(),
+                })
+        if not page_html:
+            page = _profile_fetch(canonical + '/?l=english')
+            page_html = page.text if page is not None else ""
         if not page_html or not re.search(r'class=[\"\'][^\"\']*\bprofile_page\b', page_html, re.I):
             return {'ok': False, 'code': 'steam_profile_incomplete',
                     'msg': 'Steam did not return the full public profile. Try later or use the extension.'}
@@ -823,7 +889,7 @@ def _load_profile(canonical):
                 ],
                 "badge_items": custom.get("badges") or [],
                 "awards": custom["awards"],
-                "sync_mode": "api_plus_html" if page_html else "api_only",
+                "sync_mode": "browser_plus_api" if root is None else "api_plus_html",
                 "steam_api_available": False,
             },
         }
