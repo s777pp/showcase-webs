@@ -1512,3 +1512,27 @@ document.addEventListener("DOMContentLoaded", function () {
     };
   }
   document.addEventListener('sm-lang-changed', function(){ setTimeout(splitNavLetters, 30); });
+
+  // Hero art depth: one source image is split into visual planes in CSS.
+  // Pointer movement only adjusts two variables, keeping the animation cheap.
+  (function initCreatorSceneDepth(){
+    var scene=document.querySelector('.creator-scene');
+    var studio=document.querySelector('.hero-studio');
+    if(!scene||!studio||window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var frame=0,targetX=0,targetY=0,currentX=0,currentY=0;
+    function paint(){
+      currentX+=(targetX-currentX)*.085;
+      currentY+=(targetY-currentY)*.085;
+      scene.style.setProperty('--hero-x',currentX.toFixed(2)+'px');
+      scene.style.setProperty('--hero-y',currentY.toFixed(2)+'px');
+      if(Math.abs(targetX-currentX)>.05||Math.abs(targetY-currentY)>.05) frame=requestAnimationFrame(paint);
+      else frame=0;
+    }
+    studio.addEventListener('pointermove',function(e){
+      var r=studio.getBoundingClientRect();
+      targetX=((e.clientX-r.left)/r.width-.5)*14;
+      targetY=((e.clientY-r.top)/r.height-.5)*11;
+      if(!frame) frame=requestAnimationFrame(paint);
+    });
+    studio.addEventListener('pointerleave',function(){targetX=0;targetY=0;if(!frame) frame=requestAnimationFrame(paint);});
+  })();
