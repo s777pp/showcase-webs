@@ -272,10 +272,10 @@ The Pro-only **Loop / Зациклить** tab creates a repeatable animation fr
 
 - `POST /api/loop/start` accepts content-validated GIF, MP4, WebM, or AVI input, enforces authentication/Pro, upload size, active-job and route limits, then uses the existing media queue.
 - `GET /api/loop/status/{job_id}` and `GET /api/loop/download/{job_id}` are owner-only. Results use private R2 when configured and shared `/data` as the fallback.
-- `smweb/loop_jobs.py` performs FFmpeg work outside Uvicorn. `blend` rotates the sequence and crossfades its original ending into its beginning; `pingpong` concatenates forward and reversed motion. Audio is deliberately removed because Steam showcase output is visual.
+- `smweb/loop_jobs.py` performs FFmpeg work outside Uvicorn. `blend` rotates the sequence and crossfades its original ending into its beginning; `pingpong` concatenates forward and reversed motion. Audio is deliberately removed because Steam showcase output is visual. Both FFmpeg branches normalize frame rate, timestamps and even dimensions before joining; these normalizations are required by `xfade`/H.264 and must not be removed.
 - GIF output reuses the existing high-quality GIF pipeline and Steam size fitting; MP4 uses H.264. Input width is preserved up to 1280 px rather than blindly upscaling small sources.
-- Sources up to 30 seconds are accepted, while rendered input is bounded to 12 seconds (`blend`) or 10 seconds (`pingpong`, producing at most 20 seconds). The UI recommends 2–4 seconds because a short source usually hides the seam better; this is guidance, not a four-second rejection.
-- `static/js/seamless-loop.js` owns upload, polling, preview, RU/EN text, and Process navigation. `static/css/seamless-loop.css` owns the two-column motion-workbench layout. Keep the server-side Pro gate even if the frontend lock changes.
+- Sources up to 30 seconds are accepted, but the selected/output loop is hard-bounded to 8 seconds for the Steam use case. The browser exposes source preview, temporal start and duration sliders; video preview seeks and repeats the selected interval, while GIF preview plays normally and applies its selected interval during server processing. The crossfade length is deliberately automatic (derived from the selected duration and capped) rather than a user-facing technical control.
+- `static/js/seamless-loop.js` owns upload, polling, preview/trim, RU/EN text, and Process navigation. `static/css/seamless-loop.css` owns the two-column motion-workbench and timeline layout. Keep the server-side Pro gate and 8-second cap even if the frontend controls change.
 
 ## 7. Security and Operational Decisions
 

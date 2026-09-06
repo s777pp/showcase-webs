@@ -47,18 +47,21 @@ def run(jid: str, job: dict) -> None:
             raise RuntimeError("FFmpeg is unavailable")
         fps = max(8, min(24, int(job.get("fps") or 12)))
         source_duration, source_width = _metadata(source)
-        requested = float(job.get("duration") or 0)
+        requested = max(0.5, min(8.0, float(job.get("duration") or 8)))
+        start = max(0.0, min(float(job.get("start") or 0), max(0.0, source_duration - 0.5)))
         mode = str(job.get("mode") or "blend")
-        duration = min(source_duration, requested if requested > 0 else source_duration, 10.0 if mode == "pingpong" else 12.0)
+        available = source_duration - start
+        fade = min(0.7, max(0.18, requested * 0.14), requested * 0.35)
+        duration = min(available, requested / 2.0 if mode == "pingpong" else requested + fade)
         output_format = str(job.get("output_format") or "gif")
         intermediate = root / "loop.mp4"
         rs.job_update(jid, status="running", pct=18, stage="analyze", source_duration=round(source_duration, 3))
 
-        common = f"fps={fps},scale='min(1280,iw)':-2:flags=lanczos"
+        common = f"fps={fps},scale='trunc(min(1280,iw)/2)*2':-2:flags=lanczos,settb=AVTB,setpts=PTS-STARTPTS"
         if mode == "pingpong":
             graph = f"[0:v]{common},split[forward][back];[back]reverse[reverse];[forward][reverse]concat=n=2:v=1:a=0,format=yuv420p[out]"
         else:
-            fade = min(max(0.18, float(job.get("blend") or 0.55)), duration * 0.4)
+            fade = min(fade, duration * 0.35)
             offset = max(0.05, duration - (2 * fade))
             graph = (
                 f"[0:v]{common},split[body][head];"
@@ -68,7 +71,7 @@ def run(jid: str, job: dict) -> None:
             )
         rs.job_update(jid, pct=35, stage="render")
         _run_cmd([
-            ffmpeg, "-y", "-t", f"{duration:.4f}", "-i", str(source),
+            ffmpeg, "-y", "-ss", f"{start:.4f}", "-t", f"{duration:.4f}", "-i", str(source),
             "-filter_complex", graph, "-map", "[out]", "-an", "-c:v", "libx264",
             "-preset", "medium", "-crf", "20", "-movflags", "+faststart", str(intermediate),
         ])
@@ -91,7 +94,7 @@ def run(jid: str, job: dict) -> None:
         rs.job_update(
             jid, status="done", pct=100, stage="done", result_path=str(result),
             result_key=result_key, filename=result.name, media_type=media_type,
-            output_duration=round(duration * (2 if mode == "pingpong" else 1) - (0 if mode == "pingpong" else min(max(0.18, float(job.get("blend") or 0.55)), duration * 0.4)), 3),
+            output_duration=round(min(8.0, duration * 2 if mode == "pingpong" else duration - fade), 3),
         )
         if result_key:
             shutil.rmtree(root, ignore_errors=True)
