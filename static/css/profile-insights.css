@@ -5,8 +5,7 @@
 /* Keep the control card and result canvas on the same baseline. Sticky positioning
    made the left card jump down while the document was already scrolled. */
 .insight-tool__intro{position:static;top:auto}
-.insight-sources{display:grid;gap:7px;margin-top:16px}
-.insight-query{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;margin:0;padding:0 11px;border:1px solid rgba(98,220,251,.2);background:rgba(67,215,255,.035);color:#8ee8ff;font:700 10px Consolas,monospace;letter-spacing:.035em;text-decoration:none}
-.insight-query::after{content:'↗';color:#50d8ff}
-.insight-query:hover{border-color:#50d8ff;background:rgba(67,215,255,.09)}
-.insight-query span{min-width:0}.insight-query small{max-width:48%;overflow:hidden;color:#60798a;font-weight:500;text-overflow:ellipsis;white-space:nowrap}.insight-query::after{flex:0 0 auto}
+.insight-sources{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
+.insight-query{display:inline-flex;align-items:center;justify-content:center;min-height:30px;margin:0;padding:0 11px;border:1px solid rgba(98,220,251,.28);background:rgba(67,215,255,.055);color:#8ee8ff;font:800 9px Consolas,monospace;letter-spacing:.08em;text-decoration:none;text-transform:uppercase}
+.insight-query::after{content:'↗';margin-left:7px;color:#50d8ff;font-size:9px}
+.insight-query:hover{border-color:#50d8ff;background:rgba(67,215,255,.13);color:#d8f8ff;transform:translateY(-1px)}
