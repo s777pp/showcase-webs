@@ -247,7 +247,7 @@ Both tools are separate Tools tabs and share one background pipeline:
 
 Security boundaries: only public `https://steamcommunity.com/id|profiles/...` URLs are accepted; visual context can only be fetched from allowlisted Steam CDN suffixes, redirect destinations are revalidated, each source image is capped and re-encoded to a bounded JPEG, profile text is explicitly treated as untrusted prompt data, AI text is rendered escaped, API keys remain server-side, and errors sent to clients are sanitized.
 
-Required production variables are documented in `.env.example`: `GEMINI_API_KEY`, optional `GEMINI_MODEL`, and `PROFILE_AI_PRO_DAILY`. A consumer Gemini/Google AI subscription is not the API credential or API quota.
+Required production variables are documented in `.env.example`: `GEMINI_API_KEY`, optional `GEMINI_MODEL`, and `PROFILE_AI_PRO_DAILY`. The current default is `gemini-3.6-flash`; Google returns HTTP 404 for `gemini-2.5-flash` to new API users. A consumer Gemini/Google AI subscription is not the API credential or API quota.
 
 ## 7. Security and Operational Decisions
 

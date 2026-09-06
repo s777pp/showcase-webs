@@ -13,7 +13,7 @@ import requests
 from PIL import Image
 
 
-MODEL = (os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash").strip()
+MODEL = (os.environ.get("GEMINI_MODEL") or "gemini-3.6-flash").strip()
 API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
 _ALLOWED_STYLES = {"auto", "anime", "cyberpunk", "minimal", "dark", "fantasy", "realism", "retro"}
 _IMAGE_HOST_SUFFIXES = (".steamstatic.com", ".akamaihd.net")
