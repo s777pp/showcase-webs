@@ -47,7 +47,7 @@ body button:focus-visible,body a:focus-visible{outline:2px solid #55d9ff!importa
 .page-home .hero-echo-h1 .echo-text{width:100%!important;max-width:100%!important;margin:0!important;min-height:0!important;line-height:1!important}
 .page-home .hero-echo-h1 .echo-text:last-child{margin-top:12px!important}
 .page-home .hero-echo-h1 .echo-text__echo--front{white-space:normal!important;word-break:normal!important;overflow-wrap:normal!important;line-height:1!important;font-size:inherit!important}
-.page-home .hero>p{width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;font-size:17px!important;line-height:1.6!important}
+.page-home .hero>p{position:relative!important;z-index:10!important;width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;font-size:17px!important;line-height:1.6!important}
 .page-home .hero-cta{margin:0!important;flex-wrap:wrap!important;gap:16px!important;min-width:0!important}
 .page-home .hero-studio{width:100%!important;max-width:100%!important;height:auto!important;aspect-ratio:1.2!important;min-width:0!important;margin:0!important;overflow:hidden!important}
 /* Widen toward the headline while retaining the right edge and original height. */
