@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="/static/css/creator-os.css?v=20260906b"/>
   <link rel="stylesheet" href="/static/css/steam-check.css?v=20260906e"/>
   <link rel="stylesheet" href="/static/css/profile-insights.css?v=20260906-tags"/>
-  <link rel="stylesheet" href="/static/css/seamless-loop.css?v=20260906b"/>
+  <link rel="stylesheet" href="/static/css/seamless-loop.css?v=20260906c"/>
 <link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260904c">
 <script src="/static/js/layout-refinement.js?v=20260904f"></script>
 <script src="/static/js/i18n.js?v=20260903d"></script>
@@ -431,14 +431,6 @@
           </button>
           <input id="loopFile" type="file" hidden accept="image/gif,video/mp4,video/webm,video/x-msvideo,.gif,.mp4,.webm,.avi"/>
           <div class="loop-file" id="loopFileName"></div>
-          <div class="loop-trim" id="loopTrim" hidden>
-            <div class="loop-trim__head"><span data-loop="trimLabel">Fragment for the loop</span><b id="loopTrimReadout">0.0 — 4.0 s</b></div>
-            <div class="loop-trim__rail" id="loopTrimRail"><i></i></div>
-            <label><span data-loop="startLabel">Start</span><input id="loopStart" type="range" min="0" max="0" value="0" step="0.1"/><output id="loopStartValue">0.0 s</output></label>
-            <label><span data-loop="durationLabel">Result length</span><input id="loopDuration" type="range" min="0.5" max="8" value="4" step="0.1"/><output id="loopDurationValue">4.0 s</output></label>
-            <p data-loop="autoBlend">The end-to-start transition is calculated automatically.</p>
-          </div>
-          <label class="field"><span data-loop="modeLabel">Loop method</span><select id="loopMode"><option value="blend" data-loop="modeBlend">Smooth transition</option><option value="pingpong" data-loop="modePingpong">Forward and backward</option></select></label>
           <label class="field"><span data-loop="formatLabel">Result format</span><select id="loopFormat"><option value="gif">GIF · Steam</option><option value="mp4">MP4 · preview</option></select></label>
           <label class="field"><span data-loop="fpsLabel">Frame rate</span><select id="loopFps"><option value="12" selected>12 FPS</option><option value="15">15 FPS</option><option value="20">20 FPS</option><option value="24">24 FPS</option></select></label>
           <button class="btn" id="loopRun" type="button" disabled data-loop="run">Create loop</button>
@@ -448,7 +440,20 @@
       </aside>
       <div class="card loop-tool__stage" id="loopStage">
         <div class="loop-empty" id="loopEmpty"><span>∞</span><small data-loop="emptyKicker">END → BEGINNING</small><b data-loop="emptyTitle">Your seamless animation will appear here</b><p data-loop="emptyBody">The original is not changed. Check the transition, then download the result.</p></div>
-        <div class="loop-source" id="loopSource" hidden><div class="loop-source__label"><span data-loop="sourcePreview">Source preview</span><b id="loopSourceTime">0.0 s</b></div><video id="loopSourceVideo" muted autoplay loop controls playsinline></video><img id="loopSourceGif" alt="Source GIF preview"/><p id="loopGifNote" data-loop="gifNote">GIF preview plays normally; the selected fragment is applied when processing starts.</p></div>
+        <div class="loop-source" id="loopSource" hidden>
+          <div class="loop-source__label"><span data-loop="sourcePreview">Source preview</span><b id="loopSourceTime">0.0 s</b></div>
+          <div class="loop-viewer"><video id="loopSourceVideo" muted autoplay loop playsinline></video><img id="loopSourceGif" alt="Source GIF preview"/><button id="loopPlay" class="loop-play" type="button" aria-label="Play or pause">Ⅱ</button></div>
+          <div class="loop-editor" id="loopEditor">
+            <div class="loop-editor__head"><span data-loop="trimLabel">Fragment for the loop</span><b id="loopTrimReadout">0.0 — 4.0 s</b></div>
+            <div class="loop-timeline" id="loopTimeline">
+              <div class="loop-timeline__ticks" id="loopTicks"></div><div class="loop-timeline__selection" id="loopSelection"></div><i class="loop-timeline__playhead" id="loopPlayhead"></i>
+              <button class="loop-handle loop-handle--start" id="loopStartHandle" type="button" aria-label="Fragment start"><span></span></button>
+              <button class="loop-handle loop-handle--end" id="loopEndHandle" type="button" aria-label="Fragment end"><span></span></button>
+            </div>
+            <div class="loop-editor__meta"><span><small data-loop="startLabel">Start</small><b id="loopStartValue">0.0 s</b></span><span><small data-loop="durationLabel">Result length</small><b id="loopDurationValue">4.0 s</b></span><span><small data-loop="endLabel">End</small><b id="loopEndValue">4.0 s</b></span></div>
+            <p id="loopGifNote" data-loop="gifNote">GIF preview plays normally; the selected fragment is applied when processing starts.</p>
+          </div>
+        </div>
         <div class="loop-result" id="loopResult" hidden>
           <div class="loop-result__badge"><i></i><span data-loop="ready">Loop ready</span></div>
           <video id="loopVideo" muted autoplay loop controls playsinline></video>
@@ -850,7 +855,7 @@
 <script src="/static/js/app-tail.js?v=20260905-modal"></script>
 <script src="/static/js/steam-check.js?v=20260906f"></script>
 <script src="/static/js/profile-insights.js?v=20260906-unique-tags"></script>
-<script src="/static/js/seamless-loop.js?v=20260906b"></script>
+<script src="/static/js/seamless-loop.js?v=20260906c"></script>
 <script src="/static/js/steam-extension-status.js?v=20260906a"></script>
 
 

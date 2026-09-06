@@ -37,7 +37,7 @@ def _owner(request: Request) -> tuple[dict | None, str]:
 
 
 @router.post("/api/loop/start")
-async def start(request: Request, file: UploadFile = File(...), mode: str = Form("blend"),
+async def start(request: Request, file: UploadFile = File(...), mode: str = Form("pingpong"),
                 output_format: str = Form("gif"), fps: int = Form(12),
                 start: float = Form(0), duration: float = Form(4)):
     user, owner = _owner(request)
@@ -56,8 +56,10 @@ async def start(request: Request, file: UploadFile = File(...), mode: str = Form
     media = _media(raw)
     if not media:
         return JSONResponse({"ok": False, "msg": "Animated GIF, MP4, WebM or AVI required"}, status_code=400)
-    if mode not in {"blend", "pingpong"} or output_format not in {"gif", "mp4"}:
+    if output_format not in {"gif", "mp4"}:
         return JSONResponse({"ok": False, "msg": "Unsupported loop settings"}, status_code=400)
+    # Keep the public Steam tool predictable, including for stale cached clients.
+    mode = "pingpong"
     jid = secrets.token_hex(16)
     root = Path(DATA) / "jobs" / jid
     root.mkdir(parents=True, exist_ok=False)
