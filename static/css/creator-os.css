@@ -893,6 +893,14 @@ html[lang="ru"] .page-tools .h-title::before{content:"РАБОЧАЯ ЗОНА / 
 .workspace{grid-template-columns:400px minmax(0,1fr) 350px!important}
 .workspace>.sidebar{overflow:hidden!important}
 .workspace>.account-dock{overflow-y:auto!important;scrollbar-gutter:stable!important}
+
+.telegram-channel-link,.app-footer__telegram{
+  display:inline-flex!important;align-items:center;justify-content:center;min-height:40px;
+  border:1px solid rgba(85,217,255,.34)!important;background:rgba(85,217,255,.07)!important;
+  color:#dff9ff!important;text-decoration:none!important;font:700 11px/1 var(--os-mono)!important;
+  letter-spacing:.06em;text-transform:uppercase;
+}
+.telegram-channel-link:hover,.app-footer__telegram:hover{border-color:var(--os-cyan)!important;background:rgba(85,217,255,.13)!important}
 .mode-tabs{position:sticky!important;top:0!important;z-index:12!important}
 .panel-scroll{overflow-y:auto!important;overscroll-behavior:contain!important}
 .preview .sm-stage{display:block!important;overflow:auto!important;padding:24px 16px!important}

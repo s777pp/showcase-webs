@@ -9,12 +9,13 @@
     { href: '/',        key: 'home',    label: { ru: 'Главная',    en: 'Home' },     icon: 'home' },
     { href: '/app',     key: 'tools',   label: { ru: 'Инструменты',en: 'Tools' },    icon: 'tools' },
     { href: '/profile', key: 'builder', label: { ru: 'Профиль',    en: 'Profile' },  icon: 'user', tag: 'new' },
-    { href: '/gallery', key: 'gallery', label: { ru: 'Галерея',    en: 'Gallery' },  icon: 'grid' }
+    { href: '/gallery', key: 'gallery', label: { ru: 'Галерея',    en: 'Gallery' },  icon: 'grid' },
+    { href: 'https://t.me/showcasemaker', key: 'support', label: { ru: 'Техподдержка', en: 'Support' }, icon: 'support', external: true }
   ];
 
   var GROUPS = [
     { title: { ru: 'Сайт',        en: 'Site' },    items: ['home', 'gallery'] },
-    { title: { ru: 'Инструменты', en: 'Tools' },   items: ['tools', 'builder'] },
+    { title: { ru: 'Инструменты', en: 'Tools' },   items: ['tools', 'builder', 'support'] },
     { title: { ru: 'Аккаунт',     en: 'Account' }, items: ['account'] }
   ];
 
@@ -23,6 +24,7 @@
     tools: '<path d="M4 7h16M4 12h10M4 17h7"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>',
     grid: '<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
+    support: '<path d="M4 13v-1a8 8 0 0 1 16 0v1"/><path d="M4 13h3v6H5a1 1 0 0 1-1-1v-5Zm16 0h-3v6h2a1 1 0 0 0 1-1v-5ZM17 19c0 1.1-.9 2-2 2h-3"/>',
     key: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v4"/>',
     card: '<rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M3 9h18M6 15h4"/>'
   };
@@ -58,7 +60,8 @@
 
   function navHTML() {
     return NAV.map(function (n) {
-      return '<a class="ss-nav__i' + (active(n.href) ? ' is-on' : '') + '" href="' + n.href + '">' +
+      return '<a class="ss-nav__i' + (active(n.href) ? ' is-on' : '') + '" href="' + n.href + '"' +
+        (n.external ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
         svg(n.icon) + '<span>' + esc(t(n.label)) + '</span>' +
         (n.tag ? '<i class="ss-nav__tag">' + esc(lang() === 'ru' ? 'новое' : n.tag) + '</i>' : '') + '</a>';
     }).join('');
@@ -73,7 +76,8 @@
       var links = g.items.map(function (k) {
         var n = byKey[k];
         if (!n) return '';
-        return '<a href="' + n.href + '"' + (active(n.href) ? ' class="is-on"' : '') + '>' +
+        return '<a href="' + n.href + '"' + (active(n.href) ? ' class="is-on"' : '') +
+          (n.external ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
           svg(n.icon) + esc(t(n.label)) + '</a>';
       }).join('');
       return '<div class="ss-drawer__g"><p class="ss-drawer__t">' + esc(t(g.title)) + '</p>' + links + '</div>';
@@ -153,11 +157,12 @@
       ['/gallery', ru ? 'Галерея' : 'Gallery'],
       ['/profile', ru ? 'Профиль' : 'Profile'],
       ['/#pricing', ru ? 'Тарифы' : 'Pricing'],
-      ['/#faq', 'FAQ']
+      ['/#faq', 'FAQ'],
+      ['https://t.me/showcasemaker', ru ? 'Telegram-канал' : 'Telegram channel', true]
     ];
     return '<footer class="ss-foot"><div class="ss-wrap ss-foot__in">' +
       '<nav class="ss-foot__nav">' + links.map(function (l) {
-        return '<a href="' + l[0] + '">' + esc(l[1]) + '</a>';
+        return '<a href="' + l[0] + '"' + (l[2] ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + esc(l[1]) + '</a>';
       }).join('') + '</nav>' +
       '<p class="ss-foot__note">' +
       (ru ? 'Steam и Valve — товарные знаки Valve Corporation. Проект неофициальный и не связан с Valve.' : 'Steam and Valve are trademarks of Valve Corporation. This project is unofficial and not affiliated with Valve.') +
