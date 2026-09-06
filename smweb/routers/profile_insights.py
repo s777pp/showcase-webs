@@ -64,7 +64,7 @@ async def start(request: Request):
         "kind": "profile_insight", "insight_kind": kind, "status": "queued", "pct": 1,
         "stage": "queued", "user_key": user_key, "user_id": uid, "source_key": source_key,
         "url": url, "language": "ru" if body.get("language") == "ru" else "en",
-        "style": str(body.get("style") or "auto")[:24], "created": time.time(),
+        "style": str(body.get("style") or "auto")[:24], "is_pro": bool(quota.get("pro")), "created": time.time(),
     }
     rs.job_create(jid, payload, enqueue=external)
     if not external:

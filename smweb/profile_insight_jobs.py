@@ -31,8 +31,11 @@ def run(job_id: str, job: dict) -> None:
             raise
         result = fallback_doctor(profile, str(job.get("language") or "en"))
         result["warning"] = "ai_unavailable"
-    rs.profile_insight_history_add(int(job.get("user_id") or 0), {
-        "kind": kind, "created": time.time(), "expires_at": time.time() + 7 * 86400,
-        "result": result,
-    })
+    # A degraded baseline is useful, but must not consume a Free user's weekly
+    # successful AI analysis. Pro history may retain it for diagnostics.
+    if job.get("is_pro") or not result.get("warning"):
+        rs.profile_insight_history_add(int(job.get("user_id") or 0), {
+            "kind": kind, "created": time.time(), "expires_at": time.time() + 7 * 86400,
+            "result": result,
+        })
     rs.job_update(job_id, status="done", pct=100, stage="done", result=result)
