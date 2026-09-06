@@ -237,7 +237,7 @@ Both tools are separate Tools tabs and share one background pipeline:
 
 `POST /api/profile-insights/start -> Redis profile queue -> Bright Data Steam import -> bounded Gemini multimodal request -> Redis result/history`
 
-- `kind=doctor`: authenticated; Free is limited to one run per seven-day Redis window, Pro has a hidden daily abuse cap. If Gemini is unavailable, it returns an explicitly labeled deterministic baseline instead of inventing AI output.
+- `kind=doctor`: authenticated; Free is limited to one successful result per seven-day Redis history window, with a short start throttle so temporary upstream failures do not consume the weekly use. Pro has a hidden daily abuse cap. If Gemini is unavailable, it returns an explicitly labeled deterministic baseline instead of inventing AI output.
 - `kind=design`: Pro-only and requires Gemini; returns up to three static showcase directions, palettes, prompts, and image-search queries. It does not generate a fake complete profile and does not store reference media.
 - `GET /api/profile-insights/status/{job_id}` is owner-only.
 - `GET /api/profile-insights/history` returns up to ten owner-only results. Redis history expires after seven days.

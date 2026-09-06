@@ -45,9 +45,12 @@ async def start(request: Request):
     if quota.get("pro"):
         allowed, _ = rs.rate_limit(f"profile-insight-pro:{uid}", int(os.environ.get("PROFILE_AI_PRO_DAILY", "30")), 86400)
     else:
-        allowed, _ = rs.rate_limit(f"profile-doctor-free:{uid}", 1, 7 * 86400)
+        recent_doctor = any(item.get("kind") == "doctor" for item in rs.profile_insight_history(uid))
+        if recent_doctor:
+            return JSONResponse({"ok": False, "msg": "Free Profile Doctor refreshes once a week", "code": "limit"}, status_code=429)
+        allowed, _ = rs.rate_limit(f"profile-doctor-start:{uid}", 1, 300)
     if not allowed:
-        message = "Free Profile Doctor refreshes once a week" if not quota.get("pro") else "Daily analysis safety limit reached"
+        message = "An analysis was just started; wait a few minutes before retrying" if not quota.get("pro") else "Daily analysis safety limit reached"
         return JSONResponse({"ok": False, "msg": message, "code": "limit"}, status_code=429)
 
     source_key = hashlib.sha256(f"{kind}:{url}".encode()).hexdigest()[:24]
