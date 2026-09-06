@@ -43,14 +43,23 @@ def profile_payload(profile: dict) -> dict:
                 "item_count": len(item.get("items") or item.get("images") or []),
             })
     stats = profile.get("stats") if isinstance(profile.get("stats"), dict) else {}
+    background_item = profile.get("background_item") if isinstance(profile.get("background_item"), dict) else {}
+    background_movie = profile.get("background_movie") if isinstance(profile.get("background_movie"), dict) else {}
+    frame = profile.get("avatar_frame") or profile.get("frame")
+    background_present = any((
+        profile.get("background"), profile.get("profile_background"),
+        profile.get("background_movie"),
+        background_item.get("poster"), background_item.get("webm"), background_item.get("mp4"),
+        background_movie.get("poster"), background_movie.get("webm"), background_movie.get("mp4"),
+    ))
     return {
         "name": str(profile.get("name") or "")[:80],
         "summary": str(profile.get("summary") or "")[:1000],
         "level": int(profile.get("level") or 0),
         "status": str(profile.get("status") or "")[:40],
-        "background_present": bool(profile.get("background") or profile.get("profile_background")),
+        "background_present": bool(background_present),
         "avatar_present": bool(profile.get("avatar") or profile.get("avatarfull")),
-        "frame_present": bool(profile.get("avatar_frame") or profile.get("frame")),
+        "frame_present": bool(frame),
         "badge_count": len(profile.get("badges") or []),
         "showcases": safe_showcases,
         "stats": {str(key)[:40]: value for key, value in list(stats.items())[:20] if isinstance(value, (str, int, float, bool))},
@@ -99,14 +108,21 @@ def _normalize_result(kind: str, value: dict) -> dict:
             score = max(0, min(100, int(value.get("score") or 0)))
         except (TypeError, ValueError):
             score = 0
+        recommendations = _strings(value.get("recommendations"), 7, 400)
+        priority = str(value.get("priority") or "").strip()[:400]
+        if priority.lower() in {"low", "medium", "high", "низкий", "средний", "высокий"}:
+            priority = recommendations[0] if recommendations else ""
         return {
             "score": score, "summary": str(value.get("summary") or "")[:500],
             "strengths": _strings(value.get("strengths"), 5, 300),
-            "recommendations": _strings(value.get("recommendations"), 7, 400),
-            "priority": str(value.get("priority") or "")[:400],
+            "recommendations": recommendations,
+            "priority": priority,
         }
+    if isinstance(value.get("result"), dict):
+        value = value["result"]
+    raw_concepts = value.get("concepts") or value.get("directions") or value.get("designs") or []
     concepts = []
-    for item in value.get("concepts") if isinstance(value.get("concepts"), list) else []:
+    for item in raw_concepts if isinstance(raw_concepts, list) else []:
         if not isinstance(item, dict):
             continue
         palette = [color.upper() for color in _strings(item.get("palette"), 5, 7) if re.fullmatch(r"#[0-9a-fA-F]{6}", color)]
@@ -124,9 +140,14 @@ def _normalize_result(kind: str, value: dict) -> dict:
 
 
 def _visual_urls(profile: dict) -> list[str]:
-    candidates = [profile.get("background"), profile.get("avatar")]
-    frame = profile.get("avatar_frame") if isinstance(profile.get("avatar_frame"), dict) else {}
-    candidates.extend((frame.get("static"), frame.get("animated")))
+    background_item = profile.get("background_item") if isinstance(profile.get("background_item"), dict) else {}
+    background_movie = profile.get("background_movie") if isinstance(profile.get("background_movie"), dict) else {}
+    candidates = [profile.get("background"), profile.get("profile_background"), background_item.get("poster"), background_movie.get("poster"), profile.get("avatar"), profile.get("avatarfull")]
+    frame = profile.get("avatar_frame") or profile.get("frame")
+    if isinstance(frame, dict):
+        candidates.extend((frame.get("static"), frame.get("animated"), frame.get("image")))
+    else:
+        candidates.append(frame)
     for showcase in (profile.get("showcase_instances") or profile.get("showcases") or [])[:8]:
         if not isinstance(showcase, dict):
             continue
@@ -181,7 +202,7 @@ def generate(kind: str, profile: dict, language: str = "en", style: str = "auto"
             return fallback_doctor(profile, language)
         raise RuntimeError("gemini_not_configured")
     task = (
-        "Return: score integer 0-100, summary string, strengths array (max 5), recommendations array (max 7), priority string."
+        "Return: score integer 0-100, summary string, strengths array (max 5), recommendations array (max 7), and priority as one concrete action sentence (never a severity word). Treat *_present and showcase counts in PROFILE_DATA as authoritative facts; never contradict them."
         if kind == "doctor" else
         "Return: summary string and exactly 3 concepts. Each concept: title, style, palette of 3-5 hex colors, showcase_prompt, search_queries array max 4, and why_it_fits."
     )
@@ -189,12 +210,40 @@ def generate(kind: str, profile: dict, language: str = "en", style: str = "auto"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
     content_parts = [{"text": prompt}]
     content_parts.extend(_visual_parts(profile))
+    doctor_schema = {
+        "type": "OBJECT",
+        "properties": {
+            "score": {"type": "INTEGER"}, "summary": {"type": "STRING"},
+            "strengths": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "recommendations": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "priority": {"type": "STRING"},
+        },
+        "required": ["score", "summary", "strengths", "recommendations", "priority"],
+    }
+    concept_schema = {
+        "type": "OBJECT",
+        "properties": {
+            "summary": {"type": "STRING"},
+            "concepts": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
+                "title": {"type": "STRING"}, "style": {"type": "STRING"},
+                "palette": {"type": "ARRAY", "items": {"type": "STRING"}},
+                "showcase_prompt": {"type": "STRING"},
+                "search_queries": {"type": "ARRAY", "items": {"type": "STRING"}},
+                "why_it_fits": {"type": "STRING"},
+            }, "required": ["title", "style", "palette", "showcase_prompt", "search_queries", "why_it_fits"]}},
+        },
+        "required": ["summary", "concepts"],
+    }
     response = requests.post(
         url,
         headers={"x-goog-api-key": API_KEY, "Content-Type": "application/json"},
         json={
             "contents": [{"parts": content_parts}],
-            "generationConfig": {"responseMimeType": "application/json", "temperature": 0.35, "maxOutputTokens": 1800},
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "responseSchema": doctor_schema if kind == "doctor" else concept_schema,
+                "maxOutputTokens": 1800,
+            },
         },
         timeout=(10, 55),
     )

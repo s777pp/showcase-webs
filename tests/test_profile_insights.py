@@ -15,6 +15,16 @@ class ProfileInsightTests(unittest.TestCase):
         self.assertEqual(len(payload["showcases"]), 20)
         self.assertEqual(payload["showcases"][0]["item_count"], 2)
 
+    def test_profile_payload_detects_nested_animated_background(self):
+        payload = profile_payload({
+            "background_item": {"poster": "https://cdn.example/background.jpg", "webm": "https://cdn.example/background.webm"},
+            "frame": "https://cdn.example/frame.png",
+            "showcases": [{"type": "artwork", "images": [{"url": "x"}]}],
+        })
+        self.assertTrue(payload["background_present"])
+        self.assertTrue(payload["frame_present"])
+        self.assertEqual(payload["showcases"][0]["item_count"], 1)
+
     def test_doctor_has_safe_fallback_without_ai(self):
         result = fallback_doctor({"avatar": "https://example.invalid/avatar.jpg"}, "ru")
         self.assertEqual(result["source"], "baseline")
@@ -42,6 +52,14 @@ class ProfileInsightTests(unittest.TestCase):
         self.assertEqual(result["concepts"][0]["palette"], ["#12ABEF", "#000000"])
         self.assertEqual(len(result["concepts"][0]["search_queries"]), 4)
         self.assertLessEqual(len(result["concepts"][0]["showcase_prompt"]), 800)
+
+    def test_design_accepts_directions_alias(self):
+        result = _normalize_result("design", {"summary": "ok", "directions": [{"title": "one"}]})
+        self.assertEqual(result["concepts"][0]["title"], "one")
+
+    def test_doctor_priority_must_be_an_action(self):
+        result = _normalize_result("doctor", {"priority": "medium", "recommendations": ["Change the frame."]})
+        self.assertEqual(result["priority"], "Change the frame.")
 
 
 if __name__ == "__main__":

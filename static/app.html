@@ -50,8 +50,8 @@
     <button data-tab="upscale" data-i="nav_upscale">Upscale</button>
     <button data-tab="hex" data-i="nav_hex">HEX</button>
     <button data-tab="check">Steam Check</button>
-    <button data-tab="doctor">Profile Doctor</button>
-    <button data-tab="design-ai">Smart Design</button>
+    <button data-tab="doctor" data-i="nav_doctor">Profile Doctor</button>
+    <button data-tab="design-ai" data-i="nav_design-ai">Smart Design</button>
         <button data-tab="preview" data-i="nav_preview">Profile</button>
     <button data-tab="steam" data-i="nav_steam">Steam</button>
     <button data-tab="da" data-i="nav_da">DeviantArt</button>
@@ -596,29 +596,29 @@
   <section class="tab" id="tab-doctor">
     <div class="insight-tool" data-insight-kind="doctor">
       <div class="insight-tool__intro card">
-        <small>AI / PROFILE AUDIT</small><h2>Profile Doctor</h2>
+        <small>AI / PROFILE AUDIT</small><h2 data-insight-ui="doctor-title">Profile Doctor</h2>
         <p data-insight="doctor-copy">Paste any public Steam profile. The doctor reviews its structure and visual consistency and suggests what to keep, change or add.</p>
-        <label class="field"><span>Steam profile URL</span><input class="insight-url" type="url" placeholder="https://steamcommunity.com/id/..."/></label>
+        <label class="field"><span data-insight-ui="url-label">Steam profile URL</span><input class="insight-url" type="url" placeholder="https://steamcommunity.com/id/..."/></label>
         <button class="btn insight-run" type="button">Analyze profile</button>
-        <p class="insight-note">Free: one analysis per week · Pro: expanded access. The score is an AI estimate.</p>
+        <p class="insight-note" data-insight-ui="doctor-note">Free: one analysis per week · Pro: expanded access. The score is an AI estimate.</p>
         <div class="status insight-status" aria-live="polite"></div>
       </div>
-      <div class="insight-tool__result card"><div class="insight-empty">PROFILE / DIAGNOSTICS<br/><b>Waiting for a public profile</b></div></div>
+      <div class="insight-tool__result card"><div class="insight-empty" data-insight-ui="doctor-empty">PROFILE / DIAGNOSTICS<br/><b>Waiting for a public profile</b></div></div>
     </div>
   </section>
 
   <section class="tab" id="tab-design-ai">
     <div class="insight-tool" data-insight-kind="design">
       <div class="insight-tool__intro card">
-        <small>AI / ART DIRECTION</small><h2>Smart Design</h2>
+        <small>AI / ART DIRECTION</small><h2 data-insight-ui="design-title">Smart Design</h2>
         <p data-insight="design-copy">Get three static showcase directions that match an existing public Steam profile.</p>
-        <label class="field"><span>Steam profile URL</span><input class="insight-url" type="url" placeholder="https://steamcommunity.com/id/..."/></label>
-        <label class="field"><span>Preferred style</span><select class="insight-style"><option value="auto">Detect automatically</option><option value="anime">Anime</option><option value="cyberpunk">Cyberpunk</option><option value="minimal">Minimal</option><option value="dark">Dark</option><option value="fantasy">Fantasy</option><option value="realism">Realism</option><option value="retro">Retro</option></select></label>
+        <label class="field"><span data-insight-ui="url-label">Steam profile URL</span><input class="insight-url" type="url" placeholder="https://steamcommunity.com/id/..."/></label>
+        <label class="field"><span data-insight-ui="style-label">Preferred style</span><select class="insight-style"><option value="auto" data-insight-ui="style-auto">Detect automatically</option><option value="anime">Anime</option><option value="cyberpunk">Cyberpunk</option><option value="minimal">Minimal</option><option value="dark">Dark</option><option value="fantasy">Fantasy</option><option value="realism">Realism</option><option value="retro">Retro</option></select></label>
         <button class="btn insight-run" type="button">Create 3 directions</button>
-        <p class="insight-note">Pro only · Static references, not a generated profile. Results are AI estimates.</p>
+        <p class="insight-note" data-insight-ui="design-note">Pro only · Static references, not a generated profile. Results are AI estimates.</p>
         <div class="status insight-status" aria-live="polite"></div>
       </div>
-      <div class="insight-tool__result card"><div class="insight-empty">STYLE / DIRECTION<br/><b>Choose a profile and style</b></div></div>
+      <div class="insight-tool__result card"><div class="insight-empty" data-insight-ui="design-empty">STYLE / DIRECTION<br/><b>Choose a profile and style</b></div></div>
     </div>
   </section>
 
