@@ -157,13 +157,13 @@
       ['/gallery', ru ? 'Галерея' : 'Gallery'],
       ['/profile', ru ? 'Профиль' : 'Profile'],
       ['/#pricing', ru ? 'Тарифы' : 'Pricing'],
-      ['/#faq', 'FAQ'],
-      ['https://t.me/showcasemaker', ru ? 'Telegram-канал' : 'Telegram channel', true]
+      ['/#faq', 'FAQ']
     ];
     return '<footer class="ss-foot"><div class="ss-wrap ss-foot__in">' +
       '<nav class="ss-foot__nav">' + links.map(function (l) {
         return '<a href="' + l[0] + '"' + (l[2] ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + esc(l[1]) + '</a>';
       }).join('') + '</nav>' +
+      '<a class="ss-foot__telegram" href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer" aria-label="Telegram channel" title="Telegram">' + OAUTH_ICONS.telegram + '</a>' +
       '<p class="ss-foot__note">' +
       (ru ? 'Steam и Valve — товарные знаки Valve Corporation. Проект неофициальный и не связан с Valve.' : 'Steam and Valve are trademarks of Valve Corporation. This project is unofficial and not affiliated with Valve.') +
       '</p></div></footer>';
