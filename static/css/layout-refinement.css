@@ -50,6 +50,10 @@ body button:focus-visible,body a:focus-visible{outline:2px solid #55d9ff!importa
 .page-home .hero>p{width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;font-size:17px!important;line-height:1.6!important}
 .page-home .hero-cta{margin:0!important;flex-wrap:wrap!important;gap:16px!important;min-width:0!important}
 .page-home .hero-studio{width:100%!important;max-width:100%!important;height:auto!important;aspect-ratio:1.2!important;min-width:0!important;margin:0!important;overflow:hidden!important}
+/* Widen toward the headline while retaining the right edge and original height. */
+@media(min-width:1181px){
+  .page-home .hero>.hero-studio{width:120%!important;max-width:none!important;aspect-ratio:1.44!important;margin:0 0 0 -20%!important}
+}
 .page-home .creator-scene{inset:5% 0!important;mask-image:none!important;-webkit-mask-image:none!important}
 .page-home .creator-scene__art{object-fit:contain!important;width:100%!important;height:100%!important;animation:none!important}
 .page-home .creator-panel--process{left:2%!important;bottom:5%!important}
