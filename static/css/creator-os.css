@@ -842,6 +842,12 @@ html[lang="ru"] .page-tools .h-title::before{content:"РАБОЧАЯ ЗОНА / 
 .creator-scene__art--interfaces{z-index:2;clip-path:polygon(0 5%,32% 4%,32% 41%,20% 48%,0 58%,0 5%,100% 0,100% 100%,70% 100%,75% 75%,89% 68%,75% 59%,68% 39%,68% 0);filter:saturate(.76) hue-rotate(9deg) contrast(1.18) brightness(.82);animation:creator-interfaces 8s ease-in-out infinite alternate}
 .creator-scene__aura{position:absolute;z-index:2;left:29%;top:11%;width:45%;height:70%;border-radius:50%;background:radial-gradient(ellipse,rgba(77,222,255,.15),transparent 68%);filter:blur(18px);mix-blend-mode:screen;animation:creator-aura 4.8s ease-in-out infinite alternate;pointer-events:none}
 .creator-scene__particles{position:absolute;inset:0;z-index:4;pointer-events:none}.creator-scene__particles i{position:absolute;width:3px;height:3px;background:#8aeaff;box-shadow:0 0 10px #55d9ff;opacity:.35;animation:creator-particle 6s ease-in-out infinite}.creator-scene__particles i:nth-child(1){left:23%;top:29%}.creator-scene__particles i:nth-child(2){left:77%;top:21%;animation-delay:-1.2s}.creator-scene__particles i:nth-child(3){left:82%;top:67%;animation-delay:-2.7s}.creator-scene__particles i:nth-child(4){left:31%;top:78%;animation-delay:-3.8s}.creator-scene__particles i:nth-child(5){left:63%;top:12%;animation-delay:-4.6s}.creator-scene__particles i:nth-child(6){left:17%;top:57%;animation-delay:-5.2s}
+.creator-scene__background{position:absolute;z-index:0;inset:2% 1%;width:98%;height:96%;object-fit:cover;opacity:.68;filter:saturate(.78) contrast(1.09) brightness(.72);transform:scale(1.025) translate(calc(var(--hero-x) * -.12),calc(var(--hero-y) * -.12));will-change:transform}
+.creator-scene__character{position:absolute;z-index:3;left:26%;top:2%;width:52%;height:94%;object-fit:contain;filter:saturate(.87) contrast(1.07) drop-shadow(0 22px 35px rgba(0,0,0,.56)) drop-shadow(0 0 22px rgba(85,217,255,.16));transform-origin:50% 70%;animation:creator-breathing 4.8s ease-in-out infinite;will-change:transform}
+.creator-scene__ui{position:absolute;z-index:2;object-fit:contain;filter:saturate(.82) brightness(.86) drop-shadow(0 14px 20px rgba(0,0,0,.5));will-change:transform;pointer-events:none}
+.creator-scene__ui--color{left:1%;top:13%;width:25%;height:55%;animation:creator-ui-left 6.4s ease-in-out infinite}
+.creator-scene__ui--preview{right:0;top:9%;width:37%;height:36%;animation:creator-ui-right 7.2s ease-in-out infinite}
+.creator-scene__ui--timeline{left:4%;bottom:5%;width:47%;height:26%;animation:creator-ui-bottom 8s ease-in-out infinite}
 .creator-scene__scan{position:absolute;z-index:2;left:14%;right:10%;top:18%;height:1px;background:linear-gradient(90deg,transparent,var(--os-cyan),transparent);opacity:.7;box-shadow:0 0 20px var(--os-cyan);animation:creator-scan 5.8s ease-in-out infinite}
 .creator-panel{position:absolute;z-index:5;display:grid;gap:8px;padding:15px 17px;border:1px solid rgba(85,217,255,.26);background:rgba(5,10,18,.82);box-shadow:10px 12px 30px rgba(0,0,0,.35);backdrop-filter:blur(12px);color:#8397a9;font:650 10px/1.25 var(--os-mono);text-transform:uppercase;letter-spacing:.05em}
 .creator-panel b{color:var(--os-cyan);font:800 10px/1 var(--os-mono);letter-spacing:.16em}
@@ -857,11 +863,15 @@ html[lang="ru"] .page-tools .h-title::before{content:"РАБОЧАЯ ЗОНА / 
 @keyframes creator-interfaces{from{transform:scale(1.045) translate(calc(var(--hero-x) * .62 - 2px),calc(var(--hero-y) * .62 + 2px))}to{transform:scale(1.06) translate(calc(var(--hero-x) * .62 + 3px),calc(var(--hero-y) * .62 - 3px))}}
 @keyframes creator-aura{to{opacity:.68;transform:scale(1.08)}}
 @keyframes creator-particle{0%,100%{transform:translate3d(0,8px,0);opacity:.12}50%{transform:translate3d(5px,-15px,0);opacity:.65}}
+@keyframes creator-breathing{0%,100%{transform:translate(calc(var(--hero-x) * .3),calc(var(--hero-y) * .3 + 2px)) scale(1)}50%{transform:translate(calc(var(--hero-x) * .3),calc(var(--hero-y) * .3 - 3px)) scale(1.012,1.02)}}
+@keyframes creator-ui-left{0%,100%{transform:translate(calc(var(--hero-x) * .58),calc(var(--hero-y) * .58)) rotate(-2deg)}50%{transform:translate(calc(var(--hero-x) * .58 + 3px),calc(var(--hero-y) * .58 - 8px)) rotate(-.5deg)}}
+@keyframes creator-ui-right{0%,100%{transform:translate(calc(var(--hero-x) * .7),calc(var(--hero-y) * .7)) rotate(1.5deg)}50%{transform:translate(calc(var(--hero-x) * .7 - 4px),calc(var(--hero-y) * .7 + 7px)) rotate(.2deg)}}
+@keyframes creator-ui-bottom{0%,100%{transform:translate(calc(var(--hero-x) * .48),calc(var(--hero-y) * .48)) rotate(1deg)}50%{transform:translate(calc(var(--hero-x) * .48 + 6px),calc(var(--hero-y) * .48 - 5px)) rotate(-.4deg)}}
 @keyframes creator-scan{0%,100%{transform:translateY(0);opacity:.18}50%{transform:translateY(330px);opacity:.75}}
 @keyframes creator-float-a{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-9px,0)}}
 @keyframes creator-float-b{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(7px,8px,0)}}
 
-@media(prefers-reduced-motion:reduce){.creator-scene__art--character,.creator-scene__art--interfaces,.creator-scene__aura,.creator-scene__particles i,.creator-scene__scan{animation:none!important}.creator-scene{--hero-x:0px!important;--hero-y:0px!important}}
+@media(prefers-reduced-motion:reduce){.creator-scene__character,.creator-scene__ui,.creator-scene__aura,.creator-scene__particles i,.creator-scene__scan{animation:none!important}.creator-scene{--hero-x:0px!important;--hero-y:0px!important}}
 
 .page-home .mock{box-shadow:14px 14px 0 #101a26!important}
 .page-home .section{padding:clamp(64px,7vw,104px) 0!important}
