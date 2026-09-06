@@ -21,7 +21,7 @@
       checks: { format: 'Format', geometry: 'Geometry', weight: 'Weight', animation: 'Animation', sync: 'Sync', hex21: 'HEX 21', set: 'Complete set', naming: 'Order' },
       issues: {
         empty: 'The file is empty.', unreadable: 'The image is damaged or cannot be read.', unsupported_format: 'Steam-ready output must be PNG, JPG or GIF.',
-        file_too_large: 'The file exceeds 5 MB.', hex21_missing: 'HEX 21 is not applied.', animation_too_long: 'The animation is longer than 8 seconds.', too_many_frames: 'The animation contains too many frames.'
+        file_too_large: 'The file exceeds 5 MB.', hex21_missing: 'HEX 21 is not applied.', animation_too_long: 'The animation is longer than 8 seconds.', too_many_frames: 'The animation contains too many frames.', auxiliary_not_for_upload: 'Auxiliary file — keep it for preview or storage, do not upload it to Steam.'
       },
       checkHelp: {
         format: 'One or more files are damaged or not PNG, JPG or GIF.', weight: 'Every final Steam file must be no larger than 5 MB.',
@@ -47,7 +47,7 @@
       checks: { format: 'Формат', geometry: 'Размеры', weight: 'Вес', animation: 'Анимация', sync: 'Синхронность', hex21: 'HEX 21', set: 'Комплект', naming: 'Порядок' },
       issues: {
         empty: 'Файл пустой.', unreadable: 'Изображение повреждено или не читается.', unsupported_format: 'Готовый файл для Steam должен быть PNG, JPG или GIF.',
-        file_too_large: 'Файл превышает 5 МБ.', hex21_missing: 'Не применён HEX 21.', animation_too_long: 'Анимация длиннее 8 секунд.', too_many_frames: 'В анимации слишком много кадров.'
+        file_too_large: 'Файл превышает 5 МБ.', hex21_missing: 'Не применён HEX 21.', animation_too_long: 'Анимация длиннее 8 секунд.', too_many_frames: 'В анимации слишком много кадров.', auxiliary_not_for_upload: 'Вспомогательный файл — оставь для просмотра или хранения, в Steam его загружать не нужно.'
       },
       checkHelp: {
         format: 'Один или несколько файлов повреждены либо имеют формат не PNG, JPG или GIF.', weight: 'Каждый итоговый файл для Steam должен весить не больше 5 МБ.',
@@ -205,7 +205,8 @@
       const files = group.files.map((file) => {
         const issues = (file.issues || []).map((issue) => '<div class="steam-check__issue ' + (issue.severity === 'fail' ? 'is-fail' : '') + '">' + esc(issueText(issue)) + '</div>').join('');
         const duration = file.animated ? (Number(file.duration_ms || 0) / 1000).toFixed(2) + 's · ' + file.frames + 'f · ' + Number(file.fps || 0).toFixed(1) + 'fps' : '—';
-        return '<div class="steam-check__file-report"><strong title="' + esc(file.name) + '">' + esc(file.name) + '</strong>' +
+        const rowState = file.auxiliary ? ' is-auxiliary' : ((file.issues || []).some((issue) => issue.severity === 'fail') ? ' is-invalid' : '');
+        return '<div class="steam-check__file-report' + rowState + '"><strong title="' + esc(file.name) + '">' + esc(file.name) + '</strong>' +
           '<span class="steam-check__datum">' + esc(file.format || '—') + '</span><span class="steam-check__datum">' + file.width + '×' + file.height + '</span>' +
           '<span class="steam-check__datum">' + bytes(file.size) + '</span><span class="steam-check__datum">' + esc(duration) + '</span>' + issues + '</div>';
       }).join('');

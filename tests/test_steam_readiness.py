@@ -82,6 +82,15 @@ class SteamReadinessTests(unittest.TestCase):
         self.assertTrue(all(item.data.endswith(b"\x21") for item in fixed))
         self.assertEqual(analyze_group("Files", fixed, "workshop")["status"], "ready")
 
+    def test_oversized_auxiliary_is_warning_but_set_stays_ready(self):
+        files = [Candidate(f"part_{index}.png", png_bytes((150, 100))) for index in range(1, 6)]
+        auxiliary = Candidate("full_with_bars.png", png_bytes((750, 100)) + b"x" * (5 * 1024 * 1024))
+        report = analyze_group("Files", files + [auxiliary], "workshop")
+        aux_report = next(item for item in report["files"] if item["auxiliary"])
+        self.assertEqual(report["status"], "ready")
+        self.assertTrue(all(issue["severity"] == "warn" for issue in aux_report["issues"]))
+        self.assertIn("auxiliary_not_for_upload", [issue["code"] for issue in aux_report["issues"]])
+
 
 if __name__ == "__main__":
     unittest.main()

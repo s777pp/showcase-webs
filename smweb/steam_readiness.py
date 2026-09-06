@@ -126,7 +126,12 @@ def analyze_group(name: str, candidates: list[Candidate], requested_mode: str = 
     for item in inspected:
         item["auxiliary"] = bool(_AUXILIARY.search(item["name"]))
         if item["auxiliary"]:
-            item["issues"] = [issue for issue in item["issues"] if issue["code"] != "hex21_missing"]
+            item["issues"] = [
+                {**issue, "severity": "warn"}
+                for issue in item["issues"]
+                if issue["code"] != "hex21_missing"
+            ]
+            item["issues"].append({"code": "auxiliary_not_for_upload", "severity": "warn"})
     primary = [item for item in inspected if not _AUXILIARY.search(item["name"])]
     mode = _mode_from_files(primary, requested_mode)
     checks = []

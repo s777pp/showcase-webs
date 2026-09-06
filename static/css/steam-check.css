@@ -67,6 +67,10 @@
 .steam-check__group-notes li::marker{color:var(--node-color)}
 .steam-check__group-notes b{color:#cbdce3;font-weight:750}
 .steam-check__file-report{display:grid;grid-template-columns:minmax(150px,1fr) repeat(4,minmax(68px,.45fr));gap:10px;align-items:center;padding:12px 15px;border-bottom:1px solid rgba(139,215,238,.08)}
+.steam-check__file-report.is-auxiliary{border-left:3px solid #f3bd4e;background:rgba(243,189,78,.065)}
+.steam-check__file-report.is-auxiliary>strong{color:#ffd77d}
+.steam-check__file-report.is-invalid{border-left:3px solid #ff5f72;background:rgba(255,95,114,.07)}
+.steam-check__file-report.is-invalid>strong{color:#ff8a98}
 .steam-check__file-report:last-child{border:0}
 .steam-check__file-report>strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
 .steam-check__datum{color:#738699;font:10px Consolas,monospace;text-align:right}

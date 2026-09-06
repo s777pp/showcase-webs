@@ -1,0 +1,38 @@
+(function () {
+  'use strict';
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const ru = () => (window.SMLang && SMLang.get ? SMLang.get() : document.documentElement.lang) === 'ru';
+  const words = () => ru() ? {
+    wait:'Получаем публичный профиль…', analysis:'Анализируем оформление…', failed:'Не удалось выполнить анализ.', estimate:'Оценка ИИ', strengths:'Что уже работает', recommendations:'Что улучшить', priority:'С чего начать', baseline:'Gemini временно недоступен — показан базовый анализ.', search:'Посмотреть примеры', doctor:'Доктор профиля', design:'Подбор оформления', doctorCopy:'Вставь ссылку на любой публичный профиль Steam. Доктор оценит структуру и визуальную целостность и подскажет, что оставить, изменить или добавить.', designCopy:'Получи три направления для статичных витрин, подходящих к существующему публичному профилю Steam.', doctorRun:'Анализировать профиль', designRun:'Создать 3 направления'
+  } : {wait:'Loading the public profile…',analysis:'Analyzing the design…',failed:'Could not complete the analysis.',estimate:'AI estimate',strengths:'What already works',recommendations:'What to improve',priority:'Start here',baseline:'Gemini is temporarily unavailable — baseline analysis shown.',search:'View examples',doctor:'Profile Doctor',design:'Smart Design',doctorCopy:'Paste any public Steam profile. The doctor reviews its structure and visual consistency and suggests what to keep, change or add.',designCopy:'Get three static showcase directions that match an existing public Steam profile.',doctorRun:'Analyze profile',designRun:'Create 3 directions'};
+
+  function applyLanguage(){const w=words(),doctorNav=document.querySelector('#nav button[data-tab="doctor"]'),designNav=document.querySelector('#nav button[data-tab="design-ai"]');if(doctorNav)doctorNav.textContent=w.doctor;if(designNav)designNav.textContent=w.design;document.querySelectorAll('.insight-tool').forEach(tool=>{const kind=tool.dataset.insightKind,copy=tool.querySelector('[data-insight]'),button=tool.querySelector('.insight-run');if(copy)copy.textContent=kind==='doctor'?w.doctorCopy:w.designCopy;if(button)button.textContent=kind==='doctor'?w.doctorRun:w.designRun})}
+
+  function list(title, items) { return items && items.length ? '<section><h3>'+esc(title)+'</h3><ul class="insight-list">'+items.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></section>' : ''; }
+  function renderDoctor(root, result) {
+    const w=words(); root.innerHTML='<div class="insight-report__head"><small>'+esc(w.estimate)+'</small><div class="insight-score">'+esc(result.score || 0)+'<small>/100</small></div><p>'+esc(result.summary||'')+'</p>'+(result.warning?'<p>'+esc(w.baseline)+'</p>':'')+'</div><div class="insight-report__body">'+list(w.strengths,result.strengths)+list(w.recommendations,result.recommendations)+(result.priority?'<section><h3>'+esc(w.priority)+'</h3><p>'+esc(result.priority)+'</p></section>':'')+'</div>';
+  }
+  function renderDesign(root, result) {
+    const w=words(), concepts=Array.isArray(result.concepts)?result.concepts.slice(0,3):[];
+    root.innerHTML='<div class="insight-report__head"><small>'+esc(w.estimate)+'</small><h2>'+esc(result.summary||'3 directions')+'</h2></div><div class="insight-report__body"><div class="insight-concepts">'+concepts.map(c=>'<article class="insight-concept"><small>'+esc(c.style||'')+'</small><h3>'+esc(c.title||'')+'</h3><div class="insight-palette">'+(c.palette||[]).slice(0,5).map(color=>'<i style="background:'+(/^#[0-9a-f]{6}$/i.test(color)?color:'#132230')+'"></i>').join('')+'</div><p>'+esc(c.why_it_fits||'')+'</p><p>'+esc(c.showcase_prompt||'')+'</p>'+(c.search_queries||[]).slice(0,4).map(q=>'<a class="insight-query" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&q='+encodeURIComponent(q)+'">'+esc(w.search)+': '+esc(q)+'</a>').join('')+'</article>').join('')+'</div></div>';
+  }
+  async function poll(jobId, status, bar) {
+    for(let i=0;i<200;i++){
+      const response=await fetch('/api/profile-insights/status/'+encodeURIComponent(jobId),{credentials:'include',cache:'no-store'}), data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.ok) throw Error(data.msg||words().failed);
+      bar.style.width=Math.max(2,data.pct||0)+'%'; status.textContent=data.stage==='analysis'?words().analysis:words().wait;
+      if(data.status==='done') return data.result;
+      if(data.status==='error') throw Error(data.error||words().failed);
+      await new Promise(resolve=>setTimeout(resolve,900));
+    } throw Error(words().failed);
+  }
+  document.querySelectorAll('.insight-tool').forEach(tool=>{
+    const kind=tool.dataset.insightKind, button=tool.querySelector('.insight-run'), status=tool.querySelector('.insight-status'), result=tool.querySelector('.insight-tool__result');
+    button.onclick=async()=>{
+      const url=tool.querySelector('.insight-url').value.trim(); if(!url) return;
+      button.disabled=true; status.className='status insight-status'; status.innerHTML=esc(words().wait)+'<div class="insight-progress"><i style="width:2%"></i></div>'; const bar=status.querySelector('i');
+      try{const response=await fetch('/api/profile-insights/start',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,url,style:tool.querySelector('.insight-style')?.value||'auto',language:ru()?'ru':'en'})}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.msg||words().failed);const output=await poll(data.job_id,status,bar);status.textContent='';kind==='doctor'?renderDoctor(result,output):renderDesign(result,output)}catch(error){status.className='status err insight-status';status.textContent=error.message||words().failed}finally{button.disabled=false}
+    };
+  });
+  window.addEventListener('sm:langchange',applyLanguage);applyLanguage();
+})();

@@ -18,6 +18,7 @@ REDIS_URL = (os.environ.get("REDIS_URL") or "").strip()
 _local_jobs: dict[str, dict] = {}
 _local_usage: dict[str, dict] = {}
 _local_sessions: dict[str, dict] = {}
+_local_insight_history: dict[int, list[dict]] = {}
 _local_lock = threading.Lock()
 _redis = None
 
@@ -36,6 +37,7 @@ USER_JOBS_KEY = "sm:jobs:user:{}"
 WORKER_BEAT_KEY = "sm:worker:beat"
 JOB_TTL = 3600
 TERMINAL = ("done", "error", "cancelled")
+INSIGHT_HISTORY_KEY = "sm:profile-insights:{}"
 
 
 # ---------- connection ----------
@@ -143,7 +145,7 @@ def job_create(jid: str, data: dict, enqueue: bool = True) -> None:
                 pipe.sadd(USER_JOBS_KEY.format(uk), jid)
                 pipe.expire(USER_JOBS_KEY.format(uk), JOB_TTL)
             if enqueue:
-                if data.get("kind") == "steam_profile_import":
+                if data.get("kind") in {"steam_profile_import", "profile_insight"}:
                     queue = PROFILE_JOB_QUEUE
                 elif data.get("kind") == "upscale":
                     queue = UPSCALE_JOB_QUEUE
@@ -434,3 +436,34 @@ def rate_limit(key: str, limit: int, window_sec: int) -> tuple[bool, int]:
         data["n"] = int(data.get("n") or 0) + 1
         _local_usage[bucket] = data
         return data["n"] <= limit, max(0, limit - data["n"])
+
+
+def profile_insight_history_add(user_id: int, item: dict, ttl: int = 7 * 86400) -> None:
+    safe = json.dumps(item, ensure_ascii=False)
+    r = _r()
+    if r:
+        try:
+            key = INSIGHT_HISTORY_KEY.format(int(user_id))
+            pipe = r.pipeline()
+            pipe.lpush(key, safe)
+            pipe.ltrim(key, 0, 9)
+            pipe.expire(key, ttl)
+            pipe.execute()
+            return
+        except Exception as e:
+            _note(e)
+    with _local_lock:
+        rows = _local_insight_history.setdefault(int(user_id), [])
+        rows.insert(0, dict(item))
+        del rows[10:]
+
+
+def profile_insight_history(user_id: int) -> list[dict]:
+    r = _r()
+    if r:
+        try:
+            return [json.loads(row) for row in r.lrange(INSIGHT_HISTORY_KEY.format(int(user_id)), 0, 9)]
+        except Exception as e:
+            _note(e)
+    with _local_lock:
+        return [dict(row) for row in _local_insight_history.get(int(user_id), [])]

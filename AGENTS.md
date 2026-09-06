@@ -14,7 +14,8 @@ Current state as of 2026-09-06:
 - Async CPU processing and shared result storage work in production.
 - Public Steam profile import uses a Bright Data remote browser because direct Steam requests from the VPS are frequently HTTP 429.
 - The latest work embeds the Pro-only **Steam Check / Готово для Steam** report at the end of normal Process jobs, adds a guided handoff to SteamShowcase Helper 0.9.8, and adds a lossless safe-fix download for naming/order and HEX 21. It does not silently resize or recompress failed output.
-- The complete test suite currently contains 27 tests and passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`.
+- Profile Doctor and Smart Design now have first-version async APIs/UI. They reuse the Bright Data profile queue and optionally use Gemini multimodal analysis; production still requires `GEMINI_API_KEY` configuration and real-profile QA.
+- The complete test suite currently contains 32 tests and passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`.
 
 Do not trust older notes claiming `processor.py` or `requirements.txt` are currently modified. Always run `git status --short` for live state.
 
@@ -230,6 +231,24 @@ Version 0.9.8 adds a constrained website-to-extension protocol:
 
 The Chrome Web Store extension ID is referenced client-side so the site can detect the installed helper. Site deployment requiring 0.9.8 should be coordinated with publishing/testing the 0.9.8 extension package; until the store update is available, users receive the install/update prompt.
 
+## 6.1 Profile Doctor and Smart Design (Initial Version)
+
+Both tools are separate Tools tabs and share one background pipeline:
+
+`POST /api/profile-insights/start -> Redis profile queue -> Bright Data Steam import -> bounded Gemini multimodal request -> Redis result/history`
+
+- `kind=doctor`: authenticated; Free is limited to one run per seven-day Redis window, Pro has a hidden daily abuse cap. If Gemini is unavailable, it returns an explicitly labeled deterministic baseline instead of inventing AI output.
+- `kind=design`: Pro-only and requires Gemini; returns up to three static showcase directions, palettes, prompts, and image-search queries. It does not generate a fake complete profile and does not store reference media.
+- `GET /api/profile-insights/status/{job_id}` is owner-only.
+- `GET /api/profile-insights/history` returns up to ten owner-only results. Redis history expires after seven days.
+- `smweb/profile_insights.py` contains the single universal prompt, bounded profile projection, Gemini client, fallback, and Steam-CDN visual collection.
+- `smweb/profile_insight_jobs.py` owns the network job. `worker.py` routes `profile_insight` onto the profile pool, not the CPU media pool.
+- `smweb/routers/profile_insights.py`, `static/js/profile-insights.js`, and `static/css/profile-insights.css` are the API/UI boundary.
+
+Security boundaries: only public `https://steamcommunity.com/id|profiles/...` URLs are accepted; visual context can only be fetched from allowlisted Steam CDN suffixes, redirect destinations are revalidated, each source image is capped and re-encoded to a bounded JPEG, profile text is explicitly treated as untrusted prompt data, AI text is rendered escaped, API keys remain server-side, and errors sent to clients are sanitized.
+
+Required production variables are documented in `.env.example`: `GEMINI_API_KEY`, optional `GEMINI_MODEL`, and `PROFILE_AI_PRO_DAILY`. A consumer Gemini/Google AI subscription is not the API credential or API quota.
+
 ## 7. Security and Operational Decisions
 
 - Authentication is server-side session-cookie auth backed by the `sessions` table. Password hashing uses the configured PBKDF2 iteration count.
@@ -276,6 +295,7 @@ Static files are served by nginx from the repository mount, but backend/router c
 - Steam Check only has the lossless safe-fix stage. Geometry correction, upscale confirmation, synchronization, and <=5 MiB compression are unresolved.
 - Steam Check ZIP input cannot yet be handed directly to Process.
 - The integrated Process report has automated unit/syntax coverage but still needs production browser testing with real Workshop, Featured, and Artwork Split outputs and the unpacked 0.9.8 extension.
+- Profile Doctor/Smart Design need visual QA and real Gemini/Bright Data end-to-end testing. Smart Design currently shows AI palettes/directions and links to static image searches; inline licensed reference thumbnails and a richer seven-day history UI remain follow-up work.
 - Chrome extension publishing is a separate manual release. A Git/VPS deployment alone does not distribute extension 0.9.8.
 - Direct Steam profile scraping from OVH is unreliable due to Steam HTTP 429; Bright Data browser import is the current workaround and has latency/cost.
 - Modal `min_containers=0` means the first upscale after idle can be noticeably slower. Do not raise warm containers without discussing cost.

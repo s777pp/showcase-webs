@@ -153,6 +153,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # but a compromised account must not become an unbounded CPU/RAM source.
         ("/api/steam-check", 12, 300),
         ("/api/profile/steam-import", 6, 300),
+        ("/api/profile-insights/start", 6, 300),
         ("/api/profile/extension-import", 6, 300),
         ("/api/profile/asset", 20, 60),
         ("/api/profile/showcase/add", 12, 60),

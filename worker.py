@@ -49,6 +49,10 @@ def _process_one(jid: str) -> None:
             from smweb.profile_import_jobs import run
             run(jid, job)
             return
+        if job.get("kind") == "profile_insight":
+            from smweb.profile_insight_jobs import run
+            run(jid, job)
+            return
         if job.get("kind") == "compose":
             from smweb.compose_jobs import run
             run(jid, job)
