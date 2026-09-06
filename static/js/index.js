@@ -1,6 +1,8 @@
 // index.html L1395-1781
 const I18N = {
   en: {
+    menu: "Open menu",
+    page_title: "Showcase Maker — Steam showcases without the grind",
     menu_label: "Menu",
     nav_feat: "Features",
     nav_gallery: "Gallery",
@@ -155,6 +157,8 @@ const I18N = {
     notif_login: "Sign in to your account"
   },
   ru: {
+    menu: "Открыть меню",
+    page_title: "Showcase Maker — витрины Steam без рутины",
     menu_label: "Меню",
     nav_feat: "Возможности",
     nav_gallery: "Галерея",
@@ -318,9 +322,18 @@ function getLang() {
 function applyLang(L) {
   const pack = I18N[L] || I18N.en;
   document.documentElement.lang = L;
+  document.title = pack.page_title;
   document.querySelectorAll("[data-i]").forEach(function (el) {
     const k = el.getAttribute("data-i");
     if (pack[k] != null) el.innerHTML = pack[k];
+  });
+  document.querySelectorAll("[data-i-ph]").forEach(function (el) {
+    const k = el.getAttribute("data-i-ph");
+    if (pack[k] != null) el.placeholder = pack[k];
+  });
+  document.querySelectorAll("[data-i-title]").forEach(function (el) {
+    const k = el.getAttribute("data-i-title");
+    if (pack[k] != null) el.title = pack[k];
   });
   ["langBtn","langBtnNav"].forEach(function(id){
     var b = document.getElementById(id);

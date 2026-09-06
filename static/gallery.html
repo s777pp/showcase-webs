@@ -26,25 +26,25 @@
     <div style="position:relative">
       <button type="button" class="logo-menu-btn" id="logoMenuBtn" aria-expanded="false">
         <img src="/static/icon.png" alt="" onerror="this.style.display='none'"/>
-        <span>Menu</span>
+        <span data-i="nav_menu">Menu</span>
       </button>
       <div class="mobile-menu" id="mobileMenu">
-        <a href="/">Home</a>
-        <a href="/gallery">Gallery</a>
-        <a href="/profile">Profile</a>
-        <a href="/app">Tools</a>
+        <a href="/" data-i="nav_home">Home</a>
+        <a href="/gallery" data-i="nav_gallery">Gallery</a>
+        <a href="/profile" data-i="nav_profile">Profile</a>
+        <a href="/app" data-i="nav_tools">Tools</a>
         <div class="mm-sep"></div>
-        <a href="/app">Open tools →</a>
+        <a href="/app" data-i="nav_open_tools">Open tools →</a>
       </div>
     </div>
     <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/gallery" class="active">Gallery</a>
-      <a href="/profile">Profile</a>
-      <a href="/app">Tools</a>
+      <a href="/" data-i="nav_home">Home</a>
+      <a href="/gallery" class="active" data-i="nav_gallery">Gallery</a>
+      <a href="/profile" data-i="nav_profile">Profile</a>
+      <a href="/app" data-i="nav_tools">Tools</a>
     </div>
     <div class="nav-right">
-      <a class="btn-pill" href="/app">Open tools →</a>
+      <a class="btn-pill" href="/app" data-i="nav_open_tools">Open tools →</a>
     </div>
   </nav>
 </header>
@@ -98,7 +98,7 @@
   </div>
 </div>
 
-<script src="/static/js/gallery.js?v=20260903d"></script>
+<script src="/static/js/gallery.js?v=20260906-i18n"></script>
 <script src="/static/ss-shell.js?v=20260905b"></script>
 </body>
 </html>

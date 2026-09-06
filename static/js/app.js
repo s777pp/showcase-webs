@@ -230,8 +230,8 @@ document.getElementById('authSubmit').onclick = async () => {
     body: JSON.stringify({ email, password }),
   });
   let j;
-  try { j = await r.json(); } catch(e) { alert('Server error'); return; }
-  if (!j.ok) { alert(j.msg || 'Error'); return; }
+  try { j = await r.json(); } catch(e) { alert(smT('Ошибка сервера', 'Server error')); return; }
+  if (!j.ok) { alert(j.msg || smT('Ошибка', 'Error')); return; }
   state.session = j.session ? 'cookie' : '';
   if (typeof closeAuthModal === 'function') closeAuthModal(); else { try { modal.classList.remove('open'); } catch(e) {} }
   try { refreshAccountUI(); } catch(e) {}
@@ -466,7 +466,7 @@ document.getElementById('btnRun').onclick = async () => {
             });
             job = await response.json();
             if (!response.ok || !job.ok) throw new Error(job.msg || ('HTTP ' + response.status));
-            if (job.status === 'error') throw new Error(job.error || (job.errors || []).join(' · ') || 'Processing failed');
+            if (job.status === 'error') throw new Error(job.error || (job.errors || []).join(' · ') || smT('Ошибка обработки', 'Processing failed'));
             if (job.status === 'done') break;
             const realPct = Math.max(0, Math.min(99, Number(job.pct) || 0));
             setProg(40 + realPct * .58,
@@ -865,7 +865,7 @@ async function saveProfile(extraFile) {
     }
     let j;
     try { j = await r.json(); } catch (e) {
-      if (st) { st.className = 'status err'; st.textContent = 'Server error ' + r.status; }
+      if (st) { st.className = 'status err'; st.textContent = smT('Ошибка сервера: ', 'Server error: ') + r.status; }
       return;
     }
     if (st) {
@@ -1368,14 +1368,15 @@ let daItems = []; // {file, title, name}
 function renderDaList() {
   const box = document.getElementById('daList');
   if (!box) return;
+  const daPack = APP_I18N[appLang()] || APP_I18N.en;
   if (!daItems.length) {
-    box.innerHTML = '<div class="steps">No files yet</div>';
+    box.innerHTML = '<div class="steps">' + daPack.da_no_files + '</div>';
     return;
   }
   box.innerHTML = daItems.map((it, i) => `
     <div class="fi" style="align-items:center">
       <span style="flex:1;min-width:100px">${it.name}</span>
-      <input data-i="${i}" class="da-title" value="${(it.title||'').replace(/"/g,'&quot;')}" placeholder="Title on DeviantArt" style="flex:2;min-width:140px;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text)"/>
+      <input data-i="${i}" class="da-title" value="${(it.title||'').replace(/"/g,'&quot;')}" placeholder="${daPack.da_title_placeholder}" style="flex:2;min-width:140px;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text)"/>
       <button type="button" class="btn ghost da-rm" data-i="${i}" style="min-height:36px;padding:6px 10px">✕</button>
     </div>`).join('');
   box.querySelectorAll('.da-title').forEach(inp => {
@@ -1856,21 +1857,21 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   if (!hexFiles.length) return;
   const st = document.getElementById('hexStatus');
   const dl = document.getElementById('hexDl');
-  st.className = 'status'; st.textContent = 'Applying HEX 21…';
+  st.className = 'status'; st.textContent = smT('Применяем HEX 21…', 'Applying HEX 21…');
   dl.style.display = 'none';
   const fd = new FormData();
   hexFiles.forEach(f => fd.append('files', f));
   try {
     const r = await fetch('/api/hex21', { method: 'POST', body: fd, headers: headers(), credentials: 'include' });
     if (!r.ok) {
-      let msg = 'Error';
+      let msg = smT('Ошибка', 'Error');
       try { const j = await r.json(); msg = j.msg || msg; } catch(e) { msg = await r.text(); }
       st.className = 'status err'; st.textContent = msg; return;
     }
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
     dl.href = url; dl.download = 'hex21.zip'; dl.style.display = 'inline-flex';
-    st.className = 'status ok'; st.textContent = 'Done — last byte set to 0x21';
+    st.className = 'status ok'; st.textContent = smT('Готово — последний байт заменён на 0x21', 'Done — last byte set to 0x21');
     try { refreshQuota(); } catch(e) {}
   } catch (e) {
     st.className = 'status err'; st.textContent = String(e);
@@ -1907,6 +1908,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       up_pick: "Choose an image, GIF or video", up_wait: "Queued for GPU processing…",
       up_done: "Done — drag the slider to compare before/after",
       login: "Log in", logout: "Log out", buy: "Buy Pro", buy_key: "Buy Key", reg: "Sign up", apply: "Apply",
+      auth_discord: "Continue with Discord", auth_telegram: "Continue with Telegram",
       save_profile: "Save profile", back: "← Home",
       title_process: "Process", sub_process: "Workshop / Featured / Split cuts, watermark and Steam ZIP",
       title_compose: "Character + BG", sub_compose: "Composite character on background, then send to Process",
@@ -2020,6 +2022,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       dl_audio: "Audio", dl_file: "Download file", gif_encoder_title: "How GIF is encoded",
       da_disconnected: "DA: not connected", da_connected: "DA: connected", da_disconnect: "Disconnect",
       da_add_files: "Add files", da_clear_files: "Clear list", da_upload: "Upload to Sta.sh",
+      da_no_files: "No files yet", da_title_placeholder: "Title on DeviantArt", da_files_count: "Files",
       ph_code: "Access code",
       free: "Free", pro: "Pro"
     },
@@ -2050,6 +2053,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       up_pick: "Выбери изображение, GIF или видео", up_wait: "Задача поставлена в очередь GPU…",
       up_done: "Готово — двигай ползунок, чтобы сравнить до/после",
       login: "Войти", logout: "Выйти", buy: "Купить Pro", buy_key: "Купить ключ", reg: "Регистрация", apply: "Применить",
+      auth_discord: "Продолжить с Discord", auth_telegram: "Продолжить с Telegram",
       save_profile: "Сохранить профиль", back: "← На главную",
       title_process: "Обработка", sub_process: "Нарезка Workshop / Featured / Split, водяной знак и ZIP для Steam",
       title_compose: "Персонаж + фон", sub_compose: "Наложить персонажа на фон и отправить в Обработку",
@@ -2163,6 +2167,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       dl_audio: "Аудио", dl_file: "Скачать файл", gif_encoder_title: "Способ кодирования GIF",
       da_disconnected: "DA: не подключено", da_connected: "DA: подключено", da_disconnect: "Отключить",
       da_add_files: "Добавить файлы", da_clear_files: "Очистить список", da_upload: "Загрузить в Sta.sh",
+      da_no_files: "Файлы ещё не добавлены", da_title_placeholder: "Название на DeviantArt", da_files_count: "Файлов",
       ph_code: "Код доступа",
       free: "Free", pro: "Pro"
     }
@@ -2233,6 +2238,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       var ps = document.getElementById("pageSub");
       if (pt && pack["title_" + tab]) pt.textContent = pack["title_" + tab];
       if (ps && pack["sub_" + tab]) ps.textContent = pack["sub_" + tab];
+      if (pack["title_" + tab]) document.title = pack["title_" + tab] + " · Showcase Maker";
     }
 
     var lb = document.getElementById("langBtn");
@@ -2590,6 +2596,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     var box = document.getElementById("daList");
     if (!box) return;
     var items = window.__daItems || [];
+    var daPack = APP_I18N[appLang()] || APP_I18N.en;
     if (!items.length) {
       box.innerHTML = "";
       return;
@@ -2600,7 +2607,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
         (it.name || "") + "</span>" +
         '<input class="da-title" data-i="' + i + '" value="' +
         String(it.title || "").replace(/"/g, "&quot;") +
-        '" style="flex:1;min-width:100px" placeholder="Title"/>' +
+        '" style="flex:1;min-width:100px" placeholder="' + daPack.da_title_placeholder + '"/>' +
         '<button type="button" class="btn ghost da-rm" data-i="' + i + '" style="padding:4px 10px">×</button></div>';
     }).join("");
     box.querySelectorAll(".da-title").forEach(function (inp) {
@@ -2634,7 +2641,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       f.value = "";
       f.click();
     } catch (e) {
-      alert("Cannot open file dialog: " + e);
+      alert(smT("Не удалось открыть выбор файла: ", "Cannot open file dialog: ") + e);
     }
   };
 
@@ -2653,7 +2660,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     var st = document.getElementById("daMsg");
     if (st) {
       st.className = "status ok";
-      st.textContent = "Files: " + window.__daItems.length;
+      st.textContent = (APP_I18N[appLang()] || APP_I18N.en).da_files_count + ": " + window.__daItems.length;
     }
   }
 

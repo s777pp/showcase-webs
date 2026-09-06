@@ -6,6 +6,8 @@
   /* ---- i18n ---- */
   const GDICT = {
     en: {
+      page_title: 'Gallery · Showcase Maker',
+      nav_menu: 'Menu', nav_home: 'Home', nav_gallery: 'Gallery', nav_profile: 'Profile', nav_tools: 'Tools', nav_open_tools: 'Open tools →',
       gal_carousel: 'Carousel',
       gal_feed: 'Feed',
       gal_loading: 'Loading the gallery…',
@@ -21,6 +23,8 @@
       untitled: 'Untitled', anonymous: 'anonymous', by: 'by', showcase: 'Showcase'
     },
     ru: {
+      page_title: 'Галерея · Showcase Maker',
+      nav_menu: 'Меню', nav_home: 'Главная', nav_gallery: 'Галерея', nav_profile: 'Профиль', nav_tools: 'Инструменты', nav_open_tools: 'Открыть инструменты →',
       gal_carousel: 'Карусель',
       gal_feed: 'Лента',
       gal_loading: 'Загрузка галереи…',
@@ -40,6 +44,7 @@
   function gT(k) { const p = GDICT[gLang()] || GDICT.en; return p[k] != null ? p[k] : (GDICT.en[k] || ''); }
   function applyGalleryLang() {
     const pack = GDICT[gLang()] || GDICT.en;
+    document.title = pack.page_title;
     if (window.SMLang && SMLang.apply) { SMLang.apply(pack); return; }
     $$('[data-i]').forEach((el) => { const v = pack[el.getAttribute('data-i')]; if (v != null) el.textContent = v; });
     $$('[data-i-ph]').forEach((el) => { const v = pack[el.getAttribute('data-i-ph')]; if (v != null) el.placeholder = v; });
