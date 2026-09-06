@@ -212,7 +212,8 @@ def generate(kind: str, profile: dict, language: str = "en", style: str = "auto"
         if kind == "doctor" else
         "Return summary and exactly 3 compact concepts. Each concept: title, style, 3-5 hex colors in palette, showcase_prompt, up to 4 search_queries, and why_it_fits. Keep summary under 300 characters; showcase_prompt and why_it_fits under 500 characters each; every search query under 100 characters. Do not add prose outside these fields."
     )
-    prompt = SYSTEM_PROMPT + f"\nOUTPUT_LANGUAGE={language}\nREQUESTED_STYLE={style}\nTASK={task}\nPROFILE_DATA_START\n" + json.dumps(profile_payload(profile), ensure_ascii=False) + "\nPROFILE_DATA_END"
+    output_language = "Russian" if language == "ru" else "English"
+    prompt = SYSTEM_PROMPT + f"\nOUTPUT_LANGUAGE={output_language}\nEvery natural-language string in the JSON must be written in {output_language}; do not mix interface languages.\nREQUESTED_STYLE={style}\nTASK={task}\nPROFILE_DATA_START\n" + json.dumps(profile_payload(profile), ensure_ascii=False) + "\nPROFILE_DATA_END"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
     content_parts = [{"text": prompt}]
     content_parts.extend(_visual_parts(profile))

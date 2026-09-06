@@ -110,6 +110,8 @@ async function refreshQuota() {
   const btnOut = document.getElementById('btnLogout');
   const btnAuth = document.getElementById('btnAuth');
   state.session = j.email ? 'cookie' : '';
+  const readinessHint = document.getElementById('processReadinessHint');
+  if (readinessHint) readinessHint.hidden = !!j.email;
   syncWatermarkAccess(!!j.pro);
   if (j.pro) {
     if (j.is_trial && j.remaining_sec != null) {
@@ -173,6 +175,7 @@ window.closeAuthModal = function closeAuthModal() {
 function wireAuthOpeners() {
   const map = [
     ['btnAuth', 'login'],
+    ['processReadinessLogin', 'login'],
     ['accLogin', 'login'],
     ['accRegister', 'register'],
   ];
@@ -1879,10 +1882,11 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   var DICT = {
     en: {
       nav_process: "Process", nav_compose: "Character", nav_download: "Download", nav_convert: "Converter", nav_hex: "HEX",
-      nav_preview: "Profile", nav_upscale: "Upscale", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Account", nav_about: "About", nav_doctor: "Profile Doctor", "nav_design-ai": "Smart Design",
+      nav_preview: "Profile", nav_upscale: "Upscale", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Account", nav_about: "About", nav_doctor: "Profile Rating", "nav_design-ai": "Design Selection",
       title_upscale: "Upscale", sub_upscale: "AI upscaling with detail preserved — Pro feature",
-      title_doctor: "Profile Doctor", sub_doctor: "AI review of a public Steam profile and its visual consistency",
-      "title_design-ai": "Smart Design", "sub_design-ai": "Three AI art directions for static Steam showcases",
+      title_doctor: "Rating", sub_doctor: "AI review of a public Steam profile and its visual consistency",
+      "title_design-ai": "Selection", "sub_design-ai": "Three AI art directions for static Steam showcases",
+      process_check_hint_title: "Steam readiness report", process_check_hint_body: "Sign in before processing to receive a detailed Steam compatibility report after the ZIP is built.",
       wm_preview_h: "Watermark preview",
       wm_hint: "Add a PNG/JPG/GIF/MP4 in «Files» — for video/GIF the first frame is used. Drag the watermark across the preview; the position is applied on «Process».",
       wm_empty: "No preview — add an image in «Files»",
@@ -2020,10 +2024,11 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     },
     ru: {
       nav_process: "Обработка", nav_compose: "Персонаж", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
-      nav_preview: "Профиль", nav_upscale: "Апскейл", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе", nav_doctor: "Доктор профиля", "nav_design-ai": "Подбор оформления",
+      nav_preview: "Профиль", nav_upscale: "Апскейл", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе", nav_doctor: "Оценка профиля", "nav_design-ai": "Подбор оформления",
       title_upscale: "Апскейл", sub_upscale: "ИИ-увеличение с сохранением деталей — функция Pro",
-      title_doctor: "Доктор профиля", sub_doctor: "ИИ-анализ публичного профиля Steam и визуальной целостности оформления",
-      "title_design-ai": "Подбор оформления", "sub_design-ai": "Три направления для статичных витрин с учётом текущего профиля",
+      title_doctor: "Оценка", sub_doctor: "ИИ-анализ публичного профиля Steam и визуальной целостности оформления",
+      "title_design-ai": "Подбор", "sub_design-ai": "Три направления для статичных витрин с учётом текущего профиля",
+      process_check_hint_title: "Проверка готовности для Steam", process_check_hint_body: "Войди перед обработкой, чтобы после сборки ZIP получить подробный отчёт о совместимости файлов со Steam.",
       wm_preview_h: "Превью водяного знака",
       wm_hint: "Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Перетаскивай водяной знак по предпросмотру; позиция применится при «Обработать».",
       wm_empty: "Нет превью — добавь изображение в «Файлы»",

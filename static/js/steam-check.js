@@ -132,7 +132,8 @@
 
   function paintGate() {
     const p = t();
-    const locked = !quota || !quota.pro;
+    const integratedForAccount = root.dataset.integrated === '1' && quota && quota.email;
+    const locked = !quota || (!quota.pro && !integratedForAccount);
     root.classList.toggle('is-locked', locked);
     $('steamCheckGate').hidden = !locked;
     if (!locked) return;
@@ -217,7 +218,7 @@
     lastReport = report;
     const hasZip = selected.some((file) => /\.zip$/i.test(file.name));
     const uploadGroup = report.groups.find((group) => group.mode !== 'unknown' && group.status !== 'fail');
-    const canSafeFix = selected.length && report.groups.length && report.groups.every((group) => group.mode !== 'unknown');
+    const canSafeFix = quota && quota.pro && selected.length && report.groups.length && report.groups.every((group) => group.mode !== 'unknown');
     $('steamCheckResults').innerHTML =
       '<div class="steam-check__summary"><div class="steam-check__verdict"><small>STEAM / PREFLIGHT</small><strong>' + esc(verdict) + '</strong><span>' + esc(p.statusLine.replace('{groups}', report.group_count).replace('{files}', report.file_count)) + '</span></div>' +
       '<div class="steam-check__metrics"><div class="steam-check__metric"><b>' + report.file_count + '</b><span>' + esc(p.files) + '</span></div><div class="steam-check__metric"><b>' + report.group_count + '</b><span>' + esc(p.groups) + '</span></div><div class="steam-check__metric"><b>' + problemCount + '</b><span>' + esc(p.problems) + '</span></div></div></div>' +
@@ -392,12 +393,14 @@
   window.SteamCheckResult = {
     open(report, downloadUrl) {
       if (!report || !Array.isArray(report.groups)) return false;
+      root.dataset.integrated = '1';
       resultDownload = String(downloadUrl || '');
       selected = [];
       renderFiles();
       const tab = document.querySelector('#nav button[data-tab="check"]');
       if (tab) tab.click();
       renderReport(report);
+      paintGate();
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return true;
     }

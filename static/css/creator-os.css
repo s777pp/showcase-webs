@@ -491,6 +491,8 @@ body.page-home .c3-pricing-section>.c3-grid>.c3-card{grid-column:auto!important;
   content:""!important;position:absolute!important;left:0!important;right:0!important;bottom:-16px!important;height:3px!important;
   background:var(--os-cyan)!important;box-shadow:0 0 14px rgba(85,217,255,.7)!important;
 }
+.page-tools .top-chrome .nav button[data-tab="doctor"]{--tool-icon:url('/static/img/tool-icons/profile-rating.svg')}
+.page-tools .top-chrome .nav button[data-tab="design-ai"]{--tool-icon:url('/static/img/tool-icons/design-selection.svg')}
 .page-tools .main{width:min(1500px,calc(100% - 7vw))!important;max-width:none!important;margin:0 auto!important;padding:48px 0 100px!important}
 .page-tools .back{display:inline-flex!important;margin:0 0 40px!important;color:#6f8295!important;font:700 10px/1 var(--os-mono)!important;letter-spacing:.12em!important;text-transform:uppercase!important}
 .page-tools .topbar{margin:0 0 38px!important;padding:0 0 30px!important;border-bottom:1px solid var(--os-line)!important}
@@ -518,6 +520,27 @@ body.page-home .c3-pricing-section>.c3-grid>.c3-card{grid-column:auto!important;
 .page-tools .card::before{
   content:"";position:absolute;left:-1px;top:-1px;width:42px;height:2px;background:var(--os-cyan);
 }
+.page-tools .process-readiness-hint[hidden]{display:none!important}
+.page-tools .process-readiness-hint{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 18px;align-items:center;margin-top:16px;padding:16px 18px;border:1px solid rgba(85,217,255,.2);border-left:3px solid var(--os-cyan);background:linear-gradient(90deg,rgba(85,217,255,.08),rgba(8,15,23,.9));color:#8196a7}
+.page-tools .process-readiness-hint b{color:#eaf8fb;font:800 12px/1.2 var(--os-mono);letter-spacing:.04em;text-transform:uppercase}
+.page-tools .process-readiness-hint span{grid-column:1;color:#768b9c;font-size:12px;line-height:1.5}
+.page-tools .process-readiness-hint .btn{grid-column:2;grid-row:1/3;min-width:110px}
+
+/* Steam helper: a compact upload route, replacing the old video frame. */
+.page-tools #tab-steam .steam-layout{grid-template-columns:minmax(0,1fr) minmax(300px,390px)!important;align-items:start!important}
+.page-tools #tab-steam .steam-col,.page-tools #tab-steam .steam-extension-card{min-width:0!important}
+.page-tools #tab-steam .steam-extension-card{position:sticky!important;top:92px!important;padding:26px!important;overflow:hidden!important;border:1px solid rgba(85,217,255,.22)!important;background:linear-gradient(150deg,#0d1b25 0%,#080f17 58%,#071019 100%)!important}
+.page-tools #tab-steam .steam-extension-card::before{width:100%!important;height:2px!important;background:linear-gradient(90deg,var(--os-cyan),transparent 72%)!important}
+.page-tools #tab-steam .steam-extension-card::after{content:"01  /  02  /  03";position:absolute;right:-28px;top:78px;transform:rotate(90deg);color:rgba(85,217,255,.18);font:800 9px/1 var(--os-mono);letter-spacing:.22em}
+.page-tools .steam-extension-card__kicker{display:block;color:var(--os-cyan)!important;font:800 9px/1 var(--os-mono)!important;letter-spacing:.17em!important}
+.page-tools .steam-extension-card h2{max-width:290px;margin:18px 0 14px!important;color:#f0fbff!important;font-family:var(--os-display)!important;font-size:clamp(25px,2.3vw,36px)!important;line-height:.92!important;text-transform:uppercase!important;overflow-wrap:anywhere}
+.page-tools .steam-extension-card>p{max-width:320px;margin:0!important;color:#8398a9!important;font-size:12px!important;line-height:1.65!important;overflow-wrap:anywhere}
+.page-tools .steam-extension-card__steps{counter-reset:helper-step;display:grid!important;gap:0!important;margin:24px 0!important;padding:0!important;border-top:1px solid rgba(139,215,238,.12)!important;list-style:none!important}
+.page-tools .steam-extension-card__steps li{counter-increment:helper-step;position:relative;min-width:0;padding:15px 8px 15px 42px;border-bottom:1px solid rgba(139,215,238,.12);color:#c2d2da;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+.page-tools .steam-extension-card__steps li::before{content:"0" counter(helper-step);position:absolute;left:3px;top:16px;color:var(--os-cyan);font:800 10px/1 var(--os-mono);letter-spacing:.08em}
+.page-tools .steam-extension-card__button{display:flex!important;width:100%!important;max-width:100%!important;justify-content:center!important;margin:22px 0 14px!important;white-space:normal!important;text-align:center!important}
+.page-tools .steam-extension-card__note{text-align:center!important;color:#607788!important;font-size:10px!important}
+@media(max-width:900px){.page-tools #tab-steam .steam-layout{grid-template-columns:1fr!important}.page-tools #tab-steam .steam-extension-card{position:relative!important;top:auto!important}.page-tools .process-readiness-hint{grid-template-columns:1fr}.page-tools .process-readiness-hint .btn{grid-column:1;grid-row:auto;width:100%}}
 .page-tools .modes{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:1px!important;background:var(--os-line)!important;border:1px solid var(--os-line)!important}
 .page-tools .mode{
   min-height:112px!important;padding:22px!important;border:0!important;border-radius:0!important;background:#0a1018!important;color:#7890a3!important;text-align:left!important;

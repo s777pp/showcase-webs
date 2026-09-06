@@ -30,7 +30,7 @@ class SteamReadinessTests(unittest.TestCase):
         self.assertEqual(report["status"], "ready")
         self.assertTrue(all(check["state"] == "pass" for check in report["checks"]))
 
-    def test_split_geometry_mismatch_fails(self):
+    def test_split_geometry_mismatch_is_reported_without_red_size_verdict(self):
         files = [
             Candidate("center_506.png", png_bytes((506, 200))),
             Candidate("side_100.png", png_bytes((101, 200))),
@@ -38,7 +38,7 @@ class SteamReadinessTests(unittest.TestCase):
         report = analyze_group("Files", files, "split")
         geometry = next(check for check in report["checks"] if check["id"] == "geometry")
         self.assertEqual(geometry["state"], "fail")
-        self.assertEqual(report["status"], "fail")
+        self.assertEqual(report["status"], "ready")
         self.assertEqual(report["failures"], 1)
         self.assertEqual(report["warnings"], 0)
 
@@ -47,7 +47,7 @@ class SteamReadinessTests(unittest.TestCase):
         self.assertIn("hex21_missing", {issue["code"] for issue in report["issues"]})
 
         group = analyze_group("Files", [Candidate("featured_630.png", png_bytes((630, 200), hex21=False))], "featured")
-        self.assertEqual(group["status"], "warn")
+        self.assertEqual(group["status"], "ready")
         self.assertEqual(group["failures"], 0)
         self.assertEqual(group["warnings"], 1)
 
@@ -90,6 +90,12 @@ class SteamReadinessTests(unittest.TestCase):
         self.assertEqual(report["status"], "ready")
         self.assertTrue(all(issue["severity"] == "warn" for issue in aux_report["issues"]))
         self.assertIn("auxiliary_not_for_upload", [issue["code"] for issue in aux_report["issues"]])
+
+    def test_oversized_primary_is_the_red_not_ready_verdict(self):
+        files = [Candidate(f"part_{index}.png", png_bytes((150, 100))) for index in range(1, 6)]
+        files[2] = Candidate("part_3.png", png_bytes((150, 100)) + b"x" * (5 * 1024 * 1024))
+        report = analyze_group("Files", files, "workshop")
+        self.assertEqual(report["status"], "fail")
 
 
 if __name__ == "__main__":

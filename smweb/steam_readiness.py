@@ -190,7 +190,14 @@ def analyze_group(name: str, candidates: list[Candidate], requested_mode: str = 
     # issues are details of those stages and must not be counted twice.
     failures = sum(check["state"] == "fail" for check in checks)
     warnings = sum(check["state"] == "warn" for check in checks)
-    status = "fail" if failures else ("warn" if warnings else "ready")
+    # Auxiliary exports never block upload. The red verdict is reserved for
+    # the one hard upload blocker the product currently promises to fix:
+    # a primary Steam file above 5 MiB. Other findings stay visible below.
+    oversized_primary = any(
+        issue.get("code") == "file_too_large"
+        for item in primary for issue in item.get("issues", [])
+    )
+    status = "fail" if oversized_primary else "ready"
     return {
         "name": _display_name(name), "mode": mode, "status": status,
         "files": inspected, "primary_count": len(primary), "checks": checks,
@@ -202,7 +209,7 @@ def analyze_groups(groups: dict[str, list[Candidate]], requested_mode: str = "au
     reports = [analyze_group(name, items, requested_mode) for name, items in sorted(groups.items()) if items]
     failures = sum(report["failures"] for report in reports)
     warnings = sum(report["warnings"] for report in reports)
-    status = "fail" if failures else ("warn" if warnings else "ready")
+    status = "fail" if any(report["status"] == "fail" for report in reports) else "ready"
     return {
         "status": status, "groups": reports, "group_count": len(reports),
         "file_count": sum(len(report["files"]) for report in reports),

@@ -174,7 +174,9 @@ async def api_process_start(
         "fps": fps,
         "enc": enc,
         "wm_font": wm_font,
-        "steam_check": bool(q.get("pro")),
+        # The integrated report is available to every signed-in account.
+        # Anonymous jobs still download normally and get a sign-in hint.
+        "steam_check": bool(q.get("email")),
     }
     user_key = ""
     try:

@@ -6,16 +6,17 @@ This is the root handoff and operating guide for coding agents. Read it before c
 
 SteamShowcase Maker is a bilingual (RU/EN) web application for preparing Steam profile showcases. It provides image/GIF/video processing, Workshop/Featured/Artwork Split output, profile design and import, gallery publishing, downloads, character composition, HEX 21 handling, Pro access, and Modal GPU upscaling.
 
-Current state as of 2026-09-06 (through `dff50af`):
+Current state as of 2026-09-06 (after the post-`dd2657d` UI/readiness work; verify the latest commit):
 
 - Production is an OVH Ubuntu VPS at `/opt/showcasemaker`, deployed with Docker Compose and exposed only through a Cloudflare Tunnel.
-- The local and production branch is `main`. The latest documented commit is `dff50af` (`Refine Steam tools navigation and localization`); always verify live state with `git rev-parse HEAD` and `git status --short` rather than assuming this hash is still current.
+- The local and production branch is `main`; always verify live state with `git rev-parse HEAD` and `git status --short` rather than assuming a documented hash is still current.
 - Modal upscaling works for images, GIFs, and short videos.
 - Async CPU processing and shared result storage work in production.
 - Public Steam profile import uses a Bright Data remote browser because direct Steam requests from the VPS are frequently HTTP 429.
 - The latest work embeds the Pro-only **Steam Check / Готово для Steam** report at the end of normal Process jobs, adds a guided handoff to SteamShowcase Helper 0.9.8, and adds a lossless safe-fix download for naming/order and HEX 21. Steam Check is no longer a visible top-navigation tab; its hidden internal pane is retained because successful Pro Process jobs open that report programmatically. It does not silently resize or recompress failed output.
 - Profile Doctor and Smart Design have async APIs/UI and reuse the Bright Data profile queue plus Gemini multimodal analysis. Profile facts now recognize nested/animated Steam background fields, Gemini output is schema-constrained, and Smart Design uses a larger response budget to prevent truncated JSON.
-- The complete test suite currently contains 36 tests and passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`.
+- The complete test suite currently contains 37 tests and passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`.
+- The latest readiness/localization pass exposes the integrated report to authenticated Free as well as Pro users, keeps anonymous ZIP download behavior, adds an anonymous sign-in hint, and reserves the red `NOT READY` verdict for oversized primary Steam files.
 
 Do not trust older notes claiming `processor.py` or `requirements.txt` are currently modified. Always run `git status --short` for live state.
 
@@ -233,6 +234,8 @@ The Chrome Web Store extension ID is referenced client-side so the site can dete
 
 The visible Steam tool no longer contains the old `/static/steam_upload_guide.mp4` video. Its right-hand panel is now an RU/EN extension card linking to the known Chrome Web Store ID and explaining the intended flow: choose showcase type, open Steam, manually select local files; the extension applies the transparent title and long-showcase settings. The manual console instructions on the left remain as the fallback for users without the extension.
 
+The extension card was visually refined into a bounded three-step route. Its text must wrap within a `minmax(300px,390px)` column and collapse to one column below 900px; avoid restoring large unbounded prose or a fixed-width video frame.
+
 ## 6.1 Profile Doctor and Smart Design
 
 Both tools are separate Tools tabs and share one background pipeline:
@@ -249,7 +252,9 @@ Both tools are separate Tools tabs and share one background pipeline:
 - Smart Design needs a larger output allowance than Doctor because it returns three concepts. Its current cap is 4096 output tokens plus explicit compact field limits; lowering this back to 1800 caused truncated JSON (`finishReason=MAX_TOKENS`).
 - `smweb/profile_insight_jobs.py` owns the network job. `worker.py` routes `profile_insight` onto the profile pool, not the CPU media pool.
 - `smweb/routers/profile_insights.py`, `static/js/profile-insights.js`, and `static/css/profile-insights.css` are the API/UI boundary.
-- Navigation labels, page title/subtitle, kickers, field labels, style choices, notes, and empty states are localized independently for RU and EN. Preserve both languages when changing either AI tab; do not leave static English strings visible in RU mode.
+- Product naming is now RU `Оценка профиля` / `Подбор оформления` and EN `Profile Rating` / `Design Selection`. Their large per-tab headings are RU `ОЦЕНКА` / `ПОДБОР` and EN `RATING` / `SELECTION`, not the generic Process heading.
+- Navigation labels, page title/subtitle, kickers, field labels, style choices, notes, and empty states are localized independently for RU and EN. Preserve both languages when changing either AI tab; do not leave static English strings visible in RU mode. The Gemini prompt also explicitly requires every returned natural-language string to use the requested interface language.
+- Navigation icons are `static/img/tool-icons/profile-rating.svg` (diagnostic shield/pulse) and `static/img/tool-icons/design-selection.svg` (swatches/spark), wired in `static/css/creator-os.css`.
 
 Security boundaries: only public `https://steamcommunity.com/id|profiles/...` URLs are accepted; visual context can only be fetched from allowlisted Steam CDN suffixes, redirect destinations are revalidated, each source image is capped and re-encoded to a bounded JPEG, profile text is explicitly treated as untrusted prompt data, AI text is rendered escaped, API keys remain server-side, and errors sent to clients are sanitized.
 
@@ -312,6 +317,8 @@ Static files are served by nginx from the repository mount, but backend/router c
 - Profile showcase import previously placed an author/avatar image into the first showcase slot; regression coverage is in `tests/test_showcase_avatar_filter.py`.
 - `README.md` describes only the landing-page replacement and is not a complete product README. `UPSCALER_SETUP.md` is obsolete for the current Modal flow.
 - Steam Check was visually tested in locked, unlocked, warning, RU, and EN states. Its current product entry is the Process completion flow, not top navigation. Full browser E2E with a real production Pro session is still recommended after deployment.
+- Process now sets `opts.steam_check` for any authenticated account (`quota.email`), not only Pro. Anonymous users receive the ZIP plus a localized sign-in hint; authenticated Free/Pro users receive the integrated report. The standalone upload checker and `/api/steam-check/fix-safe` remain Pro-only.
+- Readiness rows keep auxiliary files yellow and non-blocking. The headline is `READY` unless a primary Steam upload file exceeds 5 MiB; other geometry/naming/HEX/sync findings remain visible as recommendations/check states without changing the headline to red.
 
 ## 10. Files That Require Extra Care
 

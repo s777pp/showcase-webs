@@ -12,7 +12,7 @@
 
   <link rel="stylesheet" href="/static/css/mobile.css?v=20260903m"/>
   <link rel="stylesheet" href="/static/css/redesign.css?v=20260903j"/>
-  <link rel="stylesheet" href="/static/css/creator-os.css?v=20260905a"/>
+  <link rel="stylesheet" href="/static/css/creator-os.css?v=20260906b"/>
   <link rel="stylesheet" href="/static/css/steam-check.css?v=20260906e"/>
   <link rel="stylesheet" href="/static/css/profile-insights.css?v=20260906a"/>
 <link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260904c">
@@ -50,8 +50,8 @@
     <button data-tab="upscale" data-i="nav_upscale">Upscale</button>
     <button data-tab="hex" data-i="nav_hex">HEX</button>
     <button data-tab="check" hidden aria-hidden="true" tabindex="-1">Steam Check</button>
-    <button data-tab="doctor" data-i="nav_doctor">Profile Doctor</button>
-    <button data-tab="design-ai" data-i="nav_design-ai">Smart Design</button>
+    <button data-tab="doctor" data-i="nav_doctor">Profile Rating</button>
+    <button data-tab="design-ai" data-i="nav_design-ai">Design Selection</button>
         <button data-tab="preview" data-i="nav_preview">Profile</button>
     <button data-tab="steam" data-i="nav_steam">Steam</button>
     <button data-tab="da" data-i="nav_da">DeviantArt</button>
@@ -158,6 +158,11 @@
         <div class="sm-prog-sub" id="procProgSub"></div>
       </div>
       <div class="status" id="status"></div>
+      <div class="process-readiness-hint" id="processReadinessHint" hidden>
+        <b data-i="process_check_hint_title">Steam readiness report</b>
+        <span data-i="process_check_hint_body">Sign in before processing to receive a detailed Steam compatibility report after the ZIP is built.</span>
+        <button class="btn ghost" type="button" id="processReadinessLogin" data-i="login">Log in</button>
+      </div>
     </div>
   </section>
 
@@ -598,7 +603,7 @@
   <section class="tab" id="tab-doctor">
     <div class="insight-tool" data-insight-kind="doctor">
       <div class="insight-tool__intro card">
-        <small data-insight-ui="doctor-kicker">AI / PROFILE AUDIT</small><h2 data-insight-ui="doctor-title">Profile Doctor</h2>
+        <small data-insight-ui="doctor-kicker">AI / PROFILE RATING</small><h2 data-insight-ui="doctor-title">Profile Rating</h2>
         <p data-insight="doctor-copy">Paste any public Steam profile. The doctor reviews its structure and visual consistency and suggests what to keep, change or add.</p>
         <label class="field"><span data-insight-ui="url-label">Steam profile URL</span><input class="insight-url" type="url" placeholder="https://steamcommunity.com/id/..."/></label>
         <button class="btn insight-run" type="button">Analyze profile</button>
@@ -612,7 +617,7 @@
   <section class="tab" id="tab-design-ai">
     <div class="insight-tool" data-insight-kind="design">
       <div class="insight-tool__intro card">
-        <small data-insight-ui="design-kicker">AI / ART DIRECTION</small><h2 data-insight-ui="design-title">Smart Design</h2>
+        <small data-insight-ui="design-kicker">AI / DESIGN SELECTION</small><h2 data-insight-ui="design-title">Design Selection</h2>
         <p data-insight="design-copy">Get three static showcase directions that match an existing public Steam profile.</p>
         <label class="field"><span data-insight-ui="url-label">Steam profile URL</span><input class="insight-url" type="url" placeholder="https://steamcommunity.com/id/..."/></label>
         <label class="field"><span data-insight-ui="style-label">Preferred style</span><select class="insight-style"><option value="auto" data-insight-ui="style-auto">Detect automatically</option><option value="anime" data-insight-ui="style-anime">Anime</option><option value="cyberpunk" data-insight-ui="style-cyberpunk">Cyberpunk</option><option value="minimal" data-insight-ui="style-minimal">Minimal</option><option value="dark" data-insight-ui="style-dark">Dark</option><option value="fantasy" data-insight-ui="style-fantasy">Fantasy</option><option value="realism" data-insight-ui="style-realism">Realism</option><option value="retro" data-insight-ui="style-retro">Retro</option></select></label>
@@ -741,7 +746,7 @@
   </div>
 </div>
 
-  <script src="/static/js/app.js?v=20260906-steamflow"></script>
+  <script src="/static/js/app.js?v=20260906-rating"></script>
 
 
 
@@ -793,8 +798,8 @@
 </div>
 
 <script src="/static/js/app-tail.js?v=20260905-modal"></script>
-<script src="/static/js/steam-check.js?v=20260906c"></script>
-<script src="/static/js/profile-insights.js?v=20260906a"></script>
+<script src="/static/js/steam-check.js?v=20260906f"></script>
+<script src="/static/js/profile-insights.js?v=20260906b"></script>
 
 
 <script src="/static/ss-shell.js?v=20260905b"></script>
