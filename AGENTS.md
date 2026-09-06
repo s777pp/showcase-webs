@@ -17,6 +17,7 @@ Current state as of 2026-09-06 (after the post-`dd2657d` UI/readiness work; veri
 - Profile Doctor and Smart Design have async APIs/UI and reuse the Bright Data profile queue plus Gemini multimodal analysis. Profile facts now recognize nested/animated Steam background fields, Gemini output is schema-constrained, and Smart Design uses a larger response budget to prevent truncated JSON.
 - The complete test suite currently contains 37 tests and passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`.
 - The latest readiness/localization pass exposes the integrated report to authenticated Free as well as Pro users, keeps anonymous ZIP download behavior, adds an anonymous sign-in hint, and reserves the red `NOT READY` verdict for oversized primary Steam files.
+- The current profile-tools refinement aligns the Profile Rating/Design Selection input and result panels, detects SteamShowcase Helper on the Steam tab through the existing constrained site bridge, and replaces generic image-search links with Steam-profile-specific reference destinations.
 
 Do not trust older notes claiming `processor.py` or `requirements.txt` are currently modified. Always run `git status --short` for live state.
 
@@ -255,6 +256,9 @@ Both tools are separate Tools tabs and share one background pipeline:
 - Product naming is now RU `Оценка профиля` / `Подбор оформления` and EN `Profile Rating` / `Design Selection`. Their large per-tab headings are RU `ОЦЕНКА` / `ПОДБОР` and EN `RATING` / `SELECTION`, not the generic Process heading.
 - Navigation labels, page title/subtitle, kickers, field labels, style choices, notes, and empty states are localized independently for RU and EN. Preserve both languages when changing either AI tab; do not leave static English strings visible in RU mode. The Gemini prompt also explicitly requires every returned natural-language string to use the requested interface language.
 - Navigation icons are `static/img/tool-icons/profile-rating.svg` (diagnostic shield/pulse) and `static/img/tool-icons/design-selection.svg` (swatches/spark), wired in `static/css/creator-os.css`.
+- `static/js/steam-extension-status.js` owns the visible Steam-tab extension status. It sends a bridge `PING`, falls back to Chrome's externally-connectable runtime API, repeats the check when the Steam tab/focus returns, and changes the install action into a connected version badge when 0.9.8 responds. Keep this detection on the existing allowlisted bridge; do not infer installation from cookies or server state.
+- Design Selection now offers explicit `gothic` and `automotive` preferences. Its Gemini prompt must preserve the detected concrete subject (vehicle, character, architecture, etc.) separately from genre/mood/palette; dark colors alone must not erase automotive or gothic subject matter.
+- Design Selection reference actions are deliberately thematic: categorized SteamProfileDesign examples, the Steam-background catalog, and a DeviantArt search constrained to Steam artwork showcases. Do not restore generic Google Images links. Third-party reference media is still not stored by the service.
 
 Security boundaries: only public `https://steamcommunity.com/id|profiles/...` URLs are accepted; visual context can only be fetched from allowlisted Steam CDN suffixes, redirect destinations are revalidated, each source image is capped and re-encoded to a bounded JPEG, profile text is explicitly treated as untrusted prompt data, AI text is rendered escaped, API keys remain server-side, and errors sent to clients are sanitized.
 
@@ -306,7 +310,8 @@ Static files are served by nginx from the repository mount, but backend/router c
 - Steam Check only has the lossless safe-fix stage. Geometry correction, upscale confirmation, synchronization, and <=5 MiB compression are unresolved.
 - Steam Check ZIP input cannot yet be handed directly to Process.
 - The integrated Process report has automated unit/syntax coverage but still needs production browser testing with real Workshop, Featured, and Artwork Split outputs and the unpacked 0.9.8 extension.
-- Profile Doctor and Smart Design have been exercised against production Gemini/Bright Data. Remaining QA should focus on subjective output quality and factual consistency. Smart Design currently shows AI palettes/directions and links to static image searches; inline licensed reference thumbnails and a richer seven-day history UI remain follow-up work.
+- Profile Rating and Design Selection have been exercised against production Gemini/Bright Data. Remaining QA should focus on subjective output quality and factual consistency. Design Selection currently shows AI palettes/directions and thematic Steam-profile reference actions; inline licensed reference thumbnails and a richer seven-day history UI remain follow-up work.
+- The updated Design Selection classifier/prompt still needs production sampling across automotive, gothic, horror, realism, mixed-theme and ambiguous profiles. Add prompt regression fixtures before making large prompt changes; subjective output quality cannot be proven by schema tests alone.
 - Chrome extension publishing is a separate manual release. A Git/VPS deployment alone does not distribute extension 0.9.8.
 - Direct Steam profile scraping from OVH is unreliable due to Steam HTTP 429; Bright Data browser import is the current workaround and has latency/cost.
 - Modal `min_containers=0` means the first upscale after idle can be noticeably slower. Do not raise warm containers without discussing cost.

@@ -528,6 +528,9 @@
       </div>
       </div><!-- steam-col -->
       <div class="steam-video-side steam-extension-card">
+        <div class="steam-extension-card__state" id="steamExtensionState" data-state="checking" aria-live="polite">
+          <i aria-hidden="true"></i><span data-i="steam_ext_checking">Checking extension…</span>
+        </div>
         <small class="steam-extension-card__kicker" data-i="steam_ext_kicker">STEAMSHOWCASE HELPER</small>
         <h2 data-i="steam_ext_title">Upload without console setup</h2>
         <p data-i="steam_ext_body">Install the extension, open the required showcase uploader and choose your prepared files. The extension applies the transparent title and long-showcase settings automatically.</p>
@@ -536,7 +539,7 @@
           <li data-i="steam_ext_step_2">Open the Steam upload page.</li>
           <li data-i="steam_ext_step_3">Select your files — the extension handles the remaining setup.</li>
         </ol>
-        <a class="btn steam-extension-card__button" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=showcasemaker-steam" target="_blank" rel="noopener" data-i="steam_ext_install">Install extension</a>
+        <a class="btn steam-extension-card__button" id="steamExtensionAction" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=showcasemaker-steam" target="_blank" rel="noopener" data-i="steam_ext_install">Install extension</a>
         <p class="steam-extension-card__note" data-i="steam_ext_note">Without the extension, use the manual steps on the left.</p>
       </div>
       </div><!-- steam-layout -->
@@ -620,7 +623,7 @@
         <small data-insight-ui="design-kicker">AI / DESIGN SELECTION</small><h2 data-insight-ui="design-title">Design Selection</h2>
         <p data-insight="design-copy">Get three static showcase directions that match an existing public Steam profile.</p>
         <label class="field"><span data-insight-ui="url-label">Steam profile URL</span><input class="insight-url" type="url" placeholder="https://steamcommunity.com/id/..."/></label>
-        <label class="field"><span data-insight-ui="style-label">Preferred style</span><select class="insight-style"><option value="auto" data-insight-ui="style-auto">Detect automatically</option><option value="anime" data-insight-ui="style-anime">Anime</option><option value="cyberpunk" data-insight-ui="style-cyberpunk">Cyberpunk</option><option value="minimal" data-insight-ui="style-minimal">Minimal</option><option value="dark" data-insight-ui="style-dark">Dark</option><option value="fantasy" data-insight-ui="style-fantasy">Fantasy</option><option value="realism" data-insight-ui="style-realism">Realism</option><option value="retro" data-insight-ui="style-retro">Retro</option></select></label>
+        <label class="field"><span data-insight-ui="style-label">Preferred style</span><select class="insight-style"><option value="auto" data-insight-ui="style-auto">Detect automatically</option><option value="anime" data-insight-ui="style-anime">Anime</option><option value="cyberpunk" data-insight-ui="style-cyberpunk">Cyberpunk</option><option value="minimal" data-insight-ui="style-minimal">Minimal</option><option value="dark" data-insight-ui="style-dark">Dark</option><option value="gothic" data-insight-ui="style-gothic">Gothic</option><option value="automotive" data-insight-ui="style-automotive">Automotive</option><option value="fantasy" data-insight-ui="style-fantasy">Fantasy</option><option value="realism" data-insight-ui="style-realism">Realism</option><option value="retro" data-insight-ui="style-retro">Retro</option></select></label>
         <button class="btn insight-run" type="button">Create 3 directions</button>
         <p class="insight-note" data-insight-ui="design-note">Pro only · Static references, not a generated profile. Results are AI estimates.</p>
         <div class="status insight-status" aria-live="polite"></div>
@@ -746,7 +749,7 @@
   </div>
 </div>
 
-  <script src="/static/js/app.js?v=20260906-rating"></script>
+  <script src="/static/js/app.js?v=20260906-extension"></script>
 
 
 
@@ -799,7 +802,8 @@
 
 <script src="/static/js/app-tail.js?v=20260905-modal"></script>
 <script src="/static/js/steam-check.js?v=20260906f"></script>
-<script src="/static/js/profile-insights.js?v=20260906b"></script>
+<script src="/static/js/profile-insights.js?v=20260906-themed"></script>
+<script src="/static/js/steam-extension-status.js?v=20260906a"></script>
 
 
 <script src="/static/ss-shell.js?v=20260905b"></script>
