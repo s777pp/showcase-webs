@@ -53,6 +53,7 @@ body button:focus-visible,body a:focus-visible{outline:2px solid #55d9ff!importa
 /* Widen toward the headline while retaining the right edge and original height. */
 @media(min-width:1181px){
   .page-home .hero>.hero-studio{width:120%!important;max-width:none!important;aspect-ratio:1.44!important;margin:0 0 0 -20%!important}
+  .page-home .hero>p{max-width:560px!important;align-self:start!important;transform:translateY(-24px)}
 }
 .page-home .creator-scene{inset:5% 0!important;mask-image:none!important;-webkit-mask-image:none!important}
 .page-home .creator-scene__art{object-fit:contain!important;width:100%!important;height:100%!important;animation:none!important}
