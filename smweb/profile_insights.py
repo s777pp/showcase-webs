@@ -90,7 +90,13 @@ def _extract_json(payload: dict) -> dict:
     candidates = payload.get("candidates") or []
     parts = ((candidates[0].get("content") or {}).get("parts") or []) if candidates else []
     text = "".join(str(part.get("text") or "") for part in parts if isinstance(part, dict)).strip()
-    value = json.loads(text)
+    try:
+        value = json.loads(text)
+    except json.JSONDecodeError as exc:
+        finish_reason = str(candidates[0].get("finishReason") or "") if candidates else ""
+        if finish_reason in {"MAX_TOKENS", "MAX_OUTPUT_TOKENS"}:
+            raise ValueError("ai_response_truncated") from exc
+        raise ValueError("invalid_ai_response") from exc
     if not isinstance(value, dict):
         raise ValueError("invalid_ai_response")
     return value
@@ -204,7 +210,7 @@ def generate(kind: str, profile: dict, language: str = "en", style: str = "auto"
     task = (
         "Return: score integer 0-100, summary string, strengths array (max 5), recommendations array (max 7), and priority as one concrete action sentence (never a severity word). Treat *_present and showcase counts in PROFILE_DATA as authoritative facts; never contradict them."
         if kind == "doctor" else
-        "Return: summary string and exactly 3 concepts. Each concept: title, style, palette of 3-5 hex colors, showcase_prompt, search_queries array max 4, and why_it_fits."
+        "Return summary and exactly 3 compact concepts. Each concept: title, style, 3-5 hex colors in palette, showcase_prompt, up to 4 search_queries, and why_it_fits. Keep summary under 300 characters; showcase_prompt and why_it_fits under 500 characters each; every search query under 100 characters. Do not add prose outside these fields."
     )
     prompt = SYSTEM_PROMPT + f"\nOUTPUT_LANGUAGE={language}\nREQUESTED_STYLE={style}\nTASK={task}\nPROFILE_DATA_START\n" + json.dumps(profile_payload(profile), ensure_ascii=False) + "\nPROFILE_DATA_END"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
@@ -242,7 +248,7 @@ def generate(kind: str, profile: dict, language: str = "en", style: str = "auto"
             "generationConfig": {
                 "responseMimeType": "application/json",
                 "responseSchema": doctor_schema if kind == "doctor" else concept_schema,
-                "maxOutputTokens": 1800,
+                "maxOutputTokens": 2200 if kind == "doctor" else 4096,
             },
         },
         timeout=(10, 55),

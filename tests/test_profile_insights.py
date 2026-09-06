@@ -1,6 +1,6 @@
 import unittest
 
-from smweb.profile_insights import _normalize_result, _visual_urls, fallback_doctor, profile_payload
+from smweb.profile_insights import _extract_json, _normalize_result, _visual_urls, fallback_doctor, profile_payload
 
 
 class ProfileInsightTests(unittest.TestCase):
@@ -60,6 +60,13 @@ class ProfileInsightTests(unittest.TestCase):
     def test_doctor_priority_must_be_an_action(self):
         result = _normalize_result("doctor", {"priority": "medium", "recommendations": ["Change the frame."]})
         self.assertEqual(result["priority"], "Change the frame.")
+
+    def test_truncated_ai_json_has_stable_error(self):
+        with self.assertRaisesRegex(ValueError, "ai_response_truncated"):
+            _extract_json({"candidates": [{
+                "finishReason": "MAX_TOKENS",
+                "content": {"parts": [{"text": '{"summary":"unfinished'}]},
+            }]})
 
 
 if __name__ == "__main__":

@@ -244,6 +244,7 @@ Both tools are separate Tools tabs and share one background pipeline:
 - `smweb/profile_insights.py` contains the single universal prompt, bounded profile projection, Gemini client, fallback, and Steam-CDN visual collection.
 - Steam profile facts are authoritative: background detection must cover `background`, string `background_movie`, and nested `background_item` poster/webm/mp4 fields. Do not let Gemini infer that an imported element is absent when these fields say it exists.
 - Gemini `generateContent` uses a kind-specific JSON response schema. Smart Design also tolerates the historical `directions`/`designs` aliases, but the canonical output key is `concepts`. Doctor `priority` is an actionable sentence, not a low/medium/high severity label.
+- Smart Design needs a larger output allowance than Doctor because it returns three concepts. Its current cap is 4096 output tokens plus explicit compact field limits; lowering this back to 1800 caused truncated JSON (`finishReason=MAX_TOKENS`).
 - `smweb/profile_insight_jobs.py` owns the network job. `worker.py` routes `profile_insight` onto the profile pool, not the CPU media pool.
 - `smweb/routers/profile_insights.py`, `static/js/profile-insights.js`, and `static/css/profile-insights.css` are the API/UI boundary.
 
