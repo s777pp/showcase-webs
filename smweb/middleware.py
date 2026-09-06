@@ -161,6 +161,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # call) and, like the endpoint it replaced, does not consume the daily
         # quota -- so this rule is what keeps it from being a free CPU faucet.
         ("/api/compose/start", 6, 60),
+        ("/api/loop/start", 6, 60),
         ("/api/gallery/", 60, 60),
         ("/api/download-url", 5, 60),
     )

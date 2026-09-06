@@ -15,7 +15,7 @@ Current state as of 2026-09-06 (after the post-`dd2657d` UI/readiness work; veri
 - Public Steam profile import uses a Bright Data remote browser because direct Steam requests from the VPS are frequently HTTP 429.
 - The latest work embeds the Pro-only **Steam Check / Готово для Steam** report at the end of normal Process jobs, adds a guided handoff to SteamShowcase Helper 0.9.8, and adds a lossless safe-fix download for naming/order and HEX 21. Steam Check is no longer a visible top-navigation tab; its hidden internal pane is retained because successful Pro Process jobs open that report programmatically. It does not silently resize or recompress failed output.
 - Profile Doctor and Smart Design have async APIs/UI and reuse the Bright Data profile queue plus Gemini multimodal analysis. Profile facts now recognize nested/animated Steam background fields, Gemini output is schema-constrained, and Smart Design uses a larger response budget to prevent truncated JSON.
-- The complete test suite currently contains 38 tests and passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`.
+- The complete test suite currently contains 40 tests and passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`.
 - The latest readiness/localization pass exposes the integrated report to authenticated Free as well as Pro users, keeps anonymous ZIP download behavior, adds an anonymous sign-in hint, and reserves the red `NOT READY` verdict for oversized primary Steam files.
 - The current profile-tools refinement aligns the Profile Rating/Design Selection input and result panels, detects SteamShowcase Helper on the Steam tab through the existing constrained site bridge, and replaces generic image-search links with Steam-profile-specific reference destinations.
 
@@ -266,6 +266,17 @@ Security boundaries: only public `https://steamcommunity.com/id|profiles/...` UR
 
 Required production variables are documented in `.env.example`: `GEMINI_API_KEY`, optional `GEMINI_MODEL`, and `PROFILE_AI_PRO_DAILY`. The current default is `gemini-3.6-flash`; Google returns HTTP 404 for `gemini-2.5-flash` to new API users. A consumer Gemini/Google AI subscription is not the API credential or API quota.
 
+## 6.2 Seamless Loop
+
+The Pro-only **Loop / Зациклить** tab creates a repeatable animation from an existing animated GIF or video without modifying the source. It is intentionally a separate tool now, but its downloaded GIF/MP4 is compatible with the normal Process upload flow.
+
+- `POST /api/loop/start` accepts content-validated GIF, MP4, WebM, or AVI input, enforces authentication/Pro, upload size, active-job and route limits, then uses the existing media queue.
+- `GET /api/loop/status/{job_id}` and `GET /api/loop/download/{job_id}` are owner-only. Results use private R2 when configured and shared `/data` as the fallback.
+- `smweb/loop_jobs.py` performs FFmpeg work outside Uvicorn. `blend` rotates the sequence and crossfades its original ending into its beginning; `pingpong` concatenates forward and reversed motion. Audio is deliberately removed because Steam showcase output is visual.
+- GIF output reuses the existing high-quality GIF pipeline and Steam size fitting; MP4 uses H.264. Input width is preserved up to 1280 px rather than blindly upscaling small sources.
+- Sources up to 30 seconds are accepted, while rendered input is bounded to 12 seconds (`blend`) or 10 seconds (`pingpong`, producing at most 20 seconds). The UI recommends 2–4 seconds because a short source usually hides the seam better; this is guidance, not a four-second rejection.
+- `static/js/seamless-loop.js` owns upload, polling, preview, RU/EN text, and Process navigation. `static/css/seamless-loop.css` owns the two-column motion-workbench layout. Keep the server-side Pro gate even if the frontend lock changes.
+
 ## 7. Security and Operational Decisions
 
 - Authentication is server-side session-cookie auth backed by the `sessions` table. Password hashing uses the configured PBKDF2 iteration count.
@@ -310,6 +321,7 @@ Static files are served by nginx from the repository mount, but backend/router c
 ## 9. Known Bugs, Risks, and Unresolved Work
 
 - Steam Check only has the lossless safe-fix stage. Geometry correction, upscale confirmation, synchronization, and <=5 MiB compression are unresolved.
+- Seamless Loop has syntax/unit/UI coverage but still needs its first production-container smoke test with real GIF and MP4 inputs because the Windows development host does not have FFmpeg. Verify both `blend` and `pingpong`, GIF/MP4 download, private R2 preview, and a result passed into Process.
 - Steam Check ZIP input cannot yet be handed directly to Process.
 - The integrated Process report has automated unit/syntax coverage but still needs production browser testing with real Workshop, Featured, and Artwork Split outputs and the unpacked 0.9.8 extension.
 - Profile Rating and Design Selection have been exercised against production Gemini/Bright Data. Remaining QA should focus on subjective output quality and factual consistency. Design Selection currently shows AI palettes/directions and thematic Steam-profile reference actions; inline licensed reference thumbnails and a richer seven-day history UI remain follow-up work.
@@ -364,8 +376,8 @@ Recommended order for the next coding agent:
 4. Design a repair plan/result contract in `smweb/steam_readiness.py`, then add optional Pro-only fixes incrementally: naming/order; HEX 21; geometry/upscale confirmation; animation synchronization; <=5 MiB compression with quality reporting.
 5. Improve Profile Doctor/Smart Design result quality using regression fixtures from real public profiles, while keeping imported presence facts authoritative and all visual conclusions labeled as AI estimates.
 6. Add optional licensed/static reference thumbnails and a richer seven-day history UI to Smart Design without permanently storing third-party media.
-7. Implement seamless-loop creation as a separate later media feature; warn when source duration is likely unsuitable and reuse async processing/storage boundaries.
-8. Update or replace stale `UPSCALER_SETUP.md`, expand README, and add browser E2E coverage for RU/EN, the Process-integrated report, Steam extension card/handoff, and auth/Pro gates.
+7. Production-smoke-test Seamless Loop with real GIF/MP4 files, then add a deliberate direct handoff into Process only after deciding whether to download/re-upload or add an owner-only server-side result-transfer contract.
+8. Update or replace stale `UPSCALER_SETUP.md`, expand README, and add browser E2E coverage for RU/EN, the Process-integrated report, Steam extension card/handoff, Loop, and auth/Pro gates.
 
 ## 13. Verification Commands
 

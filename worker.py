@@ -61,6 +61,10 @@ def _process_one(jid: str) -> None:
             from smweb.upscale_jobs import run
             run(jid, job)
             return
+        if job.get("kind") == "seamless_loop":
+            from smweb.loop_jobs import run
+            run(jid, job)
+            return
         from smweb.jobs import _run_process_job_from_payload
 
         _run_process_job_from_payload(jid, job)

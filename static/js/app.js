@@ -1882,8 +1882,9 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   var DICT = {
     en: {
       nav_process: "Process", nav_compose: "Character", nav_download: "Download", nav_convert: "Converter", nav_hex: "HEX",
-      nav_preview: "Profile", nav_upscale: "Upscale", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Account", nav_about: "About", nav_doctor: "Profile Rating", "nav_design-ai": "Design Selection",
+      nav_preview: "Profile", nav_upscale: "Upscale", nav_loop: "Loop", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Account", nav_about: "About", nav_doctor: "Profile Rating", "nav_design-ai": "Design Selection",
       title_upscale: "Upscale", sub_upscale: "AI upscaling with detail preserved — Pro feature",
+      title_loop: "Loop", sub_loop: "Build a seamless cycle from a short GIF or video — Pro feature",
       title_doctor: "Rating", sub_doctor: "AI review of a public Steam profile and its visual consistency",
       "title_design-ai": "Selection", "sub_design-ai": "Three AI art directions for static Steam showcases",
       process_check_hint_title: "Steam readiness report", process_check_hint_body: "Sign in before processing to receive a detailed Steam compatibility report after the ZIP is built.",
@@ -2024,8 +2025,9 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     },
     ru: {
       nav_process: "Обработка", nav_compose: "Персонаж", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
-      nav_preview: "Профиль", nav_upscale: "Апскейл", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе", nav_doctor: "Оценка профиля", "nav_design-ai": "Подбор оформления",
+      nav_preview: "Профиль", nav_upscale: "Апскейл", nav_loop: "Зациклить", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе", nav_doctor: "Оценка профиля", "nav_design-ai": "Подбор оформления",
       title_upscale: "Апскейл", sub_upscale: "ИИ-увеличение с сохранением деталей — функция Pro",
+      title_loop: "Цикл", sub_loop: "Бесшовное зацикливание коротких GIF и видео — функция Pro",
       title_doctor: "Оценка", sub_doctor: "ИИ-анализ публичного профиля Steam и визуальной целостности оформления",
       "title_design-ai": "Подбор", "sub_design-ai": "Три направления для статичных витрин с учётом текущего профиля",
       process_check_hint_title: "Проверка готовности для Steam", process_check_hint_body: "Войди перед обработкой, чтобы после сборки ZIP получить подробный отчёт о совместимости файлов со Steam.",
