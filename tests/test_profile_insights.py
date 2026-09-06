@@ -44,6 +44,20 @@ class ProfileInsightTests(unittest.TestCase):
             "https://steamuserimages-a.akamaihd.net/x",
         ])
 
+    def test_design_visuals_prioritize_showcases_and_accept_steamusercontent(self):
+        urls = _visual_urls({
+            "avatar": "https://avatars.fastly.steamstatic.com/avatar.jpg",
+            "background": "https://shared.fastly.steamstatic.com/background.jpg",
+            "showcases": [{"images": [
+                "https://images.steamusercontent.com/ugc/showcase-one.jpg",
+                "https://steamuserimages-a.akamaihd.net/showcase-two.jpg",
+            ]}],
+        }, showcase_first=True)
+        self.assertEqual(urls[:2], [
+            "https://images.steamusercontent.com/ugc/showcase-one.jpg",
+            "https://steamuserimages-a.akamaihd.net/showcase-two.jpg",
+        ])
+
     def test_ai_result_is_bounded_before_browser(self):
         result = _normalize_result("design", {"summary": "x" * 1000, "concepts": [{
             "title": "title", "palette": ["#12abEF", "red", "#000000"],
