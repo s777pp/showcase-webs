@@ -5,6 +5,7 @@ import time
 import errno
 import io
 import os
+import re
 import shutil
 import subprocess
 import tempfile
