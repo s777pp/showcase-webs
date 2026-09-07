@@ -4,6 +4,38 @@ This is the root handoff and operating guide for coding agents. Read it before c
 
 ## 1. Product and Current Development State
 
+### Privacy release — 2026-09-07 (local, not yet published)
+
+- Chrome Web Store rejected the latest extension for `Purple Nickel`: missing
+  Privacy Policy URL in the dedicated dashboard field. A description link is not
+  a substitute. See `PRIVACY_RELEASE.md` for deployment/submission and disclosures.
+- Public `/privacy` and `/privacy/` serve EN by default, `?lang=ru` serves RU.
+  `smweb/routers/pages.py` selects only fixed HTML files; no auth, JS or upstream
+  service required. `static/privacy-en.html`, `static/privacy-ru.html`, isolated
+  `static/css/privacy.css`. Keep the languages substantively aligned.
+- Policy links added to landing/Tools and shared profile footers; shared
+  `ss.css` / `ss-shell.js` cache keys bumped to `20260907-privacy`. Original design,
+  account behavior and support chatbot retained. Three policy tests added.
+- Current extension source provided by owner is
+  `C:\Users\n1t1337\Downloads\0.9.8` (NOT the older 0.9.7 directory). Its manifest
+  is now 0.9.9. Popup footer has a localized privacy link above the author credit.
+  This source is outside Git: a website push does not publish the extension.
+- Audit: local Browser Engine has no upload requests; extension stores language,
+  theme, preview snapshots/favourites and upload filename/dimension/progress data.
+  Steam preview reads the page's loyalty Web API token for Steam API calls.
+  Do NOT claim the extension never handles authentication data or is wholly local.
+  Extension-triggered import sends a profile snapshot using a one-use site ticket
+  to `/api/profile/extension-import`; the website saves it and may cache the avatar.
+  Steam cookies / Steam token are not part of that imported snapshot.
+- Retention must not be advertised as universally seven days: account snapshots,
+  local settings and backups differ from temporary job links and AI history. The
+  policy explicitly avoids unverified log/backup/lifecycle deletion deadlines.
+  Operator must honour its Limited Use and deletion-request commitments; retain
+  the public contact paths and review actual infrastructure retention separately.
+- No credentials, migrations, new permissions or provider changes. Website-only
+  deployment needs app rebuild; no worker/Modal/R2 migration. Public HTTPS access
+  (without Cloudflare Access login) must be verified before submitting the URL.
+
 ### Current local override — 2026-09-07 Support assistant only
 
 The owner rejected the anime-studio redesign and explicitly requested restoration
@@ -261,7 +293,7 @@ For Pro users, `process.py` adds `steam_check` to the queued options, `smweb/job
 
 ### Browser extension upload flow
 
-The extension source is maintained outside this repository at `C:\Users\n1t1337\Downloads\0.9.7` (the manifest now identifies it as version 0.9.8). Do not assume Git deployment updates the Chrome extension.
+The current owner-provided extension source is outside this repository at `C:\Users\n1t1337\Downloads\0.9.8` (manifest 0.9.9 after the privacy release). The older 0.9.7 directory is historical. Do not assume Git deployment updates the Chrome extension.
 
 Version 0.9.8 adds a constrained website-to-extension protocol:
 

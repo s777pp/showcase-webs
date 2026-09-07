@@ -229,3 +229,6 @@ textarea.ss-in{resize:vertical;min-height:78px;line-height:1.5}
   *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
   html{scroll-behavior:auto}
 }
+/* Privacy footer actions: shared by the landing and Tools, without changing layout. */
+[data-privacy-link]{display:inline-block;max-width:100%;padding:8px 0;color:#91dff2;font-size:13px;line-height:1.5;white-space:normal;overflow-wrap:anywhere;text-underline-offset:4px}
+[data-privacy-link]:focus-visible{outline:2px solid #49d6f5;outline-offset:4px}

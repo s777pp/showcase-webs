@@ -159,7 +159,8 @@
       ['/gallery', ru ? 'Галерея' : 'Gallery'],
       ['/profile', ru ? 'Профиль' : 'Profile'],
       ['/#pricing', ru ? 'Тарифы' : 'Pricing'],
-      ['/#faq', 'FAQ']
+      ['/#faq', 'FAQ'],
+      ['/privacy?lang=' + (ru ? 'ru' : 'en'), ru ? 'Политика конфиденциальности' : 'Privacy policy']
     ];
     return '<footer class="ss-foot"><div class="ss-wrap ss-foot__in">' +
       '<nav class="ss-foot__nav">' + links.map(function (l) {
@@ -506,6 +507,10 @@
     var foot = document.getElementById('ssFootHost');
     if (head) head.innerHTML = headerHTML() + authHTML() + activationHTML();
     if (foot) foot.innerHTML = footerHTML();
+    document.querySelectorAll('[data-privacy-link]').forEach(function (link) {
+      link.href = '/privacy?lang=' + lang();
+      link.textContent = lang() === 'ru' ? 'Политика конфиденциальности' : 'Privacy policy';
+    });
     wire();
     paintUser(window.SS_ME);
   }

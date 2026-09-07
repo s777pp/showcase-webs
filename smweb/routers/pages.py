@@ -105,6 +105,16 @@ def app_page():
     return _html(_page(path))
 
 
+@router.get("/privacy", response_class=HTMLResponse)
+@router.get("/privacy/", response_class=HTMLResponse, include_in_schema=False)
+def privacy_page(lang: str = "en"):
+    """Public policy: no login, JavaScript, cookies or upstream API required."""
+    filename = "privacy-ru.html" if lang == "ru" else "privacy-en.html"
+    response = _html(_page(STATIC / filename))
+    response.headers["Content-Language"] = "ru" if lang == "ru" else "en"
+    return response
+
+
 @router.get("/profile", response_class=HTMLResponse)
 @router.get("/profile/", response_class=HTMLResponse)
 async def profile_me(request: Request):
