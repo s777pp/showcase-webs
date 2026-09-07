@@ -12,14 +12,18 @@ pages now match the pre-redesign HEAD except for isolated support CSS/JS include
 The original layered animated hero, navigation, layouts, RU/EN and mobile auth are
 restored. Do not reinstate studio.css/studio.js or the alternative hero.
 
-- Work remains local on `codex/anime-studio-redesign` (historical branch name).
-  **Do not push or deploy without new owner approval.**
+- Chatbot is now on `main`; the owner approved publishing the compact FAQ UI on
+  2026-09-07. The rejected anime-studio redesign is not part of this release.
 - Chat: `smweb/support_chat.py`, `smweb/support_knowledge.json`,
   `smweb/routers/support.py`; router included in main.py. Frontend:
   `static/js/support-chat.js`, isolated cyan/dark `static/css/support-chat.css`.
   Widget is omitted in embedded Tools profile editor to avoid duplicates.
 - FAQ links to `/app#<tab>` use existing nav handlers, excluding internal check.
   No category filtering, gallery changes or processing layout changes remain.
+- Chat suggestions now default to one horizontally scrollable row with a bilingual
+  Expand/Collapse disclosure. Expanded topics wrap in a bounded area; selecting one
+  collapses the list to prioritize the reply. aria-expanded/aria-controls reflect
+  the state. Panel height stays bounded and the conversation owns the free space.
 - Owner selected Groq Free. No key supplied: explicitly marked FAQ mode with 11
   bilingual help topics. `GROQ_API_KEY`, `GROQ_CHAT_MODEL=openai/gpt-oss-20b`,
   Groq Responses endpoint, low reasoning, `store:false`. Old OPENAI_API_KEY and
@@ -32,12 +36,12 @@ restored. Do not reinstate studio.css/studio.js or the alternative hero.
   1500 chars/message, 3000 chars of upstream history, 1600 output tokens.
   Redis rate_limit has an optional
   `fail_closed=True` used only by support; existing callers unchanged.
-- No migrations, processing changes, GitHub pushes or VPS deployments.
+- This UI release has no migrations or processing changes. Groq setup is unchanged.
   Preserve pre-existing dirty `data/steam_cache.json`; do not stage it.
 - Setup, checks and future deployment instructions: `SUPPORT_CHAT_SETUP.md`.
-  Owner requested Git/VPS instructions; commands are in the setup document.
-  Next: commit/push only the listed chatbot files, configure Groq key privately on
-  VPS, test one real reply. Use shared Redis for production request controls.
+  Owner manages VPS secrets privately. Next: pull the approved compact FAQ release
+  on VPS, rebuild app for the HTML cache keys, then verify collapse/expand and one
+  reply. Do not assume a successful GitHub push also updated the VPS.
 
 SteamShowcase Maker is a bilingual (RU/EN) web application for preparing Steam profile showcases. It provides image/GIF/video processing, Workshop/Featured/Artwork Split output, profile design and import, gallery publishing, downloads, character composition, HEX 21 handling, Pro access, and Modal GPU upscaling.
 

@@ -15,11 +15,21 @@
     window.addEventListener('hashchange',openLinkedTool);
     if(document.readyState==='complete')openLinkedTool();
     else window.addEventListener('load',openLinkedTool,{once:true});
-    let topics=[],available=false,loaded=false,pending=false,history=[];
+    let topics=[],available=false,loaded=false,pending=false,history=[],topicsExpanded=false;
     const root=document.createElement('aside');root.className='studio-support';
-    root.innerHTML='<button class="studio-chat-launch" type="button" aria-expanded="false" aria-controls="studioChat"><span aria-hidden="true">✦</span><span class="chat-launch-label"></span></button><section id="studioChat" class="studio-chat-panel" role="dialog" aria-labelledby="studioChatTitle" hidden><header><div><small>SHOWCASE MAKER</small><h2 id="studioChatTitle"></h2></div><button class="studio-chat-close" type="button">×</button></header><p class="studio-chat-note"></p><div class="studio-chat-topics"></div><div class="studio-chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div><form><label for="studioChatInput" class="studio-sr-only"></label><textarea id="studioChatInput" maxlength="1500" rows="2" required></textarea><button class="studio-chat-send" type="submit">↑</button></form><p class="studio-chat-privacy"></p></section>';
+    root.innerHTML='<button class="studio-chat-launch" type="button" aria-expanded="false" aria-controls="studioChat"><span aria-hidden="true">✦</span><span class="chat-launch-label"></span></button><section id="studioChat" class="studio-chat-panel" role="dialog" aria-labelledby="studioChatTitle" hidden><header><div><small>SHOWCASE MAKER</small><h2 id="studioChatTitle"></h2></div><button class="studio-chat-close" type="button">×</button></header><p class="studio-chat-note"></p><div class="studio-chat-suggestions" hidden><div id="studioChatTopics" class="studio-chat-topics" role="group"></div><button class="studio-chat-topics-toggle" type="button" aria-expanded="false" aria-controls="studioChatTopics"><span></span><span aria-hidden="true">⌄</span></button></div><div class="studio-chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div><form><label for="studioChatInput" class="studio-sr-only"></label><textarea id="studioChatInput" maxlength="1500" rows="2" required></textarea><button class="studio-chat-send" type="submit">↑</button></form><p class="studio-chat-privacy"></p></section>';
     document.body.append(root);
     const find=s=>root.querySelector(s),panel=find('.studio-chat-panel'),input=find('textarea'),log=find('[role=log]'),form=find('form'),launcher=find('.studio-chat-launch');
+    const suggestions=find('.studio-chat-suggestions'),topicsToggle=find('.studio-chat-topics-toggle');
+    function paintTopicsState(){
+      suggestions.hidden=topics.length===0;
+      suggestions.classList.toggle('is-expanded',topicsExpanded);
+      topicsToggle.setAttribute('aria-expanded',String(topicsExpanded));
+      topicsToggle.querySelector('span').textContent=topicsExpanded?t('Свернуть','Collapse'):t('Развернуть','Expand');
+      topicsToggle.setAttribute('aria-label',topicsExpanded?t('Свернуть частые вопросы','Collapse frequently asked questions'):t('Развернуть частые вопросы','Expand frequently asked questions'));
+      find('.studio-chat-topics').setAttribute('aria-label',t('Частые вопросы','Frequently asked questions'));
+    }
+    topicsToggle.addEventListener('click',()=>{topicsExpanded=!topicsExpanded;paintTopicsState();});
     function message(text,role='assistant'){
       const item=document.createElement('div');item.className='studio-chat-message '+role; item.textContent=text;log.append(item);log.scrollTop=log.scrollHeight;return item;
     }
@@ -35,8 +45,10 @@
       input.disabled=!available||pending;find('.studio-chat-send').disabled=!available||pending;
       const list=find('.studio-chat-topics');list.replaceChildren();
       topics.forEach(topic=>{const pack=topic[ru()?'ru':'en'];const button=document.createElement('button');button.type='button';button.textContent=pack.title;button.addEventListener('click',()=>{
+        if(topicsExpanded){topicsExpanded=false;paintTopicsState();topicsToggle.focus();}
         const item=message(pack.text);const link=document.createElement('a');link.href=topic.href;link.textContent=t('Открыть →','Open →');item.append(link);log.scrollTop=log.scrollHeight;
       });list.append(button);});
+      paintTopicsState();
     }
     function close(){panel.hidden=true;launcher.setAttribute('aria-expanded','false');launcher.focus();}
     launcher.addEventListener('click',async()=>{

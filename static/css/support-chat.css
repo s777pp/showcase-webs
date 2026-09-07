@@ -5,19 +5,27 @@ body .studio-support{position:fixed;right:20px;bottom:76px;z-index:1200;font-fam
 .studio-support button::before,.studio-support button::after,.studio-support h2::before,.studio-support h2::after{display:none}
 .studio-support .studio-chat-launch{display:flex;align-items:center;gap:10px;padding:12px 18px;min-height:46px;border:1px solid #8becff;border-radius:5px;background:#49d7f7;color:#03131a;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 5px 24px #0006}
 .studio-chat-launch>span:first-child{font-size:21px}
-.studio-support .studio-chat-panel{position:absolute;right:0;bottom:62px;width:390px;max-width:calc(100vw - 32px);max-height:min(740px,calc(100dvh - 160px));display:flex;flex-direction:column;background:#0b121b;border:1px solid #304451;border-top:2px solid #49d7f7;border-radius:5px;box-shadow:0 20px 65px #0009;overflow:hidden}
+.studio-support .studio-chat-panel{position:absolute;right:0;bottom:62px;width:390px;max-width:calc(100vw - 32px);height:min(700px,calc(100dvh - 160px));display:flex;flex-direction:column;background:#0b121b;border:1px solid #304451;border-top:2px solid #49d7f7;border-radius:5px;box-shadow:0 20px 65px #0009;overflow:hidden}
 .studio-support .studio-chat-panel[hidden]{display:none!important}
 .studio-support .studio-chat-panel>header{position:static;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:#0d202b;border:0;flex-shrink:0}
 .studio-chat-panel header small{font-size:9px;letter-spacing:2px;color:#49d7f7}
 .studio-support .studio-chat-panel header h2{font:700 23px/1.2 'Segoe UI',Arial,sans-serif!important;color:#edfaff;margin:4px 0 0!important;padding:0;text-transform:none;letter-spacing:normal}
 .studio-support .studio-chat-close{border:1px solid #304451;border-radius:4px;background:transparent;color:#edfaff;font-size:27px;cursor:pointer;width:40px;height:40px;padding:0;flex-shrink:0}
-.studio-support .studio-chat-note{padding:14px 18px 0;font-size:12px;line-height:1.65;color:#a7beca;margin:0}
-.studio-support .studio-chat-topics{display:flex;gap:7px;flex-wrap:wrap;padding:14px 18px;max-height:155px;overflow:auto;flex-shrink:0}
-.studio-support .studio-chat-topics button{border:1px solid #294656;background:#0b202b;color:#bcefff;padding:7px 10px;font-size:11px;border-radius:4px;cursor:pointer;text-align:left;white-space:normal;line-height:1.5}
+.studio-support .studio-chat-note{padding:12px 18px 0;font-size:12px;line-height:1.65;color:#a7beca;margin:0;flex-shrink:0}
+.studio-support .studio-chat-suggestions{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px;margin:10px 18px 12px;padding-bottom:8px;border-bottom:1px solid #203541;flex-shrink:0}
+.studio-support .studio-chat-suggestions[hidden]{display:none!important}
+.studio-support .studio-chat-topics{display:flex;gap:7px;flex-wrap:nowrap;min-width:0;padding:2px 2px 5px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:#294656 transparent;overscroll-behavior:contain}
+.studio-support .studio-chat-topics button{flex:0 0 auto;border:1px solid #294656;background:#0b202b;color:#bcefff;padding:7px 10px;font-size:11px;border-radius:4px;cursor:pointer;text-align:left;white-space:nowrap;line-height:1.5}
+.studio-support .studio-chat-topics-toggle{display:flex;align-items:center;gap:5px;margin-top:2px;padding:7px 4px;border:1px solid transparent;border-radius:4px;color:#49d7f7;background:transparent;font-size:11px;line-height:1.5;cursor:pointer;white-space:nowrap}
+.studio-chat-topics-toggle>span:last-child{font-size:15px;line-height:1;transition:transform .15s ease}
+.studio-chat-suggestions.is-expanded .studio-chat-topics-toggle>span:last-child{transform:rotate(180deg)}
+.studio-support .studio-chat-suggestions.is-expanded .studio-chat-topics{grid-column:1/-1;grid-row:2;flex-wrap:wrap;max-height:125px;overflow-y:auto;overflow-x:hidden}
+.studio-support .studio-chat-suggestions.is-expanded .studio-chat-topics button{max-width:100%;white-space:normal}
+.studio-support .studio-chat-suggestions.is-expanded .studio-chat-topics-toggle{grid-column:2;grid-row:1;justify-self:end}
 .studio-support button:hover{filter:brightness(1.15)}
 .studio-support button:focus-visible,.studio-support textarea:focus-visible,.studio-support a:focus-visible{outline:2px solid #49d7f7;outline-offset:2px}
 .studio-support button:disabled{opacity:.45;cursor:not-allowed}
-.studio-support .studio-chat-messages{overflow:auto;padding:0 18px;min-height:60px;overscroll-behavior:contain}
+.studio-support .studio-chat-messages{flex:1;overflow:auto;padding:0 18px;min-height:0;overscroll-behavior:contain}
 .studio-support .studio-chat-message{border-radius:4px;background:#14212d;padding:12px 14px;margin-bottom:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.7}
 .studio-support .studio-chat-message.user{background:#12374a;margin-left:28px}
 .studio-support .studio-chat-message a{display:block;margin-top:8px;color:#49d7f7;text-decoration:underline}
@@ -26,5 +34,6 @@ body .studio-support{position:fixed;right:20px;bottom:76px;z-index:1200;font-fam
 .studio-support .studio-chat-send{width:42px;height:42px;padding:0;border:0;border-radius:4px;background:#49d7f7;color:#03131a;font-size:24px;cursor:pointer;flex-shrink:0}
 .studio-support .studio-chat-privacy{font-size:10px;color:#8aa3b3;margin:10px 18px 16px;line-height:1.6;flex-shrink:0}
 .studio-support .studio-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-@media(max-width:540px){body .studio-support{right:16px;bottom:76px}.studio-support .studio-chat-panel{width:calc(100vw - 48px)}.studio-support .studio-chat-topics{max-height:100px}.studio-support .studio-chat-panel>header{padding:12px 18px}}
+@media(max-width:540px){body .studio-support{right:16px;bottom:76px}.studio-support .studio-chat-panel{width:calc(100vw - 48px)}.studio-support .studio-chat-panel>header{padding:12px 18px}}
+@media(max-height:620px){.studio-support .studio-chat-panel>header{padding:8px 14px}.studio-support .studio-chat-panel header small{display:none}.studio-support .studio-chat-panel header h2{font-size:18px!important}.studio-support .studio-chat-note{padding:6px 14px 0;font-size:11px}.studio-support .studio-chat-suggestions{margin:6px 14px}.studio-support .studio-chat-suggestions.is-expanded .studio-chat-topics{max-height:65px}.studio-support .studio-chat-panel form{padding:6px 14px 0}.studio-support .studio-chat-panel textarea{min-height:42px;height:42px;padding:6px}.studio-support .studio-chat-privacy{font-size:9px;margin:6px 14px 8px}}
 @media(prefers-reduced-motion:reduce){.studio-support *{animation:none!important;transition:none!important}}
