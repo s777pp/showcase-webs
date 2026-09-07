@@ -5,7 +5,7 @@ import os
 import requests
 
 RESEND_API_KEY = (os.environ.get("RESEND_API_KEY") or "").strip()
-MAIL_FROM = (os.environ.get("MAIL_FROM") or "Showcase Maker <onboarding@resend.dev>").strip()
+MAIL_FROM = (os.environ.get("MAIL_FROM") or os.environ.get("EMAIL_FROM") or "Showcase Maker <onboarding@resend.dev>").strip()
 
 
 def send_email(to: str, subject: str, text: str, html: str | None = None) -> tuple[bool, str]:
