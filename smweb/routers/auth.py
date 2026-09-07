@@ -36,9 +36,12 @@ from PIL import Image
 
 import processor as proc
 import redis_store as rs
+import mailer
 
 import auth_db
 from smweb import object_store
+
+_local_verify_codes = {}
 
 
 from fastapi import APIRouter
@@ -82,6 +85,45 @@ def _avatar_files(user_id) -> list[Path]:
     return sorted(found, key=_mtime, reverse=True)
 
 
+@router.post("/api/auth/send-code")
+async def auth_send_code(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    email = str(body.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return JSONResponse({"ok": False, "msg": "Invalid email"}, status_code=400)
+    
+    # Check if already registered
+    c = auth_db._conn()
+    row = c.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+    c.close()
+    if row:
+        return JSONResponse({"ok": False, "msg": "Email already registered"}, status_code=400)
+    
+    identity = hashlib.sha256(email.encode()).hexdigest()[:24]
+    if not rs.rate_limit(f"auth-send-code:{identity}", 3, 300)[0]:
+        return JSONResponse({"ok": False, "msg": "Too many requests. Try later."}, status_code=429)
+    
+    code = f"{secrets.randbelow(1000000):06d}"
+    
+    # Store code
+    r = rs._r()
+    if r:
+        r.set(f"verify_code:{email}", code, ex=900)
+    else:
+        _local_verify_codes[email] = {"code": code, "exp": time.time() + 900}
+    
+    lang = (request.headers.get("accept-language") or "en")
+    ok, msg = mailer.send_verify_code(email, code, lang)
+    if not ok:
+        LOGGER.warning("send_verify_code failed for %s: %s", email, msg)
+        return JSONResponse({"ok": False, "msg": "Failed to send email"}, status_code=500)
+    
+    return JSONResponse({"ok": True, "msg": "Code sent"})
+
+
 @router.post("/api/auth/register")
 async def auth_register(request: Request):
     try:
@@ -90,9 +132,32 @@ async def auth_register(request: Request):
         body = {}
     email = str(body.get("email") or "")
     password = str(body.get("password") or "")
+    code = str(body.get("code") or "").strip()
+    
     identity = hashlib.sha256(email.strip().lower().encode()).hexdigest()[:24]
     if not rs.rate_limit(f"auth-register-email:{identity}", 3, 3600)[0]:
         return JSONResponse({"ok": False, "msg": "Too many requests. Try later."}, status_code=429)
+        
+    if not code:
+        return JSONResponse({"ok": False, "msg": "Verification code required"}, status_code=400)
+        
+    e_lower = email.strip().lower()
+    r = rs._r()
+    valid = False
+    if r:
+        stored = r.get(f"verify_code:{e_lower}")
+        if stored and stored == code:
+            valid = True
+            r.delete(f"verify_code:{e_lower}")
+    else:
+        stored = _local_verify_codes.get(e_lower)
+        if stored and stored["exp"] > time.time() and stored["code"] == code:
+            valid = True
+            del _local_verify_codes[e_lower]
+            
+    if not valid:
+        return JSONResponse({"ok": False, "msg": "Invalid or expired verification code"}, status_code=400)
+
     ok, msg = auth_db.register(email, password)
     if not ok:
         LOGGER.warning("auth register rejected identity=%s ip=%s", identity, request.client.host if request.client else "-")

@@ -135,13 +135,14 @@
       '<h2 id="ssAuthTitle">' + (ru ? 'С возвращением' : 'Welcome back') + '</h2>' +
       '<p class="ss-auth__sub" id="ssAuthSub">' + (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.') + '</p>' +
       '<form class="ss-auth__form" id="ssAuthForm">' +
-        '<label><span>Email</span><input id="ssAuthEmail" type="email" autocomplete="email" required placeholder="name@example.com"></label>' +
-        '<label><span>' + (ru ? 'Пароль' : 'Password') + '</span><input id="ssAuthPass" type="password" autocomplete="current-password" minlength="10" required placeholder="••••••••••"></label>' +
+        '<label id="ssAuthEmailWrap"><span>Email</span><input id="ssAuthEmail" type="email" autocomplete="email" required placeholder="name@example.com"></label>' +
+        '<label id="ssAuthPassWrap"><span>' + (ru ? 'Пароль' : 'Password') + '</span><input id="ssAuthPass" type="password" autocomplete="current-password" minlength="10" required placeholder="••••••••••"></label>' +
+        '<label id="ssAuthCodeWrap" style="display:none"><span>' + (ru ? 'Код из письма' : 'Email Code') + '</span><input id="ssAuthCode" type="text" autocomplete="one-time-code" minlength="6" maxlength="6" placeholder="123456"></label>' +
         '<p class="ss-auth__state" id="ssAuthState"></p>' +
         '<button class="ss-auth__submit" id="ssAuthSubmit" type="submit">' + (ru ? 'Войти' : 'Log in') + '</button>' +
       '</form>' +
-      '<div class="ss-auth__div"><span>' + (ru ? 'или войти через' : 'or continue with') + '</span></div>' +
-      '<div class="ss-auth__oauth" style="display:flex;flex-direction:column;gap:10px;width:100%;margin:0 0 8px">' +
+      '<div class="ss-auth__div" id="ssAuthDiv"><span>' + (ru ? 'или войти через' : 'or continue with') + '</span></div>' +
+      '<div class="ss-auth__oauth" id="ssAuthOauth" style="display:flex;flex-direction:column;gap:10px;width:100%;margin:0 0 8px">' +
         '<button type="button" class="ss-auth__oauth-btn" id="ssAuthDiscord" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(88,101,242,.45);background:rgba(88,101,242,.18);color:#fff;font-weight:700;font-size:14px;cursor:pointer">' + OAUTH_ICONS.discord + '<span>Discord</span></button>' +
         '<button type="button" class="ss-auth__oauth-btn" id="ssAuthGoogle" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-weight:700;font-size:14px;cursor:pointer">' + OAUTH_ICONS.google + '<span>Google</span></button>' +
         '<button type="button" class="ss-auth__oauth-btn" id="ssAuthTelegram" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(38,165,228,.45);background:rgba(38,165,228,.14);color:#fff;font-weight:700;font-size:14px;cursor:pointer">' + OAUTH_ICONS.telegram + '<span>Telegram</span></button>' +
@@ -401,13 +402,42 @@
     document.body.style.overflow = '';
   }
   function paintAuth() {
-    var ru = lang() === 'ru', reg = authMode === 'register';
+    var ru = lang() === 'ru', reg = authMode === 'register', ver = authMode === 'verify';
     var title = document.getElementById('ssAuthTitle'), sub = document.getElementById('ssAuthSub');
     var submit = document.getElementById('ssAuthSubmit'), sw = document.getElementById('ssAuthSwitch');
-    if (title) title.textContent = reg ? (ru ? 'Создать аккаунт' : 'Create account') : (ru ? 'С возвращением' : 'Welcome back');
-    if (sub) sub.textContent = reg ? (ru ? 'Один аккаунт для проектов, галереи и Pro.' : 'One account for projects, gallery and Pro.') : (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.');
-    if (submit) submit.textContent = reg ? (ru ? 'Зарегистрироваться' : 'Sign up') : (ru ? 'Войти' : 'Log in');
-    if (sw) sw.textContent = reg ? (ru ? 'Уже есть аккаунт? Войти' : 'Already registered? Log in') : (ru ? 'Нет аккаунта? Создать' : 'No account? Sign up');
+    
+    var emailWrap = document.getElementById('ssAuthEmailWrap');
+    var passWrap = document.getElementById('ssAuthPassWrap');
+    var codeWrap = document.getElementById('ssAuthCodeWrap');
+    var div = document.getElementById('ssAuthDiv');
+    var oauth = document.getElementById('ssAuthOauth');
+    
+    if (emailWrap) emailWrap.style.display = ver ? 'none' : 'block';
+    if (passWrap) passWrap.style.display = ver ? 'none' : 'block';
+    if (codeWrap) {
+        codeWrap.style.display = ver ? 'block' : 'none';
+        var codeInp = document.getElementById('ssAuthCode');
+        if (codeInp) codeInp.required = ver;
+    }
+    if (div) div.style.display = ver ? 'none' : 'block';
+    if (oauth) oauth.style.display = ver ? 'none' : 'flex';
+
+    if (title) {
+        if (ver) title.textContent = ru ? 'Введите код' : 'Enter code';
+        else title.textContent = reg ? (ru ? 'Создать аккаунт' : 'Create account') : (ru ? 'С возвращением' : 'Welcome back');
+    }
+    if (sub) {
+        if (ver) sub.textContent = ru ? 'Код отправлен на ваш email.' : 'Code sent to your email.';
+        else sub.textContent = reg ? (ru ? 'Один аккаунт для проектов, галереи и Pro.' : 'One account for projects, gallery and Pro.') : (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.');
+    }
+    if (submit) {
+        if (ver) submit.textContent = ru ? 'Подтвердить' : 'Confirm';
+        else submit.textContent = reg ? (ru ? 'Зарегистрироваться' : 'Sign up') : (ru ? 'Войти' : 'Log in');
+    }
+    if (sw) {
+        if (ver) sw.textContent = ru ? 'Назад' : 'Back';
+        else sw.textContent = reg ? (ru ? 'Уже есть аккаунт? Войти' : 'Already registered? Log in') : (ru ? 'Нет аккаунта? Создать' : 'No account? Sign up');
+    }
   }
   function wireAuth() {
     var login = document.getElementById('ssLogin'), modal = document.getElementById('ssAuth');
@@ -425,15 +455,45 @@
     };
     if (close) close.onclick = closeAuth;
     if (modal) modal.onclick = function (e) { if (e.target === modal) closeAuth(); };
-    if (sw) sw.onclick = function () { authMode = authMode === 'login' ? 'register' : 'login'; paintAuth(); };
+    if (sw) sw.onclick = function () { 
+        if (authMode === 'verify') {
+            authMode = 'register';
+            var state = document.getElementById('ssAuthState');
+            if (state) { state.textContent = ''; state.className = 'ss-auth__state'; }
+        } else {
+            authMode = authMode === 'login' ? 'register' : 'login'; 
+        }
+        paintAuth(); 
+    };
     if (form) form.onsubmit = function (e) {
       e.preventDefault();
       var email = document.getElementById('ssAuthEmail').value.trim();
       var password = document.getElementById('ssAuthPass').value;
+      var code = document.getElementById('ssAuthCode') ? document.getElementById('ssAuthCode').value.trim() : '';
       var state = document.getElementById('ssAuthState'), submit = document.getElementById('ssAuthSubmit');
+      
+      if (authMode === 'register') {
+          state.textContent = lang() === 'ru' ? 'Отправляем код…' : 'Sending code…'; state.className = 'ss-auth__state is-wait';
+          submit.disabled = true;
+          fetch('/api/auth/send-code', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:email}) })
+            .then(function (r) { return r.json(); }).then(function (j) {
+              if (!j || !j.ok) throw new Error((j && j.msg) || 'Failed to send code');
+              state.textContent = ''; state.className = 'ss-auth__state';
+              authMode = 'verify';
+              paintAuth();
+              setTimeout(function(){ document.getElementById('ssAuthCode').focus(); }, 40);
+            }).catch(function (err) { state.textContent = err.message; state.className = 'ss-auth__state is-bad'; })
+            .then(function () { submit.disabled = false; });
+          return;
+      }
+      
       state.textContent = lang() === 'ru' ? 'Подключаем…' : 'Connecting…'; state.className = 'ss-auth__state is-wait';
       submit.disabled = true;
-      fetch(authMode === 'register' ? '/api/auth/register' : '/api/auth/login', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:email,password:password}) })
+      var path = authMode === 'verify' ? '/api/auth/register' : '/api/auth/login';
+      var bodyObj = {email:email,password:password};
+      if (authMode === 'verify') bodyObj.code = code;
+      
+      fetch(path, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(bodyObj) })
         .then(function (r) { return r.json(); }).then(function (j) {
           if (!j || !j.ok) throw new Error((j && j.msg) || 'Authentication failed');
           state.textContent = lang() === 'ru' ? 'Готово' : 'Done'; state.className = 'ss-auth__state is-ok';
