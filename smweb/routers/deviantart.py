@@ -351,9 +351,10 @@ def da_login_start(request: Request):
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in to Showcase account first"}, status_code=401)
-    # Prefer user's own keys; fallback to server env
-    cid = (user.get("da_client_id") or "").strip() or (os.environ.get("DA_CLIENT_ID") or "").strip()
-    sec = (user.get("da_client_secret") or "").strip() or (os.environ.get("DA_CLIENT_SECRET") or "").strip()
+    # One ShowcaseMaker DeviantArt application for all users.
+    # Each user receives their own OAuth access/refresh tokens after authorization.
+    cid = (os.environ.get("DA_CLIENT_ID") or "").strip()
+    sec = (os.environ.get("DA_CLIENT_SECRET") or "").strip()
     redirect = (os.environ.get("DA_REDIRECT_URI") or "").strip()
     if not redirect:
         redirect = (os.environ.get("APP_URL") or "").rstrip("/") + "/api/da/callback"

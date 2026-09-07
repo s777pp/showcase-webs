@@ -700,18 +700,8 @@
     <div class="card">
       <h2><span data-i="da_h">DeviantArt</span></h2>
       <p class="steps" style="margin-bottom:12px">
-        Like the desktop app: paste Client ID &amp; Secret from
-        <a href="https://www.deviantart.com/developers" target="_blank" style="color:var(--accent)">deviantart.com/developers</a>,
-        click Connect, allow access in the popup. Then pick files, set titles, upload to <b>your</b> Sta.sh.
+        Connect your DeviantArt account to publish directly to your Sta.sh.
       </p>
-        <p class="steps" id="daRedirectText" data-i="da_redirect" style="margin-bottom:12px;font-size:12px">
-        Redirect URI in your DA app must be exactly:<br/>
-        <code id="daRedirectCode">https://steamshowcase.up.railway.app/api/da/callback</code>
-      </p>
-      <div class="row" style="margin-bottom:12px;flex-wrap:wrap">
-        <label class="field" style="flex:1;min-width:180px">Client ID<input id="daClientId" autocomplete="off" placeholder="Client ID"/></label>
-        <label class="field" style="flex:1;min-width:180px">Client Secret<input id="daClientSecret" type="password" autocomplete="off" placeholder="Client Secret"/></label>
-      </div>
       <div class="row" style="margin-bottom:14px">
         <span class="pill" id="daStatusPill" data-i="da_disconnected">DA: not connected</span>
         <button class="btn" id="daLogin" data-i="da_connect" data-da-connect="1" type="button">Connect</button>
@@ -820,7 +810,7 @@
   </div>
 </div>
 
-  <script src="/static/js/app.js?v=20260907-steam-output2"></script>
+  <script src="/static/js/app.js?v=20260907-da-shared1"></script>
 
 
 

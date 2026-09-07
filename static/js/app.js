@@ -1460,15 +1460,6 @@ window.daDoConnect = async function daDoConnect() {
   var ru = (SMLang.isRu());
   setMsg('', ru ? 'Подключение…' : 'Connecting…');
   try {
-    var cidEl = document.getElementById('daClientId');
-    var secEl = document.getElementById('daClientSecret');
-    var cid = (cidEl && cidEl.value || '').trim();
-    var sec = (secEl && secEl.value || '').trim();
-    if (!cid || !sec) {
-      setMsg('err', ru ? 'Введи Client ID и Client Secret' : 'Enter Client ID and Client Secret');
-      return;
-    }
-    setMsg('', ru ? 'Сохраняю ключи…' : 'Saving keys…');
     var hdr = {};
     try { hdr = headers(); } catch (e) { hdr = {}; }
     try {
@@ -1476,21 +1467,6 @@ window.daDoConnect = async function daDoConnect() {
       if (tok) hdr['X-Access-Token'] = tok;
     } catch (e) {}
     hdr['Content-Type'] = 'application/json';
-    var sk = await fetch('/api/da/keys', {
-      method: 'POST',
-      headers: hdr,
-      body: JSON.stringify({ client_id: cid, client_secret: sec }),
-      credentials: 'include',
-    });
-    var sj = {};
-    try { sj = await sk.json(); } catch (e) {}
-    if (!sk.ok || !sj.ok) {
-      setMsg('err', sj.msg || (ru ? 'Ошибка сохранения (' + sk.status + ') — войди в аккаунт' : 'Save failed (' + sk.status + ') — log in'));
-      if (sk.status === 401) {
-        try { if (typeof openAuthModal === 'function') openAuthModal('login'); } catch (e) {}
-      }
-      return;
-    }
     setMsg('', ru ? 'Открываю DeviantArt…' : 'Opening DeviantArt…');
     var r = await fetch('/api/da/login', { headers: hdr, credentials: 'include' });
     var j = {};
@@ -2504,25 +2480,6 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     try { ru = SMLang.isRu(); } catch (e) {}
     msg(ru ? "Подключение…" : "Connecting…", "");
     try {
-      var cid = String((document.getElementById("daClientId") || {}).value || "").trim();
-      var sec = String((document.getElementById("daClientSecret") || {}).value || "").trim();
-      if (!cid || !sec) {
-        msg(ru ? "Введи Client ID и Client Secret" : "Enter Client ID and Client Secret", "err");
-        return;
-      }
-      msg(ru ? "Сохраняю ключи…" : "Saving keys…", "");
-      var sk = await fetch("/api/da/keys", {
-        method: "POST",
-        headers: sessionHeaders(),
-        credentials: "include",
-        body: JSON.stringify({ client_id: cid, client_secret: sec })
-      });
-      var sj = {};
-      try { sj = await sk.json(); } catch (e) {}
-      if (!sk.ok || !sj.ok) {
-        msg(sj.msg || ((ru ? "Ошибка " : "Error ") + sk.status), "err");
-        return;
-      }
       msg(ru ? "Открываю DeviantArt…" : "Opening DeviantArt…", "");
       var r = await fetch("/api/da/login", { headers: sessionHeaders(), credentials: "include" });
       var j = {};
