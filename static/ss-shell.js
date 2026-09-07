@@ -72,7 +72,7 @@
     NAV.forEach(function (n) { byKey[n.key] = n; });
     byKey.account = { href: '/profile#account', key: 'account', icon: 'key',
                       label: { ru: 'Аккаунт и Pro-ключ', en: 'Account & Pro key' } };
-    return GROUPS.map(function (g) {
+    var groups = GROUPS.map(function (g) {
       var links = g.items.map(function (k) {
         var n = byKey[k];
         if (!n) return '';
@@ -82,6 +82,8 @@
       }).join('');
       return '<div class="ss-drawer__g"><p class="ss-drawer__t">' + esc(t(g.title)) + '</p>' + links + '</div>';
     }).join('');
+    return groups + '<div class="ss-drawer__auth"><button class="ss-drawer__auth-btn" id="ssDrawerAuth" type="button">' +
+      svg('user') + '<span>' + (lang() === 'ru' ? 'Войти' : 'Log in') + '</span></button></div>';
   }
 
   function langHTML() {
@@ -212,7 +214,15 @@
     }
     if (logout) {
       logout.hidden = !logged;
-      logout.style.setProperty('display', logged ? 'inline-flex' : 'none', 'important');
+      /* The mobile stylesheet must be able to hide this desktop-only action. */
+      logout.style.display = logged ? 'inline-flex' : 'none';
+    }
+    var drawerAuth = document.getElementById('ssDrawerAuth');
+    if (drawerAuth) {
+      drawerAuth.dataset.authAction = logged ? 'logout' : 'login';
+      drawerAuth.classList.toggle('is-logout', logged);
+      drawerAuth.innerHTML = svg('user') + '<span>' +
+        (logged ? (lang() === 'ru' ? 'Выйти' : 'Log out') : (lang() === 'ru' ? 'Войти' : 'Log in')) + '</span>';
     }
     var activate = document.getElementById('ssActivate');
 
@@ -400,9 +410,18 @@
   }
   function wireAuth() {
     var login = document.getElementById('ssLogin'), modal = document.getElementById('ssAuth');
+    var drawerAuth = document.getElementById('ssDrawerAuth'), logout = document.getElementById('ssLogout');
     var close = document.getElementById('ssAuthClose'), sw = document.getElementById('ssAuthSwitch');
     var form = document.getElementById('ssAuthForm');
     if (login) login.onclick = function () { openAuth('login'); };
+    if (logout) logout.onclick = performLogout;
+    if (drawerAuth) drawerAuth.onclick = function () {
+      if (drawerAuth.dataset.authAction === 'logout') { performLogout(); return; }
+      var drawer = document.getElementById('ssDrawer');
+      if (drawer) drawer.classList.remove('is-open');
+      document.body.style.overflow = '';
+      openAuth('login');
+    };
     if (close) close.onclick = closeAuth;
     if (modal) modal.onclick = function (e) { if (e.target === modal) closeAuth(); };
     if (sw) sw.onclick = function () { authMode = authMode === 'login' ? 'register' : 'login'; paintAuth(); };
@@ -474,6 +493,14 @@
     };
   }
 
+  function performLogout() {
+    fetch('/api/auth/logout', { method:'POST', credentials:'same-origin' })
+      .then(function () {
+        try { localStorage.removeItem('sm_session'); } catch (e) {}
+        location.reload();
+      });
+  }
+
   function mount() {
     var head = document.getElementById('ssHeadHost');
     var foot = document.getElementById('ssFootHost');
@@ -487,14 +514,6 @@
 
   function initialize() {
     mount();
-    var logoutBtn = document.getElementById('ssLogout');
-    if (logoutBtn) logoutBtn.onclick = function () {
-      fetch('/api/auth/logout', { method:'POST', credentials:'same-origin' })
-        .then(function () {
-          try { localStorage.removeItem('sm_session'); } catch (e) {}
-          location.reload();
-        });
-    };
     // Old bearer tokens in localStorage are deliberately discarded. The
     // server-owned HttpOnly cookie is the only session source.
     try { localStorage.removeItem('sm_session'); } catch (e) {}

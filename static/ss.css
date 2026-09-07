@@ -156,6 +156,14 @@ img,video{max-width:100%;display:block}
 }
 .ss-drawer a:hover,.ss-drawer a.is-on{background:rgba(255,255,255,.05);color:var(--txt);border-color:var(--line)}
 .ss-drawer a.is-on svg{opacity:1;color:var(--brand-2)}
+.ss-drawer__auth{padding-top:14px;border-top:1px solid var(--line)}
+.ss-drawer__auth-btn{
+  display:flex;width:100%;align-items:center;justify-content:center;gap:10px;padding:13px 16px;
+  border:1px solid var(--brand);border-radius:10px;background:var(--brand-dim);color:var(--brand-2);
+  font-size:14px;font-weight:800;
+}
+.ss-drawer__auth-btn svg{width:18px;height:18px;flex:none}
+.ss-drawer__auth-btn.is-logout{border-color:rgba(255,99,99,.42);background:rgba(192,57,43,.14);color:#ff8a80}
 
 /* shared authentication dialog */
 .ss-auth{position:fixed;inset:0;z-index:200;display:none;place-items:center;padding:20px;background:rgba(1,5,8,.7);backdrop-filter:blur(18px)}

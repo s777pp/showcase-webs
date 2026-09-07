@@ -443,6 +443,8 @@ async function refreshHomeUser(force) {
   const pill = document.getElementById("navUserPill");
   const reg = document.getElementById("navReg");
   const logout = document.getElementById("navLogout");
+  const mobileLogin = document.getElementById("mobileNavLogin");
+  const mobileLogout = document.getElementById("mobileNavLogout");
   try {
     // ss-shell.js already fetches this on every page load. Reuse its response
     // instead of asking the server about the same session a second time; pass
@@ -463,22 +465,29 @@ async function refreshHomeUser(force) {
         pill.href = "/profile/" + encodeURIComponent(j.profile_username || j.username || (j.email || "profile").split("@")[0]);
         pill.classList.add("visible");
       }
-      if (reg) { reg.style.setProperty("display", "none", "important"); reg.hidden = true; }
-      if (logout) { logout.hidden = false; logout.style.setProperty("display", "inline-flex", "important"); }
+      if (reg) { reg.style.display = "none"; reg.hidden = true; }
+      if (logout) { logout.hidden = false; logout.style.display = "inline-flex"; }
+      if (mobileLogin) { mobileLogin.hidden = true; mobileLogin.style.display = "none"; }
+      if (mobileLogout) { mobileLogout.hidden = false; mobileLogout.style.display = "flex"; }
       return;
     }
   } catch (e) {}
   if (pill) { pill.classList.remove("visible"); pill.textContent = ""; }
-  if (reg) { reg.hidden = false; reg.style.setProperty("display", "inline-flex", "important"); }
-  if (logout) { logout.hidden = true; logout.style.setProperty("display", "none", "important"); }
+  if (reg) { reg.hidden = false; reg.style.display = "inline-flex"; }
+  if (logout) { logout.hidden = true; logout.style.display = "none"; }
+  if (mobileLogin) { mobileLogin.hidden = false; mobileLogin.style.display = "flex"; }
+  if (mobileLogout) { mobileLogout.hidden = true; mobileLogout.style.display = "none"; }
 }
 document.addEventListener("DOMContentLoaded", function () {
-  var lo = document.getElementById("navLogout");
-  if (lo) lo.addEventListener("click", async function () {
+  async function logoutHome() {
     try { await fetch("/api/auth/logout", { method: "POST", credentials: "include" }); } catch (e) {}
     try { localStorage.removeItem("sm_session"); } catch (e) {}
     location.reload();
-  });
+  }
+  var lo = document.getElementById("navLogout");
+  var mobileLo = document.getElementById("mobileNavLogout");
+  if (lo) lo.addEventListener("click", logoutHome);
+  if (mobileLo) mobileLo.addEventListener("click", logoutHome);
 });
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -507,6 +516,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
   bindOpen("navReg", "login");
+  bindOpen("mobileNavLogin", "login");
   bindOpen("ctaReg", "register");
 
   // also data-i links that might not have id after i18n innerHTML — use delegation

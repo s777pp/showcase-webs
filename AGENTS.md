@@ -19,6 +19,7 @@ Current state as of 2026-09-07 (including the local Steam-output/catalog work de
 - `node scripts/check_i18n.js` statically verifies that the main tools, landing, profile editor, and gallery `data-i` bindings exist in both RU and EN dictionaries. Run it whenever user-facing labels or tabs change.
 - The latest readiness/localization pass exposes the integrated report to authenticated Free as well as Pro users, keeps anonymous ZIP download behavior, adds an anonymous sign-in hint, and reserves the red `NOT READY` verdict for oversized primary Steam files.
 - The current profile-tools refinement aligns the Profile Rating/Design Selection input and result panels, detects SteamShowcase Helper on the Steam tab through the existing constrained site bridge, and replaces generic image-search links with Steam-profile-specific reference destinations.
+- Mobile authentication now lives inside the hamburger drawer: guests see `Log in / Войти`, authenticated users see `Log out / Выйти`, and no auth action is persistently rendered beside the burger. Keep the desktop action and the drawer action synchronized through `static/ss-shell.js`; the landing page also retains matching legacy-menu behavior in `static/js/index.js`.
 
 Do not trust older notes claiming `processor.py` or `requirements.txt` are currently modified. Always run `git status --short` for live state.
 

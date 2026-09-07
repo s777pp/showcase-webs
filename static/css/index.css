@@ -497,6 +497,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 }
 .mobile-menu a:hover, .mobile-menu button.mm-item:hover{background:rgba(255,255,255,.06);color:#fff}
 .mobile-menu .mm-sep{height:1px;background:rgba(255,255,255,.08);margin:6px 8px}
+.mobile-menu .mm-auth{justify-content:center;border:1px solid rgba(85,217,255,.42);color:#dff9ff}
+.mobile-menu .mm-auth--logout{border-color:rgba(255,99,99,.38);color:#ff8a80}
+.mobile-menu .mm-auth[hidden]{display:none!important}
 
 @media (max-width:767px){
   .nav{padding:12px 14px;gap:8px}
@@ -505,7 +508,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   .nav-links{display:none !important}
   .nav-right .btn-ghost,
   .nav-right .btn-pill,
-  .nav-right .lang-nav{display:none !important}
+  .nav-right .lang-nav,
+  .nav-right #navReg,
+  .nav-right #navLogout{display:none !important}
   .nav-right{gap:8px;margin-left:auto}
   .nav-right .btn-shiny-nav, .nav-right #navReg{font-size:13px;padding:8px 12px}
   .sm-bell-wrap{order:1}
