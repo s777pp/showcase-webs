@@ -215,6 +215,8 @@ def process_image_workshop(
     wm_scale: float = 1.0,
     wm_x: float | None = None,
     wm_y: float | None = None,
+    outline_width: int = 0,
+    outline_color: str = "#ffffff",
 ) -> dict[str, bytes]:
     img = img.convert("RGBA")
     w, h = img.size
@@ -225,6 +227,16 @@ def process_image_workshop(
         left = i * pw
         right = (i + 1) * pw if i < 4 else w
         part = img.crop((left, 0, right, h))
+        if outline_width > 0:
+            from PIL import ImageDraw
+            stroke = max(1, min(12, int(outline_width)))
+            draw = ImageDraw.Draw(part)
+            for offset in range(stroke):
+                draw.rectangle(
+                    (offset, offset, part.width - 1 - offset, part.height - 1 - offset),
+                    outline=outline_color,
+                    width=1,
+                )
         parts.append(part)
         # Steam: last byte 0x21 on each workshop part
         out[f"part_{i + 1}.png"] = apply_hex21(_png_bytes(part))
@@ -518,6 +530,8 @@ def process_video_workshop(
     wm_x: float | None = None,
     wm_y: float | None = None,
     encoder: str = "ffmpeg",
+    outline_width: int = 0,
+    outline_color: str = "#ffffff",
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -527,6 +541,7 @@ def process_video_workshop(
         gif_src, out_dir, wm_text, wm_font, wm_opacity,
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
         wm_x=wm_x, wm_y=wm_y, encoder=encoder,
+        outline_width=outline_width, outline_color=outline_color,
     )
 
 
@@ -1187,6 +1202,8 @@ def process_gif_workshop(
     wm_y: float | None = None,
     encoder: str = "ffmpeg",
     fps: int = 12,
+    outline_width: int = 0,
+    outline_color: str = "#ffffff",
 ) -> dict[str, Path]:
     """Cut GIF into 5 Steam Workshop parts + full_with_bars.gif."""
     out_dir = Path(out_dir)
@@ -1201,9 +1218,16 @@ def process_gif_workshop(
         out = out_dir / f"part_{i + 1}.gif"
         x = i * pw
         w = pw if i < 4 else max(1, width - x)
+        crop_filter = f"crop={w}:{height}:{x}:0"
+        if outline_width > 0:
+            stroke = max(1, min(12, int(outline_width)))
+            color = str(outline_color or "#ffffff").strip().lstrip("#")
+            if not re.fullmatch(r"[0-9a-fA-F]{6}", color):
+                color = "ffffff"
+            crop_filter += f",drawbox=x=0:y=0:w=iw:h=ih:color=0x{color}:t={stroke}"
         _reencode_crop_hq(
             gif_path, out,
-            crop_vf=f"crop={w}:{height}:{x}:0",
+            crop_vf=crop_filter,
             fps=fps,
             encoder=encoder,
         )

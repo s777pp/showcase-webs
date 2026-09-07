@@ -16,3 +16,7 @@
   .row{flex-wrap:wrap}
   .row .input,.row .btn{width:100%;min-width:0}
 }
+
+.asset.is-selected{border-color:#54d6ff;box-shadow:0 0 0 2px rgba(84,214,255,.18),0 0 18px rgba(84,214,255,.12)}
+.asset-buy{display:block;margin:9px 0 7px;text-align:center;text-decoration:none}
+.asset-buy[hidden]{display:none}

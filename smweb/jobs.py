@@ -230,6 +230,8 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
     wm_x_f = opts["wm_x"]
     wm_y_f = opts["wm_y"]
     do_ac = opts["do_ac"]
+    outline_width = int(opts.get("outline_width") or 0)
+    outline_color = str(opts.get("outline_color") or "#ffffff")
     size_i = opts["size_i"]
     fps = opts["fps"]
     enc = opts["enc"]
@@ -281,7 +283,8 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
                             img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
                         if mode == "workshop":
                             parts = proc.process_image_workshop(
-                                img, text, opts["wm_font"], opacity, color, corner, scale, wm_x_f, wm_y_f
+                                img, text, opts["wm_font"], opacity, color, corner, scale, wm_x_f, wm_y_f,
+                                outline_width=outline_width, outline_color=outline_color,
                             )
                         elif mode == "featured":
                             parts = proc.process_image_featured(
@@ -313,6 +316,7 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
                                     wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity, wm_color=color,
                                     duration=v_dur, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
+                                    outline_width=outline_width, outline_color=outline_color,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_video_featured(
@@ -334,6 +338,7 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
                                     wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity,
                                     wm_color=color, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder, fps=v_fps,
+                                    outline_width=outline_width, outline_color=outline_color,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_gif_featured(

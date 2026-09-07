@@ -6,7 +6,7 @@ This is the root handoff and operating guide for coding agents. Read it before c
 
 SteamShowcase Maker is a bilingual (RU/EN) web application for preparing Steam profile showcases. It provides image/GIF/video processing, Workshop/Featured/Artwork Split output, profile design and import, gallery publishing, downloads, character composition, HEX 21 handling, Pro access, and Modal GPU upscaling.
 
-Current state as of 2026-09-06 (after the post-`dd2657d` UI/readiness work; verify the latest commit):
+Current state as of 2026-09-07 (including the local Steam-output/catalog work described below; verify the latest commit):
 
 - Production is an OVH Ubuntu VPS at `/opt/showcasemaker`, deployed with Docker Compose and exposed only through a Cloudflare Tunnel.
 - The local and production branch is `main`; always verify live state with `git rev-parse HEAD` and `git status --short` rather than assuming a documented hash is still current.
@@ -265,6 +265,15 @@ Both tools are separate Tools tabs and share one background pipeline:
 
 Security boundaries: only public `https://steamcommunity.com/id|profiles/...` URLs are accepted; visual context can only be fetched from allowlisted Steam CDN suffixes, redirect destinations are revalidated, each source image is capped and re-encoded to a bounded JPEG, profile text is explicitly treated as untrusted prompt data, AI text is rendered escaped, API keys remain server-side, and errors sent to clients are sanitized.
 
+## 6.3 Steam Output Quality and Profile Catalog (local 2026-09-07 state)
+
+- Process now exposes the existing adaptive GIF size fitter as **Smart compression to 5 MB / Умное сжатие до 5 МБ**. This is an always-on guarantee for final Steam GIFs, not a cosmetic browser-only toggle: `processor.ensure_under_mb()` already retries quality/palette/frame strategies and is called by Workshop, Featured, Split, Compose, and Loop output paths. Auxiliary full-size previews remain exempt where documented.
+- Workshop processing has an optional per-panel inner outline with configurable 1–8 px thickness and color. The outline is drawn after the five-way cut, so each uploaded panel receives its own border and output dimensions do not change. Static PNG uses Pillow; animated/video Workshop output adds FFmpeg `drawbox` to each crop before GIF encoding and size fitting. Options flow from `static/app.html` / `static/js/app.js` through `/api/process/start`, `smweb/routers/process.py`, and `smweb/jobs.py` into `processor.py`.
+- The watermark preview canvas also previews all five outlines. Keep the feature Workshop-only; Featured and Split must ignore these options.
+- The profile editor now loads the official server-side Steam catalog first, without requiring the browser extension or opening a Steam profile. For backgrounds it merges market static backgrounds, Points Shop static backgrounds, and animated backgrounds; avatar/frame pages use the Points Shop catalog. Extension data is a best-effort supplement only.
+- Selecting a catalog background/avatar/frame reveals a localized **Buy selected item on Steam** action. Market items use their exact Community Market listing; Points Shop items use the exact `/points/shop/app/{appid}/reward/{defid}` URL. Do not regress this to a generic app page when `defid` is available.
+- `tests/test_workshop_outline.py` covers static per-panel outlines and exact Points Shop reward URLs. The Windows development host still lacks FFmpeg, so animated outline output requires a production-container smoke test.
+
 Required production variables are documented in `.env.example`: `GEMINI_API_KEY`, optional `GEMINI_MODEL`, and `PROFILE_AI_PRO_DAILY`. The current default is `gemini-3.6-flash`; Google returns HTTP 404 for `gemini-2.5-flash` to new API users. A consumer Gemini/Google AI subscription is not the API credential or API quota.
 
 ## 6.2 Seamless Loop
@@ -321,7 +330,7 @@ Static files are served by nginx from the repository mount, but backend/router c
 
 ## 9. Known Bugs, Risks, and Unresolved Work
 
-- Steam Check only has the lossless safe-fix stage. Geometry correction, upscale confirmation, synchronization, and <=5 MiB compression are unresolved.
+- Steam Check only has the lossless safe-fix stage. Geometry correction, upscale confirmation, synchronization, and an explicit checker-side compression comparison/confirmation flow are unresolved. Normal Process output already performs adaptive <=5 MiB fitting automatically.
 - Seamless Loop has syntax/unit/UI coverage but still needs its first production-container smoke test with real GIF and MP4 inputs because the Windows development host does not have FFmpeg. Verify both `blend` and `pingpong`, GIF/MP4 download, private R2 preview, and a result passed into Process.
 - Steam Check ZIP input cannot yet be handed directly to Process.
 - The integrated Process report has automated unit/syntax coverage but still needs production browser testing with real Workshop, Featured, and Artwork Split outputs and the unpacked 0.9.8 extension.
@@ -379,6 +388,8 @@ Recommended order for the next coding agent:
 6. Add optional licensed/static reference thumbnails and a richer seven-day history UI to Smart Design without permanently storing third-party media.
 7. Production-smoke-test Seamless Loop with real GIF/MP4 files, then add a deliberate direct handoff into Process only after deciding whether to download/re-upload or add an owner-only server-side result-transfer contract.
 8. Update or replace stale `UPSCALER_SETUP.md`, expand README, and add browser E2E coverage for RU/EN, the Process-integrated report, Steam extension card/handoff, Loop, and auth/Pro gates.
+9. Smoke-test Workshop outline in the Linux worker with one real MP4 and GIF using both gifski and FFmpeg encoders; visually verify border continuity across all five uploaded parts and that each primary GIF remains <=5 MiB.
+10. Production-test catalog pagination/search for market backgrounds, Points Shop backgrounds, animated avatars, and frames; Steam may rate-limit the VPS, so confirm cached fallback behavior without making the extension mandatory again.
 
 ## 13. Verification Commands
 

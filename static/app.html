@@ -7,7 +7,7 @@
 <link rel="icon" href="/static/icon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap&subset=cyrillic,cyrillic-ext,latin" rel="stylesheet"/>
 <link rel="stylesheet" href="/static/ss.css?v=20260902a"/>
-<link rel="stylesheet" href="/static/css/app.css?v=20260903d2"/>
+<link rel="stylesheet" href="/static/css/app.css?v=20260907-steam-output2"/>
 
 
   <link rel="stylesheet" href="/static/css/mobile.css?v=20260903m"/>
@@ -124,6 +124,16 @@
         <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="wmEnable" checked/> <span data-i="wm_on">On</span></label>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="allModes"/> <span data-i="all_modes">All modes</span></label>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px"><input type="checkbox" id="autoContrast"/> <span data-i="auto_contrast">Auto-contrast</span></label>
+      </div>
+      <div class="steam-opt-row">
+        <div class="steam-opt-copy"><strong data-i="smart_compress">Smart compression to 5 MB</strong><span data-i="smart_compress_hint">Always on for final Steam GIFs. The processor keeps the highest quality that fits the limit.</span></div>
+        <span class="steam-opt-badge">AUTO · ≤ 5 MB</span>
+      </div>
+      <div class="workshop-outline" id="workshopOutlineSettings">
+        <label class="field workshop-outline__toggle"><input type="checkbox" id="workshopOutline"/> <span data-i="workshop_outline">Panel outline</span></label>
+        <label class="field"><span data-i="outline_width">Thickness</span><input type="range" id="outlineWidth" min="1" max="8" value="2"/></label>
+        <label class="field"><span data-i="outline_color">Color</span><input type="color" id="outlineColor" value="#ffffff"/></label>
+        <span class="workshop-outline__hint" data-i="outline_hint">Adds an inner outline to every final Workshop panel without changing its dimensions.</span>
       </div>
       <div id="wmTip" style="display:none;margin-top:10px;font-size:12px;color:rgba(0,210,255,.9);padding:8px 12px;border-radius:10px;border:1px solid rgba(0,210,255,.25);background:rgba(0,210,255,.06)"></div>
     </div>
@@ -807,7 +817,7 @@
   </div>
 </div>
 
-  <script src="/static/js/app.js?v=20260906-telegram"></script>
+  <script src="/static/js/app.js?v=20260907-steam-output2"></script>
 
 
 

@@ -321,6 +321,9 @@ document.querySelectorAll('.mode').forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll('.mode').forEach(b => b.classList.remove('active'));
     btn.classList.add('active'); state.mode = btn.dataset.mode;
+    const outline = document.getElementById('workshopOutlineSettings');
+    if (outline) outline.hidden = state.mode !== 'workshop';
+    if (typeof window.__wmRedraw === 'function') window.__wmRedraw();
   };
 });
 
@@ -401,6 +404,9 @@ document.getElementById('btnRun').onclick = async () => {
   if (_wx) fd.append('wm_x', _wx);
   if (_wy) fd.append('wm_y', _wy);
   fd.append('auto_contrast', document.getElementById('autoContrast')?.checked ? '1' : '0');
+  fd.append('workshop_outline', document.getElementById('workshopOutline')?.checked ? '1' : '0');
+  fd.append('outline_width', document.getElementById('outlineWidth')?.value || '2');
+  fd.append('outline_color', document.getElementById('outlineColor')?.value || '#ffffff');
   fd.append('gif_encoder', document.getElementById('gifEncoder')?.value || 'gifski');
   fd.append('wm_scale', sc ? (Number(sc.value) / 100) : 1);
   fd.append('all_modes', (document.getElementById('allModes') || {}).checked ? '1' : '0');
@@ -1894,6 +1900,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       wm_empty: "No preview — add an image in «Files»",
       wm_reset: "Reset position",
       auto_contrast: "Auto-contrast",
+      smart_compress: "Smart compression to 5 MB", smart_compress_hint: "Always on for final Steam GIFs. The processor keeps the highest quality that fits the limit.",
+      workshop_outline: "Panel outline", outline_width: "Thickness", outline_color: "Color", outline_hint: "Adds an inner outline to every final Workshop panel without changing its dimensions.",
       dl_zip: "Download ZIP", publish_gallery: "Publish to gallery", get_pro: "Get Pro",
       prog_processing: "Processing…", prog_downloading: "Downloading…", prog_converting: "Converting…",
       prog_building: "Building…", prog_uploading: "Uploading…",
@@ -2040,6 +2048,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       wm_empty: "Нет превью — добавь изображение в «Файлы»",
       wm_reset: "Сброс позиции",
       auto_contrast: "Автоконтраст",
+      smart_compress: "Умное сжатие до 5 МБ", smart_compress_hint: "Всегда включено для итоговых GIF Steam. Обработчик сохраняет максимально возможное качество в пределах лимита.",
+      workshop_outline: "Обводка панелей", outline_width: "Толщина", outline_color: "Цвет", outline_hint: "Добавляет внутреннюю обводку к каждой итоговой части Workshop, не меняя её размеры.",
       dl_zip: "Скачать ZIP", publish_gallery: "Опубликовать в галерею", get_pro: "Купить Pro",
       prog_processing: "Обработка…", prog_downloading: "Скачивание…", prog_converting: "Конвертация…",
       prog_building: "Сборка…", prog_uploading: "Загрузка…",
@@ -2950,6 +2960,19 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     if (empty) empty.style.display = 'none';
     ctx.clearRect(0,0,w,h);
     ctx.drawImage(img, 0, 0, w, h);
+    const outlineOn = state.mode === 'workshop' && document.getElementById('workshopOutline')?.checked;
+    if (outlineOn) {
+      const sourceWidth = Number(document.getElementById('size')?.value || 750);
+      const stroke = Math.max(1, Number(document.getElementById('outlineWidth')?.value || 2) * w / sourceWidth);
+      ctx.save();
+      ctx.strokeStyle = document.getElementById('outlineColor')?.value || '#ffffff';
+      ctx.lineWidth = stroke;
+      for (let panel = 0; panel < 5; panel++) {
+        const left = panel * w / 5 + stroke / 2;
+        ctx.strokeRect(left, stroke / 2, w / 5 - stroke, h - stroke);
+      }
+      ctx.restore();
+    }
     if (!enabled() || !textVal()) return;
     const key = fontKey();
     const family = fontReady[key] || ('wm_' + key);
@@ -3117,7 +3140,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   canvas.addEventListener('pointerup', endDrag);
   canvas.addEventListener('pointercancel', endDrag);
 
-  ['wmText','wmOpacity','wmScale','wmColor','wmEnable'].forEach(function(id){
+  ['wmText','wmOpacity','wmScale','wmColor','wmEnable','workshopOutline','outlineWidth','outlineColor','size'].forEach(function(id){
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', draw);

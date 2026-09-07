@@ -1123,7 +1123,11 @@ def _points_item(defn: dict, asset: str) -> dict | None:
         "source": "points",
         "price": "",
         "points": points,
-        "buy_url": (POINTS_SHOP_APP + str(appid)) if appid else "",
+        "buy_url": (
+            POINTS_SHOP_APP + str(appid) + "/reward/" + str(defn.get("defid"))
+            if appid and defn.get("defid") is not None else
+            (POINTS_SHOP_APP + str(appid) if appid else "")
+        ),
         "market_url": "",
         "capsule": APP_CAPSULE.format(appid) if appid else "",
         "asset": asset,

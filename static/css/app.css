@@ -1044,3 +1044,10 @@ input[type="range"]{
   -webkit-backdrop-filter:none!important;
 }
 .nav button[hidden]{display:none!important}
+/* Steam output helpers */
+.steam-opt-row,.workshop-outline{display:flex;align-items:center;gap:14px;margin-top:12px;padding:12px 14px;border:1px solid rgba(79,211,255,.18);background:rgba(4,18,27,.52)}
+.steam-opt-copy{display:grid;gap:3px;min-width:0}.steam-opt-copy strong{font-size:12px;color:var(--text)}.steam-opt-copy span,.workshop-outline__hint{font-size:11px;line-height:1.45;color:var(--muted)}
+.steam-opt-badge{margin-left:auto;flex:none;padding:5px 8px;border:1px solid rgba(65,238,185,.35);color:#6ef0c2;background:rgba(65,238,185,.08);font:700 10px/1 monospace;letter-spacing:.08em}
+.workshop-outline{display:grid;grid-template-columns:auto minmax(130px,1fr) 90px minmax(180px,1.5fr)}.workshop-outline .field{margin:0}.workshop-outline__toggle{display:flex!important;align-items:center;gap:8px}.workshop-outline__toggle span{margin:0!important}.workshop-outline input[type=color]{height:36px;padding:2px;cursor:pointer}
+.workshop-outline[hidden]{display:none}
+@media(max-width:760px){.steam-opt-row{align-items:flex-start;flex-direction:column}.steam-opt-badge{margin-left:0}.workshop-outline{grid-template-columns:1fr 1fr}.workshop-outline__hint{grid-column:1/-1}}

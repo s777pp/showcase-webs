@@ -124,6 +124,9 @@ async def api_process_start(
     wm_x: str = Form(""),
     wm_y: str = Form(""),
     auto_contrast: str = Form("0"),
+    workshop_outline: str = Form("0"),
+    outline_width: int = Form(2),
+    outline_color: str = Form("#ffffff"),
     gif_encoder: str = Form("gifski"),
     all_modes: str = Form("0"),
     files: list[UploadFile] = File(...),
@@ -146,6 +149,14 @@ async def api_process_start(
         wm_scale, wm_color, wm_x, wm_y,
     )
     do_ac = str(auto_contrast).lower() in ("1", "true", "yes", "on")
+    do_outline = str(workshop_outline).lower() in ("1", "true", "yes", "on")
+    try:
+        outline_width_i = max(1, min(12, int(outline_width))) if do_outline else 0
+    except (TypeError, ValueError):
+        outline_width_i = 2 if do_outline else 0
+    outline_color_s = str(outline_color or "#ffffff").strip()
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", outline_color_s):
+        outline_color_s = "#ffffff"
     try:
         size_i = int(size)
     except (TypeError, ValueError):
@@ -170,6 +181,8 @@ async def api_process_start(
         "wm_x": wm_x_f,
         "wm_y": wm_y_f,
         "do_ac": do_ac,
+        "outline_width": outline_width_i,
+        "outline_color": outline_color_s,
         "size_i": size_i,
         "fps": fps,
         "enc": enc,
