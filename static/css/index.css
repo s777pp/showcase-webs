@@ -272,7 +272,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .site-footer__brand:hover{color:#fff}
 .site-footer__brand img{width:42px;height:42px;border-radius:12px;object-fit:cover;box-shadow:0 0 28px rgba(0,210,255,.16)}
 .site-footer__brand span{display:flex;flex-direction:column;gap:3px}.site-footer__brand b{font-size:15px}.site-footer__brand small{color:rgba(255,255,255,.42);font-size:11px;font-weight:500}
-.site-footer__nav{display:flex;justify-content:center;flex-wrap:wrap;gap:12px 25px}.site-footer__nav a{color:rgba(255,255,255,.72);transition:color .2s}.site-footer__nav a:hover{color:#a4f4fd}
+.site-footer__nav{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px 25px}.site-footer__nav a{padding:0;font-size:inherit;line-height:1.5;color:rgba(255,255,255,.72);transition:color .2s}.site-footer__nav a:hover{color:#a4f4fd}
 .site-footer__bottom{display:flex;align-items:center;justify-content:space-between;gap:24px;padding-top:28px}
 .site-footer__socials{display:flex;align-items:center;gap:12px}.site-footer__socials a{width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.03);transition:transform .2s,border-color .2s,background .2s}.site-footer__socials a:hover{transform:translateY(-2px);border-color:rgba(164,244,253,.4);background:rgba(0,210,255,.08)}
 .site-footer__socials img,.site-footer__socials svg{width:17px;height:17px;object-fit:contain;filter:grayscale(1) brightness(2);opacity:.8}.site-footer__socials svg{fill:currentColor;filter:none;color:rgba(255,255,255,.8)}

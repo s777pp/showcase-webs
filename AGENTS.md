@@ -4,7 +4,19 @@ This is the root handoff and operating guide for coding agents. Read it before c
 
 ## 1. Product and Current Development State
 
-### Privacy release — 2026-09-07 (local, not yet published)
+### Footer alignment follow-up — 2026-09-07
+
+- Landing `.site-footer__nav a` now shares zero padding and 1.5 line-height;
+  the flex row centers items. This overrides the privacy link's shared 8px
+  padding only in the landing navigation, fixing its lower text baseline.
+- `static/index.html` uses `index.css?v=20260907-footer-align`. RU/EN desktop
+  links have identical Y/height; 390px RU view wraps within the viewport.
+- No extension, policy content, auth or backend changes in this follow-up.
+- Owner approved GitHub publication. VPS deployment still requires the owner's
+  SSH session: the local host cannot resolve `vps-3fb68f0f`. Rebuild app after
+  pulling for the updated HTML cache key; no worker or extension release needed.
+
+### Privacy release — 2026-09-07 (Git commit 38e8623)
 
 - Chrome Web Store rejected the latest extension for `Purple Nickel`: missing
   Privacy Policy URL in the dedicated dashboard field. A description link is not
