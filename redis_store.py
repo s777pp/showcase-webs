@@ -415,10 +415,12 @@ def access_session_del(token: str) -> None:
 
 
 # ---------- rate limit ----------
-def rate_limit(key: str, limit: int, window_sec: int) -> tuple[bool, int]:
-    """Return (allowed, remaining). Fails open when Redis is down."""
+def rate_limit(key: str, limit: int, window_sec: int, *, fail_closed: bool = False) -> tuple[bool, int]:
+    """Return (allowed, remaining). Paid callers may require a shared fail-closed cap."""
     now = int(time.time())
     r = _r()
+    if fail_closed and configured() and not r:
+        return False, 0
     if r:
         try:
             k = "sm:rl:{}:{}".format(key, now // window_sec)
@@ -428,6 +430,8 @@ def rate_limit(key: str, limit: int, window_sec: int) -> tuple[bool, int]:
             return count <= limit, max(0, limit - count)
         except Exception as e:
             _note(e)
+            if fail_closed:
+                return False, 0
     with _local_lock:
         bucket = "rl:{}".format(key)
         data = _local_usage.setdefault(bucket, {"t": now, "n": 0})

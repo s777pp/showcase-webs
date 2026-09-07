@@ -1,0 +1,135 @@
+[
+  {
+    "id": "process",
+    "ru": {
+      "title": "Подготовить витрину",
+      "text": "В «Обработке» выбери Workshop (пять частей), Featured (одна широкая работа) или Artwork Split (центр и боковая часть). Добавь изображение, GIF или видео, настрой размер и водяной знак, затем запусти обработку. Скачай ZIP и распакуй его перед загрузкой в Steam."
+    },
+    "en": {
+      "title": "Prepare a showcase",
+      "text": "In Process, choose Workshop (five panels), Featured (one wide artwork) or Artwork Split (center and side). Add an image, GIF or video, adjust size and watermark, then process. Download and unpack the ZIP before uploading to Steam."
+    },
+    "href": "/app#process"
+  },
+  {
+    "id": "compression",
+    "ru": {
+      "title": "Лимит 5 МБ",
+      "text": "Умное сжатие включено для итоговых Steam GIF. Оно подбирает качество, палитру и кадры под лимит 5 MiB. Большие full_original и full_with_bars — вспомогательные превью: их размер не делает набор неготовым. Загружай в Steam итоговые части."
+    },
+    "en": {
+      "title": "The 5 MB limit",
+      "text": "Smart compression is enabled for final Steam GIFs. It adjusts quality, palette and frames to fit 5 MiB. Large full_original and full_with_bars files are auxiliary previews: their size does not fail the set. Upload the final panels to Steam."
+    },
+    "href": "/app#process"
+  },
+  {
+    "id": "check",
+    "ru": {
+      "title": "Готово для Steam",
+      "text": "После обработки авторизованные Free и Pro видят отчёт о готовности. Гости получают архив и приглашение войти. Красный итог означает, что основной файл для Steam превышает 5 MiB. Жёлтые вспомогательные файлы не блокируют готовность; другие замечания остаются в отчёте. Отдельная проверка и безопасное исправление имён/HEX доступны Pro."
+    },
+    "en": {
+      "title": "Ready for Steam",
+      "text": "Signed-in Free and Pro users receive a readiness report after processing. Guests get the archive and a sign-in hint. A red verdict means a primary Steam file exceeds 5 MiB. Yellow auxiliary files do not block readiness; other recommendations remain visible. Standalone checking and safe filename/HEX repair are Pro features."
+    },
+    "href": "/app#process"
+  },
+  {
+    "id": "loop",
+    "ru": {
+      "title": "Зациклить анимацию",
+      "text": "Pro-инструмент «Зациклить» принимает GIF и видео до 30 секунд. На шкале выдели до 4 секунд: движение вперёд и обратно даст цикл до 8 секунд. Выбери GIF или MP4. Звук удаляется. Результат можно скачать и добавить в «Обработку». GIF-предпросмотр не показывает точную обрезку до серверной обработки."
+    },
+    "en": {
+      "title": "Loop an animation",
+      "text": "The Pro Loop tool accepts GIF/video sources up to 30 seconds. Select up to 4 seconds on the timeline: forward-and-back motion creates a loop up to 8 seconds. Export GIF or MP4, without audio. Download and add the result to Process. The source GIF preview does not reflect exact trimming before server processing."
+    },
+    "href": "/app#loop"
+  },
+  {
+    "id": "upscale",
+    "ru": {
+      "title": "Увеличить качество",
+      "text": "Апскейл доступен авторизованным Pro: общая и аниме-модели, увеличение 2× или 4×; видео — только 2×. До 40 МБ на вход, для GIF/видео до 1280×720 и 900 кадров. Первый запуск может дольше ждать GPU. Увеличение разрешения не гарантирует восстановление деталей. Исходники не публикуются в галерее."
+    },
+    "en": {
+      "title": "Upscale artwork",
+      "text": "Upscale is for signed-in Pro users. General and anime models support 2×/4×; video is 2× only. Input is up to 40 MB; GIF/video is bounded to 1280×720 and 900 frames. The first run can wait for a GPU to start. More pixels do not guarantee recovered detail. Inputs are not published to the gallery."
+    },
+    "href": "/app#upscale"
+  },
+  {
+    "id": "profile",
+    "ru": {
+      "title": "Редактор профиля",
+      "text": "В редакторе можно примерять фоны, рамки и аватары, добавлять витрины, импортировать публичный профиль по ссылке, сохранять оформление. Каталог Steam загружается без расширения; Steam может временно ограничивать запросы. Кнопка покупки выбранного предмета открывает Steam. Примерка на сайте не покупает предмет и не меняет твой настоящий профиль."
+    },
+    "en": {
+      "title": "Profile editor",
+      "text": "Try backgrounds, frames and avatars, arrange showcases, import a public profile by URL and save designs. The Steam catalog loads without the extension; Steam can temporarily rate-limit requests. The selected item's purchase button opens Steam. Previewing here does not buy items or change your real Steam profile."
+    },
+    "href": "/profile"
+  },
+  {
+    "id": "insights",
+    "ru": {
+      "title": "Оценка и подбор",
+      "text": "«Оценка профиля» анализирует публичный Steam-профиль: Free — один успешный анализ за семь дней; Pro — расширенный доступ с ограничением от злоупотреблений. «Подбор оформления» доступен Pro и предлагает до трёх статичных направлений, палитры и кнопки поиска Steam showcase на DeviantArt. Это рекомендации ИИ, а не гарантированная оценка и не генерация целого профиля. История хранится семь дней."
+    },
+    "en": {
+      "title": "Rating and design ideas",
+      "text": "Profile Rating analyzes a public Steam profile: Free gets one successful analysis per seven days; Pro has expanded access with abuse limits. Pro Design Selection offers up to three static directions, palettes and DeviantArt Steam showcase search buttons. These are AI recommendations, not guaranteed scores or complete generated profiles. History lasts seven days."
+    },
+    "href": "/app#doctor"
+  },
+  {
+    "id": "steam",
+    "ru": {
+      "title": "Загрузка в Steam",
+      "text": "Установи SteamShowcase Helper по ссылке в разделе Steam и войди в Steam в том же браузере. Выбери тип витрины, открой загрузчик и сам выбери готовые файлы. Расширение применяет прозрачное название и настройки длинных витрин. Автоматически выбирать локальные файлы сайт не может. После загрузки перейди к выбору витрин в настройках Steam. Ручная инструкция с кодом консоли остаётся в разделе Steam."
+    },
+    "en": {
+      "title": "Upload to Steam",
+      "text": "Install SteamShowcase Helper from the Steam tool and sign into Steam in the same browser. Choose the showcase type, open the uploader and manually select your prepared files. The helper applies a transparent title and long-showcase settings. The website cannot silently choose local files. After upload, select your showcases in Steam profile settings. Manual console instructions remain in the Steam tool."
+    },
+    "href": "/app#steam"
+  },
+  {
+    "id": "other-tools",
+    "ru": {
+      "title": "Другие инструменты",
+      "text": "«Персонаж» компонует персонажа и фон. «Скачать» получает исходники с поддерживаемых сервисов; доступность зависит от источника. «Конвертер» меняет формат медиа. HEX добавляет нужную отметку GIF для витрин. В обработке Workshop есть обводка каждой из пяти частей, 1–8 px; геометрия не меняется. Галерея позволяет публиковать готовые работы, ставить лайки и комментировать."
+    },
+    "en": {
+      "title": "Other tools",
+      "text": "Character composes a character and background. Download retrieves media from supported services; availability depends on the source. Converter changes media formats. HEX adds the GIF marker used by showcases. Workshop processing can outline each of the five panels at 1–8 px without changing dimensions. The gallery supports publishing, likes and comments."
+    },
+    "href": "/app#compose"
+  },
+  {
+    "id": "pro",
+    "ru": {
+      "title": "Free, Pro и вход",
+      "text": "Free: пять файлов в день в основной обработке, водяной знак; часть функций требует входа. Pro снимает дневной лимит основной обработки и открывает апскейл, циклы и подбор оформления; технические защитные лимиты остаются. Войди и открой «Активация» для покупки/ввода ключа. Ключ привязывается к аккаунту. Точную цену смотри на странице покупки. Для проблем с оплатой — техподдержка в Telegram."
+    },
+    "en": {
+      "title": "Free, Pro and sign-in",
+      "text": "Free includes five files per day in core processing and a watermark; some features require sign-in. Pro removes the core processing daily limit and unlocks upscale, loops and design ideas; technical safety limits remain. Sign in and open Activate to purchase/redeem a key. Keys bind to the account. Check the purchase page for current prices. Contact Telegram support for payment issues."
+    },
+    "href": "/#pricing"
+  },
+  {
+    "id": "errors",
+    "ru": {
+      "title": "Если что-то не работает",
+      "text": "Проверь формат, размер файла и доступ к Pro. Если архив истёк, запусти обработку снова: обычные ZIP хранятся примерно 15 минут. При ошибке сохрани текст ошибки и название инструмента и обратись в техподдержку. Не отправляй пароль, ключ API или платёжные реквизиты. Помощник не видит состояние твоего задания, платёж или приватный аккаунт."
+    },
+    "en": {
+      "title": "Troubleshooting",
+      "text": "Check the file format, size and Pro access. If an archive expired, run the job again: normal ZIP results last roughly 15 minutes. Save the error text and tool name for support. Never send passwords, API keys or payment details. The assistant cannot see your private account, payment or live job status."
+    },
+    "href": "https://t.me/showcasemaker"
+  }
+]
+
