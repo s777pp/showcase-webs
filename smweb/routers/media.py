@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import Body, FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
@@ -56,6 +56,7 @@ from smweb.core import (
     quota_inc,
     quota_state,
 )
+from smweb.job_access import bind_job
 from smweb.downloads import _download_pinterest
 from smweb.jobs import _job_pool, _worker_mode
 from smweb import modal_upscale_client, object_store
@@ -63,6 +64,14 @@ from smweb import modal_upscale_client, object_store
 
 
 router = APIRouter()
+
+
+def _job_output_files(directory: Path) -> list[Path]:
+    """Return user-facing downloader results, never internal job metadata."""
+    return [
+        path for path in directory.iterdir()
+        if path.is_file() and not path.name.startswith(".") and path.name != "download.zip"
+    ]
 
 
 @router.post("/api/convert")
@@ -202,12 +211,11 @@ async def api_hex21(
 
 
 @router.post("/api/download-url")
-async def download_url(request: Request):
+def download_url(request: Request, body: dict = Body(...)):
     """Скачать с YouTube / TikTok / X / Reddit / Pinterest / прямая ссылка."""
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
         return JSONResponse({"ok": False, "msg": "Лимит исчерпан"}, status_code=403)
-    body = await request.json()
     url = str(body.get("url") or "").strip()
     quality = str(body.get("quality") or "best")
     if not url.startswith("http"):
@@ -217,9 +225,12 @@ async def download_url(request: Request):
         LOGGER.warning("download-url rejected %s: %s", url[:200], url_err)
         return JSONResponse({"ok": False, "msg": url_err}, status_code=400)
 
-    job_id = uuid.uuid4().hex[:12]
+    # 128-bit capability plus a browser-ownership marker.  The old 48-bit id
+    # was unnecessarily guessable for a public file endpoint.
+    job_id = uuid.uuid4().hex
     out_dir = JOBS / job_id
     out_dir.mkdir(parents=True, exist_ok=True)
+    bind_job(out_dir, request)
 
     # --- Pinterest (video first, then image) ---
     if "pinterest." in url.lower() or "pin.it" in url.lower():
@@ -244,7 +255,7 @@ async def download_url(request: Request):
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
                 files = sorted(
-                    [p for p in out_dir.iterdir() if p.is_file() and p.suffix.lower() in
+                    [p for p in _job_output_files(out_dir) if p.suffix.lower() in
                      (".mp4", ".webm", ".mkv", ".mov", ".gif", ".jpg", ".jpeg", ".png", ".webp")],
                     key=lambda p: (0 if p.suffix.lower() in (".mp4", ".webm", ".mkv", ".mov") else 1, -p.stat().st_size),
                 )
@@ -355,7 +366,7 @@ async def download_url(request: Request):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.extract_info(url, download=True)
-        files = [p for p in out_dir.iterdir() if p.is_file()]
+        files = _job_output_files(out_dir)
         if not files:
             return JSONResponse({"ok": False, "msg": "Файл не скачался"}, status_code=400)
         if len(files) == 1:
@@ -681,6 +692,8 @@ async def api_compose_start(
 
 def _compose_job_for(request: Request, job_id: str) -> dict | None:
     """Fetch a compose job, enforcing that it belongs to the caller."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]{20,32}", job_id or ""):
+        return None
     job = rs.job_get(job_id)
     if not job or job.get("kind") != "compose":
         return None

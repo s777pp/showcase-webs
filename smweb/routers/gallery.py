@@ -32,6 +32,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from PIL import Image
 
 import processor as proc
@@ -44,11 +45,17 @@ from smweb import object_store
 from fastapi import APIRouter
 
 
-from smweb.core import DATA, LOGGER, MAX_UPLOAD_MB, _admin_ok, _auth_user, _is_gallery_admin
+from smweb.core import DATA, LOGGER, MAX_UPLOAD_MB, _admin_ok, _auth_user, _is_gallery_admin, _safe_data_path
 
 
 
 router = APIRouter()
+
+
+async def _run_processor(fn, *args, **kwargs):
+    """Run Pillow/FFmpeg gallery rendering without blocking other requests."""
+    from functools import partial
+    return await run_in_threadpool(partial(fn, *args, **kwargs))
 
 
 @router.get("/api/gallery/list")
@@ -162,10 +169,8 @@ def gallery_image(item_id: int):
                 return RedirectResponse(url, status_code=307, headers={"Cache-Control": "public, max-age=31536000, immutable"})
         except Exception:
             return JSONResponse({"ok": False}, status_code=404)
-    path = Path(stored)
-    if not path.is_file():
-        path = Path(DATA) / stored
-    if not path.is_file():
+    path = _safe_data_path(stored)
+    if path is None:
         return JSONResponse({"ok": False}, status_code=404)
     return FileResponse(path)
 
@@ -183,6 +188,9 @@ async def gallery_submit(
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in to publish"}, status_code=401)
+    mode = (mode or "workshop").strip().lower()
+    if mode not in {"workshop", "featured", "split"}:
+        return JSONResponse({"ok": False, "msg": "Unknown mode"}, status_code=400)
     raw = await file.read()
     if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
         return JSONResponse({"ok": False, "msg": "Too large"}, status_code=400)
@@ -318,7 +326,7 @@ async def gallery_publish(
             use_video = is_video or src_ext in (".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v")
             if use_video:
                 if mode == "workshop":
-                    paths = proc.process_video_workshop(
+                    paths = await _run_processor(proc.process_video_workshop,
                         src, work, fps=12, width=size_i,
                         wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
                         duration=8.0, wm_corner=corner, wm_scale=scale,
@@ -326,7 +334,7 @@ async def gallery_publish(
                     )
                     pick = paths.get("full_with_bars.gif") or paths.get("full_original.gif")
                 elif mode == "featured":
-                    paths = proc.process_video_featured(
+                    paths = await _run_processor(proc.process_video_featured,
                         src, work, fps=12, duration=8.0, encoder="gifski",
                         wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
                         wm_corner=corner, wm_scale=scale, wm_x=wm_x_f, wm_y=wm_y_f,
@@ -338,7 +346,7 @@ async def gallery_publish(
                         or paths.get("full_original.gif")
                     )
                 else:
-                    paths = proc.process_video_split(
+                    paths = await _run_processor(proc.process_video_split,
                         src, work, fps=12,
                         wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
                         duration=8.0, wm_corner=corner, wm_scale=scale,
@@ -346,7 +354,7 @@ async def gallery_publish(
                     )
                     pick = paths.get("full_with_bars.gif") or paths.get("full_original.gif") or paths.get("center_506.gif")
             elif mode == "workshop":
-                paths = proc.process_gif_workshop(
+                paths = await _run_processor(proc.process_gif_workshop,
                     src, work,
                     wm_text=text, wm_font=wm_font, wm_opacity=opacity,
                     wm_color=color, wm_corner=corner, wm_scale=scale,
@@ -355,7 +363,7 @@ async def gallery_publish(
                 )
                 pick = paths.get("full_with_bars.gif") or paths.get("full_original.gif")
             elif mode == "featured":
-                paths = proc.process_gif_featured(
+                paths = await _run_processor(proc.process_gif_featured,
                     src, work, fps=12, encoder="gifski",
                     wm_text=text, wm_font=wm_font, wm_opacity=opacity,
                     wm_color=color, wm_corner=corner, wm_scale=scale,
@@ -368,7 +376,7 @@ async def gallery_publish(
                     or paths.get("full_original.gif")
                 )
             else:
-                paths = proc.process_gif_split(
+                paths = await _run_processor(proc.process_gif_split,
                     src, work, fps=12,
                     wm_text=text, wm_font=wm_font, wm_opacity=opacity,
                     wm_color=color, wm_corner=corner, wm_scale=scale,
@@ -390,12 +398,12 @@ async def gallery_publish(
                     if img.size[0] != size_i:
                         nh = max(1, int(img.size[1] * (size_i / max(1, img.size[0]))))
                         img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
-                    parts = proc.process_image_workshop(
+                    parts = await _run_processor(proc.process_image_workshop,
                         img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
                     )
                     data = parts.get("full_with_bars.png") or parts.get("full_original.png")
                 elif mode == "featured":
-                    parts = proc.process_image_featured(
+                    parts = await _run_processor(proc.process_image_featured,
                         img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
                     )
                     data = (
@@ -405,7 +413,7 @@ async def gallery_publish(
                         or parts.get("full_original.png")
                     )
                 else:
-                    parts = proc.process_image_split(
+                    parts = await _run_processor(proc.process_image_split,
                         img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
                     )
                     data = parts.get("full_with_bars.png") or parts.get("full_original.png")
@@ -422,12 +430,12 @@ async def gallery_publish(
                 nh = max(1, int(img.size[1] * (size_i / max(1, img.size[0]))))
                 img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
             if mode == "workshop":
-                parts = proc.process_image_workshop(
+                parts = await _run_processor(proc.process_image_workshop,
                     img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
                 )
                 data = parts.get("full_with_bars.png") or parts.get("full_original.png")
             elif mode == "featured":
-                parts = proc.process_image_featured(
+                parts = await _run_processor(proc.process_image_featured,
                     img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
                 )
                 data = (
@@ -437,7 +445,7 @@ async def gallery_publish(
                     or parts.get("full_original.png")
                 )
             else:
-                parts = proc.process_image_split(
+                parts = await _run_processor(proc.process_image_split,
                     img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
                 )
                 data = parts.get("full_with_bars.png") or parts.get("full_original.png")
@@ -467,8 +475,13 @@ async def gallery_publish(
         _publish_to_r2(key, data, path, thumb)
         gid = auth_db.gallery_add(uid, ttl, mode, key, thumb, status="approved")
         return {"ok": True, "id": gid, "msg": "Published"}
-    except Exception as e:
-        return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"}, status_code=500)
+    except Exception:
+        rid = getattr(request.state, "request_id", "-")
+        LOGGER.exception("gallery publish failed rid=%s", rid)
+        return JSONResponse(
+            {"ok": False, "msg": "Publish failed", "request_id": rid},
+            status_code=500,
+        )
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
@@ -524,9 +537,20 @@ async def api_notifications_read(request: Request):
     except Exception:
         body = {}
     ids = body.get("ids")
-    if ids is not None and not isinstance(ids, list):
-        ids = None
-    n = auth_db.notifications_mark_read(int(user["id"]), [int(x) for x in ids] if ids else None)
+    clean_ids = None
+    if isinstance(ids, list):
+        clean_ids = []
+        for value in ids[:80]:
+            try:
+                item_id = int(value)
+            except (TypeError, ValueError):
+                continue
+            if item_id > 0:
+                clean_ids.append(item_id)
+    if isinstance(ids, list) and not clean_ids:
+        n = 0
+    else:
+        n = auth_db.notifications_mark_read(int(user["id"]), clean_ids)
     return {"ok": True, "marked": n, "unread": auth_db.notifications_unread_count(int(user["id"]))}
 
 
@@ -569,20 +593,28 @@ async def gallery_delete(item_id: int, request: Request):
     if not (is_admin or is_owner):
         return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
 
-    # Remove files first so list won't show a broken card even if DB update is partial
+    # Remove only files inside DATA. Database paths are data, not trusted file-system
+    # paths; an absolute or traversing legacy value must never become an unlink target.
     try:
-        p = Path(item.get("image_path") or "")
-        if p.is_file():
+        stored = str(item.get("image_path") or "")
+        p = _safe_data_path(stored)
+        if p is not None:
             p.unlink(missing_ok=True)
-        thumb = item.get("thumb_path") or ""
+        thumb = str(item.get("thumb_path") or "")
         if thumb:
-            Path(thumb).unlink(missing_ok=True)
-        elif p:
+            tp = _safe_data_path(thumb)
+            if tp is not None:
+                tp.unlink(missing_ok=True)
+        elif p is not None:
             tp = p.with_name(p.stem + ".thumb.png")
             if tp.is_file():
                 tp.unlink(missing_ok=True)
+        if object_store.configured():
+            object_store.delete(object_store.key_from_stored(stored), public=True)
+            if thumb:
+                object_store.delete(object_store.key_from_stored(thumb), public=True)
     except Exception:
-        pass
+        LOGGER.exception("gallery files delete failed for %s", item_id)
 
     # Mark as not public — try several status values (auth_db may whitelist)
     marked = False

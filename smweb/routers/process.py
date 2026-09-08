@@ -52,6 +52,7 @@ from smweb.core import (
     quota_inc,
     quota_state,
 )
+from smweb.job_access import browser_owns_job
 from smweb.jobs import (
     _job_cleanup_old,
     _job_get,
@@ -282,6 +283,8 @@ async def api_process_start(
 
 def _process_job_for(request: Request, job_id: str) -> dict | None:
     """Return a process job only to the user/IP that created it."""
+    if not re.fullmatch(r"[a-f0-9]{24}", job_id or ""):
+        return None
     job = _job_get(job_id)
     if not job:
         return None
@@ -602,29 +605,21 @@ async def api_process(
 
 @router.get("/api/download/{job_id}")
 def download(job_id: str):
-    """Legacy one-shot download — file is deleted after read."""
-    job_id = "".join(c for c in job_id if c.isalnum())[:16]
-    job_path = JOBS / job_id
-    path = job_path / "result.zip"
-    if not path.is_file():
-        return JSONResponse({"ok": False, "msg": "Not found"}, status_code=404)
-    data = path.read_bytes()
-    try:
-        shutil.rmtree(job_path, ignore_errors=True)
-    except Exception:
-        pass
-    return StreamingResponse(
-        io.BytesIO(data),
-        media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="showcase_{job_id}.zip"'},
+    """Retired unauthenticated one-shot endpoint."""
+    return JSONResponse(
+        {"ok": False, "msg": "Legacy download expired; run the job again"},
+        status_code=410,
     )
 
 
 @router.get("/api/job-file/{job_id}/{name}")
-def job_file(job_id: str, name: str):
-    job_id = "".join(c for c in job_id if c.isalnum())[:16]
-    name = Path(name).name
-    path = JOBS / job_id / name
-    if not path.is_file():
+def job_file(job_id: str, name: str, request: Request):
+    if not re.fullmatch(r"[a-f0-9]{32}", job_id or ""):
         return JSONResponse({"ok": False}, status_code=404)
-    return FileResponse(path, filename=name)
+    name = Path(name).name
+    if not name or name.startswith("."):
+        return JSONResponse({"ok": False}, status_code=404)
+    path = JOBS / job_id / name
+    if not browser_owns_job(path.parent, request) or not path.is_file():
+        return JSONResponse({"ok": False}, status_code=404)
+    return FileResponse(path, filename=name, headers={"Cache-Control": "private, no-store"})

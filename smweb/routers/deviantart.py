@@ -32,6 +32,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from PIL import Image
 
 import processor as proc
@@ -43,9 +44,16 @@ import auth_db
 from fastapi import APIRouter
 
 
-from smweb.core import LOGGER, _auth_user, _esc_html
+from smweb.core import LOGGER, MAX_UPLOAD_MB, _auth_user, _esc_html
 from smweb.da_client import _da_guess_mime, _da_refresh_token
-from smweb.oauth_util import _app_origin, _oauth_payload_create, _oauth_payload_verify
+from smweb.oauth_util import (
+    _app_origin,
+    _bind_oauth_browser,
+    _clear_oauth_browser,
+    _oauth_browser_matches,
+    _oauth_payload_create,
+    _oauth_payload_verify,
+)
 
 
 
@@ -190,7 +198,17 @@ async def da_upload(request: Request):
     # debug length only (never log full token)
     print(f"da_upload: user={user.get('id')} token_len={len(token)} files incoming")
 
-    form = await request.form()
+    try:
+        form = await request.form(
+            max_files=20,
+            max_fields=40,
+            max_part_size=MAX_UPLOAD_MB * 1024 * 1024,
+        )
+    except Exception:
+        return JSONResponse(
+            {"ok": False, "msg": f"Each file must be under {MAX_UPLOAD_MB} MB"},
+            status_code=413,
+        )
     items = form.multi_items() if hasattr(form, "multi_items") else list(form.items())
 
     titles: dict[str, str] = {}
@@ -216,6 +234,11 @@ async def da_upload(request: Request):
             raw = f.file.read() if hasattr(f, "file") else b""
         if not raw:
             continue
+        if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+            return JSONResponse(
+                {"ok": False, "msg": f"Each file must be under {MAX_UPLOAD_MB} MB"},
+                status_code=413,
+            )
         name = getattr(f, "filename", None) or f"file_{idx}.png"
         name = Path(str(name)).name  # strip path
         title = titles.get(name) or titles.get(str(idx)) or Path(name).stem
@@ -391,18 +414,21 @@ def da_login_start(request: Request):
             "state": state,
         }
     )
-    return {"ok": True, "url": f"https://www.deviantart.com/oauth2/authorize?{q}"}
+    response = JSONResponse({"ok": True, "url": f"https://www.deviantart.com/oauth2/authorize?{q}"})
+    return _bind_oauth_browser(response, request, "deviantart", state)
 
 
 @router.get("/api/da/callback")
 async def da_callback(request: Request, code: str = "", state: str = ""):
     pend = _oauth_payload_verify(state)
-    if not pend or not code:
-        return HTMLResponse("<h3>DeviantArt auth failed</h3><p>Close this tab and try again.</p>", status_code=400)
+    if not pend or not code or not _oauth_browser_matches(request, "deviantart", state):
+        response = HTMLResponse("<h3>DeviantArt auth failed</h3><p>Close this tab and try again.</p>", status_code=400)
+        return _clear_oauth_browser(response, "deviantart")
     try:
         import requests as rq
 
-        r = rq.post(
+        r = await run_in_threadpool(
+            rq.post,
             "https://www.deviantart.com/oauth2/token",
             data={
                 "grant_type": "authorization_code",
@@ -413,6 +439,7 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
                 "code_verifier": pend["verifier"],
             },
             timeout=30,
+            allow_redirects=False,
         )
         if r.status_code != 200:
             LOGGER.warning("DeviantArt token exchange failed status=%s", r.status_code)
@@ -429,7 +456,7 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
     app_url = _app_origin()
     target_origin = json.dumps(app_url)
     # Same idea as desktop localhost page: "Success! You can close this window."
-    return HTMLResponse(
+    response = HTMLResponse(
         f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Success</title></head>
 <body style="font-family:system-ui,sans-serif;background:#0b0b12;color:#e8e8f0;display:grid;place-items:center;min-height:100vh;margin:0">
@@ -445,3 +472,4 @@ async def da_callback(request: Request, code: str = "", state: str = ""):
   </script>
 </body></html>"""
     )
+    return _clear_oauth_browser(response, "deviantart")

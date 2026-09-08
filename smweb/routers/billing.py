@@ -109,7 +109,6 @@ async def gumroad_ping(request: Request):
             "permalink": data.get("permalink"),
             "order_number": data.get("order_number"),
             "sale_id": data.get("sale_id"),
-            "email": data.get("email"),
             "price": data.get("price"),
             "currency": data.get("currency"),
             "test": data.get("test"),
@@ -127,4 +126,3 @@ async def gumroad_ping(request: Request):
             {"ok": False, "msg": "Invalid Gumroad payload"},
             status_code=400,
         )
-

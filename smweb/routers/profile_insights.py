@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import secrets
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -76,7 +77,7 @@ async def start(request: Request):
 @router.get("/api/profile-insights/status/{job_id}")
 def status(job_id: str, request: Request):
     quota = quota_state(request)
-    job = rs.job_get(job_id)
+    job = rs.job_get(job_id) if re.fullmatch(r"[a-f0-9]{24}", job_id or "") else None
     if not quota.get("user_id") or not job or job.get("kind") != "profile_insight" or int(job.get("user_id") or 0) != int(quota["user_id"]):
         return JSONResponse({"ok": False, "msg": "Analysis not found"}, status_code=404)
     response = {"ok": True, "status": job.get("status"), "pct": int(job.get("pct") or 0), "stage": job.get("stage")}

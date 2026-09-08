@@ -89,6 +89,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         "form-action 'self'",
         "frame-ancestors 'self'",
     ))
+    PRIVATE_API_PREFIXES = (
+        "/api/auth/",
+        "/api/profile/",
+        "/api/profile-insights/",
+        "/api/quota",
+        "/api/bootstrap",
+        "/api/notifications",
+        "/api/da/",
+        "/api/admin/",
+    )
 
     async def dispatch(self, request, call_next):
         response = await call_next(request)
@@ -98,6 +108,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         h.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
         h.setdefault("Content-Security-Policy", self.CSP)
+        # Account state, e-mail addresses and provider tokens must never be
+        # retained by a browser's shared cache or by an intermediate proxy.
+        # Public catalog/gallery APIs intentionally remain cacheable.
+        if request.url.path.startswith(self.PRIVATE_API_PREFIXES):
+            h.setdefault("Cache-Control", "private, no-store")
         proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "").lower()
         if proto == "https":
             h.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
@@ -150,6 +165,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/admin/", 5, 60),
         ("/api/process", 8, 60),
         ("/api/process/start", 8, 60),
+        ("/api/convert", 12, 60),
+        ("/api/hex21", 12, 60),
+        ("/api/preview-build", 6, 60),
+        ("/api/preview_wm", 20, 60),
+        ("/api/builder/render", 8, 60),
         # The preflight reads and decodes complete showcase sets. It is Pro-only,
         # but a compromised account must not become an unbounded CPU/RAM source.
         ("/api/steam-check", 12, 300),
@@ -165,6 +185,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/loop/start", 6, 60),
         ("/api/gallery/", 60, 60),
         ("/api/download-url", 5, 60),
+        ("/api/billing/gumroad", 30, 60),
     )
     async def dispatch(self, request, call_next):
         path = request.url.path
@@ -182,6 +203,29 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         status_code=429,
                     )
                 break
+        return await call_next(request)
+
+
+class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
+    """Reject oversized declared request bodies before Starlette buffers them.
+
+    Nginx applies the same boundary in the VPS stack.  This guard also covers
+    direct deployments (for example Railway) and keeps large JSON/multipart
+    requests from reaching route code.  Individual tools still enforce their
+    tighter per-file limits after parsing.
+    """
+
+    async def dispatch(self, request, call_next):
+        if request.method in {"POST", "PUT", "PATCH"}:
+            raw = request.headers.get("content-length")
+            if raw:
+                try:
+                    size = int(raw)
+                except ValueError:
+                    return JSONResponse({"ok": False, "msg": "Invalid Content-Length"}, status_code=400)
+                limit = max(1, int(os.environ.get("MAX_REQUEST_MB", "100"))) * 1024 * 1024
+                if size < 0 or size > limit:
+                    return JSONResponse({"ok": False, "msg": "Request body is too large"}, status_code=413)
         return await call_next(request)
 
 

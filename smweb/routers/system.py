@@ -127,7 +127,10 @@ def api_health_prod():
     return {
         "ok": True,
         "db": db_ok,
-        "storage": {"writable": db_writable},
+        "storage": {
+            "writable": db_writable,
+            "database_backend": "postgresql" if auth_db.USING_POSTGRES else "sqlite",
+        },
         "r2": {"configured": object_store.configured(), "ok": r2_ok},
         "redis": redis_ok,
         # why Redis is down — the old endpoint only ever said "false"

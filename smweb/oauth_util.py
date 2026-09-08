@@ -134,6 +134,41 @@ def _oauth_state_verify(state: str, provider: str, max_age: int = 600) -> bool:
         return False
 
 
+def _oauth_browser_cookie(provider: str) -> str:
+    if provider not in {"discord", "google", "steam", "deviantart"}:
+        raise ValueError("Unsupported OAuth provider")
+    return f"sm_oauth_{provider}"
+
+
+def _bind_oauth_browser(response, request: Request, provider: str, state: str):
+    """Tie signed OAuth state to the browser that initiated the login."""
+    secure = (os.environ.get("COOKIE_SECURE") or "").strip().lower() in {"1", "true", "yes", "on"}
+    proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "").split(",")[0].strip().lower()
+    response.set_cookie(
+        _oauth_browser_cookie(provider),
+        state,
+        max_age=600,
+        # Discord/Google/Steam callbacks live under /api/auth, while
+        # DeviantArt lives under /api/da.  /api keeps the state cookie scoped
+        # away from pages and static assets while covering every callback.
+        path="/api",
+        httponly=True,
+        samesite="lax",
+        secure=secure or proto == "https",
+    )
+    return response
+
+
+def _oauth_browser_matches(request: Request, provider: str, state: str) -> bool:
+    stored = (request.cookies.get(_oauth_browser_cookie(provider)) or "").strip()
+    return bool(stored and state) and secrets.compare_digest(stored, state)
+
+
+def _clear_oauth_browser(response, provider: str):
+    response.delete_cookie(_oauth_browser_cookie(provider), path="/api")
+    return response
+
+
 def _app_origin() -> str:
     value = (os.environ.get("APP_URL") or "").strip().rstrip("/")
     parsed = urlparse(value)

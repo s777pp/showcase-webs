@@ -64,6 +64,7 @@ from smweb.middleware import (
     GZipMiddleware,
     OriginGuardMiddleware,
     RateLimitMiddleware,
+    RequestBodyLimitMiddleware,
     RequestIdMiddleware,
     SecurityHeadersMiddleware,
 )
@@ -108,6 +109,9 @@ app.add_middleware(OriginGuardMiddleware)
 
 
 app.add_middleware(RateLimitMiddleware)
+
+
+app.add_middleware(RequestBodyLimitMiddleware)
 
 
 app.add_middleware(RequestIdMiddleware)

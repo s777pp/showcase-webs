@@ -60,6 +60,11 @@ def _err(msg: str, status: int = 400, **extra):
     return JSONResponse({"ok": False, "msg": msg, **extra}, status_code=status)
 
 
+def _internal_error(request: Request, message: str):
+    rid = getattr(request.state, "request_id", "-")
+    return _err(message, 500, request_id=rid)
+
+
 # ==========================================================================
 # Watermark policy
 # ==========================================================================
@@ -176,7 +181,7 @@ async def optimizer(
         )
     except Exception as e:
         LOGGER.exception("optimizer failed")
-        return _err(f"{type(e).__name__}: {e}", 500)
+        return _internal_error(request, "GIF optimization failed")
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
@@ -253,8 +258,9 @@ def steam_proxy_image(url: str):
             return _err("Image too large", 502)
         return Response(content=r.content, media_type=ctype,
                         headers={"Cache-Control": "public, max-age=86400"})
-    except Exception as e:
-        return _err(f"{type(e).__name__}: {e}", 502)
+    except Exception:
+        LOGGER.exception("Steam media proxy failed")
+        return _err("Steam media is temporarily unavailable", 502)
 
 
 # ==========================================================================
@@ -304,8 +310,9 @@ def project_get(pid: str, request: Request):
         return _err("Not found", 404)
     try:
         return {"ok": True, "project": json.loads(path.read_text(encoding="utf-8"))}
-    except Exception as e:
-        return _err(f"{type(e).__name__}: {e}", 500)
+    except Exception:
+        LOGGER.exception("project read failed user_id=%s pid=%s", user["id"], safe)
+        return _internal_error(request, "Project could not be read")
 
 
 @router.post("/projects")
@@ -629,7 +636,7 @@ async def builder_render(
             )
         except Exception as e:
             LOGGER.exception("builder animated render failed")
-            return _err(f"{type(e).__name__}: {e}", 500)
+            return _internal_error(request, "Animated render failed")
         finally:
             shutil.rmtree(work, ignore_errors=True)
 

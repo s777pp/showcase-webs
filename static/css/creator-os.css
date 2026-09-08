@@ -770,7 +770,7 @@ body:has(>.public-wrap){background:#030509!important}
   .preview-bar{top:64px!important}
   .preview .sm-stage{height:auto!important;min-height:70vh!important;padding:18px 8px!important}
   .workspace>.account-dock{display:block!important;padding:28px 18px!important}
-  .page-gallery::before{top:100px;left:18px}
+  .page-gallery::before{display:none!important}
   .page-gallery .view-bar{left:50%!important;top:80px!important}
   .page-gallery .stage{height:calc(100dvh - 64px)!important}
   .page-gallery .feed{padding:110px 14px 70px!important}

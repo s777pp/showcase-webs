@@ -31,6 +31,7 @@ from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
+from starlette.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
@@ -51,6 +52,9 @@ from smweb.oauth_util import (
     _app_origin,
     _oauth_state_create,
     _oauth_state_verify,
+    _bind_oauth_browser,
+    _oauth_browser_matches,
+    _clear_oauth_browser,
     _telegram_bot_token,
     _telegram_bot_username,
     _verify_telegram_login,
@@ -85,19 +89,22 @@ def discord_login_start(request: Request):
         "state": state,
         "prompt": "consent",
     })
-    return {"ok": True, "url": f"https://discord.com/api/oauth2/authorize?{q}"}
+    response = JSONResponse({"ok": True, "url": f"https://discord.com/api/oauth2/authorize?{q}"})
+    return _bind_oauth_browser(response, request, "discord", state)
 
 
 @router.get("/api/auth/discord/callback")
 async def discord_callback(request: Request, code: str = "", state: str = ""):
-    if not _oauth_state_verify(state, "discord"):
-        return HTMLResponse("<h3>Discord auth failed (bad state)</h3>", status_code=400)
+    if not _oauth_state_verify(state, "discord") or not _oauth_browser_matches(request, "discord", state):
+        response = HTMLResponse("<h3>Discord auth failed (bad state)</h3>", status_code=400)
+        return _clear_oauth_browser(response, "discord")
     cid = (os.environ.get("DISCORD_CLIENT_ID") or "").strip()
     secret = (os.environ.get("DISCORD_CLIENT_SECRET") or "").strip()
     redirect = _discord_redirect_uri()
     try:
         import requests as rq
-        tok = rq.post(
+        tok = await run_in_threadpool(
+            rq.post,
             "https://discord.com/api/oauth2/token",
             data={
                 "client_id": cid,
@@ -108,23 +115,30 @@ async def discord_callback(request: Request, code: str = "", state: str = ""):
             },
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             timeout=30,
+            allow_redirects=False,
         )
         if tok.status_code != 200:
             LOGGER.warning("discord token exchange failed status=%s", tok.status_code)
             return HTMLResponse("<h3>Discord sign-in failed</h3>", status_code=400)
         access = tok.json().get("access_token")
-        me = rq.get(
+        me = await run_in_threadpool(
+            rq.get,
             "https://discord.com/api/users/@me",
             headers={"Authorization": f"Bearer {access}"},
             timeout=20,
+            allow_redirects=False,
         )
         if me.status_code != 200:
             LOGGER.warning("discord user lookup failed status=%s", me.status_code)
             return HTMLResponse("<h3>Discord sign-in failed</h3>", status_code=400)
         u = me.json()
         did = str(u.get("id") or "")
+        if not did:
+            return HTMLResponse("<h3>Discord sign-in failed</h3>", status_code=400)
         uname = u.get("global_name") or u.get("username") or "discord"
-        email = u.get("email")
+        # Never link an existing local account through an unverified provider
+        # address. Discord can return an address while `verified` is false.
+        email = u.get("email") if u.get("verified") is True else None
         ok, msg, token = auth_db.register_or_login_discord(did, uname, email)
         if not ok or not token:
             return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
@@ -141,7 +155,8 @@ try {{ if (window.opener) window.opener.postMessage({{type:'discord_login'}}, {t
 setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
 </script></body></html>"""
         )
-        return _attach_session_cookie(resp, token, request)
+        _attach_session_cookie(resp, token, request)
+        return _clear_oauth_browser(resp, "discord")
     except Exception:
         LOGGER.exception("oauth callback failed")
         return HTMLResponse("<h3>Error</h3><p>Sign-in failed. Please try again.</p>", status_code=500)
@@ -171,19 +186,22 @@ def google_login_start(request: Request):
         "access_type": "online",
         "prompt": "select_account",
     })
-    return {"ok": True, "url": f"https://accounts.google.com/o/oauth2/v2/auth?{q}"}
+    response = JSONResponse({"ok": True, "url": f"https://accounts.google.com/o/oauth2/v2/auth?{q}"})
+    return _bind_oauth_browser(response, request, "google", state)
 
 
 @router.get("/api/auth/google/callback")
 async def google_callback(request: Request, code: str = "", state: str = ""):
-    if not _oauth_state_verify(state, "google"):
-        return HTMLResponse("<h3>Google auth failed (bad state)</h3>", status_code=400)
+    if not _oauth_state_verify(state, "google") or not _oauth_browser_matches(request, "google", state):
+        response = HTMLResponse("<h3>Google auth failed (bad state)</h3>", status_code=400)
+        return _clear_oauth_browser(response, "google")
     cid = (os.environ.get("GOOGLE_CLIENT_ID") or "").strip()
     secret = (os.environ.get("GOOGLE_CLIENT_SECRET") or "").strip()
     redirect = _google_redirect_uri()
     try:
         import requests as rq
-        tok = rq.post(
+        tok = await run_in_threadpool(
+            rq.post,
             "https://oauth2.googleapis.com/token",
             data={
                 "client_id": cid,
@@ -194,23 +212,28 @@ async def google_callback(request: Request, code: str = "", state: str = ""):
             },
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             timeout=30,
+            allow_redirects=False,
         )
         if tok.status_code != 200:
             LOGGER.warning("google token exchange failed status=%s", tok.status_code)
             return HTMLResponse("<h3>Google sign-in failed</h3>", status_code=400)
         access = tok.json().get("access_token")
-        me = rq.get(
+        me = await run_in_threadpool(
+            rq.get,
             "https://www.googleapis.com/oauth2/v3/userinfo",
             headers={"Authorization": f"Bearer {access}"},
             timeout=20,
+            allow_redirects=False,
         )
         if me.status_code != 200:
             LOGGER.warning("google user lookup failed status=%s", me.status_code)
             return HTMLResponse("<h3>Google sign-in failed</h3>", status_code=400)
         u = me.json()
         gid = str(u.get("sub") or "")
+        if not gid:
+            return HTMLResponse("<h3>Google sign-in failed</h3>", status_code=400)
         uname = u.get("name") or (u.get("email") or "google").split("@")[0]
-        email = u.get("email")
+        email = u.get("email") if u.get("email_verified") is True else None
         ok, msg, token = auth_db.register_or_login_google(gid, email, uname)
         if not ok or not token:
             return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
@@ -227,7 +250,8 @@ try {{ if (window.opener) window.opener.postMessage({{type:'google_login'}}, {ta
 setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
 </script></body></html>"""
         )
-        return _attach_session_cookie(resp, token, request)
+        _attach_session_cookie(resp, token, request)
+        return _clear_oauth_browser(resp, "google")
     except Exception:
         LOGGER.exception("oauth callback failed")
         return HTMLResponse("<h3>Error</h3><p>Sign-in failed. Please try again.</p>", status_code=500)
@@ -310,7 +334,11 @@ def steam_login_start(request: Request):
     """Start Steam OpenID 2.0 sign-in (no API key required for OpenID)."""
     from urllib.parse import urlencode
     realm = _steam_realm()
-    return_to = realm + "/api/auth/steam/callback"
+    try:
+        state = _oauth_state_create("steam")
+    except RuntimeError as exc:
+        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=503)
+    return_to = realm + "/api/auth/steam/callback?" + urlencode({"state": state})
     params = {
         "openid.ns": "http://specs.openid.net/auth/2.0",
         "openid.mode": "checkid_setup",
@@ -319,7 +347,8 @@ def steam_login_start(request: Request):
         "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
         "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
     }
-    return {"ok": True, "url": "https://steamcommunity.com/openid/login?" + urlencode(params)}
+    response = JSONResponse({"ok": True, "url": "https://steamcommunity.com/openid/login?" + urlencode(params)})
+    return _bind_oauth_browser(response, request, "steam", state)
 
 
 @router.get("/api/auth/steam/callback")
@@ -327,15 +356,21 @@ async def steam_callback(request: Request):
     """Verify Steam OpenID assertion, create session, pull public profile snapshot."""
     import requests as _req
     q = dict(request.query_params)
+    state = str(q.get("state") or "")
+    if not _oauth_state_verify(state, "steam") or not _oauth_browser_matches(request, "steam", state):
+        response = HTMLResponse("<h3>Steam login failed (bad state)</h3>", status_code=400)
+        return _clear_oauth_browser(response, "steam")
     # local verify with Steam
-    payload = {k: v for k, v in q.items()}
+    payload = {k: v for k, v in q.items() if k.startswith("openid.")}
     payload["openid.mode"] = "check_authentication"
     try:
-        vr = _req.post(
+        vr = await run_in_threadpool(
+            _req.post,
             "https://steamcommunity.com/openid/login",
             data=payload,
             timeout=15,
             headers={"User-Agent": "Mozilla/5.0 ShowcaseMaker"},
+            allow_redirects=False,
         )
         if "is_valid:true" not in (vr.text or "").lower():
             return HTMLResponse("<h3>Steam login failed (invalid assertion)</h3>", status_code=400)
@@ -349,7 +384,9 @@ async def steam_callback(request: Request):
         profile_data = None
         try:
             import steam_catalog
-            pr = steam_catalog.profile(f"https://steamcommunity.com/profiles/{steam_id}")
+            pr = await run_in_threadpool(
+                steam_catalog.profile, f"https://steamcommunity.com/profiles/{steam_id}"
+            )
             if pr.get("ok") and pr.get("profile"):
                 profile_data = _merge_steam_api(pr["profile"])
                 persona = profile_data.get("name") or persona
@@ -368,7 +405,10 @@ async def steam_callback(request: Request):
                 if av:
                     try:
                         import requests as _rq
-                        ar = _rq.get(av, timeout=12, headers={"User-Agent": "Mozilla/5.0"})
+                        ar = await run_in_threadpool(
+                            _rq.get, av, timeout=12,
+                            headers={"User-Agent": "Mozilla/5.0"}, allow_redirects=False,
+                        )
                         if ar.status_code == 200 and ar.content[:3] != b"<!":
                             ext = ".jpg"
                             ctype = (ar.headers.get("Content-Type") or "").lower()
@@ -395,7 +435,8 @@ try {{ if (window.opener) window.opener.postMessage({{type:'steam_login'}}, {tar
 setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} location.href='/profile'; }}, 600);
 </script></body></html>"""
         )
-        return _attach_session_cookie(resp, token, request)
+        _attach_session_cookie(resp, token, request)
+        return _clear_oauth_browser(resp, "steam")
     except Exception:
         LOGGER.exception("steam callback")
         return HTMLResponse("<h3>Steam sign-in failed</h3>", status_code=500)

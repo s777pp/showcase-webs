@@ -3,27 +3,32 @@
 from __future__ import annotations
 
 import json
+import argparse
 import sys
 import urllib.error
 import urllib.request
 
 
-BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8080").rstrip("/")
 ROUTES = ("/", "/app", "/gallery", "/profile", "/api/health", "/api/bootstrap", "/api/gallery/list?limit=2")
 
 
-def fetch(path: str):
-    request = urllib.request.Request(BASE + path, headers={"User-Agent": "ShowcaseMaker-Smoke/1.0"})
+def fetch(base: str, path: str):
+    request = urllib.request.Request(base + path, headers={"User-Agent": "ShowcaseMaker-Smoke/1.0"})
     with urllib.request.urlopen(request, timeout=30) as response:
         return response.status, response.headers.get("Content-Type", ""), response.read()
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("base_url", nargs="?", help="Site origin, for example https://showcasemaker.com")
+    parser.add_argument("--base", dest="base_option", help="Alias for base_url")
+    args = parser.parse_args()
+    base = (args.base_option or args.base_url or "http://127.0.0.1:8080").rstrip("/")
     failed = False
     health = None
     for route in ROUTES:
         try:
-            status, content_type, body = fetch(route)
+            status, content_type, body = fetch(base, route)
             valid = status == 200 and bool(body)
             print(f"{'OK' if valid else 'FAIL'} {status} {route} {content_type}")
             failed |= not valid

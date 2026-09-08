@@ -26,7 +26,7 @@ from urllib.parse import quote, urlsplit
 import requests
 import steam_profile_guard
 import steam_browser_import
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 
 LOGGER = logging.getLogger("sm.steam")
 

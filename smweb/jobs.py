@@ -163,6 +163,13 @@ def _job_get(jid: str) -> dict | None:
     return local
 
 
+def _public_process_error(exc: Exception, job_dir: Path) -> str:
+    """Keep useful encoder diagnostics without exposing server filesystem paths."""
+    detail = f"{type(exc).__name__}: {exc}".replace(str(job_dir), "[job]")
+    detail = detail.replace(str(JOBS), "[jobs]")
+    return detail[-500:]
+
+
 def _job_cleanup_old(max_age: float = 600.0) -> None:
     now = time.time()
     with _process_jobs_lock:
@@ -382,7 +389,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                             pass
                 processed += 1
             except Exception as e:
-                errors.append(f"{name}: {type(e).__name__}: {e}")
+                errors.append(f"{name}: {_public_process_error(e, job_dir)}")
         _sm_zip_t0 = _sm_time.perf_counter()
         try:
             zf.close()
@@ -430,5 +437,5 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
             flush=True,
         )
     except Exception as e:
-        _job_set(jid, status="error", pct=100, stage="error", error=f"{type(e).__name__}: {e}")
+        _job_set(jid, status="error", pct=100, stage="error", error=_public_process_error(e, job_dir))
         shutil.rmtree(job_dir, ignore_errors=True)

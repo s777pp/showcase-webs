@@ -44,7 +44,7 @@ from smweb import object_store
 from fastapi import APIRouter
 
 
-from smweb.core import DATA, LOGGER, PROFILE_EDITABLE_FIELDS, _auth_user, _safe_data_path
+from smweb.core import DATA, LOGGER, MAX_UPLOAD_MB, PROFILE_EDITABLE_FIELDS, _auth_user, _safe_data_path
 from smweb.steam import _clean_extension_profile, _merge_nonempty_profile, _merge_steam_api
 
 
@@ -143,18 +143,30 @@ async def api_profile_update(request: Request):
     fields: dict = {}
     try:
         if "multipart/form-data" in ct:
-            form = await request.form()
+            form = await request.form(max_files=1, max_fields=32, max_part_size=12_000_000)
             for key in PROFILE_EDITABLE_FIELDS:
                 if key in form and form.get(key) is not None:
                     fields[key] = form.get(key)
             bgf = form.get("background")
             if bgf is not None and hasattr(bgf, "read"):
                 raw = await bgf.read()
+                if len(raw) >= 12_000_000:
+                    return JSONResponse(
+                        {"ok": False, "msg": "Background must be under 12 MB"},
+                        status_code=413,
+                    )
                 if raw and len(raw) < 12_000_000:
                     name = getattr(bgf, "filename", "") or "bg.png"
                     ext = Path(str(name)).suffix.lower()
                     if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
                         ext = ".png"
+                    try:
+                        Image.open(io.BytesIO(raw)).verify()
+                    except Exception:
+                        return JSONResponse(
+                            {"ok": False, "msg": "Background must be a valid PNG, JPG, WEBP or GIF"},
+                            status_code=400,
+                        )
                     key = f"profile_bg/{user['id']}{ext}"
                     if object_store.configured():
                         object_store.put_bytes(key, raw, media_type=object_store.content_type(key))
@@ -172,8 +184,8 @@ async def api_profile_update(request: Request):
                 # profile_background, i.e. arbitrary file read via the image
                 # endpoints that serve them.
                 fields = {k: body[k] for k in PROFILE_EDITABLE_FIELDS if k in body}
-    except Exception as e:
-        return JSONResponse({"ok": False, "msg": str(e)}, status_code=400)
+    except Exception:
+        return JSONResponse({"ok": False, "msg": "Invalid profile data"}, status_code=400)
     ok, msg = auth_db.update_steam_profile(int(user["id"]), **fields)
     if not ok:
         return JSONResponse({"ok": False, "msg": msg}, status_code=400)
@@ -302,7 +314,17 @@ async def api_profile_showcase_add(request: Request):
         return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
     uid = int(user["id"])
     auth_db.ensure_profile_username(uid, user.get("display_name"))
-    form = await request.form()
+    try:
+        form = await request.form(
+            max_files=3,
+            max_fields=8,
+            max_part_size=MAX_UPLOAD_MB * 1024 * 1024,
+        )
+    except Exception:
+        return JSONResponse(
+            {"ok": False, "msg": f"Upload up to 3 files, each under {MAX_UPLOAD_MB} MB"},
+            status_code=413,
+        )
     sc_type = str(form.get("type") or "featured").strip().lower()
     if sc_type not in ("featured", "artwork", "workshop", "split"):
         return JSONResponse({"ok": False, "msg": "Invalid type"}, status_code=400)
@@ -354,6 +376,11 @@ async def api_profile_showcase_add(request: Request):
 
     try:
         raw0 = await uploads[0].read()
+        if not raw0 or len(raw0) > MAX_UPLOAD_MB * 1024 * 1024:
+            return JSONResponse(
+                {"ok": False, "msg": f"File must be under {MAX_UPLOAD_MB} MB"},
+                status_code=413,
+            )
         name0 = getattr(uploads[0], "filename", None) or "img.png"
         tmp = Path(tempfile.mkdtemp(prefix="psc_"))
         src_path = tmp / Path(str(name0)).name
@@ -409,6 +436,12 @@ async def api_profile_showcase_add(request: Request):
                     try:
                         raw = await extra.read()
                         nm = getattr(extra, "filename", None) or "img.png"
+                        if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+                            shutil.rmtree(tmp, ignore_errors=True)
+                            return JSONResponse(
+                                {"ok": False, "msg": f"File must be under {MAX_UPLOAD_MB} MB"},
+                                status_code=413,
+                            )
                         if raw:
                             sources.append((nm, raw))
                     except Exception:
@@ -484,7 +517,12 @@ async def api_profile_showcase_add(request: Request):
                     return JSONResponse({"ok": False, "msg": "Workshop produced no files"}, status_code=500)
             except Exception as e:
                 shutil.rmtree(tmp, ignore_errors=True)
-                return JSONResponse({"ok": False, "msg": f"Workshop process failed: {e}"}, status_code=500)
+                rid = getattr(request.state, "request_id", "-")
+                LOGGER.exception("profile Workshop processing failed rid=%s", rid)
+                return JSONResponse(
+                    {"ok": False, "msg": "Workshop processing failed", "request_id": rid},
+                    status_code=500,
+                )
 
         elif sc_type == "split":
             try:
@@ -510,7 +548,12 @@ async def api_profile_showcase_add(request: Request):
                     # _save_dict already used ts_ prefix
             except Exception as e:
                 shutil.rmtree(tmp, ignore_errors=True)
-                return JSONResponse({"ok": False, "msg": f"Split process failed: {e}"}, status_code=500)
+                rid = getattr(request.state, "request_id", "-")
+                LOGGER.exception("profile Split processing failed rid=%s", rid)
+                return JSONResponse(
+                    {"ok": False, "msg": "Split processing failed", "request_id": rid},
+                    status_code=500,
+                )
 
         elif sc_type == "featured":
             try:
@@ -532,8 +575,8 @@ async def api_profile_showcase_add(request: Request):
                 else:
                     im = PILImage.open(src_path).convert("RGBA")
                     _save_dict(proc.process_image_featured(im, wm_text="", wm_opacity=0))
-            except Exception as e:
-                print("featured process", e)
+            except Exception:
+                LOGGER.warning("profile Featured processing fell back to source", exc_info=True)
                 dest = out_dir / f"{ts}_featured{src_path.suffix or '.png'}"
                 dest.write_bytes(raw0)
                 files_saved.append(dest.name)
@@ -546,6 +589,12 @@ async def api_profile_showcase_add(request: Request):
                 try:
                     raw = await extra.read()
                     nm = getattr(extra, "filename", None) or "extra.png"
+                    if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+                        shutil.rmtree(tmp, ignore_errors=True)
+                        return JSONResponse(
+                            {"ok": False, "msg": f"File must be under {MAX_UPLOAD_MB} MB"},
+                            status_code=413,
+                        )
                     d2 = out_dir / f"{ts}_{Path(str(nm)).name}"
                     d2.write_bytes(raw)
                     files_saved.append(d2.name)

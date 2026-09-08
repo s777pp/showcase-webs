@@ -6,6 +6,14 @@ const state = {
   authMode: 'login'
 };
 window.state = state;
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 function syncRangeVisual(input){
   if (!input || input.type !== 'range') return;
   const min = Number(input.min || 0);
@@ -273,7 +281,7 @@ document.getElementById('btnLogout').onclick = async () => {
 function openFunPayBuy(e) {
   if (window.SSShell && typeof window.SSShell.openActivation === 'function') window.SSShell.openActivation();
   else if (typeof openBuyKeyModal === 'function') openBuyKeyModal(e);
-  else window.open('https://funpay.com/lots/offer?id=76420307', '_blank');
+  else window.open('https://funpay.com/lots/offer?id=76420307', '_blank', 'noopener,noreferrer');
 }
 ['btnBuyKeyAbout','btnBuyKeyAccount','btnBuyKeyGuest','btnUpgrade'].forEach(function(id) {
   const el = document.getElementById(id);
@@ -837,7 +845,7 @@ document.getElementById('btnPv').onclick = async () => {
         try { j = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
         if (xhr.status >= 200 && xhr.status < 300 && j.ok) {
           setProg(100, ru ? 'Готово!' : 'Done!', (j.applied || []).join(', '));
-          try { window.open(j.open, '_blank'); } catch (e) {}
+          try { window.open(j.open, '_blank', 'noopener'); } catch (e) {}
           st.className = 'status ok';
           st.textContent = (ru ? 'Открыто · ' : 'Opened · ') + (j.applied || []).join(', ');
           hideLater();
@@ -1480,8 +1488,8 @@ function renderDaList() {
   }
   box.innerHTML = daItems.map((it, i) => `
     <div class="fi" style="align-items:center">
-      <span style="flex:1;min-width:100px">${it.name}</span>
-      <input data-i="${i}" class="da-title" value="${(it.title||'').replace(/"/g,'&quot;')}" placeholder="${daPack.da_title_placeholder}" style="flex:2;min-width:140px;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text)"/>
+      <span style="flex:1;min-width:100px">${escapeHtml(it.name)}</span>
+      <input data-i="${i}" class="da-title" value="${escapeHtml(it.title)}" placeholder="${escapeHtml(daPack.da_title_placeholder)}" style="flex:2;min-width:140px;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text)"/>
       <button type="button" class="btn ghost da-rm" data-i="${i}" style="min-height:36px;padding:6px 10px">✕</button>
     </div>`).join('');
   box.querySelectorAll('.da-title').forEach(inp => {
@@ -1733,7 +1741,7 @@ function renderCvFile() {
   const box = document.getElementById('cvFileList');
   if (!box) return;
   if (!cvFile) { box.innerHTML = ''; return; }
-  box.innerHTML = '<div class="fi"><span>' + cvFile.name + '</span><button type="button" id="cvRm">×</button></div>';
+  box.innerHTML = '<div class="fi"><span>' + escapeHtml(cvFile.name) + '</span><button type="button" id="cvRm">×</button></div>';
   document.getElementById('cvRm').onclick = () => { cvFile = null; renderCvFile(); document.getElementById('btnConvert').disabled = true; };
 }
 (function(){
@@ -1900,7 +1908,7 @@ function renderHexFiles() {
   const box = document.getElementById('hexFileList');
   if (!box) return;
   box.innerHTML = hexFiles.map((f, i) =>
-    '<div class="fi"><span>' + f.name + '</span><button type="button" data-i="' + i + '">×</button></div>'
+    '<div class="fi"><span>' + escapeHtml(f.name) + '</span><button type="button" data-i="' + i + '">×</button></div>'
   ).join('');
   box.querySelectorAll('button').forEach(b => {
     b.onclick = () => {
@@ -2686,10 +2694,10 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     box.innerHTML = items.map(function (it, i) {
       return '<div class="file-row" style="display:flex;gap:8px;align-items:center;margin:6px 0">' +
         '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">' +
-        (it.name || "") + "</span>" +
+        escapeHtml(it.name) + "</span>" +
         '<input class="da-title" data-i="' + i + '" value="' +
-        String(it.title || "").replace(/"/g, "&quot;") +
-        '" style="flex:1;min-width:100px" placeholder="' + daPack.da_title_placeholder + '"/>' +
+        escapeHtml(it.title) +
+        '" style="flex:1;min-width:100px" placeholder="' + escapeHtml(daPack.da_title_placeholder) + '"/>' +
         '<button type="button" class="btn ghost da-rm" data-i="' + i + '" style="padding:4px 10px">×</button></div>';
     }).join("");
     box.querySelectorAll(".da-title").forEach(function (inp) {

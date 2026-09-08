@@ -208,11 +208,16 @@ async def auth_profile(request: Request):
     avatar_saved = None
     try:
         if "multipart/form-data" in ct:
-            form = await request.form()
+            form = await request.form(max_files=1, max_fields=4, max_part_size=3_000_000)
             display_name = str(form.get("display_name") or "")
             f = form.get("avatar")
             if f is not None and hasattr(f, "read"):
                 raw = await f.read()
+                if len(raw) >= 3_000_000:
+                    return JSONResponse(
+                        {"ok": False, "msg": "Avatar must be under 3 MB"},
+                        status_code=413,
+                    )
                 if raw and len(raw) < 3_000_000:
                     name = getattr(f, "filename", "") or "a.png"
                     ext = Path(name).suffix.lower()
@@ -228,6 +233,13 @@ async def auth_profile(request: Request):
                         ext = ".webp"
                     elif ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
                         ext = ".png"
+                    try:
+                        Image.open(io.BytesIO(raw)).verify()
+                    except Exception:
+                        return JSONResponse(
+                            {"ok": False, "msg": "Avatar must be a valid PNG, JPG, WEBP or GIF"},
+                            status_code=400,
+                        )
                     # A fresh key per upload. The header shows a stable
                     # /api/auth/avatar/{id} URL that redirects to this object, so
                     # reusing one key left browsers and R2 edges serving the

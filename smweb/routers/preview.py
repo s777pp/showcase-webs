@@ -32,6 +32,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from PIL import Image
 
 import processor as proc
@@ -43,7 +44,8 @@ import auth_db
 from fastapi import APIRouter
 
 
-from smweb.core import JOBS, ROOT, TEMPLATES
+from smweb.core import JOBS, ROOT, TEMPLATES, MAX_UPLOAD_MB
+from smweb.job_access import bind_job
 from smweb.preview_layout import (
     PV_REF_H,
     PV_REF_W,
@@ -92,8 +94,14 @@ async def preview_build(request: Request):
     Как desktop _pv_open_browser:
     HTML-оверлей поверх шаблона, GIF анимированные, MP4 как <video>.
     """
-    form = await request.form()
+    part_limit = MAX_UPLOAD_MB * 1024 * 1024
+    try:
+        form = await request.form(max_files=16, max_fields=32, max_part_size=part_limit)
+    except Exception:
+        return JSONResponse({"ok": False, "msg": "Preview upload is too large"}, status_code=413)
     mode = str(form.get("mode") or "workshop").strip()
+    if mode not in {"workshop", "featured", "split"}:
+        return JSONResponse({"ok": False, "msg": "Unknown preview mode"}, status_code=400)
     fname = _pv_template_name(mode)
     tpl_path = TEMPLATES / fname
     if not tpl_path.is_file() and (ROOT / fname).is_file():
@@ -104,9 +112,12 @@ async def preview_build(request: Request):
             status_code=404,
         )
 
-    job_id = uuid.uuid4().hex[:12]
+    job_id = uuid.uuid4().hex
     job_dir = JOBS / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
+    bind_job(job_dir, request)
+    total_read = 0
+    total_limit = max(part_limit, min(100, MAX_UPLOAD_MB * 3) * 1024 * 1024)
 
     # template size + scale
     with Image.open(tpl_path) as im:
@@ -158,6 +169,10 @@ async def preview_build(request: Request):
     if av_file is not None and hasattr(av_file, "read") and not isinstance(av_file, (str, bytes)):
         try:
             raw = await av_file.read()
+            total_read += len(raw)
+            if len(raw) > part_limit or total_read > total_limit:
+                shutil.rmtree(job_dir, ignore_errors=True)
+                return JSONResponse({"ok": False, "msg": "Preview upload is too large"}, status_code=413)
             if raw:
                 av_path = job_dir / "av_avatar.png"
                 Image.open(io.BytesIO(raw)).convert("RGBA").save(av_path, "PNG")
@@ -188,6 +203,10 @@ async def preview_build(request: Request):
                 except Exception:
                     pass
             raw = await f.read()
+            total_read += len(raw)
+            if len(raw) > part_limit or total_read > total_limit:
+                shutil.rmtree(job_dir, ignore_errors=True)
+                return JSONResponse({"ok": False, "msg": "Preview upload is too large"}, status_code=413)
             if not raw:
                 continue
             name = getattr(f, "filename", None) or "file.png"
@@ -223,7 +242,7 @@ async def preview_build(request: Request):
                     x0, x1 = i / n, (i + 1) / n
                     part_ext = ".mp4" if is_vid else (".gif" if is_gif else ".png")
                     part_path = job_dir / f"part_{sid}_{i}{part_ext}"
-                    ok = _pv_slice_media(src, part_path, x0, x1)
+                    ok = await run_in_threadpool(_pv_slice_media, src, part_path, x0, x1)
                     if not ok:
                         # fallback full
                         part_path = job_dir / f"part_{sid}_{i}_full{ext}"
@@ -243,8 +262,8 @@ async def preview_build(request: Request):
                 part_ext = ".mp4" if is_vid else (".gif" if is_gif else ".png")
                 main_path = job_dir / f"part_{sid}_main{part_ext}"
                 side_path = job_dir / f"part_{sid}_side{part_ext}"
-                ok_m = _pv_slice_media(src, main_path, 0.0, cut)
-                ok_s = _pv_slice_media(src, side_path, cut, 1.0)
+                ok_m = await run_in_threadpool(_pv_slice_media, src, main_path, 0.0, cut)
+                ok_s = await run_in_threadpool(_pv_slice_media, src, side_path, cut, 1.0)
                 kind = "video" if is_vid else "image"
                 if ok_m or main_path.is_file():
                     real = main_path if main_path.is_file() else main_path.with_suffix(".gif")

@@ -44,6 +44,7 @@ from fastapi import APIRouter
 
 
 from smweb.core import JOBS, STATIC, _auth_user
+from smweb.job_access import browser_owns_job
 
 
 
@@ -139,10 +140,11 @@ async def profile_public(username: str, request: Request):
 
 
 @router.get("/preview/{job_id}", response_class=HTMLResponse)
-def preview_page(job_id: str):
-    job_id = "".join(c for c in job_id if c.isalnum())[:16]
+def preview_page(job_id: str, request: Request):
+    if not re.fullmatch(r"[a-f0-9]{32}", job_id or ""):
+        return _html("<h3>Preview not found</h3>", status_code=404)
     path = JOBS / job_id / "preview.html"
-    if not path.is_file():
+    if not browser_owns_job(path.parent, request) or not path.is_file():
         return _html("<h3>Preview not found</h3>", status_code=404)
     return _html(path.read_text(encoding="utf-8"))
 
