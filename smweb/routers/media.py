@@ -614,6 +614,7 @@ async def api_compose_start(
     chroma_key: str = Form("auto"), chroma_tol: float = Form(55),
     feather: float = Form(1.6), scale: float = Form(1.0),
     offset_x: float = Form(0.5), offset_y: float = Form(1.0),
+    rotation: float = Form(0.0),
     width: int = Form(750), gif_encoder: str = Form("gifski"), fps: int = Form(12),
     background: UploadFile = File(...), character: UploadFile = File(...),
 ):
@@ -666,6 +667,7 @@ async def api_compose_start(
         "background_path": str(bg_path), "character_path": str(ch_path),
         "options": {"chroma_key": chroma_key, "chroma_tol": chroma_tol, "feather": feather,
                     "scale": scale, "offset_x": offset_x, "offset_y": offset_y,
+                    "rotation": proc.normalize_rotation(rotation),
                     "width": width, "gif_encoder": gif_encoder, "fps": fps},
         "status": "queued", "pct": 2, "stage": "queued",
         "user_key": user_key, "created": time.time(),

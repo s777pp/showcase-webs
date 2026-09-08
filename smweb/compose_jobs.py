@@ -77,6 +77,7 @@ def _run(jid: str, job: dict) -> None:
     scale = max(0.05, min(4.0, float(opts.get("scale") or 1.0)))
     offset_x = max(0.0, min(1.0, float(opts.get("offset_x") or 0.5)))
     offset_y = max(0.0, min(1.0, float(opts.get("offset_y") or 1.0)))
+    rotation = proc.normalize_rotation(opts.get("rotation"))
     encoder = str(opts.get("gif_encoder") or "gifski").lower()
     if encoder not in ("ffmpeg", "gifski", "pillow"):
         encoder = "gifski"
@@ -103,6 +104,7 @@ def _run(jid: str, job: dict) -> None:
             bg, ch, chroma_key=key, chroma_tol=tol, scale=scale,
             offset_x=offset_x, offset_y=offset_y, feather=feather,
             target_width=width, fps=fps, max_seconds=8,
+            rotation=rotation,
         )
         print(f"[compose {jid}] chromakey/compose: {time.monotonic()-t:.1f}s, frames={len(frames)}", flush=True)
         t = time.monotonic()
@@ -151,6 +153,7 @@ def _run(jid: str, job: dict) -> None:
         output = proc.compose_static(
             bg_image, char_image, chroma_key=key, chroma_tol=tol,
             scale=scale, offset_x=offset_x, offset_y=offset_y, feather=feather,
+            rotation=rotation,
         )
         result = root / "composed.png"
         output.save(result, "PNG")

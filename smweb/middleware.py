@@ -140,6 +140,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """Light Redis/local rate limits on sensitive paths."""
     RULES = (
         ("/api/auth/login", 20, 60),
+        ("/api/auth/send-code", 6, 300),
         ("/api/auth/register", 10, 60),
         # Guessing an access code was unlimited before: /api/unlock was simply
         # not on this list, so a script could try codes as fast as it liked.

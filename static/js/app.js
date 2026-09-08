@@ -1,11 +1,23 @@
 // app.html L1585-3215
 const state = {
-  mode: 'workshop', files: [],
+  mode: 'workshop', files: [], fileRotations: [], activeProcessFileIndex: 0,
   token: localStorage.getItem('sm_token') || '',
   session: '',
   authMode: 'login'
 };
 window.state = state;
+function syncRangeVisual(input){
+  if (!input || input.type !== 'range') return;
+  const min = Number(input.min || 0);
+  const max = Number(input.max || 100);
+  const value = Number(input.value || min);
+  const progress = max > min ? (value - min) * 100 / (max - min) : 0;
+  input.style.setProperty('--range-progress', Math.max(0, Math.min(100, progress)).toFixed(2) + '%');
+}
+function syncAllRangeVisuals(){ document.querySelectorAll('input[type="range"]').forEach(syncRangeVisual); }
+window.__syncRangeVisual = syncRangeVisual;
+document.addEventListener('input',function(event){ syncRangeVisual(event.target); },true);
+syncAllRangeVisuals();
 try { localStorage.removeItem('sm_session'); } catch (e) {}
 const titles = {
   process:['Process','Workshop / Featured / Split cuts, watermark and Steam ZIP'],
@@ -143,6 +155,10 @@ async function refreshQuota() {
 const modal = document.getElementById('authModal');
 
 window.openAuthModal = function openAuthModal(mode) {
+  if (window.SSShell && typeof window.SSShell.openAuth === 'function') {
+    window.SSShell.openAuth(mode);
+    return;
+  }
   try {
     state.authMode = (mode === 'register') ? 'register' : 'login';
   } catch (e) {}
@@ -222,7 +238,14 @@ function syncAuthUi() {
 document.getElementById('authSubmit').onclick = async () => {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPass').value;
-  const url = state.authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+  if (state.authMode === 'register') {
+    closeAuthModal();
+    if (window.SSShell && typeof window.SSShell.openAuth === 'function') {
+      window.SSShell.openAuth('register');
+    }
+    return;
+  }
+  const url = '/api/auth/login';
   const r = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -334,19 +357,97 @@ drop.ondragover = e => { e.preventDefault(); drop.classList.add('drag'); };
 drop.ondragleave = () => drop.classList.remove('drag');
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove('drag'); addFiles([...e.dataTransfer.files]); };
 fileInput.onchange = () => { addFiles([...fileInput.files]); fileInput.value=''; };
-function addFiles(list){ state.files.push(...list); renderFiles(); try{ window.__wmLoadFromFiles && window.__wmLoadFromFiles(); }catch(e){} }
+const processPreviewUrls = new WeakMap();
+function processPreviewUrl(file) {
+  if (!processPreviewUrls.has(file)) processPreviewUrls.set(file, URL.createObjectURL(file));
+  return processPreviewUrls.get(file);
+}
+function activeProcessFileIndex(){
+  if (!state.files.length) return -1;
+  state.activeProcessFileIndex = Math.max(0, Math.min(state.files.length - 1, Number(state.activeProcessFileIndex) || 0));
+  return state.activeProcessFileIndex;
+}
+function normalizeProcessRotation(value){
+  const angle = Number(value) || 0;
+  return ((angle + 180) % 360 + 360) % 360 - 180;
+}
+function paintProcessRotationPanel(){
+  const panel = document.getElementById('processRotationPanel');
+  const index = activeProcessFileIndex();
+  if (!panel) return;
+  panel.hidden = index < 0;
+  if (index < 0) return;
+  const name = document.getElementById('processRotationName');
+  const angle = document.getElementById('processRotationAngle');
+  if (name) name.textContent = state.files[index]?.name || '';
+  if (angle) angle.textContent = normalizeProcessRotation(state.fileRotations[index]) + '°';
+}
+function selectProcessFile(index){
+  if (!state.files[index]) return;
+  state.activeProcessFileIndex = index;
+  renderFiles();
+  try { window.__wmLoadFromFiles && window.__wmLoadFromFiles(); } catch(e) {}
+}
+function rotateActiveProcessFile(delta, absolute){
+  const index = activeProcessFileIndex();
+  if (index < 0) return;
+  const next = absolute == null ? Number(state.fileRotations[index] || 0) + delta : absolute;
+  state.fileRotations[index] = normalizeProcessRotation(next);
+  renderFiles();
+  try { window.__wmRedraw && window.__wmRedraw(); } catch(e) {}
+}
+function addFiles(list){
+  const wasEmpty = !state.files.length;
+  state.files.push(...list);
+  state.fileRotations.push(...list.map(() => 0));
+  if (wasEmpty) state.activeProcessFileIndex = 0;
+  renderFiles();
+  try{ window.__wmLoadFromFiles && window.__wmLoadFromFiles(); }catch(e){}
+}
 function renderFiles(){
   const box = document.getElementById('fileList'); box.innerHTML='';
   state.files.forEach((f,i)=>{
-    const d=document.createElement('div'); d.className='fi';
-    d.innerHTML=`<span>${f.name}</span><button type="button">✕</button>`;
-    d.querySelector('button').onclick=()=>{ state.files.splice(i,1); renderFiles(); };
+    const d=document.createElement('div'); d.className='fi process-file';
+    if (i === activeProcessFileIndex()) d.classList.add('is-selected');
+    d.tabIndex=0; d.setAttribute('role','button');
+    d.setAttribute('aria-label',smT('Показать в предпросмотре: ','Show in preview: ')+f.name);
+    const preview=document.createElement('div'); preview.className='process-file__preview';
+    const url=processPreviewUrl(f);
+    const video=(f.type||'').startsWith('video/') || /\.(mp4|mov|webm|avi|mkv)$/i.test(f.name||'');
+    const media=document.createElement(video ? 'video' : 'img');
+    media.src=url; media.alt=''; media.className='process-file__media';
+    if (video) { media.muted=true; media.loop=true; media.playsInline=true; media.autoplay=true; }
+    preview.appendChild(media);
+    const body=document.createElement('div'); body.className='process-file__body';
+    const name=document.createElement('span'); name.className='process-file__name'; name.textContent=f.name;
+    const meta=document.createElement('span'); meta.className='process-file__meta';
+    meta.textContent=((f.size||0)/1024/1024).toFixed(2)+' MB';
+    const angle=document.createElement('span'); angle.className='process-file__rotation';
+    angle.textContent=normalizeProcessRotation(state.fileRotations[i])+'°';
+    media.style.transform='rotate('+normalizeProcessRotation(state.fileRotations[i])+'deg)';
+    const remove=document.createElement('button'); remove.type='button'; remove.className='process-file__remove';
+    remove.textContent='×'; remove.setAttribute('aria-label',smT('Удалить файл','Remove file'));
+    remove.onclick=(event)=>{
+      event.stopPropagation();
+      state.files.splice(i,1); state.fileRotations.splice(i,1);
+      state.activeProcessFileIndex = Math.max(0, Math.min(state.activeProcessFileIndex, state.files.length - 1));
+      renderFiles();
+      try { window.__wmLoadFromFiles && window.__wmLoadFromFiles(); } catch(e) {}
+    };
+    d.onclick=()=>selectProcessFile(i);
+    d.onkeydown=(event)=>{ if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectProcessFile(i); } };
+    body.append(name,meta,angle); d.append(preview,body,remove);
     box.appendChild(d);
   });
+  paintProcessRotationPanel();
   document.getElementById('btnRun').disabled = !state.files.length;
 }
+document.getElementById('processRotateLeft')?.addEventListener('click',()=>rotateActiveProcessFile(-90));
+document.getElementById('processRotateRight')?.addEventListener('click',()=>rotateActiveProcessFile(90));
+document.getElementById('processRotateHalf')?.addEventListener('click',()=>rotateActiveProcessFile(180));
+document.getElementById('processRotateReset')?.addEventListener('click',()=>rotateActiveProcessFile(0,0));
 document.getElementById('btnClear').onclick = () => {
-  state.files=[]; renderFiles();
+  state.files=[]; state.fileRotations=[]; state.activeProcessFileIndex=0; renderFiles();
   document.getElementById('status').textContent='';
   document.getElementById('dlProcess').style.display='none';
   const _pg=document.getElementById('btnPublishGallery'); if(_pg) _pg.style.display='none';
@@ -410,6 +511,7 @@ document.getElementById('btnRun').onclick = async () => {
   fd.append('gif_encoder', document.getElementById('gifEncoder')?.value || 'gifski');
   fd.append('wm_scale', sc ? (Number(sc.value) / 100) : 1);
   fd.append('all_modes', (document.getElementById('allModes') || {}).checked ? '1' : '0');
+  fd.append('rotations', JSON.stringify(state.fileRotations || []));
   state.files.forEach(f => fd.append('files', f));
 
   try {
@@ -932,9 +1034,6 @@ async function init(){
   const so2 = document.getElementById('socials2'); if (so2) so2.innerHTML = mkSoc(allSocials);
   document.querySelectorAll('.about-socials').forEach(el => { el.innerHTML = mkSoc(allSocials); });
   refreshQuota(); loadPvSlots(); refreshDa(); refreshAccountUI();
-  if (new URLSearchParams(location.search).get('auth') === '1') {
-    openAuthModal('register');
-  }
   if (new URLSearchParams(location.search).get('billing') === 'success') {
     alert(smT('Оплата прошла. Обнови страницу через пару секунд, если Pro ещё не активен.',
               'Payment went through. Reload the page in a couple of seconds if Pro is not active yet.'));
@@ -1875,6 +1974,11 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       wm_hint: "Add a PNG/JPG/GIF/MP4 in «Files» — for video/GIF the first frame is used. Drag the watermark across the preview; the position is applied on «Process».",
       wm_empty: "No preview — add an image in «Files»",
       wm_reset: "Reset position",
+      rotation_title: "Selected file · rotation",
+      rotation_left_title: "Rotate 90° left",
+      rotation_right_title: "Rotate 90° right",
+      rotation_half: "Rotate 180°",
+      rotation_reset: "Reset",
       auto_contrast: "Auto-contrast",
       smart_compress: "Smart compression to 5 MB", smart_compress_hint: "Always on for final Steam GIFs. The processor keeps the highest quality that fits the limit.",
       workshop_outline: "Panel outline", outline_width: "Thickness", outline_color: "Color", outline_hint: "Adds an inner outline to every final Workshop panel without changing its dimensions.",
@@ -1916,6 +2020,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       compose_tol_lbl: "Chromakey tolerance",
       compose_feather_lbl: "Edge smoothing",
       compose_scale_lbl: "Character scale",
+      compose_rotation_lbl: "Character rotation",
       compose_width_lbl: "Output width",
       compose_ox_lbl: "Position X (0=left → 1=right)",
       compose_oy_lbl: "Position Y (0=top → 1=bottom)",
@@ -1927,7 +2032,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       compose_help_title: "How to use",
       compose_help_1: "Background — image the character is placed on (PNG/JPG).",
       compose_help_2: "Character — transparent PNG, or photo/video on green, blue or red screen.",
-      compose_help_3: "Live preview on the right. Drag the character, use the corner handle or mouse wheel to resize. Sliders work too.",
+      compose_help_3: "Live preview on the right. Drag, resize and rotate the character; the final file keeps the same placement.",
       compose_help_4: "Colored backdrop — leave «Remove colored backdrop automatically». Pre-cut PNG — choose «Already transparent».",
       compose_help_5: "Tolerance — how aggressive chromakey is. Smoothing — edge softness (0 = hard).",
       compose_help_6: "Press Compose → download the result or send To Process for Workshop slicing.",
@@ -2023,6 +2128,11 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       wm_hint: "Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Перетаскивай водяной знак по предпросмотру; позиция применится при «Обработать».",
       wm_empty: "Нет превью — добавь изображение в «Файлы»",
       wm_reset: "Сброс позиции",
+      rotation_title: "Выбранный файл · поворот",
+      rotation_left_title: "Повернуть на 90° влево",
+      rotation_right_title: "Повернуть на 90° вправо",
+      rotation_half: "Повернуть на 180°",
+      rotation_reset: "Сброс",
       auto_contrast: "Автоконтраст",
       smart_compress: "Умное сжатие до 5 МБ", smart_compress_hint: "Всегда включено для итоговых GIF Steam. Обработчик сохраняет максимально возможное качество в пределах лимита.",
       workshop_outline: "Обводка панелей", outline_width: "Толщина", outline_color: "Цвет", outline_hint: "Добавляет внутреннюю обводку к каждой итоговой части Workshop, не меняя её размеры.",
@@ -2064,6 +2174,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       compose_tol_lbl: "Толерантность хромакея",
       compose_feather_lbl: "Сглаживание краёв",
       compose_scale_lbl: "Масштаб персонажа",
+      compose_rotation_lbl: "Поворот персонажа",
       compose_width_lbl: "Ширина результата",
       compose_ox_lbl: "Позиция X (0=лево → 1=право)",
       compose_oy_lbl: "Позиция Y (0=верх → 1=низ)",
@@ -2075,7 +2186,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       compose_help_title: "Как пользоваться",
       compose_help_1: "Фон витрины — картинка, на которую ставится персонаж (PNG/JPG).",
       compose_help_2: "Персонаж — PNG с прозрачностью или фото/видео на зелёном, синем или красном фоне.",
-      compose_help_3: "Справа — live. Тащи персонажа мышью, угол рамки или колёсико — размер. Ползунки тоже работают.",
+      compose_help_3: "Справа — живой предпросмотр. Перемещай, масштабируй и поворачивай персонажа — итоговый файл сохранит это расположение.",
       compose_help_4: "Если фон цветной — оставь «Убрать цветной фон автоматически». Уже вырезанный PNG — выбери «Уже прозрачный».",
       compose_help_5: "Толерантность — насколько агрессивно режется хромакей. Сглаживание — мягкость края (0 = резко).",
       compose_help_6: "Нажми Совместить → скачай результат или отправь В Обработку для нарезки Workshop.",
@@ -2884,15 +2995,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     try {
       const st = window.state;
       const list = (st && Array.isArray(st.files)) ? st.files : [];
-      for (let i = 0; i < list.length; i++) {
-        const f = list[i];
-        if (!f) continue;
-        const name = (f.name || '').toLowerCase();
-        const type = (f.type || '').toLowerCase();
-        if (type.startsWith('image/')) return f;
-        if (type.startsWith('video/')) return f;
-        if (/\.(png|jpe?g|webp|bmp|gif|mp4|webm|mov|avi|mkv)$/i.test(name)) return f;
-      }
+      const index = activeProcessFileIndex();
+      if (index >= 0 && list[index]) return list[index];
     } catch(e){}
     return null;
   }
@@ -2905,9 +3009,17 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       return;
     }
     const maxW = Math.min(920, Math.max(200, (canvas.parentElement?.clientWidth || 600) - 4));
-    const ratio = img.naturalWidth / img.naturalHeight;
-    let w = maxW, h = Math.round(w / ratio);
-    if (h > 420) { h = 420; w = Math.round(h * ratio); }
+    const rotation = normalizeProcessRotation(state.fileRotations[activeProcessFileIndex()] || 0);
+    const radians = rotation * Math.PI / 180;
+    const absCos = Math.abs(Math.cos(radians));
+    const absSin = Math.abs(Math.sin(radians));
+    const sourceW = img.naturalWidth;
+    const sourceH = img.naturalHeight;
+    const rotatedW = sourceW * absCos + sourceH * absSin;
+    const rotatedH = sourceW * absSin + sourceH * absCos;
+    const fit = Math.min(maxW / rotatedW, 420 / rotatedH);
+    const w = Math.max(1, Math.round(rotatedW * fit));
+    const h = Math.max(1, Math.round(rotatedH * fit));
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
@@ -2916,7 +3028,11 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     canvas.style.cursor = 'grab';
     if (empty) empty.style.display = 'none';
     ctx.clearRect(0,0,w,h);
-    ctx.drawImage(img, 0, 0, w, h);
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(radians);
+    ctx.drawImage(img, -sourceW * fit / 2, -sourceH * fit / 2, sourceW * fit, sourceH * fit);
+    ctx.restore();
     const outlineOn = state.mode === 'workshop' && document.getElementById('workshopOutline')?.checked;
     if (outlineOn) {
       const sourceWidth = Number(document.getElementById('size')?.value || 750);
@@ -3410,6 +3526,9 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   function oyVal() {
     return Math.max(0, Math.min(1, (parseInt(document.getElementById('composeOy')?.value || '100', 10) || 100) / 100));
   }
+  function rotationVal() {
+    return Math.max(-180, Math.min(180, parseFloat(document.getElementById('composeRotation')?.value || '0') || 0));
+  }
   function targetWidth() {
     return parseInt(document.getElementById('composeWidth')?.value || '750', 10) || 750;
   }
@@ -3417,17 +3536,17 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   function setScalePct(pct) {
     pct = Math.max(10, Math.min(400, Math.round(pct)));
     const el = document.getElementById('composeScale');
-    if (el) el.value = String(pct);
+    if (el) { el.value = String(pct); syncRangeVisual(el); }
   }
   function setOx(v) {
     v = Math.max(0, Math.min(1, v));
     const el = document.getElementById('composeOx');
-    if (el) el.value = String(Math.round(v * 100));
+    if (el) { el.value = String(Math.round(v * 100)); syncRangeVisual(el); }
   }
   function setOy(v) {
     v = Math.max(0, Math.min(1, v));
     const el = document.getElementById('composeOy');
-    if (el) el.value = String(Math.round(v * 100));
+    if (el) { el.value = String(Math.round(v * 100)); syncRangeVisual(el); }
   }
 
   function updateRangeLabels() {
@@ -3436,6 +3555,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const oy = document.getElementById('composeOyVal');
     const tol = document.getElementById('composeTolVal');
     const fe = document.getElementById('composeFeatherVal');
+    const rot = document.getElementById('composeRotationVal');
     if (s) s.textContent = Math.round(scaleVal() * 100) + '%';
     if (ox) ox.textContent = oxVal().toFixed(2);
     if (oy) oy.textContent = oyVal().toFixed(2);
@@ -3444,6 +3564,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       const raw = parseInt(document.getElementById('composeFeather')?.value || '16', 10) || 0;
       fe.textContent = (raw / 10).toFixed(1);
     }
+    if (rot) rot.textContent = Math.round(rotationVal()) + '°';
   }
 
   function scheduleRedraw() {
@@ -3477,13 +3598,22 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const sc = scaleVal();
     const ox = oxVal();
     const oy = oyVal();
+    const radians = rotationVal() * Math.PI / 180;
+    const absCos = Math.abs(Math.cos(radians));
+    const absSin = Math.abs(Math.sin(radians));
+    const sourceW = mediaWidth(charImg);
+    const sourceH = mediaHeight(charImg);
+    const rotatedW = sourceW * absCos + sourceH * absSin;
+    const rotatedH = sourceW * absSin + sourceH * absCos;
     let targetH = Math.max(1, Math.round(bh * 0.85 * sc));
-    let r = targetH / Math.max(1, mediaHeight(charImg));
-    let nw = Math.max(1, Math.round(mediaWidth(charImg) * r));
+    let r = targetH / Math.max(1, rotatedH);
+    let nw = Math.max(1, Math.round(rotatedW * r));
     let nh = Math.max(1, targetH);
+    let sourceDrawW = Math.max(1, sourceW * r);
+    let sourceDrawH = Math.max(1, sourceH * r);
     let ax = Math.round(bw * ox - nw / 2);
     let ay = Math.round(bh * oy - nh);
-    return { ax: ax, ay: ay, nw: nw, nh: nh, sc: sc, ox: ox, oy: oy };
+    return { ax: ax, ay: ay, nw: nw, nh: nh, sourceDrawW: sourceDrawW, sourceDrawH: sourceDrawH, rotation: rotationVal(), sc: sc, ox: ox, oy: oy };
   }
 
   function drawLive() {
@@ -3526,7 +3656,17 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const dw = p.nw * dispScale;
     const dh = p.nh * dispScale;
 
-    liveCtx.drawImage(charImg, dx, dy, dw, dh);
+    liveCtx.save();
+    liveCtx.translate(dx + dw / 2, dy + dh / 2);
+    liveCtx.rotate(p.rotation * Math.PI / 180);
+    liveCtx.drawImage(
+      charImg,
+      -p.sourceDrawW * dispScale / 2,
+      -p.sourceDrawH * dispScale / 2,
+      p.sourceDrawW * dispScale,
+      p.sourceDrawH * dispScale
+    );
+    liveCtx.restore();
 
     // selection frame + scale handle (bottom-right)
     liveCtx.save();
@@ -3723,7 +3863,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   document.getElementById('composeChar')?.addEventListener('change', onCharChange);
 
   // Live update on any slider / width change
-  ['composeScale','composeOx','composeOy','composeTol','composeFeather','composeWidth'].forEach(function(id){
+  ['composeScale','composeRotation','composeOx','composeOy','composeTol','composeFeather','composeWidth'].forEach(function(id){
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', scheduleRedraw);
@@ -3750,6 +3890,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     fd.append('scale', String(scaleVal()));
     fd.append('offset_x', String(oxVal()));
     fd.append('offset_y', String(oyVal()));
+    fd.append('rotation', String(rotationVal()));
     fd.append('width', document.getElementById('composeWidth')?.value || '750');
     fd.append('gif_encoder', document.getElementById('composeGifEncoder')?.value || 'gifski');
     fd.append('fps', document.getElementById('composeFps')?.value || '12');
@@ -3859,6 +4000,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       const file = new File([lastBlob], lastName, { type: lastBlob.type || 'image/png' });
       if (window.state) {
         state.files = [file];
+        state.fileRotations = [0];
+        state.activeProcessFileIndex = 0;
         try { renderFiles(); } catch(e){}
         try { window.__wmLoadFromFiles && window.__wmLoadFromFiles(); } catch(e){}
       }

@@ -12,14 +12,15 @@
 
   <link rel="stylesheet" href="/static/css/mobile.css?v=20260903m"/>
   <link rel="stylesheet" href="/static/css/redesign.css?v=20260903j"/>
-  <link rel="stylesheet" href="/static/css/creator-os.css?v=20260906d"/>
+  <link rel="stylesheet" href="/static/css/creator-os.css?v=20260908-controls"/>
   <link rel="stylesheet" href="/static/css/steam-check.css?v=20260906e"/>
   <link rel="stylesheet" href="/static/css/profile-insights.css?v=20260906-tags"/>
   <link rel="stylesheet" href="/static/css/seamless-loop.css?v=20260906d"/>
-<link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260904c">
+<link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260908-controls8">
 <script src="/static/js/layout-refinement.js?v=20260904f"></script>
 <script src="/static/js/i18n.js?v=20260903d"></script>
 <link rel="stylesheet" href="/static/css/support-chat.css?v=20260907-compact-faq">
+<link rel="stylesheet" href="/static/css/tools-polish.css?v=20260908-controls8">
 <script defer src="/static/js/support-chat.js?v=20260907-compact-faq"></script>
 </head>
 <body class="page-tools">
@@ -77,15 +78,15 @@
     <div class="card">
       <h2 data-i="mode">Mode</h2>
       <div class="modes">
-        <button type="button" class="mode active" data-mode="workshop"><strong>Workshop</strong><span data-i="mode_ws">5 panels for Workshop showcase</span></button>
-        <button type="button" class="mode" data-mode="featured"><strong>Featured</strong><span data-i="mode_ft">Artwork 630px wide</span></button>
-        <button type="button" class="mode" data-mode="split"><strong>Artwork Split</strong><span data-i="mode_sp">Center 506 + side 100</span></button>
+        <button type="button" class="mode active" data-mode="workshop"><div class="mode-diagram mode-diagram--workshop" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><strong>Workshop</strong><span data-i="mode_ws">5 panels for Workshop showcase</span></button>
+        <button type="button" class="mode" data-mode="featured"><div class="mode-diagram mode-diagram--featured" aria-hidden="true"><i></i></div><strong>Featured</strong><span data-i="mode_ft">Artwork 630px wide</span></button>
+        <button type="button" class="mode" data-mode="split"><div class="mode-diagram mode-diagram--split" aria-hidden="true"><i></i><i></i></div><strong>Artwork Split</strong><span data-i="mode_sp">Center 506 + side 100</span></button>
       </div>
     </div>
     <div class="card">
       <h2 data-i="params">Settings</h2>
       <div class="row">
-        <label class="field" translate="no"><span class="lbl-fps">FPS</span><input type="number" id="fps" value="12" min="5" max="30"/></label>
+        <label class="field" translate="no"><span class="lbl-fps">FPS</span><select id="fps"><option value="12" selected>12 FPS</option><option value="15">15 FPS</option><option value="18">18 FPS</option><option value="20">20 FPS</option><option value="24">24 FPS</option></select></label>
         <label class="field"><span data-i="lbl_size">Width</span>
           <select id="size">
             <option value="630">630</option>
@@ -150,6 +151,19 @@
       <input type="hidden" id="wmY" value=""/>
       <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">
         <button type="button" class="btn ghost" id="btnWmReset" data-i="wm_reset">Reset position</button>
+      </div>
+      <div class="process-rotation" id="processRotationPanel" hidden>
+        <div class="process-rotation__identity">
+          <span class="process-rotation__kicker" data-i="rotation_title">File rotation</span>
+          <strong id="processRotationName"></strong>
+        </div>
+        <div class="process-rotation__controls" role="group" aria-label="File rotation">
+          <button type="button" class="file-rotate" id="processRotateLeft" data-i-title="rotation_left_title" title="Rotate 90° left" aria-label="Rotate 90° left">↶ <span>90°</span></button>
+          <output class="process-file__angle" id="processRotationAngle">0°</output>
+          <button type="button" class="file-rotate" id="processRotateRight" data-i-title="rotation_right_title" title="Rotate 90° right" aria-label="Rotate 90° right"><span>90°</span> ↷</button>
+          <button type="button" class="file-rotate file-rotate--half" id="processRotateHalf" data-i="rotation_half">Rotate 180°</button>
+          <button type="button" class="file-rotate file-rotate--reset" id="processRotateReset" data-i="rotation_reset">Reset</button>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -231,6 +245,10 @@
             <input type="range" id="composeScale" min="10" max="400" value="100"/>
             <span class="range-val" id="composeScaleVal">100%</span>
           </label>
+          <label class="field"><span data-i="compose_rotation_lbl">Character rotation</span>
+            <input type="range" id="composeRotation" min="-180" max="180" step="1" value="0"/>
+            <span class="range-val" id="composeRotationVal">0°</span>
+          </label>
           <label class="field"><span data-i="compose_width_lbl">Output width</span>
             <select id="composeWidth">
               <option value="750" selected>750 (Workshop)</option>
@@ -260,7 +278,7 @@
             </select>
           </label>
           <label class="field"><span data-i="compose_fps_lbl">Animation FPS</span>
-            <input type="number" id="composeFps" value="12" min="5" max="30"/>
+            <select id="composeFps"><option value="12" selected>12 FPS</option><option value="15">15 FPS</option><option value="18">18 FPS</option><option value="20">20 FPS</option><option value="24">24 FPS</option></select>
           </label>
         </div>
 
@@ -284,7 +302,7 @@
           <ol style="margin:0;padding-left:18px">
             <li data-i="compose_help_1" style="margin-bottom:4px">Background — image the character is placed on (PNG/JPG).</li>
             <li data-i="compose_help_2" style="margin-bottom:4px">Character — transparent PNG, or photo/video on green, blue or red screen.</li>
-            <li data-i="compose_help_3" style="margin-bottom:4px">Live preview on the right. Drag the character, use the corner handle or mouse wheel to resize. Sliders work too.</li>
+            <li data-i="compose_help_3" style="margin-bottom:4px">Live preview on the right. Drag, resize and rotate the character; the final file keeps the same placement.</li>
             <li data-i="compose_help_4" style="margin-bottom:4px">Colored backdrop — leave auto remove. Pre-cut PNG — choose already transparent.</li>
             <li data-i="compose_help_5" style="margin-bottom:4px">Tolerance — chromakey strength. Smoothing — edge softness (0 = hard).</li>
             <li data-i="compose_help_6" style="margin-bottom:0">Press Compose → download or send To Process for Workshop slicing.</li>
@@ -444,7 +462,7 @@
           <input id="loopFile" type="file" hidden accept="image/gif,video/mp4,video/webm,video/x-msvideo,.gif,.mp4,.webm,.avi"/>
           <div class="loop-file" id="loopFileName"></div>
           <label class="field"><span data-loop="formatLabel">Result format</span><select id="loopFormat"><option value="gif">GIF · Steam</option><option value="mp4">MP4 · preview</option></select></label>
-          <label class="field"><span data-loop="fpsLabel">Frame rate</span><select id="loopFps"><option value="12" selected>12 FPS</option><option value="15">15 FPS</option><option value="20">20 FPS</option><option value="24">24 FPS</option></select></label>
+          <label class="field"><span data-loop="fpsLabel">Frame rate</span><select id="loopFps"><option value="12" selected>12 FPS</option><option value="15">15 FPS</option><option value="18">18 FPS</option><option value="20">20 FPS</option><option value="24">24 FPS</option></select></label>
           <button class="btn" id="loopRun" type="button" disabled data-loop="run">Create loop</button>
           <div class="loop-progress" id="loopProgress"><i></i></div>
           <div class="status" id="loopStatus" aria-live="polite"></div>
@@ -810,7 +828,7 @@
   </div>
 </div>
 
-  <script src="/static/js/app.js?v=20260907-da-shared1"></script>
+  <script src="/static/js/app.js?v=20260908-controls4"></script>
 
 
 
@@ -868,6 +886,6 @@
 <script src="/static/js/steam-extension-status.js?v=20260906a"></script>
 
 
-<script src="/static/ss-shell.js?v=20260907-verify"></script>
+<script src="/static/ss-shell.js?v=20260908-auth-code"></script>
 </body>
 </html>

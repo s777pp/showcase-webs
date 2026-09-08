@@ -149,7 +149,16 @@
       var email = (document.getElementById('smAuthEmail').value || '').trim();
       var password = document.getElementById('smAuthPass').value || '';
       var st = document.getElementById('smAuthStatus');
-      var path = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      if (mode === 'register') {
+        closeAuth();
+        if (window.SSShell && typeof window.SSShell.openAuth === 'function') {
+          window.SSShell.openAuth('register');
+        } else {
+          location.href = '/?auth=register';
+        }
+        return;
+      }
+      var path = '/api/auth/login';
       try {
         var r = await fetch(path, {
           method: 'POST',

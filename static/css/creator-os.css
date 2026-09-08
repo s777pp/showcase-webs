@@ -23,6 +23,18 @@
   --os-ease:cubic-bezier(.2,.8,.2,1);
 }
 
+/* Verification step: keep label, field and actions on a readable rhythm. */
+.ss-auth__form{gap:16px!important}
+.ss-auth__form label{display:grid;gap:9px!important;min-width:0}
+.ss-auth__form label>span{display:block!important;margin:0!important;line-height:1.25!important}
+.ss-auth__form input{width:100%!important;margin:0!important;padding:0 15px!important}
+#ssAuthCodeWrap{padding-top:2px}
+#ssAuthCode{font:750 15px/1 ui-monospace,SFMono-Regular,Consolas,monospace!important;letter-spacing:.08em!important}
+#ssAuthCode::placeholder{color:rgba(154,184,195,.48)!important;letter-spacing:.12em!important}
+.ss-auth__state{margin:0!important;min-height:16px!important;line-height:1.4!important}
+.ss-auth__submit{margin-top:4px!important}
+.ss-auth__switch{margin-top:18px!important}
+
 html{background:var(--os-ink)!important;scroll-behavior:smooth}
 body{
   box-sizing:border-box!important;

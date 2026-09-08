@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import base64
 import json
 import os
+import re
 import secrets
 import sqlite3
 import threading
@@ -396,6 +398,19 @@ def register(email: str, password: str) -> tuple[bool, str]:
         c.close()
 
 
+def normalize_email(email: str) -> str:
+    """Return the canonical account e-mail or an empty string when invalid."""
+    value = (email or "").strip().lower()
+    if len(value) > 254 or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value):
+        return ""
+    return value
+
+
+# Kept for compatibility with older internal callers. New code should use the
+# public helper so email validation has one explicit module boundary.
+_normalise_email = normalize_email
+
+
 def login(email: str, password: str) -> tuple[bool, str, Optional[str]]:
     email = email.strip().lower()
     c = _conn()
@@ -655,41 +670,133 @@ def update_profile(user_id: int, display_name: str | None = None, avatar_path: s
     c.close()
 
 
-def _hash_code(code: str) -> str:
-    return hashlib.sha256(code.encode()).hexdigest()
+def _email_code_secret() -> bytes:
+    """Key verification-code hashes so a DB leak cannot reveal six-digit codes."""
+    secret = (os.environ.get("SECRET_KEY") or "").strip()
+    if len(secret) < 32:
+        raise RuntimeError("SECRET_KEY must contain at least 32 characters")
+    return secret.encode("utf-8")
+
+
+def _hash_code(email: str, code: str) -> str:
+    payload = f"{normalize_email(email)}\n{(code or '').strip()}".encode("utf-8")
+    return hmac.new(_email_code_secret(), payload, hashlib.sha256).hexdigest()
 
 
 def create_email_code(email: str, ttl_sec: int = 900) -> tuple[bool, str, str]:
     """Create 6-digit code. Returns (ok, msg, plain_code). plain_code only if ok."""
-    email = email.strip().lower()
-    if not email or "@" not in email:
+    email = normalize_email(email)
+    if not email:
         return False, "Invalid email", ""
+    try:
+        _email_code_secret()
+    except RuntimeError as exc:
+        return False, str(exc), ""
     c = _conn()
-    row = c.execute("SELECT last_sent FROM email_codes WHERE email=?", (email,)).fetchone()
-    now = time.time()
-    if row and row["last_sent"] and now - float(row["last_sent"]) < 60:
+    try:
+        row = c.execute("SELECT last_sent FROM email_codes WHERE email=?", (email,)).fetchone()
+        now = time.time()
+        if row and row["last_sent"] and now - float(row["last_sent"]) < 60:
+            return False, "Wait 60 seconds before resending", ""
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        c.execute(
+            """
+            INSERT INTO email_codes(email, code_hash, expires_at, attempts, last_sent)
+            VALUES (?,?,?,?,?)
+            ON CONFLICT(email) DO UPDATE SET
+              code_hash=excluded.code_hash,
+              expires_at=excluded.expires_at,
+              attempts=0,
+              last_sent=excluded.last_sent
+            """,
+            (email, _hash_code(email, code), now + max(60, int(ttl_sec)), 0, now),
+        )
+        c.commit()
+        return True, "OK", code
+    finally:
         c.close()
-        return False, "Wait 60 seconds before resending", ""
-    code = f"{secrets.randbelow(1_000_000):06d}"
-    c.execute(
-        """
-        INSERT INTO email_codes(email, code_hash, expires_at, attempts, last_sent)
-        VALUES (?,?,?,?,?)
-        ON CONFLICT(email) DO UPDATE SET
-          code_hash=excluded.code_hash,
-          expires_at=excluded.expires_at,
-          attempts=0,
-          last_sent=excluded.last_sent
-        """,
-        (email, _hash_code(code), now + ttl_sec, 0, now),
-    )
-    c.commit()
-    c.close()
-    return True, "OK", code
+
+
+def discard_email_code(email: str) -> None:
+    """Invalidate a code when delivery fails; an undelivered code must not work."""
+    email = normalize_email(email)
+    if not email:
+        return
+    c = _conn()
+    try:
+        c.execute("DELETE FROM email_codes WHERE email=?", (email,))
+        c.commit()
+    finally:
+        c.close()
+
+
+def register_with_email_code(email: str, password: str, code: str) -> tuple[bool, str, str]:
+    """Atomically validate a one-time code and create its account.
+
+    Password validation happens before the code transaction, so a typo in the
+    password cannot consume a valid code.  The row is locked in PostgreSQL and
+    the SQLite transaction is immediate, preventing two concurrent requests
+    from spending the same code twice.
+    """
+    email = normalize_email(email)
+    code = (code or "").strip()
+    if not email:
+        return False, "Invalid email", "invalid_email"
+    if len(password or "") < 10:
+        return False, "Password min 10 characters", "weak_password"
+    if not re.fullmatch(r"[0-9]{6}", code):
+        return False, "Invalid or expired verification code", "invalid_code"
+    try:
+        expected = _hash_code(email, code)
+    except RuntimeError:
+        return False, "Email verification unavailable", "verification_unavailable"
+
+    c = _conn()
+    try:
+        c.execute("BEGIN IMMEDIATE")
+        if c.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone():
+            c.rollback()
+            return False, "Unable to create account", "account_unavailable"
+        lock = " FOR UPDATE" if USING_POSTGRES else ""
+        row = c.execute(
+            "SELECT code_hash, expires_at, attempts FROM email_codes WHERE email=?" + lock,
+            (email,),
+        ).fetchone()
+        now = time.time()
+        if not row or float(row["expires_at"]) < now or int(row["attempts"] or 0) >= 8:
+            if row and float(row["expires_at"]) < now:
+                c.execute("DELETE FROM email_codes WHERE email=?", (email,))
+                c.commit()
+            else:
+                c.rollback()
+            return False, "Invalid or expired verification code", "invalid_code"
+        if not secrets.compare_digest(str(row["code_hash"]), expected):
+            c.execute("UPDATE email_codes SET attempts=attempts+1 WHERE email=?", (email,))
+            c.commit()
+            return False, "Invalid or expired verification code", "invalid_code"
+        try:
+            c.execute(
+                "INSERT INTO users(email, password_hash, is_pro, email_verified, created_at) VALUES (?,?,0,1,?)",
+                (email, _hash_pw(password), now),
+            )
+        except sqlite3.IntegrityError:
+            c.rollback()
+            return False, "Unable to create account", "account_unavailable"
+        c.execute("DELETE FROM email_codes WHERE email=?", (email,))
+        c.commit()
+        return True, "Account created", "ok"
+    except Exception:
+        try:
+            c.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        c.close()
 
 
 def verify_email_code(email: str, code: str) -> tuple[bool, str]:
-    email = email.strip().lower()
+    email = normalize_email(email)
     code = (code or "").strip()
     if not email or not code:
         return False, "Enter email and code"
@@ -710,7 +817,11 @@ def verify_email_code(email: str, code: str) -> tuple[bool, str]:
         return False, "Too many attempts — request a new code"
     c.execute("UPDATE email_codes SET attempts=? WHERE email=?", (attempts + 1, email))
     c.commit()
-    if not secrets.compare_digest(row["code_hash"], _hash_code(code)):
+    try:
+        valid = secrets.compare_digest(row["code_hash"], _hash_code(email, code))
+    except RuntimeError:
+        valid = False
+    if not valid:
         c.close()
         return False, "Wrong code"
     c.execute("UPDATE users SET email_verified=1 WHERE email=?", (email,))

@@ -60,7 +60,7 @@ class PrivacyPageTests(unittest.TestCase):
         for page in ['index.html', 'app.html']:
             self.assertIn('data-privacy-link', (static / page).read_text(encoding='utf-8'))
         for page in ['index.html', 'app.html', 'gallery.html', 'profile.html', 'profile-view.html']:
-            self.assertIn('ss-shell.js?v=20260907-privacy', (static / page).read_text(encoding='utf-8'))
+            self.assertIn('ss-shell.js?v=20260908-auth-code', (static / page).read_text(encoding='utf-8'))
         for page in ['profile.html', 'profile-view.html']:
             self.assertIn('id="ssFootHost"', (static / page).read_text(encoding='utf-8'))
 

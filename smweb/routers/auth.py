@@ -16,7 +16,6 @@ import logging
 import os
 import re
 import socket
-import secrets
 import tempfile
 import shutil
 import time
@@ -40,9 +39,6 @@ import mailer
 
 import auth_db
 from smweb import object_store
-
-_local_verify_codes = {}
-
 
 from fastapi import APIRouter
 
@@ -91,37 +87,34 @@ async def auth_send_code(request: Request):
         body = await request.json()
     except Exception:
         body = {}
-    email = str(body.get("email") or "").strip().lower()
-    if not email or "@" not in email:
-        return JSONResponse({"ok": False, "msg": "Invalid email"}, status_code=400)
-    
-    # Check if already registered
-    c = auth_db._conn()
-    row = c.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
-    c.close()
-    if row:
-        return JSONResponse({"ok": False, "msg": "Email already registered"}, status_code=400)
-    
+    email = auth_db.normalize_email(str(body.get("email") or ""))
+    if not email:
+        return JSONResponse({"ok": False, "msg": "Invalid email", "code": "invalid_email"}, status_code=400)
+
     identity = hashlib.sha256(email.encode()).hexdigest()[:24]
     if not rs.rate_limit(f"auth-send-code:{identity}", 3, 300)[0]:
-        return JSONResponse({"ok": False, "msg": "Too many requests. Try later."}, status_code=429)
-    
-    code = f"{secrets.randbelow(1000000):06d}"
-    
-    # Store code
-    r = rs._r()
-    if r:
-        r.set(f"verify_code:{email}", code, ex=900)
-    else:
-        _local_verify_codes[email] = {"code": code, "exp": time.time() + 900}
-    
+        return JSONResponse({"ok": False, "msg": "Too many requests. Try later.", "code": "rate_limited"}, status_code=429)
+
+    # Always give the browser the same answer for registered and new addresses.
+    # This prevents the registration form from becoming an account-enumeration API.
+    generic = "If this address can be registered, a code has been sent"
+    if auth_db.user_exists(email):
+        return JSONResponse({"ok": True, "msg": generic, "code": "code_sent"})
+
+    created, create_msg, code = auth_db.create_email_code(email, ttl_sec=900)
+    if not created:
+        status = 429 if "60 seconds" in create_msg else 503
+        reason = "rate_limited" if status == 429 else "verification_unavailable"
+        return JSONResponse({"ok": False, "msg": create_msg, "code": reason}, status_code=status)
+
     lang = (request.headers.get("accept-language") or "en")
     ok, msg = mailer.send_verify_code(email, code, lang)
     if not ok:
+        auth_db.discard_email_code(email)
         LOGGER.warning("send_verify_code failed for %s: %s", email, msg)
-        return JSONResponse({"ok": False, "msg": "Failed to send email"}, status_code=500)
-    
-    return JSONResponse({"ok": True, "msg": "Code sent"})
+        return JSONResponse({"ok": False, "msg": "Failed to send email", "code": "delivery_failed"}, status_code=503)
+
+    return JSONResponse({"ok": True, "msg": generic, "code": "code_sent"})
 
 
 @router.post("/api/auth/register")
@@ -136,32 +129,12 @@ async def auth_register(request: Request):
     
     identity = hashlib.sha256(email.strip().lower().encode()).hexdigest()[:24]
     if not rs.rate_limit(f"auth-register-email:{identity}", 3, 3600)[0]:
-        return JSONResponse({"ok": False, "msg": "Too many requests. Try later."}, status_code=429)
+        return JSONResponse({"ok": False, "msg": "Too many requests. Try later.", "code": "rate_limited"}, status_code=429)
         
-    if not code:
-        return JSONResponse({"ok": False, "msg": "Verification code required"}, status_code=400)
-        
-    e_lower = email.strip().lower()
-    r = rs._r()
-    valid = False
-    if r:
-        stored = r.get(f"verify_code:{e_lower}")
-        if stored and stored == code:
-            valid = True
-            r.delete(f"verify_code:{e_lower}")
-    else:
-        stored = _local_verify_codes.get(e_lower)
-        if stored and stored["exp"] > time.time() and stored["code"] == code:
-            valid = True
-            del _local_verify_codes[e_lower]
-            
-    if not valid:
-        return JSONResponse({"ok": False, "msg": "Invalid or expired verification code"}, status_code=400)
-
-    ok, msg = auth_db.register(email, password)
+    ok, msg, reason = auth_db.register_with_email_code(email, password, code)
     if not ok:
         LOGGER.warning("auth register rejected identity=%s ip=%s", identity, request.client.host if request.client else "-")
-        return JSONResponse({"ok": False, "msg": msg}, status_code=400)
+        return JSONResponse({"ok": False, "msg": msg, "code": reason}, status_code=400)
     ok2, msg2, token = auth_db.login(email, password)
     resp = JSONResponse({"ok": True, "msg": msg, "session": bool(token)})
     if token:

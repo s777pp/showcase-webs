@@ -129,6 +129,7 @@ async def api_process_start(
     outline_color: str = Form("#ffffff"),
     gif_encoder: str = Form("gifski"),
     all_modes: str = Form("0"),
+    rotations: str = Form("[]"),
     files: list[UploadFile] = File(...),
 ):
     """Start async job; poll /api/process/status/{id} then download."""
@@ -165,6 +166,12 @@ async def api_process_start(
         size_i = min((630, 640, 750, 800), key=lambda s: abs(s - size_i))
     left = int(os.environ.get("MAX_FILES_PER_JOB", "10")) if q["pro"] else q["left"]
     files = files[: max(1, min(left, int(os.environ.get("MAX_FILES_PER_JOB", "10"))))]
+    try:
+        requested_rotations = json.loads(rotations)
+        if not isinstance(requested_rotations, list):
+            requested_rotations = []
+    except (TypeError, ValueError, json.JSONDecodeError):
+        requested_rotations = []
     if not files:
         return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
     enc = (gif_encoder or "ffmpeg").strip().lower()
@@ -237,7 +244,11 @@ async def api_process_start(
         if not written:
             p.unlink(missing_ok=True)
             continue
-        files_meta.append({"name": name, "path": str(p)})
+        rotation = proc.normalize_rotation(requested_rotations[index] if index < len(requested_rotations) else 0)
+        # Processing uses crisp quarter-turns. Arbitrary rotation belongs to the
+        # Character editor, where a transparent expanded canvas is meaningful.
+        rotation = min((0.0, 90.0, -90.0, -180.0), key=lambda angle: abs(angle - rotation))
+        files_meta.append({"name": name, "path": str(p), "rotation": rotation})
     if not files_meta:
         shutil.rmtree(job_upload_dir, ignore_errors=True)
         return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)

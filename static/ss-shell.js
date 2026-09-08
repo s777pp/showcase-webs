@@ -137,7 +137,7 @@
       '<form class="ss-auth__form" id="ssAuthForm">' +
         '<label id="ssAuthEmailWrap"><span>Email</span><input id="ssAuthEmail" type="email" autocomplete="email" required placeholder="name@example.com"></label>' +
         '<label id="ssAuthPassWrap"><span>' + (ru ? 'Пароль' : 'Password') + '</span><input id="ssAuthPass" type="password" autocomplete="current-password" minlength="10" required placeholder="••••••••••"></label>' +
-        '<label id="ssAuthCodeWrap" style="display:none"><span>' + (ru ? 'Код из письма' : 'Email Code') + '</span><input id="ssAuthCode" type="text" autocomplete="one-time-code" minlength="6" maxlength="6" placeholder="123456"></label>' +
+        '<label id="ssAuthCodeWrap" style="display:none"><span id="ssAuthCodeLabel">' + (ru ? 'Код из письма' : 'Code from email') + '</span><input id="ssAuthCode" type="text" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" minlength="6" maxlength="6" required placeholder="' + (ru ? 'ВАШ КОД' : 'YOUR CODE') + '"></label>' +
         '<p class="ss-auth__state" id="ssAuthState"></p>' +
         '<button class="ss-auth__submit" id="ssAuthSubmit" type="submit">' + (ru ? 'Войти' : 'Log in') + '</button>' +
       '</form>' +
@@ -401,6 +401,19 @@
     modal.classList.remove('is-open'); modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
   }
+  function authErrorMessage(data, fallback) {
+    var ru = lang() === 'ru';
+    var messages = {
+      invalid_email: ru ? 'Проверь адрес электронной почты.' : 'Check the email address.',
+      rate_limited: ru ? 'Слишком много попыток. Попробуй немного позже.' : 'Too many attempts. Try again later.',
+      verification_unavailable: ru ? 'Подтверждение почты временно недоступно.' : 'Email verification is temporarily unavailable.',
+      delivery_failed: ru ? 'Не удалось отправить письмо. Попробуй позже.' : 'The email could not be sent. Try again later.',
+      weak_password: ru ? 'Пароль должен содержать не менее 10 символов.' : 'Password must contain at least 10 characters.',
+      invalid_code: ru ? 'Код неверный или срок его действия истёк.' : 'The code is incorrect or has expired.',
+      account_unavailable: ru ? 'Не удалось создать аккаунт с этими данными.' : 'An account could not be created with these details.'
+    };
+    return messages[data && data.code] || (data && data.msg) || fallback;
+  }
   function paintAuth() {
     var ru = lang() === 'ru', reg = authMode === 'register', ver = authMode === 'verify';
     var title = document.getElementById('ssAuthTitle'), sub = document.getElementById('ssAuthSub');
@@ -415,10 +428,14 @@
     if (emailWrap) emailWrap.style.display = ver ? 'none' : 'block';
     if (passWrap) passWrap.style.display = ver ? 'none' : 'block';
     if (codeWrap) {
-        codeWrap.style.display = ver ? 'block' : 'none';
+        codeWrap.style.display = ver ? 'grid' : 'none';
         var codeInp = document.getElementById('ssAuthCode');
         if (codeInp) codeInp.required = ver;
     }
+    var codeLabel = document.getElementById('ssAuthCodeLabel');
+    var codeInput = document.getElementById('ssAuthCode');
+    if (codeLabel) codeLabel.textContent = ru ? 'Код из письма' : 'Code from email';
+    if (codeInput) codeInput.placeholder = ru ? 'ВАШ КОД' : 'YOUR CODE';
     if (div) div.style.display = ver ? 'none' : 'block';
     if (oauth) oauth.style.display = ver ? 'none' : 'flex';
 
@@ -444,6 +461,10 @@
     var drawerAuth = document.getElementById('ssDrawerAuth'), logout = document.getElementById('ssLogout');
     var close = document.getElementById('ssAuthClose'), sw = document.getElementById('ssAuthSwitch');
     var form = document.getElementById('ssAuthForm');
+    var oneTimeCode = document.getElementById('ssAuthCode');
+    if (oneTimeCode) oneTimeCode.addEventListener('input', function () {
+      oneTimeCode.value = oneTimeCode.value.replace(/\D/g, '').slice(0, 6);
+    });
     if (login) login.onclick = function () { openAuth('login'); };
     if (logout) logout.onclick = performLogout;
     if (drawerAuth) drawerAuth.onclick = function () {
@@ -477,7 +498,7 @@
           submit.disabled = true;
           fetch('/api/auth/send-code', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:email}) })
             .then(function (r) { return r.json(); }).then(function (j) {
-              if (!j || !j.ok) throw new Error((j && j.msg) || 'Failed to send code');
+              if (!j || !j.ok) throw new Error(authErrorMessage(j, lang() === 'ru' ? 'Не удалось отправить код.' : 'Failed to send code.'));
               state.textContent = ''; state.className = 'ss-auth__state';
               authMode = 'verify';
               paintAuth();
@@ -495,7 +516,7 @@
       
       fetch(path, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(bodyObj) })
         .then(function (r) { return r.json(); }).then(function (j) {
-          if (!j || !j.ok) throw new Error((j && j.msg) || 'Authentication failed');
+          if (!j || !j.ok) throw new Error(authErrorMessage(j, lang() === 'ru' ? 'Не удалось выполнить вход.' : 'Authentication failed.'));
           state.textContent = lang() === 'ru' ? 'Готово' : 'Done'; state.className = 'ss-auth__state is-ok';
           return loadMe().then(function () { setTimeout(closeAuth, 350); });
         }).catch(function (err) { state.textContent = err.message; state.className = 'ss-auth__state is-bad'; })
@@ -583,6 +604,8 @@
     // server-owned HttpOnly cookie is the only session source.
     try { localStorage.removeItem('sm_session'); } catch (e) {}
     loadMe();
+    var authQuery = new URLSearchParams(location.search).get('auth');
+    if (authQuery === '1' || authQuery === 'register') openAuth('register');
   }
 
   if (!window._ssOAuthMsgBound) {

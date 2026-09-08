@@ -189,7 +189,7 @@ def _run_process_job_from_payload(jid: str, job: dict) -> None:
         name = item.get("name") or "file"
         path = item.get("path")
         if path and Path(path).is_file():
-            files_data.append((name, Path(path)))
+            files_data.append((name, Path(path), proc.normalize_rotation(item.get("rotation"))))
     opts = job.get("opts") or {}
     if not files_data:
         _rs.job_update(jid, status="error", pct=100, stage="error", error="No files")
@@ -207,7 +207,7 @@ def _run_process_job_from_payload(jid: str, job: dict) -> None:
     # upserts into Redis on every progress step.
 
 
-def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts: dict) -> None:
+def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
     """Background worker: same pipeline as /api/process, updates progress."""
     import time as _sm_time
     _sm_job_t0 = _sm_time.perf_counter()
@@ -238,7 +238,9 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
     n_files = max(1, len(files_data))
     try:
         zf = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
-        for fi, (name, raw) in enumerate(files_data):
+        for fi, item in enumerate(files_data):
+            name, raw = item[0], item[1]
+            rotation = proc.normalize_rotation(item[2] if len(item) > 2 else 0)
             if isinstance(raw, Path):
                 raw = raw.read_bytes()
             base_pct = 8 + int(80 * fi / n_files)
@@ -270,6 +272,7 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
                     if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp"):
                         img = Image.open(io.BytesIO(raw))
                         img.load()
+                        img = proc.rotate_image(img, rotation)
                         max_side = 4096
                         if max(img.size) > max_side:
                             img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
@@ -317,12 +320,14 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
                                     duration=v_dur, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
                                     outline_width=outline_width, outline_color=outline_color,
+                                    rotation=rotation,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_video_featured(
                                     src, work, fps=v_fps, duration=v_dur, encoder=encoder,
                                     wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity, wm_color=color,
                                     wm_corner=corner, wm_scale=scale, wm_x=wm_x_f, wm_y=wm_y_f,
+                                    rotation=rotation,
                                 )
                             else:
                                 paths = proc.process_video_split(
@@ -330,6 +335,7 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
                                     wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity, wm_color=color,
                                     duration=v_dur, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
+                                    rotation=rotation,
                                 )
                         else:
                             if mode == "workshop":
@@ -339,6 +345,7 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
                                     wm_color=color, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder, fps=v_fps,
                                     outline_width=outline_width, outline_color=outline_color,
+                                    rotation=rotation,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_gif_featured(
@@ -346,6 +353,7 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
                                     wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity,
                                     wm_color=color, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f,
+                                    rotation=rotation,
                                 )
                             else:
                                 paths = proc.process_gif_split(
@@ -353,6 +361,7 @@ def _run_process_job(jid: str, files_data: list[tuple[str, bytes | Path]], opts:
                                     wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity,
                                     wm_color=color, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
+                                    rotation=rotation,
                                 )
                         for pname, pth in paths.items():
                             pth = Path(pth)

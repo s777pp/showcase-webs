@@ -1,0 +1,331 @@
+/* Cohesive tools UI: controls, mode diagrams, per-file rotation and overflow safety. */
+.page-tools,
+.page-tools * { box-sizing: border-box; }
+
+.page-tools .tab,
+.page-tools .card,
+.page-tools .row,
+.page-tools .field,
+.page-tools .compose-layout,
+.page-tools .compose-controls,
+.page-tools .compose-preview-panel { min-width: 0; }
+
+.page-tools .card { overflow: hidden; }
+.page-tools .card p,
+.page-tools .card li,
+.page-tools .card .status,
+.page-tools .card .steps { overflow-wrap: anywhere; }
+
+.page-tools input:not([type="checkbox"]):not([type="range"]):not([type="color"]),
+.page-tools select,
+.page-tools textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(83, 201, 235, .23);
+  border-radius: 4px;
+  background: #040d13;
+  color: #e9f8fc;
+  outline: none;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+.page-tools input:not([type="checkbox"]):not([type="range"]):not([type="color"]):focus,
+.page-tools select:focus,
+.page-tools textarea:focus {
+  border-color: #50d5f8;
+  box-shadow: 0 0 0 3px rgba(70, 207, 244, .12);
+  background: #06131b;
+}
+
+.page-tools input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  display: inline-block;
+  flex: 0 0 42px!important;
+  width: 42px!important;
+  min-width: 42px!important;
+  max-width: 42px!important;
+  height: 22px!important;
+  min-height: 22px!important;
+  max-height: 22px!important;
+  margin: 0;
+  padding: 0!important;
+  border: 1px solid rgba(133, 174, 188, .38)!important;
+  border-radius: 999px!important;
+  background: #1b2a33!important;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, .42)!important;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.page-tools input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(224, 248, 255, .7);
+  border-radius: 50%;
+  background: #d7edf3;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, .45);
+  transform: translateX(0);
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), background .18s ease, box-shadow .18s ease;
+}
+
+.page-tools input[type="checkbox"]:checked {
+  border-color: rgba(81, 215, 250, .9)!important;
+  background: #1faed3!important;
+  box-shadow: inset 0 1px 4px rgba(0, 64, 82, .35), 0 0 14px rgba(81, 215, 250, .18)!important;
+}
+
+.page-tools input[type="checkbox"]:checked::before {
+  background: #f0fcff;
+  box-shadow: 0 2px 6px rgba(0, 45, 58, .5), 0 0 8px rgba(212, 248, 255, .5);
+  transform: translateX(20px);
+}
+.page-tools input[type="checkbox"]:focus-visible { outline: 2px solid rgba(81, 215, 250, .8); outline-offset: 3px; }
+.page-tools input[type="checkbox"]:disabled { opacity: .38; cursor: not-allowed; }
+
+.page-tools input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 26px!important;
+  min-height: 26px!important;
+  margin: 2px 0;
+  padding: 0!important;
+  border: 0!important;
+  border-radius: 0!important;
+  background: transparent!important;
+  box-shadow: none!important;
+  cursor: pointer;
+}
+
+.page-tools input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #43ccec 0 var(--range-progress, 50%), #263943 var(--range-progress, 50%) 100%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .48), 0 0 0 1px rgba(100, 186, 211, .08);
+}
+
+.page-tools input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
+  border: 3px solid #07131b;
+  border-radius: 50%;
+  background: #51d7fa;
+  box-shadow: 0 0 0 1px rgba(81, 215, 250, .7), 0 0 12px rgba(81, 215, 250, .3);
+}
+
+.page-tools input[type="range"]::-moz-range-track {
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: #263943;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .48);
+}
+
+.page-tools input[type="range"]::-moz-range-progress { height: 6px; border-radius: 999px; background: #43ccec; }
+
+.page-tools input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #07131b;
+  border-radius: 50%;
+  background: #51d7fa;
+  box-shadow: 0 0 0 1px rgba(81, 215, 250, .52);
+}
+
+.page-tools input[type="range"]:focus,
+.page-tools input[type="range"]:focus-visible {
+  border: 0!important;
+  outline: none!important;
+  box-shadow: none!important;
+}
+
+/* Dragging a slider must not add a second ring around the thumb. */
+.page-tools input[type="range"]:focus::-webkit-slider-thumb,
+.page-tools input[type="range"]:focus-visible::-webkit-slider-thumb {
+  border: 3px solid #07131b;
+  box-shadow: 0 0 0 1px rgba(81, 215, 250, .7), 0 0 12px rgba(81, 215, 250, .3);
+}
+
+.page-tools input[type="color"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 4px;
+  border: 1px solid rgba(83, 201, 235, .23);
+  border-radius: 4px;
+  background: #040d13;
+  cursor: pointer;
+}
+
+.page-tools .range-val {
+  align-self: flex-start;
+  min-width: 48px;
+  padding: 3px 7px;
+  border: 1px solid rgba(81, 215, 250, .22);
+  border-radius: 3px;
+  background: rgba(81, 215, 250, .06);
+  color: #8eeaff;
+  font: 700 10px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-align: center;
+}
+
+/* The three Steam outputs are diagrams first, labels second. */
+.page-tools .modes { align-items: stretch; }
+.page-tools .mode {
+  display: grid;
+  grid-template-rows: 48px auto auto;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  min-height: 148px;
+  padding: 20px 22px;
+  text-align: left;
+}
+
+.page-tools .mode strong,
+.page-tools .mode > span { min-width: 0; overflow-wrap: anywhere; }
+
+.mode-diagram {
+  display: flex;
+  align-items: stretch;
+  width: 106px;
+  height: 40px;
+  gap: 4px;
+  padding: 2px;
+}
+
+.mode-diagram i {
+  display: block;
+  border: 1px solid rgba(82, 218, 255, .78);
+  background: linear-gradient(135deg, rgba(82, 218, 255, .36), rgba(17, 66, 87, .76));
+  box-shadow: inset 0 0 14px rgba(71, 215, 255, .08);
+}
+
+.mode-diagram--workshop i { flex: 1 1 0; }
+.mode-diagram--featured i { width: 100%; }
+.mode-diagram--split i:first-child { flex: 1 1 auto; }
+.mode-diagram--split i:last-child { flex: 0 0 24%; }
+.page-tools .mode.active .mode-diagram i { border-color: #05202a; background: linear-gradient(135deg, #47d4f7, #a7efff); }
+
+/* One coherent per-file editor: preview, identity, rotation, delete. */
+.page-tools .files {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.page-tools .process-file {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 13px;
+  min-height: 94px;
+  padding: 9px;
+  border: 1px solid rgba(82, 203, 237, .2);
+  border-radius: 5px;
+  background: linear-gradient(100deg, rgba(8, 27, 37, .94), rgba(5, 14, 21, .94));
+  cursor: pointer;
+  outline: none;
+  transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
+}
+
+.page-tools .process-file:hover { border-color: rgba(81, 215, 250, .48); background: linear-gradient(100deg, rgba(10, 37, 49, .96), rgba(5, 16, 23, .96)); }
+.page-tools .process-file.is-selected { border-color: #51d7fa; box-shadow: inset 3px 0 #51d7fa, 0 0 0 1px rgba(81, 215, 250, .08); }
+.page-tools .process-file:focus-visible { box-shadow: 0 0 0 3px rgba(81, 215, 250, .18); }
+
+.process-file__preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 90px;
+  height: 72px;
+  overflow: hidden;
+  border: 1px solid rgba(84, 209, 244, .18);
+  border-radius: 3px;
+  background-color: #03090e;
+  background-image: linear-gradient(45deg, rgba(255,255,255,.025) 25%, transparent 25%), linear-gradient(-45deg, rgba(255,255,255,.025) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(255,255,255,.025) 75%), linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.025) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.process-file__media { display: block; max-width: 72%; max-height: 72%; object-fit: contain; transition: transform .18s ease; }
+.process-file__body { display: grid; gap: 6px; min-width: 0; }
+.process-file__name { overflow: hidden; color: #e9f7fb; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.process-file__meta { color: rgba(170, 202, 213, .6); font: 600 10px ui-monospace, SFMono-Regular, Consolas, monospace; }
+.process-file__rotation { width: max-content; padding: 2px 7px; border: 1px solid rgba(81, 215, 250, .18); border-radius: 999px; color: #71ddf8; font: 700 10px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.file-rotate,
+.process-file__remove {
+  min-width: 30px;
+  min-height: 30px;
+  border: 1px solid rgba(81, 215, 250, .25);
+  border-radius: 3px;
+  background: rgba(81, 215, 250, .055);
+  color: #9cecff;
+  cursor: pointer;
+}
+.file-rotate:hover,
+.process-file__remove:hover { border-color: #51d7fa; background: rgba(81, 215, 250, .12); color: #fff; }
+.file-rotate--reset,
+.file-rotate--half { width: auto; padding: 0 12px; color: rgba(204, 228, 235, .76); font: 700 10px ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; }
+.process-file__angle { min-width: 40px; color: #51d7fa; font: 700 11px ui-monospace, SFMono-Regular, Consolas, monospace; text-align: center; }
+.process-file__remove { align-self: start; font-size: 21px; line-height: 1; }
+
+.process-rotation[hidden] { display: none; }
+.process-rotation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(81, 215, 250, .2);
+  border-left: 3px solid #51d7fa;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(81, 215, 250, .07), rgba(5, 15, 22, .78) 42%);
+}
+.process-rotation__identity { display: grid; min-width: 0; gap: 4px; }
+.process-rotation__identity strong { overflow: hidden; color: #eafaff; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.process-rotation__kicker { color: rgba(142, 234, 255, .68); font: 800 9px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
+.process-rotation__controls { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
+.process-rotation__controls .file-rotate { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 34px; }
+.process-rotation__controls .process-file__angle { min-width: 48px; padding: 5px 8px; border: 1px solid rgba(81, 215, 250, .24); background: rgba(81, 215, 250, .065); }
+
+.page-tools .workshop-outline,
+.page-tools .steam-opt-row { max-width: 100%; }
+.page-tools .workshop-outline > *,
+.page-tools .steam-opt-row > * { min-width: 0; }
+.page-tools .workshop-outline { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.page-tools .workshop-outline__hint { grid-column: 1 / -1; }
+
+@media (max-width: 780px) {
+  .page-tools .row { gap: 13px; }
+  .page-tools .field { width: 100%; max-width: 100%; }
+  .page-tools .modes { grid-template-columns: 1fr; }
+  .page-tools .mode { grid-template-columns: 84px minmax(0, 1fr); grid-template-rows: auto auto; min-height: 108px; }
+  .page-tools .mode-diagram { grid-row: 1 / 3; width: 76px; height: 52px; align-self: center; }
+  .page-tools .process-file { grid-template-columns: 74px minmax(0, 1fr) 32px; gap: 9px; }
+  .process-file__preview { width: 74px; height: 68px; }
+  .process-rotation { align-items: stretch; flex-direction: column; }
+  .process-rotation__controls { justify-content: flex-start; }
+}
+
+@media (max-width: 440px) {
+  .page-tools .card { padding-left: 15px; padding-right: 15px; }
+  .page-tools .process-file { grid-template-columns: 58px minmax(0, 1fr) 30px; padding: 7px; }
+  .process-file__preview { width: 58px; height: 62px; }
+  .file-rotate { min-width: 28px; min-height: 28px; }
+  .file-rotate--reset { padding: 0 7px; }
+  .process-rotation__controls .file-rotate--half,
+  .process-rotation__controls .file-rotate--reset { flex: 1 1 auto; }
+}

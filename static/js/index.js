@@ -361,6 +361,10 @@ window.addEventListener('sm:langchange', function(e){ applyLang((e.detail&&e.det
 let authMode = "login"; // register | login
 
 function openAuth(mode) {
+  if (window.SSShell && typeof window.SSShell.openAuth === "function") {
+    window.SSShell.openAuth(mode);
+    return;
+  }
   authMode = mode === "login" ? "login" : "register";
   const modal = document.getElementById("authModal");
   if (!modal) return;
@@ -410,7 +414,14 @@ async function submitAuth() {
   const email = (document.getElementById("authEmail").value || "").trim();
   const password = document.getElementById("authPass").value || "";
   const st = document.getElementById("authStatus");
-  const url = authMode === "register" ? "/api/auth/register" : "/api/auth/login";
+  if (authMode === "register") {
+    closeAuth();
+    if (window.SSShell && typeof window.SSShell.openAuth === "function") {
+      window.SSShell.openAuth("register");
+    }
+    return;
+  }
+  const url = "/api/auth/login";
   st.className = "status";
   st.textContent = L === "ru" ? "…" : "…";
   try {

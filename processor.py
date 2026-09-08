@@ -374,6 +374,47 @@ def _gifski_from_frames(frames_dir: Path, dest: Path, fps: int, quality: int = 1
         return False
 
 
+def normalize_rotation(value: float | int | str | None) -> float:
+    """Normalise clockwise degrees to the compact -180..180 interval."""
+    try:
+        degrees = float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+    degrees = ((degrees + 180.0) % 360.0) - 180.0
+    return 0.0 if abs(degrees) < 0.01 else degrees
+
+
+def rotate_image(image: Image.Image, degrees: float | int | str | None) -> Image.Image:
+    """Rotate a still image clockwise, expanding the canvas without stretching."""
+    from PIL import ImageOps
+    image = ImageOps.exif_transpose(image)
+    angle = normalize_rotation(degrees)
+    if angle == 0:
+        return image.copy()
+    if angle == 90:
+        return image.transpose(Image.Transpose.ROTATE_270)
+    if angle == -90:
+        return image.transpose(Image.Transpose.ROTATE_90)
+    if abs(angle) == 180:
+        return image.transpose(Image.Transpose.ROTATE_180)
+    return image.rotate(-angle, resample=Image.Resampling.BICUBIC, expand=True)
+
+
+def _ffmpeg_rotation_filter(degrees: float | int | str | None) -> str:
+    """Return a lossless quarter-turn filter or an expanded arbitrary rotation."""
+    angle = normalize_rotation(degrees)
+    if angle == 0:
+        return ""
+    if angle == 90:
+        return "transpose=clock"
+    if angle == -90:
+        return "transpose=cclock"
+    if abs(angle) == 180:
+        return "hflip,vflip"
+    radians = angle * 3.141592653589793 / 180.0
+    return f"rotate={radians:.10f}:ow=rotw({radians:.10f}):oh=roth({radians:.10f}):c=black@0"
+
+
 def media_to_gif(
     src: Path,
     dest: Path,
@@ -381,6 +422,7 @@ def media_to_gif(
     width: int,
     duration: float = 12,
     encoder: str = "ffmpeg",
+    rotation: float = 0,
 ) -> None:
     """Convert image/gif/video to high-quality GIF, then fit under Steam 5 MB.
 
@@ -409,13 +451,19 @@ def media_to_gif(
         frames.mkdir()
         # Extract scaled frames as PNG (source for both encoders)
         _m2g_t0 = time.perf_counter()
+        rotation_filter = _ffmpeg_rotation_filter(rotation)
+        video_filter = ",".join(part for part in (
+            rotation_filter,
+            f"fps={fps}",
+            f"scale={width}:-2:flags=lanczos",
+        ) if part)
         try:
             _run([
                 ff, "-y", "-hide_banner", "-loglevel", "error",
                 "-i", str(src),
                 "-t", str(duration),
                 "-an",
-                "-vf", f"fps={fps},scale={width}:-2:flags=lanczos",
+                "-vf", video_filter,
                 "-compression_level", "0",
                 str(frames / "frame_%04d.png"),
             ])
@@ -427,7 +475,7 @@ def media_to_gif(
                 "-i", str(src),
                 "-t", str(duration),
                 "-an",
-                "-vf", f"fps={fps},scale={width}:-2:flags=lanczos",
+                "-vf", video_filter,
                 "-pix_fmt", "yuv420p",
                 "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18",
                 str(mid),
@@ -533,11 +581,12 @@ def process_video_workshop(
     encoder: str = "ffmpeg",
     outline_width: int = 0,
     outline_color: str = "#ffffff",
+    rotation: float = 0,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     gif_src = out_dir / "source.gif"
-    media_to_gif(src, gif_src, fps=fps, width=width, duration=duration, encoder=encoder)
+    media_to_gif(src, gif_src, fps=fps, width=width, duration=duration, encoder=encoder, rotation=rotation)
     return process_gif_workshop(
         gif_src, out_dir, wm_text, wm_font, wm_opacity,
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
@@ -560,11 +609,12 @@ def process_video_featured(
     wm_scale: float = 1.0,
     wm_x: float | None = None,
     wm_y: float | None = None,
+    rotation: float = 0,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     gif_src = out_dir / "source_featured.gif"
-    media_to_gif(src, gif_src, fps=fps, width=630, duration=duration, encoder=encoder)
+    media_to_gif(src, gif_src, fps=fps, width=630, duration=duration, encoder=encoder, rotation=rotation)
     return process_gif_featured(
         gif_src, out_dir, fps=fps, encoder=encoder,
         wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
@@ -587,11 +637,12 @@ def process_video_split(
     wm_x: float | None = None,
     wm_y: float | None = None,
     encoder: str = "ffmpeg",
+    rotation: float = 0,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     gif_src = out_dir / "source.gif"
-    media_to_gif(src, gif_src, fps=fps, width=606, duration=duration, encoder=encoder)
+    media_to_gif(src, gif_src, fps=fps, width=606, duration=duration, encoder=encoder, rotation=rotation)
     return process_gif_split(
         gif_src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale, wm_x=wm_x, wm_y=wm_y,
@@ -1205,6 +1256,7 @@ def process_gif_workshop(
     fps: int = 12,
     outline_width: int = 0,
     outline_color: str = "#ffffff",
+    rotation: float = 0,
 ) -> dict[str, Path]:
     """Cut GIF into 5 Steam Workshop parts + full_with_bars.gif."""
     out_dir = Path(out_dir)
@@ -1212,6 +1264,16 @@ def process_gif_workshop(
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg not found")
+    rotation = normalize_rotation(rotation)
+    if rotation:
+        original = Path(gif_path)
+        source_w, source_h = _probe_wh(original)
+        rotated_width = source_h if abs(rotation) == 90 else source_w
+        gif_path = out_dir / "source_rotated.gif"
+        media_to_gif(
+            original, gif_path, fps=fps, width=max(200, min(1200, rotated_width)),
+            duration=8, encoder=encoder, rotation=rotation,
+        )
     width, height = _probe_wh(gif_path)
     pw = max(1, width // 5)
     result: dict[str, Path] = {}
@@ -1359,12 +1421,13 @@ def process_gif_featured(
     wm_scale: float = 1.0,
     wm_x: float | None = None,
     wm_y: float | None = None,
+    rotation: float = 0,
 ) -> dict[str, Path]:
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg не найден")
     out = out_dir / "featured_630.gif"
-    media_to_gif(gif_path, out, fps=fps, width=630, duration=10, encoder=encoder)
+    media_to_gif(gif_path, out, fps=fps, width=630, duration=10, encoder=encoder, rotation=rotation)
     ensure_under_mb(out)
     apply_hex21_file(out)
     clean = out_dir / "full_original.gif"
@@ -1529,12 +1592,13 @@ def process_gif_split(
     wm_x: float | None = None,
     wm_y: float | None = None,
     encoder: str = "ffmpeg",
+    rotation: float = 0,
 ) -> dict[str, Path]:
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg не найден")
     tmp = out_dir / "tmp_606.gif"
-    media_to_gif(gif_path, tmp, fps=fps, width=606, duration=10, encoder=encoder)
+    media_to_gif(gif_path, tmp, fps=fps, width=606, duration=10, encoder=encoder, rotation=rotation)
     width, height = _probe_wh(tmp)
     center = out_dir / "center_506.gif"
     side = out_dir / "side_100.gif"
@@ -1962,6 +2026,7 @@ def _place_character(
     scale: float = 1.0,
     offset_x: float = 0.5,
     offset_y: float = 1.0,
+    rotation: float = 0.0,
 ) -> Image.Image:
     """Paste character on bg. offset_x/y are anchor 0..1 (0.5,1 = bottom-center).
 
@@ -1971,6 +2036,7 @@ def _place_character(
     """
     bg = bg.convert("RGBA")
     char = char.convert("RGBA")
+    char = rotate_image(char, rotation)
     bw, bh = bg.size
     scale = max(0.05, min(4.0, float(scale or 1.0)))
     # fit character height to ~85% of bg by default when scale=1
@@ -2047,6 +2113,7 @@ def compose_static(
     offset_x: float = 0.5,
     offset_y: float = 1.0,
     feather: float = 1.6,
+    rotation: float = 0.0,
 ) -> Image.Image:
     did_key = False
     if chroma_key and chroma_key not in ("none", "0", "off", ""):
@@ -2055,7 +2122,10 @@ def compose_static(
     if did_key and feather and float(feather) > 0:
         char = feather_alpha(char, radius=float(feather))
     char = _crop_to_alpha(char)
-    return _place_character(bg, char, scale=scale, offset_x=offset_x, offset_y=offset_y)
+    return _place_character(
+        bg, char, scale=scale, offset_x=offset_x, offset_y=offset_y,
+        rotation=rotation,
+    )
 
 
 def compose_animated(
@@ -2069,6 +2139,7 @@ def compose_animated(
     offset_y: float = 1.0,
     feather: float = 1.6,
     max_frames: int = 120,
+    rotation: float = 0.0,
 ) -> tuple[list[Image.Image], list[int]]:
     """Composite each frame of GIF/WebP onto bg. Returns RGBA frames + durations ms."""
     bg = bg.convert("RGBA")
@@ -2088,7 +2159,10 @@ def compose_animated(
                 if feather and float(feather) > 0:
                     fr = feather_alpha(fr, radius=float(feather))
             fr = _crop_to_alpha(fr)
-            composed = _place_character(bg, fr, scale=scale, offset_x=offset_x, offset_y=offset_y)
+            composed = _place_character(
+                bg, fr, scale=scale, offset_x=offset_x, offset_y=offset_y,
+                rotation=rotation,
+            )
             frames.append(composed)
             try:
                 d = int(im.info.get("duration", 100) or 100)
@@ -2113,6 +2187,7 @@ def compose_animated_layers(
     target_width: int = 750,
     fps: int = 12,
     max_seconds: float = 8.0,
+    rotation: float = 0.0,
 ) -> tuple[list[Image.Image], list[int]]:
     """Composite two animated/static image sources on one shared timeline."""
     fps = max(5, min(30, int(fps or 12)))
@@ -2200,6 +2275,7 @@ def compose_animated_layers(
                 scale=scale,
                 offset_x=offset_x,
                 offset_y=offset_y,
+                rotation=rotation,
             )
         )
         t_place += time.monotonic() - t0
