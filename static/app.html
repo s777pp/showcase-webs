@@ -12,7 +12,7 @@
 
   <link rel="stylesheet" href="/static/css/mobile.css?v=20260903m"/>
   <link rel="stylesheet" href="/static/css/redesign.css?v=20260903j"/>
-  <link rel="stylesheet" href="/static/css/creator-os.css?v=20260908-controls"/>
+  <link rel="stylesheet" href="/static/css/creator-os.css?v=20260908-steam-launch1"/>
   <link rel="stylesheet" href="/static/css/steam-check.css?v=20260906e"/>
   <link rel="stylesheet" href="/static/css/profile-insights.css?v=20260906-tags"/>
   <link rel="stylesheet" href="/static/css/seamless-loop.css?v=20260906d"/>
@@ -615,14 +615,22 @@
         </div>
         <small class="steam-extension-card__kicker" data-i="steam_ext_kicker">STEAMSHOWCASE HELPER</small>
         <h2 data-i="steam_ext_title">Upload without console setup</h2>
-        <p data-i="steam_ext_body">Install the extension, open the required showcase uploader and choose your prepared files. The extension applies the transparent title and long-showcase settings automatically.</p>
+        <p data-i="steam_ext_body">Choose a showcase type and start the upload. The extension opens the correct Steam page, applies its settings and shows the file order.</p>
         <ol class="steam-extension-card__steps">
-          <li data-i="steam_ext_step_1">Choose the showcase type on this page.</li>
-          <li data-i="steam_ext_step_2">Open the Steam upload page.</li>
+          <li data-i="steam_ext_step_1">Choose one of the three showcase types below.</li>
+          <li data-i="steam_ext_step_2">Click «Upload through extension».</li>
           <li data-i="steam_ext_step_3">Select your files — the extension handles the remaining setup.</li>
         </ol>
-        <a class="btn steam-extension-card__button" id="steamExtensionAction" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=showcasemaker-steam" target="_blank" rel="noopener" data-i="steam_ext_install">Install extension</a>
-        <p class="steam-extension-card__note" data-i="steam_ext_note">Without the extension, use the manual steps on the left.</p>
+        <span class="steam-extension-card__mode-label" id="steamExtensionModeLabel" data-i="steam_ext_mode_label">What are you uploading?</span>
+        <div class="steam-extension-card__modes" id="steamExtensionModes" role="group" aria-labelledby="steamExtensionModeLabel">
+          <button type="button" data-steam-upload-mode="workshop" aria-pressed="true"><span class="steam-extension-card__diagram is-workshop" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><strong>Workshop</strong><small data-i="steam_ext_mode_workshop">5 files</small></button>
+          <button type="button" data-steam-upload-mode="featured" aria-pressed="false"><span class="steam-extension-card__diagram is-featured" aria-hidden="true"><i></i></span><strong>Featured</strong><small data-i="steam_ext_mode_featured">1 file</small></button>
+          <button type="button" data-steam-upload-mode="split" aria-pressed="false"><span class="steam-extension-card__diagram is-split" aria-hidden="true"><i></i><i></i></span><strong>Split</strong><small data-i="steam_ext_mode_split">2 files</small></button>
+        </div>
+        <button class="btn steam-extension-card__button steam-extension-card__upload" id="steamExtensionUpload" type="button" disabled data-i="steam_ext_upload">Upload through extension</button>
+        <a class="btn steam-extension-card__button steam-extension-card__install" id="steamExtensionAction" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=showcasemaker-steam" target="_blank" rel="noopener" data-i="steam_ext_install">Install extension</a>
+        <p class="status steam-extension-card__launch-status" id="steamExtensionLaunchStatus" aria-live="polite"></p>
+        <p class="steam-extension-card__note" data-i="steam_ext_note">Files stay on your computer: choose them on the Steam page opened by the extension.</p>
       </div>
       </div><!-- steam-layout -->
     </div>
@@ -883,7 +891,7 @@
 <script src="/static/js/steam-check.js?v=20260906f"></script>
 <script src="/static/js/profile-insights.js?v=20260906-unique-tags"></script>
 <script src="/static/js/seamless-loop.js?v=20260906-i18n"></script>
-<script src="/static/js/steam-extension-status.js?v=20260906a"></script>
+<script src="/static/js/steam-extension-status.js?v=20260908-launch1"></script>
 
 
 <script src="/static/ss-shell.js?v=20260908-auth-code"></script>
