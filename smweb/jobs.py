@@ -305,7 +305,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                         src = work / f"source{ext}"
                         src.write_bytes(raw)
                         is_video = ext in (".mp4", ".mov", ".webm", ".avi", ".mkv")
-                        v_fps = min(int(fps), 12)
+                        v_fps = max(5, min(int(fps), 24))
                         v_dur = 8.0
                         encoder = enc
                         if encoder == "pillow":
@@ -346,6 +346,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder, fps=v_fps,
                                     outline_width=outline_width, outline_color=outline_color,
                                     rotation=rotation,
+                                    width=size_i,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_gif_featured(

@@ -351,6 +351,7 @@ async def gallery_publish(
                     wm_text=text, wm_font=wm_font, wm_opacity=opacity,
                     wm_color=color, wm_corner=corner, wm_scale=scale,
                     wm_x=wm_x_f, wm_y=wm_y_f, encoder="gifski", fps=12,
+                    width=size_i,
                 )
                 pick = paths.get("full_with_bars.gif") or paths.get("full_original.gif")
             elif mode == "featured":

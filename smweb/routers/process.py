@@ -466,7 +466,7 @@ async def api_process(
                         src = work / f"source{ext}"
                         src.write_bytes(raw)
                         is_video = ext in (".mp4", ".mov", ".webm", ".avi", ".mkv")
-                        v_fps = min(int(fps), 12)
+                        v_fps = max(5, min(int(fps), 24))
                         v_dur = 8.0
                         enc = (gif_encoder or "ffmpeg").strip().lower()
                         if enc not in ("ffmpeg", "gifski", "pillow"):
@@ -504,6 +504,7 @@ async def api_process(
                                     wm_text=text, wm_font=wm_font, wm_opacity=opacity,
                                     wm_color=color, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=enc, fps=v_fps,
+                                    width=size_i,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_gif_featured(

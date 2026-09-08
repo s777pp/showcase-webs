@@ -5,7 +5,6 @@ import time
 import errno
 import io
 import os
-import re
 import shutil
 import subprocess
 import tempfile
@@ -585,13 +584,12 @@ def process_video_workshop(
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    gif_src = out_dir / "source.gif"
-    media_to_gif(src, gif_src, fps=fps, width=width, duration=duration, encoder=encoder, rotation=rotation)
     return process_gif_workshop(
-        gif_src, out_dir, wm_text, wm_font, wm_opacity,
+        src, out_dir, wm_text, wm_font, wm_opacity,
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
-        wm_x=wm_x, wm_y=wm_y, encoder=encoder,
+        wm_x=wm_x, wm_y=wm_y, encoder=encoder, fps=fps,
         outline_width=outline_width, outline_color=outline_color,
+        rotation=rotation, width=width, duration=duration,
     )
 
 
@@ -1241,6 +1239,210 @@ def _reencode_crop_hq(
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+class _WorkshopGroupFitError(RuntimeError):
+    """The synchronized Workshop group needs a lower shared FPS."""
+
+
+def _encode_workshop_frame_group(
+    frame_dirs: list[Path],
+    destinations: list[Path],
+    fps: int,
+    encoder: str,
+    max_mb: float = MAX_STEAM_MB,
+) -> dict[str, int | str]:
+    """Encode all Workshop panels with one shared quality setting.
+
+    Every attempt uses the same encoder settings for all five panels.  The
+    highest common setting for which *every* panel fits Steam's limit wins.
+    This deliberately avoids per-panel fitting: independent quality or frame
+    reduction makes a continuous Workshop animation look inconsistent.
+    """
+    if len(frame_dirs) != 5 or len(destinations) != 5:
+        raise ValueError("Workshop encoding requires exactly five frame sets")
+
+    fps = max(5, min(24, int(fps)))
+    encoder = (encoder or "ffmpeg").strip().lower()
+    if encoder == "pillow":
+        encoder = "ffmpeg"
+    attempts_root = Path(tempfile.mkdtemp(prefix="sm_workshop_group_"))
+
+    def fits(paths: list[Path]) -> bool:
+        return all(path.is_file() and 50 < path.stat().st_size <= max_mb * 1024 * 1024 for path in paths)
+
+    def install(paths: list[Path]) -> None:
+        for source, destination in zip(paths, destinations):
+            _safe_replace(source, destination)
+
+    try:
+        if encoder == "gifski":
+            if not find_gifski():
+                raise RuntimeError("gifski selected but binary not found")
+
+            def encode_quality(quality: int) -> list[Path]:
+                attempt_dir = attempts_root / f"q_{quality}"
+                attempt_dir.mkdir()
+                outputs: list[Path] = []
+                for index, frames_dir in enumerate(frame_dirs, start=1):
+                    output = attempt_dir / f"part_{index}.gif"
+                    if not _gifski_from_frames(frames_dir, output, fps=fps, quality=quality):
+                        raise RuntimeError(f"gifski failed for Workshop part {index}")
+                    outputs.append(output)
+                print(
+                    f"[WORKSHOP GROUP] gifski q={quality} fps={fps} sizes="
+                    + ",".join(f"{_gif_mb(path):.2f}" for path in outputs),
+                    flush=True,
+                )
+                return outputs
+
+            highest = encode_quality(100)
+            if fits(highest):
+                install(highest)
+                return {"encoder": "gifski", "quality": 100, "fps": fps}
+
+            low, high = 1, 99
+            best_quality = 0
+            best_paths: list[Path] | None = None
+            while low <= high:
+                quality = (low + high) // 2
+                outputs = encode_quality(quality)
+                if fits(outputs):
+                    best_quality = quality
+                    best_paths = outputs
+                    low = quality + 1
+                else:
+                    high = quality - 1
+            if best_paths is None:
+                raise _WorkshopGroupFitError(
+                    "Workshop cannot fit all five synchronized panels under 5 MB "
+                    "without changing their shared FPS or dimensions"
+                )
+            install(best_paths)
+            return {"encoder": "gifski", "quality": best_quality, "fps": fps}
+
+        ff = find_ffmpeg()
+        if not ff:
+            raise RuntimeError("FFmpeg not found")
+
+        def encode_colors(colors: int) -> list[Path]:
+            attempt_dir = attempts_root / f"colors_{colors}"
+            attempt_dir.mkdir()
+            outputs: list[Path] = []
+            for index, frames_dir in enumerate(frame_dirs, start=1):
+                output = attempt_dir / f"part_{index}.gif"
+                _run([
+                    ff, "-y", "-hide_banner", "-loglevel", "error",
+                    "-framerate", str(fps),
+                    "-i", str(frames_dir / "frame_%04d.png"),
+                    "-lavfi", _ffmpeg_palette_vf(fps=fps, max_colors=colors),
+                    "-loop", "0", str(output),
+                ])
+                outputs.append(output)
+            print(
+                f"[WORKSHOP GROUP] ffmpeg colors={colors} fps={fps} sizes="
+                + ",".join(f"{_gif_mb(path):.2f}" for path in outputs),
+                flush=True,
+            )
+            return outputs
+
+        highest = encode_colors(256)
+        if fits(highest):
+            install(highest)
+            return {"encoder": "ffmpeg", "quality": 256, "fps": fps}
+
+        low, high = 32, 255
+        best_colors = 0
+        best_paths = None
+        while low <= high:
+            colors = (low + high) // 2
+            outputs = encode_colors(colors)
+            if fits(outputs):
+                best_colors = colors
+                best_paths = outputs
+                low = colors + 1
+            else:
+                high = colors - 1
+        if best_paths is None:
+            raise _WorkshopGroupFitError(
+                "Workshop cannot fit all five synchronized panels under 5 MB "
+                "without changing their shared FPS or dimensions"
+            )
+        install(best_paths)
+        return {"encoder": "ffmpeg", "quality": best_colors, "fps": fps}
+    finally:
+        shutil.rmtree(attempts_root, ignore_errors=True)
+
+
+def _prepare_workshop_frame_sets(
+    source: Path,
+    work_dir: Path,
+    fps: int,
+    width: int,
+    rotation: float = 0,
+    duration: float | None = None,
+    outline_width: int = 0,
+    outline_color: str = "#ffffff",
+) -> tuple[Path, list[Path], int]:
+    """Decode once, then derive five perfectly aligned lossless frame sets."""
+    ff = find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not found")
+    fps = max(5, min(24, int(fps)))
+    width = max(200, min(1200, int(width or 750)))
+    width -= width % 5
+    if width < 200:
+        width = 200
+
+    full_frames = work_dir / "full_frames"
+    full_frames.mkdir()
+    rotation_filter = _ffmpeg_rotation_filter(rotation)
+    video_filter = ",".join(part for part in (
+        rotation_filter,
+        f"fps={fps}",
+        f"scale={width}:-2:flags=lanczos",
+    ) if part)
+    command = [
+        ff, "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(source),
+    ]
+    if duration is not None:
+        command.extend(["-t", str(max(1.0, min(20.0, float(duration))))])
+    command.extend([
+        "-an", "-vf", video_filter, "-compression_level", "0",
+        str(full_frames / "frame_%04d.png"),
+    ])
+    _run(command)
+
+    frame_files = sorted(full_frames.glob("frame_*.png"))
+    if not frame_files:
+        raise RuntimeError("Workshop source produced no frames")
+
+    part_dirs = [work_dir / f"part_{index}_frames" for index in range(1, 6)]
+    for part_dir in part_dirs:
+        part_dir.mkdir()
+    part_width = width // 5
+    stroke = max(0, min(12, int(outline_width or 0)))
+    stroke_color = _parse_rgb(outline_color)
+
+    for frame_path in frame_files:
+        with Image.open(frame_path) as opened:
+            frame = opened.convert("RGBA")
+        if frame.width != width:
+            raise RuntimeError(f"Workshop frame width mismatch: {frame.width} != {width}")
+        for index, part_dir in enumerate(part_dirs):
+            left = index * part_width
+            part = frame.crop((left, 0, left + part_width, frame.height))
+            if stroke:
+                draw = ImageDraw.Draw(part)
+                for offset in range(stroke):
+                    draw.rectangle(
+                        (offset, offset, part.width - 1 - offset, part.height - 1 - offset),
+                        outline=stroke_color,
+                        width=1,
+                    )
+            part.save(part_dir / frame_path.name, format="PNG", compress_level=0)
+    return full_frames, part_dirs, len(frame_files)
+
+
 def process_gif_workshop(
     gif_path: Path,
     out_dir: Path,
@@ -1257,52 +1459,72 @@ def process_gif_workshop(
     outline_width: int = 0,
     outline_color: str = "#ffffff",
     rotation: float = 0,
+    width: int = 750,
+    duration: float | None = None,
 ) -> dict[str, Path]:
-    """Cut GIF into 5 Steam Workshop parts + full_with_bars.gif."""
+    """Create five synchronized Workshop GIFs at one common quality."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    ff = find_ffmpeg()
-    if not ff:
-        raise RuntimeError("FFmpeg not found")
-    rotation = normalize_rotation(rotation)
-    if rotation:
-        original = Path(gif_path)
-        source_w, source_h = _probe_wh(original)
-        rotated_width = source_h if abs(rotation) == 90 else source_w
-        gif_path = out_dir / "source_rotated.gif"
-        media_to_gif(
-            original, gif_path, fps=fps, width=max(200, min(1200, rotated_width)),
-            duration=8, encoder=encoder, rotation=rotation,
-        )
-    width, height = _probe_wh(gif_path)
-    pw = max(1, width // 5)
+    temp = Path(tempfile.mkdtemp(prefix="sm_workshop_frames_"))
     result: dict[str, Path] = {}
-    for i in range(5):
-        out = out_dir / f"part_{i + 1}.gif"
-        x = i * pw
-        w = pw if i < 4 else max(1, width - x)
-        crop_filter = f"crop={w}:{height}:{x}:0"
-        if outline_width > 0:
-            stroke = max(1, min(12, int(outline_width)))
-            color = str(outline_color or "#ffffff").strip().lstrip("#")
-            if not re.fullmatch(r"[0-9a-fA-F]{6}", color):
-                color = "ffffff"
-            crop_filter += f",drawbox=x=0:y=0:w=iw:h=ih:color=0x{color}:t={stroke}"
-        _reencode_crop_hq(
-            gif_path, out,
-            crop_vf=crop_filter,
-            fps=fps,
-            encoder=encoder,
+    try:
+        destinations = [out_dir / f"part_{index}.gif" for index in range(1, 6)]
+        requested_fps = max(5, min(24, int(fps)))
+        fps_candidates = []
+        for candidate in (requested_fps, 20, 18, 15, 12, 10, 8, 6, 5):
+            if candidate <= requested_fps and candidate not in fps_candidates:
+                fps_candidates.append(candidate)
+
+        full_frames: Path | None = None
+        frame_count = 0
+        settings: dict[str, int | str] | None = None
+        last_fit_error: Exception | None = None
+        for candidate_fps in fps_candidates:
+            candidate_dir = temp / f"fps_{candidate_fps}"
+            candidate_dir.mkdir()
+            candidate_full, part_dirs, candidate_count = _prepare_workshop_frame_sets(
+                Path(gif_path), candidate_dir, fps=candidate_fps, width=width,
+                rotation=normalize_rotation(rotation), duration=duration,
+                outline_width=outline_width, outline_color=outline_color,
+            )
+            try:
+                candidate_settings = _encode_workshop_frame_group(
+                    part_dirs, destinations, fps=candidate_fps, encoder=encoder,
+                )
+            except _WorkshopGroupFitError as exc:
+                last_fit_error = exc
+                shutil.rmtree(candidate_dir, ignore_errors=True)
+                continue
+            full_frames = candidate_full
+            frame_count = candidate_count
+            settings = candidate_settings
+            break
+
+        if settings is None or full_frames is None:
+            raise RuntimeError(str(last_fit_error or "Workshop group encoding failed"))
+        print(
+            f"[WORKSHOP GROUP] selected encoder={settings['encoder']} "
+            f"quality={settings['quality']} fps={settings['fps']} frames={frame_count}",
+            flush=True,
         )
-        apply_hex21_file(out)
-        result[out.name] = out
-    clean = out_dir / "full_original.gif"
-    shutil.copy2(gif_path, clean)
-    result[clean.name] = clean
+        for output in destinations:
+            apply_hex21_file(output)
+            result[output.name] = output
+
+        clean = out_dir / "full_original.gif"
+        if (encoder or "").strip().lower() == "gifski":
+            if not _gifski_from_frames(full_frames, clean, fps=int(settings["fps"]), quality=100):
+                raise RuntimeError("gifski failed to create Workshop full preview")
+        else:
+            encode_gif_from_png_sequence(full_frames, clean, fps=int(settings["fps"]), encoder="ffmpeg")
+        result[clean.name] = clean
+    finally:
+        shutil.rmtree(temp, ignore_errors=True)
+
     bars = out_dir / "full_with_bars.gif"
     try:
         _gif_full_with_bars_workshop(
-            gif_path, bars, wm_text, wm_font, wm_opacity,
+            clean, bars, wm_text, wm_font, wm_opacity,
             wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color,
             wm_x=wm_x, wm_y=wm_y,
         )
