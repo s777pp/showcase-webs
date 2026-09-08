@@ -639,12 +639,10 @@ def process_video_split(
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    gif_src = out_dir / "source.gif"
-    media_to_gif(src, gif_src, fps=fps, width=606, duration=duration, encoder=encoder, rotation=rotation)
     return process_gif_split(
-        gif_src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
+        src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale, wm_x=wm_x, wm_y=wm_y,
-        encoder=encoder,
+        encoder=encoder, rotation=rotation, duration=duration,
     )
 
 
@@ -1239,32 +1237,33 @@ def _reencode_crop_hq(
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-class _WorkshopGroupFitError(RuntimeError):
-    """The synchronized Workshop group needs a lower shared FPS."""
+class _SynchronizedGroupFitError(RuntimeError):
+    """A synchronized output group needs a lower shared FPS."""
 
 
-def _encode_workshop_frame_group(
+def _encode_synchronized_frame_group(
     frame_dirs: list[Path],
     destinations: list[Path],
     fps: int,
     encoder: str,
+    label: str,
     max_mb: float = MAX_STEAM_MB,
 ) -> dict[str, int | str]:
-    """Encode all Workshop panels with one shared quality setting.
+    """Encode related panels with one shared quality setting.
 
-    Every attempt uses the same encoder settings for all five panels.  The
-    highest common setting for which *every* panel fits Steam's limit wins.
-    This deliberately avoids per-panel fitting: independent quality or frame
-    reduction makes a continuous Workshop animation look inconsistent.
+    Every attempt uses the same encoder settings for every panel. The highest
+    common setting for which every panel fits Steam's limit wins. This avoids
+    visible seams and timing drift in Workshop and Artwork Split outputs.
     """
-    if len(frame_dirs) != 5 or len(destinations) != 5:
-        raise ValueError("Workshop encoding requires exactly five frame sets")
+    if not frame_dirs or len(frame_dirs) != len(destinations):
+        raise ValueError("Synchronized encoding requires matching frame sets and destinations")
 
     fps = max(5, min(24, int(fps)))
     encoder = (encoder or "ffmpeg").strip().lower()
     if encoder == "pillow":
         encoder = "ffmpeg"
-    attempts_root = Path(tempfile.mkdtemp(prefix="sm_workshop_group_"))
+    safe_label = "".join(char for char in str(label).lower() if char.isalnum()) or "group"
+    attempts_root = Path(tempfile.mkdtemp(prefix=f"sm_{safe_label}_group_"))
 
     def fits(paths: list[Path]) -> bool:
         return all(path.is_file() and 50 < path.stat().st_size <= max_mb * 1024 * 1024 for path in paths)
@@ -1288,7 +1287,7 @@ def _encode_workshop_frame_group(
                         raise RuntimeError(f"gifski failed for Workshop part {index}")
                     outputs.append(output)
                 print(
-                    f"[WORKSHOP GROUP] gifski q={quality} fps={fps} sizes="
+                    f"[{label.upper()} GROUP] gifski q={quality} fps={fps} sizes="
                     + ",".join(f"{_gif_mb(path):.2f}" for path in outputs),
                     flush=True,
                 )
@@ -1312,8 +1311,8 @@ def _encode_workshop_frame_group(
                 else:
                     high = quality - 1
             if best_paths is None:
-                raise _WorkshopGroupFitError(
-                    "Workshop cannot fit all five synchronized panels under 5 MB "
+                raise _SynchronizedGroupFitError(
+                    f"{label} cannot fit all synchronized panels under 5 MB "
                     "without changing their shared FPS or dimensions"
                 )
             install(best_paths)
@@ -1338,7 +1337,7 @@ def _encode_workshop_frame_group(
                 ])
                 outputs.append(output)
             print(
-                f"[WORKSHOP GROUP] ffmpeg colors={colors} fps={fps} sizes="
+                f"[{label.upper()} GROUP] ffmpeg colors={colors} fps={fps} sizes="
                 + ",".join(f"{_gif_mb(path):.2f}" for path in outputs),
                 flush=True,
             )
@@ -1362,14 +1361,50 @@ def _encode_workshop_frame_group(
             else:
                 high = colors - 1
         if best_paths is None:
-            raise _WorkshopGroupFitError(
-                "Workshop cannot fit all five synchronized panels under 5 MB "
+            raise _SynchronizedGroupFitError(
+                f"{label} cannot fit all synchronized panels under 5 MB "
                 "without changing their shared FPS or dimensions"
             )
         install(best_paths)
         return {"encoder": "ffmpeg", "quality": best_colors, "fps": fps}
     finally:
         shutil.rmtree(attempts_root, ignore_errors=True)
+
+
+def _synchronized_fps_candidates(requested_fps: int) -> list[int]:
+    requested = max(5, min(24, int(requested_fps)))
+    candidates: list[int] = []
+    for candidate in (requested, 20, 18, 15, 12, 10, 8, 6, 5):
+        if candidate <= requested and candidate not in candidates:
+            candidates.append(candidate)
+    return candidates
+
+
+def _select_synchronized_frame_group(
+    temp: Path,
+    destinations: list[Path],
+    requested_fps: int,
+    encoder: str,
+    label: str,
+    prepare,
+) -> tuple[Path, dict[str, int | str], int]:
+    """Prepare and fit a related panel group without per-panel divergence."""
+    last_fit_error: Exception | None = None
+    for candidate_fps in _synchronized_fps_candidates(requested_fps):
+        candidate_dir = temp / f"fps_{candidate_fps}"
+        candidate_dir.mkdir()
+        full_frames, frame_dirs, frame_count = prepare(candidate_dir, candidate_fps)
+        try:
+            settings = _encode_synchronized_frame_group(
+                frame_dirs, destinations, fps=candidate_fps,
+                encoder=encoder, label=label,
+            )
+        except _SynchronizedGroupFitError as exc:
+            last_fit_error = exc
+            shutil.rmtree(candidate_dir, ignore_errors=True)
+            continue
+        return full_frames, settings, frame_count
+    raise RuntimeError(str(last_fit_error or f"{label} group encoding failed"))
 
 
 def _prepare_workshop_frame_sets(
@@ -1470,38 +1505,18 @@ def process_gif_workshop(
     try:
         destinations = [out_dir / f"part_{index}.gif" for index in range(1, 6)]
         requested_fps = max(5, min(24, int(fps)))
-        fps_candidates = []
-        for candidate in (requested_fps, 20, 18, 15, 12, 10, 8, 6, 5):
-            if candidate <= requested_fps and candidate not in fps_candidates:
-                fps_candidates.append(candidate)
 
-        full_frames: Path | None = None
-        frame_count = 0
-        settings: dict[str, int | str] | None = None
-        last_fit_error: Exception | None = None
-        for candidate_fps in fps_candidates:
-            candidate_dir = temp / f"fps_{candidate_fps}"
-            candidate_dir.mkdir()
-            candidate_full, part_dirs, candidate_count = _prepare_workshop_frame_sets(
+        def prepare(candidate_dir: Path, candidate_fps: int):
+            return _prepare_workshop_frame_sets(
                 Path(gif_path), candidate_dir, fps=candidate_fps, width=width,
                 rotation=normalize_rotation(rotation), duration=duration,
                 outline_width=outline_width, outline_color=outline_color,
             )
-            try:
-                candidate_settings = _encode_workshop_frame_group(
-                    part_dirs, destinations, fps=candidate_fps, encoder=encoder,
-                )
-            except _WorkshopGroupFitError as exc:
-                last_fit_error = exc
-                shutil.rmtree(candidate_dir, ignore_errors=True)
-                continue
-            full_frames = candidate_full
-            frame_count = candidate_count
-            settings = candidate_settings
-            break
 
-        if settings is None or full_frames is None:
-            raise RuntimeError(str(last_fit_error or "Workshop group encoding failed"))
+        full_frames, settings, frame_count = _select_synchronized_frame_group(
+            temp, destinations, requested_fps=requested_fps,
+            encoder=encoder, label="Workshop", prepare=prepare,
+        )
         print(
             f"[WORKSHOP GROUP] selected encoder={settings['encoder']} "
             f"quality={settings['quality']} fps={settings['fps']} frames={frame_count}",
@@ -1692,112 +1707,58 @@ def process_gif_featured(
 
 
 
-def _reencode_split_crops_hq(
-    src_gif: Path,
-    center_dest: Path,
-    side_dest: Path,
-    height: int,
-    fps: int = 12,
-    encoder: str = "ffmpeg",
-) -> None:
-    """Decode split source once, produce center+side crops, then encode both."""
+def _prepare_split_frame_sets(
+    source: Path,
+    work_dir: Path,
+    fps: int,
+    rotation: float = 0,
+    duration: float | None = 10,
+) -> tuple[Path, list[Path], int]:
+    """Decode once and derive aligned 506 px + 100 px lossless frames."""
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg not found")
-
-    encoder = (encoder or "ffmpeg").strip().lower()
     fps = max(5, min(24, int(fps)))
+    full_frames = work_dir / "full_frames"
+    center_frames = work_dir / "center_frames"
+    side_frames = work_dir / "side_frames"
+    full_frames.mkdir()
+    center_frames.mkdir()
+    side_frames.mkdir()
 
-    tmp = Path(tempfile.mkdtemp(prefix="sm_split_crops_"))
-    try:
-        center_frames = tmp / "center"
-        side_frames = tmp / "side"
-        center_frames.mkdir()
-        side_frames.mkdir()
+    rotation_filter = _ffmpeg_rotation_filter(rotation)
+    video_filter = ",".join(part for part in (
+        rotation_filter,
+        f"fps={fps}",
+        "scale=606:-2:flags=lanczos",
+    ) if part)
+    command = [
+        ff, "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(source),
+    ]
+    if duration is not None:
+        command.extend(["-t", str(max(1.0, min(20.0, float(duration))))])
+    command.extend([
+        "-an", "-vf", video_filter, "-compression_level", "0",
+        str(full_frames / "frame_%04d.png"),
+    ])
+    _run(command)
 
-        _t0 = time.perf_counter()
-
-        _run([
-            ff, "-y", "-hide_banner", "-loglevel", "error",
-            "-i", str(src_gif),
-            "-an",
-            "-filter_complex",
-            (
-                f"[0:v]fps={fps},split=2[c][s];"
-                f"[c]crop=506:{height}:0:0[co];"
-                f"[s]crop=100:{height}:506:0[so]"
-            ),
-            "-map", "[co]",
-            "-compression_level", "0",
-            str(center_frames / "frame_%04d.png"),
-            "-map", "[so]",
-            "-compression_level", "0",
-            str(side_frames / "frame_%04d.png"),
-        ])
-
-        _t1 = time.perf_counter()
-        print(
-            f"[PROCESS TIMING] split single decode+crop PNG: {_t1-_t0:.3f}s",
-            flush=True,
+    frame_files = sorted(full_frames.glob("frame_*.png"))
+    if not frame_files:
+        raise RuntimeError("Artwork Split source produced no frames")
+    for frame_path in frame_files:
+        with Image.open(frame_path) as opened:
+            frame = opened.convert("RGBA")
+        if frame.width != 606:
+            raise RuntimeError(f"Artwork Split frame width mismatch: {frame.width} != 606")
+        frame.crop((0, 0, 506, frame.height)).save(
+            center_frames / frame_path.name, format="PNG", compress_level=0,
         )
-
-        if not list(center_frames.glob("frame_*.png")):
-            raise RuntimeError("center crop produced no frames")
-        if not list(side_frames.glob("frame_*.png")):
-            raise RuntimeError("side crop produced no frames")
-
-        if encoder == "gifski":
-            if not find_gifski():
-                raise RuntimeError("gifski selected but binary not found")
-
-            _t2 = time.perf_counter()
-            ok_center = _gifski_from_frames(
-                center_frames, center_dest, fps=fps, quality=100
-            )
-            _t3 = time.perf_counter()
-
-            ok_side = _gifski_from_frames(
-                side_frames, side_dest, fps=fps, quality=100
-            )
-            _t4 = time.perf_counter()
-
-            print(
-                f"[PROCESS TIMING] split center gifski q100: {_t3-_t2:.3f}s",
-                flush=True,
-            )
-            print(
-                f"[PROCESS TIMING] split side gifski q100: {_t4-_t3:.3f}s",
-                flush=True,
-            )
-
-            if not ok_center or not ok_side:
-                raise RuntimeError("gifski split crop encode failed")
-        else:
-            vf = _ffmpeg_palette_vf(fps=fps, max_colors=256)
-
-            _run([
-                ff, "-y", "-hide_banner", "-loglevel", "error",
-                "-framerate", str(fps),
-                "-i", str(center_frames / "frame_%04d.png"),
-                "-lavfi", vf,
-                "-loop", "0",
-                str(center_dest),
-            ])
-
-            _run([
-                ff, "-y", "-hide_banner", "-loglevel", "error",
-                "-framerate", str(fps),
-                "-i", str(side_frames / "frame_%04d.png"),
-                "-lavfi", vf,
-                "-loop", "0",
-                str(side_dest),
-            ])
-
-        ensure_under_mb(center_dest)
-        ensure_under_mb(side_dest)
-
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+        frame.crop((506, 0, 606, frame.height)).save(
+            side_frames / frame_path.name, format="PNG", compress_level=0,
+        )
+    return full_frames, [center_frames, side_frames], len(frame_files)
 
 
 
@@ -1815,32 +1776,51 @@ def process_gif_split(
     wm_y: float | None = None,
     encoder: str = "ffmpeg",
     rotation: float = 0,
+    duration: float | None = 10,
 ) -> dict[str, Path]:
-    ff = find_ffmpeg()
-    if not ff:
-        raise RuntimeError("FFmpeg не найден")
-    tmp = out_dir / "tmp_606.gif"
-    media_to_gif(gif_path, tmp, fps=fps, width=606, duration=10, encoder=encoder, rotation=rotation)
-    width, height = _probe_wh(tmp)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    temp = Path(tempfile.mkdtemp(prefix="sm_split_frames_"))
     center = out_dir / "center_506.gif"
     side = out_dir / "side_100.gif"
-    _reencode_split_crops_hq(
-        tmp,
-        center,
-        side,
-        height=height,
-        fps=fps,
-        encoder=encoder,
-    )
-    apply_hex21_file(center)
-    apply_hex21_file(side)
-    clean = out_dir / "full_original.gif"
-    shutil.copy2(tmp, clean)
-    result = {center.name: center, side.name: side, clean.name: clean}
+    destinations = [center, side]
+    result: dict[str, Path] = {}
+    try:
+        requested_fps = max(5, min(24, int(fps)))
+
+        def prepare(candidate_dir: Path, candidate_fps: int):
+            return _prepare_split_frame_sets(
+                Path(gif_path), candidate_dir, fps=candidate_fps,
+                rotation=normalize_rotation(rotation), duration=duration,
+            )
+
+        full_frames, settings, frame_count = _select_synchronized_frame_group(
+            temp, destinations, requested_fps=requested_fps,
+            encoder=encoder, label="Split", prepare=prepare,
+        )
+        print(
+            f"[SPLIT GROUP] selected encoder={settings['encoder']} "
+            f"quality={settings['quality']} fps={settings['fps']} frames={frame_count}",
+            flush=True,
+        )
+        for output in destinations:
+            apply_hex21_file(output)
+            result[output.name] = output
+
+        clean = out_dir / "full_original.gif"
+        if (encoder or "").strip().lower() == "gifski":
+            if not _gifski_from_frames(full_frames, clean, fps=int(settings["fps"]), quality=100):
+                raise RuntimeError("gifski failed to create Artwork Split full preview")
+        else:
+            encode_gif_from_png_sequence(full_frames, clean, fps=int(settings["fps"]), encoder="ffmpeg")
+        result[clean.name] = clean
+    finally:
+        shutil.rmtree(temp, ignore_errors=True)
+
     bars = out_dir / "full_with_bars.gif"
     try:
         _gif_full_with_bar_split(
-            tmp, bars, wm_text, wm_font, wm_opacity,
+            clean, bars, wm_text, wm_font, wm_opacity,
             wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color, wm_x=wm_x, wm_y=wm_y,
         )
         if bars.is_file() and bars.stat().st_size > 64:
@@ -1855,10 +1835,6 @@ def process_gif_split(
         err = out_dir / "full_with_bars_ERROR.txt"
         err.write_text(f"{type(e).__name__}: {e}\n\n{traceback.format_exc()}", encoding="utf-8")
         result[err.name] = err
-    try:
-        tmp.unlink()
-    except Exception:
-        pass
     return result
 
 
