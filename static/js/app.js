@@ -1970,8 +1970,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       title_doctor: "Rating", sub_doctor: "AI review of a public Steam profile and its visual consistency",
       "title_design-ai": "Selection", "sub_design-ai": "Three AI art directions for static Steam showcases",
       process_check_hint_title: "Steam readiness report", process_check_hint_body: "Sign in before processing to receive a detailed Steam compatibility report after the ZIP is built.",
-      wm_preview_h: "Watermark preview",
-      wm_hint: "Add a PNG/JPG/GIF/MP4 in «Files» — for video/GIF the first frame is used. Drag the watermark across the preview; the position is applied on «Process».",
+      wm_preview_h: "Showcase preview",
+      wm_hint: "The selected showcase layout is shown directly on the frame. For video/GIF the first frame is used; drag the watermark to set its position.",
       wm_empty: "No preview — add an image in «Files»",
       wm_reset: "Reset position",
       rotation_title: "Selected file · rotation",
@@ -2124,8 +2124,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       title_doctor: "Оценка", sub_doctor: "ИИ-анализ публичного профиля Steam и визуальной целостности оформления",
       "title_design-ai": "Подбор", "sub_design-ai": "Три направления для статичных витрин с учётом текущего профиля",
       process_check_hint_title: "Проверка готовности для Steam", process_check_hint_body: "Войди перед обработкой, чтобы после сборки ZIP получить подробный отчёт о совместимости файлов со Steam.",
-      wm_preview_h: "Превью водяного знака",
-      wm_hint: "Добавь PNG/JPG/GIF/MP4 в «Файлы» — для видео/GIF берётся первый кадр. Перетаскивай водяной знак по предпросмотру; позиция применится при «Обработать».",
+      wm_preview_h: "Предпросмотр витрины",
+      wm_hint: "Схема выбранной витрины отображается прямо на кадре. Для видео и GIF используется первый кадр; водяной знак можно перетаскивать.",
       wm_empty: "Нет превью — добавь изображение в «Файлы»",
       wm_reset: "Сброс позиции",
       rotation_title: "Выбранный файл · поворот",
@@ -2931,7 +2931,10 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       need_file: 'Add a PNG/JPG in «Files»',
       srv_wait: 'Server preview…',
       srv_fail: 'Preview failed',
-      srv_ok: 'Server preview (exact font from the server)'
+      srv_ok: 'Server preview (exact font from the server)',
+      guide_workshop: 'WORKSHOP · 5 PANELS',
+      guide_featured: 'FEATURED · 1 FILE',
+      guide_split: 'ARTWORK SPLIT · 2 FILES'
     },
     ru: {
       frame_fail: 'Не удалось открыть кадр',
@@ -2946,7 +2949,10 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       need_file: 'Добавь PNG/JPG в «Файлы»',
       srv_wait: 'Серверное превью…',
       srv_fail: 'Ошибка превью',
-      srv_ok: 'Серверное превью (точный шрифт с сервера)'
+      srv_ok: 'Серверное превью (точный шрифт с сервера)',
+      guide_workshop: 'МАСТЕРСКАЯ · 5 ЧАСТЕЙ',
+      guide_featured: 'ИЗБРАННОЕ · 1 ФАЙЛ',
+      guide_split: 'ARTWORK SPLIT · 2 ФАЙЛА'
     }
   };
   function wmT(key){
@@ -3002,6 +3008,79 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   }
   function firstImageFile(){ return firstPreviewFile(); }
 
+  function drawShowcaseGuide(w, h){
+    const mode = ['workshop', 'featured', 'split'].includes(state.mode) ? state.mode : 'workshop';
+    const boundaries = mode === 'workshop'
+      ? [0, .2, .4, .6, .8, 1]
+      : mode === 'split'
+        ? [0, 506 / 606, 1]
+        : [0, 1];
+    const guideLabel = wmT('guide_' + mode);
+    const pixelRatio = Math.max(1, Math.min(2, w / 520));
+    const inset = Math.max(1, pixelRatio);
+
+    ctx.save();
+
+    // Alternating glass tint makes the future files readable without hiding the source.
+    for (let i = 0; i < boundaries.length - 1; i++) {
+      if (i % 2 === 0) continue;
+      const left = boundaries[i] * w;
+      const right = boundaries[i + 1] * w;
+      ctx.fillStyle = 'rgba(3, 18, 27, .14)';
+      ctx.fillRect(left, 0, right - left, h);
+    }
+
+    ctx.strokeStyle = 'rgba(81, 215, 250, .9)';
+    ctx.lineWidth = pixelRatio;
+    ctx.setLineDash([Math.max(4, pixelRatio * 4), Math.max(3, pixelRatio * 3)]);
+    ctx.strokeRect(inset / 2, inset / 2, Math.max(1, w - inset), Math.max(1, h - inset));
+    boundaries.slice(1, -1).forEach(function(position){
+      const x = Math.round(position * w) + .5;
+      const gap = Math.max(2, Math.min(5, Math.round(w * .005)));
+      ctx.fillStyle = 'rgba(1, 8, 13, .74)';
+      ctx.fillRect(x - gap / 2, 0, gap, h);
+      ctx.strokeStyle = 'rgba(81, 215, 250, .9)';
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    const fontSize = Math.max(9, Math.min(12, Math.round(w / 65)));
+    ctx.font = '800 ' + fontSize + 'px ui-monospace, SFMono-Regular, Consolas, monospace';
+    ctx.textBaseline = 'middle';
+    const tagPadX = 8;
+    const tagH = fontSize + 10;
+    const labelWidth = Math.min(w - 12, ctx.measureText(guideLabel).width + tagPadX * 2);
+    ctx.fillStyle = 'rgba(3, 13, 20, .88)';
+    ctx.fillRect(6, 6, labelWidth, tagH);
+    ctx.fillStyle = '#8eeaff';
+    ctx.fillText(guideLabel, 6 + tagPadX, 6 + tagH / 2, Math.max(1, labelWidth - tagPadX * 2));
+
+    const segmentLabels = mode === 'workshop'
+      ? ['1', '2', '3', '4', '5']
+      : mode === 'split' ? ['506 px', '100 px'] : ['630 px'];
+    segmentLabels.forEach(function(label, i){
+      const left = boundaries[i] * w;
+      const right = boundaries[i + 1] * w;
+      const segmentW = right - left;
+      const compactLabel = segmentW < 58 ? String(i + 1) : label;
+      const measured = ctx.measureText(compactLabel).width;
+      const chipW = Math.min(segmentW - 6, measured + 10);
+      if (chipW < 9 || h < 48) return;
+      const chipX = left + (segmentW - chipW) / 2;
+      const chipY = h - fontSize - 11;
+      ctx.fillStyle = 'rgba(3, 13, 20, .82)';
+      ctx.fillRect(chipX, chipY, chipW, fontSize + 7);
+      ctx.fillStyle = 'rgba(174, 240, 255, .92)';
+      ctx.textAlign = 'center';
+      ctx.fillText(compactLabel, left + segmentW / 2, chipY + (fontSize + 7) / 2, Math.max(1, chipW - 6));
+      ctx.textAlign = 'start';
+    });
+    ctx.restore();
+  }
+
   function draw(){
     if (!img || !img.naturalWidth) {
       canvas.style.display = 'none';
@@ -3033,6 +3112,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     ctx.rotate(radians);
     ctx.drawImage(img, -sourceW * fit / 2, -sourceH * fit / 2, sourceW * fit, sourceH * fit);
     ctx.restore();
+    drawShowcaseGuide(w, h);
     const outlineOn = state.mode === 'workshop' && document.getElementById('workshopOutline')?.checked;
     if (outlineOn) {
       const sourceWidth = Number(document.getElementById('size')?.value || 750);
@@ -3065,6 +3145,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     ctx.setLineDash([]);
   }
   window.__wmRedraw = draw;
+  window.addEventListener('sm:langchange', draw);
 
   function loadFromImageUrl(url, revoke){
     return new Promise(function(resolve){

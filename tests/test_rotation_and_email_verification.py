@@ -114,6 +114,21 @@ def test_process_rotation_editor_is_below_preview_and_uses_active_file():
     assert '.page-tools input[type="checkbox"]:checked::before' in styles
 
 
+def test_process_preview_draws_the_selected_showcase_layout():
+    root = Path(__file__).resolve().parents[1]
+    html = (root / "static" / "app.html").read_text(encoding="utf-8")
+    script = (root / "static" / "js" / "app.js").read_text(encoding="utf-8")
+
+    assert 'data-mode="workshop"' in html
+    assert 'data-mode="featured"' in html
+    assert 'data-mode="split"' in html
+    assert "function drawShowcaseGuide(w, h)" in script
+    assert "[0, .2, .4, .6, .8, 1]" in script
+    assert "[0, 506 / 606, 1]" in script
+    assert "drawShowcaseGuide(w, h);" in script
+    assert "window.__wmRedraw" in script
+
+
 def test_all_animation_tools_share_steam_fps_presets():
     root = Path(__file__).resolve().parents[1]
     html = (root / "static" / "app.html").read_text(encoding="utf-8")
