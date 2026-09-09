@@ -64,6 +64,56 @@ from smweb.steam import _merge_steam_api, _steam_realm
 
 
 router = APIRouter()
+_steam_profile_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="steam-profile")
+
+
+def _enrich_steam_account(user_id: int, steam_id: str) -> None:
+    """Fetch optional public Steam data after the login response is returned.
+
+    OpenID verification is the only network request required to authenticate.
+    Profile HTML, Web API enrichment and avatar mirroring are deliberately kept
+    off the callback path so a slow or rate-limited Steam profile never turns a
+    successful login into a 30-second wait.
+    """
+    try:
+        import requests as _rq
+        import steam_catalog
+
+        pr = steam_catalog.profile(f"https://steamcommunity.com/profiles/{steam_id}")
+        if not pr.get("ok") or not pr.get("profile"):
+            return
+        profile_data = _merge_steam_api(pr["profile"])
+        persona = (profile_data.get("name") or f"steam_{steam_id[-6:]}")[:40]
+        auth_db.save_steam_profile_snapshot(int(user_id), profile_data)
+        auth_db.ensure_profile_username(int(user_id), persona)
+        auth_db.update_profile(int(user_id), display_name=persona)
+
+        avatar_url = (profile_data.get("avatar") or "").strip()
+        if not avatar_url:
+            return
+        response = _rq.get(
+            avatar_url,
+            timeout=12,
+            headers={"User-Agent": "Mozilla/5.0 ShowcaseMaker"},
+            allow_redirects=False,
+        )
+        if response.status_code != 200 or response.content[:3] == b"<!":
+            return
+        content_type = (response.headers.get("Content-Type") or "").lower()
+        ext = ".png" if "png" in content_type else (".webp" if "webp" in content_type else ".jpg")
+        rel = f"avatars/{int(user_id)}{ext}"
+        if object_store.configured():
+            object_store.put_bytes(
+                rel,
+                response.content,
+                media_type=content_type.split(";", 1)[0] or object_store.content_type(rel),
+            )
+        else:
+            (DATA / rel).parent.mkdir(parents=True, exist_ok=True)
+            (DATA / rel).write_bytes(response.content)
+        auth_db.update_profile(int(user_id), display_name=persona, avatar_path=rel)
+    except Exception:
+        LOGGER.exception("steam account background enrichment failed")
 
 
 @router.get("/api/auth/discord/login")
@@ -353,7 +403,7 @@ def steam_login_start(request: Request):
 
 @router.get("/api/auth/steam/callback")
 async def steam_callback(request: Request):
-    """Verify Steam OpenID assertion, create session, pull public profile snapshot."""
+    """Verify Steam OpenID, create a session, then enrich the account async."""
     import requests as _req
     q = dict(request.query_params)
     state = str(q.get("state") or "")
@@ -379,52 +429,13 @@ async def steam_callback(request: Request):
         if not m:
             return HTMLResponse("<h3>Steam login failed (no steamid)</h3>", status_code=400)
         steam_id = m.group(1)
-        # persona name via public XML
         persona = f"steam_{steam_id[-6:]}"
-        profile_data = None
-        try:
-            import steam_catalog
-            pr = await run_in_threadpool(
-                steam_catalog.profile, f"https://steamcommunity.com/profiles/{steam_id}"
-            )
-            if pr.get("ok") and pr.get("profile"):
-                profile_data = _merge_steam_api(pr["profile"])
-                persona = profile_data.get("name") or persona
-        except Exception:
-            LOGGER.exception("steam profile snapshot failed")
         ok, msg, token = auth_db.register_or_login_steam(steam_id, persona)
         if not ok or not token:
             return HTMLResponse(f"<h3>Login error: {html.escape(msg)}</h3>", status_code=400)
         user = auth_db.user_by_token(token)
-        if user and profile_data:
-            try:
-                auth_db.save_steam_profile_snapshot(int(user["id"]), profile_data)
-                auth_db.ensure_profile_username(int(user["id"]), persona)
-                # download avatar into local avatars store
-                av = (profile_data.get("avatar") or "").strip()
-                if av:
-                    try:
-                        import requests as _rq
-                        ar = await run_in_threadpool(
-                            _rq.get, av, timeout=12,
-                            headers={"User-Agent": "Mozilla/5.0"}, allow_redirects=False,
-                        )
-                        if ar.status_code == 200 and ar.content[:3] != b"<!":
-                            ext = ".jpg"
-                            ctype = (ar.headers.get("Content-Type") or "").lower()
-                            if "png" in ctype: ext = ".png"
-                            elif "webp" in ctype: ext = ".webp"
-                            rel = f"avatars/{int(user['id'])}{ext}"
-                            if object_store.configured():
-                                object_store.put_bytes(rel, ar.content, media_type=ctype.split(";", 1)[0] or object_store.content_type(rel))
-                            else:
-                                (DATA / rel).parent.mkdir(parents=True, exist_ok=True)
-                                (DATA / rel).write_bytes(ar.content)
-                            auth_db.update_profile(int(user["id"]), display_name=persona, avatar_path=rel)
-                    except Exception:
-                        LOGGER.exception("steam avatar download")
-            except Exception:
-                LOGGER.exception("save steam snapshot")
+        if user:
+            _steam_profile_pool.submit(_enrich_steam_account, int(user["id"]), steam_id)
         app_origin = _app_origin()
         target_origin = json.dumps(app_origin)
         resp = HTMLResponse(

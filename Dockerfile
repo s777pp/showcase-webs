@@ -46,6 +46,7 @@ ENV UVICORN_WORKERS=1
 # platforms such as Railway). external = a separate `python worker.py` drains Redis.
 ENV WORKER_MODE=embedded
 ENV MAX_JOB_WORKERS=2
+ENV U2NET_HOME=/data/.u2net
 
 # non-root. The container STARTS as root so the entrypoint can chown the mounted
 # volume, then drops to appuser via gosu — a build-time chown does not survive a

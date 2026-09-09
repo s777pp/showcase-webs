@@ -86,3 +86,21 @@ DO $$ BEGIN
 END $$;
 CREATE INDEX IF NOT EXISTS idx_showcases_user ON profile_showcases(user_id,sort_order);
 CREATE TABLE IF NOT EXISTS process_jobs (id TEXT PRIMARY KEY, user_id BIGINT, status TEXT NOT NULL DEFAULT 'queued', pct INTEGER DEFAULT 0, stage TEXT, error TEXT, result_path TEXT, created_at DOUBLE PRECISION, updated_at DOUBLE PRECISION, meta_json TEXT);
+
+CREATE TABLE IF NOT EXISTS builder_projects (
+ id TEXT PRIMARY KEY,
+ user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ name TEXT NOT NULL,
+ showcase_mode TEXT NOT NULL,
+ project_json TEXT NOT NULL,
+ created_at DOUBLE PRECISION NOT NULL,
+ updated_at DOUBLE PRECISION NOT NULL,
+ expires_at DOUBLE PRECISION
+);
+CREATE INDEX IF NOT EXISTS idx_builder_projects_user ON builder_projects(user_id, updated_at DESC);
+CREATE TABLE IF NOT EXISTS builder_usage (
+ user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ day_key TEXT NOT NULL,
+ renders INTEGER NOT NULL DEFAULT 0,
+ PRIMARY KEY (user_id, day_key)
+);

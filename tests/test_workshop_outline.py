@@ -38,6 +38,34 @@ class WorkshopOutlineTests(unittest.TestCase):
             "https://store.steampowered.com/points/shop/app/730/reward/1047",
         )
 
+    def test_points_shop_rejects_item_from_another_asset_class(self):
+        item = steam_catalog._points_item(
+            {
+                "appid": 730,
+                "defid": 1047,
+                "community_item_class": 13,
+                "community_item_data": {"item_image_large": "abc.jpg"},
+            },
+            "avatar",
+        )
+        self.assertIsNone(item)
+
+    def test_animated_avatar_uses_gif_instead_of_static_poster(self):
+        item = steam_catalog._points_item(
+            {
+                "appid": 730,
+                "defid": 1047,
+                "community_item_class": 15,
+                "community_item_data": {
+                    "item_image_small": "avatar.gif",
+                    "item_image_large": "poster.jpg",
+                    "animated": True,
+                },
+            },
+            "avatar",
+        )
+        self.assertTrue(item["image"].endswith("/avatar.gif"))
+
 
 if __name__ == "__main__":
     unittest.main()

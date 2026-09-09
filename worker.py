@@ -65,6 +65,10 @@ def _process_one(jid: str) -> None:
             from smweb.loop_jobs import run
             run(jid, job)
             return
+        if job.get("kind") == "builder_bg_remove":
+            from smweb.background_remove_jobs import run
+            run(jid, job)
+            return
         from smweb.jobs import _run_process_job_from_payload
 
         _run_process_job_from_payload(jid, job)

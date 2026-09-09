@@ -561,14 +561,15 @@
   // Existing preview slot code creates new .fi + input dynamically. Observe those nodes so
   // the same visual component appears there without changing the preview logic.
   function setupObserver(){
-    const root=document.body;
-    if(!root || window.__smModernObserver) return;
+    const root=document.documentElement;
+    if(!root || root.nodeType!==1 || window.__smModernObserver) return;
     const mo=new MutationObserver(mutations=>{
       let added=false;
       for(const m of mutations){ if(m.addedNodes?.length){ added=true; break; } }
       if(added) refreshUploads();
     });
-    mo.observe(root,{childList:true,subtree:true});
+    try { mo.observe(root,{childList:true,subtree:true}); }
+    catch (_error) { return; }
     window.__smModernObserver=mo;
   }
 

@@ -16,6 +16,7 @@ data/jobs/
 data/gallery/
 data/avatars/
 data/profile_sc/
+data/builder/
 
 # python
 data/steam_profiles.sqlite3*
@@ -24,6 +25,7 @@ __pycache__/
 .venv/
 venv/
 .tmp_pytest_env/
+.tmp_u2net_test/
 .coverage
 .pytest_cache/
 *.egg-info/

@@ -21,6 +21,8 @@
 <script src="/static/js/i18n.js?v=20260903d"></script>
 <link rel="stylesheet" href="/static/css/support-chat.css?v=20260908-mobile-polish">
 <link rel="stylesheet" href="/static/css/tools-polish.css?v=20260908-controls8">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Caveat:wght@600;700&family=Comfortaa:wght@600;700&family=Cormorant+Garamond:wght@700&family=Oswald:wght@600;700&family=Play:wght@700&family=Press+Start+2P&family=Readex+Pro:wght@600;700&family=Russo+One&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/showcase-builder.css?v=20260909-builder7">
 <script defer src="/static/js/support-chat.js?v=20260907-compact-faq"></script>
 </head>
 <body class="page-tools">
@@ -61,6 +63,8 @@
     <button data-tab="steam" data-i="nav_steam">Steam</button>
     <button data-tab="da" data-i="nav_da">DeviantArt</button>
     <button data-tab="about" data-i="nav_about">About</button>
+    <button data-tab="builder" hidden aria-hidden="true" tabindex="-1">Builder</button>
+    <button data-tab="projects" hidden aria-hidden="true" tabindex="-1">My projects</button>
   </nav>
     </div>
   </header>
@@ -69,7 +73,13 @@
     <a class="back" href="/" data-i="back">← Home</a>
     <div class="topbar">
       <div>
-        <div class="h-title" id="pageTitle">Process</div>
+        <div class="workspace-heading"><div class="h-title" id="pageTitle">Process</div>
+          <div class="workspace-switch" role="navigation" aria-label="Showcase workspace">
+            <button type="button" class="active" data-open-tool="process" data-i="workspace_process">Process</button>
+            <button type="button" data-open-tool="builder">Builder</button>
+            <button type="button" data-open-tool="projects" data-i="workspace_projects">My projects</button>
+          </div>
+        </div>
         <div class="h-sub" id="pageSub">Workshop / Featured / Split cuts, watermark and Steam ZIP</div>
       </div>
     </div>
@@ -722,6 +732,95 @@
     </div>
   </section>
 
+  <section class="tab" id="tab-builder">
+    <div class="builder-shell" id="showcaseBuilder">
+      <aside class="builder-tools card">
+        <div class="builder-panel-title"><span>01</span><strong data-builder-i="add-layer">Add layer</strong></div>
+        <div class="builder-add-grid">
+          <button type="button" data-add-layer="background"><b>▧</b><span data-builder-i="background">Background</span></button>
+          <button type="button" data-add-layer="character"><b>♙</b><span data-builder-i="character">Character</span></button>
+          <button type="button" data-add-layer="text"><b>T</b><span data-builder-i="text">Text</span></button>
+          <button type="button" data-add-layer="frame"><b>□</b><span data-builder-i="frame">Frame</span></button>
+          <button type="button" data-add-layer="effect"><b>✦</b><span data-builder-i="effect">Effect</span></button>
+        </div>
+        <input id="builderMediaInput" type="file" accept="image/*,video/*,.gif,.webm,.mp4,.mov" hidden data-sm-enhanced="1"/>
+        <div class="builder-source" id="builderSourcePanel">
+          <button type="button" class="btn ghost" id="builderSteamBackgrounds" data-builder-i="steam-backgrounds">Steam backgrounds</button>
+          <p data-builder-i="source-hint">PNG, JPG, GIF, WebM and MP4. Transparent media is preserved; chromakey can be removed automatically.</p>
+        </div>
+        <div class="builder-catalog" id="builderCatalog" hidden>
+          <div class="builder-catalog-head"><input id="builderCatalogSearch" placeholder="Search Steam"/><button type="button" id="builderCatalogClose">×</button></div>
+          <div class="builder-catalog-grid" id="builderCatalogGrid"></div>
+          <button type="button" class="btn ghost" id="builderCatalogMore" data-builder-i="more">More</button>
+        </div>
+        <div class="builder-inspector" id="builderInspector" hidden>
+          <div class="builder-panel-title"><span>02</span><strong data-builder-i="settings">Layer settings</strong></div>
+          <label><span data-builder-i="layer-name">Name</span><input id="builderLayerName" maxlength="80"/></label>
+          <div class="builder-text-controls" id="builderTextControls" hidden>
+            <label><span data-builder-i="content">Content</span><textarea id="builderText" rows="3" maxlength="500"></textarea></label>
+            <div class="builder-two"><label><span data-builder-i="font">Font</span><select id="builderFont"><optgroup label="Showcase Maker"><option value="Mulish">Mulish</option><option value="Motiva Sans">Motiva Sans</option><option value="Vela Sans">Vela Sans</option><option value="Consolas">Consolas</option></optgroup><optgroup label="Display"><option value="Unbounded">Unbounded</option><option value="Russo One">Russo One</option><option value="Bungee">Bungee</option><option value="Oswald">Oswald</option><option value="Play">Play</option><option value="Impact">Impact</option><option value="Arial Black">Arial Black</option></optgroup><optgroup label="Readable"><option value="Readex Pro">Readex Pro</option><option value="Comfortaa">Comfortaa</option><option value="Arial">Arial</option><option value="Verdana">Verdana</option><option value="Trebuchet MS">Trebuchet MS</option><option value="Tahoma">Tahoma</option></optgroup><optgroup label="Decorative"><option value="Caveat">Caveat</option><option value="Cormorant Garamond">Cormorant Garamond</option><option value="Georgia">Georgia</option><option value="Garamond">Garamond</option><option value="Press Start 2P">Press Start 2P</option><option value="Comic Sans MS">Comic Sans MS</option><option value="Courier New">Courier New</option></optgroup></select></label><label><span data-builder-i="color">Color</span><input id="builderColor" type="color" value="#ffffff"/></label></div>
+            <div class="builder-font-preview"><span data-builder-i="font-preview">Font preview</span><strong id="builderFontPreview">YOUR SHOWCASE</strong></div>
+            <label><span data-builder-i="font-size">Font size</span><input id="builderFontSize" type="range" min="14" max="180" value="64"/></label>
+          </div>
+          <div class="builder-effect-controls" id="builderEffectControls" hidden>
+            <label><span data-builder-i="effect-type">Effect type</span><select id="builderEffectType"><option value="particle">Particle Flow</option><option value="snow">Snowfall</option><option value="stars">Starfield Drift</option><option value="matrix">Digital Matrix</option><option value="streaks">Light Streaks</option><option value="sparks">Obsidian Sparks</option><option value="custom">Custom overlay</option></select></label>
+            <label id="builderEffectColorRow"><span data-builder-i="effect-color">Effect color</span><input id="builderEffectColor" type="color" value="#52d5ff"/></label>
+            <button type="button" class="btn ghost" id="builderEffectUpload" data-builder-i="upload-effect">Upload overlay</button>
+          </div>
+          <div class="builder-frame-controls" id="builderFrameControls" hidden>
+            <div class="builder-two"><label><span data-builder-i="frame-color">Frame color</span><input id="builderFrameColor" type="color" value="#52d5ff"/></label><label><span data-builder-i="thickness">Thickness</span><input id="builderFrameWidth" type="range" min="1" max="30" value="4"/></label></div>
+          </div>
+          <div class="builder-media-controls" id="builderMediaControls" hidden>
+            <label class="builder-toggle"><input id="builderChroma" type="checkbox"/><i></i><span data-builder-i="chroma">Remove chromakey</span></label>
+            <div class="builder-chroma-settings" id="builderChromaSettings" hidden>
+              <label><span><b data-builder-i="chroma-tolerance">Tolerance</b><output id="builderChromaToleranceValue">45</output></span><input id="builderChromaTolerance" type="range" min="10" max="120" value="45"/></label>
+              <label><span><b data-builder-i="chroma-feather">Edge feather</b><output id="builderChromaFeatherValue">1.6</output></span><input id="builderChromaFeather" type="range" min="0" max="40" value="16"/></label>
+            </div>
+            <button type="button" class="btn ghost builder-ai-cut" id="builderAiRemove"><span>✦</span> <b data-builder-i="ai-remove">Remove background with AI</b></button>
+            <label><span data-builder-i="animation">Animation</span><select id="builderAnimation"><option value="none" data-builder-i="none">None</option><option value="breathing" data-builder-i="breathing">Breathing</option><option value="wave" data-builder-i="wave">Wave</option></select></label>
+          </div>
+          <label><span data-builder-i="scale">Scale</span><input id="builderScale" type="range" min="10" max="300" value="100"/></label>
+          <label><span data-builder-i="rotation">Rotation</span><input id="builderRotation" type="range" min="-180" max="180" value="0"/></label>
+          <label><span data-builder-i="opacity">Opacity</span><input id="builderOpacity" type="range" min="0" max="100" value="100"/></label>
+        </div>
+      </aside>
+
+      <section class="builder-stage card">
+        <div class="builder-stage-head">
+          <div class="builder-mode-switch" id="builderModes">
+            <button type="button" class="active" data-builder-mode="workshop"><span class="mode-diagram mode-diagram--workshop"><i></i><i></i><i></i><i></i><i></i></span>Workshop</button>
+            <button type="button" data-builder-mode="featured"><span class="mode-diagram mode-diagram--featured"><i></i></span>Featured</button>
+            <button type="button" data-builder-mode="split"><span class="mode-diagram mode-diagram--split"><i></i><i></i></span>Split</button>
+          </div>
+          <span class="builder-live"><i></i> LIVE</span>
+        </div>
+        <div class="builder-canvas-wrap"><canvas id="builderCanvas" width="750" height="1000"></canvas><div class="builder-guides" id="builderGuides" data-mode="workshop"></div></div>
+        <p class="builder-stage-help" data-builder-i="stage-help">Select a layer, then drag it directly on the showcase. Guides show the exact Steam cut.</p>
+        <div class="builder-actions">
+          <input id="builderProjectName" value="My showcase" maxlength="80" aria-label="Project name"/>
+          <button type="button" class="btn ghost" id="builderSave" data-builder-i="save">Save project</button>
+          <button type="button" class="btn" id="builderExport" data-builder-i="to-process">Send to Process</button>
+        </div>
+        <div class="status" id="builderStatus" aria-live="polite"></div>
+      </section>
+
+      <aside class="builder-layers card">
+        <div class="builder-panel-title"><span>03</span><strong data-builder-i="layers">Layers</strong></div>
+        <div class="builder-layer-list" id="builderLayerList"></div>
+        <div class="builder-empty-layers" id="builderEmptyLayers" data-builder-i="empty-layers">Add a background, character, text, frame or effect.</div>
+        <div class="builder-retention"><b data-builder-i="storage">Project storage</b><span data-builder-i="storage-hint">Free: 7 days · Pro: until you delete it</span></div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-projects">
+    <div class="card builder-projects-page">
+      <div class="builder-projects-head"><div><span>SHOWCASE / LIBRARY</span><h2 data-builder-i="my-projects">My projects</h2><p data-builder-i="projects-hint">Continue editing saved showcases. Free projects are deleted after 7 days; Pro projects remain until you delete them.</p></div><button type="button" class="btn" data-open-tool="builder" data-builder-i="new-project">New project</button></div>
+      <div class="builder-project-grid" id="builderProjectGrid"></div>
+      <div class="status" id="builderProjectsStatus"></div>
+    </div>
+  </section>
+
 <section class="tab" id="tab-da">
     <div class="card">
       <h2><span data-i="da_h">DeviantArt</span></h2>
@@ -836,7 +935,8 @@
   </div>
 </div>
 
-  <script src="/static/js/app.js?v=20260908-hardening1"></script>
+  <script src="/static/js/app.js?v=20260909-builder1"></script>
+  <script src="/static/js/showcase-builder.js?v=20260909-builder7"></script>
 
 
 
@@ -887,7 +987,7 @@
   </div>
 </div>
 
-<script src="/static/js/app-tail.js?v=20260905-modal"></script>
+<script src="/static/js/app-tail.js?v=20260909-observer3"></script>
 <script src="/static/js/steam-check.js?v=20260906f"></script>
 <script src="/static/js/profile-insights.js?v=20260906-unique-tags"></script>
 <script src="/static/js/seamless-loop.js?v=20260906-i18n"></script>

@@ -1072,9 +1072,13 @@ APP_CAPSULE = "https://cdn.cloudflare.steamstatic.com/steam/apps/{}/capsule_231x
 
 # ECommunityItemClass values the points shop actually serves.
 POINTS_CLASS = {
-    "avatar": 13,
+    # 15 is Animated Avatars. 13 is Mini Profile Backgrounds and must never
+    # leak into the avatar grid (the browser then stretches it like an avatar).
+    "avatar": 15,
     "frame": 14,
-    "animated_background": 15,
+    # Static and animated profile backgrounds are both class 3; the Points
+    # Shop distinguishes them with filters 2 and 1 respectively.
+    "animated_background": 3,
     "points_background": 3,
     "theme": 8,
     "points_emoticon": 4,
@@ -1100,7 +1104,22 @@ def _points_item(defn: dict, asset: str) -> dict | None:
         appid = int(defn.get("appid") or 0)
     except (TypeError, ValueError):
         appid = 0
-    image = _points_asset(appid, str(cid.get("item_image_large") or cid.get("item_image_small") or ""))
+    expected_class = POINTS_CLASS.get(asset)
+    actual_class = defn.get("community_item_class")
+    if expected_class is not None and actual_class is not None:
+        try:
+            if int(actual_class) != int(expected_class):
+                return None
+        except (TypeError, ValueError):
+            return None
+    # Animated avatars expose their actual animation as item_image_small.gif;
+    # item_image_large is only a static poster. Other assets prefer the large
+    # representation so backgrounds and frames stay sharp.
+    if asset == "avatar":
+        filename = cid.get("item_image_small") or cid.get("item_image_large") or ""
+    else:
+        filename = cid.get("item_image_large") or cid.get("item_image_small") or ""
+    image = _points_asset(appid, str(filename))
     if not image:
         return None
     try:
@@ -1134,7 +1153,7 @@ def _points_item(defn: dict, asset: str) -> dict | None:
     }
 
 
-def _points_block(cls: int, term: str, block: int) -> tuple[list, int, str] | None:
+def _points_block(cls: int, term: str, block: int, filters: tuple[str, ...] = ()) -> tuple[list, int, str] | None:
     """One 1000-item block. Returns (definitions, total, next_cursor).
 
     The endpoint pages by opaque cursor, not offset, so reaching block N means
@@ -1143,7 +1162,9 @@ def _points_block(cls: int, term: str, block: int) -> tuple[list, int, str] | No
     """
     cursor = ""
     for i in range(block + 1):
-        key = "points:%d:%s:%d" % (cls, term.lower(), i)
+        # v2 prevents old cache entries made with the incorrect class/filter
+        # mapping from being served after deployment.
+        key = "points:v2:%d:%s:%s:%d" % (cls, ",".join(filters), term.lower(), i)
         cached = _get(key)
         if cached is None:
             payload = {
@@ -1153,6 +1174,8 @@ def _points_block(cls: int, term: str, block: int) -> tuple[list, int, str] | No
             }
             if term:
                 payload["search_term"] = term
+            if filters:
+                payload["filters"] = list(filters)
             if cursor:
                 payload["cursor"] = cursor
             r = _fetch(POINTS_QUERY, {"input_json": json.dumps(payload)})
@@ -1188,7 +1211,12 @@ def points_items(asset: str, q: str = "", page: int = 0, count: int = 24) -> dic
 
     start = page * count
     block = start // _POINTS_BLOCK
-    got = _points_block(cls, q, block)
+    filters: tuple[str, ...] = ()
+    if asset == "animated_background":
+        filters = ("1",)
+    elif asset == "points_background":
+        filters = ("2",)
+    got = _points_block(cls, q, block, filters)
     if got is None:
         return {"ok": False, "items": [], "total": 0, "msg": "Steam is unavailable, try again shortly"}
     defs, total, _next = got
@@ -1196,7 +1224,7 @@ def points_items(asset: str, q: str = "", page: int = 0, count: int = 24) -> dic
     window = defs[offset:offset + count]
     # A page may straddle two blocks.
     if len(window) < count and len(defs) >= _POINTS_BLOCK:
-        more = _points_block(cls, q, block + 1)
+        more = _points_block(cls, q, block + 1, filters)
         if more is not None:
             window += more[0][: count - len(window)]
 

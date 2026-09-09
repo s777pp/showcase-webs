@@ -174,6 +174,10 @@ def _create_schema(c: sqlite3.Connection) -> None:
         ("google_id", "TEXT"),
         ("telegram_id", "TEXT"),
         ("telegram_username", "TEXT"),
+        ("steam_id", "TEXT"),
+        ("steam_username", "TEXT"),
+        ("steam_profile_json", "TEXT"),
+        ("profile_builder_json", "TEXT"),
     ):
         if col not in cols:
             try:
@@ -250,6 +254,32 @@ def _create_schema(c: sqlite3.Connection) -> None:
         )
         """
     )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS builder_projects (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            showcase_mode TEXT NOT NULL,
+            project_json TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            updated_at REAL NOT NULL,
+            expires_at REAL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS builder_usage (
+            user_id INTEGER NOT NULL,
+            day_key TEXT NOT NULL,
+            renders INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (user_id, day_key),
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
 
     for ddl in (
         # Hot paths that had no index at all - see docs/ARCHITECTURE_AUDIT.md.
@@ -261,6 +291,8 @@ def _create_schema(c: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_users_discord ON users(discord_id)",
         "CREATE INDEX IF NOT EXISTS idx_users_google ON users(google_id)",
         "CREATE INDEX IF NOT EXISTS idx_users_telegram ON users(telegram_id)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_steam ON users(steam_id) WHERE steam_id IS NOT NULL",
+        "CREATE INDEX IF NOT EXISTS idx_builder_projects_user ON builder_projects(user_id, updated_at DESC)",
     ):
         try:
             c.execute(ddl)
@@ -602,6 +634,116 @@ def effective_pro(user: dict | None) -> bool:
             pass
         return False
     return True
+
+
+def builder_projects_for_user(user_id: int, *, is_pro: bool = False) -> list[dict]:
+    """List editable showcase projects, lazily expiring Free projects."""
+    now = time.time()
+    c = _conn()
+    try:
+        if not is_pro:
+            c.execute(
+                "DELETE FROM builder_projects WHERE user_id=? AND expires_at IS NOT NULL AND expires_at<=?",
+                (int(user_id), now),
+            )
+            c.commit()
+        rows = c.execute(
+            """SELECT id, name, showcase_mode, project_json, created_at, updated_at, expires_at
+               FROM builder_projects WHERE user_id=?
+               AND (expires_at IS NULL OR expires_at>?) ORDER BY updated_at DESC""",
+            (int(user_id), now),
+        ).fetchall()
+        out = []
+        for row in rows:
+            item = dict(row)
+            try:
+                item["project"] = json.loads(item.pop("project_json") or "{}")
+            except Exception:
+                item["project"] = {}
+            out.append(item)
+        return out
+    finally:
+        c.close()
+
+
+def save_builder_project(
+    user_id: int,
+    project_id: str,
+    name: str,
+    showcase_mode: str,
+    project: dict,
+    *,
+    is_pro: bool = False,
+) -> dict:
+    now = time.time()
+    expires_at = None if is_pro else now + 7 * 86400
+    payload = json.dumps(project, ensure_ascii=False, separators=(",", ":"))
+    c = _conn()
+    try:
+        owner = c.execute("SELECT user_id, created_at FROM builder_projects WHERE id=?", (project_id,)).fetchone()
+        if owner and int(owner["user_id"]) != int(user_id):
+            raise PermissionError("Project does not belong to this user")
+        if owner:
+            c.execute(
+                """UPDATE builder_projects SET name=?, showcase_mode=?, project_json=?,
+                   updated_at=?, expires_at=? WHERE id=? AND user_id=?""",
+                (name[:80], showcase_mode, payload, now, expires_at, project_id, int(user_id)),
+            )
+            created_at = float(owner["created_at"] or now)
+        else:
+            c.execute(
+                """INSERT INTO builder_projects
+                   (id,user_id,name,showcase_mode,project_json,created_at,updated_at,expires_at)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (project_id, int(user_id), name[:80], showcase_mode, payload, now, now, expires_at),
+            )
+            created_at = now
+        c.commit()
+        return {"id": project_id, "name": name[:80], "showcase_mode": showcase_mode,
+                "project": project, "created_at": created_at, "updated_at": now,
+                "expires_at": expires_at}
+    finally:
+        c.close()
+
+
+def delete_builder_project(user_id: int, project_id: str) -> bool:
+    c = _conn()
+    try:
+        cur = c.execute("DELETE FROM builder_projects WHERE id=? AND user_id=?", (project_id, int(user_id)))
+        c.commit()
+        return bool(cur.rowcount)
+    finally:
+        c.close()
+
+
+def consume_builder_render(user_id: int, *, is_pro: bool = False) -> tuple[bool, int | None]:
+    """Reserve one Builder export. Free accounts receive one per UTC day."""
+    if is_pro:
+        return True, None
+    day_key = time.strftime("%Y-%m-%d", time.gmtime())
+    c = _conn()
+    try:
+        row = c.execute(
+            "SELECT renders FROM builder_usage WHERE user_id=? AND day_key=?",
+            (int(user_id), day_key),
+        ).fetchone()
+        used = int(row["renders"] or 0) if row else 0
+        if used >= 1:
+            return False, 0
+        if row:
+            c.execute(
+                "UPDATE builder_usage SET renders=renders+1 WHERE user_id=? AND day_key=?",
+                (int(user_id), day_key),
+            )
+        else:
+            c.execute(
+                "INSERT INTO builder_usage(user_id,day_key,renders) VALUES (?,?,1)",
+                (int(user_id), day_key),
+            )
+        c.commit()
+        return True, 0
+    finally:
+        c.close()
 
 
 def code_used(code: str) -> Optional[int]:
@@ -1624,21 +1766,6 @@ def user_by_steam(steam_id: str) -> dict | None:
     if not steam_id:
         return None
     c = _conn()
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN steam_id TEXT")
-        c.commit()
-    except Exception:
-        pass
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN steam_username TEXT")
-        c.commit()
-    except Exception:
-        pass
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN steam_profile_json TEXT")
-        c.commit()
-    except Exception:
-        pass
     row = c.execute(
         "SELECT id, email, is_pro, pro_code, pro_until, steam_id, steam_username, display_name, avatar_path FROM users WHERE steam_id=?",
         (str(steam_id),),
@@ -1656,12 +1783,6 @@ def register_or_login_steam(steam_id: str, persona_name: str | None = None) -> t
     existing = user_by_steam(steam_id)
     c = _conn()
     try:
-        for col, typ in (("steam_id", "TEXT"), ("steam_username", "TEXT"), ("steam_profile_json", "TEXT")):
-            try:
-                c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
-                c.commit()
-            except Exception:
-                pass
         if existing:
             uid = int(existing["id"])
             c.execute(
@@ -1698,19 +1819,6 @@ def save_steam_profile_snapshot(user_id: int, profile: dict) -> None:
     import json as _json
     c = _conn()
     try:
-        for col, typ in (
-            ("steam_profile_json", "TEXT"),
-            ("profile_summary", "TEXT"),
-            ("profile_level", "INTEGER"),
-            ("profile_status", "TEXT"),
-            ("profile_location", "TEXT"),
-            ("profile_background", "TEXT"),
-        ):
-            try:
-                c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
-                c.commit()
-            except Exception:
-                pass
         summary = (profile.get("summary") or "")[:2000]
         level = profile.get("level")
         status = (profile.get("status") or "")[:40]
@@ -1740,11 +1848,6 @@ def get_steam_profile_snapshot(user_id: int) -> dict | None:
     import json as _json
     c = _conn()
     try:
-        try:
-            c.execute("ALTER TABLE users ADD COLUMN steam_profile_json TEXT")
-            c.commit()
-        except Exception:
-            pass
         row = c.execute("SELECT steam_profile_json, steam_id FROM users WHERE id=?", (int(user_id),)).fetchone()
         if not row or not row["steam_profile_json"]:
             return None
@@ -1763,11 +1866,6 @@ def steam_link_for_user(user_id: int) -> dict | None:
     """Return the Steam identity bound to one site account."""
     c = _conn()
     try:
-        for col, typ in (("steam_id", "TEXT"), ("steam_username", "TEXT")):
-            try:
-                c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
-            except Exception:
-                pass
         row = c.execute(
             "SELECT steam_id, steam_username FROM users WHERE id=?",
             (int(user_id),),
@@ -1843,10 +1941,6 @@ def save_profile_builder_snapshot(user_id: int, snapshot: dict) -> None:
         raise ValueError("Profile snapshot is too large")
     c = _conn()
     try:
-        try:
-            c.execute("ALTER TABLE users ADD COLUMN profile_builder_json TEXT")
-        except Exception:
-            pass
         c.execute("UPDATE users SET profile_builder_json=? WHERE id=?", (raw, int(user_id)))
         c.commit()
     finally:
@@ -1857,11 +1951,6 @@ def get_profile_builder_snapshot(user_id: int) -> dict | None:
     import json as _json
     c = _conn()
     try:
-        try:
-            c.execute("ALTER TABLE users ADD COLUMN profile_builder_json TEXT")
-            c.commit()
-        except Exception:
-            pass
         row = c.execute("SELECT profile_builder_json FROM users WHERE id=?", (int(user_id),)).fetchone()
         if not row or not row["profile_builder_json"]:
             return None
