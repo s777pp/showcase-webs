@@ -30,6 +30,10 @@ const I18N = {
     hero_p: "Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool for creators.",
     cta_open: "Open Showcase Maker",
     hero_note: "Free · 5 files/day  ·  Pro · unlimited",
+    tg_offer_kicker: "TELEGRAM / 7-DAY ACCESS",
+    tg_offer_title: "Get 7 days of Pro free",
+    tg_offer_text: "Join the channel and claim your free key.",
+    tg_offer_action: "Get the key",
     studio_preview: "SHOWCASE / PREVIEW",
     studio_process: "PROCESS",
     studio_ready: "READY",
@@ -187,6 +191,10 @@ const I18N = {
     hero_p: "Нарезка Workshop, Featured и Split, водяной знак, лимиты Steam, скачивание исходников и предпросмотр профиля — один инструмент в браузере.",
     cta_open: "Открыть Showcase Maker",
     hero_note: "Бесплатно · 5 файлов/сутки · Pro · безлимит",
+    tg_offer_kicker: "TELEGRAM / ДОСТУП НА 7 ДНЕЙ",
+    tg_offer_title: "Получи 7 дней Pro бесплатно",
+    tg_offer_text: "Подпишись на канал и забери бесплатный ключ.",
+    tg_offer_action: "Забрать ключ",
     studio_preview: "ВИТРИНА / ПРЕДПРОСМОТР",
     studio_process: "ОБРАБОТКА",
     studio_ready: "ГОТОВО",
@@ -315,6 +323,7 @@ const I18N = {
     notif_login: "Войдите в аккаунт"
   }
 };
+if (window.SMLang && SMLang.extend) SMLang.extend(I18N);
 function nT(k){var pack=I18N[getLang()]||I18N.en;return pack[k]!=null?pack[k]:I18N.en[k]}
 
 function getLang() {
@@ -602,7 +611,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.addEventListener('message', function(ev){
     if (ev.origin !== location.origin || !ev.data) return;
     if (ev.data.type === 'discord_login' || ev.data.type === 'google_login' || ev.data.type === 'telegram_login' || ev.data.type === 'steam_login') {
-      location.href = '/app';
+      location.href = SMLang.url('/app');
     }
   });
 })();
@@ -675,7 +684,7 @@ document.addEventListener("DOMContentLoaded", function () {
             await fetch('/api/notifications/read',{method:'POST',credentials:'include',headers:{...smHeaders(),'Content-Type':'application/json'},body:JSON.stringify({ids:[it.id]})});
           }catch(e){}
           document.getElementById('smNotifPanel').classList.remove('open');
-          if(it.item_id) location.href='/gallery?item='+it.item_id;
+          if(it.item_id) location.href=SMLang.url('/gallery?item='+it.item_id);
           else refreshBadge(true);
         };
         list.appendChild(el);

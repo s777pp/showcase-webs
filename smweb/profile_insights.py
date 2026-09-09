@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 import requests
 from PIL import Image
+from smweb.locales import normalize_language
 
 
 MODEL = (os.environ.get("GEMINI_MODEL") or "gemini-3.6-flash").strip()
@@ -75,20 +76,77 @@ def profile_payload(profile: dict) -> dict:
 
 def fallback_doctor(profile: dict, language: str) -> dict:
     p = profile_payload(profile)
-    ru = language == "ru"
+    copy = {
+        "en": {
+            "background": "Add a profile background as the foundation of the palette.",
+            "frame": "Choose an avatar frame that echoes the background and showcase colors.",
+            "showcase": "Add one primary showcase and keep a consistent visual style.",
+            "accent": "Keep one dominant color and one accent across all showcases.",
+            "summary": "Baseline analysis without AI.",
+        },
+        "ru": {
+            "background": "Добавь фон профиля как основу общей палитры.",
+            "frame": "Подбери рамку аватара в цветах фона и витрин.",
+            "showcase": "Добавь хотя бы одну основную витрину и сохрани единый визуальный стиль.",
+            "accent": "Сохрани один доминирующий цвет и один акцент во всех витринах.",
+            "summary": "Базовый анализ без ИИ.",
+        },
+        "tr": {
+            "background": "Genel renk paletinin temeli olarak bir profil arka planı ekleyin.",
+            "frame": "Arka plan ve vitrin renkleriyle uyumlu bir avatar çerçevesi seçin.",
+            "showcase": "En az bir ana vitrin ekleyin ve tutarlı bir görsel stil kullanın.",
+            "accent": "Tüm vitrinlerde tek bir baskın renk ve tek bir vurgu rengi kullanın.",
+            "summary": "Yapay zekâ kullanılmadan yapılan temel analiz.",
+        },
+        "fr": {
+            "background": "Ajoutez un arrière-plan de profil comme base de la palette générale.",
+            "frame": "Choisissez un cadre d’avatar assorti aux couleurs de l’arrière-plan et des vitrines.",
+            "showcase": "Ajoutez au moins une vitrine principale et conservez un style visuel cohérent.",
+            "accent": "Conservez une couleur dominante et une couleur d’accent sur toutes les vitrines.",
+            "summary": "Analyse de base sans IA.",
+        },
+        "uk": {
+            "background": "Додайте фон профілю як основу загальної палітри.",
+            "frame": "Доберіть рамку аватара в кольорах фону та вітрин.",
+            "showcase": "Додайте принаймні одну основну вітрину й дотримуйтеся єдиного візуального стилю.",
+            "accent": "Збережіть один домінантний колір і один акцент у всіх вітринах.",
+            "summary": "Базовий аналіз без ШІ.",
+        },
+        "es": {
+            "background": "Añade un fondo de perfil como base de la paleta general.",
+            "frame": "Elige un marco de avatar acorde con los colores del fondo y las vitrinas.",
+            "showcase": "Añade al menos una vitrina principal y mantén un estilo visual coherente.",
+            "accent": "Mantén un color dominante y un color de acento en todas las vitrinas.",
+            "summary": "Análisis básico sin IA.",
+        },
+        "pt": {
+            "background": "Adicione um fundo de perfil como base da paleta geral.",
+            "frame": "Escolha uma moldura de avatar que combine com as cores do fundo e das vitrines.",
+            "showcase": "Adicione pelo menos uma vitrine principal e mantenha um estilo visual coerente.",
+            "accent": "Mantenha uma cor dominante e uma cor de destaque em todas as vitrines.",
+            "summary": "Análise básica sem IA.",
+        },
+    }.get(language, {})
+    copy = copy or {
+        "background": "Add a profile background as the foundation of the palette.",
+        "frame": "Choose an avatar frame that echoes the background and showcase colors.",
+        "showcase": "Add one primary showcase and keep a consistent visual style.",
+        "accent": "Keep one dominant color and one accent across all showcases.",
+        "summary": "Baseline analysis without AI.",
+    }
     recommendations = []
     if not p["background_present"]:
-        recommendations.append("Добавь фон профиля как основу общей палитры." if ru else "Add a profile background as the foundation of the palette.")
+        recommendations.append(copy["background"])
     if not p["frame_present"]:
-        recommendations.append("Подбери рамку аватара в цветах фона и витрин." if ru else "Choose an avatar frame that echoes the background and showcase colors.")
+        recommendations.append(copy["frame"])
     if not p["showcases"]:
-        recommendations.append("Добавь хотя бы одну основную витрину и сохрани единый визуальный стиль." if ru else "Add one primary showcase and keep a consistent visual style.")
+        recommendations.append(copy["showcase"])
     if not recommendations:
-        recommendations.append("Сохрани один доминирующий цвет и один акцент во всех витринах." if ru else "Keep one dominant color and one accent across all showcases.")
+        recommendations.append(copy["accent"])
     score = min(90, 35 + 15 * sum((p["background_present"], p["avatar_present"], p["frame_present"], bool(p["showcases"]))))
     return {
         "source": "baseline", "ai_estimate": False, "score": score,
-        "summary": "Базовый анализ без ИИ." if ru else "Baseline analysis without AI.",
+        "summary": copy["summary"],
         "strengths": [], "recommendations": recommendations[:5], "priority": recommendations[0],
     }
 
@@ -221,7 +279,7 @@ def _visual_parts(profile: dict, showcase_first: bool = False) -> list[dict]:
 
 
 def generate(kind: str, profile: dict, language: str = "en", style: str = "auto") -> dict:
-    language = "ru" if language == "ru" else "en"
+    language = normalize_language(language) or "en"
     style = style if style in _ALLOWED_STYLES else "auto"
     if not API_KEY:
         if kind == "doctor":
@@ -232,7 +290,7 @@ def generate(kind: str, profile: dict, language: str = "en", style: str = "auto"
         if kind == "doctor" else
         "Return summary and exactly 3 genuinely different compact concepts. Inspect SHOWCASE visuals before avatar/background/frame and infer only subjects actually visible there. If showcase evidence is missing or ambiguous, say so and use style/color rather than inventing an object. Each concept: title, precise style, 3-5 hex colors, a concrete Steam showcase_prompt naming confirmed subject, scene, composition, motion idea and showcase type, exactly 4 search_queries, and why_it_fits tied to observed profile elements. Every search query must match exactly 'Steam showcase <keyword>' with one broad lowercase English keyword. Across all 12 queries every keyword must be unique; do not repeat subject, style or color tags between concepts. Concept 1 should emphasize the existing subject, concept 2 a compatible adjacent art style/medium, and concept 3 a clearly different composition/accent direction. Keep summary under 300 characters; showcase_prompt and why_it_fits under 500 characters each. Do not add prose outside these fields."
     )
-    output_language = "Russian" if language == "ru" else "English"
+    output_language = {"en":"English", "ru":"Russian", "de":"German", "tr":"Turkish", "fr":"French", "uk":"Ukrainian", "es":"Spanish", "pt":"Portuguese"}.get(language, "English")
     prompt = SYSTEM_PROMPT + f"\nOUTPUT_LANGUAGE={output_language}\nEvery explanatory natural-language string in the JSON must be written in {output_language}; do not mix interface languages. Exception: search_queries must always be concise English DeviantArt keywords.\nREQUESTED_STYLE={style}\nTASK={task}\nPROFILE_DATA_START\n" + json.dumps(profile_payload(profile), ensure_ascii=False) + "\nPROFILE_DATA_END"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
     content_parts = [{"text": prompt}]

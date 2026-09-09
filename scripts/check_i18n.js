@@ -1,4 +1,4 @@
-/* Static audit for RU/EN dictionaries and data-i attributes. */
+/* Static audit for all shipped dictionaries and generated language packs. */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -47,15 +47,82 @@ function check(name, dictionary, keys = []) {
   return errors;
 }
 
+function collectStrings(value, output = []) {
+  if (typeof value === 'string') output.push(value);
+  else if (Array.isArray(value)) value.forEach(item => collectStrings(item, output));
+  else if (value && typeof value === 'object') Object.values(value).forEach(item => collectStrings(item, output));
+  return output;
+}
+
+function likelyUiLiteral(value) {
+  if (!/[A-Za-z]/.test(value) || value.length < 2 || value.length > 700) return false;
+  if (/[<>{}=`\\]/.test(value) || /\b(?:class|href|src|aria-|data-|querySelector|getElementById)\b/.test(value)) return false;
+  if (/^(?:https?:|\/|\.|#|\[|data-|aria-|application\/|image\/|video\/|[a-z]+:[a-z]|[A-Z0-9_-]{2,})/.test(value)) return false;
+  if (/^[a-z0-9_-]+$/.test(value) && !/^(?:loading|ready|error|close|open|save|delete|profile|gallery|tools|account|free|pro)$/i.test(value)) return false;
+  return /\s|[.!?…:→·]/.test(value) || /^[A-Z][a-z]+$/.test(value);
+}
+
+function jsUiStrings(file, output) {
+  const source = fs.readFileSync(path.join(root, file), 'utf8');
+  const literal = /(['"])((?:\\.|(?!\1)[^\\\r\n])*)\1/g;
+  for (const match of source.matchAll(literal)) {
+    let value;
+    try { value = Function(`return ${match[0]}`)(); } catch (_) { continue; }
+    if (likelyUiLiteral(value)) output.add(value);
+  }
+}
+
+function extraPacks() {
+  const source = fs.readFileSync(path.join(root, 'static/js/locales-extra.js'), 'utf8');
+  const match = source.match(/window\.SM_EXTRA_TRANSLATIONS=(\{[\s\S]*\});\s*$/);
+  if (!match) throw new Error('Generated extra locale bundle is invalid');
+  return JSON.parse(match[1]);
+}
+
 const errors = [];
 errors.push(...check('app', evaluateDictionary('static/js/app.js', 'var DICT ='), attributeKeys('static/app.html')));
 errors.push(...check('index', evaluateDictionary('static/js/index.js', 'const I18N ='), attributeKeys('static/index.html')));
 errors.push(...check('profile', evaluateDictionary('static/js/profile.js', 'var PDICT='), attributeKeys('static/profile.html')));
 errors.push(...check('gallery', evaluateDictionary('static/js/gallery.js', 'const GDICT ='), attributeKeys('static/gallery.html')));
+const dictionaries = [
+  evaluateDictionary('static/js/index.js', 'const I18N ='),
+  evaluateDictionary('static/js/app.js', 'const APP_I18N ='),
+  evaluateDictionary('static/js/app.js', 'var DICT ='),
+  evaluateDictionary('static/js/app.js', 'var WM_TIPS ='),
+  evaluateDictionary('static/js/gallery.js', 'const GDICT ='),
+  evaluateDictionary('static/js/profile.js', 'var PDICT='),
+  evaluateDictionary('static/js/profile.js', 'var A='),
+  evaluateDictionary('static/js/seamless-loop.js', 'const copy='),
+  evaluateDictionary('static/js/showcase-builder.js', 'var COPY ='),
+  evaluateDictionary('static/js/steam-check.js', 'const copy ='),
+  evaluateDictionary('static/js/steam-mockup.js', 'var UI ='),
+];
+const extras = extraPacks();
+const languages = ['de','tr','fr','uk','es','pt'];
+const preserved = /^(?:Steam|Showcase Maker|SteamShowcase Helper|Discord|Google|Telegram|Groq|Gemini|DeviantArt|Workshop|Featured|Artwork Split|GIF|PNG|JPG|WEBP|WebM|MP4|MOV|AVI|FFmpeg|gifski|HEX 21|FAQ|Pro|Free|LIVE)$/i;
+const expected = new Set(dictionaries.flatMap(dictionary => collectStrings(dictionary.en || {})).filter(value => /[A-Za-z]/.test(value) && !preserved.test(value.trim())));
+const literalStrings = new Set();
+for (const file of [
+  'static/ss-shell.js', 'static/js/index.js', 'static/js/index-tail.js',
+  'static/js/app.js', 'static/js/app-tail.js', 'static/js/gallery.js',
+  'static/js/profile.js', 'static/js/profile-insights.js', 'static/js/support-chat.js',
+  'static/js/seamless-loop.js', 'static/js/showcase-builder.js',
+  'static/js/steam-check.js', 'static/js/steam-mockup.js',
+  'static/js/steam-extension-status.js', 'static/js/layout-refinement.js',
+  'static/js/sm-auth.js'
+]) jsUiStrings(file, literalStrings);
+for (const value of literalStrings) {
+  if (/[A-Za-z]/.test(value) && !/[А-Яа-яЁёІіЇїЄє]/.test(value) && !preserved.test(value.trim())) expected.add(value);
+}
+for (const language of languages) {
+  const pack = extras[language] || {};
+  for (const value of expected) if (!(value in pack)) errors.push(`${language}: missing generated translation for ${value}`);
+  if (Object.keys(pack).some(value => /[А-Яа-яЁёІіЇїЄє]/.test(value))) errors.push(`${language}: source pack contains non-English keys`);
+}
 
 if (errors.length) {
   console.error(errors.join('\n'));
   process.exitCode = 1;
 } else {
-  console.log('RU/EN dictionary keys and data-i bindings are complete.');
+  console.log('RU/EN keys, data-i bindings and DE/TR/FR/UK/ES/PT generated packs are complete.');
 }

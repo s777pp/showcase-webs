@@ -154,7 +154,7 @@
         if (window.SSShell && typeof window.SSShell.openAuth === 'function') {
           window.SSShell.openAuth('register');
         } else {
-          location.href = '/?auth=register';
+          location.href = window.SMLang ? SMLang.url('/?auth=register') : '/?auth=register';
         }
         return;
       }

@@ -2,12 +2,14 @@
 (() => {
   'use strict';
   if(new URLSearchParams(location.search).get('embed')==='tools')return;
-  const ru=()=>window.SMLang?.get()==='ru';
-  const t=(a,b)=>ru()?a:b;
+  const language=()=>window.SMLang?.get?.()||'en';
+  const ru=()=>language()==='ru';
+  const t=(a,b)=>ru()?a:(window.SMLang?.translate?.(b,language())||b);
   function start(){
     // FAQ links still open the requested existing tool without the redesign script.
     function openLinkedTool(){
-      if(location.pathname.replace(/\/$/,'')!=='/app')return;
+      const path=location.pathname.replace(/^\/(?:en|ru|de|tr|fr|uk|es|pt)(?=\/|$)/,'').replace(/\/$/,'');
+      if(path!=='/app')return;
       const id=location.hash.slice(1);
       const button=[...document.querySelectorAll('#nav button[data-tab]')].find(b=>b.dataset.tab===id&&id!=='check');
       if(button)button.click();
@@ -44,9 +46,9 @@
       find('.studio-chat-note').textContent=!loaded?t('Загружаем справку…','Loading help…'):available?t('Спроси об инструментах, витринах или аккаунте. Есть лимит запросов.','Ask about tools, showcases or your account. Request limits apply.'):t('ИИ ещё не подключён. Пока можно открыть инструкции ниже.','AI is not connected yet. Explore the help topics below.');
       input.disabled=!available||pending;find('.studio-chat-send').disabled=!available||pending;
       const list=find('.studio-chat-topics');list.replaceChildren();
-      topics.forEach(topic=>{const pack=topic[ru()?'ru':'en'];const button=document.createElement('button');button.type='button';button.textContent=pack.title;button.addEventListener('click',()=>{
+      topics.forEach(topic=>{const source=topic[language()]||topic.en||topic.ru;const pack=topic[language()]||{title:window.SMLang?.translate?.(source.title,language())||source.title,text:window.SMLang?.translate?.(source.text,language())||source.text};const button=document.createElement('button');button.type='button';button.textContent=pack.title;button.addEventListener('click',()=>{
         if(topicsExpanded){topicsExpanded=false;paintTopicsState();topicsToggle.focus();}
-        const item=message(pack.text);const link=document.createElement('a');link.href=topic.href;link.textContent=t('Открыть →','Open →');item.append(link);log.scrollTop=log.scrollHeight;
+        const item=message(pack.text);const link=document.createElement('a');link.href=window.SMLang?.url?.(topic.href)||topic.href;link.textContent=t('Открыть →','Open →');item.append(link);log.scrollTop=log.scrollHeight;
       });list.append(button);});
       paintTopicsState();
     }
@@ -62,7 +64,7 @@
       e.preventDefault();const value=input.value.trim();if(!value||pending||!available)return;
       pending=true;message(value,'user');input.value='';const waiting=message(t('Думаю…','Thinking…'));paint();
       try{
-        const response=await fetch('/api/support/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:value,history:history.slice(-6),language:ru()?'ru':'en'}),signal:AbortSignal.timeout(45000)});
+        const response=await fetch('/api/support/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:value,history:history.slice(-6),language:language()}),signal:AbortSignal.timeout(45000)});
         const data=await response.json();
         if(!response.ok){waiting.textContent=data.code==='limit'?t('Лимит запросов достигнут. Попробуй позже или открой справку выше.','Request limit reached. Try again later or use the help topics above.'):t('ИИ сейчас недоступен. Инструкции выше по-прежнему работают.','AI is currently unavailable. The help topics above still work.');}
         else{waiting.textContent=data.answer;history.push({role:'user',content:value},{role:'assistant',content:data.answer.slice(0,1500)});history=history.slice(-6);}

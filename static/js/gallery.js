@@ -40,6 +40,7 @@
       untitled: 'Без названия', anonymous: 'аноним', by: 'автор:', showcase: 'Витрина'
     }
   };
+  if (window.SMLang && SMLang.extend) SMLang.extend(GDICT);
   function gLang() { try { return window.SMLang ? SMLang.get() : 'en'; } catch (e) { return 'en'; } }
   function gT(k) { const p = GDICT[gLang()] || GDICT.en; return p[k] != null ? p[k] : (GDICT.en[k] || ''); }
   function applyGalleryLang() {

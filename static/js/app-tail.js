@@ -128,7 +128,7 @@
       const b = document.getElementById('btnUpgrade');
       if (b) b.click();
       else if (typeof window.openBuyKeyModal === 'function') window.openBuyKeyModal();
-      else location.href = '/#pricing';
+      else location.href = window.SMLang ? SMLang.url('/#pricing') : '/#pricing';
     };
   }
 
@@ -205,7 +205,7 @@
   if (imgAfter) imgAfter.addEventListener('load', fitAfterImage);
   window.addEventListener('resize', fitAfterImage);
 
-  function upT(ru, en){ try { return SMLang.isRu() ? ru : en; } catch (e) { return en; } }
+  function upT(ru, en){ try { var L=SMLang.get(); return L==='ru' ? ru : (SMLang.translate?SMLang.translate(en,L):en); } catch (e) { return en; } }
 
   function wait(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
 

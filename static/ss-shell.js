@@ -39,7 +39,8 @@
   function lang() {
     try { return window.SMLang ? SMLang.get() : (localStorage.getItem('sm_lang') || localStorage.getItem('ss_lang') || 'en'); } catch (e) { return 'en'; }
   }
-  function t(obj) { return obj[lang()] || obj.ru; }
+  function t(obj) { return window.SMLang && SMLang.pick ? SMLang.pick(obj) : (obj[lang()] || obj.en || obj.ru); }
+  function siteUrl(href) { return window.SMLang && SMLang.url ? SMLang.url(href) : href; }
   function svg(name) {
     return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:18px;height:18px;flex:none">' +
@@ -51,7 +52,7 @@
     });
   }
   function active(href) {
-    var p = location.pathname.replace(/\/+$/, '') || '/';
+    var p = location.pathname.replace(/^\/(?:en|ru|de|tr|fr|uk|es|pt)(?=\/|$)/, '').replace(/\/+$/, '') || '/';
     if (href === '/') return p === '/';
     /* конструктор пока живёт на временном адресе /profile2 — подсвечиваем «Профиль» */
     if (href === '/profile' && p === '/profile2') return true;
@@ -60,7 +61,7 @@
 
   function navHTML() {
     return NAV.map(function (n) {
-      return '<a class="ss-nav__i' + (active(n.href) ? ' is-on' : '') + '" href="' + n.href + '"' +
+      return '<a class="ss-nav__i' + (active(n.href) ? ' is-on' : '') + '" href="' + siteUrl(n.href) + '"' +
         (n.external ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
         svg(n.icon) + '<span>' + esc(t(n.label)) + '</span>' +
         (n.tag ? '<i class="ss-nav__tag">' + esc(lang() === 'ru' ? 'новое' : n.tag) + '</i>' : '') + '</a>';
@@ -76,28 +77,35 @@
       var links = g.items.map(function (k) {
         var n = byKey[k];
         if (!n) return '';
-        return '<a href="' + n.href + '"' + (active(n.href) ? ' class="is-on"' : '') +
+        return '<a href="' + siteUrl(n.href) + '"' + (active(n.href) ? ' class="is-on"' : '') +
           (n.external ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
           svg(n.icon) + esc(t(n.label)) + '</a>';
       }).join('');
       return '<div class="ss-drawer__g"><p class="ss-drawer__t">' + esc(t(g.title)) + '</p>' + links + '</div>';
     }).join('');
-    return groups + '<div class="ss-drawer__auth"><button class="ss-drawer__auth-btn" id="ssDrawerAuth" type="button">' +
+    var languageOptions = (window.SMLang ? SMLang.SUPPORTED : ['en','ru']).map(function(code) {
+      var name = window.SMLang && SMLang.NAMES ? SMLang.NAMES[code] : code.toUpperCase();
+      return '<option data-no-translate value="' + code + '"' + (code === lang() ? ' selected' : '') + '>' + esc(name) + '</option>';
+    }).join('');
+    return groups + '<div class="ss-drawer__language"><label for="ssDrawerLanguage">' + esc(t({ru:'Язык',en:'Language'})) + '</label><select id="ssDrawerLanguage">' + languageOptions + '</select></div>' +
+      '<div class="ss-drawer__auth"><button class="ss-drawer__auth-btn" id="ssDrawerAuth" type="button">' +
       svg('user') + '<span>' + (lang() === 'ru' ? 'Войти' : 'Log in') + '</span></button></div>';
   }
 
   function langHTML() {
     var cur = lang();
-    return '<button class="ss-lang__btn" id="ssLangToggle" type="button" aria-label="' +
-      (cur === 'ru' ? 'Переключить на английский' : 'Switch to Russian') + '">' + cur.toUpperCase() + '</button>';
+    var supported = window.SMLang ? SMLang.SUPPORTED : ['en','ru'];
+    var names = window.SMLang ? SMLang.NAMES : {en:'English',ru:'Русский'};
+    return '<div class="ss-lang" id="ssLang"><button class="ss-lang__btn" id="ssLangToggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Language"><span data-no-translate>' + cur.toUpperCase() + '</span><i aria-hidden="true">⌄</i></button>' +
+      '<div class="ss-lang__menu" id="ssLangMenu" role="listbox" aria-label="Language">' + supported.map(function(code){return '<button type="button" role="option" data-language="'+code+'" aria-selected="'+(code===cur)+'"><b data-no-translate>'+code.toUpperCase()+'</b><span data-no-translate>'+esc(names[code]||code)+'</span></button>'}).join('') + '</div></div>';
   }
 
   function headerHTML() {
     return '<header class="ss-head"><div class="ss-wrap ss-head__in">' +
-      '<a class="ss-logo" href="/"><span class="ss-logo__mark"><img src="/static/icon.png" alt=""></span>' +
+      '<a class="ss-logo" href="' + siteUrl('/') + '"><span class="ss-logo__mark"><img src="/static/icon.png" alt=""></span>' +
       '<span class="ss-logo__txt"><b>Showcase</b><span>Maker</span></span></a>' +
       '<div class="ss-account-primary">' +
-        '<a class="ss-pill" id="ssUser" href="/profile" hidden></a>' +
+        '<a class="ss-pill" id="ssUser" href="' + siteUrl('/profile') + '" hidden></a>' +
         '<button class="ss-btn ss-btn--sm ss-login-primary" id="ssLogin" type="button">' + svg('user') + '<span>' +
           (lang() === 'ru' ? 'Войти' : 'Log in') + '</span></button>' +
       '</div>' +
@@ -161,11 +169,11 @@
       ['/profile', ru ? 'Профиль' : 'Profile'],
       ['/#pricing', ru ? 'Тарифы' : 'Pricing'],
       ['/#faq', 'FAQ'],
-      ['/privacy?lang=' + (ru ? 'ru' : 'en'), ru ? 'Политика конфиденциальности' : 'Privacy policy']
+      ['/privacy', ru ? 'Политика конфиденциальности' : 'Privacy policy']
     ];
     return '<footer class="ss-foot"><div class="ss-wrap ss-foot__in">' +
       '<nav class="ss-foot__nav">' + links.map(function (l) {
-        return '<a href="' + l[0] + '"' + (l[2] ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + esc(l[1]) + '</a>';
+        return '<a href="' + siteUrl(l[0]) + '"' + (l[2] ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + esc(l[1]) + '</a>';
       }).join('') + '</nav>' +
       '<a class="ss-foot__telegram" href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer" aria-label="Telegram channel" title="Telegram">' + OAUTH_ICONS.telegram + '</a>' +
       '<p class="ss-foot__note">' +
@@ -197,17 +205,17 @@
         }
       }
       if (logged && publicUsername) {
-        pill.href = '/profile/' + encodeURIComponent(publicUsername);
+        pill.href = siteUrl('/profile/' + encodeURIComponent(publicUsername));
         pill.title = (lang() === 'ru' ? 'Публичный профиль' : 'Public profile');
       } else if (logged) {
         // last resort: still avoid editor — API will ensure username on next load
-        pill.href = '/profile';
+        pill.href = siteUrl('/profile');
         pill.title = (lang() === 'ru' ? 'Профиль' : 'Profile');
       } else {
         /* Never send a user-pill click to the editor. Bootstrap normally
            supplies profile_username; keep the fallback on the public route. */
         var fallbackName = me && ((me.email || '').split('@')[0] || me.display_name);
-        pill.href = '/profile/' + encodeURIComponent(fallbackName || 'profile');
+        pill.href = siteUrl('/profile/' + encodeURIComponent(fallbackName || 'profile'));
       }
     }
     if (login) {
@@ -333,17 +341,28 @@
     var langToggle = document.getElementById('ssLangToggle');
     if (langToggle) {
       langToggle.addEventListener('click', function () {
-        var activationWasOpen = !!document.querySelector('#ssActivation.is-open');
-        var authWasOpen = !!document.querySelector('#ssAuth.is-open');
-        var code = lang() === 'ru' ? 'en' : 'ru';
-        if (window.SMLang) SMLang.set(code);
-        else { try { localStorage.setItem('ss_lang', code); localStorage.setItem('sm_lang', code); } catch (e) {} }
-        mount();
-        if (activationWasOpen) openActivation();
-        else if (authWasOpen) openAuth('login');
-        window.dispatchEvent(new CustomEvent('sm:langchange', { detail: { lang: code } }));
+        var box = document.getElementById('ssLang');
+        var open = !box.classList.contains('is-open');
+        box.classList.toggle('is-open', open);
+        langToggle.setAttribute('aria-expanded', String(open));
       });
+      document.querySelectorAll('#ssLangMenu [data-language]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var code = button.dataset.language;
+          if (window.SMLang && SMLang.switchTo) SMLang.switchTo(code);
+        });
+      });
+      document.addEventListener('click', function (event) {
+        var box = document.getElementById('ssLang');
+        if (box && box.classList.contains('is-open') && !box.contains(event.target)) {
+          box.classList.remove('is-open');langToggle.setAttribute('aria-expanded','false');
+        }
+      }, { once:false });
     }
+    var drawerLanguage = document.getElementById('ssDrawerLanguage');
+    if (drawerLanguage) drawerLanguage.addEventListener('change', function () {
+      if (window.SMLang && SMLang.switchTo) SMLang.switchTo(drawerLanguage.value);
+    });
     wireAuth();
     wireActivation();
   }
@@ -589,7 +608,7 @@
     if (head) head.innerHTML = headerHTML() + authHTML() + activationHTML();
     if (foot) foot.innerHTML = footerHTML();
     document.querySelectorAll('[data-privacy-link]').forEach(function (link) {
-      link.href = '/privacy?lang=' + lang();
+      link.href = siteUrl('/privacy');
       link.textContent = lang() === 'ru' ? 'Политика конфиденциальности' : 'Privacy policy';
     });
     wire();

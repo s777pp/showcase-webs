@@ -58,6 +58,7 @@
       requestFailed: 'Не удалось завершить проверку.', loginRequired: 'Войди, чтобы использовать Steam Check.', proRequired: 'Steam Check доступен только в Pro.', transferDone: 'Файлы добавлены в Обработку.'
     }
   };
+  if (window.SMLang && SMLang.extend) SMLang.extend(copy);
 
   let selected = [];
   let quota = null;
@@ -67,7 +68,7 @@
   const EXTENSION_URL = 'https://chromewebstore.google.com/detail/steamshowcase-helper/' + EXTENSION_ID;
   const $ = (id) => document.getElementById(id);
   const esc = (value) => String(value == null ? '' : value).replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
-  const language = () => (window.SMLang && SMLang.get ? SMLang.get() : document.documentElement.lang) === 'ru' ? 'ru' : 'en';
+  const language = () => window.SMLang && SMLang.get ? SMLang.get() : (document.documentElement.lang || 'en');
   const t = () => copy[language()];
   const bytes = (value) => {
     const n = Number(value || 0);

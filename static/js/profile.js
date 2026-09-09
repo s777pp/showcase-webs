@@ -113,6 +113,7 @@ var PDICT={
   account_current_password:'Текущий пароль',account_new_password:'Новый пароль',account_repeat_password:'Повторите новый пароль',account_change_password:'Изменить пароль'
  }
 };
+if(window.SMLang&&SMLang.extend)SMLang.extend(PDICT);
 function pLang(){try{return window.SMLang?SMLang.get():'en'}catch(e){return 'en'}}
 function pT(k){var pack=PDICT[pLang()]||PDICT.en;return pack[k]!=null?pack[k]:(PDICT.en[k]||'')}
 function pShowcaseTitle(s){var names={'Artwork Showcase':'artwork','Featured Artwork Showcase':'featured','Workshop Showcase':'workshop','Favorite Guide':'guide','Custom Info Box':'info','Favorite Artwork':'artfav'};return names[String(s&&s.title||'')]?pT('sc_'+names[String(s.title)]):(s&&s.title)||pT('sc_'+(s&&s.type))||(s&&s.type)||''}
@@ -149,7 +150,8 @@ $('saveBtn').onclick=function(){setStatus('saveState',pT('save_wait'),'wait');fe
 /* Site account panel: deliberately independent from the profile canvas state. */
 (function(){
  var A={en:{free:'Free',pro:'Pro',saved:'Nickname saved',saving:'Saving…',fill:'Fill in all password fields',match:'New passwords do not match',short:'Use at least 10 characters',changing:'Changing password…',changed:'Password changed'},ru:{free:'Free',pro:'Pro',saved:'Ник сохранён',saving:'Сохраняем…',fill:'Заполните все поля пароля',match:'Новые пароли не совпадают',short:'Минимум 10 символов',changing:'Меняем пароль…',changed:'Пароль изменён'}};
- function t(k){var l=window.SMLang&&SMLang.get()==='ru'?'ru':'en';return A[l][k]||A.en[k]||k}
+ if(window.SMLang&&SMLang.extend)SMLang.extend(A);
+ function t(k){var l=window.SMLang&&SMLang.get?SMLang.get():'en';return (A[l]||A.en)[k]||A.en[k]||k}
  function el(id){return document.getElementById(id)}
  function state(id,text,kind){var n=el(id);if(!n)return;n.textContent=text||'';n.className='account-state '+(kind||'')}
  function paint(d){

@@ -37,7 +37,7 @@ const titles = {
   account:['Account','Sign up, log in and buy Pro'],
   about:['About','Limits, Pro and contacts']
 };
-function smT(ru, en) { return SMLang.isRu() ? ru : en; }
+function smT(ru, en) { var L=SMLang.get(); return L==='ru' ? ru : (SMLang.translate ? SMLang.translate(en,L) : en); }
 window.smT = smT;
 function headers() {
   // re-read every time so navigation/home→tools keeps login
@@ -1307,6 +1307,7 @@ const APP_I18N = window.APP_I18N = {
     free_plan: "Free — daily limit", pro_plan: "Pro",
   }
 };
+if (window.SMLang && SMLang.extend) SMLang.extend(APP_I18N);
 
 function appLang() {
   return SMLang.get();
@@ -2287,6 +2288,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       free: "Free", pro: "Pro"
     }
   };
+  if (window.SMLang && SMLang.extend) SMLang.extend(DICT);
 
   function getLang() {
     try { return SMLang.get(); } catch (e) { return "en"; }
@@ -2971,6 +2973,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       guide_split: 'ARTWORK SPLIT · 2 ФАЙЛА'
     }
   };
+  if (window.SMLang && SMLang.extend) SMLang.extend(WM_TIPS);
   function wmT(key){
     var pack = WM_TIPS[SMLang.get()] || WM_TIPS.en;
     return pack[key] || WM_TIPS.en[key] || '';

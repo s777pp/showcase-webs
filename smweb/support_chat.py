@@ -6,6 +6,7 @@ import threading
 from pathlib import Path
 
 import requests
+from smweb.locales import SUPPORTED_LANGUAGES, normalize_language
 
 KNOWLEDGE = json.loads(Path(__file__).with_name("support_knowledge.json").read_text(encoding="utf-8"))
 _slots = threading.BoundedSemaphore(4)
@@ -50,7 +51,8 @@ def validate_body(body):
         if not isinstance(value, str) or len(value) > 1500:
             raise ValueError("Invalid history message")
         clean.append({"role": item["role"], "content": value})
-    return message.strip(), clean, "ru" if body.get("language") == "ru" else "en"
+    language = normalize_language(str(body.get("language") or ""))
+    return message.strip(), clean, language if language in SUPPORTED_LANGUAGES else "en"
 
 def build_payload(message, history, language):
     # Keep context bounded for the free provider's token-per-minute allowance.
@@ -61,10 +63,11 @@ def build_payload(message, history, language):
             break
         recent.insert(0, item)
         remaining -= len(item["content"])
-    facts = [{"title": k[language]["title"], "text": k[language]["text"], "url": k["href"]} for k in KNOWLEDGE]
+    facts = [{"title": (k.get(language) or k["en"])["title"], "text": (k.get(language) or k["en"])["text"], "url": k["href"]} for k in KNOWLEDGE]
+    language_names = {"en":"English", "ru":"Russian", "de":"German", "tr":"Turkish", "fr":"French", "uk":"Ukrainian", "es":"Spanish", "pt":"Portuguese"}
     instructions = (
         "You are the Showcase Maker website support assistant. "
-        "Answer in Russian when language=ru, otherwise English. Be friendly, concrete and concise: "
+        f"Answer in {language_names.get(language, 'English')}. Be friendly, concrete and concise: "
         "usually 2–6 sentences or a short sequence of steps. Use only the PUBLIC KNOWLEDGE below "
         "for product facts. Cover product tools, Steam showcase preparation and using the website. "
         "If the question is unrelated, politely redirect to product support. If facts are missing, "

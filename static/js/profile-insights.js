@@ -33,7 +33,7 @@
     button.onclick=async()=>{
       const url=tool.querySelector('.insight-url').value.trim(); if(!url) return;
       button.disabled=true; status.className='status insight-status'; status.innerHTML=esc(words().wait)+'<div class="insight-progress"><i style="width:2%"></i></div>'; const bar=status.querySelector('i');
-      try{const response=await fetch('/api/profile-insights/start',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,url,style:tool.querySelector('.insight-style')?.value||'auto',language:ru()?'ru':'en'})}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.msg||words().failed);const output=await poll(data.job_id,status,bar);status.textContent='';kind==='doctor'?renderDoctor(result,output):renderDesign(result,output)}catch(error){status.className='status err insight-status';status.textContent=error.message||words().failed}finally{button.disabled=false}
+      try{const response=await fetch('/api/profile-insights/start',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,url,style:tool.querySelector('.insight-style')?.value||'auto',language:window.SMLang?.get?.()||'en'})}),data=await response.json().catch(()=>({}));if(!response.ok||!data.ok)throw Error(data.msg||words().failed);const output=await poll(data.job_id,status,bar);status.textContent='';kind==='doctor'?renderDoctor(result,output):renderDesign(result,output)}catch(error){status.className='status err insight-status';status.textContent=error.message||words().failed}finally{button.disabled=false}
     };
   });
   window.addEventListener('sm:langchange',applyLanguage);applyLanguage();

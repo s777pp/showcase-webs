@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 import redis_store as rs
 from smweb.core import quota_state
 from smweb.profile_insights import configured
+from smweb.locales import normalize_language
 from steam_browser_import import _public_profile_url
 
 
@@ -64,7 +65,7 @@ async def start(request: Request):
     payload = {
         "kind": "profile_insight", "insight_kind": kind, "status": "queued", "pct": 1,
         "stage": "queued", "user_key": user_key, "user_id": uid, "source_key": source_key,
-        "url": url, "language": "ru" if body.get("language") == "ru" else "en",
+        "url": url, "language": normalize_language(str(body.get("language") or "")) or "en",
         "style": str(body.get("style") or "auto")[:24], "is_pro": bool(quota.get("pro")), "created": time.time(),
     }
     rs.job_create(jid, payload, enqueue=external)
