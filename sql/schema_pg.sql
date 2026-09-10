@@ -104,3 +104,25 @@ CREATE TABLE IF NOT EXISTS builder_usage (
  renders INTEGER NOT NULL DEFAULT 0,
  PRIMARY KEY (user_id, day_key)
 );
+
+CREATE TABLE IF NOT EXISTS analytics_events (
+    id BIGSERIAL PRIMARY KEY,
+    event_key TEXT UNIQUE NOT NULL,
+    event_name TEXT NOT NULL,
+    session_hash TEXT,
+    user_hash TEXT,
+    language TEXT NOT NULL,
+    path TEXT,
+    tool TEXT,
+    mode TEXT,
+    method TEXT,
+    reason TEXT,
+    file_type TEXT,
+    size_bucket TEXT,
+    value_int INTEGER NOT NULL DEFAULT 0,
+    day_key TEXT NOT NULL,
+    created_at DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_analytics_event_created ON analytics_events(event_name, created_at);
+CREATE INDEX IF NOT EXISTS idx_analytics_day ON analytics_events(day_key);

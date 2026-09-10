@@ -38,6 +38,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import analytics
 
 
 from fastapi import APIRouter
@@ -90,6 +91,11 @@ async def billing_webhook(request: Request):
         if uid:
             try:
                 auth_db.set_pro(int(uid), True)
+                analytics.record(
+                    "pro_activated", user_id=int(uid),
+                    properties={"method": "stripe"},
+                    event_key=f"pro:stripe:{event.get('id') or hashlib.sha256(payload).hexdigest()[:24]}",
+                )
             except Exception:
                 pass
     return {"ok": True}

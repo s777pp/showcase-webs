@@ -38,7 +38,7 @@ import redis_store as rs
 import mailer
 
 import auth_db
-from smweb import object_store
+from smweb import object_store, analytics
 
 from fastapi import APIRouter
 
@@ -139,6 +139,12 @@ async def auth_register(request: Request):
     resp = JSONResponse({"ok": True, "msg": msg, "session": bool(token)})
     if token:
         _attach_session_cookie(resp, token, request)
+        created_user = auth_db.user_by_token(token)
+        analytics.record(
+            "registration_success", request=request,
+            user_id=created_user.get("id") if created_user else None,
+            properties={"method": "email"},
+        )
     return resp
 
 

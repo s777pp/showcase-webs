@@ -141,6 +141,7 @@
     launchStatus.className = 'status steam-extension-card__launch-status';
     launchStatus.textContent = copy.starting;
     uploadAction.disabled = true;
+    try { window.SMAnalytics && window.SMAnalytics.track('extension_launch_clicked', { mode:modeSelect.value }); } catch (_) {}
     try {
       const ping = await extensionMessage({ type: 'PING' });
       installed = !!(ping && ping.ok);
@@ -154,6 +155,7 @@
       if (!reply || !reply.ok) throw new Error(reply && reply.error ? reply.error : 'upload-failed');
       launchStatus.className = 'status ok steam-extension-card__launch-status';
       launchStatus.textContent = copy.opened;
+      try { window.SMAnalytics && window.SMAnalytics.track('extension_launch_confirmed', { mode:modeSelect.value }); } catch (_) {}
     } catch (_) {
       launchStatus.className = 'status err steam-extension-card__launch-status';
       launchStatus.textContent = copy.failed;

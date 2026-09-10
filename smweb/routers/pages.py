@@ -121,6 +121,13 @@ def app_page(request: Request):
     return _legacy_redirect(request, "/app")
 
 
+@router.get("/admin/analytics", include_in_schema=False)
+def analytics_dashboard():
+    response = _html(_page(STATIC / "analytics.html"))
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
+
+
 @router.get("/privacy", response_class=HTMLResponse)
 @router.get("/privacy/", response_class=HTMLResponse, include_in_schema=False)
 def privacy_page(request: Request, lang: str = ""):

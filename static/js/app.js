@@ -44,6 +44,7 @@ function headers() {
   state.token = localStorage.getItem('sm_token') || state.token || '';
   const h = {};
   if (state.token) h['X-Access-Token'] = state.token;
+  try { Object.assign(h, window.SMAnalytics ? window.SMAnalytics.headers() : {}); } catch (e) {}
   return h;
 }
 const fetchOpts = { credentials: 'include' };
@@ -653,6 +654,7 @@ document.getElementById('btnRun').onclick = async () => {
       xhr.send(fd);
     });
   } catch (e) {
+    try { window.SMAnalytics && window.SMAnalytics.track('process_failed', { reason:'client', mode:state.mode }); } catch (_) {}
     if (st && st.className.indexOf('err') < 0) {
       st.className = 'status err';
       st.textContent = String(e && e.message ? e.message : e);

@@ -90,6 +90,7 @@ from smweb.routers import (
     seamless_loop,
     support,
     builder,
+    analytics as analytics_router,
 )
 
 
@@ -169,6 +170,7 @@ app.include_router(profile_insights.router)
 app.include_router(seamless_loop.router)
 app.include_router(support.router)
 app.include_router(builder.router)
+app.include_router(analytics_router.router)
 
 
 # ====================== Profile builder API (Steam catalogs, projects) ======================

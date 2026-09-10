@@ -38,6 +38,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import analytics
 
 
 from smweb.core import JOBS, MAX_UPLOAD_MB
@@ -45,6 +46,26 @@ from smweb.steam_readiness import Candidate, analyze_groups
 
 
 JOB_RESULT_TTL_SECONDS = max(120, int(os.environ.get("JOB_RESULT_TTL_SECONDS") or 900))
+
+
+def _record_process_event(jid: str, event_name: str, opts: dict, elapsed_ms: int = 0, reason: str = "") -> None:
+    context = opts.get("_analytics") if isinstance(opts.get("_analytics"), dict) else {}
+    modes = list(opts.get("modes") or [])
+    analytics.record(
+        event_name,
+        session_hash=context.get("session_hash") or "",
+        user_id=context.get("user_id"),
+        language=context.get("language") or "",
+        properties={
+            "mode": "all" if len(modes) > 1 else (modes[0] if modes else ""),
+            "method": opts.get("enc") or "",
+            "reason": reason,
+            "file_type": context.get("file_type") or "",
+            "size_bucket": context.get("size_bucket") or "",
+            "value": elapsed_ms,
+        },
+        event_key=f"process:{jid}:terminal",
+    )
 
 
 def _cleanup_old_jobs(max_age_sec: float | None = None) -> int:
@@ -200,6 +221,7 @@ def _run_process_job_from_payload(jid: str, job: dict) -> None:
     opts = job.get("opts") or {}
     if not files_data:
         _rs.job_update(jid, status="error", pct=100, stage="error", error="No files")
+        _record_process_event(jid, "process_failed", opts, reason="no_files")
         return
     # Reuse existing runner if present
     try:
@@ -402,6 +424,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
         if processed == 0:
             detail = "; ".join(errors) if errors else "unknown error"
             _job_set(jid, status="error", pct=100, stage="error", error=f"Failed: {detail}", errors=errors)
+            _record_process_event(jid, "process_failed", opts, int((_sm_time.perf_counter()-_sm_job_t0)*1000), "processing")
             shutil.rmtree(job_dir, ignore_errors=True)
             return
         print(f"[JOB TIMING] ZIP size={zip_path.stat().st_size / 1024 / 1024:.2f}MB", flush=True)
@@ -432,10 +455,12 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
             listed=listed,
             readiness=readiness,
         )
+        _record_process_event(jid, "process_success", opts, int((_sm_time.perf_counter()-_sm_job_t0)*1000))
         print(
             f"[JOB TIMING] TOTAL: {_sm_time.perf_counter()-_sm_job_t0:.3f}s | jid={jid}",
             flush=True,
         )
     except Exception as e:
         _job_set(jid, status="error", pct=100, stage="error", error=_public_process_error(e, job_dir))
+        _record_process_event(jid, "process_failed", opts, int((_sm_time.perf_counter()-_sm_job_t0)*1000), "internal")
         shutil.rmtree(job_dir, ignore_errors=True)

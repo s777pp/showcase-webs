@@ -38,6 +38,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import analytics
 
 
 from fastapi import APIRouter
@@ -66,6 +67,11 @@ from smweb.jobs import (
 
 
 router = APIRouter()
+
+
+def _analytics_mode(opts: dict) -> str:
+    modes = list(opts.get("modes") or [])
+    return "all" if len(modes) > 1 else (str(modes[0]) if modes else "")
 
 
 def _watermark_options(
@@ -200,6 +206,7 @@ async def api_process_start(
         "steam_check": bool(q.get("email")),
     }
     user_key = ""
+    u = None
     try:
         u = _auth_user(request)
         # Anonymous callers are keyed by IP. Using request.client.host here
@@ -249,10 +256,22 @@ async def api_process_start(
         # Processing uses crisp quarter-turns. Arbitrary rotation belongs to the
         # Character editor, where a transparent expanded canvas is meaningful.
         rotation = min((0.0, 90.0, -90.0, -180.0), key=lambda angle: abs(angle - rotation))
-        files_meta.append({"name": name, "path": str(p), "rotation": rotation})
+        files_meta.append({"name": name, "path": str(p), "rotation": rotation, "size": written})
     if not files_meta:
         shutil.rmtree(job_upload_dir, ignore_errors=True)
         return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
+
+    event_context = analytics.request_context(request)
+    total_upload_bytes = sum(int(item.get("size") or 0) for item in files_meta)
+    first_suffix = Path(files_meta[0]["name"]).suffix.lower().lstrip(".")
+    total_mb = total_upload_bytes / (1024 * 1024)
+    opts["_analytics"] = {
+        "session_hash": event_context.get("session_hash") or "",
+        "language": event_context.get("language") or "other",
+        "user_id": int(u["id"]) if u and u.get("id") else None,
+        "file_type": first_suffix,
+        "size_bucket": "under_1mb" if total_mb < 1 else "1_5mb" if total_mb < 5 else "5_20mb" if total_mb < 20 else "over_20mb",
+    }
 
     # Only hand the job to an external worker if one is actually alive; otherwise
     # the entry would sit in the Redis queue forever with nobody to pop it.
@@ -335,6 +354,15 @@ def api_process_download(job_id: str, request: Request):
             {"ok": False, "msg": "Result expired or stored on another instance. Please run the job again."},
             status_code=410,
         )
+    event_info = (j.get("opts") or {}).get("_analytics") or {}
+    caller = _auth_user(request)
+    analytics.record(
+        "zip_download", request=request,
+        session_hash=event_info.get("session_hash") or "",
+        user_id=caller.get("id") if caller else event_info.get("user_id"),
+        language=event_info.get("language") or "",
+        properties={"mode": _analytics_mode(j.get("opts") or {}), "value": path.stat().st_size},
+    )
     return FileResponse(
         path,
         media_type="application/zip",

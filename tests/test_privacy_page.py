@@ -42,6 +42,7 @@ class PrivacyPageTests(unittest.TestCase):
             self.assertNotIn('set-cookie', response.headers)
             self.assertIn(title, response.text)
             self.assertIn('SteamShowcase Helper', response.text)
+            self.assertIn('90', response.text)
             if lang == 'en':
                 self.assertIn('Limited Use', response.text)
                 self.assertIn('loyalty Web API token', response.text)
@@ -76,11 +77,18 @@ class PrivacyPageTests(unittest.TestCase):
             self.assertIn('data-privacy-link', (static / page).read_text(encoding='utf-8'))
         for page in ['index.html', 'app.html', 'gallery.html', 'profile.html', 'profile-view.html']:
             source = (static / page).read_text(encoding='utf-8')
-            self.assertIn('ss-shell.js?v=20260909-languages4', source)
+            self.assertIn('ss-shell.js?v=20260910-analytics1', source)
+            self.assertIn('analytics.js?v=20260910a', source)
             self.assertIn('locales-extra.js?v=20260909-languages8', source)
             self.assertIn('i18n.js?v=20260909-languages4', source)
         for page in ['profile.html', 'profile-view.html']:
             self.assertIn('id="ssFootHost"', (static / page).read_text(encoding='utf-8'))
+
+    def test_analytics_dashboard_is_not_cached_or_indexed(self):
+        response = self.client.get('/admin/analytics')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['cache-control'], 'private, no-store')
+        self.assertIn('noindex,nofollow', response.text)
 
 
 if __name__ == '__main__':

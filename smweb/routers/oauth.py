@@ -39,6 +39,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import analytics
 from smweb import object_store
 
 
@@ -64,6 +65,17 @@ from smweb.steam import _merge_steam_api, _steam_realm
 
 
 router = APIRouter()
+
+
+def _record_registration(request: Request, token: str, method: str, is_new: bool) -> None:
+    if not is_new:
+        return
+    user = auth_db.user_by_token(token)
+    analytics.record(
+        "registration_success", request=request,
+        user_id=user.get("id") if user else None,
+        properties={"method": method},
+    )
 _steam_profile_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="steam-profile")
 
 
@@ -189,9 +201,11 @@ async def discord_callback(request: Request, code: str = "", state: str = ""):
         # Never link an existing local account through an unverified provider
         # address. Discord can return an address while `verified` is false.
         email = u.get("email") if u.get("verified") is True else None
+        is_new = auth_db.user_by_discord(did) is None and not (email and auth_db.user_exists(email))
         ok, msg, token = auth_db.register_or_login_discord(did, uname, email)
         if not ok or not token:
             return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
+        _record_registration(request, token, "discord", is_new)
         app_url = _app_origin()
         target_origin = json.dumps(app_url)
         resp = HTMLResponse(
@@ -284,9 +298,11 @@ async def google_callback(request: Request, code: str = "", state: str = ""):
             return HTMLResponse("<h3>Google sign-in failed</h3>", status_code=400)
         uname = u.get("name") or (u.get("email") or "google").split("@")[0]
         email = u.get("email") if u.get("email_verified") is True else None
+        is_new = auth_db.user_by_google(gid) is None and not (email and auth_db.user_exists(email))
         ok, msg, token = auth_db.register_or_login_google(gid, email, uname)
         if not ok or not token:
             return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
+        _record_registration(request, token, "google", is_new)
         app_url = _app_origin()
         target_origin = json.dumps(app_url)
         resp = HTMLResponse(
@@ -334,6 +350,7 @@ async def telegram_auth(request: Request):
     tid = str(body.get("id") or "")
     if not tid:
         return JSONResponse({"ok": False, "msg": "Missing Telegram id"}, status_code=400)
+    is_new = auth_db.user_by_telegram(tid) is None
     ok, msg, token = auth_db.register_or_login_telegram(
         telegram_id=tid,
         username=body.get("username"),
@@ -343,6 +360,7 @@ async def telegram_auth(request: Request):
     )
     if not ok or not token:
         return JSONResponse({"ok": False, "msg": msg or "Auth failed"}, status_code=400)
+    _record_registration(request, token, "telegram", is_new)
     resp = JSONResponse({"ok": True, "session": True, "msg": "OK"})
     return _attach_session_cookie(resp, token, request)
 
@@ -354,6 +372,7 @@ async def telegram_callback(request: Request):
     if not _verify_telegram_login(data):
         return HTMLResponse("<h3>Telegram auth failed</h3>", status_code=400)
     tid = str(data.get("id") or "")
+    is_new = auth_db.user_by_telegram(tid) is None
     ok, msg, token = auth_db.register_or_login_telegram(
         telegram_id=tid,
         username=data.get("username"),
@@ -363,6 +382,7 @@ async def telegram_callback(request: Request):
     )
     if not ok or not token:
         return HTMLResponse(f"<h3>{_esc_html(msg)}</h3>", status_code=400)
+    _record_registration(request, token, "telegram", is_new)
     app_url = _app_origin()
     target_origin = json.dumps(app_url)
     resp = HTMLResponse(
@@ -430,9 +450,11 @@ async def steam_callback(request: Request):
             return HTMLResponse("<h3>Steam login failed (no steamid)</h3>", status_code=400)
         steam_id = m.group(1)
         persona = f"steam_{steam_id[-6:]}"
+        is_new = auth_db.user_by_steam(steam_id) is None
         ok, msg, token = auth_db.register_or_login_steam(steam_id, persona)
         if not ok or not token:
             return HTMLResponse(f"<h3>Login error: {html.escape(msg)}</h3>", status_code=400)
+        _record_registration(request, token, "steam", is_new)
         user = auth_db.user_by_token(token)
         if user:
             _steam_profile_pool.submit(_enrich_steam_account, int(user["id"]), steam_id)

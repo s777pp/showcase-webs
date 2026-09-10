@@ -160,6 +160,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Guessing an access code was unlimited before: /api/unlock was simply
         # not on this list, so a script could try codes as fast as it liked.
         ("/api/unlock", 10, 60),
+        ("/api/analytics/event", 60, 60),
         # Wiping every account should not be reachable at machine speed even
         # with a leaked secret.
         ("/api/admin/", 5, 60),

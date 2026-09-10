@@ -39,6 +39,9 @@
   function lang() {
     try { return window.SMLang ? SMLang.get() : (localStorage.getItem('sm_lang') || localStorage.getItem('ss_lang') || 'en'); } catch (e) { return 'en'; }
   }
+  function analyticsHeaders() {
+    try { return window.SMAnalytics ? window.SMAnalytics.headers() : {}; } catch (e) { return {}; }
+  }
   function t(obj) { return window.SMLang && SMLang.pick ? SMLang.pick(obj) : (obj[lang()] || obj.en || obj.ru); }
   function siteUrl(href) { return window.SMLang && SMLang.url ? SMLang.url(href) : href; }
   function svg(name) {
@@ -390,7 +393,7 @@
       var state = document.getElementById('ssActivationState'), button = form.querySelector('button[type="submit"]');
       if (!code) { state.textContent = lang() === 'ru' ? 'Введите ключ.' : 'Enter a key.'; state.className = 'ss-auth__state is-bad'; return; }
       state.textContent = lang() === 'ru' ? 'Проверяем ключ…' : 'Checking key…'; state.className = 'ss-auth__state is-wait'; button.disabled = true;
-      fetch('/api/unlock', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code:code}) })
+      fetch('/api/unlock', { method:'POST', credentials:'same-origin', headers:Object.assign({'Content-Type':'application/json'},analyticsHeaders()), body:JSON.stringify({code:code}) })
         .then(function (r) { return r.json().then(function (j) { return { status:r.status, data:j }; }); })
         .then(function (x) {
           if (!x.data || !x.data.ok) {
@@ -515,7 +518,7 @@
       if (authMode === 'register') {
           state.textContent = lang() === 'ru' ? 'Отправляем код…' : 'Sending code…'; state.className = 'ss-auth__state is-wait';
           submit.disabled = true;
-          fetch('/api/auth/send-code', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:email}) })
+          fetch('/api/auth/send-code', { method:'POST', credentials:'include', headers:Object.assign({'Content-Type':'application/json'},analyticsHeaders()), body:JSON.stringify({email:email}) })
             .then(function (r) { return r.json(); }).then(function (j) {
               if (!j || !j.ok) throw new Error(authErrorMessage(j, lang() === 'ru' ? 'Не удалось отправить код.' : 'Failed to send code.'));
               state.textContent = ''; state.className = 'ss-auth__state';
@@ -533,7 +536,7 @@
       var bodyObj = {email:email,password:password};
       if (authMode === 'verify') bodyObj.code = code;
       
-      fetch(path, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(bodyObj) })
+      fetch(path, { method:'POST', credentials:'include', headers:Object.assign({'Content-Type':'application/json'},analyticsHeaders()), body:JSON.stringify(bodyObj) })
         .then(function (r) { return r.json(); }).then(function (j) {
           if (!j || !j.ok) throw new Error(authErrorMessage(j, lang() === 'ru' ? 'Не удалось выполнить вход.' : 'Authentication failed.'));
           state.textContent = lang() === 'ru' ? 'Готово' : 'Done'; state.className = 'ss-auth__state is-ok';

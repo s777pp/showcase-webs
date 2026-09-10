@@ -38,7 +38,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
-from smweb import object_store
+from smweb import object_store, analytics
 
 
 from fastapi import APIRouter
@@ -416,6 +416,10 @@ async def unlock(request: Request):
             uid,
             marker,
         )
+        analytics.record(
+            "pro_activated", request=request, user_id=uid,
+            properties={"method": "gumroad"}, event_key=f"pro:gumroad:{marker}",
+        )
 
         return {
             "ok": True,
@@ -447,6 +451,11 @@ async def unlock(request: Request):
     if code.startswith("SM-WEB-") or code.startswith("SM-TRIAL-"):
         used.add(code)
         _save_used(used)
+    analytics.record(
+        "pro_activated", request=request, user_id=int(user["id"]),
+        properties={"method": "trial" if until else "code"},
+        event_key=f"pro:code:{hashlib.sha256(code.encode()).hexdigest()[:24]}",
+    )
     msg = "Pro activated on your account"
     if until:
         msg = f"Trial activated for {int(hours)} hours"
