@@ -77,7 +77,7 @@ class PrivacyPageTests(unittest.TestCase):
             self.assertIn('data-privacy-link', (static / page).read_text(encoding='utf-8'))
         for page in ['index.html', 'app.html', 'gallery.html', 'profile.html', 'profile-view.html']:
             source = (static / page).read_text(encoding='utf-8')
-            self.assertIn('ss-shell.js?v=20260910-analytics1', source)
+            self.assertIn('ss-shell.js?v=20260911-account3', source)
             self.assertIn('analytics.js?v=20260910a', source)
             self.assertIn('locales-extra.js?v=20260909-languages8', source)
             self.assertIn('i18n.js?v=20260909-languages4', source)

@@ -12,6 +12,7 @@ data/usage.json
 data/users.db
 data/auth.db
 data/access_codes.json
+data/maintenance.json
 data/jobs/
 data/gallery/
 data/avatars/

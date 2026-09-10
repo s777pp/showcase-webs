@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import html
 import io
+import asyncio
 import ipaddress
 import json
 import logging
@@ -18,6 +19,7 @@ import re
 import socket
 import tempfile
 import shutil
+import secrets
 import time
 import uuid
 import warnings
@@ -28,7 +30,7 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
@@ -79,6 +81,76 @@ def _avatar_files(user_id) -> list[Path]:
         except OSError:
             return 0.0
     return sorted(found, key=_mtime, reverse=True)
+
+
+def _request_language(request: Request) -> str:
+    language = (request.headers.get("accept-language") or "en").split(",", 1)[0]
+    return language.strip().lower()[:8] or "en"
+
+
+def _account_media_cleanup(plan: dict) -> None:
+    """Best-effort deletion of account-owned local and R2 media."""
+    uid = int(plan["user_id"])
+    if object_store.configured():
+        try:
+            object_store.delete_prefix(f"avatars/{uid}", public=True, directory=False)
+        except Exception:
+            LOGGER.exception("account delete: R2 avatar cleanup failed user_id=%s", uid)
+        for prefix in (f"profile_assets/{uid}", f"profile_sc/{uid}", f"gallery/u{uid}"):
+            try:
+                object_store.delete_prefix(prefix, public=True)
+            except Exception:
+                LOGGER.exception("account delete: R2 public prefix cleanup failed prefix=%s", prefix)
+        try:
+            object_store.delete_prefix(f"builder/{uid}", public=False)
+        except Exception:
+            LOGGER.exception("account delete: R2 private prefix cleanup failed user_id=%s", uid)
+        for stored in (plan.get("avatar_path"), plan.get("profile_background"), *(plan.get("gallery_paths") or [])):
+            value = str(stored or "").strip()
+            if not value or value.startswith(("http://", "https://")):
+                continue
+            try:
+                key = object_store.key_from_stored(value)
+                if key.startswith(("avatars/", "profile_assets/", "profile_sc/", "gallery/")):
+                    object_store.delete(key, public=True)
+            except Exception:
+                LOGGER.exception("account delete: R2 object cleanup failed")
+
+    for relative in (
+        Path("profile_assets") / str(uid),
+        Path("profile_sc") / str(uid),
+        Path("builder") / str(uid),
+        Path("projects") / str(uid),
+        Path("gallery") / f"u{uid}",
+    ):
+        target = (Path(DATA) / relative).resolve()
+        try:
+            target.relative_to(Path(DATA).resolve())
+            shutil.rmtree(target, ignore_errors=True)
+        except (OSError, ValueError):
+            LOGGER.exception("account delete: local directory cleanup failed user_id=%s", uid)
+    for avatar in _avatar_files(uid):
+        try:
+            avatar.unlink(missing_ok=True)
+        except OSError:
+            LOGGER.exception("account delete: local avatar cleanup failed user_id=%s", uid)
+    for stored in (plan.get("avatar_path"), plan.get("profile_background"), *(plan.get("gallery_paths") or [])):
+        value = str(stored or "").strip()
+        if not value or value.startswith(("http://", "https://")):
+            continue
+        path = _safe_data_path(value)
+        if path is not None:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                LOGGER.exception("account delete: local object cleanup failed")
+
+
+def _deliver_password_reset(email: str, code: str, language: str, identity: str) -> None:
+    sent, mail_error = mailer.send_password_reset_code(email, code, language)
+    if not sent:
+        auth_db.discard_account_action_code(email, "password_reset")
+        LOGGER.warning("password reset delivery failed identity=%s: %s", identity, mail_error)
 
 
 @router.post("/api/auth/send-code")
@@ -193,6 +265,102 @@ async def auth_change_password(request: Request):
     ok, msg = auth_db.change_password(int(user["id"]), current_password, new_password, token)
     LOGGER.info("auth password_change user_id=%s ok=%s", user["id"], ok)
     return JSONResponse({"ok": ok, "msg": msg}, status_code=200 if ok else 400)
+
+
+@router.post("/api/auth/password-reset/request")
+async def auth_password_reset_request(request: Request, background_tasks: BackgroundTasks):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    email = auth_db.normalize_email(str(body.get("email") or ""))
+    if not email:
+        return JSONResponse({"ok": False, "msg": "Invalid email", "code": "invalid_email"}, status_code=400)
+    identity = hashlib.sha256(email.encode()).hexdigest()[:24]
+    if not rs.rate_limit(f"auth-password-reset:{identity}", 3, 900)[0]:
+        return JSONResponse({"ok": False, "msg": "Too many requests. Try later.", "code": "rate_limited"}, status_code=429)
+
+    # The same answer is returned whether the account exists or not. This
+    # prevents password recovery from becoming an account enumeration endpoint.
+    generic = "If an account exists for this address, a recovery code has been sent"
+    account_exists = auth_db.user_exists(email)
+    created, message, code = auth_db.create_account_action_code(email, "password_reset", ttl_sec=900)
+    if not created:
+        if "60 seconds" not in message:
+            LOGGER.warning("password reset code unavailable identity=%s: %s", identity, message)
+        return {"ok": True, "msg": generic, "code": "code_sent"}
+    if account_exists:
+        # Delivery happens after the generic response has been sent so response
+        # timing cannot reveal whether the address belongs to an account.
+        background_tasks.add_task(
+            _deliver_password_reset, email, code, _request_language(request), identity
+        )
+    else:
+        auth_db.discard_account_action_code(email, "password_reset")
+    return {"ok": True, "msg": generic, "code": "code_sent"}
+
+
+@router.post("/api/auth/password-reset/confirm")
+async def auth_password_reset_confirm(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    email = auth_db.normalize_email(str(body.get("email") or ""))
+    code = str(body.get("code") or "").strip()
+    new_password = str(body.get("new_password") or "")
+    identity = hashlib.sha256(email.encode()).hexdigest()[:24] if email else "invalid"
+    if not rs.rate_limit(f"auth-password-reset-confirm:{identity}", 8, 900)[0]:
+        return JSONResponse({"ok": False, "msg": "Too many requests. Try later.", "code": "rate_limited"}, status_code=429)
+    ok, message, reason = auth_db.reset_password_with_code(email, code, new_password)
+    LOGGER.info("auth password_reset identity=%s ok=%s", identity, ok)
+    return JSONResponse({"ok": ok, "msg": message, "code": reason}, status_code=200 if ok else 400)
+
+
+@router.get("/api/auth/account-export")
+def auth_account_export(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    uid = int(user["id"])
+    payload = auth_db.account_export_data(uid, analytics.user_hash(uid))
+    encoded = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return StreamingResponse(
+        io.BytesIO(encoded),
+        media_type="application/json; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="showcase-maker-account-{stamp}.json"',
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
+@router.post("/api/auth/account-delete")
+async def auth_account_delete(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Login required"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    uid = int(user["id"])
+    expected_email = auth_db.normalize_email(str(user.get("email") or ""))
+    confirmation_email = auth_db.normalize_email(str(body.get("confirm_email") or ""))
+    if confirmation_email != expected_email or str(body.get("confirm") or "") != "DELETE":
+        return JSONResponse({"ok": False, "msg": "Account deletion confirmation does not match"}, status_code=400)
+    if rs.job_count_user(str(uid)):
+        return JSONResponse(
+            {"ok": False, "msg": "Wait for active processing jobs to finish before deleting the account"},
+            status_code=409,
+        )
+    plan = auth_db.delete_account_data(uid, analytics.user_hash(uid))
+    await asyncio.to_thread(_account_media_cleanup, plan)
+    LOGGER.info("auth account_deleted user_id=%s", uid)
+    response = JSONResponse({"ok": True, "msg": "Account deleted"})
+    _clear_session_cookie(response)
+    return response
 
 
 @router.post("/api/admin/wipe-users")

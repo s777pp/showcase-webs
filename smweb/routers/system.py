@@ -38,7 +38,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
-from smweb import object_store, analytics
+from smweb import object_store, analytics, maintenance
 
 
 from fastapi import APIRouter
@@ -69,6 +69,12 @@ from smweb.jobs import MAX_JOB_WORKERS, _worker_mode
 router = APIRouter()
 
 LOGGER = logging.getLogger("sm")
+
+
+@router.get("/api/maintenance")
+def api_maintenance():
+    state = maintenance.get_state()
+    return JSONResponse(state, headers={"Cache-Control": "no-store"})
 
 
 @router.get("/api/ready")

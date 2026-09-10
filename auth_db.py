@@ -131,6 +131,19 @@ def _create_schema(c: sqlite3.Connection) -> None:
     )
     c.execute(
         """
+        CREATE TABLE IF NOT EXISTS account_action_codes (
+            email TEXT NOT NULL,
+            purpose TEXT NOT NULL,
+            code_hash TEXT NOT NULL,
+            expires_at REAL NOT NULL,
+            attempts INTEGER DEFAULT 0,
+            last_sent REAL DEFAULT 0,
+            PRIMARY KEY (email, purpose)
+        )
+        """
+    )
+    c.execute(
+        """
         CREATE TABLE IF NOT EXISTS profile_import_tickets (
             ticket_hash TEXT PRIMARY KEY,
             user_id INTEGER NOT NULL,
@@ -299,6 +312,22 @@ def _create_schema(c: sqlite3.Connection) -> None:
             value_int INTEGER NOT NULL DEFAULT 0,
             day_key TEXT NOT NULL,
             created_at REAL NOT NULL
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS process_jobs (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER,
+            status TEXT NOT NULL DEFAULT 'queued',
+            pct INTEGER DEFAULT 0,
+            stage TEXT,
+            error TEXT,
+            result_path TEXT,
+            created_at REAL,
+            updated_at REAL,
+            meta_json TEXT
         )
         """
     )
@@ -529,6 +558,198 @@ def account_activity_stats(user_id: int) -> dict:
             except Exception:
                 showcase_count = 0
         return {"gallery_uploads": int(gallery_uploads or 0), "showcase_count": int(showcase_count or 0)}
+    finally:
+        c.close()
+
+
+_ACCOUNT_SECRET_FIELDS = {
+    "password_hash",
+    "da_access_token",
+    "da_refresh_token",
+    "da_client_secret",
+}
+
+
+def _decode_export_json(value):
+    if not isinstance(value, str) or not value.strip():
+        return value
+    try:
+        return json.loads(value)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return value
+
+
+def account_export_data(user_id: int, analytics_user_hash: str = "") -> dict:
+    """Return all portable account data without credentials or session tokens."""
+    uid = int(user_id)
+    c = _conn()
+    try:
+        row = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        if not row:
+            raise LookupError("Account not found")
+        account = dict(row)
+        for field in _ACCOUNT_SECRET_FIELDS:
+            account.pop(field, None)
+        for field in ("steam_profile_json", "profile_builder_json"):
+            if field in account:
+                account[field] = _decode_export_json(account[field])
+        account["connections"] = {
+            "discord": bool(account.get("discord_id")),
+            "google": bool(account.get("google_id")),
+            "telegram": bool(account.get("telegram_id")),
+            "steam": bool(account.get("steam_id")),
+            "deviantart": bool(row["da_access_token"] if "da_access_token" in row.keys() else None),
+        }
+
+        gallery = [dict(item) for item in c.execute(
+            """SELECT id,title,mode,image_path,thumb_path,status,created_at
+               FROM gallery WHERE user_id=? ORDER BY created_at""",
+            (uid,),
+        ).fetchall()]
+        comments = [dict(item) for item in c.execute(
+            """SELECT id,item_id,parent_id,body,created_at,deleted
+               FROM gallery_comments WHERE user_id=? ORDER BY created_at""",
+            (uid,),
+        ).fetchall()]
+        likes = [dict(item) for item in c.execute(
+            "SELECT item_id,created_at FROM gallery_likes WHERE user_id=? ORDER BY created_at",
+            (uid,),
+        ).fetchall()]
+        notifications = [dict(item) for item in c.execute(
+            """SELECT id,kind,actor_id,item_id,comment_id,body,is_read,created_at
+               FROM notifications WHERE user_id=? ORDER BY created_at""",
+            (uid,),
+        ).fetchall()]
+        showcases = [dict(item) for item in c.execute(
+            """SELECT id,sc_type,title,sort_order,data_json,created_at
+               FROM profile_showcases WHERE user_id=? ORDER BY sort_order,id""",
+            (uid,),
+        ).fetchall()]
+        for item in showcases:
+            item["data"] = _decode_export_json(item.pop("data_json", None))
+        projects = [dict(item) for item in c.execute(
+            """SELECT id,name,showcase_mode,project_json,created_at,updated_at,expires_at
+               FROM builder_projects WHERE user_id=? ORDER BY updated_at DESC""",
+            (uid,),
+        ).fetchall()]
+        for item in projects:
+            item["project"] = _decode_export_json(item.pop("project_json", None))
+        usage = [dict(item) for item in c.execute(
+            "SELECT day_key,renders FROM builder_usage WHERE user_id=? ORDER BY day_key",
+            (uid,),
+        ).fetchall()]
+        sessions = [dict(item) for item in c.execute(
+            "SELECT created_at FROM sessions WHERE user_id=? ORDER BY created_at",
+            (uid,),
+        ).fetchall()]
+        codes = [dict(item) for item in c.execute(
+            "SELECT code,used_at FROM used_codes WHERE user_id=? ORDER BY used_at",
+            (uid,),
+        ).fetchall()]
+        analytics_rows = []
+        if re.fullmatch(r"[a-f0-9]{32}", analytics_user_hash or ""):
+            analytics_rows = [dict(item) for item in c.execute(
+                """SELECT event_name,language,path,tool,mode,method,reason,file_type,
+                          size_bucket,value_int,day_key,created_at
+                   FROM analytics_events WHERE user_hash=? ORDER BY created_at""",
+                (analytics_user_hash,),
+            ).fetchall()]
+        return {
+            "format": "showcase-maker-account-export-v1",
+            "exported_at": time.time(),
+            "account": account,
+            "gallery": gallery,
+            "comments": comments,
+            "likes": likes,
+            "notifications": notifications,
+            "profile_showcases": showcases,
+            "builder_projects": projects,
+            "builder_usage": usage,
+            "sessions": sessions,
+            "activated_codes": codes,
+            "analytics_events": analytics_rows,
+        }
+    finally:
+        c.close()
+
+
+def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
+    """Delete one account transactionally and return its media cleanup plan.
+
+    Used activation codes are retained with a NULL owner so deleting an account
+    never makes a paid or trial key reusable.
+    """
+    uid = int(user_id)
+    c = _conn()
+    try:
+        c.execute("BEGIN IMMEDIATE")
+        user = c.execute(
+            "SELECT email,avatar_path,profile_background FROM users WHERE id=?",
+            (uid,),
+        ).fetchone()
+        if not user:
+            c.rollback()
+            raise LookupError("Account not found")
+        gallery_rows = c.execute(
+            "SELECT id,image_path,thumb_path FROM gallery WHERE user_id=?",
+            (uid,),
+        ).fetchall()
+        owned_ids = [int(item["id"]) for item in gallery_rows]
+        comment_rows = c.execute(
+            "SELECT id FROM gallery_comments WHERE user_id=?",
+            (uid,),
+        ).fetchall()
+        comment_ids = [int(item["id"]) for item in comment_rows]
+
+        def delete_where_ids(table: str, column: str, values: list[int]) -> None:
+            if values:
+                placeholders = ",".join("?" for _ in values)
+                c.execute(f"DELETE FROM {table} WHERE {column} IN ({placeholders})", values)
+
+        delete_where_ids("notifications", "item_id", owned_ids)
+        delete_where_ids("gallery_likes", "item_id", owned_ids)
+        delete_where_ids("gallery_comments", "item_id", owned_ids)
+        delete_where_ids("notifications", "comment_id", comment_ids)
+        if comment_ids:
+            placeholders = ",".join("?" for _ in comment_ids)
+            c.execute(
+                f"UPDATE gallery_comments SET parent_id=NULL WHERE parent_id IN ({placeholders})",
+                comment_ids,
+            )
+        c.execute("DELETE FROM gallery WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM notifications WHERE user_id=? OR actor_id=?", (uid, uid))
+        c.execute("DELETE FROM gallery_likes WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM gallery_comments WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM profile_import_tickets WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM profile_showcases WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM builder_projects WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM builder_usage WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM process_jobs WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
+        c.execute("UPDATE used_codes SET user_id=NULL WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM email_codes WHERE email=?", (str(user["email"]),))
+        c.execute("DELETE FROM account_action_codes WHERE email=?", (str(user["email"]),))
+        if re.fullmatch(r"[a-f0-9]{32}", analytics_user_hash or ""):
+            c.execute("DELETE FROM analytics_events WHERE user_hash=?", (analytics_user_hash,))
+        c.execute("DELETE FROM users WHERE id=?", (uid,))
+        c.commit()
+        return {
+            "user_id": uid,
+            "avatar_path": str(user["avatar_path"] or ""),
+            "profile_background": str(user["profile_background"] or ""),
+            "gallery_paths": [
+                str(value)
+                for item in gallery_rows
+                for value in (item["image_path"], item["thumb_path"])
+                if value
+            ],
+        }
+    except Exception:
+        try:
+            c.rollback()
+        except Exception:
+            pass
+        raise
     finally:
         c.close()
 
@@ -893,6 +1114,147 @@ def discard_email_code(email: str) -> None:
     try:
         c.execute("DELETE FROM email_codes WHERE email=?", (email,))
         c.commit()
+    finally:
+        c.close()
+
+
+_ACCOUNT_CODE_PURPOSES = frozenset({"password_reset"})
+
+
+def _hash_account_action_code(email: str, purpose: str, code: str) -> str:
+    payload = f"{normalize_email(email)}\n{purpose}\n{(code or '').strip()}".encode("utf-8")
+    return hmac.new(_email_code_secret(), payload, hashlib.sha256).hexdigest()
+
+
+def create_account_action_code(
+    email: str,
+    purpose: str,
+    ttl_sec: int = 900,
+) -> tuple[bool, str, str]:
+    """Create a purpose-bound one-time account code.
+
+    Registration codes intentionally stay in their existing table. Password
+    recovery uses this separate interface so a signup code can never reset an
+    existing account (or vice versa).
+    """
+    email = normalize_email(email)
+    purpose = str(purpose or "").strip().lower()
+    if not email or purpose not in _ACCOUNT_CODE_PURPOSES:
+        return False, "Invalid account action", ""
+    try:
+        _email_code_secret()
+    except RuntimeError as exc:
+        return False, str(exc), ""
+    c = _conn()
+    try:
+        row = c.execute(
+            "SELECT last_sent FROM account_action_codes WHERE email=? AND purpose=?",
+            (email, purpose),
+        ).fetchone()
+        now = time.time()
+        if row and row["last_sent"] and now - float(row["last_sent"]) < 60:
+            return False, "Wait 60 seconds before resending", ""
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        c.execute(
+            """
+            INSERT INTO account_action_codes
+              (email,purpose,code_hash,expires_at,attempts,last_sent)
+            VALUES (?,?,?,?,?,?)
+            ON CONFLICT(email,purpose) DO UPDATE SET
+              code_hash=excluded.code_hash,
+              expires_at=excluded.expires_at,
+              attempts=0,
+              last_sent=excluded.last_sent
+            """,
+            (
+                email, purpose,
+                _hash_account_action_code(email, purpose, code),
+                now + max(60, int(ttl_sec)), 0, now,
+            ),
+        )
+        c.commit()
+        return True, "OK", code
+    finally:
+        c.close()
+
+
+def discard_account_action_code(email: str, purpose: str) -> None:
+    email = normalize_email(email)
+    purpose = str(purpose or "").strip().lower()
+    if not email or purpose not in _ACCOUNT_CODE_PURPOSES:
+        return
+    c = _conn()
+    try:
+        c.execute(
+            "DELETE FROM account_action_codes WHERE email=? AND purpose=?",
+            (email, purpose),
+        )
+        c.commit()
+    finally:
+        c.close()
+
+
+def reset_password_with_code(email: str, code: str, new_password: str) -> tuple[bool, str, str]:
+    """Consume a recovery code, replace the password and revoke every session."""
+    email = normalize_email(email)
+    code = (code or "").strip()
+    if not email:
+        return False, "Invalid email", "invalid_email"
+    if len(new_password or "") < 10:
+        return False, "Password min 10 characters", "weak_password"
+    if not re.fullmatch(r"[0-9]{6}", code):
+        return False, "Invalid or expired verification code", "invalid_code"
+    try:
+        expected = _hash_account_action_code(email, "password_reset", code)
+    except RuntimeError:
+        return False, "Password recovery unavailable", "verification_unavailable"
+
+    c = _conn()
+    try:
+        c.execute("BEGIN IMMEDIATE")
+        lock = " FOR UPDATE" if USING_POSTGRES else ""
+        row = c.execute(
+            """SELECT code_hash,expires_at,attempts FROM account_action_codes
+               WHERE email=? AND purpose='password_reset'""" + lock,
+            (email,),
+        ).fetchone()
+        user = c.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+        now = time.time()
+        if (
+            not row or not user or float(row["expires_at"]) < now
+            or int(row["attempts"] or 0) >= 8
+        ):
+            if row and float(row["expires_at"]) < now:
+                c.execute(
+                    "DELETE FROM account_action_codes WHERE email=? AND purpose='password_reset'",
+                    (email,),
+                )
+                c.commit()
+            else:
+                c.rollback()
+            return False, "Invalid or expired verification code", "invalid_code"
+        if not secrets.compare_digest(str(row["code_hash"]), expected):
+            c.execute(
+                """UPDATE account_action_codes SET attempts=attempts+1
+                   WHERE email=? AND purpose='password_reset'""",
+                (email,),
+            )
+            c.commit()
+            return False, "Invalid or expired verification code", "invalid_code"
+        c.execute("UPDATE users SET password_hash=? WHERE id=?", (_hash_pw(new_password), int(user["id"])))
+        c.execute("DELETE FROM sessions WHERE user_id=?", (int(user["id"]),))
+        c.execute(
+            "DELETE FROM account_action_codes WHERE email=? AND purpose='password_reset'",
+            (email,),
+        )
+        c.commit()
+        return True, "Password changed", "ok"
+    except Exception:
+        try:
+            c.rollback()
+        except Exception:
+            pass
+        raise
     finally:
         c.close()
 

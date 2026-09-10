@@ -56,6 +56,11 @@ CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id BIGINT NOT 
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE TABLE IF NOT EXISTS used_codes (code TEXT PRIMARY KEY, user_id BIGINT, used_at DOUBLE PRECISION);
 CREATE TABLE IF NOT EXISTS email_codes (email TEXT PRIMARY KEY, code_hash TEXT NOT NULL, expires_at DOUBLE PRECISION NOT NULL, attempts INTEGER DEFAULT 0, last_sent DOUBLE PRECISION DEFAULT 0);
+CREATE TABLE IF NOT EXISTS account_action_codes (
+ email TEXT NOT NULL, purpose TEXT NOT NULL, code_hash TEXT NOT NULL,
+ expires_at DOUBLE PRECISION NOT NULL, attempts INTEGER DEFAULT 0,
+ last_sent DOUBLE PRECISION DEFAULT 0, PRIMARY KEY (email, purpose)
+);
 CREATE TABLE IF NOT EXISTS profile_import_tickets (ticket_hash TEXT PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, steam_id TEXT NOT NULL, created_at DOUBLE PRECISION NOT NULL, expires_at DOUBLE PRECISION NOT NULL, used_at DOUBLE PRECISION);
 CREATE INDEX IF NOT EXISTS idx_profile_import_tickets_user ON profile_import_tickets(user_id, expires_at);
 

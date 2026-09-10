@@ -85,6 +85,27 @@ curl -fsS -H "X-Admin-Secret: $ADMIN_SECRET" https://showcasemaker.com/api/admin
 `TRUSTED_PROXY_HOPS` to `xff_entries` minus the index of the real client counted
 from the right, and restart `app`.
 
+## Maintenance notice
+
+The notice is shared by all web workers, survives a container restart and does
+not block the site. Run these commands from `/opt/showcasemaker`:
+
+```bash
+# Show the localized default notice
+sudo docker compose exec -T app python scripts/maintenance.py on
+
+# Or show one custom message exactly as written
+sudo docker compose exec -T app python scripts/maintenance.py on "Service update in progress. Processing may be temporarily unavailable."
+
+# Check the current state
+sudo docker compose exec -T app python scripts/maintenance.py status
+
+# Hide the notice
+sudo docker compose exec -T app python scripts/maintenance.py off
+```
+
+No rebuild or restart is required after changing the notice.
+
 ## Updates
 
 ```bash

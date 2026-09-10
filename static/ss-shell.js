@@ -36,6 +36,37 @@
     steam: '<img src="/static/steam.png" width="20" height="20" alt="" aria-hidden="true" style="display:block;object-fit:contain">'
   };
 
+  var ACCOUNT_COPY = {
+    en: {maintenance:'Technical work is in progress. Some features may be temporarily unavailable.',forgot:'Forgot password?',forgotTitle:'Recover password',forgotSub:'Enter your account email. We will send a six-digit recovery code.',sendCode:'Send code',sending:'Sending code…',resetTitle:'Set a new password',resetSub:'Enter the code from the email and your new password.',codeLabel:'Code from email',yourCode:'YOUR CODE',newPassword:'New password',repeatPassword:'Repeat new password',savePassword:'Save new password',resetting:'Changing password…',resetDone:'Password changed. Log in with your new password.',passwordMismatch:'New passwords do not match.',passwordShort:'Password must contain at least 10 characters.',backLogin:'Back to login',recoverySent:'If an account exists for this address, a recovery code has been sent.',exportTitle:'Export account data',exportDesc:'Download your account, projects, profile, gallery activity and settings as JSON.',downloadData:'Download my data',preparingExport:'Preparing export…',exportFailed:'The account export could not be downloaded.',deleteTitle:'Delete account',deleteDesc:'Permanently deletes your account, projects, profile, gallery uploads and stored media. This cannot be undone.',confirmEmail:'Type your account email to confirm',deleteAccount:'Delete account permanently',deleteConfirm:'Permanently delete this account and all its data?',deleting:'Deleting account…',deleteMismatch:'Enter the exact email address of this account.',deleteFailed:'The account could not be deleted.'},
+    ru: {maintenance:'Ведутся технические работы. Некоторые функции могут быть временно недоступны.',forgot:'Забыли пароль?',forgotTitle:'Восстановление пароля',forgotSub:'Введите почту аккаунта. Мы отправим шестизначный код восстановления.',sendCode:'Отправить код',sending:'Отправляем код…',resetTitle:'Новый пароль',resetSub:'Введите код из письма и новый пароль.',codeLabel:'Код из письма',yourCode:'ВАШ КОД',newPassword:'Новый пароль',repeatPassword:'Повторите новый пароль',savePassword:'Сохранить новый пароль',resetting:'Меняем пароль…',resetDone:'Пароль изменён. Войдите с новым паролем.',passwordMismatch:'Новые пароли не совпадают.',passwordShort:'Пароль должен содержать не менее 10 символов.',backLogin:'Вернуться ко входу',recoverySent:'Если аккаунт с такой почтой существует, код восстановления отправлен.',exportTitle:'Экспорт данных аккаунта',exportDesc:'Скачайте данные аккаунта, проекты, профиль, активность галереи и настройки в формате JSON.',downloadData:'Скачать мои данные',preparingExport:'Готовим экспорт…',exportFailed:'Не удалось скачать экспорт аккаунта.',deleteTitle:'Удаление аккаунта',deleteDesc:'Навсегда удаляет аккаунт, проекты, профиль, работы в галерее и сохранённые медиа. Отменить это действие нельзя.',confirmEmail:'Введите почту аккаунта для подтверждения',deleteAccount:'Удалить аккаунт навсегда',deleteConfirm:'Навсегда удалить этот аккаунт и все его данные?',deleting:'Удаляем аккаунт…',deleteMismatch:'Введите точный адрес почты этого аккаунта.',deleteFailed:'Не удалось удалить аккаунт.'},
+    de: {maintenance:'Technische Arbeiten laufen. Einige Funktionen sind möglicherweise vorübergehend nicht verfügbar.',forgot:'Passwort vergessen?',forgotTitle:'Passwort wiederherstellen',forgotSub:'Geben Sie die E-Mail-Adresse Ihres Kontos ein. Wir senden einen sechsstelligen Wiederherstellungscode.',sendCode:'Code senden',sending:'Code wird gesendet…',resetTitle:'Neues Passwort festlegen',resetSub:'Geben Sie den Code aus der E-Mail und Ihr neues Passwort ein.',codeLabel:'Code aus der E-Mail',yourCode:'IHR CODE',newPassword:'Neues Passwort',repeatPassword:'Neues Passwort wiederholen',savePassword:'Neues Passwort speichern',resetting:'Passwort wird geändert…',resetDone:'Passwort geändert. Melden Sie sich mit dem neuen Passwort an.',passwordMismatch:'Die neuen Passwörter stimmen nicht überein.',passwordShort:'Das Passwort muss mindestens 10 Zeichen enthalten.',backLogin:'Zurück zur Anmeldung',recoverySent:'Falls ein Konto mit dieser Adresse existiert, wurde ein Wiederherstellungscode gesendet.',exportTitle:'Kontodaten exportieren',exportDesc:'Laden Sie Konto, Projekte, Profil, Galerieaktivität und Einstellungen als JSON herunter.',downloadData:'Meine Daten herunterladen',preparingExport:'Export wird vorbereitet…',exportFailed:'Der Kontoexport konnte nicht heruntergeladen werden.',deleteTitle:'Konto löschen',deleteDesc:'Löscht Konto, Projekte, Profil, Galeriebeiträge und gespeicherte Medien dauerhaft. Dies kann nicht rückgängig gemacht werden.',confirmEmail:'E-Mail-Adresse des Kontos zur Bestätigung eingeben',deleteAccount:'Konto dauerhaft löschen',deleteConfirm:'Dieses Konto und alle Daten dauerhaft löschen?',deleting:'Konto wird gelöscht…',deleteMismatch:'Geben Sie die genaue E-Mail-Adresse dieses Kontos ein.',deleteFailed:'Das Konto konnte nicht gelöscht werden.'},
+    tr: {maintenance:'Teknik çalışma devam ediyor. Bazı özellikler geçici olarak kullanılamayabilir.',forgot:'Parolanızı mı unuttunuz?',forgotTitle:'Parolayı kurtar',forgotSub:'Hesabınızın e-posta adresini girin. Altı haneli bir kurtarma kodu göndereceğiz.',sendCode:'Kodu gönder',sending:'Kod gönderiliyor…',resetTitle:'Yeni parola belirle',resetSub:'E-postadaki kodu ve yeni parolanızı girin.',codeLabel:'E-postadaki kod',yourCode:'KODUNUZ',newPassword:'Yeni parola',repeatPassword:'Yeni parolayı tekrarla',savePassword:'Yeni parolayı kaydet',resetting:'Parola değiştiriliyor…',resetDone:'Parola değiştirildi. Yeni parolanızla giriş yapın.',passwordMismatch:'Yeni parolalar eşleşmiyor.',passwordShort:'Parola en az 10 karakter olmalıdır.',backLogin:'Girişe dön',recoverySent:'Bu adres için bir hesap varsa kurtarma kodu gönderildi.',exportTitle:'Hesap verilerini dışa aktar',exportDesc:'Hesabınızı, projelerinizi, profilinizi, galeri etkinliğinizi ve ayarlarınızı JSON olarak indirin.',downloadData:'Verilerimi indir',preparingExport:'Dışa aktarım hazırlanıyor…',exportFailed:'Hesap dışa aktarımı indirilemedi.',deleteTitle:'Hesabı sil',deleteDesc:'Hesabınızı, projelerinizi, profilinizi, galeri yüklemelerinizi ve kayıtlı medyayı kalıcı olarak siler. Bu işlem geri alınamaz.',confirmEmail:'Onaylamak için hesap e-postanızı yazın',deleteAccount:'Hesabı kalıcı olarak sil',deleteConfirm:'Bu hesap ve tüm verileri kalıcı olarak silinsin mi?',deleting:'Hesap siliniyor…',deleteMismatch:'Bu hesabın e-posta adresini eksiksiz girin.',deleteFailed:'Hesap silinemedi.'},
+    fr: {maintenance:'Des travaux techniques sont en cours. Certaines fonctions peuvent être temporairement indisponibles.',forgot:'Mot de passe oublié ?',forgotTitle:'Récupérer le mot de passe',forgotSub:'Saisissez l’adresse e-mail de votre compte. Nous enverrons un code de récupération à six chiffres.',sendCode:'Envoyer le code',sending:'Envoi du code…',resetTitle:'Définir un nouveau mot de passe',resetSub:'Saisissez le code reçu par e-mail et votre nouveau mot de passe.',codeLabel:'Code reçu par e-mail',yourCode:'VOTRE CODE',newPassword:'Nouveau mot de passe',repeatPassword:'Répéter le nouveau mot de passe',savePassword:'Enregistrer le nouveau mot de passe',resetting:'Modification du mot de passe…',resetDone:'Mot de passe modifié. Connectez-vous avec le nouveau mot de passe.',passwordMismatch:'Les nouveaux mots de passe ne correspondent pas.',passwordShort:'Le mot de passe doit contenir au moins 10 caractères.',backLogin:'Retour à la connexion',recoverySent:'Si un compte existe pour cette adresse, un code de récupération a été envoyé.',exportTitle:'Exporter les données du compte',exportDesc:'Téléchargez votre compte, vos projets, votre profil, l’activité de la galerie et vos réglages au format JSON.',downloadData:'Télécharger mes données',preparingExport:'Préparation de l’export…',exportFailed:'Impossible de télécharger l’export du compte.',deleteTitle:'Supprimer le compte',deleteDesc:'Supprime définitivement le compte, les projets, le profil, les publications de la galerie et les médias enregistrés. Cette action est irréversible.',confirmEmail:'Saisissez l’e-mail du compte pour confirmer',deleteAccount:'Supprimer définitivement le compte',deleteConfirm:'Supprimer définitivement ce compte et toutes ses données ?',deleting:'Suppression du compte…',deleteMismatch:'Saisissez l’adresse e-mail exacte de ce compte.',deleteFailed:'Impossible de supprimer le compte.'},
+    uk: {maintenance:'Тривають технічні роботи. Деякі функції можуть бути тимчасово недоступні.',forgot:'Забули пароль?',forgotTitle:'Відновлення пароля',forgotSub:'Введіть електронну пошту облікового запису. Ми надішлемо шестизначний код відновлення.',sendCode:'Надіслати код',sending:'Надсилаємо код…',resetTitle:'Новий пароль',resetSub:'Введіть код із листа та новий пароль.',codeLabel:'Код із листа',yourCode:'ВАШ КОД',newPassword:'Новий пароль',repeatPassword:'Повторіть новий пароль',savePassword:'Зберегти новий пароль',resetting:'Змінюємо пароль…',resetDone:'Пароль змінено. Увійдіть із новим паролем.',passwordMismatch:'Нові паролі не збігаються.',passwordShort:'Пароль має містити щонайменше 10 символів.',backLogin:'Повернутися до входу',recoverySent:'Якщо обліковий запис із цією адресою існує, код відновлення надіслано.',exportTitle:'Експорт даних облікового запису',exportDesc:'Завантажте дані облікового запису, проєкти, профіль, активність галереї та налаштування у форматі JSON.',downloadData:'Завантажити мої дані',preparingExport:'Готуємо експорт…',exportFailed:'Не вдалося завантажити експорт облікового запису.',deleteTitle:'Видалення облікового запису',deleteDesc:'Назавжди видаляє обліковий запис, проєкти, профіль, роботи в галереї та збережені медіафайли. Цю дію неможливо скасувати.',confirmEmail:'Введіть пошту облікового запису для підтвердження',deleteAccount:'Видалити обліковий запис назавжди',deleteConfirm:'Назавжди видалити цей обліковий запис і всі його дані?',deleting:'Видаляємо обліковий запис…',deleteMismatch:'Введіть точну адресу пошти цього облікового запису.',deleteFailed:'Не вдалося видалити обліковий запис.'},
+    es: {maintenance:'Hay trabajos técnicos en curso. Algunas funciones pueden no estar disponibles temporalmente.',forgot:'¿Has olvidado la contraseña?',forgotTitle:'Recuperar contraseña',forgotSub:'Introduce el correo de tu cuenta. Enviaremos un código de recuperación de seis dígitos.',sendCode:'Enviar código',sending:'Enviando código…',resetTitle:'Crear una nueva contraseña',resetSub:'Introduce el código del correo y tu nueva contraseña.',codeLabel:'Código del correo',yourCode:'TU CÓDIGO',newPassword:'Nueva contraseña',repeatPassword:'Repetir la nueva contraseña',savePassword:'Guardar nueva contraseña',resetting:'Cambiando contraseña…',resetDone:'Contraseña cambiada. Inicia sesión con la nueva contraseña.',passwordMismatch:'Las nuevas contraseñas no coinciden.',passwordShort:'La contraseña debe tener al menos 10 caracteres.',backLogin:'Volver al inicio de sesión',recoverySent:'Si existe una cuenta para esta dirección, se ha enviado un código de recuperación.',exportTitle:'Exportar datos de la cuenta',exportDesc:'Descarga tu cuenta, proyectos, perfil, actividad de la galería y ajustes en formato JSON.',downloadData:'Descargar mis datos',preparingExport:'Preparando exportación…',exportFailed:'No se pudo descargar la exportación de la cuenta.',deleteTitle:'Eliminar cuenta',deleteDesc:'Elimina permanentemente la cuenta, los proyectos, el perfil, las publicaciones de la galería y los archivos guardados. No se puede deshacer.',confirmEmail:'Escribe el correo de la cuenta para confirmar',deleteAccount:'Eliminar cuenta permanentemente',deleteConfirm:'¿Eliminar permanentemente esta cuenta y todos sus datos?',deleting:'Eliminando cuenta…',deleteMismatch:'Introduce el correo exacto de esta cuenta.',deleteFailed:'No se pudo eliminar la cuenta.'},
+    pt: {maintenance:'Há trabalhos técnicos em andamento. Alguns recursos podem ficar temporariamente indisponíveis.',forgot:'Esqueceu a senha?',forgotTitle:'Recuperar senha',forgotSub:'Digite o e-mail da sua conta. Enviaremos um código de recuperação de seis dígitos.',sendCode:'Enviar código',sending:'Enviando código…',resetTitle:'Definir uma nova senha',resetSub:'Digite o código recebido por e-mail e a nova senha.',codeLabel:'Código do e-mail',yourCode:'SEU CÓDIGO',newPassword:'Nova senha',repeatPassword:'Repetir a nova senha',savePassword:'Salvar nova senha',resetting:'Alterando senha…',resetDone:'Senha alterada. Entre com a nova senha.',passwordMismatch:'As novas senhas não coincidem.',passwordShort:'A senha deve ter pelo menos 10 caracteres.',backLogin:'Voltar ao login',recoverySent:'Se existir uma conta para este endereço, um código de recuperação foi enviado.',exportTitle:'Exportar dados da conta',exportDesc:'Baixe sua conta, projetos, perfil, atividade da galeria e configurações em JSON.',downloadData:'Baixar meus dados',preparingExport:'Preparando exportação…',exportFailed:'Não foi possível baixar a exportação da conta.',deleteTitle:'Excluir conta',deleteDesc:'Exclui permanentemente a conta, projetos, perfil, envios da galeria e mídia armazenada. Esta ação não pode ser desfeita.',confirmEmail:'Digite o e-mail da conta para confirmar',deleteAccount:'Excluir conta permanentemente',deleteConfirm:'Excluir permanentemente esta conta e todos os seus dados?',deleting:'Excluindo conta…',deleteMismatch:'Digite o endereço de e-mail exato desta conta.',deleteFailed:'Não foi possível excluir a conta.'}
+  };
+  window.SS_ACCOUNT_COPY = ACCOUNT_COPY;
+
+  function accountCopy() {
+    return ACCOUNT_COPY[lang()] || ACCOUNT_COPY.en;
+  }
+
+  var RESET_ERROR_COPY = {
+    en:{invalid_email:'Enter a valid email address.',rate_limited:'Too many attempts. Try again later.',delivery_failed:'The email could not be sent. Try again later.',invalid_code:'The code is incorrect or has expired.',weak_password:'Password must contain at least 10 characters.',failed:'Password recovery failed. Try again.'},
+    ru:{invalid_email:'Введите корректный адрес почты.',rate_limited:'Слишком много попыток. Попробуйте позже.',delivery_failed:'Не удалось отправить письмо. Попробуйте позже.',invalid_code:'Код неверный или срок его действия истёк.',weak_password:'Пароль должен содержать не менее 10 символов.',failed:'Не удалось восстановить пароль. Попробуйте снова.'},
+    de:{invalid_email:'Geben Sie eine gültige E-Mail-Adresse ein.',rate_limited:'Zu viele Versuche. Versuchen Sie es später erneut.',delivery_failed:'Die E-Mail konnte nicht gesendet werden. Versuchen Sie es später erneut.',invalid_code:'Der Code ist falsch oder abgelaufen.',weak_password:'Das Passwort muss mindestens 10 Zeichen enthalten.',failed:'Die Passwortwiederherstellung ist fehlgeschlagen. Versuchen Sie es erneut.'},
+    tr:{invalid_email:'Geçerli bir e-posta adresi girin.',rate_limited:'Çok fazla deneme yapıldı. Daha sonra tekrar deneyin.',delivery_failed:'E-posta gönderilemedi. Daha sonra tekrar deneyin.',invalid_code:'Kod yanlış veya süresi dolmuş.',weak_password:'Parola en az 10 karakter olmalıdır.',failed:'Parola kurtarma başarısız oldu. Tekrar deneyin.'},
+    fr:{invalid_email:'Saisissez une adresse e-mail valide.',rate_limited:'Trop de tentatives. Réessayez plus tard.',delivery_failed:'Impossible d’envoyer l’e-mail. Réessayez plus tard.',invalid_code:'Le code est incorrect ou a expiré.',weak_password:'Le mot de passe doit contenir au moins 10 caractères.',failed:'La récupération du mot de passe a échoué. Réessayez.'},
+    uk:{invalid_email:'Введіть коректну адресу електронної пошти.',rate_limited:'Забагато спроб. Спробуйте пізніше.',delivery_failed:'Не вдалося надіслати лист. Спробуйте пізніше.',invalid_code:'Код неправильний або термін його дії минув.',weak_password:'Пароль має містити щонайменше 10 символів.',failed:'Не вдалося відновити пароль. Спробуйте ще раз.'},
+    es:{invalid_email:'Introduce una dirección de correo válida.',rate_limited:'Demasiados intentos. Inténtalo de nuevo más tarde.',delivery_failed:'No se pudo enviar el correo. Inténtalo más tarde.',invalid_code:'El código es incorrecto o ha caducado.',weak_password:'La contraseña debe tener al menos 10 caracteres.',failed:'No se pudo recuperar la contraseña. Inténtalo de nuevo.'},
+    pt:{invalid_email:'Digite um endereço de e-mail válido.',rate_limited:'Muitas tentativas. Tente novamente mais tarde.',delivery_failed:'Não foi possível enviar o e-mail. Tente novamente mais tarde.',invalid_code:'O código está incorreto ou expirou.',weak_password:'A senha deve ter pelo menos 10 caracteres.',failed:'Não foi possível recuperar a senha. Tente novamente.'}
+  };
+  function resetErrorMessage(data) {
+    var messages = RESET_ERROR_COPY[lang()] || RESET_ERROR_COPY.en;
+    return messages[data && data.code] || messages.failed;
+  }
+
   function lang() {
     try { return window.SMLang ? SMLang.get() : (localStorage.getItem('sm_lang') || localStorage.getItem('ss_lang') || 'en'); } catch (e) { return 'en'; }
   }
@@ -123,6 +154,29 @@
       '<div class="ss-drawer" id="ssDrawer">' + drawerHTML() + '</div>';
   }
 
+  function maintenanceHTML() {
+    return '<div class="ss-maintenance" id="ssMaintenance" role="status" hidden>' +
+      '<span class="ss-maintenance__dot" aria-hidden="true"></span>' +
+      '<span id="ssMaintenanceText"></span></div>';
+  }
+
+  function loadMaintenance() {
+    var banner = document.getElementById('ssMaintenance');
+    var textNode = document.getElementById('ssMaintenanceText');
+    if (!banner || !textNode) return;
+    fetch('/api/maintenance', { credentials:'same-origin', cache:'no-store' })
+      .then(function(response){ return response.json(); })
+      .then(function(state){
+        var enabled = !!(state && state.enabled);
+        banner.hidden = !enabled;
+        textNode.textContent = enabled ? (state.message || accountCopy().maintenance) : '';
+        requestAnimationFrame(function(){
+          document.documentElement.style.setProperty('--maintenance-h', enabled ? banner.offsetHeight + 'px' : '0px');
+        });
+      })
+      .catch(function(){ banner.hidden = true; document.documentElement.style.setProperty('--maintenance-h','0px'); });
+  }
+
   function activationHTML() {
     var ru = lang() === 'ru';
     return '<div class="ss-activation" id="ssActivation" aria-hidden="true"><div class="ss-activation__card" role="dialog" aria-modal="true" aria-labelledby="ssActivationTitle">' +
@@ -147,7 +201,8 @@
       '<p class="ss-auth__sub" id="ssAuthSub">' + (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.') + '</p>' +
       '<form class="ss-auth__form" id="ssAuthForm">' +
         '<label id="ssAuthEmailWrap"><span>Email</span><input id="ssAuthEmail" type="email" autocomplete="email" required placeholder="name@example.com"></label>' +
-        '<label id="ssAuthPassWrap"><span>' + (ru ? 'Пароль' : 'Password') + '</span><input id="ssAuthPass" type="password" autocomplete="current-password" minlength="10" required placeholder="••••••••••"></label>' +
+        '<label id="ssAuthPassWrap"><span id="ssAuthPassLabel">' + (ru ? 'Пароль' : 'Password') + '</span><input id="ssAuthPass" type="password" autocomplete="current-password" minlength="10" required placeholder="••••••••••"></label>' +
+        '<label id="ssAuthRepeatWrap" style="display:none"><span id="ssAuthRepeatLabel"></span><input id="ssAuthRepeat" type="password" autocomplete="new-password" minlength="10" placeholder="••••••••••"></label>' +
         '<label id="ssAuthCodeWrap" style="display:none"><span id="ssAuthCodeLabel">' + (ru ? 'Код из письма' : 'Code from email') + '</span><input id="ssAuthCode" type="text" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" minlength="6" maxlength="6" required placeholder="' + (ru ? 'ВАШ КОД' : 'YOUR CODE') + '"></label>' +
         '<p class="ss-auth__state" id="ssAuthState"></p>' +
         '<button class="ss-auth__submit" id="ssAuthSubmit" type="submit">' + (ru ? 'Войти' : 'Log in') + '</button>' +
@@ -161,6 +216,7 @@
       '</div>' +
       '<div id="ssTgHost" style="display:none;text-align:center;margin-top:8px"></div>' +
       '<button class="ss-auth__switch" id="ssAuthSwitch" type="button">' + (ru ? 'Нет аккаунта? Создать' : 'No account? Sign up') + '</button>' +
+      '<button class="ss-auth__recover" id="ssAuthRecover" type="button"></button>' +
     '</div></div>';
   }
 
@@ -438,43 +494,64 @@
   }
   function paintAuth() {
     var ru = lang() === 'ru', reg = authMode === 'register', ver = authMode === 'verify';
+    var recover = authMode === 'reset_request', reset = authMode === 'reset_confirm';
+    var copy = accountCopy();
     var title = document.getElementById('ssAuthTitle'), sub = document.getElementById('ssAuthSub');
     var submit = document.getElementById('ssAuthSubmit'), sw = document.getElementById('ssAuthSwitch');
     
     var emailWrap = document.getElementById('ssAuthEmailWrap');
     var passWrap = document.getElementById('ssAuthPassWrap');
+    var repeatWrap = document.getElementById('ssAuthRepeatWrap');
     var codeWrap = document.getElementById('ssAuthCodeWrap');
     var div = document.getElementById('ssAuthDiv');
     var oauth = document.getElementById('ssAuthOauth');
+    var recoverButton = document.getElementById('ssAuthRecover');
     
-    if (emailWrap) emailWrap.style.display = ver ? 'none' : 'block';
-    if (passWrap) passWrap.style.display = ver ? 'none' : 'block';
+    if (emailWrap) emailWrap.style.display = (ver || reset) ? 'none' : 'block';
+    if (passWrap) passWrap.style.display = (ver || recover) ? 'none' : 'block';
+    if (repeatWrap) repeatWrap.style.display = reset ? 'grid' : 'none';
     if (codeWrap) {
-        codeWrap.style.display = ver ? 'grid' : 'none';
+        codeWrap.style.display = (ver || reset) ? 'grid' : 'none';
         var codeInp = document.getElementById('ssAuthCode');
-        if (codeInp) codeInp.required = ver;
+        if (codeInp) codeInp.required = ver || reset;
     }
     var codeLabel = document.getElementById('ssAuthCodeLabel');
     var codeInput = document.getElementById('ssAuthCode');
-    if (codeLabel) codeLabel.textContent = ru ? 'Код из письма' : 'Code from email';
-    if (codeInput) codeInput.placeholder = ru ? 'ВАШ КОД' : 'YOUR CODE';
-    if (div) div.style.display = ver ? 'none' : 'block';
-    if (oauth) oauth.style.display = ver ? 'none' : 'flex';
+    var passLabel = document.getElementById('ssAuthPassLabel');
+    var repeatLabel = document.getElementById('ssAuthRepeatLabel');
+    var passInput = document.getElementById('ssAuthPass');
+    var repeatInput = document.getElementById('ssAuthRepeat');
+    if (codeLabel) codeLabel.textContent = reset ? copy.codeLabel : (ru ? 'Код из письма' : 'Code from email');
+    if (codeInput) codeInput.placeholder = reset ? copy.yourCode : (ru ? 'ВАШ КОД' : 'YOUR CODE');
+    if (passLabel) passLabel.textContent = reset ? copy.newPassword : (ru ? 'Пароль' : 'Password');
+    if (repeatLabel) repeatLabel.textContent = copy.repeatPassword;
+    if (passInput) { passInput.required = !ver && !recover; passInput.autocomplete = reset ? 'new-password' : 'current-password'; }
+    if (repeatInput) repeatInput.required = reset;
+    if (div) div.style.display = (ver || recover || reset) ? 'none' : 'block';
+    if (oauth) oauth.style.display = (ver || recover || reset) ? 'none' : 'flex';
+    if (recoverButton) { recoverButton.style.display = authMode === 'login' ? 'block' : 'none'; recoverButton.textContent = copy.forgot; }
 
     if (title) {
-        if (ver) title.textContent = ru ? 'Введите код' : 'Enter code';
+        if (recover) title.textContent = copy.forgotTitle;
+        else if (reset) title.textContent = copy.resetTitle;
+        else if (ver) title.textContent = ru ? 'Введите код' : 'Enter code';
         else title.textContent = reg ? (ru ? 'Создать аккаунт' : 'Create account') : (ru ? 'С возвращением' : 'Welcome back');
     }
     if (sub) {
-        if (ver) sub.textContent = ru ? 'Код отправлен на ваш email.' : 'Code sent to your email.';
+        if (recover) sub.textContent = copy.forgotSub;
+        else if (reset) sub.textContent = copy.resetSub;
+        else if (ver) sub.textContent = ru ? 'Код отправлен на ваш email.' : 'Code sent to your email.';
         else sub.textContent = reg ? (ru ? 'Один аккаунт для проектов, галереи и Pro.' : 'One account for projects, gallery and Pro.') : (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.');
     }
     if (submit) {
-        if (ver) submit.textContent = ru ? 'Подтвердить' : 'Confirm';
+        if (recover) submit.textContent = copy.sendCode;
+        else if (reset) submit.textContent = copy.savePassword;
+        else if (ver) submit.textContent = ru ? 'Подтвердить' : 'Confirm';
         else submit.textContent = reg ? (ru ? 'Зарегистрироваться' : 'Sign up') : (ru ? 'Войти' : 'Log in');
     }
     if (sw) {
-        if (ver) sw.textContent = ru ? 'Назад' : 'Back';
+        if (recover || reset) sw.textContent = copy.backLogin;
+        else if (ver) sw.textContent = ru ? 'Назад' : 'Back';
         else sw.textContent = reg ? (ru ? 'Уже есть аккаунт? Войти' : 'Already registered? Log in') : (ru ? 'Нет аккаунта? Создать' : 'No account? Sign up');
     }
   }
@@ -482,6 +559,7 @@
     var login = document.getElementById('ssLogin'), modal = document.getElementById('ssAuth');
     var drawerAuth = document.getElementById('ssDrawerAuth'), logout = document.getElementById('ssLogout');
     var close = document.getElementById('ssAuthClose'), sw = document.getElementById('ssAuthSwitch');
+    var recoverButton = document.getElementById('ssAuthRecover');
     var form = document.getElementById('ssAuthForm');
     var oneTimeCode = document.getElementById('ssAuthCode');
     if (oneTimeCode) oneTimeCode.addEventListener('input', function () {
@@ -499,7 +577,9 @@
     if (close) close.onclick = closeAuth;
     if (modal) modal.onclick = function (e) { if (e.target === modal) closeAuth(); };
     if (sw) sw.onclick = function () { 
-        if (authMode === 'verify') {
+        if (authMode === 'reset_request' || authMode === 'reset_confirm') {
+            authMode = 'login';
+        } else if (authMode === 'verify') {
             authMode = 'register';
             var state = document.getElementById('ssAuthState');
             if (state) { state.textContent = ''; state.className = 'ss-auth__state'; }
@@ -508,12 +588,48 @@
         }
         paintAuth(); 
     };
+    if (recoverButton) recoverButton.onclick = function () {
+      authMode = 'reset_request';
+      var state = document.getElementById('ssAuthState');
+      if (state) { state.textContent = ''; state.className = 'ss-auth__state'; }
+      paintAuth();
+      setTimeout(function(){ document.getElementById('ssAuthEmail')?.focus(); }, 40);
+    };
     if (form) form.onsubmit = function (e) {
       e.preventDefault();
       var email = document.getElementById('ssAuthEmail').value.trim();
       var password = document.getElementById('ssAuthPass').value;
       var code = document.getElementById('ssAuthCode') ? document.getElementById('ssAuthCode').value.trim() : '';
       var state = document.getElementById('ssAuthState'), submit = document.getElementById('ssAuthSubmit');
+      var repeatPassword = document.getElementById('ssAuthRepeat') ? document.getElementById('ssAuthRepeat').value : '';
+      var copy = accountCopy();
+
+      if (authMode === 'reset_request') {
+          state.textContent = copy.sending; state.className = 'ss-auth__state is-wait'; submit.disabled = true;
+          fetch('/api/auth/password-reset/request', {method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})})
+            .then(function(r){return r.json()}).then(function(j){
+              if(!j||!j.ok)throw new Error(resetErrorMessage(j));
+              state.textContent = copy.recoverySent; state.className = 'ss-auth__state is-ok';
+              authMode = 'reset_confirm'; paintAuth();
+              setTimeout(function(){ document.getElementById('ssAuthCode')?.focus(); },40);
+            }).catch(function(err){state.textContent=err.message;state.className='ss-auth__state is-bad'})
+            .then(function(){submit.disabled=false});
+          return;
+      }
+
+      if (authMode === 'reset_confirm') {
+          if (password.length < 10) { state.textContent=copy.passwordShort; state.className='ss-auth__state is-bad'; return; }
+          if (password !== repeatPassword) { state.textContent=copy.passwordMismatch; state.className='ss-auth__state is-bad'; return; }
+          state.textContent=copy.resetting;state.className='ss-auth__state is-wait';submit.disabled=true;
+          fetch('/api/auth/password-reset/confirm',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,code:code,new_password:password})})
+            .then(function(r){return r.json()}).then(function(j){
+              if(!j||!j.ok)throw new Error(resetErrorMessage(j));
+              authMode='login';paintAuth();state.textContent=copy.resetDone;state.className='ss-auth__state is-ok';
+              document.getElementById('ssAuthPass').value='';document.getElementById('ssAuthRepeat').value='';document.getElementById('ssAuthCode').value='';
+            }).catch(function(err){state.textContent=err.message;state.className='ss-auth__state is-bad'})
+            .then(function(){submit.disabled=false});
+          return;
+      }
       
       if (authMode === 'register') {
           state.textContent = lang() === 'ru' ? 'Отправляем код…' : 'Sending code…'; state.className = 'ss-auth__state is-wait';
@@ -608,6 +724,9 @@
   function mount() {
     var head = document.getElementById('ssHeadHost');
     var foot = document.getElementById('ssFootHost');
+    if (!document.getElementById('ssMaintenance')) {
+      document.body.insertAdjacentHTML('afterbegin', maintenanceHTML());
+    }
     if (head) head.innerHTML = headerHTML() + authHTML() + activationHTML();
     if (foot) foot.innerHTML = footerHTML();
     document.querySelectorAll('[data-privacy-link]').forEach(function (link) {
@@ -616,6 +735,7 @@
     });
     wire();
     paintUser(window.SS_ME);
+    loadMaintenance();
   }
 
   window.SSShell = { mount: mount, loadMe: loadMe, me: me, lang: lang, t: t, esc: esc, openAuth: openAuth, closeAuth: closeAuth, openActivation: openActivation, closeActivation: closeActivation };

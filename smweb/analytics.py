@@ -57,6 +57,11 @@ def _digest(kind: str, value: str) -> str:
     return hmac.new(key, f"{kind}:{value}".encode("utf-8"), hashlib.sha256).hexdigest()[:32]
 
 
+def user_hash(user_id: int | str) -> str:
+    """Stable pseudonymous key used to export or erase one user's events."""
+    return _digest("user", str(int(user_id)))
+
+
 def _clean(value: Any, default: str = "") -> str:
     text = str(value or "").strip().lower()[:64]
     return text if _SAFE_TOKEN.fullmatch(text) else default

@@ -157,6 +157,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/auth/login", 20, 60),
         ("/api/auth/send-code", 6, 300),
         ("/api/auth/register", 10, 60),
+        ("/api/auth/password-reset/request", 6, 300),
+        ("/api/auth/password-reset/confirm", 10, 300),
+        ("/api/auth/account-delete", 3, 300),
         # Guessing an access code was unlimited before: /api/unlock was simply
         # not on this list, so a script could try codes as fast as it liked.
         ("/api/unlock", 10, 60),

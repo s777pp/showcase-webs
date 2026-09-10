@@ -70,6 +70,11 @@ function jsUiStrings(file, output) {
   if (file === 'static/js/showcase-builder.js' && source.includes('var NEW_COPY =')) {
     source = source.replace(objectLiteral(source, 'var NEW_COPY ='), '{}');
   }
+  if (file === 'static/ss-shell.js') {
+    for (const marker of ['var ACCOUNT_COPY =', 'var RESET_ERROR_COPY =']) {
+      if (source.includes(marker)) source = source.replace(objectLiteral(source, marker), '{}');
+    }
+  }
   const literal = /(['"])((?:\\.|(?!\1)[^\\\r\n])*)\1/g;
   for (const match of source.matchAll(literal)) {
     let value;
@@ -94,6 +99,16 @@ const builderManual = evaluateDictionary('static/js/showcase-builder.js', 'var N
 const builderManualKeys = Object.keys(builderManual.en || {}).sort().join('|');
 for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
   if (Object.keys(builderManual[language] || {}).sort().join('|') !== builderManualKeys) errors.push(`builder manual copy: incomplete ${language}`);
+}
+for (const [name, dictionary] of [
+  ['account copy', evaluateDictionary('static/ss-shell.js', 'var ACCOUNT_COPY =')],
+  ['password reset errors', evaluateDictionary('static/ss-shell.js', 'var RESET_ERROR_COPY =')],
+  ['account deletion errors', evaluateDictionary('static/js/account-controls.js', 'var DELETE_ERROR_COPY =')],
+]) {
+  const manualKeys = Object.keys(dictionary.en || {}).sort().join('|');
+  for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+    if (Object.keys(dictionary[language] || {}).sort().join('|') !== manualKeys) errors.push(`${name}: incomplete ${language}`);
+  }
 }
 errors.push(...check('app', evaluateDictionary('static/js/app.js', 'var DICT ='), attributeKeys('static/app.html')));
 errors.push(...check('index', evaluateDictionary('static/js/index.js', 'const I18N ='), attributeKeys('static/index.html')));

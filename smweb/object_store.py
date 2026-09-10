@@ -108,6 +108,32 @@ def delete(key: str, *, public: bool = True) -> None:
         c.delete_object(Bucket=PUBLIC_BUCKET if public else PRIVATE_BUCKET, Key=clean_key(key))
 
 
+def delete_prefix(prefix: str, *, public: bool = True, directory: bool = True) -> int:
+    """Delete every object below an account-owned prefix, in bounded batches."""
+    c = client()
+    if not c:
+        return 0
+    prefix = clean_key(prefix).rstrip("/") + ("/" if directory else "")
+    bucket = PUBLIC_BUCKET if public else PRIVATE_BUCKET
+    removed = 0
+    token = None
+    while True:
+        params = {"Bucket": bucket, "Prefix": prefix, "MaxKeys": 1000}
+        if token:
+            params["ContinuationToken"] = token
+        page = c.list_objects_v2(**params)
+        objects = [{"Key": item["Key"]} for item in page.get("Contents") or []]
+        if objects:
+            c.delete_objects(Bucket=bucket, Delete={"Objects": objects, "Quiet": True})
+            removed += len(objects)
+        if not page.get("IsTruncated"):
+            break
+        token = page.get("NextContinuationToken")
+        if not token:
+            break
+    return removed
+
+
 def public_url(key: str) -> str:
     key = clean_key(key)
     return f"{PUBLIC_BASE}/{key}" if PUBLIC_BASE else ""

@@ -54,3 +54,25 @@ def send_verify_code(to: str, code: str, lang: str = "en") -> tuple[bool, str]:
         text = "Your code: " + code + "\n\nValid for 15 minutes.\nIf you did not sign up, ignore this email."
         html = "<p>Your verification code:</p><p style=\"font-size:28px;font-weight:700;letter-spacing:4px\">" + code + "</p><p>Valid for 15 minutes.</p>"
     return send_email(to, subject, text, html)
+
+
+def send_password_reset_code(to: str, code: str, lang: str = "en") -> tuple[bool, str]:
+    language = (lang or "en").lower().split("-", 1)[0]
+    copy = {
+        "en": ("Showcase Maker — password recovery", "Your password recovery code", "The code is valid for 15 minutes. If you did not request it, ignore this email."),
+        "ru": ("Showcase Maker — восстановление пароля", "Код для восстановления пароля", "Код действует 15 минут. Если вы его не запрашивали, просто проигнорируйте письмо."),
+        "de": ("Showcase Maker — Passwort zurücksetzen", "Ihr Code zum Zurücksetzen des Passworts", "Der Code ist 15 Minuten gültig. Wenn Sie ihn nicht angefordert haben, ignorieren Sie diese E-Mail."),
+        "tr": ("Showcase Maker — parola kurtarma", "Parola kurtarma kodunuz", "Kod 15 dakika geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı yok sayın."),
+        "fr": ("Showcase Maker — récupération du mot de passe", "Votre code de récupération du mot de passe", "Le code est valable 15 minutes. Si vous ne l’avez pas demandé, ignorez cet e-mail."),
+        "uk": ("Showcase Maker — відновлення пароля", "Код для відновлення пароля", "Код діє 15 хвилин. Якщо ви його не запитували, проігноруйте цей лист."),
+        "es": ("Showcase Maker — recuperación de contraseña", "Tu código de recuperación de contraseña", "El código es válido durante 15 minutos. Si no lo solicitaste, ignora este correo."),
+        "pt": ("Showcase Maker — recuperação de senha", "Seu código de recuperação de senha", "O código é válido por 15 minutos. Se você não o solicitou, ignore este e-mail."),
+    }
+    subject, heading, note = copy.get(language, copy["en"])
+    text = f"{heading}: {code}\n\n{note}"
+    html = (
+        f"<p>{heading}:</p>"
+        f"<p style=\"font-size:28px;font-weight:700;letter-spacing:4px\">{code}</p>"
+        f"<p>{note}</p>"
+    )
+    return send_email(to, subject, text, html)
