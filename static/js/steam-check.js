@@ -316,6 +316,8 @@
   }
 
   function reset() {
+    const integrated = root.dataset.integrated === '1';
+    delete root.dataset.integrated;
     selected = [];
     lastReport = null;
     resultDownload = '';
@@ -325,6 +327,8 @@
     $('steamCheckResults').innerHTML = '';
     $('steamCheckEmpty').hidden = false;
     root.removeAttribute('data-status');
+    paintGate();
+    if (integrated) document.querySelector('#nav button[data-tab="process"]')?.click();
   }
 
   function transferToProcess() {

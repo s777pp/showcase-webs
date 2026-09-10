@@ -55,6 +55,8 @@ function collectStrings(value, output = []) {
 }
 
 function likelyUiLiteral(value) {
+  if (/^(?:blob:|restored\.)/.test(value)) return false;
+  if (/^\s+is-[a-z-]+$/.test(value)) return false;
   if (!/[A-Za-z]/.test(value) || value.length < 2 || value.length > 700) return false;
   if (/[<>{}=`\\]/.test(value) || /\b(?:class|href|src|aria-|data-|querySelector|getElementById)\b/.test(value)) return false;
   if (/^(?:https?:|\/|\.|#|\[|data-|aria-|application\/|image\/|video\/|[a-z]+:[a-z]|[A-Z0-9_-]{2,})/.test(value)) return false;
@@ -63,7 +65,11 @@ function likelyUiLiteral(value) {
 }
 
 function jsUiStrings(file, output) {
-  const source = fs.readFileSync(path.join(root, file), 'utf8');
+  let source = fs.readFileSync(path.join(root, file), 'utf8');
+  /* These strings are reviewed in all eight languages in the source itself. */
+  if (file === 'static/js/showcase-builder.js' && source.includes('var NEW_COPY =')) {
+    source = source.replace(objectLiteral(source, 'var NEW_COPY ='), '{}');
+  }
   const literal = /(['"])((?:\\.|(?!\1)[^\\\r\n])*)\1/g;
   for (const match of source.matchAll(literal)) {
     let value;
@@ -80,6 +86,15 @@ function extraPacks() {
 }
 
 const errors = [];
+const workspaceWords = evaluateDictionary('static/js/workspace-copy.js', 'const words =');
+for (const [key, translations] of Object.entries(workspaceWords)) {
+  if (!Array.isArray(translations) || translations.length !== 8 || translations.some(value => typeof value !== 'string' || !value.trim())) errors.push(`workspace: incomplete translations for ${key}`);
+}
+const builderManual = evaluateDictionary('static/js/showcase-builder.js', 'var NEW_COPY =');
+const builderManualKeys = Object.keys(builderManual.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  if (Object.keys(builderManual[language] || {}).sort().join('|') !== builderManualKeys) errors.push(`builder manual copy: incomplete ${language}`);
+}
 errors.push(...check('app', evaluateDictionary('static/js/app.js', 'var DICT ='), attributeKeys('static/app.html')));
 errors.push(...check('index', evaluateDictionary('static/js/index.js', 'const I18N ='), attributeKeys('static/index.html')));
 errors.push(...check('profile', evaluateDictionary('static/js/profile.js', 'var PDICT='), attributeKeys('static/profile.html')));

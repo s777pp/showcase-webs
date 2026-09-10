@@ -58,6 +58,7 @@ function visibleHtmlStrings(source, output) {
 }
 
 function likelyUiLiteral(value) {
+  if (/^(?:blob:|restored\.)/.test(value)) return false;
   if (!/[A-Za-z]/.test(value) || value.length < 2 || value.length > 700) return false;
   /* Concatenated HTML, selectors, source code and CSS are not interface copy. */
   if (/[<>{}=`\\]/.test(value) || /\b(?:class|href|src|aria-|data-|querySelector|getElementById)\b/.test(value)) return false;

@@ -355,6 +355,7 @@ document.querySelectorAll('.mode').forEach(btn => {
     const outline = document.getElementById('workshopOutlineSettings');
     if (outline) outline.hidden = state.mode !== 'workshop';
     if (typeof window.__wmRedraw === 'function') window.__wmRedraw();
+    try { window.ProcessGuide && window.ProcessGuide.modeChanged(); } catch (e) {}
   };
 });
 
@@ -403,6 +404,7 @@ function rotateActiveProcessFile(delta, absolute){
   state.fileRotations[index] = normalizeProcessRotation(next);
   renderFiles();
   try { window.__wmRedraw && window.__wmRedraw(); } catch(e) {}
+  try { window.ProcessGuide && window.ProcessGuide.filesChanged(state.files,state.fileRotations); } catch(e) {}
 }
 function addFiles(list){
   const wasEmpty = !state.files.length;
@@ -411,6 +413,7 @@ function addFiles(list){
   if (wasEmpty) state.activeProcessFileIndex = 0;
   renderFiles();
   try{ window.__wmLoadFromFiles && window.__wmLoadFromFiles(); }catch(e){}
+  try { window.ProcessGuide && window.ProcessGuide.filesChanged(state.files,state.fileRotations); } catch(e) {}
 }
 function renderFiles(){
   const box = document.getElementById('fileList'); box.innerHTML='';
@@ -441,6 +444,7 @@ function renderFiles(){
       state.activeProcessFileIndex = Math.max(0, Math.min(state.activeProcessFileIndex, state.files.length - 1));
       renderFiles();
       try { window.__wmLoadFromFiles && window.__wmLoadFromFiles(); } catch(e) {}
+      try { window.ProcessGuide && window.ProcessGuide.filesChanged(state.files,state.fileRotations); } catch(e) {}
     };
     d.onclick=()=>selectProcessFile(i);
     d.onkeydown=(event)=>{ if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectProcessFile(i); } };
@@ -448,7 +452,7 @@ function renderFiles(){
     box.appendChild(d);
   });
   paintProcessRotationPanel();
-  document.getElementById('btnRun').disabled = !state.files.length;
+  if (!window.ProcessGuide) document.getElementById('btnRun').disabled = !state.files.length;
 }
 document.getElementById('processRotateLeft')?.addEventListener('click',()=>rotateActiveProcessFile(-90));
 document.getElementById('processRotateRight')?.addEventListener('click',()=>rotateActiveProcessFile(90));
@@ -459,8 +463,11 @@ document.getElementById('btnClear').onclick = () => {
   document.getElementById('status').textContent='';
   document.getElementById('dlProcess').style.display='none';
   const _pg=document.getElementById('btnPublishGallery'); if(_pg) _pg.style.display='none';
+  try { window.ProcessGuide && window.ProcessGuide.filesChanged([],[]); } catch(e) {}
 };
 document.getElementById('btnRun').onclick = async () => {
+  if (window.ProcessGuide && !(await window.ProcessGuide.beforeRun(state.files,state.fileRotations))) return;
+  const processOriginals = Array.from(state.files);
   const st = document.getElementById('status');
   const dl = document.getElementById('dlProcess');
   const btn = document.getElementById('btnRun');
@@ -495,6 +502,7 @@ document.getElementById('btnRun').onclick = async () => {
   st.textContent = ru ? 'Обработка…' : 'Processing…';
   dl.style.display = 'none';
   if (btn) btn.disabled = true;
+  try { window.ProcessGuide && window.ProcessGuide.running(); } catch(e) {}
   setProg(0, ru ? 'Подготовка…' : 'Preparing…', state.files.length + (ru ? ' файл(ов)' : ' file(s)'));
 
   const fd = new FormData();
@@ -591,13 +599,14 @@ document.getElementById('btnRun').onclick = async () => {
             await new Promise(function (done) { setTimeout(done, 850); });
           }
           if (!job || job.status !== 'done') throw new Error(ru ? 'Превышено время ожидания' : 'Processing timed out');
-          if (job.readiness && window.SteamCheckResult && window.SteamCheckResult.open(job.readiness, job.download || ('/api/process/download/' + encodeURIComponent(jid)))) {
+          if (window.ProcessResult && await window.ProcessResult.open(job, jid, processOriginals)) {
             setProg(100, ru ? 'Проверка завершена' : 'Check complete', ru ? 'Открой итоговый отчёт' : 'Review the final report');
             st.className = 'status ok';
             st.textContent = ru ? 'Обработка завершена. Проверь готовность комплекта к Steam.' : 'Processing complete. Review Steam readiness.';
             dl.style.display = 'none';
             window.__lastPublishReady = true;
             try { refreshQuota(); } catch (e) {}
+            try { window.ProcessGuide && window.ProcessGuide.complete(); } catch(e) {}
             hideProgLater(); resolve(); return;
           }
           setProg(99, ru ? 'Подготавливаем ZIP…' : 'Preparing ZIP…', '');
@@ -622,11 +631,13 @@ document.getElementById('btnRun').onclick = async () => {
           if (pg) { pg.style.display = 'inline-flex'; pg.disabled = false; pg.textContent = ru ? 'Опубликовать в галерею' : 'Publish to gallery'; }
           window.__lastPublishReady = true;
           try { refreshQuota(); } catch (e) {}
+          try { window.ProcessGuide && window.ProcessGuide.complete(); } catch(e) {}
           hideProgLater(); resolve();
         } catch (error) {
           const msg = String(error && error.message ? error.message : error);
           st.className = 'status err'; st.textContent = msg;
           setProg(0, ru ? 'Ошибка' : 'Error', msg.slice(0, 100));
+          try { window.ProcessGuide && window.ProcessGuide.failed(); } catch(e) {}
           reject(error);
         }
       };
@@ -636,6 +647,7 @@ document.getElementById('btnRun').onclick = async () => {
         st.className = 'status err';
         st.textContent = err;
         setProg(0, ru ? 'Ошибка' : 'Error', err);
+        try { window.ProcessGuide && window.ProcessGuide.failed(); } catch(e) {}
         reject(new Error(err));
       };
       xhr.send(fd);
@@ -650,6 +662,10 @@ document.getElementById('btnRun').onclick = async () => {
   if (btn) btn.disabled = !state.files.length;
   try { renderFiles(); } catch (e) {}
 };
+
+document.getElementById('size')?.addEventListener('change', function () {
+  try { window.ProcessGuide && window.ProcessGuide.filesChanged(state.files,state.fileRotations); } catch(e) {}
+});
 
 document.getElementById('btnDl').onclick = async () => {
   const st = document.getElementById('dlStatus');

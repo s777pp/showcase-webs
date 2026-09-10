@@ -507,3 +507,13 @@ Production health checks are documented in `DEPLOY.md`. Always inspect command o
 - FPS choices are intentionally constrained to 12/15/18/20/24 in Process, Character, and Loop so all animation tools share the same Steam-oriented presets.
 - `--sm-action-radius` in `static/css/layout-refinement.css` is the shared geometry seam for ordinary buttons and button-like links. Do not use it for switches, avatars, or status pills.
 - Workshop and Artwork Split GIF output are synchronized groups, not independent conversions. Each mode decodes and scales the source once, derives every panel from that shared timeline, and `_encode_synchronized_frame_group()` selects the highest one quality setting that keeps every related panel within 5 MiB. Never run per-panel FPS, frame dropping, scaling, or quality fitting; a lower common setting is preferable to visible seams or timeline drift. Different panel widths will naturally produce different file sizes even though their quality setting is identical.
+
+## 15. Local Workspace Finishing Pass (2026-09-10)
+
+- This pass is local only. Do not claim it is committed, on GitHub, or deployed to the VPS.
+- `static/js/process-guide.js` owns the small Process guidance interface: local source probing, route state, pre-submit blocking and elapsed UI timing. Keep media bytes in the browser during probing; backend validation remains authoritative.
+- Process has four visible stages. Advanced settings are collapsed by default, while FPS, output width and the watermark switch stay immediately visible. `#processModeCard`, `#processSettingsCard`, `#wmPreviewCard` and `#processFilesCard` are explicit layout seams; do not return to fragile `nth-child` placement.
+- Builder templates add only generated decoration layers and preserve user media. Layers support duplicate, lock, smart snapping, arrow-key movement and Ctrl/Cmd+D. Locked layers may be shown/hidden or duplicated but not edited, dragged, reordered or deleted until unlocked.
+- Builder diagnostic backdrops are preview-only. During export `exportingCanvas` forces the actual project background and all visible background layers. Do not let a dark/light/checker edge-check mode leak into saved output.
+- Static chromakey previews are cached; video chromakey refresh is bounded. The hidden Builder tab skips canvas rendering. Preserve these limits when changing the draw loop.
+- New Process and Builder strings are hand-written for all eight languages. `scripts/check_i18n.js` excludes the reviewed `NEW_COPY` block from generated-pack checks and separately verifies identical key sets for EN/RU/DE/TR/FR/UK/ES/PT.

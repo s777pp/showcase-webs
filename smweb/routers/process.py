@@ -30,7 +30,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
@@ -341,6 +341,60 @@ def api_process_download(job_id: str, request: Request):
         filename="showcase.zip",
         headers={"X-Processed": str(j.get("processed") or "")},
     )
+
+
+def _preview_archive(job_id: str, request: Request):
+    job = _process_job_for(request, job_id)
+    if not job:
+        return None, JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
+    path = Path(job.get("zip_path") or "")
+    if job.get("status") != "done" or not path.is_file():
+        return None, JSONResponse({"ok": False, "msg": "Result unavailable or expired"}, status_code=410)
+    return path, None
+
+
+def _preview_entries(archive):
+    # Only generated final image files; never expose originals, diagnostics or arbitrary ZIP paths.
+    if len(archive.infolist()) > 500:
+        raise ValueError("Too many entries")
+    return [(index, entry) for index, entry in enumerate(archive.infolist())
+            if re.fullmatch(r"(?:part_[1-5]|featured_630|center_506|side_100)\.(?:png|gif|jpg|jpeg)", Path(entry.filename).name, re.I)
+            and 0 < entry.file_size <= 32 * 1024 * 1024]
+
+
+@router.get("/api/process/preview/{job_id}")
+def api_process_preview(job_id: str, request: Request):
+    path, error = _preview_archive(job_id, request)
+    if error is not None:
+        return error
+    try:
+        with zipfile.ZipFile(path) as archive:
+            files = [{"name": entry.filename, "size": entry.file_size,
+                      "url": f"/api/process/preview/{job_id}/{index}"}
+                     for index, entry in _preview_entries(archive)]
+        return JSONResponse({"ok": True, "files": files}, headers={"Cache-Control": "private, no-store"})
+    except (OSError, ValueError, zipfile.BadZipFile):
+        return JSONResponse({"ok": False, "msg": "Preview unavailable"}, status_code=410)
+
+
+@router.get("/api/process/preview/{job_id}/{entry_index}")
+def api_process_preview_file(job_id: str, entry_index: int, request: Request):
+    path, error = _preview_archive(job_id, request)
+    if error is not None:
+        return error
+    try:
+        with zipfile.ZipFile(path) as archive:
+            entry = dict(_preview_entries(archive)).get(entry_index)
+            if entry is None:
+                return JSONResponse({"ok": False}, status_code=404)
+            with archive.open(entry) as source:
+                data = source.read(32 * 1024 * 1024 + 1)
+            if len(data) > 32 * 1024 * 1024:
+                raise ValueError("Preview too large")
+            mime = {".png": "image/png", ".gif": "image/gif", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}[Path(entry.filename).suffix.lower()]
+        return Response(data, media_type=mime, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+    except (OSError, ValueError, zipfile.BadZipFile, RuntimeError):
+        return JSONResponse({"ok": False, "msg": "Preview unavailable"}, status_code=410)
 
 
 @router.post("/api/process")

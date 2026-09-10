@@ -91,6 +91,13 @@ def fallback_doctor(profile: dict, language: str) -> dict:
             "accent": "Сохрани один доминирующий цвет и один акцент во всех витринах.",
             "summary": "Базовый анализ без ИИ.",
         },
+        "de": {
+            "background": "Füge einen Profilhintergrund als Grundlage für die Farbpalette hinzu.",
+            "frame": "Wähle einen Avatarrahmen, der zu den Farben des Hintergrunds und der Vitrinen passt.",
+            "showcase": "Füge mindestens eine Hauptvitrine hinzu und behalte einen einheitlichen visuellen Stil bei.",
+            "accent": "Verwende eine Hauptfarbe und eine Akzentfarbe für alle Vitrinen.",
+            "summary": "Grundlegende Analyse ohne KI.",
+        },
         "tr": {
             "background": "Genel renk paletinin temeli olarak bir profil arka planı ekleyin.",
             "frame": "Arka plan ve vitrin renkleriyle uyumlu bir avatar çerçevesi seçin.",
