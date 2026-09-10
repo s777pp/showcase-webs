@@ -1,4 +1,5 @@
 import json
+import stat
 
 import auth_db
 from smweb import maintenance
@@ -100,6 +101,9 @@ def test_maintenance_state_is_atomic_and_persistent(monkeypatch, tmp_path):
     enabled = maintenance.set_state(True, "Short maintenance")
     assert enabled["enabled"] is True
     assert maintenance.get_state()["message"] == "Short maintenance"
+    mode = stat.S_IMODE(state_file.stat().st_mode)
+    assert mode & stat.S_IRGRP
+    assert mode & stat.S_IROTH
     assert not list(tmp_path.glob("maintenance-*.json"))
     maintenance.set_state(False)
     assert maintenance.get_state()["enabled"] is False

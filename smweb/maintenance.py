@@ -45,6 +45,11 @@ def set_state(enabled: bool, message: str = "") -> dict:
             json.dump(state, handle, ensure_ascii=False)
             handle.flush()
             os.fsync(handle.fileno())
+        # `docker compose exec` runs operational commands as root, while the
+        # web process deliberately runs as appuser. mkstemp defaults to 0600,
+        # which made the freshly written state invisible to the application.
+        # The notice contains no secrets, so make it readable across users.
+        os.chmod(temporary, 0o644)
         os.replace(temporary, STATE_FILE)
     finally:
         try:
