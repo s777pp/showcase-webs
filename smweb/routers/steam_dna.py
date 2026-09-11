@@ -30,6 +30,20 @@ def _bounded_env(name: str, default: int, maximum: int) -> int:
         return default
 
 
+def _canonical_profile_url(value: str) -> str:
+    """Extract common copied Steam links, then enforce the exact host/path."""
+    raw = str(value or "").replace("\u200b", "").replace("\u2060", "").replace("\ufeff", "").strip()
+    if re.fullmatch(r"\d{17}", raw):
+        raw = f"https://steamcommunity.com/profiles/{raw}"
+    else:
+        copied = re.search(
+            r"(?:https?://)?(?:www\.)?steamcommunity\.com/(id|profiles)/([^/?#\s<>\"'\]]+)", raw, re.I
+        )
+        if copied:
+            raw = f"https://steamcommunity.com/{copied.group(1).lower()}/{copied.group(2)}"
+    return _public_profile_url(raw)
+
+
 @router.post("/analyze")
 async def analyze(request: Request):
     user = _auth_user(request)
@@ -40,7 +54,7 @@ async def analyze(request: Request):
     except Exception:
         body = {}
     try:
-        url = _public_profile_url(str(body.get("url") or ""))
+        url = _canonical_profile_url(str(body.get("url") or ""))
     except Exception:
         return JSONResponse(
             {"ok": False, "code": "url", "msg": "Enter a public Steam profile URL"}, status_code=400

@@ -107,6 +107,24 @@ class SteamDnaTests(unittest.TestCase):
         self.assertEqual(response.json()["dna"]["seed"], cached["seed"])
         quota.assert_not_called()
 
+    def test_copied_profile_links_without_scheme_are_normalized(self):
+        self.assertEqual(
+            steam_dna_router._canonical_profile_url("steamcommunity.com/id/example/"),
+            "https://steamcommunity.com/id/example?l=english",
+        )
+        self.assertEqual(
+            steam_dna_router._canonical_profile_url("76561198000000000"),
+            "https://steamcommunity.com/profiles/76561198000000000?l=english",
+        )
+        self.assertEqual(
+            steam_dna_router._canonical_profile_url("Profile: [https://steamcommunity.com/id/example/]"),
+            "https://steamcommunity.com/id/example?l=english",
+        )
+        self.assertEqual(
+            steam_dna_router._canonical_profile_url("https://steamcommunity.com/\u200bid/example/"),
+            "https://steamcommunity.com/id/example?l=english",
+        )
+
     def test_status_is_private_to_job_owner(self):
         app = FastAPI()
         app.include_router(steam_dna_router.router)
