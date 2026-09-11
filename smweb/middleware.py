@@ -93,6 +93,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         "/api/auth/",
         "/api/profile/",
         "/api/profile-insights/",
+        "/api/steam-dna/",
         "/api/quota",
         "/api/bootstrap",
         "/api/notifications",
@@ -160,6 +161,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/auth/password-reset/request", 6, 300),
         ("/api/auth/password-reset/confirm", 10, 300),
         ("/api/auth/account-delete", 3, 300),
+        ("/api/steam-dna", 6, 300),
         # Guessing an access code was unlimited before: /api/unlock was simply
         # not on this list, so a script could try codes as fast as it liked.
         ("/api/unlock", 10, 60),

@@ -763,10 +763,11 @@
 
       <div class="dna-layout">
         <section class="dna-control card">
-          <div class="dna-section-title"><span>01</span><strong data-dna-i="sourceTitle">Signal source</strong></div>
-          <p class="dna-copy" data-dna-i="sourceCopy">DNA uses only the Steam snapshot already imported into your account. Nothing is posted to Steam.</p>
+          <div class="dna-section-title"><span>01</span><strong data-dna-live="sourceTitle">Public Steam profile</strong></div>
+          <p class="dna-copy" data-dna-live="sourceCopy">Paste a public Steam profile link. DNA will read its current public data and showcases; nothing is posted to Steam.</p>
+          <label class="dna-profile-url"><span data-dna-live="urlLabel">Steam profile link</span><input id="dnaProfileUrl" type="url" inputmode="url" autocomplete="url" spellcheck="false" placeholder="https://steamcommunity.com/id/username"></label>
           <label class="dna-mode"><span data-dna-i="mode">Showcase format</span><select id="dnaMode"><option value="workshop">Workshop · 5</option><option value="featured">Featured · 1</option><option value="split">Artwork Split · 2</option></select></label>
-          <button class="btn dna-run" id="dnaAnalyze" type="button"><span aria-hidden="true">◎</span><b data-dna-i="analyze">Decode my profile</b></button>
+          <button class="btn dna-run" id="dnaAnalyze" type="button"><span aria-hidden="true">◎</span><b data-dna-live="analyze">Analyze live profile</b></button>
           <div class="dna-privacy"><i aria-hidden="true">●</i><span data-dna-i="privacy">Free, local to Showcase Maker, no AI API.</span></div>
           <div class="status dna-status" id="dnaStatus" aria-live="polite"></div>
 
@@ -779,7 +780,7 @@
             <div class="dna-grid" aria-hidden="true"></div>
             <svg id="dnaOrbit" viewBox="0 0 500 500" role="img" aria-label="Steam DNA profile core"></svg>
             <div class="dna-avatar"><img id="dnaAvatar" alt=""/><span id="dnaAvatarFallback">S</span></div>
-            <div class="dna-empty" id="dnaEmpty"><b data-dna-i="emptyTitle">No signal decoded yet</b><span data-dna-i="emptyCopy">Import your Steam profile, then start the analysis.</span></div>
+            <div class="dna-empty" id="dnaEmpty"><b data-dna-i="emptyTitle">No signal decoded yet</b><span data-dna-live="emptyCopy">Paste a public Steam profile link, then start the analysis.</span></div>
           </div>
           <div class="dna-identity" id="dnaIdentity" hidden>
             <div><span data-dna-i="archetype">Archetype</span><strong id="dnaArchetype">—</strong></div>
@@ -800,7 +801,7 @@
             <button class="btn ghost" id="dnaRefresh" type="button" hidden data-dna-i="refresh">Decode again</button>
             <button class="btn" id="dnaBuilder" type="button" disabled data-dna-i="builder">Open in Builder</button>
           </div>
-          <p class="dna-footnote" data-dna-i="footnote">This is a creative profile fingerprint, not a rating. Re-importing Steam data may change it.</p>
+          <p class="dna-footnote" data-dna-live="footnote">This is a creative fingerprint of currently public profile data, not a rating.</p>
         </section>
       </div>
     </div>

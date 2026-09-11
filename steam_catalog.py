@@ -909,13 +909,14 @@ def _load_profile(canonical, progress=None):
             # These endpoints are independent. Fetching them serially added up
             # to three network round trips after the browser had already
             # rendered the page.
-            with ThreadPoolExecutor(max_workers=3, thread_name_prefix="steam-api") as pool:
+            with ThreadPoolExecutor(max_workers=4, thread_name_prefix="steam-api") as pool:
                 summaries_f = pool.submit(api, "/ISteamUser/GetPlayerSummaries/v2/", steamids=steam_id)
                 level_f = pool.submit(api, "/IPlayerService/GetSteamLevel/v1/")
                 owned_f = pool.submit(
                     api, "/IPlayerService/GetOwnedGames/v1/",
                     include_appinfo=1, include_played_free_games=1,
                 )
+                recent_f = pool.submit(api, "/IPlayerService/GetRecentlyPlayedGames/v1/")
             try:
                 players = summaries_f.result().get("players") or []
                 if players:
@@ -923,6 +924,8 @@ def _load_profile(canonical, progress=None):
                     out["profile"]["name"] = player.get("personaname") or out["profile"]["name"]
                     out["profile"]["avatar"] = player.get("avatarfull") or out["profile"]["avatar"]
                     out["profile"]["realname"] = player.get("realname") or out["profile"]["realname"]
+                    if player.get("timecreated"):
+                        out["profile"]["timecreated"] = int(player["timecreated"])
                     if player.get("personastate") is not None:
                         out["profile"]["status"] = "online" if int(player.get("personastate") or 0) else "offline"
             except Exception as exc:
@@ -940,6 +943,10 @@ def _load_profile(canonical, progress=None):
                 out["profile"]["stats_map"]["games"] = int(owned.get("game_count") or len(games))
             except Exception as exc:
                 LOGGER.info("Steam GetOwnedGames unavailable/private: %s", exc)
+            try:
+                out["profile"]["recent_games"] = (recent_f.result().get("games") or [])[:20]
+            except Exception as exc:
+                LOGGER.info("Steam GetRecentlyPlayedGames unavailable/private: %s", exc)
         return out
     except steam_profile_guard.RateLimited:
         raise

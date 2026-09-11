@@ -88,6 +88,10 @@ def _steam_web_api_data(steam_id: str) -> dict:
 
 
 def _merge_steam_api(profile: dict) -> dict:
+    # The Browser API catalog path already enriches these fields concurrently.
+    # Avoid repeating four Valve API calls in profile/DNA background jobs.
+    if profile.get("steam_api_available") and isinstance(profile.get("games"), list) and "recent_games" in profile:
+        return profile
     sid = str(profile.get("steamid") or "")
     api = _steam_web_api_data(sid)
     if not api:

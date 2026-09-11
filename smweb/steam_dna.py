@@ -1,8 +1,7 @@
-"""Deterministic Steam profile DNA for the experimental visualizer.
+"""Deterministic scoring and Builder project generation for Steam DNA.
 
-The public interface deliberately accepts an already saved Steam snapshot.  It
-does not fetch Steam itself, store a second profile copy, or depend on an AI
-provider.  This keeps the experiment cheap and makes a user's DNA reproducible.
+Network collection and optional AI interpretation live in separate modules;
+this core accepts a bounded public-profile mapping and stays reproducible.
 """
 from __future__ import annotations
 

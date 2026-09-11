@@ -52,7 +52,7 @@ def settings() -> dict[str, Any]:
             os.environ.get("GROQ_DNA_MODEL")
             or "openai/gpt-oss-20b"
         ).strip(),
-        "free_daily": bounded("STEAM_DNA_FREE_DAILY", 3, 20),
+        "free_daily": bounded("STEAM_DNA_FREE_DAILY", 1, 20),
         "pro_daily": bounded("STEAM_DNA_PRO_DAILY", 20, 100),
         "global_daily": bounded("STEAM_DNA_GLOBAL_DAILY", 150, 5000),
     }
@@ -76,6 +76,24 @@ def _public_input(dna: dict, snapshot: dict) -> dict[str, Any]:
         for item in (snapshot.get("recent_games") or [])[:8]
         if isinstance(item, dict) and str(item.get("name") or "").strip()
     ]
+    showcases = []
+    for item in (snapshot.get("showcase_instances") or snapshot.get("showcases") or [])[:16]:
+        if not isinstance(item, dict):
+            continue
+        media = item.get("items") or item.get("images") or item.get("media") or []
+        showcases.append({
+            "type": str(item.get("type") or "other")[:40],
+            "title": str(item.get("title") or "")[:100],
+            "item_count": len(media) if isinstance(media, list) else 0,
+            "has_text": bool(str(item.get("text") or "").strip()),
+        })
+    stats = snapshot.get("stats_map") if isinstance(snapshot.get("stats_map"), dict) else {}
+    public_counts = {}
+    for key in ("games", "inventory", "screenshots", "videos", "workshop", "reviews", "guides", "artwork"):
+        if key in stats:
+            public_counts[key] = round(_number(stats.get(key)))
+    background = snapshot.get("background_item") if isinstance(snapshot.get("background_item"), dict) else {}
+    frame = snapshot.get("avatar_frame") or snapshot.get("frame")
     return {
         "facts": dna.get("facts") or {},
         "signals_0_to_100": {
@@ -84,6 +102,14 @@ def _public_input(dna: dict, snapshot: dict) -> dict[str, Any]:
         },
         "most_played_games": _game_summary(snapshot),
         "recent_game_names": recent,
+        "profile_structure": {
+            "has_background": bool(snapshot.get("background") or snapshot.get("profile_background") or background),
+            "has_animated_background": bool(background.get("webm") or background.get("mp4")),
+            "has_avatar_frame": bool(frame),
+            "badge_count": len(snapshot.get("badges") or []),
+            "public_counts": public_counts,
+            "showcases": showcases,
+        },
     }
 
 
@@ -113,8 +139,9 @@ def build_payload(dna: dict, snapshot: dict, language: str) -> dict[str, Any]:
         "You interpret a deterministic Steam profile visualization called Steam DNA. "
         f"Write every value in {_LANGUAGE_NAMES[language]}. The supplied numbers are authoritative: "
         "do not recalculate or contradict them. Use only the supplied public-profile summary. "
+        "The input also describes the current public showcase structure; use it when suggesting the visual direction. "
         "Create a vivid but understandable showcase archetype and explain what the visible play-history "
-        "patterns mean. Never invent games, achievements, motives, skill, personality traits, demographics, "
+        "and showcase patterns mean. Never invent games, achievements, motives, skill, personality traits, demographics, "
         "finances, health, or private facts. Do not praise spending or shame low activity. This is a creative "
         "interpretation of a public Steam presentation, not a psychological assessment or player rating. "
         "Keep each field concise, concrete and distinct. The visual direction must suggest colors, composition "

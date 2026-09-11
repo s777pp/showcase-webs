@@ -10,8 +10,11 @@
 .dna-section-title:before{content:"";width:18px;height:2px;background:var(--dna-cyan);box-shadow:0 0 12px rgba(82,213,255,.65)}
 .dna-section-title span{color:var(--dna-cyan);font-size:9px}
 .dna-copy{margin:17px 0;color:#8398aa;font-size:13px;line-height:1.55}
-.dna-mode{display:grid;gap:8px;margin:0 0 12px;color:#728797;font:800 9px/1.3 Consolas,monospace;letter-spacing:.12em;text-transform:uppercase}
-.dna-mode select{width:100%}
+.dna-mode,.dna-profile-url{display:grid;gap:8px;margin:0 0 12px;color:#728797;font:800 9px/1.3 Consolas,monospace;letter-spacing:.12em;text-transform:uppercase}
+.dna-mode select,.dna-profile-url input{width:100%}
+.dna-profile-url input{min-height:46px;padding:0 12px;border:1px solid rgba(82,213,255,.28);border-radius:2px;background:#030b11;color:#dff8ff;font:600 12px/1.2 Consolas,monospace;letter-spacing:0;text-transform:none;outline:none;transition:border-color .16s,box-shadow .16s}
+.dna-profile-url input::placeholder{color:#405866}
+.dna-profile-url input:focus{border-color:var(--dna-cyan);box-shadow:0 0 0 2px rgba(82,213,255,.08)}
 .dna-run{display:flex!important;align-items:center;justify-content:center;gap:9px;width:100%;min-height:46px}
 .dna-run span{font-size:20px}
 .dna-privacy{display:flex;align-items:center;gap:8px;margin-top:12px;color:#617789;font-size:11px;line-height:1.45}

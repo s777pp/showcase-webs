@@ -19,6 +19,7 @@ _local_jobs: dict[str, dict] = {}
 _local_usage: dict[str, dict] = {}
 _local_sessions: dict[str, dict] = {}
 _local_insight_history: dict[int, list[dict]] = {}
+_local_dna_cache: dict[str, tuple[float, dict]] = {}
 _local_lock = threading.Lock()
 _redis = None
 
@@ -38,6 +39,7 @@ WORKER_BEAT_KEY = "sm:worker:beat"
 JOB_TTL = 3600
 TERMINAL = ("done", "error", "cancelled")
 INSIGHT_HISTORY_KEY = "sm:profile-insights:{}"
+DNA_CACHE_KEY = "sm:steam-dna-cache:{}"
 
 
 # ---------- connection ----------
@@ -145,7 +147,7 @@ def job_create(jid: str, data: dict, enqueue: bool = True) -> None:
                 pipe.sadd(USER_JOBS_KEY.format(uk), jid)
                 pipe.expire(USER_JOBS_KEY.format(uk), JOB_TTL)
             if enqueue:
-                if data.get("kind") in {"steam_profile_import", "profile_insight"}:
+                if data.get("kind") in {"steam_profile_import", "profile_insight", "steam_dna"}:
                     queue = PROFILE_JOB_QUEUE
                 elif data.get("kind") == "upscale":
                     queue = UPSCALE_JOB_QUEUE
@@ -471,3 +473,40 @@ def profile_insight_history(user_id: int) -> list[dict]:
             _note(e)
     with _local_lock:
         return [dict(row) for row in _local_insight_history.get(int(user_id), [])]
+
+
+def steam_dna_cache_get(key: str) -> Optional[dict]:
+    """Return a detached cached DNA result, or None after its TTL expires."""
+    safe_key = str(key)[:80]
+    r = _r()
+    if r:
+        try:
+            raw = r.get(DNA_CACHE_KEY.format(safe_key))
+            return json.loads(raw) if raw else None
+        except Exception as e:
+            _note(e)
+    now = time.time()
+    with _local_lock:
+        cached = _local_dna_cache.get(safe_key)
+        if not cached:
+            return None
+        expires_at, value = cached
+        if expires_at <= now:
+            _local_dna_cache.pop(safe_key, None)
+            return None
+        return json.loads(json.dumps(value))
+
+
+def steam_dna_cache_set(key: str, value: dict, ttl: int = 3600) -> None:
+    safe_key = str(key)[:80]
+    ttl = max(1, int(ttl))
+    safe = json.dumps(value, ensure_ascii=False)
+    r = _r()
+    if r:
+        try:
+            r.set(DNA_CACHE_KEY.format(safe_key), safe, ex=ttl)
+            return
+        except Exception as e:
+            _note(e)
+    with _local_lock:
+        _local_dna_cache[safe_key] = (time.time() + ttl, json.loads(safe))

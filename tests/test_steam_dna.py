@@ -56,47 +56,69 @@ class SteamDnaTests(unittest.TestCase):
         self.assertEqual(result["project"]["mode"], "workshop")
         self.assertEqual(result["project"]["width"], 750)
 
-    def test_api_requires_login_and_uses_private_snapshot(self):
+    def test_api_requires_login_and_queues_live_public_profile(self):
         app = FastAPI()
         app.include_router(steam_dna_router.router)
         client = TestClient(app)
         with patch.object(steam_dna_router, "_auth_user", return_value=None):
-            response = client.post("/api/steam-dna/analyze", json={"mode": "featured"})
+            response = client.post("/api/steam-dna/analyze", json={"url": "https://steamcommunity.com/id/example"})
         self.assertEqual(response.status_code, 401)
         with (
-            patch.object(steam_dna_router, "_auth_user", return_value={"id": 7}),
+            patch.object(steam_dna_router, "_auth_user", return_value={"id": 7, "is_pro": False}),
+            patch.object(steam_dna_router.auth_db, "effective_pro", return_value=False),
             patch.object(steam_dna_router.rs, "rate_limit", return_value=(True, 11)),
-            patch.object(steam_dna_router.auth_db, "get_steam_profile_snapshot", return_value=self.snapshot()),
-            patch.object(steam_dna_router.steam_dna_ai, "configured", return_value=False),
+            patch.object(steam_dna_router.rs, "steam_dna_cache_get", return_value=None),
+            patch.object(steam_dna_router.rs, "job_find_active", return_value=None),
+            patch.object(steam_dna_router.rs, "redis_ok", return_value=True),
+            patch.object(steam_dna_router.rs, "worker_alive", return_value=True),
+            patch.object(steam_dna_router.rs, "job_create") as create,
+            patch.dict("os.environ", {"WORKER_MODE": "external"}),
         ):
-            response = client.post("/api/steam-dna/analyze", json={"mode": "featured"})
+            response = client.post(
+                "/api/steam-dna/analyze",
+                json={"url": "https://steamcommunity.com/id/example", "mode": "featured", "language": "ru"},
+            )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["dna"]["project"]["mode"], "featured")
-        self.assertEqual(response.headers["cache-control"], "no-store")
+        self.assertTrue(response.json()["queued"])
+        payload = create.call_args.args[1]
+        self.assertEqual(payload["kind"], "steam_dna")
+        self.assertEqual(payload["mode"], "featured")
+        self.assertEqual(payload["language"], "ru")
+        self.assertTrue(payload["url"].startswith("https://steamcommunity.com/id/example"))
 
-    def test_api_adds_ai_interpretation_without_replacing_signals(self):
+    def test_api_rejects_non_steam_url_and_returns_cached_result_without_quota(self):
         app = FastAPI()
         app.include_router(steam_dna_router.router)
         client = TestClient(app)
-        interpretation = {
-            "title": "Signal Cartographer", "summary": "Readable summary",
-            "play_style": "Focused pattern", "collector_style": "Broad library",
-            "visual_direction": "Cyan map lines", "motto": "MAP YOUR SIGNAL",
-            "signal_notes": {key: "Clear note" for key in ("focus", "variety", "mastery", "history", "activity", "collector")},
-        }
+        cached = build_profile_dna(self.snapshot(), mode="workshop")
+        with patch.object(steam_dna_router, "_auth_user", return_value={"id": 7}):
+            invalid = client.post("/api/steam-dna/analyze", json={"url": "https://example.com/profile"})
+        self.assertEqual(invalid.status_code, 400)
         with (
-            patch.object(steam_dna_router, "_auth_user", return_value={"id": 7, "is_pro": False}),
-            patch.object(steam_dna_router.rs, "rate_limit", return_value=(True, 2)),
-            patch.object(steam_dna_router.auth_db, "get_steam_profile_snapshot", return_value=self.snapshot()),
-            patch.object(steam_dna_router.steam_dna_ai, "configured", return_value=True),
-            patch.object(steam_dna_router.steam_dna_ai, "enrich_profile_dna", return_value=interpretation),
+            patch.object(steam_dna_router, "_auth_user", return_value={"id": 7}),
+            patch.object(steam_dna_router.rs, "steam_dna_cache_get", return_value=cached),
+            patch.object(steam_dna_router.rs, "rate_limit") as quota,
         ):
-            response = client.post("/api/steam-dna/analyze", json={"mode": "workshop", "language": "ru"})
-        body = response.json()["dna"]
+            response = client.post(
+                "/api/steam-dna/analyze", json={"url": "https://steamcommunity.com/profiles/76561198000000000"}
+            )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(body["interpretation"]["title"], "Signal Cartographer")
-        self.assertTrue(body["ai"]["used"])
-        self.assertEqual(set(body["signals"]), {"focus", "variety", "mastery", "history", "activity", "collector"})
+        self.assertTrue(response.json()["cached"])
+        self.assertEqual(response.json()["dna"]["seed"], cached["seed"])
+        quota.assert_not_called()
+
+    def test_status_is_private_to_job_owner(self):
+        app = FastAPI()
+        app.include_router(steam_dna_router.router)
+        client = TestClient(app)
+        job = {"kind": "steam_dna", "user_id": 7, "status": "done", "pct": 100, "stage": "done", "result": {"seed": "abc"}}
+        with patch.object(steam_dna_router, "_auth_user", return_value={"id": 7}), patch.object(steam_dna_router.rs, "job_get", return_value=job):
+            response = client.get("/api/steam-dna/status/0123456789abcdef01234567")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["dna"]["seed"], "abc")
+        with patch.object(steam_dna_router, "_auth_user", return_value={"id": 8}), patch.object(steam_dna_router.rs, "job_get", return_value=job):
+            response = client.get("/api/steam-dna/status/0123456789abcdef01234567")
+        self.assertEqual(response.status_code, 404)
 
 
 if __name__ == "__main__":

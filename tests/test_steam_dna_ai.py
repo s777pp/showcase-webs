@@ -17,6 +17,8 @@ class SteamDnaAiTests(unittest.TestCase):
                 {"name": "Second Game", "playtime_forever": 1200},
             ],
             "recent_games": [{"name": "First Game"}],
+            "showcase_instances": [{"type": "artwork", "title": "My art", "images": ["https://steamuserimages.example/a.jpg"]}],
+            "stats_map": {"artwork": 14, "screenshots": 80},
             "level": 20,
         }
 
@@ -41,6 +43,9 @@ class SteamDnaAiTests(unittest.TestCase):
         self.assertNotIn("76561198000000000", payload["input"])
         self.assertNotIn("steamcommunity.com", payload["input"])
         self.assertNotIn("Signal User", payload["input"])
+        self.assertIn('"type": "artwork"', payload["input"])
+        self.assertIn('"artwork": 14', payload["input"])
+        self.assertNotIn("steamuserimages.example", payload["input"])
 
     def test_success_returns_copy_and_updates_builder_text(self):
         snapshot = self.snapshot()
