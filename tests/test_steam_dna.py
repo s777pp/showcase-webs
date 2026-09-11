@@ -41,6 +41,8 @@ class SteamDnaTests(unittest.TestCase):
         self.assertEqual(project["width"], 606)
         self.assertEqual([layer["type"] for layer in project["layers"]].count("dna"), 1)
         self.assertTrue(project["layers"][0]["src"].startswith("/api/steam/proxy-image?"))
+        self.assertEqual([item["id"] for item in first["projects"]], ["cinematic", "emblem", "pure"])
+        self.assertTrue(all(_validated_project(item["project"])["mode"] == "split" for item in first["projects"]))
 
     def test_profile_changes_produce_a_new_identity(self):
         first = build_profile_dna(self.snapshot())

@@ -61,9 +61,10 @@ class SteamDnaAiTests(unittest.TestCase):
         self.assertEqual(result["title"], "Neon Pathfinder")
         self.assertEqual(post.call_args.args[0], "https://api.groq.com/openai/v1/responses")
         self.assertFalse(post.call_args.kwargs["allow_redirects"])
-        layers = {item["id"]: item for item in dna["project"]["layers"]}
-        self.assertEqual(layers["dna_signature"]["text"], "NEON PATHFINDER")
-        self.assertEqual(layers["dna_motto"]["text"], "FOLLOW THE BRIGHTEST SIGNAL")
+        for variant in dna["projects"]:
+            layers = variant["project"]["layers"]
+            self.assertTrue(any(item.get("text") == "NEON PATHFINDER" for item in layers))
+            self.assertTrue(any(item.get("text") == "FOLLOW THE BRIGHTEST SIGNAL" for item in layers))
 
     def test_provider_failure_has_safe_exception(self):
         snapshot = self.snapshot()

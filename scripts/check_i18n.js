@@ -74,6 +74,7 @@ function jsUiStrings(file, output) {
     source = source.replace(objectLiteral(source, 'var DNA_COPY='), '{}');
     if (source.includes('var AI_COPY=')) source = source.replace(objectLiteral(source, 'var AI_COPY='), '{}');
     if (source.includes('var LIVE_COPY=')) source = source.replace(objectLiteral(source, 'var LIVE_COPY='), '{}');
+    if (source.includes('var DESIGN_COPY=')) source = source.replace(objectLiteral(source, 'var DESIGN_COPY='), '{}');
   }
   if (file === 'static/ss-shell.js') {
     for (const marker of ['var ACCOUNT_COPY =', 'var RESET_ERROR_COPY =']) {
@@ -125,6 +126,13 @@ for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
   const values = dnaLiveManual[language] || {};
   if (Object.keys(values).sort().join('|') !== dnaLiveManualKeys) errors.push(`Steam DNA live copy: incomplete ${language}`);
   if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`Steam DNA live copy: empty ${language}`);
+}
+const dnaDesignManual = evaluateDictionary('static/js/steam-dna.js', 'var DESIGN_COPY=');
+const dnaDesignManualKeys = Object.keys(dnaDesignManual.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  const values = dnaDesignManual[language] || {};
+  if (Object.keys(values).sort().join('|') !== dnaDesignManualKeys) errors.push(`Steam DNA design copy: incomplete ${language}`);
+  if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`Steam DNA design copy: empty ${language}`);
 }
 for (const [name, dictionary] of [
   ['account copy', evaluateDictionary('static/ss-shell.js', 'var ACCOUNT_COPY =')],

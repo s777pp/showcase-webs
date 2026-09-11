@@ -64,7 +64,7 @@ async def analyze(request: Request):
     if mode not in _MODES:
         mode = "workshop"
     language = normalize_language(str(body.get("language") or "")) or "en"
-    cache_key = hashlib.sha256(f"{url}|{mode}|{language}|dna-v2".encode()).hexdigest()[:32]
+    cache_key = hashlib.sha256(f"{url}|{mode}|{language}|dna-v3".encode()).hexdigest()[:32]
     cached = rs.steam_dna_cache_get(cache_key)
     if cached:
         return JSONResponse({"ok": True, "cached": True, "dna": cached}, headers={"Cache-Control": "no-store"})

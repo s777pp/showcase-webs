@@ -190,16 +190,22 @@ def _extract(data: dict) -> dict:
 
 
 def _apply_to_project(dna: dict, interpretation: dict) -> None:
-    layers = (dna.get("project") or {}).get("layers") or []
-    for layer in layers:
-        if layer.get("id") == "dna_signature":
-            layer["text"] = interpretation["title"].upper()
-    layers.append({
-        "id": "dna_motto", "type": "text", "name": "AI profile motto",
-        "text": interpretation["motto"], "font": "Mulish", "fontSize": 17,
-        "color": (dna.get("palette") or ["#52d5ff"])[0], "x": .5, "y": .925,
-        "scale": 1, "rotation": 0, "opacity": .82, "visible": True, "animation": "none",
-    })
+    projects = [item.get("project") for item in (dna.get("projects") or []) if isinstance(item, dict)]
+    if not projects:
+        projects = [dna.get("project")]
+    for index, project in enumerate(item for item in projects if isinstance(item, dict)):
+        layers = project.get("layers") or []
+        for layer in layers:
+            if str(layer.get("id") or "").startswith("dna_signature"):
+                layer["text"] = interpretation["title"].upper()
+        layers.append({
+            "id": f"dna_motto_{index}", "type": "text", "name": "AI profile motto",
+            "text": interpretation["motto"], "font": "Mulish", "fontSize": 17,
+            "color": (dna.get("palette") or ["#52d5ff"])[0], "x": .5, "y": .925,
+            "scale": 1, "rotation": 0, "opacity": .82, "visible": True, "animation": "none",
+        })
+    if projects:
+        dna["project"] = projects[0]
 
 
 def enrich_profile_dna(dna: dict, snapshot: dict, language: str) -> dict:

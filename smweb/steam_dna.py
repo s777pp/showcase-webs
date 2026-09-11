@@ -68,6 +68,23 @@ def _proxy_url(value: Any) -> str:
     return url
 
 
+def _showcase_art(snapshot: dict) -> str:
+    """Prefer artwork the owner already chose for a public showcase."""
+    showcases = snapshot.get("showcase_instances") or snapshot.get("showcases") or []
+    ordered = sorted(
+        (item for item in showcases[:20] if isinstance(item, dict)),
+        key=lambda item: 0 if any(word in str(item.get("type") or "").lower() for word in ("artwork", "featured")) else 1,
+    )
+    for showcase in ordered:
+        media = showcase.get("images") or showcase.get("media") or showcase.get("items") or []
+        for item in media[:8] if isinstance(media, list) else []:
+            value = item.get("image") or item.get("url") if isinstance(item, dict) else item
+            proxied = _proxy_url(value)
+            if proxied:
+                return proxied
+    return ""
+
+
 def _archetype(signals: dict[str, float]) -> str:
     first, second = sorted(_SIGNAL_KEYS, key=signals.get, reverse=True)[:2]
     pair = {first, second}
@@ -140,56 +157,65 @@ def _signals(snapshot: dict, games: list[dict], recent: list[dict], facts: dict)
     }
 
 
-def _project(snapshot: dict, *, mode: str, seed: str, signals: dict[str, float], palette: list[str], archetype: str) -> dict:
+def _project(snapshot: dict, *, mode: str, seed: str, signals: dict[str, float], palette: list[str], archetype: str, variant: str = "cinematic") -> dict:
     width = _MODES[mode]
     avatar = _proxy_url(snapshot.get("avatar"))
-    background = _proxy_url(snapshot.get("background_movie") or snapshot.get("background"))
-    is_video = bool(snapshot.get("background_movie"))
+    profile_background = _proxy_url(snapshot.get("background_movie") or snapshot.get("background"))
+    showcase_background = _showcase_art(snapshot)
+    background = showcase_background if variant == "cinematic" and showcase_background else profile_background or showcase_background
+    is_video = bool(snapshot.get("background_movie") and background == profile_background)
+    layout = {
+        "cinematic": {"bg": .76, "effect": "streaks", "effect_opacity": .18, "dna_x": .24, "dna_y": .31, "dna_scale": .58, "dna_opacity": .72, "avatar": False, "name_x": .56, "name_y": .78, "name_size": 58, "signature_y": .85},
+        "emblem": {"bg": .42, "effect": "stars", "effect_opacity": .30, "dna_x": .5, "dna_y": .43, "dna_scale": .88, "dna_opacity": 1, "avatar": True, "name_x": .5, "name_y": .79, "name_size": 48, "signature_y": .86},
+        "pure": {"bg": .14, "effect": "matrix", "effect_opacity": .13, "dna_x": .5, "dna_y": .39, "dna_scale": 1.12, "dna_opacity": .94, "avatar": False, "name_x": .5, "name_y": .80, "name_size": 54, "signature_y": .87},
+    }.get(variant) or {}
     layers: list[dict] = []
     if background:
         layers.append({
-            "id": "dna_background", "type": "background", "name": "Steam background",
+            "id": f"dna_background_{variant}", "type": "background", "name": "Profile artwork",
             "src": background, "mediaType": "video/webm" if is_video else "image/jpeg",
-            "x": .5, "y": .5, "scale": 1, "rotation": 0, "opacity": .34,
+            "x": .5, "y": .5, "scale": 1, "rotation": 0, "opacity": layout["bg"],
             "visible": True, "animation": "none",
         })
     layers.extend([
         {
-            "id": "dna_atmosphere", "type": "effect", "name": "DNA atmosphere",
-            "effect": "stars", "color": palette[1], "x": .5, "y": .5,
-            "scale": 1, "rotation": 0, "opacity": .34, "visible": True, "animation": "none",
+            "id": f"dna_atmosphere_{variant}", "type": "effect", "name": "DNA atmosphere",
+            "effect": layout["effect"], "color": palette[1], "x": .5, "y": .5,
+            "scale": 1.08, "rotation": -8 if variant == "cinematic" else 0,
+            "opacity": layout["effect_opacity"], "visible": True, "animation": "none",
         },
         {
-            "id": "dna_core", "type": "dna", "name": "Steam DNA Core",
+            "id": f"dna_core_{variant}", "type": "dna", "name": "Steam DNA Core",
             "seed": seed, "signals": signals, "palette": palette, "archetype": archetype,
-            "x": .5, "y": .46, "scale": .78, "rotation": 0, "opacity": 1,
+            "x": layout["dna_x"], "y": layout["dna_y"], "scale": layout["dna_scale"],
+            "rotation": 0, "opacity": layout["dna_opacity"],
             "visible": True, "animation": "none",
         },
     ])
-    if avatar:
+    if avatar and layout["avatar"]:
         layers.append({
-            "id": "dna_avatar", "type": "character", "name": "Steam avatar",
-            "src": avatar, "mediaType": "image/jpeg", "x": .5, "y": .46,
-            "scale": .29, "rotation": 0, "opacity": 1, "visible": True,
+            "id": f"dna_avatar_{variant}", "type": "character", "name": "Steam avatar",
+            "src": avatar, "mediaType": "image/jpeg", "x": layout["dna_x"], "y": layout["dna_y"],
+            "scale": .23, "rotation": 0, "opacity": 1, "visible": True,
             "animation": "breathing", "chroma": False,
         })
     layers.extend([
         {
-            "id": "dna_name", "type": "text", "name": "Profile name",
+            "id": f"dna_name_{variant}", "type": "text", "name": "Profile name",
             "text": str(snapshot.get("name") or "STEAM DNA")[:80], "font": "Unbounded",
-            "fontSize": 48, "color": "#ffffff", "x": .5, "y": .82, "scale": 1,
+            "fontSize": layout["name_size"], "color": "#ffffff", "x": layout["name_x"], "y": layout["name_y"], "scale": 1,
             "rotation": 0, "opacity": 1, "visible": True, "animation": "none",
         },
         {
-            "id": "dna_signature", "type": "text", "name": "DNA signature",
+            "id": f"dna_signature_{variant}", "type": "text", "name": "DNA signature",
             "text": archetype.replace("_", " ").upper(), "font": "Consolas",
-            "fontSize": 22, "color": palette[0], "x": .5, "y": .88, "scale": 1,
+            "fontSize": 20, "color": palette[0], "x": layout["name_x"], "y": layout["signature_y"], "scale": 1,
             "rotation": 0, "opacity": .84, "visible": True, "animation": "none",
         },
         {
-            "id": "dna_frame", "type": "frame", "name": "DNA frame",
-            "color": palette[0], "frameWidth": 3, "x": .5, "y": .5,
-            "scale": 1, "rotation": 0, "opacity": .72, "visible": True, "animation": "none",
+            "id": f"dna_frame_{variant}", "type": "frame", "name": "DNA frame",
+            "color": palette[0], "frameWidth": 2 if variant == "pure" else 4, "x": .5, "y": .5,
+            "scale": 1, "rotation": 0, "opacity": .64, "visible": True, "animation": "none",
         },
     ])
     return {
@@ -215,6 +241,10 @@ def build_profile_dna(snapshot: dict, *, user_id: int = 0, mode: str = "workshop
     signals = _signals(snapshot, games, recent, facts)
     palette = _palette(seed, signals)
     archetype = _archetype(signals)
+    variants = [
+        {"id": variant, "project": _project(snapshot, mode=mode, seed=seed, signals=signals, palette=palette, archetype=archetype, variant=variant)}
+        for variant in ("cinematic", "emblem", "pure")
+    ]
     return {
         "version": DNA_VERSION,
         "seed": seed,
@@ -223,5 +253,6 @@ def build_profile_dna(snapshot: dict, *, user_id: int = 0, mode: str = "workshop
         "facts": facts,
         "palette": palette,
         "archetype": archetype,
-        "project": _project(snapshot, mode=mode, seed=seed, signals=signals, palette=palette, archetype=archetype),
+        "project": variants[0]["project"],
+        "projects": variants,
     }
