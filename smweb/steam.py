@@ -96,6 +96,8 @@ def _merge_steam_api(profile: dict) -> dict:
     profile["name"] = player.get("personaname") or profile.get("name")
     profile["avatar"] = player.get("avatarfull") or profile.get("avatar")
     profile["status"] = "online" if int(player.get("personastate") or 0) else profile.get("status")
+    if player.get("timecreated"):
+        profile["timecreated"] = int(player["timecreated"])
     if api.get("level"):
         profile["level"] = api["level"]
     profile["games"] = api.get("games") or []

@@ -27,7 +27,7 @@ from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, _safe_data_path
 router = APIRouter(prefix="/api/builder", tags=["builder"])
 _remove_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="builder-bg-remove")
 _MODES = {"workshop", "featured", "split"}
-_LAYER_TYPES = {"background", "character", "text", "frame", "effect"}
+_LAYER_TYPES = {"background", "character", "text", "frame", "effect", "dna"}
 _EFFECTS = {"particle", "snow", "stars", "matrix", "streaks", "sparks", "custom"}
 _ANIMATIONS = {"none", "breathing", "wave"}
 _SAFE_MEDIA = {
@@ -92,6 +92,21 @@ def _validated_project(raw) -> dict:
             item["color"] = color if re.fullmatch(r"#[0-9a-fA-F]{6}", color) else "#52d5ff"
         if item["type"] == "effect":
             item["effect"] = item.get("effect") if item.get("effect") in _EFFECTS else "particle"
+        if item["type"] == "dna":
+            raw_signals = item.get("signals") if isinstance(item.get("signals"), dict) else {}
+            item["signals"] = {}
+            for signal in ("focus", "variety", "mastery", "history", "activity", "collector"):
+                try:
+                    item["signals"][signal] = max(0.0, min(1.0, float(raw_signals.get(signal, 0))))
+                except (TypeError, ValueError):
+                    item["signals"][signal] = 0.0
+            raw_palette = item.get("palette") if isinstance(item.get("palette"), list) else []
+            item["palette"] = [
+                color for color in (str(value) for value in raw_palette[:3])
+                if re.fullmatch(r"#[0-9a-fA-F]{6}", color)
+            ] or ["#52d5ff", "#7c5cff", "#ff5ec4"]
+            item["seed"] = re.sub(r"[^a-fA-F0-9]", "", str(item.get("seed") or ""))[:32]
+            item["archetype"] = re.sub(r"[^a-z_]", "", str(item.get("archetype") or "signal_weaver"))[:40]
         item["animation"] = item.get("animation") if item.get("animation") in _ANIMATIONS else "none"
         item["chroma"] = bool(item.get("chroma", False))
         if "src" in item:

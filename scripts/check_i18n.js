@@ -70,6 +70,9 @@ function jsUiStrings(file, output) {
   if (file === 'static/js/showcase-builder.js' && source.includes('var NEW_COPY =')) {
     source = source.replace(objectLiteral(source, 'var NEW_COPY ='), '{}');
   }
+  if (file === 'static/js/steam-dna.js' && source.includes('var DNA_COPY=')) {
+    source = source.replace(objectLiteral(source, 'var DNA_COPY='), '{}');
+  }
   if (file === 'static/ss-shell.js') {
     for (const marker of ['var ACCOUNT_COPY =', 'var RESET_ERROR_COPY =']) {
       if (source.includes(marker)) source = source.replace(objectLiteral(source, marker), '{}');
@@ -100,6 +103,13 @@ const builderManualKeys = Object.keys(builderManual.en || {}).sort().join('|');
 for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
   if (Object.keys(builderManual[language] || {}).sort().join('|') !== builderManualKeys) errors.push(`builder manual copy: incomplete ${language}`);
 }
+const dnaManual = evaluateDictionary('static/js/steam-dna.js', 'var DNA_COPY=');
+const dnaManualKeys = Object.keys(dnaManual.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  const values = dnaManual[language] || {};
+  if (Object.keys(values).sort().join('|') !== dnaManualKeys) errors.push(`Steam DNA copy: incomplete ${language}`);
+  if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`Steam DNA copy: empty ${language}`);
+}
 for (const [name, dictionary] of [
   ['account copy', evaluateDictionary('static/ss-shell.js', 'var ACCOUNT_COPY =')],
   ['password reset errors', evaluateDictionary('static/ss-shell.js', 'var RESET_ERROR_COPY =')],
@@ -129,7 +139,7 @@ const dictionaries = [
 ];
 const extras = extraPacks();
 const languages = ['de','tr','fr','uk','es','pt'];
-const preserved = /^(?:Steam|Showcase Maker|SteamShowcase Helper|Discord|Google|Telegram|Groq|Gemini|DeviantArt|Workshop|Featured|Artwork Split|GIF|PNG|JPG|WEBP|WebM|MP4|MOV|AVI|FFmpeg|gifski|HEX 21|FAQ|Pro|Free|LIVE)$/i;
+const preserved = /^(?:Steam|Steam DNA(?: ·)?|Showcase Maker|SteamShowcase Helper|Discord|Google|Telegram|Groq|Gemini|DeviantArt|Workshop|Featured|Artwork Split|GIF|PNG|JPG|WEBP|WebM|MP4|MOV|AVI|FFmpeg|gifski|HEX 21|FAQ|Pro|Free|LIVE)$/i;
 const expected = new Set(dictionaries.flatMap(dictionary => collectStrings(dictionary.en || {})).filter(value => /[A-Za-z]/.test(value) && !preserved.test(value.trim())));
 const literalStrings = new Set();
 for (const file of [
@@ -137,6 +147,7 @@ for (const file of [
   'static/js/app.js', 'static/js/app-tail.js', 'static/js/gallery.js',
   'static/js/profile.js', 'static/js/profile-insights.js', 'static/js/support-chat.js',
   'static/js/seamless-loop.js', 'static/js/showcase-builder.js',
+  'static/js/steam-dna.js',
   'static/js/steam-check.js', 'static/js/steam-mockup.js',
   'static/js/steam-extension-status.js', 'static/js/layout-refinement.js',
   'static/js/sm-auth.js'
