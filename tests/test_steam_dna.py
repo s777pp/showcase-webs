@@ -67,11 +67,36 @@ class SteamDnaTests(unittest.TestCase):
             patch.object(steam_dna_router, "_auth_user", return_value={"id": 7}),
             patch.object(steam_dna_router.rs, "rate_limit", return_value=(True, 11)),
             patch.object(steam_dna_router.auth_db, "get_steam_profile_snapshot", return_value=self.snapshot()),
+            patch.object(steam_dna_router.steam_dna_ai, "configured", return_value=False),
         ):
             response = client.post("/api/steam-dna/analyze", json={"mode": "featured"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["dna"]["project"]["mode"], "featured")
         self.assertEqual(response.headers["cache-control"], "no-store")
+
+    def test_api_adds_ai_interpretation_without_replacing_signals(self):
+        app = FastAPI()
+        app.include_router(steam_dna_router.router)
+        client = TestClient(app)
+        interpretation = {
+            "title": "Signal Cartographer", "summary": "Readable summary",
+            "play_style": "Focused pattern", "collector_style": "Broad library",
+            "visual_direction": "Cyan map lines", "motto": "MAP YOUR SIGNAL",
+            "signal_notes": {key: "Clear note" for key in ("focus", "variety", "mastery", "history", "activity", "collector")},
+        }
+        with (
+            patch.object(steam_dna_router, "_auth_user", return_value={"id": 7, "is_pro": False}),
+            patch.object(steam_dna_router.rs, "rate_limit", return_value=(True, 2)),
+            patch.object(steam_dna_router.auth_db, "get_steam_profile_snapshot", return_value=self.snapshot()),
+            patch.object(steam_dna_router.steam_dna_ai, "configured", return_value=True),
+            patch.object(steam_dna_router.steam_dna_ai, "enrich_profile_dna", return_value=interpretation),
+        ):
+            response = client.post("/api/steam-dna/analyze", json={"mode": "workshop", "language": "ru"})
+        body = response.json()["dna"]
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(body["interpretation"]["title"], "Signal Cartographer")
+        self.assertTrue(body["ai"]["used"])
+        self.assertEqual(set(body["signals"]), {"focus", "variety", "mastery", "history", "activity", "collector"})
 
 
 if __name__ == "__main__":
