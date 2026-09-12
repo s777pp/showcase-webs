@@ -69,6 +69,7 @@ function jsUiStrings(file, output) {
   /* These strings are reviewed in all eight languages in the source itself. */
   if (file === 'static/js/showcase-builder.js' && source.includes('var NEW_COPY =')) {
     source = source.replace(objectLiteral(source, 'var NEW_COPY ='), '{}');
+    if (source.includes('var VFX_COPY =')) source = source.replace(objectLiteral(source, 'var VFX_COPY ='), '{}');
   }
   if (file === 'static/js/steam-dna.js' && source.includes('var DNA_COPY=')) {
     source = source.replace(objectLiteral(source, 'var DNA_COPY='), '{}');
@@ -105,6 +106,11 @@ const builderManual = evaluateDictionary('static/js/showcase-builder.js', 'var N
 const builderManualKeys = Object.keys(builderManual.en || {}).sort().join('|');
 for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
   if (Object.keys(builderManual[language] || {}).sort().join('|') !== builderManualKeys) errors.push(`builder manual copy: incomplete ${language}`);
+}
+const builderVfxManual = evaluateDictionary('static/js/showcase-builder.js', 'var VFX_COPY =');
+const builderVfxManualKeys = Object.keys(builderVfxManual.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  if (Object.keys(builderVfxManual[language] || {}).sort().join('|') !== builderVfxManualKeys) errors.push(`builder VFX copy: incomplete ${language}`);
 }
 const dnaManual = evaluateDictionary('static/js/steam-dna.js', 'var DNA_COPY=');
 const dnaManualKeys = Object.keys(dnaManual.en || {}).sort().join('|');

@@ -72,6 +72,17 @@ class BuilderProjectTests(unittest.TestCase):
         self.assertEqual(layer["fontSize"], 64)
         self.assertEqual(layer["animation"], "none")
 
+        enhanced = _validated_project({"mode": "split", "layers": [
+            {"type": "effect", "effect": "lightning", "effectSpeed": 999,
+             "effectDensity": 10},
+            {"type": "frame", "frameStyle": "corners", "frameTarget": "panels"},
+        ]})
+        self.assertEqual(enhanced["layers"][0]["effect"], "lightning")
+        self.assertEqual(enhanced["layers"][0]["effectSpeed"], 250)
+        self.assertEqual(enhanced["layers"][0]["effectDensity"], 25)
+        self.assertEqual(enhanced["layers"][1]["frameStyle"], "corners")
+        self.assertEqual(enhanced["layers"][1]["frameTarget"], "panels")
+
     def test_builder_markup_exposes_compact_controls(self):
         root = Path(__file__).resolve().parents[1]
         markup = (root / "static" / "app.html").read_text(encoding="utf-8")
@@ -81,11 +92,22 @@ class BuilderProjectTests(unittest.TestCase):
         self.assertIn('id="builderChromaFeather"', markup)
         self.assertIn('id="builderEffectColor"', markup)
         self.assertIn('id="builderFontPreview"', markup)
+        self.assertIn('id="builderEffectSpeed"', markup)
+        self.assertIn('id="builderEffectDensity"', markup)
+        self.assertIn('id="builderFrameStyle"', markup)
+        self.assertIn('id="builderFrameTarget"', markup)
+        self.assertIn('<option value="Rubik Mono One">Rubik Mono One</option>', markup)
         self.assertIn('<option value="Unbounded">Unbounded</option>', markup)
         self.assertIn("applyChroma", script)
         self.assertIn("builderEffectColor", script)
         self.assertIn("ctx.translate(-canvas.width/2,-canvas.height/2)", script)
         self.assertIn("syncFontPreview", script)
+        self.assertIn("drawFlowingTexture", script)
+        self.assertIn("frameRects", script)
+
+        effects = root / "static" / "assets" / "builder" / "effects"
+        for name in ("petals.png", "snow.png", "rain.png", "lightning.png"):
+            self.assertGreater((effects / name).stat().st_size, 10_000)
 
 
 if __name__ == "__main__":

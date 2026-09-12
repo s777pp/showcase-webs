@@ -17,6 +17,15 @@
   var snapEnabled = true;
   var exportingCanvas = false;
   var chromaCache = new Map();
+  var effectTextures = new Map();
+  var effectTintCache = new Map();
+  var effectPatternCache = new WeakMap();
+  var EFFECT_ASSETS = {
+    petals:'/static/assets/builder/effects/petals.png?v=small-2',
+    snow:'/static/assets/builder/effects/snow.png?v=small-2',
+    rain:'/static/assets/builder/effects/rain.png?v=small-2',
+    lightning:'/static/assets/builder/effects/lightning.png?v=small-2'
+  };
   var particles = Array.from({ length: 74 }, function (_, i) {
     return { x: (i * 79 % 101) / 100, y: (i * 47 % 97) / 96, r: 1 + (i % 4), speed: .025 + (i % 8) * .006 };
   });
@@ -40,8 +49,18 @@
     es:{templates:'Plantillas rápidas','templates-hint':'Añade título, marco y efecto coordinados sin reemplazar tus medios.','template-neon':'Título neón','template-neon-hint':'Marco cian y partículas','template-minimal':'Firma limpia','template-minimal-hint':'Firma discreta en la parte inferior','template-cinematic':'Cinemática','template-cinematic-hint':'Título ancho y trazos de luz',snap:'Guías inteligentes',backdrop:'Comprobar bordes','backdrop-project':'Vista del proyecto','backdrop-dark':'Fondo oscuro','backdrop-light':'Fondo claro','backdrop-checker':'Cuadrícula de transparencia',shortcuts:'Flechas: mover · Mayús: 10 px · Ctrl/Cmd+D: duplicar',duplicate:'Duplicar',lock:'Bloquear',unlock:'Desbloquear','show-hide':'Mostrar u ocultar',up:'Subir',down:'Bajar','layer-locked':'La capa está bloqueada','template-added':'Plantilla añadida'},
     pt:{templates:'Modelos rápidos','templates-hint':'Adiciona título, moldura e efeito coordenados sem substituir sua mídia.','template-neon':'Título neon','template-neon-hint':'Moldura ciano e partículas','template-minimal':'Assinatura limpa','template-minimal-hint':'Assinatura discreta embaixo','template-cinematic':'Cinemático','template-cinematic-hint':'Título amplo e rastros de luz',snap:'Guias inteligentes',backdrop:'Verificar bordas','backdrop-project':'Prévia do projeto','backdrop-dark':'Fundo escuro','backdrop-light':'Fundo claro','backdrop-checker':'Grade de transparência',shortcuts:'Setas: mover · Shift: 10 px · Ctrl/Cmd+D: duplicar',duplicate:'Duplicar',lock:'Bloquear',unlock:'Desbloquear','show-hide':'Mostrar ou ocultar',up:'Mover para cima',down:'Mover para baixo','layer-locked':'A camada está bloqueada','template-added':'Modelo adicionado'}
   };
+  var VFX_COPY = {
+    en:{'effect-petals':'Sakura petals','effect-snow':'Real snow','effect-rain':'Rain','effect-lightning':'Lightning','effect-particle':'Particle Flow','effect-stars':'Starfield Drift','effect-matrix':'Digital Matrix','effect-streaks':'Light Streaks','effect-sparks':'Obsidian Sparks','effect-custom':'Custom overlay','effect-speed':'Speed','effect-density':'Density','frame-style':'Frame style','frame-target':'Frame layout','frame-solid':'Solid','frame-double':'Double','frame-corners':'Corners','frame-neon':'Neon glow','frame-panels':'Each Steam panel','frame-outer':'Whole canvas'},
+    ru:{'effect-petals':'Лепестки сакуры','effect-snow':'Настоящий снег','effect-rain':'Дождь','effect-lightning':'Молнии','effect-particle':'Поток частиц','effect-stars':'Звёздный поток','effect-matrix':'Цифровая матрица','effect-streaks':'Световые линии','effect-sparks':'Искры','effect-custom':'Свой оверлей','effect-speed':'Скорость','effect-density':'Плотность','frame-style':'Стиль рамки','frame-target':'Схема рамки','frame-solid':'Сплошная','frame-double':'Двойная','frame-corners':'Угловая','frame-neon':'Неоновое свечение','frame-panels':'Каждая панель Steam','frame-outer':'Весь холст'},
+    de:{'effect-petals':'Sakura-Blüten','effect-snow':'Echter Schnee','effect-rain':'Regen','effect-lightning':'Blitze','effect-particle':'Partikelstrom','effect-stars':'Sternenstrom','effect-matrix':'Digitale Matrix','effect-streaks':'Lichtstreifen','effect-sparks':'Funken','effect-custom':'Eigenes Overlay','effect-speed':'Geschwindigkeit','effect-density':'Dichte','frame-style':'Rahmenstil','frame-target':'Rahmenlayout','frame-solid':'Durchgehend','frame-double':'Doppelt','frame-corners':'Ecken','frame-neon':'Neonleuchten','frame-panels':'Jedes Steam-Panel','frame-outer':'Gesamte Leinwand'},
+    tr:{'effect-petals':'Sakura yaprakları','effect-snow':'Gerçek kar','effect-rain':'Yağmur','effect-lightning':'Şimşek','effect-particle':'Parçacık akışı','effect-stars':'Yıldız akışı','effect-matrix':'Dijital matris','effect-streaks':'Işık çizgileri','effect-sparks':'Kıvılcımlar','effect-custom':'Özel kaplama','effect-speed':'Hız','effect-density':'Yoğunluk','frame-style':'Çerçeve stili','frame-target':'Çerçeve düzeni','frame-solid':'Düz','frame-double':'Çift','frame-corners':'Köşeler','frame-neon':'Neon parıltı','frame-panels':'Her Steam paneli','frame-outer':'Tüm tuval'},
+    fr:{'effect-petals':'Pétales de sakura','effect-snow':'Neige réaliste','effect-rain':'Pluie','effect-lightning':'Éclairs','effect-particle':'Flux de particules','effect-stars':'Dérive stellaire','effect-matrix':'Matrice numérique','effect-streaks':'Traînées lumineuses','effect-sparks':'Étincelles','effect-custom':'Superposition personnalisée','effect-speed':'Vitesse','effect-density':'Densité','frame-style':'Style du cadre','frame-target':'Disposition du cadre','frame-solid':'Continu','frame-double':'Double','frame-corners':'Angles','frame-neon':'Lueur néon','frame-panels':'Chaque panneau Steam','frame-outer':'Toute la toile'},
+    uk:{'effect-petals':'Пелюстки сакури','effect-snow':'Справжній сніг','effect-rain':'Дощ','effect-lightning':'Блискавки','effect-particle':'Потік частинок','effect-stars':'Зоряний потік','effect-matrix':'Цифрова матриця','effect-streaks':'Світлові смуги','effect-sparks':'Іскри','effect-custom':'Власний оверлей','effect-speed':'Швидкість','effect-density':'Щільність','frame-style':'Стиль рамки','frame-target':'Схема рамки','frame-solid':'Суцільна','frame-double':'Подвійна','frame-corners':'Кутова','frame-neon':'Неонове сяйво','frame-panels':'Кожна панель Steam','frame-outer':'Усе полотно'},
+    es:{'effect-petals':'Pétalos de sakura','effect-snow':'Nieve realista','effect-rain':'Lluvia','effect-lightning':'Relámpagos','effect-particle':'Flujo de partículas','effect-stars':'Deriva estelar','effect-matrix':'Matriz digital','effect-streaks':'Trazos de luz','effect-sparks':'Chispas','effect-custom':'Superposición propia','effect-speed':'Velocidad','effect-density':'Densidad','frame-style':'Estilo del marco','frame-target':'Diseño del marco','frame-solid':'Sólido','frame-double':'Doble','frame-corners':'Esquinas','frame-neon':'Brillo neón','frame-panels':'Cada panel de Steam','frame-outer':'Todo el lienzo'},
+    pt:{'effect-petals':'Pétalas de sakura','effect-snow':'Neve realista','effect-rain':'Chuva','effect-lightning':'Relâmpagos','effect-particle':'Fluxo de partículas','effect-stars':'Deriva estelar','effect-matrix':'Matriz digital','effect-streaks':'Rastros de luz','effect-sparks':'Faíscas','effect-custom':'Sobreposição própria','effect-speed':'Velocidade','effect-density':'Densidade','frame-style':'Estilo da moldura','frame-target':'Layout da moldura','frame-solid':'Sólida','frame-double':'Dupla','frame-corners':'Cantos','frame-neon':'Brilho neon','frame-panels':'Cada painel Steam','frame-outer':'Tela inteira'}
+  };
   if (window.SMLang && SMLang.extend) SMLang.extend(COPY);
-  Object.keys(NEW_COPY).forEach(function(language){COPY[language]=Object.assign({},COPY[language]||{},NEW_COPY[language])});
+  Object.keys(NEW_COPY).forEach(function(language){COPY[language]=Object.assign({},COPY[language]||{},NEW_COPY[language],VFX_COPY[language]||{})});
 
   function lang() { return window.SMLang && SMLang.get ? SMLang.get() : (document.documentElement.lang === 'ru' ? 'ru' : 'en'); }
   function t(key) { return (COPY[lang()] || COPY.en)[key] || COPY.en[key] || key; }
@@ -58,8 +77,8 @@
     if(type==='background')Object.assign(common,{x:.5,y:.5,scale:1,chroma:false,chromaTolerance:45,chromaFeather:16});
     if(type==='character')Object.assign(common,{chroma:false,chromaTolerance:45,chromaFeather:16});
     if(type==='text')Object.assign(common,{text:lang()==='ru'?'ТВОЯ ВИТРИНА':'YOUR SHOWCASE',font:'Mulish',fontSize:64,color:'#ffffff',y:.18});
-    if(type==='frame')Object.assign(common,{color:'#52d5ff',frameWidth:4});
-    if(type==='effect')Object.assign(common,{effect:'particle',name:'Particle Flow',color:'#52d5ff'});
+    if(type==='frame')Object.assign(common,{color:'#52d5ff',frameWidth:4,frameStyle:'solid',frameTarget:'panels'});
+    if(type==='effect')Object.assign(common,{effect:'petals',name:t('effect-petals'),color:'#ff9fc8',effectSpeed:100,effectDensity:100});
     return common;
   }
 
@@ -132,14 +151,50 @@
     }else ctx.drawImage(node,-box.w/2,-box.h/2,box.w,box.h);
     ctx.restore();
   }
+  function effectTexture(type,color) {
+    var url=EFFECT_ASSETS[type];if(!url)return null;
+    var image=effectTextures.get(type);
+    if(!image){image=new Image();image.src=url;image.onload=function(){effectTintCache.clear()};effectTextures.set(type,image)}
+    if(!image.complete||!image.naturalWidth)return null;
+    var key=type+'|'+color;if(effectTintCache.has(key))return effectTintCache.get(key);
+    var tinted=document.createElement('canvas');tinted.width=image.naturalWidth;tinted.height=image.naturalHeight;var paint=tinted.getContext('2d');
+    paint.drawImage(image,0,0);paint.globalCompositeOperation='source-atop';paint.globalAlpha=.48;paint.fillStyle=color;paint.fillRect(0,0,tinted.width,tinted.height);paint.globalCompositeOperation='source-over';paint.globalAlpha=.42;paint.drawImage(image,0,0);
+    if(effectTintCache.size>20)effectTintCache.delete(effectTintCache.keys().next().value);effectTintCache.set(key,tinted);return tinted;
+  }
+  function drawTextureField(texture,tileWidth,offsetX,offsetY,rotation){
+    var pattern=effectPatternCache.get(texture);
+    if(!pattern){pattern=ctx.createPattern(texture,'repeat');if(pattern)effectPatternCache.set(texture,pattern)}
+    if(pattern&&typeof pattern.setTransform==='function'&&typeof DOMMatrix==='function'){
+      var patternScale=tileWidth/texture.width,angle=rotation||0,cos=Math.cos(angle),sin=Math.sin(angle);pattern.setTransform(new DOMMatrix([cos*patternScale,sin*patternScale,-sin*patternScale,cos*patternScale,offsetX,offsetY]));ctx.fillStyle=pattern;ctx.fillRect(0,0,canvas.width,canvas.height);return;
+    }
+    var tileHeight=tileWidth*texture.height/texture.width,pad=rotation?Math.max(canvas.width,canvas.height):0,startX=((offsetX%tileWidth)+tileWidth)%tileWidth-tileWidth-pad,startY=((offsetY%tileHeight)+tileHeight)%tileHeight-tileHeight-pad;
+    ctx.save();if(rotation){ctx.translate(canvas.width/2,canvas.height/2);ctx.rotate(rotation);ctx.translate(-canvas.width/2,-canvas.height/2)}for(var x=startX;x<canvas.width+tileWidth+pad;x+=tileWidth)for(var y=startY;y<canvas.height+tileHeight+pad;y+=tileHeight)ctx.drawImage(texture,x,y,tileWidth,tileHeight);ctx.restore();
+  }
+  function drawFlowingTexture(texture,sec,speed,density,kind,opacity,particleScale,rotation,originX,originY){
+    var passes=density>1.35?3:(density>.65?2:1),baseWidth=canvas.width*(kind==='rain'?1.08:1.18)*particleScale,cos=Math.cos(rotation),sin=Math.sin(rotation);
+    for(var pass=0;pass<passes;pass++){
+      var width=baseWidth*(1+pass*.14),height=width*texture.height/texture.width,velocity=(kind==='rain'?420:(kind==='snow'?42:58))*speed*(1+pass*.18),offset=(sec*velocity+pass*height*.47)%height-height;
+      var drift=kind==='rain'?-canvas.width*.04:Math.sin(sec*(.35+pass*.11)+pass*2.1)*canvas.width*.055-canvas.width*.09,flowX=drift*cos-offset*sin,flowY=drift*sin+offset*cos;
+      ctx.globalAlpha=opacity*Math.min(1,.42+density*.22-pass*.08);
+      drawTextureField(texture,width,originX+flowX,originY+flowY,rotation);
+    }
+  }
   function drawEffect(layer, now) {
     if(layer.src){drawMediaLayer(layer,mediaFor(layer),now);return}
-    var sec=now/1000,color=layer.color||'#52d5ff',a=animationTransform(layer,now),x=(layer.x==null ? .5 : layer.x)*canvas.width,y=(layer.y==null ? .5 : layer.y)*canvas.height+a.y;
-    ctx.save();ctx.globalAlpha=layer.opacity;ctx.translate(x,y);ctx.rotate(layer.rotation*Math.PI/180+a.rotate);ctx.scale((layer.scale||1)*a.scale,(layer.scale||1)*a.scale);ctx.translate(-canvas.width/2,-canvas.height/2);
-    ctx.shadowColor=color;ctx.shadowBlur=layer.effect==='snow'?0:6;
-    if(layer.effect==='matrix'){ctx.fillStyle=color;ctx.font='15px monospace';particles.slice(0,36).forEach(function(p,i){ctx.fillText(String.fromCharCode(0x30A0+(i*17)%90),p.x*canvas.width,((p.y+sec*p.speed*2)%1)*canvas.height)});}
-    else if(layer.effect==='streaks'){ctx.strokeStyle=color;ctx.lineWidth=2;particles.slice(0,24).forEach(function(p){var x=((p.x+sec*p.speed)%1)*canvas.width,y=p.y*canvas.height;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+70,y-45);ctx.stroke()});}
-    else {ctx.fillStyle=color;particles.forEach(function(p){var y=((p.y+sec*p.speed*(layer.effect==='snow'?1:.45))%1)*canvas.height,x=(p.x+Math.sin(sec+p.y*9)*.02)*canvas.width;ctx.beginPath();ctx.arc(x,y,layer.effect==='snow'?p.r*1.4:p.r,0,Math.PI*2);ctx.fill()});}
+    var sec=now/1000,color=layer.color||'#52d5ff',a=animationTransform(layer,now),x=(layer.x==null ? .5 : layer.x)*canvas.width,y=(layer.y==null ? .5 : layer.y)*canvas.height+a.y,speed=clamp(layer.effectSpeed==null?100:layer.effectSpeed,25,250)/100,density=clamp(layer.effectDensity==null?100:layer.effectDensity,25,200)/100,particleScale=clamp((layer.scale||1)*a.scale,.1,3),rotation=layer.rotation*Math.PI/180+a.rotate,originX=x-canvas.width/2,originY=y-canvas.height/2;
+    ctx.save();ctx.globalAlpha=layer.opacity;
+    var texture=effectTexture(layer.effect,color);
+    if(texture&&layer.effect==='lightning'){
+      var pulse=(sec*speed)%3.7,flash=pulse<.12?1:(pulse<.22?.38:(pulse>.36&&pulse<.43?.68:0));
+      if(flash){var fieldWidth=canvas.width*(1.02+Math.min(density,1.5)*.06)*particleScale;ctx.globalCompositeOperation='screen';ctx.globalAlpha=layer.opacity*flash*Math.min(1,.48+density*.34);ctx.shadowColor=color;ctx.shadowBlur=Math.max(2,7*particleScale);drawTextureField(texture,fieldWidth,originX+canvas.width*.013,originY+canvas.height*.017,rotation);if(density>1.35){ctx.globalAlpha*=.34;drawTextureField(texture,fieldWidth,originX+canvas.width*.061,originY+canvas.height*.043,rotation)}ctx.globalAlpha=layer.opacity*flash*.025;ctx.fillStyle=color;ctx.fillRect(0,0,canvas.width,canvas.height)}
+    }else if(texture){ctx.globalCompositeOperation=layer.effect==='rain'?'screen':'source-over';drawFlowingTexture(texture,sec,speed,density,layer.effect,layer.opacity,particleScale,rotation,originX,originY)}
+    else{
+      ctx.translate(x,y);ctx.rotate(rotation);ctx.translate(-canvas.width/2,-canvas.height/2);
+      var count=Math.max(8,Math.min(particles.length,Math.round(particles.length*density)));ctx.shadowColor=color;ctx.shadowBlur=layer.effect==='stars'?10:6;
+      if(layer.effect==='matrix'){ctx.fillStyle=color;ctx.font=Math.max(3,15*particleScale)+'px'+String.fromCharCode(32)+safeFontName('monospace');particles.slice(0,Math.min(count,44)).forEach(function(p,i){ctx.fillText(String.fromCharCode(0x30A0+(i*17)%90),p.x*canvas.width,((p.y+sec*p.speed*2*speed)%1)*canvas.height)});}
+      else if(layer.effect==='streaks'){ctx.strokeStyle=color;ctx.lineWidth=Math.max(.5,2*particleScale);particles.slice(0,Math.min(count,30)).forEach(function(p){var px=((p.x+sec*p.speed*speed)%1)*canvas.width,py=p.y*canvas.height;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px+70*particleScale,py-45*particleScale);ctx.stroke()});}
+      else{ctx.fillStyle=color;particles.slice(0,count).forEach(function(p){var direction=layer.effect==='sparks'?-1:1,py=((p.y+direction*sec*p.speed*.55*speed)%1+1)%1*canvas.height,px=(p.x+Math.sin(sec+p.y*9)*.02)*canvas.width;ctx.beginPath();ctx.arc(px,py,Math.max(.35,p.r*particleScale),0,Math.PI*2);ctx.fill()});}
+    }
     ctx.restore();
   }
   function drawDNA(layer, now) {
@@ -157,7 +212,18 @@
     for(var i=0;i<18;i++){var turn=((seed>>(i%16))&15)/15,angle=i*2.399+sec*(.02+turn*.03),radius=base*(.72+turn*1.02);ctx.fillStyle=palette[i%palette.length];ctx.globalAlpha=.25+turn*.45;ctx.beginPath();ctx.arc(Math.cos(angle)*radius,Math.sin(angle)*radius,1.2+turn*2.1,0,Math.PI*2);ctx.fill()}
     ctx.restore();
   }
-  function drawFrame(layer) {ctx.save();ctx.globalAlpha=layer.opacity;ctx.strokeStyle=layer.color||'#52d5ff';ctx.lineWidth=layer.frameWidth||4;var n=ctx.lineWidth/2;ctx.strokeRect(n,n,canvas.width-ctx.lineWidth,canvas.height-ctx.lineWidth);ctx.restore()}
+  function frameRects(layer){
+    if(layer.frameTarget==='outer')return [{x:0,y:0,w:canvas.width,h:canvas.height}];
+    if(project.mode==='workshop')return Array.from({length:5},function(_,i){return {x:i*canvas.width/5,y:0,w:canvas.width/5,h:canvas.height}});
+    if(project.mode==='split')return [{x:0,y:0,w:506,h:canvas.height},{x:506,y:0,w:100,h:canvas.height}];
+    return [{x:0,y:0,w:canvas.width,h:canvas.height}];
+  }
+  function drawFrameRect(rect,width,style){
+    var inset=width/2+1,x=rect.x+inset,y=rect.y+inset,w=Math.max(0,rect.w-width-2),h=Math.max(0,rect.h-width-2);
+    if(style==='corners'){var length=Math.min(w,h)*.16;[[x,y,1,1],[x+w,y,-1,1],[x,y+h,1,-1],[x+w,y+h,-1,-1]].forEach(function(c){ctx.beginPath();ctx.moveTo(c[0]+c[2]*length,c[1]);ctx.lineTo(c[0],c[1]);ctx.lineTo(c[0],c[1]+c[3]*length);ctx.stroke()});return}
+    ctx.strokeRect(x,y,w,h);if(style==='double'){var gap=width*2.2+3;ctx.strokeRect(x+gap,y+gap,Math.max(0,w-gap*2),Math.max(0,h-gap*2))}
+  }
+  function drawFrame(layer) {ctx.save();ctx.globalAlpha=layer.opacity;ctx.strokeStyle=layer.color||'#52d5ff';ctx.lineWidth=layer.frameWidth||4;ctx.lineJoin='miter';var style=layer.frameStyle||'solid';if(style==='neon'){ctx.shadowColor=layer.color||'#52d5ff';ctx.shadowBlur=Math.max(8,ctx.lineWidth*3)}frameRects(layer).forEach(function(rect){drawFrameRect(rect,ctx.lineWidth,style)});ctx.restore()}
   function drawText(layer, now) {var a=animationTransform(layer,now),font=safeFontName(layer.font);ctx.save();ctx.globalAlpha=layer.opacity;ctx.translate(layer.x*canvas.width,layer.y*canvas.height+a.y);ctx.rotate(layer.rotation*Math.PI/180+a.rotate);ctx.scale(layer.scale*a.scale,layer.scale*a.scale);ctx.fillStyle=layer.color||'#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 '+(layer.fontSize||64)+'px "'+font+'"';String(layer.text||'').split('\n').forEach(function(line,i,arr){ctx.fillText(line,0,(i-(arr.length-1)/2)*(layer.fontSize||64)*1.12,canvas.width*.9)});ctx.restore()}
   function drawBackdrop() {
     var mode=exportingCanvas?'project':previewBackdrop;
@@ -210,9 +276,9 @@
     else if(action==='down'&&i>0){project.layers.splice(i,1);project.layers.splice(i-1,0,layer)}
     renderLayers();
   }
-  function syncInspector(){var layer=currentLayer(),box=el('builderInspector');box.hidden=!layer;if(!layer)return;el('builderLayerName').value=layer.name||'';el('builderScale').value=Math.round((layer.scale||1)*100);el('builderRotation').value=layer.rotation||0;el('builderOpacity').value=Math.round((layer.opacity==null?1:layer.opacity)*100);el('builderTextControls').hidden=layer.type!=='text';el('builderFrameControls').hidden=layer.type!=='frame';el('builderEffectControls').hidden=layer.type!=='effect';el('builderMediaControls').hidden=!['background','character'].includes(layer.type);if(layer.type==='text'){el('builderText').value=layer.text||'';el('builderFont').value=layer.font||'Mulish';el('builderColor').value=layer.color||'#ffffff';el('builderFontSize').value=layer.fontSize||64;syncFontPreview(layer)}if(layer.type==='frame'){el('builderFrameColor').value=layer.color||'#52d5ff';el('builderFrameWidth').value=layer.frameWidth||4}if(layer.type==='effect'){el('builderEffectType').value=layer.effect||'particle';el('builderEffectColor').value=layer.color||'#52d5ff';el('builderEffectColorRow').hidden=layer.effect==='custom'||!!layer.src}if(['background','character'].includes(layer.type)){var tolerance=layer.chromaTolerance==null?45:layer.chromaTolerance,feather=layer.chromaFeather==null?16:layer.chromaFeather;el('builderChroma').checked=!!layer.chroma;el('builderChromaSettings').hidden=!layer.chroma;el('builderChromaTolerance').value=tolerance;el('builderChromaToleranceValue').value=tolerance;el('builderChromaFeather').value=feather;el('builderChromaFeatherValue').value=(feather/10).toFixed(1);el('builderAnimation').value=layer.animation||'none'}box.classList.toggle('is-locked',!!layer.locked);box.querySelectorAll('input,select,textarea,button').forEach(function(control){control.disabled=!!layer.locked});box.title=layer.locked?t('layer-locked'):''}
+  function syncInspector(){var layer=currentLayer(),box=el('builderInspector');box.hidden=!layer;if(!layer)return;el('builderLayerName').value=layer.name||'';el('builderScale').value=Math.round((layer.scale||1)*100);el('builderRotation').value=layer.rotation||0;el('builderOpacity').value=Math.round((layer.opacity==null?1:layer.opacity)*100);el('builderTextControls').hidden=layer.type!=='text';el('builderFrameControls').hidden=layer.type!=='frame';el('builderEffectControls').hidden=layer.type!=='effect';el('builderMediaControls').hidden=!['background','character'].includes(layer.type);if(layer.type==='text'){el('builderText').value=layer.text||'';el('builderFont').value=layer.font||'Mulish';el('builderColor').value=layer.color||'#ffffff';el('builderFontSize').value=layer.fontSize||64;syncFontPreview(layer)}if(layer.type==='frame'){el('builderFrameColor').value=layer.color||'#52d5ff';el('builderFrameWidth').value=layer.frameWidth||4;el('builderFrameStyle').value=layer.frameStyle||'solid';el('builderFrameTarget').value=layer.frameTarget||'panels'}if(layer.type==='effect'){el('builderEffectType').value=layer.effect||'petals';el('builderEffectColor').value=layer.color||'#52d5ff';el('builderEffectSpeed').value=layer.effectSpeed==null?100:layer.effectSpeed;el('builderEffectDensity').value=layer.effectDensity==null?100:layer.effectDensity;el('builderEffectColorRow').hidden=layer.effect==='custom'||!!layer.src;el('builderEffectSwatch').dataset.effect=layer.src?'custom':(layer.effect||'petals')}if(['background','character'].includes(layer.type)){var tolerance=layer.chromaTolerance==null?45:layer.chromaTolerance,feather=layer.chromaFeather==null?16:layer.chromaFeather;el('builderChroma').checked=!!layer.chroma;el('builderChromaSettings').hidden=!layer.chroma;el('builderChromaTolerance').value=tolerance;el('builderChromaToleranceValue').value=tolerance;el('builderChromaFeather').value=feather;el('builderChromaFeatherValue').value=(feather/10).toFixed(1);el('builderAnimation').value=layer.animation||'none'}box.classList.toggle('is-locked',!!layer.locked);box.querySelectorAll('input,select,textarea,button').forEach(function(control){control.disabled=!!layer.locked});box.title=layer.locked?t('layer-locked'):''}
   function bind(id,event,fn){el(id).addEventListener(event,function(){var layer=currentLayer();if(!layer)return;fn(layer,this);if(id==='builderLayerName')renderLayers()})}
-  bind('builderLayerName','input',function(l,n){l.name=n.value});bind('builderScale','input',function(l,n){l.scale=+n.value/100});bind('builderRotation','input',function(l,n){l.rotation=+n.value});bind('builderOpacity','input',function(l,n){l.opacity=+n.value/100});bind('builderText','input',function(l,n){l.text=n.value;syncFontPreview(l)});bind('builderFont','change',function(l,n){l.font=n.value;syncFontPreview(l);if(document.fonts)document.fonts.load('800 64px "'+safeFontName(n.value)+'"')});bind('builderColor','input',function(l,n){l.color=n.value});bind('builderFontSize','input',function(l,n){l.fontSize=+n.value});bind('builderFrameColor','input',function(l,n){l.color=n.value});bind('builderFrameWidth','input',function(l,n){l.frameWidth=+n.value});bind('builderEffectType','change',function(l,n){l.effect=n.value;l.name=n.options[n.selectedIndex].text;renderLayers()});bind('builderEffectColor','input',function(l,n){l.color=n.value});bind('builderChroma','change',function(l,n){l.chroma=n.checked;chromaCache.clear();syncInspector()});bind('builderChromaTolerance','input',function(l,n){l.chromaTolerance=+n.value;chromaCache.clear();el('builderChromaToleranceValue').value=n.value});bind('builderChromaFeather','input',function(l,n){l.chromaFeather=+n.value;chromaCache.clear();el('builderChromaFeatherValue').value=(+n.value/10).toFixed(1)});bind('builderAnimation','change',function(l,n){l.animation=n.value});
+  bind('builderLayerName','input',function(l,n){l.name=n.value});bind('builderScale','input',function(l,n){l.scale=+n.value/100});bind('builderRotation','input',function(l,n){l.rotation=+n.value});bind('builderOpacity','input',function(l,n){l.opacity=+n.value/100});bind('builderText','input',function(l,n){l.text=n.value;syncFontPreview(l)});bind('builderFont','change',function(l,n){l.font=n.value;syncFontPreview(l);if(document.fonts)document.fonts.load('800 64px "'+safeFontName(n.value)+'"')});bind('builderColor','input',function(l,n){l.color=n.value});bind('builderFontSize','input',function(l,n){l.fontSize=+n.value});bind('builderFrameColor','input',function(l,n){l.color=n.value});bind('builderFrameWidth','input',function(l,n){l.frameWidth=+n.value});bind('builderFrameStyle','change',function(l,n){l.frameStyle=n.value});bind('builderFrameTarget','change',function(l,n){l.frameTarget=n.value});bind('builderEffectType','change',function(l,n){var colors={petals:'#ff9fc8',snow:'#e7f7ff',rain:'#8bdcff',lightning:'#73dfff'};l.effect=n.value;l.name=n.options[n.selectedIndex].text;if(colors[n.value]){l.color=colors[n.value];el('builderEffectColor').value=l.color}renderLayers()});bind('builderEffectColor','input',function(l,n){l.color=n.value;effectTintCache.clear()});bind('builderEffectSpeed','input',function(l,n){l.effectSpeed=+n.value});bind('builderEffectDensity','input',function(l,n){l.effectDensity=+n.value});bind('builderChroma','change',function(l,n){l.chroma=n.checked;chromaCache.clear();syncInspector()});bind('builderChromaTolerance','input',function(l,n){l.chromaTolerance=+n.value;chromaCache.clear();el('builderChromaToleranceValue').value=n.value});bind('builderChromaFeather','input',function(l,n){l.chromaFeather=+n.value;chromaCache.clear();el('builderChromaFeatherValue').value=(+n.value/10).toFixed(1)});bind('builderAnimation','change',function(l,n){l.animation=n.value});
 
   Array.from(el('builderFont').options).forEach(function(option){option.style.fontFamily='"'+safeFontName(option.value)+'"'});
 

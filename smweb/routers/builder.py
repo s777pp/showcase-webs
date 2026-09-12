@@ -28,8 +28,13 @@ router = APIRouter(prefix="/api/builder", tags=["builder"])
 _remove_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="builder-bg-remove")
 _MODES = {"workshop", "featured", "split"}
 _LAYER_TYPES = {"background", "character", "text", "frame", "effect", "dna"}
-_EFFECTS = {"particle", "snow", "stars", "matrix", "streaks", "sparks", "custom"}
+_EFFECTS = {
+    "petals", "snow", "rain", "lightning",
+    "particle", "stars", "matrix", "streaks", "sparks", "custom",
+}
 _ANIMATIONS = {"none", "breathing", "wave"}
+_FRAME_STYLES = {"solid", "double", "corners", "neon"}
+_FRAME_TARGETS = {"panels", "outer"}
 _SAFE_MEDIA = {
     ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
     ".webp": "image/webp", ".gif": "image/gif", ".mp4": "video/mp4",
@@ -77,6 +82,8 @@ def _validated_project(raw) -> dict:
         numeric_fields = {
             "fontSize": (14, 180, 64),
             "frameWidth": (1, 30, 4),
+            "effectSpeed": (25, 250, 100),
+            "effectDensity": (25, 200, 100),
             "chromaTolerance": (10, 120, 45),
             "chromaFeather": (0, 40, 16),
         }
@@ -92,6 +99,9 @@ def _validated_project(raw) -> dict:
             item["color"] = color if re.fullmatch(r"#[0-9a-fA-F]{6}", color) else "#52d5ff"
         if item["type"] == "effect":
             item["effect"] = item.get("effect") if item.get("effect") in _EFFECTS else "particle"
+        if item["type"] == "frame":
+            item["frameStyle"] = item.get("frameStyle") if item.get("frameStyle") in _FRAME_STYLES else "solid"
+            item["frameTarget"] = item.get("frameTarget") if item.get("frameTarget") in _FRAME_TARGETS else "panels"
         if item["type"] == "dna":
             raw_signals = item.get("signals") if isinstance(item.get("signals"), dict) else {}
             item["signals"] = {}
