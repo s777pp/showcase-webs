@@ -21,7 +21,7 @@ function applyViewLang(){var pack=VDICT[vLang()]||VDICT.en;
  if(window.SMLang&&SMLang.apply){SMLang.apply(pack);return}
  Array.prototype.forEach.call(document.querySelectorAll('[data-i]'),function(el){var v=pack[el.getAttribute('data-i')];if(v!=null)el.textContent=v})}
 applyViewLang();
-var stage=document.getElementById('publicStage'),profileState=null,m=location.pathname.match(/^\/profile\/([^/]+)\/?$/i),name=m?decodeURIComponent(m[1]):'';
+var stage=document.getElementById('publicStage'),profileState=null,profilePath=location.pathname.replace(/^\/(?:en|ru|de|tr|fr|uk|es|pt)(?=\/|$)/i,''),m=profilePath.match(/^\/profile\/([^/]+)\/?$/i),name=m?decodeURIComponent(m[1]):'';
 window.addEventListener('sm:langchange',function(){applyViewLang();if(profileState)SteamMockup.render(profileState,stage)});
 if(!name){stage.innerHTML='<div class="public-state">'+SteamMockup.esc(vT('pv_notfound'))+'</div>';return}fetch('/api/profile/'+encodeURIComponent(name),{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){if(!d.ok)throw Error(d.msg||vT('pv_notfound'));var p=d.profile||{},state=p.snapshot;if(!state&&p.steam)state=SteamMockup.applySteamProfile(p.steam,SteamMockup.defaultState());if(!state){state=SteamMockup.defaultState();state.name=p.display_name||p.username||name;state.summary=p.profile_summary||'';state.level=p.profile_level||1;state.avatar=p.avatar_url||'';state.background=p.background_url||''}profileState=state;SteamMockup.render(state,stage);document.title=(state.name||name)+' — Showcase Maker';document.getElementById('editLink').hidden=!d.is_owner}).catch(function(e){stage.innerHTML='<div class="public-state">'+SteamMockup.esc(e.message)+'</div>'})})();
 </script></body></html>

@@ -90,6 +90,12 @@ class PrivacyPageTests(unittest.TestCase):
         self.assertEqual(response.headers['cache-control'], 'private, no-store')
         self.assertIn('noindex,nofollow', response.text)
 
+    def test_public_profile_script_accepts_localized_profile_urls(self):
+        static = Path(__file__).resolve().parents[1] / 'static'
+        source = (static / 'profile-view.html').read_text(encoding='utf-8')
+        self.assertIn("location.pathname.replace(/^\\/(?:en|ru|de|tr|fr|uk|es|pt)", source)
+        self.assertIn("profilePath.match(/^\\/profile\\/([^/]+)\\/?$/i)", source)
+
 
 if __name__ == '__main__':
     unittest.main()
