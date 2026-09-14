@@ -2,7 +2,7 @@
 
 This is the root handoff and operating guide for coding agents. Read it before changing the project. It records the production architecture, recent decisions, known limitations, and safest next steps. Never add secrets, `.env` values, API tokens, credentials, presigned URLs, or production user data here.
 
-### Allowlisted Builder AI brush experiment — 2026-09-14 (local, not deployed)
+### Allowlisted Builder AI brush/auto-mask experiment — 2026-09-14 (local, not deployed)
 
 - Owner approved the website experiment after reporting v2 animation works.
   `BUILDER_AI_ANIMATION.md` supersedes the manual-only first-stage restriction.
@@ -14,8 +14,14 @@ This is the root handoff and operating guide for coding agents. Read it before c
   network-only upscale worker queue. Submission fences forbid automatic paid
   retry; ambiguous responses retain the busy slot until terminal confirmation
   or expiry. Attempt limits are not dollar caps. Deploy app AND worker.
-- Protocol v3 adds shared source-normalized strokes/target-aware prompts and
-  output compositing with a feathered mask. Wan does not receive a native motion
+- Protocol v5 adds shared source-normalized strokes/target-aware prompts,
+  validated compact auto-masks and output compositing with a feathered mask.
+  Auto-detection uses pinned Apache-2.0 CLIPSeg in a separate scale-to-zero CPU
+  Modal function for hair, clothing, shirt breathing and eyes. It never invokes
+  Wan/GPU; results are cached for one day and can be corrected with the existing
+  brush/eraser. Deploy `modal_animate.py` before the matching website code and
+  add an R2 lifecycle fallback for `animation-segmentation/`. Wan still does not
+  receive a native motion
   mask: never promise pixel-accurate AI control, perfect anatomy or seamless loop.
   Outside is fixed BEFORE MP4 encoding (lossy encoding can change pixel values).
 - New isolated frontend modules preserve Builder's existing style. Paint on the
@@ -45,7 +51,7 @@ This is the root handoff and operating guide for coding agents. Read it before c
   R2 keys are under `animation-experiment/`; success removes this request's two
   objects, failure retains them for resume. Operator must configure a prefix-only
   R2 lifecycle rule; no automatic lifecycle or Dict expiry is installed.
-  Protocol v3 requires a matching health version before upload, defaults to
+  Protocol v5 requires a matching health version before upload, defaults to
   `alive`/`normal`/`draft`, supports prompt-level intensity, step progress and
   `--cancel ID` for an experiment-mapped call only. Shared prompts no longer
   demand an unchanged pose or minimal motion. Pixel-level motion diagnostics

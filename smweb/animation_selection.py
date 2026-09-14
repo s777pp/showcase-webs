@@ -5,11 +5,16 @@ by the website and Modal. Masks constrain compositing, not Wan's inference.
 """
 from __future__ import annotations
 
+import base64
+import binascii
+import io
 from typing import Literal
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Target = Literal["hair", "breathing", "eyes", "cloth", "water", "smoke", "custom"]
+AutoTarget = Literal["hair", "breathing", "eyes", "cloth"]
+MAX_AUTO_MASK_CHARS = 60_000
 TARGET_MOTION = {
     "hair": "Move only the free hair tips and loose strands with a gentle elastic sway. Keep every hair root anchored to the exact same point on the static head; do not move the scalp, head or face.",
     "breathing": "Suggest very subtle breathing only through a small periodic change in shirt shading and loose fabric folds. Do not lift, lower, translate or reshape the chest, shoulders, neck or torso.",
@@ -41,11 +46,48 @@ class BrushStroke(BaseModel):
         return self
 
 
+class AutoMask(BaseModel):
+    """Small transparent PNG returned by the private semantic segmenter."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    target: AutoTarget
+    width: int = Field(ge=16, le=512)
+    height: int = Field(ge=16, le=512)
+    png: str = Field(min_length=32, max_length=MAX_AUTO_MASK_CHARS)
+    confidence: float = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def valid_mask(self):
+        decode_auto_mask(self)
+        return self
+
+
+def decode_auto_mask(value: AutoMask) -> Image.Image:
+    try:
+        raw = base64.b64decode(value.png, validate=True)
+        if not 32 <= len(raw) <= MAX_AUTO_MASK_CHARS * 3 // 4:
+            raise ValueError("Invalid automatic mask")
+        with Image.open(io.BytesIO(raw)) as source:
+            if source.format != "PNG" or getattr(source, "n_frames", 1) != 1 or source.size != (value.width, value.height):
+                raise ValueError("Invalid automatic mask")
+            if "A" not in source.getbands():
+                raise ValueError("Automatic mask must use transparency")
+            mask = source.getchannel("A").copy()
+        if mask.getbbox() is None:
+            raise ValueError("Automatic mask is empty")
+        return mask
+    except (ValueError, binascii.Error, Image.DecompressionBombError):
+        raise ValueError("Invalid automatic mask") from None
+    except Exception:
+        raise ValueError("Invalid automatic mask") from None
+
+
 class MotionSelection(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
     subject: Literal["anime", "person", "scene", "object"] = "anime"
     targets: list[Target] = Field(min_length=1, max_length=7)
     strokes: list[BrushStroke] = Field(default_factory=list, max_length=32)
+    auto_masks: list[AutoMask] = Field(default_factory=list, max_length=4)
     lock_outside: bool = True
     feather: int = Field(default=3, ge=0, le=12)
     description: str = Field(default="", max_length=500)
@@ -56,16 +98,23 @@ class MotionSelection(BaseModel):
             raise ValueError("Duplicate target")
         if any(stroke.target not in self.targets for stroke in self.strokes):
             raise ValueError("Brush target must be selected")
+        if len({mask.target for mask in self.auto_masks}) != len(self.auto_masks):
+            raise ValueError("Duplicate automatic mask")
+        if any(mask.target not in self.targets for mask in self.auto_masks):
+            raise ValueError("Automatic mask target must be selected")
         if "custom" in self.targets and not self.description.strip():
             raise ValueError("Describe the custom motion")
-        if self.lock_outside and not any(not stroke.erase for stroke in self.strokes):
-            raise ValueError("Paint a motion area or explicitly allow whole-image motion")
+        if self.lock_outside and not self.auto_masks and not any(not stroke.erase for stroke in self.strokes):
+            raise ValueError("Detect or paint a motion area, or explicitly allow whole-image motion")
         return self
 
 
 def selection_mask(selection: MotionSelection, size: tuple[int, int], *, feather=True) -> Image.Image:
     """Round brush radius is normalized against the SHORT source side."""
     mask = Image.new("L", size, 0)
+    for automatic in selection.auto_masks:
+        detected = decode_auto_mask(automatic).resize(size, Image.Resampling.BILINEAR)
+        mask = ImageChops.lighter(mask, detected)
     draw = ImageDraw.Draw(mask)
     for stroke in selection.strokes:
         radius = max(1, round(stroke.radius * min(size)))
@@ -97,6 +146,13 @@ def selection_prompts(selection: MotionSelection, intensity: str) -> tuple[str, 
     for target in selection.targets:
         prompt += TARGET_MOTION[target] + " "
         points = [point for stroke in selection.strokes if stroke.target == target and not stroke.erase for point in stroke.points]
+        automatic = next((mask for mask in selection.auto_masks if mask.target == target), None)
+        if not points and automatic is not None:
+            detected = decode_auto_mask(automatic)
+            box = detected.getbbox()
+            if box:
+                points = [[((box[0] + box[2]) / 2) / detected.width,
+                           ((box[1] + box[3]) / 2) / detected.height]]
         if points:
             x = sum(point[0] for point in points) / len(points)
             y = sum(point[1] for point in points) / len(points)

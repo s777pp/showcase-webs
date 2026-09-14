@@ -29,10 +29,10 @@ class AnimationClient:
             raise AnimationServiceError("Set MODAL_ANIMATE_URL and the existing Modal proxy credentials")
         self.headers = {"Modal-Key": token_id, "Modal-Secret": token_secret, "Accept": "application/json"}
 
-    def _request(self, method, path, **kwargs):
+    def _request(self, method, path, *, timeout=(10, 45), **kwargs):
         try:
             response = requests.request(method, self.base + path, headers=self.headers,
-                                        allow_redirects=False, timeout=(10, 45), **kwargs)
+                                        allow_redirects=False, timeout=timeout, **kwargs)
             if response.status_code not in (200, 202):
                 raise AnimationServiceError(f"Animation service returned HTTP {response.status_code}", response.status_code)
             data = response.json()
@@ -59,3 +59,9 @@ class AnimationClient:
     def cancel(self, request_id):
         keys(request_id)
         return self._request("POST", f"/cancel/{request_id}")[1]
+
+    def segment(self, payload):
+        data = self._request("POST", "/segment", timeout=(10, 240), json=payload)[1]
+        if data.get("request_id") != payload["request_id"]:
+            raise AnimationServiceError("Invalid segmentation response")
+        return data

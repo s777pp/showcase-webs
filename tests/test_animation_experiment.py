@@ -14,7 +14,8 @@ from pydantic import ValidationError
 from smweb.animation_experiment import (
     DAILY_LIMIT, MAX_INPUT_BYTES, DailyLimitReached, Submission,
     SubmissionConflict, assess_motion, chroma_channel, claim_submission,
-    execute_once, keys, motion_prompts, prepare_image,
+    execute_once, keys, motion_prompts, prepare_image, segmentation_key,
+    SegmentationRequest,
 )
 from smweb.modal_animation_client import AnimationClient, AnimationServiceError
 
@@ -68,6 +69,16 @@ class AnimationInputTests(unittest.TestCase):
         self.assertEqual(first.fingerprint(), Submission(**refreshed).fingerprint())
         self.assertNotEqual(first.fingerprint(), Submission(**payload(preset="water")).fingerprint())
         self.assertNotEqual(first.fingerprint(), Submission(**payload(intensity="strong")).fingerprint())
+
+    def test_segmentation_request_is_bound_to_its_private_source(self):
+        request_id="d"*32;query=urlencode({"X-Amz-Algorithm":"AWS4-HMAC-SHA256","X-Amz-Signature":"e"*64,"X-Amz-Credential":"private","X-Amz-Date":"20260914T120000Z","X-Amz-Expires":"600"})
+        url="https://"+"c"*32+".r2.cloudflarestorage.com/private-bucket/"+segmentation_key(request_id)+"?"+query
+        request=SegmentationRequest(request_id=request_id,source_url=url,targets=['hair','cloth'])
+        self.assertEqual(request.targets,['hair','cloth'])
+        with self.assertRaises(ValidationError):
+            SegmentationRequest(request_id=request_id,source_url=url.replace('/source.png','/other.png'),targets=['hair'])
+        with self.assertRaises(ValidationError):
+            SegmentationRequest(request_id=request_id,source_url=url,targets=['hair','hair'])
 
 
 class AnimationMotionTests(unittest.TestCase):
@@ -291,7 +302,7 @@ class AnimationAPITests(unittest.TestCase):
             response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["daily_limit"], DAILY_LIMIT)
-        self.assertEqual(response.json()["protocol_version"], 4)
+        self.assertEqual(response.json()["protocol_version"], 5)
         gpu.spawn.aio.assert_not_called()
 
     def test_validation_does_not_echo_signed_url(self):
@@ -299,6 +310,14 @@ class AnimationAPITests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
         self.assertNotIn("private-credential", response.text)
         self.assertNotIn("X-Amz", response.text)
+
+    def test_segmentation_uses_cpu_function_not_animation_gpu(self):
+        request_id="d"*32;query=urlencode({"X-Amz-Algorithm":"AWS4-HMAC-SHA256","X-Amz-Signature":"e"*64,"X-Amz-Credential":"private","X-Amz-Date":"20260914T120000Z","X-Amz-Expires":"600"})
+        url="https://"+"c"*32+".r2.cloudflarestorage.com/private-bucket/"+segmentation_key(request_id)+"?"+query
+        cpu=SimpleNamespace(remote=SimpleNamespace(aio=AsyncMock(return_value={'request_id':request_id,'protocol_version':5,'model':'CIDAS/clipseg-rd64-refined','masks':[]})))
+        with patch.object(self.module,'segment_regions',cpu),patch.object(self.module,'animate') as gpu:
+            response=self.client.post('/segment',json={'request_id':request_id,'source_url':url,'targets':['hair']})
+        self.assertEqual(response.status_code,200);cpu.remote.aio.assert_awaited_once();gpu.spawn.aio.assert_not_called()
 
     def test_submit_and_poll_pending(self):
         memory = MemoryRecords()

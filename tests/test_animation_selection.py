@@ -1,12 +1,18 @@
 import unittest
 import io
-from PIL import Image
+import base64
+from PIL import Image, ImageDraw
 from pydantic import ValidationError
 from smweb.animation_selection import MotionSelection, selection_mask, selection_prompts, isolate_video
 from smweb.animation_experiment import prepare_image
 
 def selection(**extra):
     return MotionSelection.model_validate({"targets":["hair"], "strokes":[{"target":"hair", "radius":.1, "points":[[.5,.5]]}], **extra})
+
+def automatic(target="hair"):
+    image=Image.new('RGBA',(32,32),(255,255,255,0));ImageDraw.Draw(image).rectangle((4,8,15,23),fill=(255,255,255,255))
+    output=io.BytesIO();image.save(output,format='PNG')
+    return {'target':target,'width':32,'height':32,'png':base64.b64encode(output.getvalue()).decode(),'confidence':.87}
 
 class SelectionTests(unittest.TestCase):
     def test_canonical_wide_canvas_never_refits_or_moves_mask(self):
@@ -45,6 +51,22 @@ class SelectionTests(unittest.TestCase):
         data=selection(strokes=[],lock_outside=False)
         frames=[Image.new('RGB',(100,100),'blue')]
         self.assertIs(isolate_video(frames,Image.new('RGB',(100,100),'red'),data),frames)
+
+    def test_automatic_mask_can_replace_and_combine_with_brush(self):
+        data=selection(strokes=[],auto_masks=[automatic()],feather=0)
+        mask=selection_mask(data,(100,100),feather=False)
+        self.assertIsNotNone(mask.getbbox())
+        self.assertGreater(mask.getpixel((20,50)),0)
+        self.assertEqual(mask.getpixel((90,90)),0)
+        positive,_=selection_prompts(data,'normal')
+        self.assertIn('left middle area',positive)
+
+    def test_automatic_masks_are_bounded_and_target_matched(self):
+        invalid=automatic();invalid['png']=base64.b64encode(b'not png').decode()
+        for masks,targets in [([invalid],['hair']),([automatic('cloth')],['hair']),
+                              ([automatic(),automatic()],['hair'])]:
+            with self.assertRaises(ValidationError):
+                selection(strokes=[],targets=targets,auto_masks=masks)
 
     def test_invalid_coordinates_and_limits(self):
         for point in [[float('nan'),.5],[float('inf'),.5],[-.1,.5],[.5,1.1],[.2]]:

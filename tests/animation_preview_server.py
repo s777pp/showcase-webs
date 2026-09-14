@@ -4,6 +4,7 @@ No production users, external requests, upload credentials or GPU calls.
 Run: python tests/animation_preview_server.py --port 8769
 """
 import argparse
+import base64
 import io
 import json
 import re
@@ -37,6 +38,7 @@ jobs={};uploads={};report={};memory={};delay=0
 animation.os.environ.update(ANIMATION_ENABLED='1',ANIMATION_ALLOWED_EMAILS='fixture@example.com')
 animation._auth_user=lambda request:{'id':123,'email':'fixture@example.com'}
 animation.rs.redis_ok=lambda:True;animation.rs.worker_alive=lambda:True
+animation.rs.rate_limit=lambda *args,**kwargs:(True,19)
 def job_get(jid):
     job=jobs.get(jid)
     if job and time.monotonic()-job.get('queued_at',0)>=delay:
@@ -49,12 +51,22 @@ redis=Mock();redis.get.side_effect=lambda key:memory.get(key);redis.set.side_eff
 animation.rs.get_redis=lambda:redis
 animation.object_store.configured=lambda:True
 animation.object_store.put_bytes=lambda key,data,**kwargs:uploads.update({key:data})
+animation.object_store.presigned_get_url=lambda key,**kwargs:'https://private-fixture.invalid/source'
+animation.object_store.delete=lambda key,**kwargs:uploads.pop(key,None)
 storage=Mock()
 storage.get_object.side_effect=lambda **kwargs:{'ContentLength':len(video),'Body':io.BytesIO(video)}
 animation.object_store.client=lambda:storage
 animation.reserve=lambda jid,owner:1
 animation.release=lambda jid:None
-animation.AnimationClient=lambda:Mock(health=lambda:{'protocol_version':PROTOCOL_VERSION})
+def mask_result(target):
+    mask=Image.new('RGBA',(256,256),(255,255,255,0));paint=ImageDraw.Draw(mask)
+    boxes={'hair':(70,18,186,118),'eyes':(105,58,151,82),'cloth':(58,92,198,242),'breathing':(76,102,180,180)}
+    paint.ellipse(boxes[target],fill=(255,255,255,255));output=io.BytesIO();mask.save(output,format='PNG')
+    return {'target':target,'found':True,'width':256,'height':256,'png':base64.b64encode(output.getvalue()).decode(),'confidence':.91}
+class AnimationFixtureClient:
+    def health(self):return {'protocol_version':PROTOCOL_VERSION}
+    def segment(self,payload):return {'request_id':payload['request_id'],'protocol_version':PROTOCOL_VERSION,'model':'CIDAS/clipseg-rd64-refined','masks':[mask_result(target) for target in payload['targets']]}
+animation.AnimationClient=AnimationFixtureClient
 def enqueue(jid,data,**kwargs):
     report.update(options=data,fail_closed=kwargs.get('fail_closed'))
     jobs[jid]={**data,'status':'queued','pct':0,'stage':'queued','motion_low':False,'queued_at':time.monotonic()}

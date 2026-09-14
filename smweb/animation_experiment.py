@@ -16,7 +16,7 @@ from urllib.parse import parse_qsl, urlsplit
 
 from PIL import Image, ImageOps
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from smweb.animation_selection import MotionSelection, selection_prompts
+from smweb.animation_selection import AutoTarget, MotionSelection, selection_prompts
 
 MODEL_ID = "Wan-AI/Wan2.2-TI2V-5B-Diffusers"
 MODEL_REVISION = "b8fff7315c768468a5333511427288870b2e9635"
@@ -25,7 +25,9 @@ MAX_INPUT_BYTES = 8 * 1024 * 1024
 MAX_OUTPUT_BYTES = 80 * 1024 * 1024
 DAILY_LIMIT = 5
 FPS = 24
-PROTOCOL_VERSION = 4
+PROTOCOL_VERSION = 5
+SEGMENTATION_MODEL_ID = "CIDAS/clipseg-rd64-refined"
+SEGMENTATION_MODEL_REVISION = "999e0328d9e10b484360c477313983f9afdd7050"
 PROFILES = {"draft": (81, 30), "quality": (121, 50)}
 PRESETS = {
     "alive": "The character comes alive: visible natural breathing, a natural blink, a small relaxed head tilt and gentle shoulder movement. Hair and loose clothing respond to the movement.",
@@ -47,6 +49,12 @@ def keys(request_id: str) -> tuple[str, str]:
     if not re.fullmatch(r"[a-f0-9]{32}", request_id):
         raise ValueError("Invalid request id")
     return f"{PREFIX}/{request_id}/source.png", f"{PREFIX}/{request_id}/result.mp4"
+
+
+def segmentation_key(request_id: str) -> str:
+    if not re.fullmatch(r"[a-f0-9]{32}", request_id):
+        raise ValueError("Invalid request id")
+    return f"animation-segmentation/{request_id}/source.png"
 
 
 def signed_location(url: str, key: str) -> tuple[str, str]:
@@ -105,6 +113,20 @@ class Submission(BaseModel):
             parsed = urlsplit(values[field])
             values[field] = parsed.hostname + parsed.path
         return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
+
+
+class SegmentationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    request_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    source_url: str = Field(max_length=4096)
+    targets: list[AutoTarget] = Field(min_length=1, max_length=4)
+
+    @model_validator(mode="after")
+    def validate_request(self):
+        signed_location(self.source_url, segmentation_key(self.request_id))
+        if len(set(self.targets)) != len(self.targets):
+            raise ValueError("Duplicate segmentation target")
+        return self
 
 
 def prepare_image(raw: bytes, matte: str = "#061019", *, canonical: bool = False) -> Image.Image:

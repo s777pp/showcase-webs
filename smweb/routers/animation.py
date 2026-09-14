@@ -14,8 +14,11 @@ from pydantic import BaseModel, ConfigDict, Field
 import redis_store as rs
 from smweb.core import _auth_user
 from smweb import object_store
-from smweb.animation_selection import MotionSelection, selection_mask, selection_prompts
-from smweb.animation_experiment import keys, prepare_image, MAX_INPUT_BYTES, MAX_OUTPUT_BYTES, PROTOCOL_VERSION
+from smweb.animation_selection import AutoMask, MotionSelection, selection_mask, selection_prompts
+from smweb.animation_experiment import (
+    keys, segmentation_key, prepare_image, MAX_INPUT_BYTES, MAX_OUTPUT_BYTES,
+    PROTOCOL_VERSION, SEGMENTATION_MODEL_ID,
+)
 from smweb.animation_jobs import reserve, release, TTL
 from smweb.modal_animation_client import AnimationClient
 
@@ -35,6 +38,34 @@ def allowed(request):
 
 def error(code, status=400):
     return JSONResponse({"ok": False, "error": code}, status_code=status, headers={"Cache-Control": "no-store"})
+
+
+AUTO_TARGETS = {"hair", "breathing", "eyes", "cloth"}
+
+
+def validate_segmentation_result(data, requested):
+    if not isinstance(data, dict) or data.get("protocol_version") != PROTOCOL_VERSION:
+        raise ValueError("Invalid segmentation response")
+    if data.get("model") != SEGMENTATION_MODEL_ID or not isinstance(data.get("masks"), list):
+        raise ValueError("Invalid segmentation response")
+    result, seen = [], set()
+    for item in data["masks"]:
+        if not isinstance(item, dict) or item.get("target") not in requested or item["target"] in seen:
+            raise ValueError("Invalid segmentation response")
+        seen.add(item["target"])
+        if item.get("found") is False:
+            confidence = item.get("confidence")
+            if not isinstance(confidence, (int, float)) or isinstance(confidence, bool) or not 0 <= confidence <= 1:
+                raise ValueError("Invalid segmentation response")
+            result.append({"target": item["target"], "found": False,
+                           "confidence": round(float(confidence), 3)})
+            continue
+        mask = AutoMask.model_validate({key: item.get(key) for key in
+                                        ("target", "width", "height", "png", "confidence")})
+        result.append({"found": True, **mask.model_dump()})
+    if seen != set(requested):
+        raise ValueError("Incomplete segmentation response")
+    return result
 
 def owner_job(request, jid):
     user = allowed(request)
@@ -71,6 +102,87 @@ async def prompt(request: Request):
         return {"ok": True, "prompt": positive}
     except ValueError:
         return error("invalid_selection")
+
+
+@router.post("/segment")
+async def segment(request: Request, file: UploadFile = File(...), targets: str = Form("[]")):
+    user = allowed(request)
+    if not user:
+        return error("unavailable", 403)
+    try:
+        selected = json.loads(targets)
+        if (not isinstance(selected, list) or not 1 <= len(selected) <= 4
+                or any(not isinstance(target, str) or target not in AUTO_TARGETS for target in selected)
+                or len(set(selected)) != len(selected)):
+            return error("no_detectable_targets")
+        raw = await file.read(MAX_INPUT_BYTES + 1)
+        image = await run_in_threadpool(prepare_image, raw, "#00ff00", canonical=True)
+        saved = io.BytesIO()
+        image.save(saved, format="PNG", optimize=True)
+        content = saved.getvalue()
+        if len(content) > MAX_INPUT_BYTES:
+            return error("invalid_image")
+    except Exception:
+        return error("invalid_image")
+
+    cache_key = "sm:animation:segment:" + hashlib.sha256(
+        content + json.dumps(sorted(selected), separators=(",", ":")).encode() + str(PROTOCOL_VERSION).encode()
+    ).hexdigest()
+    try:
+        redis = rs.get_redis()
+        cached = redis.get(cache_key) if redis else None
+        if isinstance(cached, bytes):
+            cached = cached.decode("utf-8")
+        if isinstance(cached, str):
+            masks = validate_segmentation_result(json.loads(cached), selected)
+            return JSONResponse({"ok": True, "cached": True, "masks": masks},
+                                headers={"Cache-Control": "no-store"})
+    except Exception:
+        cached = None
+    if not object_store.configured():
+        return error("service_unavailable", 503)
+    try:
+        client = AnimationClient()
+        if (await run_in_threadpool(client.health)).get("protocol_version") != PROTOCOL_VERSION:
+            return error("update_modal", 503)
+    except Exception:
+        return error("service_unavailable", 503)
+    try:
+        permitted, _ = await run_in_threadpool(
+            rs.rate_limit, f"animation-segment:{user['id']}",
+            max(1, min(50, int(os.environ.get("ANIMATION_SEGMENT_DAILY_LIMIT", "20")))),
+            86400, fail_closed=True,
+        )
+        if not permitted:
+            return error("detect_limit", 429)
+    except Exception:
+        return error("service_unavailable", 503)
+
+    jid = secrets.token_hex(16)
+    source = segmentation_key(jid)
+    try:
+        await run_in_threadpool(object_store.put_bytes, source, content,
+                                public=False, media_type="image/png")
+        payload = {"request_id": jid,
+                   "source_url": object_store.presigned_get_url(source, expires=600),
+                   "targets": selected}
+        remote = await run_in_threadpool(client.segment, payload)
+        masks = validate_segmentation_result(remote, selected)
+        try:
+            redis = rs.get_redis()
+            if redis:
+                redis.set(cache_key, json.dumps(remote, separators=(",", ":")), ex=86400)
+        except Exception:
+            pass
+        return JSONResponse({"ok": True, "cached": False, "masks": masks},
+                            headers={"Cache-Control": "no-store"})
+    except Exception:
+        return error("detect_failed", 502)
+    finally:
+        try:
+            object_store.delete(source, public=False)
+        except Exception:
+            pass
 
 @router.post("/start")
 async def start(request: Request, file: UploadFile = File(...), options: str = Form(...), confirm_cost: str = Form(""), request_id: str = Form("")):

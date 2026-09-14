@@ -1,5 +1,6 @@
 import io
 import json
+import base64
 import unittest
 from unittest.mock import Mock, patch
 from fastapi import FastAPI
@@ -13,6 +14,12 @@ def png():
     output=io.BytesIO();Image.new('RGB',(128,128),'red').save(output,format='PNG');return output.getvalue()
 def options():
     return {'selection':{'targets':['hair'],'strokes':[{'target':'hair','radius':.1,'points':[[.5,.5]]}]}}
+def detected_mask(target='hair'):
+    image=Image.new('RGBA',(32,32),(255,255,255,0))
+    for y in range(8,24):
+        for x in range(4,16):image.putpixel((x,y),(255,255,255,255))
+    output=io.BytesIO();image.save(output,format='PNG')
+    return {'target':target,'found':True,'width':32,'height':32,'png':base64.b64encode(output.getvalue()).decode(),'confidence':.87}
 
 class SiteTests(unittest.TestCase):
     def setUp(self):
@@ -53,6 +60,27 @@ class SiteTests(unittest.TestCase):
         with patch.object(api,'AnimationClient') as client:
             response=self.client.post('/api/animation/prompt',json=options())
         self.assertEqual(response.status_code,200);self.assertIn('free hair tips',response.json()['prompt']);client.assert_not_called()
+
+    def test_segmentation_is_private_bounded_and_does_not_queue_video(self):
+        remote=Mock();remote.health.return_value={'protocol_version':PROTOCOL_VERSION};remote.segment.return_value={'request_id':'a'*32,'protocol_version':PROTOCOL_VERSION,'model':'CIDAS/clipseg-rd64-refined','masks':[detected_mask()]}
+        patches=[patch.object(api.rs,'get_redis',return_value=None),patch.object(api.rs,'rate_limit',return_value=(True,19)),patch.object(api.object_store,'configured',return_value=True),patch.object(api.object_store,'put_bytes'),patch.object(api.object_store,'presigned_get_url',return_value='private signed source'),patch.object(api.object_store,'delete'),patch.object(api,'AnimationClient',return_value=remote),patch.object(api.secrets,'token_hex',return_value='a'*32)]
+        for item in patches:item.start();self.addCleanup(item.stop)
+        response=self.client.post('/api/animation/segment',files={'file':('source.png',png(),'image/png')},data={'targets':json.dumps(['hair'])})
+        self.assertEqual(response.status_code,200);self.assertTrue(response.json()['masks'][0]['found'])
+        remote.segment.assert_called_once()
+        self.assertNotIn('private signed source',response.text)
+        api.object_store.delete.assert_called_once()
+
+    def test_segmentation_rejects_unsupported_targets_before_remote(self):
+        with patch.object(api,'AnimationClient') as remote:
+            response=self.client.post('/api/animation/segment',files={'file':('source.png',png(),'image/png')},data={'targets':json.dumps(['water'])})
+        self.assertEqual(response.json()['error'],'no_detectable_targets');remote.assert_not_called()
+
+    def test_segmentation_rejects_malformed_remote_mask(self):
+        result={'protocol_version':PROTOCOL_VERSION,'model':'CIDAS/clipseg-rd64-refined','masks':[detected_mask()]}
+        self.assertEqual(api.validate_segmentation_result(result,['hair'])[0]['target'],'hair')
+        result['masks'][0]['png']=base64.b64encode(b'not a png').decode()
+        with self.assertRaises(ValueError):api.validate_segmentation_result(result,['hair'])
 
     def test_same_request_replay_never_enqueues_or_pays_twice(self):
         remote=self.services();jid='a'*32
