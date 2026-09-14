@@ -59,20 +59,26 @@ class SelectionTests(unittest.TestCase):
 
     def test_prompts_are_targeted_not_everything_at_once(self):
         positive,negative=selection_prompts(selection(),'normal')
-        self.assertIn('hair strands',positive)
+        self.assertIn('free hair tips',positive)
         self.assertIn('central',positive)
-        self.assertNotIn('rhythmic breathing',positive)
+        self.assertIn('locked animation cel',positive)
+        self.assertIn("head, neck, torso, shoulders, arms, hands, waist, hips and legs",positive)
+        self.assertNotIn('shirt shading',positive)
         self.assertIn('blinking',negative)
+        self.assertIn('full-body animation',negative)
+        self.assertIn('moving hair roots',negative)
         data=selection(targets=['breathing'],strokes=[{'target':'breathing','radius':.1,'points':[[.5,.6]]}])
         positive,negative=selection_prompts(data,'gentle')
-        self.assertIn('chest and shoulders',positive)
-        self.assertNotIn('moving torso',negative)
+        self.assertIn('shirt shading',positive)
+        self.assertIn('Do not lift, lower, translate or reshape the chest',positive)
+        self.assertIn('torso movement',negative)
 
     def test_custom_requires_description(self):
         with self.assertRaises(ValidationError):
             selection(targets=['custom'],strokes=[],lock_outside=False)
         positive,_=selection_prompts(selection(targets=['custom'],strokes=[],lock_outside=False,description='Rotate the wheel slowly.'),'normal')
         self.assertIn('Rotate the wheel slowly',positive)
+        self.assertIn('cannot override the locked character rig',positive)
 
     def test_output_size_mismatch_is_rejected(self):
         with self.assertRaises(ValueError):

@@ -52,7 +52,7 @@ class SiteTests(unittest.TestCase):
     def test_prompt_has_no_gpu_submission(self):
         with patch.object(api,'AnimationClient') as client:
             response=self.client.post('/api/animation/prompt',json=options())
-            self.assertEqual(response.status_code,200);self.assertIn('hair strands',response.json()['prompt']);client.assert_not_called()
+        self.assertEqual(response.status_code,200);self.assertIn('free hair tips',response.json()['prompt']);client.assert_not_called()
 
     def test_same_request_replay_never_enqueues_or_pays_twice(self):
         remote=self.services();jid='a'*32

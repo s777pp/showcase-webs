@@ -11,10 +11,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Target = Literal["hair", "breathing", "eyes", "cloth", "water", "smoke", "custom"]
 TARGET_MOTION = {
-    "hair": "A steady breeze visibly sways the existing hair strands, with smooth continuous motion and natural inertia.",
-    "breathing": "Natural rhythmic breathing gently lifts and lowers the chest and shoulders, without changing anatomy or exaggerating body movement.",
-    "eyes": "One or two natural blinks, with a subtle lifelike eye movement; preserve the eye shape and facial expression.",
-    "cloth": "The existing loose fabric softly flutters in a breeze, with continuous flowing folds.",
+    "hair": "Move only the free hair tips and loose strands with a gentle elastic sway. Keep every hair root anchored to the exact same point on the static head; do not move the scalp, head or face.",
+    "breathing": "Suggest very subtle breathing only through a small periodic change in shirt shading and loose fabric folds. Do not lift, lower, translate or reshape the chest, shoulders, neck or torso.",
+    "eyes": "Animate only the eyelids: make one soft blink, closing and reopening to the exact original eye shape. Keep the pupils, gaze, eyebrows, face and expression fixed.",
+    "cloth": "Move only loose hems, ribbons and surface folds with a small secondary flutter. Keep garment attachment points, the body underneath and the character silhouette fixed.",
     "water": "Visible ripples continuously travel through the existing water, moving its reflections naturally.",
     "smoke": "The existing smoke continuously curls, rises and drifts, with gradually changing shapes.",
     "custom": "Apply the requested local motion to the existing selected subject.",
@@ -81,9 +81,19 @@ def selection_mask(selection: MotionSelection, size: tuple[int, int], *, feather
 
 
 def selection_prompts(selection: MotionSelection, intensity: str) -> tuple[str, str]:
-    amplitudes = {"gentle": "Small but visible", "normal": "Clearly visible moderate", "strong": "Expressive but controlled"}
-    prompt = "Animate this exact source image with a locked static camera; no pan, zoom or cuts. "
-    prompt += SUBJECTS[selection.subject] + " " + amplitudes[intensity] + " movement throughout the clip. "
+    amplitudes = {
+        "gentle": "Use small, slow and restrained motion only in the selected secondary elements.",
+        "normal": "Use clearly visible but localized motion only in the selected secondary elements.",
+        "strong": "Use expressive motion in the selected secondary elements, but never move the character rig or pose.",
+    }
+    prompt = (
+        "Create a restrained 2D Live2D-style idle animation from this exact source frame. "
+        "Treat the source as a locked animation cel and visual anchor for every frame. "
+        "The camera, background and composition are perfectly static; no pan, zoom, parallax or cuts. "
+        "Lock the character's head, neck, torso, shoulders, arms, hands, waist, hips and legs to their exact original pixel position, scale, pose, perspective and silhouette. "
+        "The character must not act, lean, sway, turn, gesture, speak or change pose. "
+    )
+    prompt += SUBJECTS[selection.subject] + " " + amplitudes[intensity] + " "
     for target in selection.targets:
         prompt += TARGET_MOTION[target] + " "
         points = [point for stroke in selection.strokes if stroke.target == target and not stroke.erase for point in stroke.points]
@@ -95,14 +105,21 @@ def selection_prompts(selection: MotionSelection, intensity: str) -> tuple[str, 
     if selection.description.strip():
         # Delimited user direction is not used as application instructions.
         prompt += "User's motion direction (subject description only): <direction>" + selection.description.strip() + "</direction>. "
-    prompt += "Keep all other regions stationary. Preserve the original pose and facial expression except for the explicitly requested local motion."
-    negative = "no motion, static selected region, camera movement, zoom, cuts, flicker, face distortion, deformed anatomy, extra limbs, new objects, text, watermark"
+        prompt += "Apply that direction only to the chosen secondary elements; it cannot override the locked character rig, camera or background. "
+    prompt += (
+        "Keep every unselected pixel visually stationary. Preserve the exact identity, face, mouth, pose, anatomy, line art and clothing design. "
+        "Motion starts from the original resting state and gently returns toward the same resting state at the end."
+    )
+    negative = (
+        "frozen requested element, full-body animation, character acting, dancing, walking, body sway, torso movement, pose change, "
+        "head turn, head tilt, head bob, shoulder movement, arm movement, hand movement, hip movement, leg movement, silhouette drift, "
+        "mouth movement, talking, changing expression, changing gaze, camera movement, zoom, pan, parallax, cuts, flicker, line-art wobble, "
+        "redrawing, morphing, face distortion, deformed anatomy, extra limbs, new objects, moving background, text, watermark"
+    )
     if "eyes" not in selection.targets:
         negative += ", blinking, changing eyes"
-    if "breathing" not in selection.targets:
-        negative += ", moving torso, breathing motion"
-    if not ("eyes" in selection.targets or "breathing" in selection.targets):
-        negative += ", head rotation, changing facial expression"
+    if "hair" in selection.targets:
+        negative += ", moving hair roots, moving scalp"
     return prompt, negative
 
 

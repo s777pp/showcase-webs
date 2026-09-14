@@ -13,7 +13,7 @@
     object:['Object','Предмет','Objekt','Nesne','Objet','Предмет','Objeto','Objeto'],
     targets:['Choose motion, then paint its area','Выбери движение, затем закрась его область','Bewegung wählen, dann Bereich malen','Hareketi seç, ardından alanını boya','Choisissez un mouvement, puis peignez sa zone','Вибери рух, потім зафарбуй його область','Elige el movimiento y pinta su zona','Escolha o movimento e pinte sua área'],
     hair:['Hair','Волосы','Haare','Saç','Cheveux','Волосся','Cabello','Cabelo'],
-    breathing:['Breathing · chest / shoulders','Дыхание · грудь / плечи','Atmung · Brust / Schultern','Nefes · göğüs / omuzlar','Respiration · poitrine / épaules','Дихання · груди / плечі','Respiración · pecho / hombros','Respiração · peito / ombros'],
+    breathing:['Breathing · shirt only','Дыхание · только ткань','Atmung · nur Stoff','Nefes · yalnızca kumaş','Respiration · tissu uniquement','Дихання · лише тканина','Respiración · solo tela','Respiração · apenas tecido'],
     eyes:['Eyes · blinking','Глаза · моргание','Augen · Blinzeln','Gözler · kırpma','Yeux · clignement','Очі · моргання','Ojos · parpadeo','Olhos · piscar'],
     cloth:['Clothing','Одежда','Kleidung','Kıyafet','Vêtements','Одяг','Ropa','Roupa'],
     water:['Water','Вода','Wasser','Su','Eau','Вода','Agua','Água'],

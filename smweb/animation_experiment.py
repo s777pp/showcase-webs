@@ -25,7 +25,7 @@ MAX_INPUT_BYTES = 8 * 1024 * 1024
 MAX_OUTPUT_BYTES = 80 * 1024 * 1024
 DAILY_LIMIT = 5
 FPS = 24
-PROTOCOL_VERSION = 3
+PROTOCOL_VERSION = 4
 PROFILES = {"draft": (81, 30), "quality": (121, 50)}
 PRESETS = {
     "alive": "The character comes alive: visible natural breathing, a natural blink, a small relaxed head tilt and gentle shoulder movement. Hair and loose clothing respond to the movement.",

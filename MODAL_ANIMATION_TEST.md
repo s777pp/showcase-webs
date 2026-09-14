@@ -58,7 +58,7 @@ MODAL_ANIMATE_URL=https://YOUR-WORKSPACE--showcasemaker-animate-experiment-api.m
 .\.venv-animation\Scripts\python.exe scripts/test_modal_animation.py --health
 ```
 
-После обновления ожидается `"protocol_version": 3` и пресет `alive`.
+После обновления ожидается `"protocol_version": 4` и пресет `alive`.
 Версия 3 добавляет выбор движений и сборку по маске для закрытого эксперимента
 в билдере. Настройка сайта описана отдельно в `BUILDER_AI_ANIMATION.md`.
 Если версия старая, сначала повтори установку зависимостей и `modal deploy`

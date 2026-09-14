@@ -291,7 +291,7 @@ class AnimationAPITests(unittest.TestCase):
             response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["daily_limit"], DAILY_LIMIT)
-        self.assertEqual(response.json()["protocol_version"], 3)
+        self.assertEqual(response.json()["protocol_version"], 4)
         gpu.spawn.aio.assert_not_called()
 
     def test_validation_does_not_echo_signed_url(self):
