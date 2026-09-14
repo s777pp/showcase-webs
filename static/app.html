@@ -23,7 +23,9 @@
 <link rel="stylesheet" href="/static/css/support-chat.css?v=20260908-mobile-polish">
 <link rel="stylesheet" href="/static/css/tools-polish.css?v=20260908-controls8">
 <link href="https://fonts.googleapis.com/css2?family=Alumni+Sans:wght@700;800&family=Arsenal:wght@700&family=Bebas+Neue&family=Bungee&family=Caveat:wght@600;700&family=Comfortaa:wght@600;700&family=Cormorant+Garamond:wght@700&family=Exo+2:wght@700;800&family=Jura:wght@700&family=Kelly+Slab&family=Neucha&family=Oswald:wght@600;700&family=Play:wght@700&family=Poiret+One&family=Press+Start+2P&family=Readex+Pro:wght@600;700&family=Rubik+Mono+One&family=Russo+One&family=Sofia+Sans+Extra+Condensed:wght@700;800&family=Tenor+Sans&family=Unbounded:wght@600;700;800&family=Yeseva+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/showcase-builder.css?v=20260912-vfx1">
+<link rel="stylesheet" href="/static/css/showcase-builder.css?v=20260913-motion1">
+<link rel="stylesheet" href="/static/css/builder-motion.css?v=20260913-motion1">
+<link rel="stylesheet" href="/static/css/builder-ai-animation.css?v=20260914-ai2">
 <link rel="stylesheet" href="/static/css/steam-dna.css?v=20260912-exp5">
 <script defer src="/static/js/support-chat.js?v=20260909-german1"></script>
 </head>
@@ -493,6 +495,8 @@
           </button>
           <input id="loopFile" type="file" hidden accept="image/gif,video/mp4,video/webm,video/x-msvideo,.gif,.mp4,.webm,.avi"/>
           <div class="loop-file" id="loopFileName"></div>
+          <label class="field"><span data-loop-motion="cycle">Loop</span><select id="loopMode"><option value="pingpong" data-loop-motion="pingpong">Forward and backward</option><option value="blend" data-loop-motion="blend">Smooth crossfade</option></select></label>
+          <label class="field" id="loopTransitionRow" hidden><span data-loop-motion="fade">Transition length</span><select id="loopTransition"><option value="0.25">0.25 s</option><option value="0.5" selected>0.5 s</option><option value="0.75">0.75 s</option></select></label>
           <label class="field"><span data-loop="formatLabel">Result format</span><select id="loopFormat"><option value="gif">GIF · Steam</option><option value="mp4">MP4 · preview</option></select></label>
           <label class="field"><span data-loop="fpsLabel">Frame rate</span><select id="loopFps"><option value="12" selected>12 FPS</option><option value="15">15 FPS</option><option value="18">18 FPS</option><option value="20">20 FPS</option><option value="24">24 FPS</option></select></label>
           <button class="btn" id="loopRun" type="button" disabled data-loop="run">Create loop</button>
@@ -1041,7 +1045,11 @@
   <script src="/static/js/workspace-copy.js?v=20260910-finish1"></script>
   <script src="/static/js/process-guide.js?v=20260910-finish1"></script>
   <script src="/static/js/builder-history.js?v=20260910-finish1"></script>
-  <script src="/static/js/showcase-builder.js?v=20260912-vfx1"></script>
+  <script src="/static/js/builder-motion-copy.js?v=20260913-motion1"></script>
+  <script src="/static/js/builder-motion.js?v=20260913-motion1"></script>
+  <script src="/static/js/builder-ai-copy.js?v=20260914-ai2"></script>
+  <script src="/static/js/builder-ai-animation.js?v=20260914-ai2"></script>
+  <script src="/static/js/showcase-builder.js?v=20260914-ai2"></script>
   <script src="/static/js/steam-dna.js?v=20260912-exp7"></script>
 
 
@@ -1098,7 +1106,7 @@
 <script src="/static/js/app-tail.js?v=20260909-observer3"></script>
 <script src="/static/js/steam-check.js?v=20260910-usability1"></script>
 <script src="/static/js/profile-insights.js?v=20260906-unique-tags"></script>
-<script src="/static/js/seamless-loop.js?v=20260906-i18n"></script>
+<script src="/static/js/seamless-loop.js?v=20260913-motion1"></script>
 <script src="/static/js/steam-extension-status.js?v=20260910-analytics1"></script>
 
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import math
 import re
 import secrets
 import time
@@ -39,7 +40,7 @@ def _owner(request: Request) -> tuple[dict | None, str]:
 @router.post("/api/loop/start")
 async def start(request: Request, file: UploadFile = File(...), mode: str = Form("pingpong"),
                 output_format: str = Form("gif"), fps: int = Form(12),
-                start: float = Form(0), duration: float = Form(4)):
+                start: float = Form(0), duration: float = Form(4), transition: float = Form(.5)):
     user, owner = _owner(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
@@ -56,10 +57,8 @@ async def start(request: Request, file: UploadFile = File(...), mode: str = Form
     media = _media(raw)
     if not media:
         return JSONResponse({"ok": False, "msg": "Animated GIF, MP4, WebM or AVI required"}, status_code=400)
-    if output_format not in {"gif", "mp4"}:
+    if output_format not in {"gif", "mp4"} or mode not in {"blend", "pingpong"} or not all(math.isfinite(v) for v in (start, duration, transition)):
         return JSONResponse({"ok": False, "msg": "Unsupported loop settings"}, status_code=400)
-    # Keep the public Steam tool predictable, including for stale cached clients.
-    mode = "pingpong"
     jid = secrets.token_hex(16)
     root = Path(DATA) / "jobs" / jid
     root.mkdir(parents=True, exist_ok=False)
@@ -70,6 +69,7 @@ async def start(request: Request, file: UploadFile = File(...), mode: str = Form
                "user_key": owner, "status": "queued", "pct": 2, "stage": "queued",
                "mode": mode, "output_format": output_format, "fps": max(8, min(24, fps)),
                "start": max(0, min(29.5, start)), "duration": max(0.5, min(8, duration)),
+               "transition": max(.25, min(.75, transition)),
                "created": time.time()}
     rs.job_create(jid, payload, enqueue=external)
     if not external:

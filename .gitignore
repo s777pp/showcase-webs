@@ -43,3 +43,7 @@ Thumbs.db
 .tmpvol/av.png
 .tmpro/users.db
 scripts/.locale-cache.json
+
+# Private local AI animation test outputs (never commit uploaded images/videos).
+animation-test-results/
+.venv-animation/

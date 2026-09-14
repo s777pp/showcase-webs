@@ -65,6 +65,10 @@ def _process_one(jid: str) -> None:
             from smweb.upscale_jobs import run
             run(jid, job)
             return
+        if job.get("kind") == "ai_animation":
+            from smweb.animation_jobs import run
+            run(jid, job)
+            return
         if job.get("kind") == "seamless_loop":
             from smweb.loop_jobs import run
             run(jid, job)

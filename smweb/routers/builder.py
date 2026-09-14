@@ -7,6 +7,7 @@ responsibilities here avoids coupling the editor to the media processing API.
 from __future__ import annotations
 
 import json
+import math
 import io
 import os
 import re
@@ -57,6 +58,41 @@ def _user(request: Request):
     return user, None
 
 
+def _bounded_number(value, minimum, maximum, default):
+    try:
+        number = float(value)
+        return max(minimum, min(maximum, number)) if math.isfinite(number) else default
+    except (TypeError, ValueError):
+        return default
+
+
+def _validated_local_motion(raw):
+    if not isinstance(raw, dict):
+        return None
+    strokes, pins = raw.get("strokes", []), raw.get("pins", [])
+    if not isinstance(strokes, list) or len(strokes) > 80 or not isinstance(pins, list) or len(pins) > 32:
+        raise ValueError("Too many motion brush strokes or pins")
+    clean = {"direction": _bounded_number(raw.get("direction"), -180, 180, 0),
+             "strength": _bounded_number(raw.get("strength"), 0, 30, 8), "strokes": [], "pins": []}
+    for stroke in strokes:
+        if not isinstance(stroke, dict) or not isinstance(stroke.get("points"), list) or len(stroke["points"]) > 400:
+            raise ValueError("Invalid motion brush stroke")
+        points = []
+        for point in stroke["points"]:
+            if not isinstance(point, list) or len(point) != 2:
+                raise ValueError("Invalid motion brush point")
+            points.append([_bounded_number(point[0], 0, 1, 0), _bounded_number(point[1], 0, 1, 0)])
+        clean["strokes"].append({"radius": _bounded_number(stroke.get("radius"), .01, .2, .05),
+                                 "erase": stroke.get("erase") is True, "points": points})
+    for pin in pins:
+        if not isinstance(pin, dict):
+            raise ValueError("Invalid motion pin")
+        clean["pins"].append({"x": _bounded_number(pin.get("x"), 0, 1, .5),
+                              "y": _bounded_number(pin.get("y"), 0, 1, .5),
+                              "radius": _bounded_number(pin.get("radius"), .01, .2, .05)})
+    return clean
+
+
 def _validated_project(raw) -> dict:
     if not isinstance(raw, dict):
         raise ValueError("Invalid project")
@@ -75,6 +111,10 @@ def _validated_project(raw) -> dict:
                 item[key] = float(item.get(key, 0 if key in ("x", "y", "rotation") else 1))
             except (TypeError, ValueError):
                 item[key] = 0 if key in ("x", "y", "rotation") else 1
+        for key, minimum, maximum, default in (("x", 0, 1, .5), ("y", 0, 1, .5),
+                                                ("scale", .1, 3, 1), ("rotation", -180, 180, 0),
+                                                ("opacity", 0, 1, 1)):
+            item[key] = _bounded_number(item[key], minimum, maximum, default)
         if "text" in item:
             item["text"] = str(item["text"])[:500]
         if "font" in item:
@@ -86,19 +126,40 @@ def _validated_project(raw) -> dict:
             "effectDensity": (25, 200, 100),
             "chromaTolerance": (10, 120, 45),
             "chromaFeather": (0, 40, 16),
+            "depthAmount": (0, 100, 60),
+            "lightStrength": (0, 100, 40),
+            "lightRadius": (10, 150, 80),
         }
         for key, (minimum, maximum, default) in numeric_fields.items():
             if key not in item:
                 continue
-            try:
-                item[key] = max(minimum, min(maximum, float(item[key])))
-            except (TypeError, ValueError):
-                item[key] = default
+            item[key] = _bounded_number(item[key], minimum, maximum, default)
         if "color" in item:
             color = str(item["color"])
             item["color"] = color if re.fullmatch(r"#[0-9a-fA-F]{6}", color) else "#52d5ff"
         if item["type"] == "effect":
             item["effect"] = item.get("effect") if item.get("effect") in _EFFECTS else "particle"
+            item["depth"] = item.get("depth") if item.get("depth") in {"flat", "back", "front", "mixed"} else "flat"
+            item["sceneLight"] = item.get("sceneLight") is True
+            color = str(item.get("lightColor") or item.get("color") or "#83dfff")
+            item["lightColor"] = color if re.fullmatch(r"#[0-9a-fA-F]{6}", color) else "#83dfff"
+            area = item.get("protectedArea")
+            if isinstance(area, dict):
+                area = {key: _bounded_number(area.get(key), 0, 1, 0) for key in ("x", "y", "w", "h")}
+                area["w"] = min(area["w"], 1 - area["x"])
+                area["h"] = min(area["h"], 1 - area["y"])
+                item["protectedArea"] = area
+            else:
+                item.pop("protectedArea", None)
+        item["intensityLinked"] = item.get("intensityLinked") is not False
+        if item["type"] in {"background", "character"}:
+            motion = _validated_local_motion(item.get("localMotion"))
+            if motion is not None:
+                item["localMotion"] = motion
+            else:
+                item.pop("localMotion", None)
+        else:
+            item.pop("localMotion", None)
         if item["type"] == "frame":
             item["frameStyle"] = item.get("frameStyle") if item.get("frameStyle") in _FRAME_STYLES else "solid"
             item["frameTarget"] = item.get("frameTarget") if item.get("frameTarget") in _FRAME_TARGETS else "panels"
@@ -128,6 +189,7 @@ def _validated_project(raw) -> dict:
                 src = ""
             item["src"] = src
         clean_layers.append(item)
+    motion = raw.get("motion") if isinstance(raw.get("motion"), dict) else {}
     return {
         "version": 1,
         "mode": raw.get("mode") if raw.get("mode") in _MODES else "workshop",
@@ -135,6 +197,11 @@ def _validated_project(raw) -> dict:
         "height": max(280, min(1800, int(raw.get("height") or 1000))),
         "background": str(raw.get("background") or "#07131c")[:32],
         "layers": clean_layers,
+        "motion": {"intensity": _bounded_number(motion.get("intensity"), 0, 100, 50),
+                   "loop": motion.get("loop") if motion.get("loop") in {"none", "blend", "pingpong"} else "none",
+                   "duration": int(_bounded_number(motion.get("duration"), 4, 8, 8)),
+                   "fade": _bounded_number(motion.get("fade"), .25, .75, .5),
+                   "seams": motion.get("seams") is True},
     }
 
 

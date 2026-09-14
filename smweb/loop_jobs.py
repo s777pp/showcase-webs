@@ -51,6 +51,8 @@ def _link_or_copy(source: Path, destination: Path) -> None:
 
 def _build_sequence(raw_frames: list[Path], output: Path, mode: str, blend_frames: int) -> int:
     """Create an ordered PNG sequence without holding the whole animation in RAM."""
+    if len(raw_frames) < 2 or mode not in {"blend", "pingpong"}:
+        raise ValueError("Invalid loop sequence")
     output.mkdir(parents=True, exist_ok=True)
     order: list[Path] = []
     blends: list[tuple[Path, Path, float]] = []
@@ -90,7 +92,7 @@ def run(jid: str, job: dict) -> None:
         if mode == "pingpong":
             requested = max(1.0, requested)
         available = source_duration - start
-        fade = min(0.7, max(0.18, requested * 0.14), requested * 0.35)
+        fade = min(max(.25, min(.75, float(job.get("transition") or .5))), requested * .35)
         segment = min(available, requested / 2 if mode == "pingpong" else requested + fade)
         raw_dir, sequence_dir = root / "decoded", root / "sequence"
         raw_dir.mkdir(parents=True, exist_ok=True)
@@ -126,7 +128,7 @@ def run(jid: str, job: dict) -> None:
             result_key = object_store.upload_file(result, f"jobs/{jid}/{result.name}", public=False)
         rs.job_update(jid, status="done", pct=100, stage="done", result_path=str(result),
                       result_key=result_key, filename=result.name, media_type=media_type,
-                      output_duration=round(min(8.0, frame_count / fps), 3))
+                      output_duration=round(frame_count / fps, 3), loop_mode=mode)
         shutil.rmtree(raw_dir, ignore_errors=True); shutil.rmtree(sequence_dir, ignore_errors=True)
         if result_key:
             shutil.rmtree(root, ignore_errors=True)
