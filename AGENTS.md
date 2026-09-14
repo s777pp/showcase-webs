@@ -2,72 +2,13 @@
 
 This is the root handoff and operating guide for coding agents. Read it before changing the project. It records the production architecture, recent decisions, known limitations, and safest next steps. Never add secrets, `.env` values, API tokens, credentials, presigned URLs, or production user data here.
 
-### Allowlisted Builder AI brush/auto-mask experiment — 2026-09-14 (local, not deployed)
+### Removed Builder AI animation experiment — 2026-09-14
 
-- Owner approved the website experiment after reporting v2 animation works.
-  `BUILDER_AI_ANIMATION.md` supersedes the manual-only first-stage restriction.
-  Website access is OFF by default and requires ANIMATION_ENABLED=1 plus an
-  exact authenticated account email in ANIMATION_ALLOWED_EMAILS. Pro alone
-  cannot open it. Never expose Modal credentials to browser code.
-- /api/animation routes use private R2, fail-closed Redis admission (one global
-  active task, default three attempts/day/account and globally UTC), and the
-  network-only upscale worker queue. Submission fences forbid automatic paid
-  retry; ambiguous responses retain the busy slot until terminal confirmation
-  or expiry. Attempt limits are not dollar caps. Deploy app AND worker.
-- Protocol v5 adds shared source-normalized strokes/target-aware prompts,
-  validated compact auto-masks and output compositing with a feathered mask.
-  Auto-detection uses pinned Apache-2.0 CLIPSeg in a separate scale-to-zero CPU
-  Modal function for hair, clothing, shirt breathing and eyes. It never invokes
-  Wan/GPU; results are cached for one day and can be corrected with the existing
-  brush/eraser. Deploy `modal_animate.py` before the matching website code and
-  add an R2 lifecycle fallback for `animation-segmentation/`. Wan still does not
-  receive a native motion
-  mask: never promise pixel-accurate AI control, perfect anatomy or seamless loop.
-  Outside is fixed BEFORE MP4 encoding (lossy encoding can change pixel values).
-- New isolated frontend modules preserve Builder's existing style. Paint on the
-  source, preview before Apply, preserve transforms, upload applied MP4 to normal
-  private Builder assets for durable project storage. Originals are not deleted.
-  Static PNG/JPEG/WebP only; MP4 has no alpha (transparent input uses green matte).
-- Agent does not deploy/run paid GPU calls. Existing manual CLI remains available.
-
-### Private Modal image-animation first stage — 2026-09-14
-
-- Owner approved trying AI animation through Modal; first stage is a private manual
-  quality experiment, NOT a public tool. See `MODAL_ANIMATION_TEST.md` for setup.
-- `modal_animate.py` is a separate protected Modal app, using pinned Wan2.2 TI2V-5B
-  Diffusers weights and its image-conditioned pipeline (`expand_timesteps=True`).
-  L40S, max one GPU container, min zero, retries=0, 20-minute task timeout.
-  Modal may still reschedule container crashes: the persisted execution fence
-  prevents repeating model loading/generation after function entry, not crashes
-  before entry or a guaranteed spending cap. Never automatically pay for a retry.
-- Same environment-scoped proxy credentials may be reused; the new URL is
-  `MODAL_ANIMATE_URL`. Do not overwrite `MODAL_UPSCALE_URL` or redeploy upscale.
-- `smweb/animation_experiment.py` bounds/validates static images, signed R2 paths,
-  presets and quality; atomic Modal Dict reservations prevent duplicate spawns.
-  Five attempts/day UTC for the entire experiment, including uncertain attempts.
-  This is an attempt cap, not a guaranteed monetary spending cap.
-- CLI `scripts/test_modal_animation.py` defaults to local dry-run; real uploads/
-  GPU submit require `--confirm-cost`. `--resume ID` only polls/downloads. Private
-  R2 keys are under `animation-experiment/`; success removes this request's two
-  objects, failure retains them for resume. Operator must configure a prefix-only
-  R2 lifecycle rule; no automatic lifecycle or Dict expiry is installed.
-  Protocol v5 requires a matching health version before upload, defaults to
-  `alive`/`normal`/`draft`, supports prompt-level intensity, step progress and
-  `--cancel ID` for an experiment-mapped call only. Shared prompts no longer
-  demand an unchanged pose or minimal motion. Pixel-level motion diagnostics
-  exclude obvious chroma/brightness drift, may misclassify, and never trigger
-  a paid retry. Output sidecar contains only allowlisted non-URL metadata.
-- Inputs are static PNG/JPEG/WebP; output MP4 has no alpha and no guaranteed seamless
-  loop. It can be uploaded manually to the existing Builder/Process tools.
-- First-stage implementation had no public router/UI/queue. GPU dependencies
-  are isolated in Modal images; optional local CLI tools have their own requirements.
-  Owner's v1 generation produced near-static animation; v2 quality is unverified.
-  Agent did not deploy/run paid generation. Core/API/HTTP/CLI regression tests
-  are `tests/test_animation_experiment.py`.
-  V2 verification: 36 experiment tests, full suite 140 tests, Node Builder motion
-  tests, compile checks and actual-image dry-run passed. Run the full suite with
-  STEAM_API_KEY empty in the test process: a pre-existing browser-parser fixture
-  otherwise enriches its mocked HTML using the live API from the local .env.
+- The owner rejected and removed the Modal/Wan image-to-video experiment, its
+  automatic masks, Builder UI, API, queue path, configuration and tests. Do not
+  reintroduce AI animation without a new explicit request.
+- Builder scene motion, manual local brush motion, weather/effects, looping and
+  AI background removal are separate features and remain supported.
 
 ## 1. Product and Current Development State
 

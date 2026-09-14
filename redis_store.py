@@ -130,7 +130,7 @@ def _r():
 
 
 # ---------- process jobs ----------
-def job_create(jid: str, data: dict, enqueue: bool = True, *, fail_closed: bool = False) -> None:
+def job_create(jid: str, data: dict, enqueue: bool = True) -> None:
     """Store job metadata. enqueue=True also pushes onto the external-worker queue --
     pass False in embedded mode, otherwise entries pile up with nobody to pop them."""
     data = dict(data)
@@ -146,12 +146,10 @@ def job_create(jid: str, data: dict, enqueue: bool = True, *, fail_closed: bool 
             if uk:
                 pipe.sadd(USER_JOBS_KEY.format(uk), jid)
                 pipe.expire(USER_JOBS_KEY.format(uk), JOB_TTL)
-                if data.get("kind") == "ai_animation":
-                    pipe.set(f"sm:animation:last:{uk}", jid, ex=86400)
             if enqueue:
                 if data.get("kind") in {"steam_profile_import", "profile_insight", "steam_dna"}:
                     queue = PROFILE_JOB_QUEUE
-                elif data.get("kind") in {"upscale", "ai_animation"}:
+                elif data.get("kind") == "upscale":
                     queue = UPSCALE_JOB_QUEUE
                 else:
                     queue = JOB_QUEUE
@@ -160,10 +158,6 @@ def job_create(jid: str, data: dict, enqueue: bool = True, *, fail_closed: bool 
             return
         except Exception as e:
             _note(e)
-            if fail_closed:
-                raise RuntimeError("Shared job queue unavailable") from None
-    if fail_closed:
-        raise RuntimeError("Shared job queue unavailable")
     with _local_lock:
         _local_jobs[jid] = data
 

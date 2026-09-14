@@ -99,10 +99,6 @@ function extraPacks() {
 }
 
 const errors = [];
-const aiWords = evaluateDictionary('static/js/builder-ai-copy.js', 'const words =');
-for (const [key, translations] of Object.entries(aiWords)) {
-  if (!Array.isArray(translations) || translations.length !== 8 || translations.some(value => typeof value !== 'string' || !value.trim())) errors.push(`builder AI: incomplete translations for ${key}`);
-}
 const motionWords = evaluateDictionary('static/js/builder-motion-copy.js', 'const words =');
 for (const [key, translations] of Object.entries(motionWords)) {
   if (!Array.isArray(translations) || translations.length !== 8 || translations.some(value => typeof value !== 'string' || !value.trim())) errors.push(`builder motion: incomplete translations for ${key}`);
