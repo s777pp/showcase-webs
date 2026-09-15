@@ -1,0 +1,25 @@
+{
+  "name": "showcase-webs",
+  "version": "1.0.0",
+  "description": "This package replaces the existing landing page only. It does **not** change the FastAPI backend, tools, profile routes or gallery routes.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s777pp/showcase-webs.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/s777pp/showcase-webs/issues"
+  },
+  "homepage": "https://github.com/s777pp/showcase-webs#readme"
+}

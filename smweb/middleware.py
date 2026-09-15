@@ -82,7 +82,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         "font-src 'self' https://fonts.gstatic.com data:",
         "img-src 'self' data: blob: https:",
         "media-src 'self' data: blob: https:",
-        "connect-src 'self' https:",
+        "connect-src 'self' https: blob:",
         "frame-src 'self' https://telegram.org https://oauth.telegram.org",
         "object-src 'none'",
         "base-uri 'self'",
@@ -384,6 +384,8 @@ class CachedStaticFiles(StaticFiles):
          "public, max-age=604800"),
         ((".mp4", ".webm", ".mov", ".m4v", ".ogg", ".mp3", ".wav"),
          "public, max-age=604800"),
+        ((".vrm", ".vrma", ".glb", ".gltf", ".bin"),
+         "public, max-age=2592000"),
     )
 
     async def get_response(self, path: str, scope):
