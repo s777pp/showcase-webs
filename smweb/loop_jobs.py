@@ -13,13 +13,14 @@ from PIL import Image
 import processor as proc
 import redis_store as rs
 from smweb import object_store
+from smweb import process_control
 
 
-def _run_cmd(command: list[str]) -> None:
+def _run_cmd(command: list[str], jid: str = "") -> None:
     options = {"capture_output": True, "text": True}
     if os.name == "nt":
         options["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    completed = subprocess.run(command, **options)
+    completed = process_control.run(command, job_id=jid, **options)
     if completed.returncode:
         # Full encoder detail stays in worker logs; the Redis/client error is generic.
         print("[loop ffmpeg] " + (completed.stderr or completed.stdout or "FFmpeg failed")[-3000:], flush=True)
@@ -97,11 +98,12 @@ def run(jid: str, job: dict) -> None:
         raw_dir, sequence_dir = root / "decoded", root / "sequence"
         raw_dir.mkdir(parents=True, exist_ok=True)
         rs.job_update(jid, status="running", pct=16, stage="decode", source_duration=round(source_duration, 3))
+        process_control.checkpoint(jid)
         _run_cmd([
             ffmpeg, "-y", "-ss", f"{start:.4f}", "-t", f"{segment:.4f}", "-i", str(source),
             "-an", "-vf", f"fps={fps},scale='trunc(min(1280,iw)/2)*2':-2:flags=lanczos",
             str(raw_dir / "source_%05d.png"),
-        ])
+        ], jid)
         frames = sorted(raw_dir.glob("source_*.png"))
         if len(frames) < 4:
             raise ValueError("Selected fragment contains too few frames")
@@ -115,7 +117,7 @@ def run(jid: str, job: dict) -> None:
                 ffmpeg, "-y", "-framerate", str(fps), "-i", str(sequence_dir / "frame_%05d.png"),
                 "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "medium", "-crf", "20",
                 "-movflags", "+faststart", str(result),
-            ])
+            ], jid)
             media_type = "video/mp4"
         else:
             result = root / "seamless-loop.gif"
@@ -123,17 +125,25 @@ def run(jid: str, job: dict) -> None:
             proc.ensure_under_mb(result)
             media_type = "image/gif"
         result_key = ""
+        process_control.checkpoint(jid)
         if object_store.configured():
             rs.job_update(jid, pct=92, stage="upload")
             result_key = object_store.upload_file(result, f"jobs/{jid}/{result.name}", public=False)
+        process_control.checkpoint(jid)
         rs.job_update(jid, status="done", pct=100, stage="done", result_path=str(result),
                       result_key=result_key, filename=result.name, media_type=media_type,
                       output_duration=round(frame_count / fps, 3), loop_mode=mode)
+        cache_key = str(job.get("cache_key") or "")
+        if cache_key:
+            rs.job_cache_put(cache_key, jid)
         shutil.rmtree(raw_dir, ignore_errors=True); shutil.rmtree(sequence_dir, ignore_errors=True)
         if result_key:
             shutil.rmtree(root, ignore_errors=True)
         else:
             source.unlink(missing_ok=True)
+    except process_control.JobCancelled:
+        process_control.mark_cancelled(jid)
+        shutil.rmtree(root, ignore_errors=True)
     except Exception:
         traceback.print_exc()
         rs.job_update(jid, status="error", pct=100, stage="error", error="Loop processing failed")

@@ -12,6 +12,7 @@ from PIL import Image
 import processor as proc
 import redis_store as rs
 from smweb import object_store
+from smweb import process_control
 
 
 VIDEO_EXTS = (".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v")
@@ -51,7 +52,11 @@ def _sweep_old_jobs(jobs_root: Path, max_age: float = 3600.0) -> None:
 
 def run(jid: str, job: dict) -> None:
     try:
-        _run(jid, job)
+        with process_control.job_context(jid):
+            _run(jid, job)
+    except process_control.JobCancelled:
+        process_control.mark_cancelled(jid)
+        shutil.rmtree(Path(str(job.get("job_dir") or "")), ignore_errors=True)
     except Exception as exc:
         traceback.print_exc()
         rs.job_update(
@@ -65,6 +70,7 @@ def run(jid: str, job: dict) -> None:
 
 
 def _run(jid: str, job: dict) -> None:
+    process_control.checkpoint(jid)
     root = Path(str(job["job_dir"]))
     background = Path(str(job["background_path"]))
     character = Path(str(job["character_path"]))
@@ -89,10 +95,12 @@ def _run(jid: str, job: dict) -> None:
         bg = background
         ch = character
         if background.suffix.lower() in VIDEO_EXTS:
+            process_control.checkpoint(jid)
             rs.job_update(jid, pct=18, stage="background")
             bg = root / "background.gif"
             proc.media_to_gif(background, bg, fps=fps, width=width, duration=8)
         if character.suffix.lower() in VIDEO_EXTS:
+            process_control.checkpoint(jid)
             t = time.monotonic()
             rs.job_update(jid, pct=30, stage="character")
             ch = root / "character.gif"
@@ -106,6 +114,7 @@ def _run(jid: str, job: dict) -> None:
             target_width=width, fps=fps, max_seconds=8,
             rotation=rotation,
         )
+        process_control.checkpoint(jid)
         print(f"[compose {jid}] chromakey/compose: {time.monotonic()-t:.1f}s, frames={len(frames)}", flush=True)
         t = time.monotonic()
         rs.job_update(jid, pct=72, stage="encode")
@@ -118,6 +127,8 @@ def _run(jid: str, job: dict) -> None:
 
             t_png = time.monotonic()
             for i, frame in enumerate(frames):
+                if i % 8 == 0:
+                    process_control.checkpoint(jid)
                 frame.convert("RGBA").save(
                     frame_dir / f"frame_{i:04d}.png",
                     compress_level=0,
@@ -160,14 +171,19 @@ def _run(jid: str, job: dict) -> None:
         media_type = "image/png"
 
     result_key = ""
+    process_control.checkpoint(jid)
     if object_store.configured():
         rs.job_update(jid, pct=92, stage="upload")
         result_key = object_store.upload_file(result, f"jobs/{jid}/{result.name}", public=False)
     shutil.rmtree(root / "frames", ignore_errors=True)
+    process_control.checkpoint(jid)
     rs.job_update(
         jid, status="done", pct=100, stage="done", result_path=str(result),
         result_key=result_key, filename=result.name, media_type=media_type,
     )
+    cache_key = str(job.get("cache_key") or "")
+    if cache_key:
+        rs.job_cache_put(cache_key, jid)
     # R2 is the durable result store in production, so once the result is there
     # the whole job directory can go. Without R2 the file itself has to stay --
     # /api/compose/download reads it from disk -- but the (much larger) inputs

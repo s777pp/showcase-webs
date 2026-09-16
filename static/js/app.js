@@ -47,6 +47,7 @@ function headers() {
   try { Object.assign(h, window.SMAnalytics ? window.SMAnalytics.headers() : {}); } catch (e) {}
   return h;
 }
+window.__smHeaders = headers;
 const fetchOpts = { credentials: 'include' };
 
 let _trialEndsAt = null;
@@ -362,11 +363,35 @@ document.querySelectorAll('.mode').forEach(btn => {
 
 const drop = document.getElementById('drop');
 const fileInput = document.getElementById('fileInput');
+let activeProcessJobId = '';
 drop.onclick = () => fileInput.click();
 drop.ondragover = e => { e.preventDefault(); drop.classList.add('drag'); };
 drop.ondragleave = () => drop.classList.remove('drag');
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove('drag'); addFiles([...e.dataTransfer.files]); };
 fileInput.onchange = () => { addFiles([...fileInput.files]); fileInput.value=''; };
+document.addEventListener('sm:assets-selected', function (event) {
+  const detail = event.detail || {};
+  const files = Array.from(detail.files || []);
+  if ((detail.target || 'process') === 'process') { addFiles(files); return; }
+  const input = document.getElementById(detail.target);
+  if (!input || !files[0]) return;
+  const transfer = new DataTransfer(); transfer.items.add(files[0]); input.files = transfer.files;
+  window.SMAssetBindings = window.SMAssetBindings || {};
+  window.SMAssetBindings[detail.target] = detail.asset && detail.asset.id;
+  input.dataset.assetId = (detail.asset && detail.asset.id) || '';
+  input.dispatchEvent(new Event('change', {bubbles:true}));
+});
+document.getElementById('btnCancelProcess')?.addEventListener('click', async function () {
+  if (!activeProcessJobId) return;
+  this.disabled = true;
+  try {
+    await fetch('/api/jobs/' + encodeURIComponent(activeProcessJobId) + '/cancel', {
+      method:'POST', credentials:'include', headers:headers()
+    });
+  } finally {
+    this.disabled = false;
+  }
+});
 const processPreviewUrls = new WeakMap();
 function processPreviewUrl(file) {
   if (!processPreviewUrls.has(file)) processPreviewUrls.set(file, URL.createObjectURL(file));
@@ -506,6 +531,20 @@ document.getElementById('btnRun').onclick = async () => {
   try { window.ProcessGuide && window.ProcessGuide.running(); } catch(e) {}
   setProg(0, ru ? 'Подготовка…' : 'Preparing…', state.files.length + (ru ? ' файл(ов)' : ' file(s)'));
 
+  let reusableAssetIds = [];
+  try {
+    if (window.SMToolLoader) await window.SMToolLoader.load('assets');
+    if (window.SMMediaAssets) {
+      reusableAssetIds = await window.SMMediaAssets.ensure(state.files, function (fraction, file) {
+        const uploadPct = Math.max(1, Math.min(38, fraction * 38));
+        setProg(uploadPct, ru ? 'Сохраняем исходники…' : 'Saving reusable sources…', file ? file.name : '');
+      });
+    }
+  } catch (assetError) {
+    console.warn('resumable upload unavailable, using compatibility upload', assetError);
+    reusableAssetIds = [];
+  }
+
   const fd = new FormData();
   fd.append('mode', state.mode);
   fd.append('fps', document.getElementById('fps').value);
@@ -529,7 +568,8 @@ document.getElementById('btnRun').onclick = async () => {
   fd.append('wm_scale', sc ? (Number(sc.value) / 100) : 1);
   fd.append('all_modes', (document.getElementById('allModes') || {}).checked ? '1' : '0');
   fd.append('rotations', JSON.stringify(state.fileRotations || []));
-  state.files.forEach(f => fd.append('files', f));
+  fd.append('asset_ids', JSON.stringify(reusableAssetIds));
+  if (!reusableAssetIds.length) state.files.forEach(f => fd.append('files', f));
 
   try {
     await new Promise(function (resolve, reject) {
@@ -582,6 +622,9 @@ document.getElementById('btnRun').onclick = async () => {
           reject(new Error(msg)); return;
         }
         const jid = started.job_id;
+        activeProcessJobId = jid;
+        const cancelButton = document.getElementById('btnCancelProcess');
+        if (cancelButton) { cancelButton.hidden = false; cancelButton.textContent = ru ? 'Отменить задачу' : 'Cancel job'; }
         try {
           let job = null;
           const deadline = Date.now() + 15 * 60 * 1000;
@@ -591,7 +634,7 @@ document.getElementById('btnRun').onclick = async () => {
             });
             job = await response.json();
             if (!response.ok || !job.ok) throw new Error(job.msg || ('HTTP ' + response.status));
-            if (job.status === 'error') throw new Error(job.error || (job.errors || []).join(' · ') || smT('Ошибка обработки', 'Processing failed'));
+            if (job.status === 'error' || job.status === 'cancelled') throw new Error(job.status === 'cancelled' ? smT('Обработка отменена', 'Processing cancelled') : (job.error || (job.errors || []).join(' · ') || smT('Ошибка обработки', 'Processing failed')));
             if (job.status === 'done') break;
             const realPct = Math.max(0, Math.min(99, Number(job.pct) || 0));
             setProg(40 + realPct * .58,
@@ -661,6 +704,8 @@ document.getElementById('btnRun').onclick = async () => {
     }
   }
   stopTick();
+  activeProcessJobId = '';
+  const cancelButton = document.getElementById('btnCancelProcess'); if (cancelButton) cancelButton.hidden = true;
   if (btn) btn.disabled = !state.files.length;
   try { renderFiles(); } catch (e) {}
 };
@@ -3951,7 +3996,9 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   }
 
   async function onBgChange() {
-    const f = document.getElementById('composeBg')?.files?.[0];
+    const input = document.getElementById('composeBg');
+    const f = input?.files?.[0];
+    if (f && !f.__assetId) input.dataset.assetId = '';
     const el = document.getElementById('composeBgName');
     if (el) el.textContent = f ? f.name : smT('файл не выбран', 'no file selected');
     if (bgImg && bgImg.__objectUrl) { try { bgImg.pause(); URL.revokeObjectURL(bgImg.__objectUrl); } catch(e){} }
@@ -3960,7 +4007,9 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     scheduleRedraw();
   }
   async function onCharChange() {
-    const f = document.getElementById('composeChar')?.files?.[0];
+    const input = document.getElementById('composeChar');
+    const f = input?.files?.[0];
+    if (f && !f.__assetId) input.dataset.assetId = '';
     const el = document.getElementById('composeCharName');
     if (el) el.textContent = f ? f.name : smT('файл не выбран', 'no file selected');
     if (charImg && charImg.__objectUrl) { try { charImg.pause(); URL.revokeObjectURL(charImg.__objectUrl); } catch(e){} }
@@ -3971,10 +4020,12 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
   document.getElementById('btnComposeBg')?.addEventListener('click', function(e){
     e.preventDefault();
+    const input = document.getElementById('composeBg'); if (input) input.dataset.assetId = '';
     document.getElementById('composeBg')?.click();
   });
   document.getElementById('btnComposeChar')?.addEventListener('click', function(e){
     e.preventDefault();
+    const input = document.getElementById('composeChar'); if (input) input.dataset.assetId = '';
     document.getElementById('composeChar')?.click();
   });
   document.getElementById('composeBg')?.addEventListener('change', onBgChange);
@@ -3992,16 +4043,27 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   updateRangeLabels();
 
   /* ── Server compose (final) ──────────────────────────────── */
-  document.getElementById('btnCompose')?.addEventListener('click', function(){
+  document.getElementById('btnCompose')?.addEventListener('click', async function(){
     const bg = document.getElementById('composeBg')?.files?.[0];
     const ch = document.getElementById('composeChar')?.files?.[0];
     if (!bg || !ch) {
       if (st) { st.className = 'status err'; st.textContent = smT('Добавь оба файла: сначала фон, потом персонажа', 'Add both files: background first, then the character'); }
       return;
     }
+    try {
+      if (window.SMToolLoader) await window.SMToolLoader.load('assets');
+      if (window.SMMediaAssets) {
+        const ids = await window.SMMediaAssets.ensure([bg, ch]);
+        const bgInput = document.getElementById('composeBg'); const chInput = document.getElementById('composeChar');
+        if (bgInput) bgInput.dataset.assetId = ids[0] || '';
+        if (chInput) chInput.dataset.assetId = ids[1] || '';
+      }
+    } catch (assetError) { console.warn('compose reusable upload unavailable', assetError); }
     const fd = new FormData();
-    fd.append('background', bg);
-    fd.append('character', ch);
+    const bgAsset = document.getElementById('composeBg')?.dataset.assetId || '';
+    const chAsset = document.getElementById('composeChar')?.dataset.assetId || '';
+    if (bgAsset) fd.append('background_asset_id', bgAsset); else fd.append('background', bg);
+    if (chAsset) fd.append('character_asset_id', chAsset); else fd.append('character', ch);
     fd.append('chroma_key', document.getElementById('composeChroma')?.value || 'auto');
     fd.append('chroma_tol', document.getElementById('composeTol')?.value || '55');
     fd.append('feather', String(((parseInt(document.getElementById('composeFeather')?.value || '16', 10) || 0) / 10)));
@@ -4076,7 +4138,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
           const job = await response.json();
           if (!response.ok || !job.ok) throw new Error(job.msg || 'Задача потеряна');
           setProg(job.pct || 3, labels[job.stage] || smT('Обрабатываем…', 'Processing…'), smT('Можно оставить эту вкладку открытой', 'You can leave this tab open'));
-          if (job.status === 'error') throw new Error(job.error || 'Ошибка обработки');
+          if (job.status === 'error' || job.status === 'cancelled') throw new Error(job.status === 'cancelled' ? smT('Обработка отменена', 'Processing cancelled') : (job.error || 'Ошибка обработки'));
           if (job.status === 'done') {
             const result = await fetch('/api/compose/download/' + encodeURIComponent(jid), {credentials:'include', cache:'no-store'});
             if (!result.ok) { const e = await result.json().catch(function(){return {}}); throw new Error(e.msg || 'Не удалось скачать результат'); }

@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="/static/css/steam-check.css?v=20260906e"/>
   <link rel="stylesheet" href="/static/css/profile-insights.css?v=20260906-tags"/>
   <link rel="stylesheet" href="/static/css/seamless-loop.css?v=20260906d"/>
+  <link rel="stylesheet" href="/static/css/job-assets.css?v=20260916a"/>
 <link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260909-german1">
 <script src="/static/js/layout-refinement.js?v=20260904f"></script>
 <script src="/static/js/locales-extra.js?v=20260909-languages8"></script>
@@ -45,6 +46,7 @@
           <div id="trialTimer"><span>⏱</span><span id="trialClock">00:00:00</span></div>
           <span class="pill" id="planBadge">Free</span>
           <span class="pill" id="userPill" style="display:none"></span>
+          <button class="btn ghost" type="button" data-job-center>Jobs</button>
           <button class="btn ghost" id="btnAuth" type="button" data-i="login">Log in</button>
           <button class="btn" id="btnUpgrade" type="button" style="display:none" data-i="buy">Buy Pro</button>
           <button class="btn ghost" id="btnLogout" type="button" style="display:none" data-i="logout">Log out</button>
@@ -82,6 +84,7 @@
             <button type="button" data-open-tool="dna">DNA <span class="workspace-exp">EXP</span></button>
             <button type="button" data-open-tool="builder">Builder</button>
             <button type="button" data-open-tool="projects" data-i="workspace_projects">My projects</button>
+            <button type="button" data-job-center>Jobs</button>
           </div>
         </div>
         <div class="h-sub" id="pageSub">Workshop / Featured / Split cuts, watermark and Steam ZIP</div>
@@ -199,6 +202,7 @@
     <div class="card process-step-card" id="processFilesCard" data-process-card="files">
       <h2 data-i="files">Files</h2>
       <div class="drop" id="drop" data-i="drop">Drop PNG, JPG, GIF, MP4 or AVI — or click to browse</div>
+      <button type="button" class="btn ghost asset-library-open" data-asset-library>My media · upload once</button>
       <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif,.avi,.mp4,.mov,.webm"/>
       <div class="files" id="fileList"></div>
       <section class="process-preflight" id="processPreflight" aria-live="polite">
@@ -206,6 +210,7 @@
       </section>
       <div class="row" style="margin-top:16px">
         <button class="btn" id="btnRun" disabled data-i="run">Process</button>
+        <button class="btn ghost" id="btnCancelProcess" type="button" hidden>Cancel job</button>
         <button class="btn ghost" id="btnClear" type="button" data-i="clear">Clear</button>
         <a class="btn ghost" id="dlProcess" data-i="dl_zip" style="display:none;text-decoration:none" href="#">Download ZIP</a>
         <button class="btn ghost" id="btnPublishGallery" type="button" data-i="publish_gallery" style="display:none">Publish to gallery</button>
@@ -243,6 +248,7 @@
             <div class="fi" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;min-width:0">
               <span id="composeBgName" data-i-empty="compose_nofile" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)">no file selected</span>
               <button type="button" class="btn ghost" id="btnComposeBg" data-i="compose_pick" style="padding:6px 14px;flex-shrink:0">Choose</button>
+              <button type="button" class="btn ghost" data-asset-library data-asset-target="composeBg" style="padding:6px 10px;flex-shrink:0">Library</button>
               <input type="file" id="composeBg" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,video/mp4,video/webm,video/quicktime,video/*" style="display:none"/>
             </div>
           </div>
@@ -251,6 +257,7 @@
             <div class="fi" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;min-width:0">
               <span id="composeCharName" data-i-empty="compose_nofile" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)">no file selected</span>
               <button type="button" class="btn ghost" id="btnComposeChar" data-i="compose_pick" style="padding:6px 14px;flex-shrink:0">Choose</button>
+              <button type="button" class="btn ghost" data-asset-library data-asset-target="composeChar" style="padding:6px 10px;flex-shrink:0">Library</button>
               <input type="file" id="composeChar" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,video/mp4,video/webm,video/quicktime,video/*" style="display:none"/>
             </div>
           </div>
@@ -439,6 +446,7 @@
       <div id="upscalePanel">
         <div class="drop" id="upscaleDrop" data-i="up_drop">Drop an image, GIF or video here — or click to browse</div>
         <input type="file" id="upscaleFile" hidden accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/x-msvideo,.png,.jpg,.jpeg,.webp,.gif,.mp4,.webm,.avi"/>
+        <button type="button" class="btn ghost asset-library-open" data-asset-library data-asset-target="upscaleFile">My media</button>
         <div class="upscale-file-name" id="upscaleFileName"></div>
         <div class="row" style="flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:14px">
           <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">
@@ -493,6 +501,7 @@
             <span data-loop="dropHint">GIF, MP4, WebM or AVI · best with 2–4 seconds</span>
           </button>
           <input id="loopFile" type="file" hidden accept="image/gif,video/mp4,video/webm,video/x-msvideo,.gif,.mp4,.webm,.avi"/>
+          <button type="button" class="btn ghost asset-library-open" data-asset-library data-asset-target="loopFile">My media</button>
           <div class="loop-file" id="loopFileName"></div>
           <label class="field"><span data-loop-motion="cycle">Loop</span><select id="loopMode"><option value="pingpong" data-loop-motion="pingpong">Forward and backward</option><option value="blend" data-loop-motion="blend">Smooth crossfade</option></select></label>
           <label class="field" id="loopTransitionRow" hidden><span data-loop-motion="fade">Transition length</span><select id="loopTransition"><option value="0.25">0.25 s</option><option value="0.5" selected>0.5 s</option><option value="0.75">0.75 s</option></select></label>
@@ -1040,14 +1049,10 @@
   </div>
 </div>
 
-  <script src="/static/js/app.js?v=20260910-analytics1"></script>
+  <script src="/static/js/tool-loader.js?v=20260916a"></script>
+  <script src="/static/js/app.js?v=20260916-jobs1"></script>
   <script src="/static/js/workspace-copy.js?v=20260910-finish1"></script>
   <script src="/static/js/process-guide.js?v=20260910-finish1"></script>
-  <script src="/static/js/builder-history.js?v=20260910-finish1"></script>
-  <script src="/static/js/builder-motion-copy.js?v=20260913-motion1"></script>
-  <script src="/static/js/builder-motion.js?v=20260913-motion1"></script>
-  <script src="/static/js/showcase-builder.js?v=20260914-no-ai-animation"></script>
-  <script src="/static/js/steam-dna.js?v=20260912-exp7"></script>
 
 
 
@@ -1103,7 +1108,6 @@
 <script src="/static/js/app-tail.js?v=20260909-observer3"></script>
 <script src="/static/js/steam-check.js?v=20260910-usability1"></script>
 <script src="/static/js/profile-insights.js?v=20260906-unique-tags"></script>
-<script src="/static/js/seamless-loop.js?v=20260913-motion1"></script>
 <script src="/static/js/steam-extension-status.js?v=20260910-analytics1"></script>
 
 

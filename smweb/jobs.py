@@ -39,13 +39,14 @@ import redis_store as rs
 
 import auth_db
 from smweb import analytics
+from smweb import object_store, process_control
 
 
 from smweb.core import JOBS, MAX_UPLOAD_MB
 from smweb.steam_readiness import Candidate, analyze_groups
 
 
-JOB_RESULT_TTL_SECONDS = max(120, int(os.environ.get("JOB_RESULT_TTL_SECONDS") or 900))
+JOB_RESULT_TTL_SECONDS = max(120, int(os.environ.get("JOB_RESULT_TTL_SECONDS") or 86400))
 
 
 def _record_process_event(jid: str, event_name: str, opts: dict, elapsed_ms: int = 0, reason: str = "") -> None:
@@ -107,6 +108,11 @@ def _cleanup_loop():
     while True:
         try:
             n = _cleanup_old_jobs()
+            try:
+                from smweb import media_assets
+                media_assets.maybe_cleanup()
+            except Exception:
+                pass
             if n:
                 print(f"cleanup: removed {n} old job(s)")
         except Exception as e:
@@ -225,7 +231,8 @@ def _run_process_job_from_payload(jid: str, job: dict) -> None:
         return
     # Reuse existing runner if present
     try:
-        _run_process_job(jid, files_data, opts)
+        with process_control.job_context(jid):
+            _run_process_job(jid, files_data, opts)
     except TypeError:
         # if signature differs, mark error
         _rs.job_update(jid, status="error", pct=100, stage="error", error="Worker incompatible")
@@ -266,8 +273,10 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
     enc = opts["enc"]
     n_files = max(1, len(files_data))
     try:
+        process_control.checkpoint(jid)
         zf = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
         for fi, item in enumerate(files_data):
+            process_control.checkpoint(jid)
             name, raw = item[0], item[1]
             rotation = proc.normalize_rotation(item[2] if len(item) > 2 else 0)
             if isinstance(raw, Path):
@@ -287,6 +296,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                     errors.append(f"{name}: unsupported format")
                     continue
                 for mi, mode in enumerate(modes):
+                    process_control.checkpoint(jid)
                     folder = f"{stem}_{mode}"
                     work = job_dir / folder
                     work.mkdir(exist_ok=True)
@@ -428,6 +438,14 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
             shutil.rmtree(job_dir, ignore_errors=True)
             return
         print(f"[JOB TIMING] ZIP size={zip_path.stat().st_size / 1024 / 1024:.2f}MB", flush=True)
+        process_control.checkpoint(jid)
+        result_key = ""
+        if object_store.configured():
+            try:
+                _job_set(jid, pct=96, stage="upload")
+                result_key = object_store.upload_file(zip_path, f"jobs/{jid}/result.zip", public=False)
+            except Exception as upload_error:
+                print(f"[job {jid[:8]}] durable result upload skipped: {type(upload_error).__name__}", flush=True)
         readiness = None
         if opts.get("steam_check"):
             try:
@@ -444,22 +462,30 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
             except Exception as check_error:
                 print(f"[job {jid[:8]}] readiness check failed: {type(check_error).__name__}", flush=True)
         # quota already counted on start
+        process_control.checkpoint(jid)
         _job_set(
             jid,
             status="done",
             pct=100,
             stage="done",
             zip_path=str(zip_path),
+            result_key=result_key,
             processed=processed,
             errors=errors,
             listed=listed,
             readiness=readiness,
         )
+        cache_key = str((_job_get(jid) or {}).get("cache_key") or "")
+        if cache_key:
+            rs.job_cache_put(cache_key, jid)
         _record_process_event(jid, "process_success", opts, int((_sm_time.perf_counter()-_sm_job_t0)*1000))
         print(
             f"[JOB TIMING] TOTAL: {_sm_time.perf_counter()-_sm_job_t0:.3f}s | jid={jid}",
             flush=True,
         )
+    except process_control.JobCancelled:
+        process_control.mark_cancelled(jid)
+        shutil.rmtree(job_dir, ignore_errors=True)
     except Exception as e:
         _job_set(jid, status="error", pct=100, stage="error", error=_public_process_error(e, job_dir))
         _record_process_event(jid, "process_failed", opts, int((_sm_time.perf_counter()-_sm_job_t0)*1000), "internal")

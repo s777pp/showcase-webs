@@ -321,10 +321,11 @@ def process_image_split(
 
 
 def _run(cmd: list[str]) -> None:
-    kw = {}
-    if os.name == "nt":
-        kw["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    r = subprocess.run(cmd, capture_output=True, text=True, **kw)
+    # The worker polls the persisted cancellation flag while the encoder is
+    # running, so cancelling from another API container terminates FFmpeg or
+    # gifski instead of merely hiding its progress in the browser.
+    from smweb.process_control import run as run_cancellable
+    r = run_cancellable(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         raise RuntimeError((r.stderr or r.stdout or "ffmpeg error")[-500:])
 

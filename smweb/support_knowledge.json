@@ -123,11 +123,11 @@
     "id": "errors",
     "ru": {
       "title": "Если что-то не работает",
-      "text": "Проверь формат, размер файла и доступ к Pro. Если архив истёк, запусти обработку снова: обычные ZIP хранятся примерно 15 минут. При ошибке сохрани текст ошибки и название инструмента и обратись в техподдержку. Не отправляй пароль, ключ API или платёжные реквизиты. Помощник не видит состояние твоего задания, платёж или приватный аккаунт."
+      "text": "Проверь формат, размер файла и доступ к Pro. История задач и обычные ZIP теперь хранятся до 24 часов; после истечения срока запусти обработку снова. При ошибке сохрани текст ошибки и название инструмента и обратись в техподдержку. Не отправляй пароль, ключ API или платёжные реквизиты. Помощник не видит состояние твоего задания, платёж или приватный аккаунт."
     },
     "en": {
       "title": "Troubleshooting",
-      "text": "Check the file format, size and Pro access. If an archive expired, run the job again: normal ZIP results last roughly 15 minutes. Save the error text and tool name for support. Never send passwords, API keys or payment details. The assistant cannot see your private account, payment or live job status."
+      "text": "Check the file format, size and Pro access. Job history and normal ZIP results are now kept for up to 24 hours; after expiry, run the job again. Save the error text and tool name for support. Never send passwords, API keys or payment details. The assistant cannot see your private account, payment or live job status."
     },
     "href": "https://t.me/showcasemaker"
   }

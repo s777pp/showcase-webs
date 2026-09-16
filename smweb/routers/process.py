@@ -39,6 +39,7 @@ import redis_store as rs
 
 import auth_db
 from smweb import analytics
+from smweb import media_assets
 
 
 from fastapi import APIRouter
@@ -137,7 +138,8 @@ async def api_process_start(
     gif_encoder: str = Form("gifski"),
     all_modes: str = Form("0"),
     rotations: str = Form("[]"),
-    files: list[UploadFile] = File(...),
+    asset_ids: str = Form("[]"),
+    files: list[UploadFile] = File(default=[]),
 ):
     """Start async job; poll /api/process/status/{id} then download."""
     _job_cleanup_old()
@@ -171,15 +173,24 @@ async def api_process_start(
         size_i = 750
     if size_i not in (630, 640, 750, 800):
         size_i = min((630, 640, 750, 800), key=lambda s: abs(s - size_i))
+    try:
+        requested_assets = json.loads(asset_ids)
+        if not isinstance(requested_assets, list):
+            requested_assets = []
+        requested_assets = [str(value) for value in requested_assets]
+    except (TypeError, ValueError, json.JSONDecodeError):
+        requested_assets = []
     left = int(os.environ.get("MAX_FILES_PER_JOB", "10")) if q["pro"] else q["left"]
-    files = files[: max(1, min(left, int(os.environ.get("MAX_FILES_PER_JOB", "10"))))]
+    batch_limit = max(1, min(left, int(os.environ.get("MAX_FILES_PER_JOB", "10"))))
+    requested_assets = requested_assets[:batch_limit]
+    files = files[:max(0, batch_limit - len(requested_assets))]
     try:
         requested_rotations = json.loads(rotations)
         if not isinstance(requested_rotations, list):
             requested_rotations = []
     except (TypeError, ValueError, json.JSONDecodeError):
         requested_rotations = []
-    if not files:
+    if not files and not requested_assets:
         return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
     enc = (gif_encoder or "ffmpeg").strip().lower()
     if enc not in ("ffmpeg", "gifski", "pillow"):
@@ -229,13 +240,28 @@ async def api_process_start(
     job_upload_dir = JOBS / jid
     job_upload_dir.mkdir(parents=True, exist_ok=True)
     files_meta = []
+    asset_owner = media_assets.owner_key(request)
+    for asset_index, asset_id in enumerate(requested_assets):
+        resolved = media_assets.resolve(asset_id, asset_owner)
+        if not resolved:
+            shutil.rmtree(job_upload_dir, ignore_errors=True)
+            return JSONResponse({"ok": False, "msg": "One of the uploaded assets is unavailable"}, status_code=410)
+        meta, path = resolved
+        asset_rotation = proc.normalize_rotation(requested_rotations[asset_index] if asset_index < len(requested_rotations) else 0)
+        asset_rotation = min((0.0, 90.0, -90.0, -180.0), key=lambda angle: abs(angle - asset_rotation))
+        files_meta.append({
+            "name": str(meta.get("name") or path.name), "path": str(path),
+            "rotation": asset_rotation, "size": int(meta.get("size") or path.stat().st_size),
+            "sha256": str(meta.get("sha256") or ""), "asset_id": asset_id,
+        })
     per_file_limit = MAX_UPLOAD_MB * 1024 * 1024
-    for index, uf in enumerate(files):
+    for index, uf in enumerate(files, start=len(files_meta)):
         name = uf.filename or "file"
         safe = re.sub(r"[^a-zA-Z0-9._-]", "_", name)[:80] or "file"
         p = job_upload_dir / f"{index:02d}_{safe}"
         written = 0
         too_large = False
+        digest = hashlib.sha256()
         with p.open("wb") as destination:
             while True:
                 chunk = await uf.read(1024 * 1024)
@@ -246,6 +272,7 @@ async def api_process_start(
                     too_large = True
                     break
                 destination.write(chunk)
+                digest.update(chunk)
         if too_large:
             shutil.rmtree(job_upload_dir, ignore_errors=True)
             return JSONResponse({"ok": False, "msg": f"{name}: >{MAX_UPLOAD_MB}MB"}, status_code=413)
@@ -256,7 +283,7 @@ async def api_process_start(
         # Processing uses crisp quarter-turns. Arbitrary rotation belongs to the
         # Character editor, where a transparent expanded canvas is meaningful.
         rotation = min((0.0, 90.0, -90.0, -180.0), key=lambda angle: abs(angle - rotation))
-        files_meta.append({"name": name, "path": str(p), "rotation": rotation, "size": written})
+        files_meta.append({"name": name, "path": str(p), "rotation": rotation, "size": written, "sha256": digest.hexdigest()})
     if not files_meta:
         shutil.rmtree(job_upload_dir, ignore_errors=True)
         return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
@@ -273,6 +300,22 @@ async def api_process_start(
         "size_bucket": "under_1mb" if total_mb < 1 else "1_5mb" if total_mb < 5 else "5_20mb" if total_mb < 20 else "over_20mb",
     }
 
+    cache_document = {
+        "version": 2,
+        "owner": user_key,
+        "files": [{"sha256": item.get("sha256"), "rotation": item.get("rotation"), "name": item.get("name")} for item in files_meta],
+        "options": {key: value for key, value in opts.items() if key != "_analytics"},
+    }
+    cache_key = hashlib.sha256(json.dumps(cache_document, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    cached_jid = rs.job_cache_get(cache_key)
+    cached_job = rs.job_get(cached_jid) if cached_jid else None
+    if cached_jid and cached_job and cached_job.get("status") == "done" and (
+        cached_job.get("result_key") or Path(str(cached_job.get("zip_path") or "")).is_file()
+    ):
+        rs.job_update(cached_jid, cache_hit=True)
+        shutil.rmtree(job_upload_dir, ignore_errors=True)
+        return {"ok": True, "job_id": cached_jid, "cached": True}
+
     # Only hand the job to an external worker if one is actually alive; otherwise
     # the entry would sit in the Redis queue forever with nobody to pop it.
     mode = _worker_mode()
@@ -285,9 +328,10 @@ async def api_process_start(
         )
 
     payload = {
+        "kind": "process", "queue": "media",
         "status": "queued", "pct": 1, "stage": "queued",
         "user_key": user_key, "files": files_meta, "opts": opts,
-        "created": time.time(),
+        "created": time.time(), "cache_key": cache_key,
     }
     rs.job_create(jid, payload, enqueue=external)
     _job_set(jid, status="queued", pct=1, stage="queued", created=time.time(), user_key=user_key)
@@ -342,12 +386,22 @@ def api_process_download(job_id: str, request: Request):
     j = _process_job_for(request, job_id)
     if not j:
         return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
-    if j.get("status") != "done" or not j.get("zip_path"):
+    if j.get("status") != "done" or not (j.get("zip_path") or j.get("result_key")):
         return JSONResponse(
             {"ok": False, "msg": f"Not ready (status={j.get('status') or 'unknown'})"},
             status_code=409,
         )
-    path = Path(j["zip_path"])
+    path = Path(str(j.get("zip_path") or ""))
+    if not path.is_file() and j.get("result_key"):
+        try:
+            from smweb import object_store
+            from fastapi.responses import RedirectResponse
+            url = object_store.presigned_get_url(
+                str(j["result_key"]), expires=600, download_name="showcase.zip", media_type="application/zip",
+            )
+            return RedirectResponse(url, status_code=302, headers={"Cache-Control": "private, no-store"})
+        except Exception:
+            pass
     if not path.is_file():
         # Result was cleaned up, or produced on a filesystem this instance cannot see.
         return JSONResponse(

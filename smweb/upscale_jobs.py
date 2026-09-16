@@ -7,6 +7,7 @@ import time
 import redis_store as rs
 from smweb import object_store
 from smweb import modal_upscale_client as modal_client
+from smweb import process_control
 
 
 POLL_SECONDS = max(1.0, float(os.environ.get("MODAL_UPSCALE_POLL_SECONDS", "3")))
@@ -39,6 +40,7 @@ def run(jid: str, job: dict) -> None:
         call_id = modal_client.submit(payload)
         rs.job_update(jid, call_id=call_id, pct=12, stage="gpu-queued")
         while True:
+            process_control.checkpoint(jid)
             elapsed = time.monotonic() - started
             if elapsed > TIMEOUT_SECONDS:
                 raise TimeoutError("GPU upscale timed out")
@@ -56,12 +58,18 @@ def run(jid: str, job: dict) -> None:
                     frames=int(result.get("frames") or 0),
                     gpu_elapsed=float(result.get("elapsed") or 0),
                 )
+                cache_key = str(job.get("cache_key") or "")
+                if cache_key:
+                    rs.job_cache_put(cache_key, jid)
                 return
             # Modal does not expose frame-level progress here. Move slowly so
             # users can still tell the queued job is alive without promising ETA.
             pct = min(92, 15 + int(elapsed / 8))
             rs.job_update(jid, pct=pct, stage="gpu-processing")
             time.sleep(POLL_SECONDS)
+    except process_control.JobCancelled:
+        process_control.mark_cancelled(jid)
+        return
     except TimeoutError:
         rs.job_update(jid, status="error", pct=100, stage="error", error="GPU upscale timed out")
         return

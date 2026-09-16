@@ -92,6 +92,8 @@ from smweb.routers import (
     builder,
     steam_dna,
     analytics as analytics_router,
+    assets,
+    jobs as jobs_router,
 )
 
 
@@ -173,6 +175,8 @@ app.include_router(support.router)
 app.include_router(builder.router)
 app.include_router(steam_dna.router)
 app.include_router(analytics_router.router)
+app.include_router(assets.router)
+app.include_router(jobs_router.router)
 
 
 # ====================== Profile builder API (Steam catalogs, projects) ======================

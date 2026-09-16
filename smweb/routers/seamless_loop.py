@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import hashlib
 import math
 import re
 import secrets
@@ -14,6 +15,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 import auth_db
 import redis_store as rs
 from smweb import object_store
+from smweb import media_assets
 from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, LOGGER
 from smweb.jobs import _job_pool, _worker_mode
 
@@ -38,7 +40,7 @@ def _owner(request: Request) -> tuple[dict | None, str]:
 
 
 @router.post("/api/loop/start")
-async def start(request: Request, file: UploadFile = File(...), mode: str = Form("pingpong"),
+async def start(request: Request, file: UploadFile | None = File(None), asset_id: str = Form(""), mode: str = Form("pingpong"),
                 output_format: str = Form("gif"), fps: int = Form(12),
                 start: float = Form(0), duration: float = Form(4), transition: float = Form(.5)):
     user, owner = _owner(request)
@@ -51,7 +53,10 @@ async def start(request: Request, file: UploadFile = File(...), mode: str = Form
     allowed, _ = rs.rate_limit(f"loop-start:{owner}", 12, 3600)
     if not allowed:
         return JSONResponse({"ok": False, "msg": "Too many loop requests. Try again later."}, status_code=429)
-    raw = await file.read()
+    asset = media_assets.resolve(asset_id, media_assets.owner_key(request)) if asset_id else None
+    if asset_id and not asset:
+        return JSONResponse({"ok": False, "msg": "Source asset is unavailable"}, status_code=410)
+    raw = asset[1].read_bytes() if asset else (await file.read() if file else b"")
     if not raw or len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
         return JSONResponse({"ok": False, "msg": f"File missing or larger than {MAX_UPLOAD_MB} MB"}, status_code=400)
     media = _media(raw)
@@ -59,6 +64,16 @@ async def start(request: Request, file: UploadFile = File(...), mode: str = Form
         return JSONResponse({"ok": False, "msg": "Animated GIF, MP4, WebM or AVI required"}, status_code=400)
     if output_format not in {"gif", "mp4"} or mode not in {"blend", "pingpong"} or not all(math.isfinite(v) for v in (start, duration, transition)):
         return JSONResponse({"ok": False, "msg": "Unsupported loop settings"}, status_code=400)
+    cache_key = hashlib.sha256(
+        (f"loop:2:{owner}:{mode}:{output_format}:{fps}:{start:.3f}:{duration:.3f}:{transition:.3f}:").encode("utf-8") + raw
+    ).hexdigest()
+    cached_id = rs.job_cache_get(cache_key)
+    cached = rs.job_get(cached_id) if cached_id else None
+    if cached_id and cached and cached.get("status") == "done" and (
+        cached.get("result_key") or Path(str(cached.get("result_path") or "")).is_file()
+    ):
+        rs.job_update(cached_id, cache_hit=True)
+        return JSONResponse({"ok": True, "job_id": cached_id, "cached": True}, status_code=200)
     jid = secrets.token_hex(16)
     root = Path(DATA) / "jobs" / jid
     root.mkdir(parents=True, exist_ok=False)
@@ -70,6 +85,7 @@ async def start(request: Request, file: UploadFile = File(...), mode: str = Form
                "mode": mode, "output_format": output_format, "fps": max(8, min(24, fps)),
                "start": max(0, min(29.5, start)), "duration": max(0.5, min(8, duration)),
                "transition": max(.25, min(.75, transition)),
+               "cache_key": cache_key,
                "created": time.time()}
     rs.job_create(jid, payload, enqueue=external)
     if not external:

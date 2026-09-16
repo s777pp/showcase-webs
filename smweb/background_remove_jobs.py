@@ -12,6 +12,7 @@ import processor
 import redis_store as rs
 from smweb import object_store
 from smweb.core import DATA, _safe_data_path
+from smweb import process_control
 
 
 _SESSION = None
@@ -72,6 +73,7 @@ def _gif(data: bytes, jid: str) -> tuple[bytes, str, str]:
     total = min(96, max(1, int(getattr(src, "n_frames", 1))))
     elapsed = 0
     for index, frame in enumerate(ImageSequence.Iterator(src)):
+        process_control.checkpoint(jid)
         if index >= total or elapsed >= 8_000:
             break
         duration = max(20, int(frame.info.get("duration") or src.info.get("duration") or 80))
@@ -95,44 +97,50 @@ def _video(data: bytes, suffix: str, jid: str) -> tuple[bytes, str, str]:
         frames = work / "frames"
         frames.mkdir()
         source.write_bytes(data)
-        subprocess.run([
+        process_control.run([
             ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(source),
             "-t", "8", "-vf", "fps=12,scale='min(750,iw)':-2", str(frames / "%05d.png"),
-        ], check=True, capture_output=True)
+        ], check=True, capture_output=True, job_id=jid)
         paths = sorted(frames.glob("*.png"))
         if not paths:
             raise RuntimeError("No video frames decoded")
         for index, path in enumerate(paths):
+            process_control.checkpoint(jid)
             cut = _remove(Image.open(path))
             cut.save(path, "PNG")
             rs.job_update(jid, pct=10 + int(70 * (index + 1) / len(paths)), stage="remove")
         output = work / "transparent.webm"
-        subprocess.run([
+        process_control.run([
             ffmpeg, "-hide_banner", "-loglevel", "error", "-framerate", "12",
             "-i", str(frames / "%05d.png"), "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p",
             "-auto-alt-ref", "0", "-an", "-y", str(output),
-        ], check=True, capture_output=True)
+        ], check=True, capture_output=True, job_id=jid)
         return output.read_bytes(), ".webm", "video/webm"
 
 
 def run(jid: str, job: dict) -> None:
     """Worker entry point. All paths come from the authenticated Builder API."""
     try:
-        rs.job_update(jid, status="running", pct=3, stage="load")
-        source_key = str(job["source_key"])
-        data = _source_bytes(source_key)
-        suffix = Path(source_key).suffix.lower()
-        if suffix == ".gif":
-            result, out_suffix, media_type = _gif(data, jid)
-        elif suffix in {".mp4", ".webm", ".mov"}:
-            result, out_suffix, media_type = _video(data, suffix, jid)
-        else:
-            result, out_suffix, media_type = _static(data)
-        output_name = str(job["output_stem"]) + out_suffix
-        output_key = f"builder/{int(job['user_id'])}/{output_name}"
-        _save(output_key, result, media_type)
-        rs.job_update(jid, status="done", pct=100, stage="done", result={
-            "url": f"/api/builder/assets/{output_name}", "media_type": media_type,
-        })
+        with process_control.job_context(jid):
+            process_control.checkpoint(jid)
+            rs.job_update(jid, status="running", pct=3, stage="load")
+            source_key = str(job["source_key"])
+            data = _source_bytes(source_key)
+            suffix = Path(source_key).suffix.lower()
+            if suffix == ".gif":
+                result, out_suffix, media_type = _gif(data, jid)
+            elif suffix in {".mp4", ".webm", ".mov"}:
+                result, out_suffix, media_type = _video(data, suffix, jid)
+            else:
+                result, out_suffix, media_type = _static(data)
+            process_control.checkpoint(jid)
+            output_name = str(job["output_stem"]) + out_suffix
+            output_key = f"builder/{int(job['user_id'])}/{output_name}"
+            _save(output_key, result, media_type)
+            rs.job_update(jid, status="done", pct=100, stage="done", result={
+                "url": f"/api/builder/assets/{output_name}", "media_type": media_type,
+            })
+    except process_control.JobCancelled:
+        process_control.mark_cancelled(jid)
     except Exception as exc:
         rs.job_update(jid, status="error", pct=100, stage="error", error=f"{type(exc).__name__}: {exc}")

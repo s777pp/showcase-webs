@@ -134,6 +134,7 @@
 
   function setFile(f){
     if (!f) return;
+    if (!f.__assetId && fileInp) fileInp.dataset.assetId = '';
     selectedFile = f;
     if (fileName) fileName.textContent = f.name + ' · ' + Math.round(f.size/1024) + ' KB';
     if (beforeUrl) URL.revokeObjectURL(beforeUrl);
@@ -147,7 +148,7 @@
   }
 
   if (drop) {
-    drop.addEventListener('click', () => fileInp.click());
+    drop.addEventListener('click', () => { fileInp.dataset.assetId = ''; fileInp.click(); });
     drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag'); });
     drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
     drop.addEventListener('drop', (e) => {
@@ -233,8 +234,16 @@
     setProg(true, upT('Загрузка и постановка в очередь…', 'Uploading and queueing…'));
     try {
       if (!beforeUrl) beforeUrl = URL.createObjectURL(f);
+      try {
+        if (window.SMToolLoader) await window.SMToolLoader.load('assets');
+        if (window.SMMediaAssets) {
+          const ids = await window.SMMediaAssets.ensure([f]);
+          fileInp.dataset.assetId = ids[0] || '';
+        }
+      } catch (assetError) { console.warn('upscale reusable upload unavailable', assetError); }
       const fd = new FormData();
-      fd.append('file', f);
+      if (fileInp.dataset.assetId) fd.append('asset_id', fileInp.dataset.assetId);
+      else fd.append('file', f);
       fd.append('preset', preset);
       fd.append('scale', scale);
       const start = await fetch('/api/upscale/start', {

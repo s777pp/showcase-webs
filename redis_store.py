@@ -20,6 +20,7 @@ _local_usage: dict[str, dict] = {}
 _local_sessions: dict[str, dict] = {}
 _local_insight_history: dict[int, list[dict]] = {}
 _local_dna_cache: dict[str, tuple[float, dict]] = {}
+_local_job_cache: dict[str, tuple[float, str]] = {}
 _local_lock = threading.Lock()
 _redis = None
 
@@ -36,7 +37,7 @@ UPSCALE_JOB_QUEUE = "sm:jobs:upscale-queue"
 JOB_KEY = "sm:job:{}"
 USER_JOBS_KEY = "sm:jobs:user:{}"
 WORKER_BEAT_KEY = "sm:worker:beat"
-JOB_TTL = 3600
+JOB_TTL = max(3600, int(os.environ.get("JOB_HISTORY_TTL_SECONDS") or 86400))
 TERMINAL = ("done", "error", "cancelled")
 INSIGHT_HISTORY_KEY = "sm:profile-insights:{}"
 DNA_CACHE_KEY = "sm:steam-dna-cache:{}"
@@ -136,6 +137,10 @@ def job_create(jid: str, data: dict, enqueue: bool = True) -> None:
     data = dict(data)
     data.setdefault("status", "queued")
     data.setdefault("pct", 0)
+    kind = str(data.get("kind") or "process")
+    data.setdefault("kind", kind)
+    data.setdefault("queue", queue_for_kind(kind))
+    data.setdefault("created", time.time())
     data["updated"] = time.time()
     r = _r()
     if r:
@@ -147,9 +152,9 @@ def job_create(jid: str, data: dict, enqueue: bool = True) -> None:
                 pipe.sadd(USER_JOBS_KEY.format(uk), jid)
                 pipe.expire(USER_JOBS_KEY.format(uk), JOB_TTL)
             if enqueue:
-                if data.get("kind") in {"steam_profile_import", "profile_insight", "steam_dna"}:
+                if data.get("queue") == "profile":
                     queue = PROFILE_JOB_QUEUE
-                elif data.get("kind") == "upscale":
+                elif data.get("queue") == "gpu":
                     queue = UPSCALE_JOB_QUEUE
                 else:
                     queue = JOB_QUEUE
@@ -175,8 +180,11 @@ def job_update(jid: str, **kw) -> None:
             data["updated"] = time.time()
             r.set(key, json.dumps(data), ex=JOB_TTL)
             uk = data.get("user_key")
-            if uk and data.get("status") in TERMINAL:
-                r.srem(USER_JOBS_KEY.format(uk), jid)
+            # Keep terminal jobs in the per-user set for the unified job center.
+            # The set and job keys expire together, so history remains bounded.
+            if uk:
+                r.sadd(USER_JOBS_KEY.format(uk), jid)
+                r.expire(USER_JOBS_KEY.format(uk), JOB_TTL)
             return
         except Exception as e:
             _note(e)
@@ -266,8 +274,6 @@ def job_count_user(user_key: str, statuses: tuple[str, ...] = ("queued", "runnin
                 st = (json.loads(raw) or {}).get("status")
                 if st in statuses:
                     n += 1
-                elif st in TERMINAL:
-                    stale.append(jid)
             if stale:
                 r.srem(skey, *stale)
             return n
@@ -314,10 +320,124 @@ def queue_depth() -> int:
     if not r:
         return 0
     try:
-        return int(r.llen(JOB_QUEUE)) + int(r.llen(PROFILE_JOB_QUEUE))
+        return int(r.llen(JOB_QUEUE)) + int(r.llen(PROFILE_JOB_QUEUE)) + int(r.llen(UPSCALE_JOB_QUEUE))
     except Exception as e:
         _note(e)
         return 0
+
+
+def queue_depths() -> dict[str, int]:
+    r = _r()
+    if not r:
+        with _local_lock:
+            values = {"media": 0, "profile": 0, "gpu": 0}
+            for job in _local_jobs.values():
+                if job.get("status") == "queued":
+                    queue = str(job.get("queue") or queue_for_kind(str(job.get("kind") or "process")))
+                    values[queue] = values.get(queue, 0) + 1
+            return values
+    try:
+        return {
+            "media": int(r.llen(JOB_QUEUE)),
+            "profile": int(r.llen(PROFILE_JOB_QUEUE)),
+            "gpu": int(r.llen(UPSCALE_JOB_QUEUE)),
+        }
+    except Exception as e:
+        _note(e)
+        return {"media": 0, "profile": 0, "gpu": 0}
+
+
+def queue_for_kind(kind: str) -> str:
+    kind = str(kind or "process")
+    if kind in {"steam_profile_import", "profile_insight", "steam_dna"}:
+        return "profile"
+    if kind == "upscale":
+        return "gpu"
+    return "media"
+
+
+def job_list_user(user_key: str, limit: int = 50) -> list[tuple[str, dict]]:
+    """Recent jobs for one owner, including terminal results."""
+    if not user_key:
+        return []
+    found: list[tuple[str, dict]] = []
+    r = _r()
+    if r:
+        try:
+            skey = USER_JOBS_KEY.format(user_key)
+            stale = []
+            for jid in r.smembers(skey):
+                raw = r.get(JOB_KEY.format(jid))
+                if not raw:
+                    stale.append(jid)
+                    continue
+                found.append((jid, json.loads(raw) or {}))
+            if stale:
+                r.srem(skey, *stale)
+        except Exception as e:
+            _note(e)
+            found = []
+    if not r:
+        with _local_lock:
+            found = [(jid, dict(job)) for jid, job in _local_jobs.items() if job.get("user_key") == user_key]
+    found.sort(key=lambda item: float(item[1].get("updated") or item[1].get("created") or 0), reverse=True)
+    return found[:max(1, min(100, int(limit)))]
+
+
+def job_cancel(jid: str) -> Optional[dict]:
+    """Request cancellation and remove queued work before a worker can claim it."""
+    job = job_get(jid)
+    if not job:
+        return None
+    if job.get("status") in TERMINAL:
+        return job
+    status = "cancelled" if job.get("status") == "queued" else "running"
+    job_update(jid, cancel_requested=True, status=status,
+               stage="cancelled" if status == "cancelled" else "cancelling")
+    r = _r()
+    if r:
+        try:
+            pipe = r.pipeline()
+            pipe.lrem(JOB_QUEUE, 0, jid)
+            pipe.lrem(PROFILE_JOB_QUEUE, 0, jid)
+            pipe.lrem(UPSCALE_JOB_QUEUE, 0, jid)
+            pipe.execute()
+        except Exception as e:
+            _note(e)
+    return job_get(jid)
+
+
+def job_cache_get(cache_key: str) -> Optional[str]:
+    if not cache_key:
+        return None
+    key = "sm:job-cache:{}".format(cache_key)
+    r = _r()
+    if r:
+        try:
+            return r.get(key) or None
+        except Exception as e:
+            _note(e)
+    with _local_lock:
+        item = _local_job_cache.get(cache_key)
+        if not item or item[0] <= time.time():
+            _local_job_cache.pop(cache_key, None)
+            return None
+        return item[1]
+
+
+def job_cache_put(cache_key: str, jid: str, ttl: int | None = None) -> None:
+    if not cache_key or not jid:
+        return
+    ttl = max(300, min(int(ttl or JOB_TTL), JOB_TTL))
+    r = _r()
+    if r:
+        try:
+            r.set("sm:job-cache:{}".format(cache_key), jid, ex=ttl)
+            return
+        except Exception as e:
+            _note(e)
+    with _local_lock:
+        _local_job_cache[cache_key] = (time.time() + ttl, jid)
 
 
 # ---------- external worker liveness ----------

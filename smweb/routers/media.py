@@ -39,6 +39,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import media_assets
 
 
 from fastapi import APIRouter
@@ -499,7 +500,8 @@ def _upscale_owner(user: dict) -> str:
 @router.post("/api/upscale/start")
 async def api_upscale_start(
     request: Request,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
+    asset_id: str = Form(""),
     preset: str = Form("general"),
     scale: int = Form(2),
 ):
@@ -524,7 +526,20 @@ async def api_upscale_start(
     if not allowed:
         return JSONResponse({"ok": False, "msg": "Too many upscale requests. Try again later."}, status_code=429)
 
-    raw = await file.read()
+    asset = media_assets.resolve(asset_id, media_assets.owner_key(request)) if asset_id else None
+    if asset_id and not asset:
+        return JSONResponse({"ok": False, "msg": "Source asset is unavailable"}, status_code=410)
+    if asset:
+        asset_meta, asset_path = asset
+        raw = asset_path.read_bytes()
+        source_name = str(asset_meta.get("name") or asset_path.name)
+        source_type = str(asset_meta.get("media_type") or "application/octet-stream")
+    elif file:
+        raw = await file.read()
+        source_name = file.filename or "upscale"
+        source_type = file.content_type or "application/octet-stream"
+    else:
+        raw = b""; source_name = "upscale"; source_type = "application/octet-stream"
     if not raw:
         return JSONResponse({"ok": False, "msg": "Empty file"}, status_code=400)
     max_mb = min(MAX_UPLOAD_MB, int(os.environ.get("MODAL_UPSCALE_MAX_UPLOAD_MB", "40")))
@@ -542,19 +557,29 @@ async def api_upscale_start(
     if media_kind == "video" and scale != 2:
         return JSONResponse({"ok": False, "msg": "Video upscale supports 2x only"}, status_code=400)
 
+    cache_key = hashlib.sha256(
+        ("upscale:2:" + user_key + ":" + preset + ":" + str(scale) + ":").encode("utf-8") + raw
+    ).hexdigest()
+    cached_id = rs.job_cache_get(cache_key)
+    cached = rs.job_get(cached_id) if cached_id else None
+    if cached_id and cached and cached.get("status") == "done" and cached.get("result_key"):
+        rs.job_update(cached_id, cache_hit=True)
+        return JSONResponse({"ok": True, "job_id": cached_id, "status": "done", "cached": True}, status_code=200)
+
     jid = secrets.token_hex(16)
     result_ext = ".gif" if media_kind == "gif" else ".mp4" if media_kind == "video" else ".png"
     source_key = f"upscale/input/{jid}{source_ext}"
     result_key = f"upscale/result/{jid}{result_ext}"
-    safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(file.filename or "upscale").stem)[:80] or "upscale"
+    safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(source_name).stem)[:80] or "upscale"
     try:
-        object_store.put_bytes(source_key, raw, public=False, media_type=file.content_type or "application/octet-stream")
+        object_store.put_bytes(source_key, raw, public=False, media_type=source_type)
         rs.job_create(jid, {
             "kind": "upscale", "user_key": user_key, "status": "queued", "pct": 1,
             "stage": "queued", "source_key": source_key, "result_key": result_key,
             "filename": f"{safe_stem}{source_ext}", "download_name": f"{safe_stem}_upscaled{result_ext}",
             "media_kind": media_kind, "content_type": result_type,
             "preset": preset, "scale": scale, "input_size": len(raw),
+            "cache_key": cache_key,
         }, enqueue=True)
     except Exception:
         object_store.delete(source_key, public=False)
@@ -627,7 +652,8 @@ async def api_compose_start(
     offset_x: float = Form(0.5), offset_y: float = Form(1.0),
     rotation: float = Form(0.0),
     width: int = Form(750), gif_encoder: str = Form("gifski"), fps: int = Form(12),
-    background: UploadFile = File(...), character: UploadFile = File(...),
+    background: UploadFile | None = File(None), character: UploadFile | None = File(None),
+    background_asset_id: str = Form(""), character_asset_id: str = Form(""),
 ):
     """Accept the inputs quickly and render in the background.
 
@@ -650,16 +676,41 @@ async def api_compose_start(
             status_code=429,
         )
 
-    bg_raw, ch_raw = await background.read(), await character.read()
+    owner = media_assets.owner_key(request)
+    bg_asset = media_assets.resolve(background_asset_id, owner) if background_asset_id else None
+    ch_asset = media_assets.resolve(character_asset_id, owner) if character_asset_id else None
+    if (background_asset_id and not bg_asset) or (character_asset_id and not ch_asset):
+        return JSONResponse({"ok": False, "msg": "One of the source assets is unavailable"}, status_code=410)
+    bg_raw = bg_asset[1].read_bytes() if bg_asset else (await background.read() if background else b"")
+    ch_raw = ch_asset[1].read_bytes() if ch_asset else (await character.read() if character else b"")
     limit = MAX_UPLOAD_MB * 1024 * 1024
     if not bg_raw or not ch_raw or len(bg_raw) > limit or len(ch_raw) > limit:
         return JSONResponse({"ok": False, "msg": "File missing or too large"}, status_code=400)
 
+    cache_options = {"chroma_key": chroma_key, "chroma_tol": chroma_tol, "feather": feather,
+                     "scale": scale, "offset_x": offset_x, "offset_y": offset_y,
+                     "rotation": proc.normalize_rotation(rotation), "width": width,
+                     "gif_encoder": gif_encoder, "fps": fps}
+    cache_key = hashlib.sha256(
+        b"compose:2:" + user_key.encode("utf-8") + b":" +
+        json.dumps(cache_options, sort_keys=True, separators=(",", ":")).encode("utf-8") + b":" +
+        hashlib.sha256(bg_raw).digest() + hashlib.sha256(ch_raw).digest()
+    ).hexdigest()
+    cached_id = rs.job_cache_get(cache_key)
+    cached = rs.job_get(cached_id) if cached_id else None
+    if cached_id and cached and cached.get("status") == "done" and (
+        cached.get("result_key") or Path(str(cached.get("result_path") or "")).is_file()
+    ):
+        rs.job_update(cached_id, cache_hit=True)
+        return JSONResponse({"ok": True, "job_id": cached_id, "cached": True}, status_code=200)
+
     jid = secrets.token_urlsafe(18)
     job_dir = Path(DATA) / "jobs" / jid
     job_dir.mkdir(parents=True, exist_ok=False)
-    bg_ext = Path(background.filename or "background.png").suffix.lower() or ".bin"
-    ch_ext = Path(character.filename or "character.png").suffix.lower() or ".bin"
+    bg_name = str(bg_asset[0].get("name") or bg_asset[1].name) if bg_asset else (background.filename if background else "background.png")
+    ch_name = str(ch_asset[0].get("name") or ch_asset[1].name) if ch_asset else (character.filename if character else "character.png")
+    bg_ext = Path(bg_name or "background.png").suffix.lower() or ".bin"
+    ch_ext = Path(ch_name or "character.png").suffix.lower() or ".bin"
     bg_path, ch_path = job_dir / f"input_bg{bg_ext}", job_dir / f"input_char{ch_ext}"
     bg_path.write_bytes(bg_raw); ch_path.write_bytes(ch_raw)
 
@@ -676,12 +727,9 @@ async def api_compose_start(
     payload = {
         "kind": "compose", "job_dir": str(job_dir),
         "background_path": str(bg_path), "character_path": str(ch_path),
-        "options": {"chroma_key": chroma_key, "chroma_tol": chroma_tol, "feather": feather,
-                    "scale": scale, "offset_x": offset_x, "offset_y": offset_y,
-                    "rotation": proc.normalize_rotation(rotation),
-                    "width": width, "gif_encoder": gif_encoder, "fps": fps},
+        "options": cache_options,
         "status": "queued", "pct": 2, "stage": "queued",
-        "user_key": user_key, "created": time.time(),
+        "user_key": user_key, "created": time.time(), "cache_key": cache_key,
     }
     rs.job_create(jid, payload, enqueue=external)
     if not external:
