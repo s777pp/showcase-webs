@@ -22,8 +22,12 @@ class HeroVrmTests(unittest.TestCase):
     def test_landing_page_loads_the_runtime_and_shows_attribution(self):
         html = INDEX.read_text(encoding="utf-8")
         self.assertIn('/static/models/saba-0.1.vrm?v=20260915-saba1', html)
-        self.assertIn('/static/js/hero-vrm.js?v=20260915-saba19', html)
+        self.assertIn('/static/js/hero-vrm.js?v=20260915-saba20', html)
         self.assertIn('/static/css/hero-vrm.css?v=20260915-saba6', html)
+        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260915-saba20"', html)
+        self.assertIn('rel="modulepreload" href="/static/vendor/vrm-runtime.module.js?v=20260915-saba2"', html)
+        self.assertIn('rel="preload" href="/static/models/saba-0.1.vrm?v=20260915-saba1"', html)
+        self.assertIn('fetchpriority="high"', html)
         self.assertIn('3D model:</span> SABA_0.1', html)
         self.assertIn(
             'https://hub.vroid.com/en/characters/8524332363497057331/models/524490645277532236',
@@ -67,7 +71,9 @@ class HeroVrmTests(unittest.TestCase):
         self.assertNotIn("/static/animations/saba/Relax.vrma", source)
         self.assertIn("/static/animations/saba/Goodbye.vrma", source)
         self.assertIn("reaction: { happy: .85 }", source)
-        self.assertIn("playMotion(reactionMotion, 'once', 'goodbye'", source)
+        self.assertIn("playMotion(action, 'once', 'goodbye'", source)
+        self.assertIn("window.requestIdleCallback(warmReaction", source)
+        self.assertNotIn("const reactionMotionPromise", source)
         self.assertIn("fetchAmbientMotionPack()", source)
         self.assertIn("createAmbientMotionActions(ambientPack, mixer, vrm, gazeBoneNames)", source)
         self.assertIn("'bored',", source)
@@ -95,6 +101,13 @@ class HeroVrmTests(unittest.TestCase):
             html.index("document.documentElement.classList.add('has-js')"),
             html.index('href="/static/css/hero-vrm.css'),
         )
+
+    def test_large_vrm_assets_are_served_immutable_without_changing_the_model(self):
+        nginx = (ROOT / "nginx" / "nginx.conf").read_text(encoding="utf-8")
+        self.assertIn("location ^~ /static/models/", nginx)
+        self.assertIn("location ^~ /static/animations/", nginx)
+        self.assertIn('Cache-Control "public, max-age=31536000, immutable"', nginx)
+        self.assertIn('CDN-Cache-Control "public, max-age=31536000, immutable"', nginx)
 
 
 if __name__ == "__main__":

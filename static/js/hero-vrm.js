@@ -83,9 +83,6 @@ async function initHeroVrm() {
   const ambientPackPromise = reducedMotion
     ? Promise.resolve(null)
     : fetchAmbientMotionPack().catch(() => null);
-  const reactionMotionPromise = reducedMotion
-    ? Promise.resolve(null)
-    : loader.loadAsync(REACTION_MOTION_URL).catch(() => null);
   const gltf = await loader.loadAsync(host.dataset.model);
   const vrm = gltf.userData.vrm;
   if (!vrm) throw new Error('The model does not contain VRM data');
@@ -112,11 +109,8 @@ async function initHeroVrm() {
     ? createAmbientMotionActions(ambientPack, mixer, vrm, gazeBoneNames)
     : [];
   const ambientMotions = packedAmbientMotions;
-  const reactionGltf = await reactionMotionPromise;
-  const reactionAnimation = reactionGltf?.userData?.vrmAnimations?.[0];
-  const reactionMotion = reactionAnimation
-    ? createBodyMotionAction(reactionAnimation, mixer, vrm, gazeBoneNames, 'goodbye-body')
-    : null;
+  let reactionMotion = null;
+  let reactionMotionLoad = null;
   const faceState = createFaceState(vrm);
   let activeMotion = null;
   let activeMotionKey = 'relax';
@@ -251,17 +245,41 @@ async function initHeroVrm() {
   function react() {
     if (reducedMotion) return;
     const now = performance.now();
+    setFaceCue('reaction', now, 1800);
+    reactingUntil = now + 1800;
+    ensureReactionMotion().then(action => {
+      if (action) playReaction(action, performance.now());
+    });
+  }
+
+  function playReaction(action, now) {
     const blendSeconds = 1.05;
-    const reactionDuration = reactionMotion?.getClip().duration || 1.5;
+    const reactionDuration = action.getClip().duration || 1.5;
     const reactionDurationMs = Math.max(1500, reactionDuration * 1000);
     reactingUntil = now + reactionDurationMs;
     setFaceCue('reaction', now, reactionDurationMs);
-    if (reactionMotion === activeMotion) {
-      reactionMotion.reset().play();
+    if (action === activeMotion) {
+      action.reset().play();
     } else {
-      playMotion(reactionMotion, 'once', 'goodbye', 1, blendSeconds);
+      playMotion(action, 'once', 'goodbye', 1, blendSeconds);
     }
     nextMotionAt = now + Math.max(1300, (reactionDuration - blendSeconds) * 1000);
+  }
+
+  function ensureReactionMotion() {
+    if (reactionMotion) return Promise.resolve(reactionMotion);
+    if (!reactionMotionLoad) {
+      reactionMotionLoad = loader.loadAsync(REACTION_MOTION_URL)
+        .then(reactionGltf => {
+          const reactionAnimation = reactionGltf?.userData?.vrmAnimations?.[0];
+          reactionMotion = reactionAnimation
+            ? createBodyMotionAction(reactionAnimation, mixer, vrm, gazeBoneNames, 'goodbye-body')
+            : null;
+          return reactionMotion;
+        })
+        .catch(() => null);
+    }
+    return reactionMotionLoad;
   }
 
   function setFaceCue(key, now, duration) {
@@ -332,6 +350,12 @@ async function initHeroVrm() {
     if (firstFrame) {
       firstFrame = false;
       sceneRoot.classList.add('is-vrm-ready');
+      const warmReaction = () => ensureReactionMotion();
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(warmReaction, { timeout: 2500 });
+      } else {
+        window.setTimeout(warmReaction, 800);
+      }
     }
   }
 
