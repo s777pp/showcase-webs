@@ -11,6 +11,13 @@ const host = document.getElementById('heroVrm');
 const canvas = document.getElementById('heroVrmCanvas');
 const sceneRoot = host?.closest('.creator-scene');
 const studio = host?.closest('.hero-studio');
+let heroLoadSettled = false;
+
+function settleHeroLoad(status) {
+  if (heroLoadSettled) return;
+  heroLoadSettled = true;
+  document.dispatchEvent(new CustomEvent('showcasemaker:hero-ready', { detail: { status } }));
+}
 
 const MOTION_PACK_URL = '/static/animations/saba/opensourceavatars.motionpack.json.gz?v=20260915-saba3';
 const REACTION_MOTION_URL = '/static/animations/saba/Goodbye.vrma?v=20260915-saba2';
@@ -44,7 +51,12 @@ const MICRO_MOODS = [
 ];
 
 if (host && canvas && sceneRoot && studio) {
-  initHeroVrm().catch(() => sceneRoot.classList.add('is-vrm-fallback'));
+  initHeroVrm().catch(() => {
+    sceneRoot.classList.add('is-vrm-fallback');
+    settleHeroLoad('fallback');
+  });
+} else {
+  settleHeroLoad('unavailable');
 }
 
 async function initHeroVrm() {
@@ -52,6 +64,7 @@ async function initHeroVrm() {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (saveData || !hasWebGL()) {
     sceneRoot.classList.add('is-vrm-fallback');
+    settleHeroLoad('fallback');
     return;
   }
 
@@ -350,6 +363,7 @@ async function initHeroVrm() {
     if (firstFrame) {
       firstFrame = false;
       sceneRoot.classList.add('is-vrm-ready');
+      settleHeroLoad('ready');
       const warmReaction = () => ensureReactionMotion();
       if ('requestIdleCallback' in window) {
         window.requestIdleCallback(warmReaction, { timeout: 2500 });

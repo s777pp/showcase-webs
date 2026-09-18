@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<script>document.documentElement.classList.add('has-js')</script>
+<script>document.documentElement.classList.add('has-js');document.documentElement.classList.add('home-is-loading');window.__SM_HOME_LOADER_START=performance.now()</script>
 <title>Showcase Maker — Steam showcases without the grind</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -19,13 +19,32 @@
   <link rel="stylesheet" href="/static/css/creator-os.css?v=20260908-controls"/>
 <link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260909-german1">
 <link rel="stylesheet" href="/static/css/hero-vrm.css?v=20260915-saba6">
+<link rel="stylesheet" href="/static/css/home-loader.css?v=20260918a">
 <script src="/static/js/layout-refinement.js?v=20260904d"></script>
 <script src="/static/js/locales-extra.js?v=20260909-languages8"></script>
 <script src="/static/js/i18n.js?v=20260909-languages4"></script>
+<script defer src="/static/js/home-loader.js?v=20260918a" onerror="document.documentElement.classList.remove('home-is-loading')"></script>
 <link rel="stylesheet" href="/static/css/support-chat.css?v=20260908-mobile-polish">
 <script defer src="/static/js/support-chat.js?v=20260909-german1"></script>
 </head>
 <body class="page-home">
+<div class="home-loader" id="homeLoader" role="status" aria-live="polite" aria-label="Loading Showcase Maker">
+  <div class="home-loader__grid" aria-hidden="true"></div>
+  <div class="home-loader__core">
+    <div class="home-loader__brand">
+      <span class="home-loader__logo"><img src="/static/icon.png" alt="" width="50" height="50"/></span>
+      <span class="home-loader__wordmark"><strong>SHOWCASE</strong><b>MAKER</b></span>
+    </div>
+    <div class="home-loader__signal" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <p class="home-loader__eyebrow" id="homeLoaderEyebrow">SYSTEM / STARTUP</p>
+    <h1 class="home-loader__title" id="homeLoaderTitle">Preparing your workspace</h1>
+    <div class="home-loader__progress" aria-hidden="true"><span id="homeLoaderProgress"></span></div>
+    <div class="home-loader__meta">
+      <span id="homeLoaderStage">Loading interface</span>
+      <output id="homeLoaderPercent">0%</output>
+    </div>
+  </div>
+</div>
 <svg width="0" height="0" style="position:absolute">
   <filter id="c3-noise">
     <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
