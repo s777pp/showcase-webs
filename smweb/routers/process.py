@@ -146,7 +146,7 @@ async def api_process_start(
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
         return JSONResponse(
-            {"ok": False, "msg": f"Limit {FREE_LIMIT} files/day. Enter access code or buy Pro."},
+            {"ok": False, "msg": f"Limit {q['limit']} files/day. Enter access code or buy Pro."},
             status_code=403,
         )
     mode = (mode or "workshop").lower().strip()
@@ -515,7 +515,7 @@ async def api_process(
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
         return JSONResponse(
-            {"ok": False, "msg": f"Limit {FREE_LIMIT} files/day. Enter access code or buy Pro."},
+            {"ok": False, "msg": f"Limit {q['limit']} files/day. Enter access code or buy Pro."},
             status_code=403,
         )
 

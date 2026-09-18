@@ -1,9 +1,98 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Аналитика · Showcase Maker</title><link rel="icon" href="/static/icon.png"><link rel="stylesheet" href="/static/css/analytics-dashboard.css?v=20260910a"></head>
-<body><main class="analytics-shell">
-  <header class="analytics-head"><a href="/" class="brand"><img src="/static/icon.png" alt="" width="44" height="44"><span>SHOWCASE <b>MAKER</b><small>PRIVATE ANALYTICS</small></span></a><div class="analytics-controls"><select id="days" aria-label="Период"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option></select><input id="secret" type="password" autocomplete="off" placeholder="ADMIN_SECRET" aria-label="Секрет администратора"><button id="load">Обновить</button></div></header>
-  <section id="empty" class="empty"><span>ТОЛЬКО ДЛЯ АДМИНИСТРАТОРА</span><h1>Статистика продукта</h1><p>Введите серверный ADMIN_SECRET. Значение хранится только в текущей вкладке браузера.</p></section>
-  <div id="dashboard" hidden><section class="hero"><div><p class="eyebrow">SHOWCASE MAKER / ПОВЕДЕНИЕ ПОЛЬЗОВАТЕЛЕЙ</p><h1>Что работает,<br><em>а где теряются люди.</em></h1></div><p id="period" class="period"></p></section>
-    <section id="kpis" class="kpis"></section>
-    <section class="grid"><article class="panel panel--wide"><div class="panel-title"><span>01</span><h2>Динамика</h2></div><div id="chart" class="chart"></div></article><article class="panel"><div class="panel-title"><span>02</span><h2>Воронка</h2></div><div id="funnel" class="funnel"></div></article><article class="panel"><div class="panel-title"><span>03</span><h2>Инструменты</h2></div><div id="tools" class="rank"></div></article><article class="panel"><div class="panel-title"><span>04</span><h2>Обработка</h2></div><div id="modes" class="rank"></div></article><article class="panel"><div class="panel-title"><span>05</span><h2>Ошибки</h2></div><div id="failures" class="rank"></div></article><article class="panel"><div class="panel-title"><span>06</span><h2>Языки</h2></div><div id="languages" class="rank"></div></article></section>
-  </div><p id="status" class="status" role="status"></p>
-</main><script src="/static/js/analytics-dashboard.js?v=20260910a"></script></body></html>
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Центр управления · Showcase Maker</title>
+  <link rel="icon" href="/static/icon.png">
+  <link rel="stylesheet" href="/static/css/analytics-dashboard.css?v=20260918-admin1">
+</head>
+<body>
+  <section class="admin-login" id="loginView">
+    <div class="admin-login__grid" aria-hidden="true"></div>
+    <form class="admin-login__card" id="loginForm">
+      <a href="/" class="brand"><img src="/static/icon.png" alt="" width="48" height="48"><span>SHOWCASE <b>MAKER</b><small>CONTROL CENTER</small></span></a>
+      <p class="overline">ЗАКРЫТАЯ ЗОНА</p><h1>Управление сайтом</h1>
+      <p>Введите ADMIN_SECRET. После проверки сервер создаст защищённую сессию — сам секрет не останется в браузере.</p>
+      <label>ADMIN_SECRET<input id="secret" type="password" autocomplete="current-password" required></label>
+      <button type="submit">Открыть панель</button><output id="loginStatus" class="form-status"></output>
+    </form>
+  </section>
+
+  <div class="admin-app" id="adminApp" hidden>
+    <aside class="admin-side">
+      <a href="/" class="brand"><img src="/static/icon.png" alt="" width="40" height="40"><span>SHOWCASE <b>MAKER</b><small>CONTROL CENTER</small></span></a>
+      <nav class="admin-nav" aria-label="Разделы панели">
+        <button class="is-active" data-view="overview"><i>⌁</i><span>Обзор</span></button>
+        <button data-view="system"><i>◉</i><span>Состояние системы</span><b id="systemNavState"></b></button>
+        <button data-view="users"><i>◎</i><span>Пользователи</span></button>
+        <button data-view="codes"><i>◇</i><span>Ключи и Pro</span></button>
+        <button data-view="jobs"><i>⇄</i><span>Задания</span></button>
+        <button data-view="gallery"><i>▦</i><span>Галерея</span></button>
+        <button data-view="settings"><i>⌘</i><span>Управление сайтом</span></button>
+        <button data-view="analytics"><i>⌁</i><span>Аналитика</span></button>
+        <button data-view="audit"><i>≡</i><span>Журнал действий</span></button>
+      </nav>
+      <div class="admin-side__foot"><span id="sessionTimer">Сессия активна</span><button id="logout">Выйти</button></div>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-top">
+        <div><p class="overline" id="viewKicker">ЦЕНТР УПРАВЛЕНИЯ</p><h1 id="viewTitle">Обзор</h1></div>
+        <div class="admin-top__actions"><label>Период<select id="days"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option></select></label><button class="button button--ghost" id="refresh">Обновить</button></div>
+      </header>
+      <output id="toast" class="toast" role="status"></output>
+
+      <section class="admin-view is-active" data-page="overview">
+        <article class="system-hero" id="overviewSystem"><div class="system-hero__signal"><i></i></div><div><p>СОСТОЯНИЕ САЙТА</p><h2>Проверяем…</h2><span>Собираем данные о сервисах</span></div><button class="button button--ghost" data-go="system">Посмотреть подробно</button></article>
+        <div class="metric-grid" id="accountMetrics"></div>
+        <div class="overview-grid">
+          <article class="panel"><div class="panel-head"><div><p class="overline">ПОЛЬЗОВАТЕЛИ</p><h2>Путь до результата</h2></div><button class="text-button" data-go="analytics">Вся аналитика →</button></div><div id="overviewFunnel" class="funnel"></div></article>
+          <article class="panel"><div class="panel-head"><div><p class="overline">БЫСТРЫЕ ДЕЙСТВИЯ</p><h2>Управление</h2></div></div><div class="quick-actions"><button data-go="users">Найти пользователя<span>Pro, блокировки и сессии</span></button><button data-go="codes">Создать ключ<span>7 дней или постоянный Pro</span></button><button data-go="settings">Включить техработы<span>Сообщение появится на сайте</span></button><button data-go="jobs">Проверить задания<span>Очереди и зависшие операции</span></button></div></article>
+        </div>
+      </section>
+
+      <section class="admin-view" data-page="system">
+        <article class="system-explainer"><div><p class="overline">ПРОСТАЯ ПРОВЕРКА</p><h2 id="systemHeadline">Проверяем состояние…</h2><p id="systemExplanation">Каждый блок объяснит не только технический статус, но и что он означает для пользователей.</p></div><div class="queue-strip" id="queueStrip"></div></article>
+        <div class="system-chain" id="systemComponents"></div>
+        <p class="section-note">Красный блок означает реальное влияние на сайт. Жёлтый — функция ограничена, но основные инструменты продолжают работать.</p>
+      </section>
+
+      <section class="admin-view" data-page="users">
+        <article class="panel panel--toolbar"><div><p class="overline">АККАУНТЫ</p><h2>Пользователи</h2></div><form id="userSearch"><input id="userQuery" placeholder="Email, ник, Steam ID"><button class="button">Найти</button></form></article>
+        <div class="table-wrap"><table><thead><tr><th>Пользователь</th><th>Регистрация / активность</th><th>Доступ</th><th>Контент</th><th>Действия</th></tr></thead><tbody id="usersBody"></tbody></table></div><div class="pager" id="usersPager"></div>
+      </section>
+
+      <section class="admin-view" data-page="codes">
+        <div class="split-grid"><form class="panel form-panel" id="codeForm"><p class="overline">НОВАЯ ПАРТИЯ</p><h2>Создать ключи</h2><label>Количество<input id="codeCount" type="number" min="1" max="100" value="1"></label><label>Срок<select id="codeDuration"><option value="7">7 дней</option><option value="30">30 дней</option><option value="365">1 год</option><option value="0">Навсегда</option></select></label><label>Название<input id="codeLabel" value="Pro"></label><button class="button" type="submit">Создать ключи</button><div class="generated-codes" id="generatedCodes" hidden></div></form><article class="panel"><p class="overline">КАК ЭТО РАБОТАЕТ</p><h2>Статус ключа</h2><p class="muted">Новый ключ сразу записывается в приватное хранилище VPS. После активации он привязывается к одному аккаунту и повторно не применяется.</p><button class="button button--ghost" id="exportCodes">Скачать CSV</button></article></div>
+        <div class="table-wrap"><table><thead><tr><th>Ключ</th><th>Тип</th><th>Статус</th><th>Аккаунт</th><th></th></tr></thead><tbody id="codesBody"></tbody></table></div>
+      </section>
+
+      <section class="admin-view" data-page="jobs">
+        <article class="panel panel--toolbar"><div><p class="overline">ОБРАБОТКА</p><h2>Последние задания</h2></div><div class="queue-strip" id="jobsQueues"></div></article>
+        <div class="table-wrap"><table><thead><tr><th>Задание</th><th>Тип</th><th>Состояние</th><th>Прогресс</th><th>Обновлено</th><th></th></tr></thead><tbody id="jobsBody"></tbody></table></div>
+      </section>
+
+      <section class="admin-view" data-page="gallery">
+        <article class="panel panel--toolbar"><div><p class="overline">МОДЕРАЦИЯ</p><h2>Галерея</h2></div><select id="galleryStatus"><option value="pending">Ожидают проверки</option><option value="approved">Опубликованы</option><option value="rejected">Отклонены</option></select></article><div class="gallery-admin-grid" id="galleryGrid"></div>
+      </section>
+
+      <section class="admin-view" data-page="settings">
+        <div class="split-grid"><form class="panel form-panel" id="maintenanceForm"><p class="overline">УВЕДОМЛЕНИЕ</p><h2>Технические работы</h2><label class="switch-row"><span><b>Показывать уведомление</b><small>Появится сверху на всех страницах</small></span><input id="maintenanceEnabled" type="checkbox"></label><label>Текст<textarea id="maintenanceMessage" rows="4" maxlength="240">Ведутся технические работы. Некоторые функции временно недоступны.</textarea></label><label>Выключить автоматически<select id="maintenanceMinutes"><option value="0">Только вручную</option><option value="30">Через 30 минут</option><option value="60">Через 1 час</option><option value="180">Через 3 часа</option><option value="1440">Через сутки</option></select></label><button class="button" type="submit">Сохранить уведомление</button></form>
+          <form class="panel form-panel" id="settingsForm"><p class="overline">ФУНКЦИИ САЙТА</p><h2>Доступность</h2><div id="featureSwitches"></div><label>Файлов в день для Free<input id="freeDailyLimit" type="number" min="1" max="100"></label><button class="button" type="submit">Применить настройки</button></form></div>
+      </section>
+
+      <section class="admin-view" data-page="analytics">
+        <div class="metric-grid" id="analyticsMetrics"></div>
+        <div class="analytics-grid"><article class="panel panel--wide"><div class="panel-head"><div><p class="overline">ДИНАМИКА</p><h2>Действия по дням</h2></div></div><div id="chart" class="chart"></div></article><article class="panel"><p class="overline">ВОРОНКА</p><h2>Переходы</h2><div id="funnel" class="funnel"></div></article><article class="panel"><p class="overline">ИНСТРУМЕНТЫ</p><h2>Популярность</h2><div id="tools" class="rank"></div></article><article class="panel"><p class="overline">ОБРАБОТКА</p><h2>Режимы</h2><div id="modes" class="rank"></div></article><article class="panel"><p class="overline">ОШИБКИ</p><h2>Причины</h2><div id="failures" class="rank"></div></article><article class="panel"><p class="overline">СКОРОСТЬ</p><h2>Время обработки</h2><div id="performance" class="rank"></div></article><article class="panel"><p class="overline">ФАЙЛЫ</p><h2>Форматы</h2><div id="fileTypes" class="rank"></div></article><article class="panel"><p class="overline">ЯЗЫКИ</p><h2>Аудитория</h2><div id="languages" class="rank"></div></article></div>
+      </section>
+
+      <section class="admin-view" data-page="audit">
+        <article class="panel"><p class="overline">БЕЗОПАСНОСТЬ</p><h2>Журнал действий</h2><p class="muted">Фиксируются выдача Pro, блокировки, ключи, модерация и изменения сайта. Секреты и пользовательские файлы не записываются.</p></article><div class="table-wrap"><table><thead><tr><th>Время</th><th>Действие</th><th>Объект</th><th>Подробности</th></tr></thead><tbody id="auditBody"></tbody></table></div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/js/analytics-dashboard.js?v=20260918-admin1"></script>
+</body>
+</html>

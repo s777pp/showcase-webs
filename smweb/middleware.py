@@ -40,6 +40,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import runtime_settings
 
 
 from smweb.core import _ip
@@ -166,8 +167,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # not on this list, so a script could try codes as fast as it liked.
         ("/api/unlock", 10, 60),
         ("/api/analytics/event", 60, 60),
-        # Wiping every account should not be reachable at machine speed even
-        # with a leaked secret.
+        # Admin login stays deliberately tight. Once authenticated, the control
+        # centre may perform several legitimate mutations in one minute.
+        ("/api/admin/control/session", 5, 300),
+        ("/api/admin/control", 60, 60),
+        # Legacy destructive admin routes stay deliberately tight.
         ("/api/admin/", 5, 60),
         ("/api/process", 8, 60),
         ("/api/process/start", 8, 60),
@@ -209,6 +213,29 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         status_code=429,
                     )
                 break
+        return await call_next(request)
+
+
+class FeatureGateMiddleware(BaseHTTPMiddleware):
+    """Apply administrator feature switches at the execution seam."""
+    ROUTES = (
+        ("registration_enabled", ("/api/auth/register", "/api/auth/send-code")),
+        ("process_enabled", ("/api/process", "/api/convert", "/api/hex21", "/api/preview")),
+        ("upscale_enabled", ("/api/upscale",)),
+        ("builder_enabled", ("/api/builder", "/api/compose", "/api/loop")),
+        ("gallery_submissions_enabled", ("/api/gallery/submit", "/api/gallery/publish")),
+        ("experimental_enabled", ("/api/profile-insights", "/api/steam-dna")),
+    )
+
+    async def dispatch(self, request, call_next):
+        if request.method in {"POST", "PUT", "PATCH"} and not request.url.path.startswith("/api/admin/"):
+            path = request.url.path
+            for setting, prefixes in self.ROUTES:
+                if any(path.startswith(prefix) for prefix in prefixes) and not runtime_settings.flag(setting):
+                    return JSONResponse(
+                        {"ok": False, "msg": "This function is temporarily disabled by the administrator."},
+                        status_code=503,
+                    )
         return await call_next(request)
 
 

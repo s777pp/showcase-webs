@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import math
 import os
 import re
 import secrets
@@ -242,10 +243,33 @@ def report(days: int = 30, *, now: float | None = None) -> dict[str, Any]:
             (since,),
         ).fetchall()
         performance_rows = connection.execute(
-            """SELECT mode,AVG(value_int) AS average_ms FROM analytics_events
+            """SELECT mode,value_int FROM analytics_events
                WHERE created_at>=? AND event_name='process_success' AND value_int>0
-               GROUP BY mode ORDER BY average_ms DESC""",
+               ORDER BY mode,value_int""",
             (since,),
+        ).fetchall()
+        file_type_rows = connection.execute(
+            """SELECT file_type,COUNT(*) AS total FROM analytics_events
+               WHERE created_at>=? AND event_name='file_added' AND file_type!=''
+               GROUP BY file_type ORDER BY total DESC""",
+            (since,),
+        ).fetchall()
+        size_rows = connection.execute(
+            """SELECT size_bucket,COUNT(*) AS total FROM analytics_events
+               WHERE created_at>=? AND event_name='file_added' AND size_bucket!=''
+               GROUP BY size_bucket ORDER BY total DESC""",
+            (since,),
+        ).fetchall()
+        method_rows = connection.execute(
+            """SELECT method,COUNT(*) AS total FROM analytics_events
+               WHERE created_at>=? AND event_name IN ('registration_success','pro_activated') AND method!=''
+               GROUP BY method ORDER BY total DESC""",
+            (since,),
+        ).fetchall()
+        previous_rows = connection.execute(
+            """SELECT event_name,COUNT(*) AS total FROM analytics_events
+               WHERE created_at>=? AND created_at<? GROUP BY event_name""",
+            (since - days * 86400, since),
         ).fetchall()
     finally:
         connection.close()
@@ -266,6 +290,23 @@ def report(days: int = 30, *, now: float | None = None) -> dict[str, Any]:
         conversion = 100.0 if index == 0 else (round(count / previous * 100, 1) if previous else 0.0)
         funnel.append({"event": name, "count": count, "conversion": conversion})
         previous = count
+    performance_by_mode: dict[str, list[int]] = defaultdict(list)
+    for row in performance_rows:
+        performance_by_mode[str(row["mode"] or "unknown")].append(int(row["value_int"] or 0))
+    performance = []
+    for mode, values in performance_by_mode.items():
+        values.sort()
+        if not values:
+            continue
+        p95_index = min(len(values) - 1, max(0, math.ceil(len(values) * .95) - 1))
+        performance.append({
+            "mode": mode,
+            "average_ms": round(sum(values) / len(values)),
+            "median_ms": values[len(values) // 2],
+            "p95_ms": values[p95_index],
+            "samples": len(values),
+        })
+    previous = {str(row["event_name"]): int(row["total"] or 0) for row in previous_rows}
     return {
         "ok": True,
         "days": days,
@@ -278,5 +319,9 @@ def report(days: int = 30, *, now: float | None = None) -> dict[str, Any]:
         "failures": [dict(row) for row in failure_rows],
         "languages": [dict(row) for row in language_rows],
         "modes": [dict(row) for row in mode_rows],
-        "performance": [dict(row) for row in performance_rows],
+        "performance": performance,
+        "file_types": [dict(row) for row in file_type_rows],
+        "size_buckets": [dict(row) for row in size_rows],
+        "methods": [dict(row) for row in method_rows],
+        "previous_totals": previous,
     }

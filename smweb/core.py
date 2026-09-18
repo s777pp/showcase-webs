@@ -38,6 +38,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import runtime_settings
 
 
 logging.basicConfig(
@@ -443,10 +444,11 @@ def quota_state(req: Request) -> dict:
         _usage[ip] = u
         _save_usage(_usage)
     used = int(u.get("count") or 0)
+    free_limit = runtime_settings.integer("free_daily_limit", FREE_LIMIT)
     return {
         "used": used,
-        "limit": FREE_LIMIT,
-        "left": max(0, FREE_LIMIT - used),
+        "limit": free_limit,
+        "left": max(0, free_limit - used),
         "pro": False,
         "label": "Free",
         "email": email,

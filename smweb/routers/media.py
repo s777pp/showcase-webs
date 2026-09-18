@@ -90,7 +90,7 @@ async def api_convert(
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
         return JSONResponse(
-            {"ok": False, "msg": f"Limit {FREE_LIMIT} files/day."},
+            {"ok": False, "msg": f"Limit {q['limit']} files/day."},
             status_code=403,
         )
     target = (target or "gif").lower().lstrip(".")
@@ -150,7 +150,7 @@ async def api_hex21(
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
         return JSONResponse(
-            {"ok": False, "msg": f"Limit {FREE_LIMIT} files/day."},
+            {"ok": False, "msg": f"Limit {q['limit']} files/day."},
             status_code=403,
         )
     left = 999 if q["pro"] else q["left"]

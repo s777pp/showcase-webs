@@ -23,19 +23,24 @@ def get_state() -> dict:
         raw = json.loads(STATE_FILE.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
         raw = {}
-    return {
+    state = {
         "enabled": bool(raw.get("enabled")),
         "message": str(raw.get("message") or "")[:240],
         "updated_at": float(raw.get("updated_at") or 0),
+        "ends_at": float(raw.get("ends_at") or 0) or None,
     }
+    if state["enabled"] and state["ends_at"] and time.time() >= state["ends_at"]:
+        return set_state(False)
+    return state
 
 
-def set_state(enabled: bool, message: str = "") -> dict:
+def set_state(enabled: bool, message: str = "", *, ends_at: float | None = None) -> dict:
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     state = {
         "enabled": bool(enabled),
         "message": str(message or "").strip()[:240] if enabled else "",
         "updated_at": time.time(),
+        "ends_at": float(ends_at) if enabled and ends_at else None,
     }
     descriptor, temporary = tempfile.mkstemp(
         prefix="maintenance-", suffix=".json", dir=str(STATE_FILE.parent)

@@ -191,6 +191,9 @@ def _create_schema(c: sqlite3.Connection) -> None:
         ("steam_username", "TEXT"),
         ("steam_profile_json", "TEXT"),
         ("profile_builder_json", "TEXT"),
+        ("is_suspended", "INTEGER DEFAULT 0"),
+        ("suspended_reason", "TEXT"),
+        ("suspended_until", "REAL"),
     ):
         if col not in cols:
             try:
@@ -331,6 +334,18 @@ def _create_schema(c: sqlite3.Connection) -> None:
         )
         """
     )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS admin_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            target TEXT,
+            details_json TEXT,
+            created_at REAL NOT NULL
+        )
+        """
+    )
+    c.execute("CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit(created_at DESC)")
 
     for ddl in (
         # Hot paths that had no index at all - see docs/ARCHITECTURE_AUDIT.md.
@@ -464,6 +479,29 @@ def _session_key(token: str) -> str:
     return "sha256:" + hashlib.sha256((token or "").encode()).hexdigest()
 
 
+def _issue_session(c, user_id: int) -> tuple[bool, str, Optional[str]]:
+    """Create a session unless an administrator has suspended the account."""
+    row = c.execute(
+        "SELECT COALESCE(is_suspended,0) AS is_suspended,suspended_until FROM users WHERE id=?",
+        (int(user_id),),
+    ).fetchone()
+    if row and int(row["is_suspended"] or 0):
+        until = row["suspended_until"]
+        if until is None or float(until or 0) > time.time():
+            return False, "Account is temporarily unavailable", None
+        c.execute(
+            "UPDATE users SET is_suspended=0,suspended_reason=NULL,suspended_until=NULL WHERE id=?",
+            (int(user_id),),
+        )
+    token = secrets.token_hex(24)
+    c.execute(
+        "INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)",
+        (_session_key(token), int(user_id), time.time()),
+    )
+    c.commit()
+    return True, "OK", token
+
+
 def register(email: str, password: str) -> tuple[bool, str]:
     email = email.strip().lower()
     if not email or "@" not in email:
@@ -508,14 +546,9 @@ def login(email: str, password: str) -> tuple[bool, str, Optional[str]]:
         return False, "Wrong email or password", None
     if _password_hash_needs_upgrade(stored):
         c.execute("UPDATE users SET password_hash=? WHERE id=?", (_hash_pw(password), row["id"]))
-    token = secrets.token_hex(24)
-    c.execute(
-        "INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)",
-        (_session_key(token), row["id"], time.time()),
-    )
-    c.commit()
+    result = _issue_session(c, int(row["id"]))
     c.close()
-    return True, "OK", token
+    return result
 
 
 def change_password(user_id: int, current_password: str, new_password: str, current_token: str = "") -> tuple[bool, str]:
@@ -767,7 +800,8 @@ def user_by_token(token: str) -> Optional[dict]:
                    COALESCE(u.email_verified, 0) AS email_verified,
                    u.profile_username, u.profile_summary, u.profile_background,
                    u.profile_bg_x, u.profile_bg_y, u.profile_bg_scale, u.profile_bg_overlay,
-                   u.profile_level, u.profile_xp, u.profile_location, u.profile_status, u.profile_visibility
+                   u.profile_level, u.profile_xp, u.profile_location, u.profile_status, u.profile_visibility,
+                   COALESCE(u.is_suspended,0) AS is_suspended,u.suspended_reason,u.suspended_until
             FROM sessions s JOIN users u ON u.id = s.user_id
             WHERE s.token IN (?,?) AND s.created_at>=?
             """,
@@ -778,7 +812,8 @@ def user_by_token(token: str) -> Optional[dict]:
             """
             SELECT s.token AS session_key, u.id, u.email, u.is_pro, u.pro_code, u.pro_until, u.stripe_customer_id,
                    u.da_access_token, u.da_refresh_token, u.da_client_id, u.da_client_secret, u.display_name, u.avatar_path,
-                   COALESCE(u.email_verified, 0) AS email_verified
+                   COALESCE(u.email_verified, 0) AS email_verified,
+                   COALESCE(u.is_suspended,0) AS is_suspended,u.suspended_reason,u.suspended_until
             FROM sessions s JOIN users u ON u.id = s.user_id
             WHERE s.token IN (?,?) AND s.created_at>=?
             """,
@@ -787,6 +822,21 @@ def user_by_token(token: str) -> Optional[dict]:
     if not row:
         c.close()
         return None
+    suspended = bool(int(row["is_suspended"] or 0))
+    if suspended:
+        suspended_until = row["suspended_until"]
+        if suspended_until is None or float(suspended_until or 0) > time.time():
+            c.close()
+            return None
+        try:
+            c.execute(
+                "UPDATE users SET is_suspended=0,suspended_reason=NULL,suspended_until=NULL WHERE id=?",
+                (int(row["id"]),),
+            )
+            c.commit()
+            suspended = False
+        except Exception:
+            pass
     # Encrypt credentials written by older releases the first time their owner
     # authenticates. This is intentionally a one-off write, not a hot-path task.
     try:
@@ -838,6 +888,9 @@ def user_by_token(token: str) -> Optional[dict]:
         "profile_location": _g("profile_location"),
         "profile_status": _g("profile_status") or "online",
         "profile_visibility": _g("profile_visibility") or "public",
+        "is_suspended": suspended,
+        "suspended_reason": _g("suspended_reason"),
+        "suspended_until": _g("suspended_until"),
     }
 
 
@@ -1502,11 +1555,9 @@ def register_or_login_discord(discord_id: str, username: str, email: str | None 
             uid = int(row["id"])
             c.execute("UPDATE users SET discord_id=?, discord_username=? WHERE id=?", (discord_id, username, uid))
             c.commit()
-    token = secrets.token_hex(24)
-    c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (_session_key(token), uid, time.time()))
-    c.commit()
+    result = _issue_session(c, uid)
     c.close()
-    return True, "OK", token
+    return result
 
 
 
@@ -1560,11 +1611,9 @@ def register_or_login_google(google_id: str, email: str | None, name: str | None
                     (name, uid),
                 )
             c.commit()
-    token = secrets.token_hex(24)
-    c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (_session_key(token), uid, time.time()))
-    c.commit()
+    result = _issue_session(c, uid)
     c.close()
-    return True, "OK", token
+    return result
 
 
 # ====================== Gallery social: likes / comments / notifications ======================
@@ -1626,14 +1675,9 @@ def register_or_login_telegram(
                 (telegram_id, uname, display, uid),
             )
             c.commit()
-    token = secrets.token_hex(24)
-    c.execute(
-        "INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)",
-        (_session_key(token), uid, time.time()),
-    )
-    c.commit()
+    result = _issue_session(c, uid)
     c.close()
-    return True, "OK", token
+    return result
 
 
 
@@ -2191,10 +2235,7 @@ def register_or_login_steam(steam_id: str, persona_name: str | None = None) -> t
                     (em, _hash_pw(secrets.token_hex(16)), steam_id, name, name, time.time()),
                 )
             uid = int(c.execute("SELECT id FROM users WHERE steam_id=?", (steam_id,)).fetchone()["id"])
-        token = secrets.token_hex(24)
-        c.execute("INSERT INTO sessions(token, user_id, created_at) VALUES (?,?,?)", (_session_key(token), uid, time.time()))
-        c.commit()
-        return True, "OK", token
+        return _issue_session(c, uid)
     except Exception as e:
         return False, str(e), None
     finally:

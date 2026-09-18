@@ -62,6 +62,7 @@ from smweb.core import (
 from smweb.middleware import (
     CachedStaticFiles,
     GZipMiddleware,
+    FeatureGateMiddleware,
     OriginGuardMiddleware,
     RateLimitMiddleware,
     RequestBodyLimitMiddleware,
@@ -94,6 +95,7 @@ from smweb.routers import (
     analytics as analytics_router,
     assets,
     jobs as jobs_router,
+    admin as admin_router,
 )
 
 
@@ -114,6 +116,9 @@ app.add_middleware(OriginGuardMiddleware)
 
 
 app.add_middleware(RateLimitMiddleware)
+
+
+app.add_middleware(FeatureGateMiddleware)
 
 
 app.add_middleware(RequestBodyLimitMiddleware)
@@ -177,6 +182,7 @@ app.include_router(steam_dna.router)
 app.include_router(analytics_router.router)
 app.include_router(assets.router)
 app.include_router(jobs_router.router)
+app.include_router(admin_router.router)
 
 
 # ====================== Profile builder API (Steam catalogs, projects) ======================

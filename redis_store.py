@@ -384,6 +384,31 @@ def job_list_user(user_key: str, limit: int = 50) -> list[tuple[str, dict]]:
     return found[:max(1, min(100, int(limit)))]
 
 
+def job_list_all(limit: int = 100) -> list[tuple[str, dict]]:
+    """Recent jobs for the private admin console, without exposing file data."""
+    found: list[tuple[str, dict]] = []
+    r = _r()
+    if r:
+        try:
+            for key in r.scan_iter(match="sm:job:*", count=200):
+                raw = r.get(key)
+                if not raw:
+                    continue
+                job = json.loads(raw) or {}
+                jid = str(key).split(":", 2)[-1]
+                found.append((jid, job))
+                if len(found) >= 500:
+                    break
+        except Exception as exc:
+            _note(exc)
+            found = []
+    if not r:
+        with _local_lock:
+            found = [(jid, dict(job)) for jid, job in _local_jobs.items()]
+    found.sort(key=lambda item: float(item[1].get("updated") or item[1].get("created") or 0), reverse=True)
+    return found[:max(1, min(250, int(limit)))]
+
+
 def job_cancel(jid: str) -> Optional[dict]:
     """Request cancellation and remove queued work before a worker can claim it."""
     job = job_get(jid)

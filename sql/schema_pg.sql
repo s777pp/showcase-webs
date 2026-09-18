@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
  profile_level INTEGER, profile_xp INTEGER, profile_location TEXT,
  profile_status TEXT, profile_visibility TEXT, profile_builder_json TEXT
 );
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_reason TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_until DOUBLE PRECISION;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_until DOUBLE PRECISION;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_code TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
@@ -91,6 +94,15 @@ DO $$ BEGIN
 END $$;
 CREATE INDEX IF NOT EXISTS idx_showcases_user ON profile_showcases(user_id,sort_order);
 CREATE TABLE IF NOT EXISTS process_jobs (id TEXT PRIMARY KEY, user_id BIGINT, status TEXT NOT NULL DEFAULT 'queued', pct INTEGER DEFAULT 0, stage TEXT, error TEXT, result_path TEXT, created_at DOUBLE PRECISION, updated_at DOUBLE PRECISION, meta_json TEXT);
+
+CREATE TABLE IF NOT EXISTS admin_audit (
+ id BIGSERIAL PRIMARY KEY,
+ action TEXT NOT NULL,
+ target TEXT,
+ details_json TEXT,
+ created_at DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit(created_at DESC);
 
 CREATE TABLE IF NOT EXISTS builder_projects (
  id TEXT PRIMARY KEY,
