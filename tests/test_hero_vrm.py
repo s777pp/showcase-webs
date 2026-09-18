@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 INDEX = ROOT / "static" / "index.html"
 MODEL = ROOT / "static" / "models" / "saba-0.1.vrm"
+AUDIO = ROOT / "static" / "audio" / "hero-cute-reaction.mp3"
 
 
 class HeroVrmTests(unittest.TestCase):
@@ -26,9 +27,9 @@ class HeroVrmTests(unittest.TestCase):
             html,
         )
         self.assertIn('data-model-fallback="/static/models/saba-0.1.vrm?v=20260915-saba1"', html)
-        self.assertIn('/static/js/hero-vrm.js?v=20260918-r2-1', html)
-        self.assertIn('/static/css/hero-vrm.css?v=20260915-saba6', html)
-        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260918-r2-1"', html)
+        self.assertIn('/static/js/hero-vrm.js?v=20260918-reaction2', html)
+        self.assertIn('/static/css/hero-vrm.css?v=20260918-reaction1', html)
+        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260918-reaction2"', html)
         self.assertIn('rel="modulepreload" href="/static/vendor/vrm-runtime.module.js?v=20260915-saba2"', html)
         self.assertIn(
             'rel="preload" href="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1"',
@@ -40,6 +41,18 @@ class HeroVrmTests(unittest.TestCase):
             'https://hub.vroid.com/en/characters/8524332363497057331/models/524490645277532236',
             html,
         )
+
+    def test_click_reaction_bundles_sound_and_brand_hearts(self):
+        source = (ROOT / "static" / "js" / "hero-vrm.js").read_text(encoding="utf-8")
+        css = (ROOT / "static" / "css" / "hero-vrm.css").read_text(encoding="utf-8")
+
+        self.assertTrue(AUDIO.is_file())
+        self.assertGreater(AUDIO.stat().st_size, 10_000)
+        self.assertIn("/static/audio/hero-cute-reaction.mp3?v=20260918-2", source)
+        self.assertIn("canvas.addEventListener('click', playReactionAudio)", source)
+        self.assertIn("burstReactionHearts(event)", source)
+        self.assertIn(".creator-scene__reaction-hearts", css)
+        self.assertIn("#55d9ff", source)
 
     def test_runtime_is_self_hosted(self):
         bundle = ROOT / "static" / "vendor" / "vrm-runtime.module.js"

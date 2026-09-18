@@ -13,8 +13,8 @@ const sceneRoot = host?.closest('.creator-scene');
 const studio = host?.closest('.hero-studio');
 let heroLoadSettled = false;
 
-const REACTION_SOUND_URL = '/static/audio/hero-cute-reaction.mp3?v=20260918-1';
-const REACTION_SOUND_VOLUME = .42;
+const REACTION_SOUND_URL = '/static/audio/hero-cute-reaction.mp3?v=20260918-2';
+const REACTION_SOUND_VOLUME = .9;
 const REACTION_SOUND_COOLDOWN = 520;
 const HEART_COLORS = ['#55d9ff', '#7be7ff', '#35b9f2', '#9e8cff'];
 let reactionSound = null;
@@ -264,7 +264,6 @@ async function initHeroVrm() {
 
   function react(event) {
     const now = performance.now();
-    playReactionSound(now);
     burstReactionHearts(event);
     if (reducedMotion) return;
     setFaceCue('reaction', now, 1800);
@@ -272,6 +271,10 @@ async function initHeroVrm() {
     ensureReactionMotion().then(action => {
       if (action) playReaction(action, performance.now());
     });
+  }
+
+  function playReactionAudio() {
+    playReactionSound(performance.now());
   }
 
   function playReaction(action, now) {
@@ -317,6 +320,7 @@ async function initHeroVrm() {
   window.addEventListener('pointermove', setPointer, { passive: true });
   document.addEventListener('pointerout', handlePointerOut, { passive: true });
   canvas.addEventListener('pointerdown', react, { passive: true });
+  canvas.addEventListener('click', playReactionAudio);
 
   function render() {
     if (disposed) return;
@@ -405,6 +409,8 @@ async function initHeroVrm() {
     visibilityObserver.disconnect();
     window.removeEventListener('pointermove', setPointer);
     document.removeEventListener('pointerout', handlePointerOut);
+    canvas.removeEventListener('click', playReactionAudio);
+    reactionSound?.pause();
     mixer.stopAllAction();
     mixer.uncacheRoot(vrm.scene);
     VRMUtils.deepDispose(vrm.scene);
@@ -613,9 +619,16 @@ function playReactionSound(now) {
   lastReactionSoundAt = now;
   prepareReactionSound();
   try {
+    reactionSound.muted = false;
+    reactionSound.volume = REACTION_SOUND_VOLUME;
     reactionSound.currentTime = 0;
     const playback = reactionSound.play();
-    if (playback?.catch) playback.catch(() => {});
+    if (playback?.catch) {
+      playback.catch(() => {
+        reactionSound = null;
+        lastReactionSoundAt = -Infinity;
+      });
+    }
   } catch (_) {
     // Audio is a decorative enhancement and must never block the reaction.
   }
