@@ -14,7 +14,7 @@ const studio = host?.closest('.hero-studio');
 let heroLoadSettled = false;
 
 const REACTION_SOUND_URL = '/static/audio/hero-cute-reaction.mp3?v=20260918-2';
-const REACTION_SOUND_VOLUME = .22;
+const REACTION_SOUND_VOLUME = .07;
 const REACTION_SOUND_COOLDOWN = 520;
 const HEART_COLORS = ['#55d9ff', '#7be7ff', '#35b9f2', '#9e8cff'];
 let reactionSound = null;
