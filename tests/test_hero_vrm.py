@@ -21,12 +21,19 @@ class HeroVrmTests(unittest.TestCase):
 
     def test_landing_page_loads_the_runtime_and_shows_attribution(self):
         html = INDEX.read_text(encoding="utf-8")
-        self.assertIn('/static/models/saba-0.1.vrm?v=20260915-saba1', html)
-        self.assertIn('/static/js/hero-vrm.js?v=20260918-loader1', html)
+        self.assertIn(
+            'data-model="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1"',
+            html,
+        )
+        self.assertIn('data-model-fallback="/static/models/saba-0.1.vrm?v=20260915-saba1"', html)
+        self.assertIn('/static/js/hero-vrm.js?v=20260918-r2-1', html)
         self.assertIn('/static/css/hero-vrm.css?v=20260915-saba6', html)
-        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260918-loader1"', html)
+        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260918-r2-1"', html)
         self.assertIn('rel="modulepreload" href="/static/vendor/vrm-runtime.module.js?v=20260915-saba2"', html)
-        self.assertIn('rel="preload" href="/static/models/saba-0.1.vrm?v=20260915-saba1"', html)
+        self.assertIn(
+            'rel="preload" href="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1"',
+            html,
+        )
         self.assertIn('fetchpriority="high"', html)
         self.assertIn('3D model:</span> SABA_0.1', html)
         self.assertIn(
@@ -65,6 +72,8 @@ class HeroVrmTests(unittest.TestCase):
         html = INDEX.read_text(encoding="utf-8")
 
         self.assertIn("window.addEventListener('pointermove', setPointer", source)
+        self.assertIn('const fallbackUrl = host.dataset.modelFallback', source)
+        self.assertIn('return loader.loadAsync(fallbackUrl)', source)
         self.assertIn("const yaw = smoothPointer.x * .24", source)
         self.assertIn("applyIdlePose(vrm)", source)
         self.assertIn("THREE.LoopRepeat", source)

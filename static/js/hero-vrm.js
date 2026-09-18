@@ -96,7 +96,7 @@ async function initHeroVrm() {
   const ambientPackPromise = reducedMotion
     ? Promise.resolve(null)
     : fetchAmbientMotionPack().catch(() => null);
-  const gltf = await loader.loadAsync(host.dataset.model);
+  const gltf = await loadHeroModel(loader);
   const vrm = gltf.userData.vrm;
   if (!vrm) throw new Error('The model does not contain VRM data');
 
@@ -403,6 +403,17 @@ async function initHeroVrm() {
 
   resize();
   render();
+}
+
+async function loadHeroModel(loader) {
+  const primaryUrl = host.dataset.model;
+  const fallbackUrl = host.dataset.modelFallback;
+  try {
+    return await loader.loadAsync(primaryUrl);
+  } catch (primaryError) {
+    if (!fallbackUrl || fallbackUrl === primaryUrl) throw primaryError;
+    return loader.loadAsync(fallbackUrl);
+  }
 }
 
 function applyBoneRotation(bone, base, x, y, z, smoothing) {
