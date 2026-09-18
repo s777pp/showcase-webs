@@ -154,3 +154,11 @@ def test_dashboard_does_not_store_admin_secret_in_web_storage():
     assert "sessionStorage" not in source
     assert "X-Admin-Secret" not in source
     assert "X-Admin-CSRF" in source
+
+
+def test_user_rows_link_public_profiles_and_load_safe_avatar_routes():
+    root = os.path.dirname(os.path.dirname(__file__))
+    source = open(os.path.join(root, "static", "js", "analytics-dashboard.js"), encoding="utf-8").read()
+    assert '/api/auth/avatar/${u.id}' in source
+    assert '/profile/${encodeURIComponent(u.profile_username)}' in source
+    assert 'target="_blank" rel="noopener"' in source
