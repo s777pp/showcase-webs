@@ -13,6 +13,13 @@ const sceneRoot = host?.closest('.creator-scene');
 const studio = host?.closest('.hero-studio');
 let heroLoadSettled = false;
 
+const REACTION_SOUND_URL = '/static/audio/hero-cute-reaction.mp3?v=20260918-1';
+const REACTION_SOUND_VOLUME = .42;
+const REACTION_SOUND_COOLDOWN = 520;
+const HEART_COLORS = ['#55d9ff', '#7be7ff', '#35b9f2', '#9e8cff'];
+let reactionSound = null;
+let lastReactionSoundAt = -Infinity;
+
 function settleHeroLoad(status) {
   if (heroLoadSettled) return;
   heroLoadSettled = true;
@@ -255,9 +262,11 @@ async function initHeroVrm() {
     pointer.set(0, 0);
   }
 
-  function react() {
-    if (reducedMotion) return;
+  function react(event) {
     const now = performance.now();
+    playReactionSound(now);
+    burstReactionHearts(event);
+    if (reducedMotion) return;
     setFaceCue('reaction', now, 1800);
     reactingUntil = now + 1800;
     ensureReactionMotion().then(action => {
@@ -364,6 +373,7 @@ async function initHeroVrm() {
       firstFrame = false;
       sceneRoot.classList.add('is-vrm-ready');
       settleHeroLoad('ready');
+      prepareReactionSound();
       const warmReaction = () => ensureReactionMotion();
       if ('requestIdleCallback' in window) {
         window.requestIdleCallback(warmReaction, { timeout: 2500 });
@@ -595,5 +605,57 @@ function hasWebGL() {
     return Boolean(window.WebGLRenderingContext && (probe.getContext('webgl2') || probe.getContext('webgl')));
   } catch (_) {
     return false;
+  }
+}
+
+function playReactionSound(now) {
+  if (now - lastReactionSoundAt < REACTION_SOUND_COOLDOWN) return;
+  lastReactionSoundAt = now;
+  prepareReactionSound();
+  try {
+    reactionSound.currentTime = 0;
+    const playback = reactionSound.play();
+    if (playback?.catch) playback.catch(() => {});
+  } catch (_) {
+    // Audio is a decorative enhancement and must never block the reaction.
+  }
+}
+
+function prepareReactionSound() {
+  if (reactionSound) return reactionSound;
+  reactionSound = new Audio(REACTION_SOUND_URL);
+  reactionSound.preload = 'auto';
+  reactionSound.volume = REACTION_SOUND_VOLUME;
+  reactionSound.load();
+  return reactionSound;
+}
+
+function burstReactionHearts(event) {
+  if (!sceneRoot || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let layer = sceneRoot.querySelector('.creator-scene__reaction-hearts');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.className = 'creator-scene__reaction-hearts';
+    layer.setAttribute('aria-hidden', 'true');
+    sceneRoot.appendChild(layer);
+  }
+
+  const rect = sceneRoot.getBoundingClientRect();
+  const originX = THREE.MathUtils.clamp((event?.clientX ?? rect.left + rect.width * .5) - rect.left, 24, rect.width - 24);
+  const originY = THREE.MathUtils.clamp((event?.clientY ?? rect.top + rect.height * .56) - rect.top, 34, rect.height - 18);
+  for (let index = 0; index < 8; index += 1) {
+    const heart = document.createElement('i');
+    const angle = (index / 7 - .5) * Math.PI * .82;
+    const distance = 28 + Math.random() * 52;
+    const drift = Math.sin(angle) * distance;
+    heart.style.setProperty('--heart-x', `${originX}px`);
+    heart.style.setProperty('--heart-y', `${originY}px`);
+    heart.style.setProperty('--heart-drift', `${drift.toFixed(1)}px`);
+    heart.style.setProperty('--heart-rise', `${(74 + Math.cos(angle) * 35 + Math.random() * 24).toFixed(1)}px`);
+    heart.style.setProperty('--heart-delay', `${(index * 18 + Math.random() * 35).toFixed(0)}ms`);
+    heart.style.setProperty('--heart-scale', (.62 + Math.random() * .62).toFixed(2));
+    heart.style.setProperty('--heart-color', HEART_COLORS[index % HEART_COLORS.length]);
+    heart.addEventListener('animationend', () => heart.remove(), { once: true });
+    layer.appendChild(heart);
   }
 }
