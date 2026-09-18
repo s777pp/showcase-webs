@@ -10,14 +10,16 @@ class HomeLoaderTests(unittest.TestCase):
         html = (ROOT / 'static' / 'index.html').read_text(encoding='utf-8')
         self.assertIn("classList.add('home-is-loading')", html)
         self.assertLess(html.index('id="homeLoader"'), html.index('<div class="shell">'))
-        self.assertIn('/static/css/home-loader.css?v=20260918a', html)
-        self.assertIn('/static/js/home-loader.js?v=20260918a', html)
+        self.assertIn('/static/css/home-loader.css?v=20260918b', html)
+        self.assertIn('/static/js/home-loader.js?v=20260918b', html)
 
     def test_loader_waits_for_page_fonts_and_hero(self):
         source = (ROOT / 'static' / 'js' / 'home-loader.js').read_text(encoding='utf-8')
         self.assertIn("window.addEventListener('load', markPageReady", source)
         self.assertIn('document.fonts.ready', source)
         self.assertIn("document.addEventListener('showcasemaker:hero-ready'", source)
+        self.assertIn('new MutationObserver', source)
+        self.assertIn("classList.contains('is-vrm-ready')", source)
         self.assertIn('window.setTimeout(finish, 45000)', source)
 
     def test_vrm_settles_success_and_fallback(self):

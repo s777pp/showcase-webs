@@ -30,6 +30,7 @@
   var pageReady = document.readyState === 'complete';
   var fontsReady = !document.fonts;
   var heroReady = false;
+  var heroObserver = null;
   var finished = false;
   var progress = 4;
 
@@ -72,14 +73,28 @@
   }
 
   function markHeroReady() {
+    if (heroReady) return;
     heroReady = true;
+    if (heroObserver) heroObserver.disconnect();
     stage.textContent = words[2];
     paint(pageReady ? 96 : 86);
     maybeFinish();
   }
 
   document.addEventListener('showcasemaker:hero-ready', markHeroReady, { once: true });
-  if (document.querySelector('.creator-scene.is-vrm-ready, .creator-scene.is-vrm-fallback')) markHeroReady();
+  var heroScene = document.querySelector('.creator-scene');
+  if (heroScene && (heroScene.classList.contains('is-vrm-ready') || heroScene.classList.contains('is-vrm-fallback'))) {
+    markHeroReady();
+  } else if (heroScene && typeof MutationObserver !== 'undefined') {
+    // This also supports an older cached hero-vrm.js: that script sets these
+    // classes even though it does not dispatch the newer readiness event.
+    heroObserver = new MutationObserver(function () {
+      if (heroScene.classList.contains('is-vrm-ready') || heroScene.classList.contains('is-vrm-fallback')) {
+        markHeroReady();
+      }
+    });
+    heroObserver.observe(heroScene, { attributes: true, attributeFilter: ['class'] });
+  }
 
   if (document.readyState === 'complete') markPageReady();
   else window.addEventListener('load', markPageReady, { once: true });

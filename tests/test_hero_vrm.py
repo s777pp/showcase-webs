@@ -22,9 +22,9 @@ class HeroVrmTests(unittest.TestCase):
     def test_landing_page_loads_the_runtime_and_shows_attribution(self):
         html = INDEX.read_text(encoding="utf-8")
         self.assertIn('/static/models/saba-0.1.vrm?v=20260915-saba1', html)
-        self.assertIn('/static/js/hero-vrm.js?v=20260915-saba20', html)
+        self.assertIn('/static/js/hero-vrm.js?v=20260918-loader1', html)
         self.assertIn('/static/css/hero-vrm.css?v=20260915-saba6', html)
-        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260915-saba20"', html)
+        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260918-loader1"', html)
         self.assertIn('rel="modulepreload" href="/static/vendor/vrm-runtime.module.js?v=20260915-saba2"', html)
         self.assertIn('rel="preload" href="/static/models/saba-0.1.vrm?v=20260915-saba1"', html)
         self.assertIn('fetchpriority="high"', html)
