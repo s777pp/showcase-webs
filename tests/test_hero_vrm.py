@@ -27,9 +27,9 @@ class HeroVrmTests(unittest.TestCase):
             html,
         )
         self.assertIn('data-model-fallback="/static/models/saba-0.1.vrm?v=20260915-saba1"', html)
-        self.assertIn('/static/js/hero-vrm.js?v=20260918-reaction5', html)
+        self.assertIn('/static/js/hero-vrm.js?v=20260918-reaction6', html)
         self.assertIn('/static/css/hero-vrm.css?v=20260918-reaction1', html)
-        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260918-reaction5"', html)
+        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260918-reaction6"', html)
         self.assertIn('rel="modulepreload" href="/static/vendor/vrm-runtime.module.js?v=20260915-saba2"', html)
         self.assertIn(
             'rel="preload" href="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1"',
@@ -49,7 +49,7 @@ class HeroVrmTests(unittest.TestCase):
         self.assertTrue(AUDIO.is_file())
         self.assertGreater(AUDIO.stat().st_size, 10_000)
         self.assertIn("/static/audio/hero-cute-reaction.mp3?v=20260918-2", source)
-        self.assertIn("const REACTION_SOUND_VOLUME = .07;", source)
+        self.assertIn("const REACTION_SOUND_VOLUME = 0.05;", source)
         self.assertIn("canvas.addEventListener('click', playReactionAudio)", source)
         self.assertIn("burstReactionHearts(event)", source)
         self.assertIn(".creator-scene__reaction-hearts", css)

@@ -258,7 +258,7 @@ def users(query: str = "", page: int = 1, per_page: int = 30) -> dict:
     try:
         total = connection.execute(f"SELECT COUNT(*) AS n FROM users u {where}", params).fetchone()["n"]
         rows = connection.execute(
-            f"""SELECT u.id,u.email,u.display_name,u.profile_username,u.steam_id,u.created_at,
+            f"""SELECT u.id,u.email,u.display_name,u.profile_username,u.avatar_path,u.steam_id,u.created_at,
                 u.is_pro,u.pro_until,u.email_verified,COALESCE(u.is_suspended,0) AS is_suspended,
                 u.suspended_reason,u.suspended_until,u.discord_id,u.google_id,u.telegram_id,
                 (SELECT MAX(s.created_at) FROM sessions s WHERE s.user_id=u.id) AS last_active,

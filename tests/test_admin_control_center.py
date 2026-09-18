@@ -86,6 +86,11 @@ def test_user_admin_actions_enforce_suspension(monkeypatch, tmp_path):
     assert auth_db.register("person@example.com", "password-12345")[0]
     connection = auth_db._conn()
     user_id = int(connection.execute("SELECT id FROM users WHERE email=?", ("person@example.com",)).fetchone()["id"])
+    connection.execute(
+        "UPDATE users SET display_name=?,profile_username=?,avatar_path=? WHERE id=?",
+        ("Person", "person", "avatars/person.png", user_id),
+    )
+    connection.commit()
     connection.close()
 
     client = _client()
@@ -98,6 +103,8 @@ def test_user_admin_actions_enforce_suspension(monkeypatch, tmp_path):
     assert response.status_code == 200
     item = client.get("/api/admin/control/users?q=person").json()["items"][0]
     assert item["is_pro"] is True
+    assert item["profile_username"] == "person"
+    assert item["avatar_path"] == "avatars/person.png"
 
     response = client.post(
         f"/api/admin/control/users/{user_id}/action",
