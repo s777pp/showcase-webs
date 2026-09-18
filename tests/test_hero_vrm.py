@@ -27,9 +27,9 @@ class HeroVrmTests(unittest.TestCase):
             html,
         )
         self.assertIn('data-model-fallback="/static/models/saba-0.1.vrm?v=20260915-saba1"', html)
-        self.assertIn('/static/js/hero-vrm.js?v=20260918-reaction2', html)
+        self.assertIn('/static/js/hero-vrm.js?v=20260918-reaction3', html)
         self.assertIn('/static/css/hero-vrm.css?v=20260918-reaction1', html)
-        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260918-reaction2"', html)
+        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260918-reaction3"', html)
         self.assertIn('rel="modulepreload" href="/static/vendor/vrm-runtime.module.js?v=20260915-saba2"', html)
         self.assertIn(
             'rel="preload" href="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1"',
