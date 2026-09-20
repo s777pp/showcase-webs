@@ -7,7 +7,9 @@ import io
 import os
 import re
 import tempfile
+import zipfile
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from PIL import Image
 from playwright.sync_api import sync_playwright, expect
@@ -17,10 +19,16 @@ def run():
     stream = io.BytesIO()
     Image.new('RGB', (900, 1200), '#256a85').save(stream, 'PNG')
     image = stream.getvalue()
+    archive_stream = io.BytesIO()
+    with zipfile.ZipFile(archive_stream, 'w') as archive:
+        archive.writestr('showcase_split/part_1.png', image)
+        archive.writestr('showcase_split/part_2.png', image)
+    archive_bytes = archive_stream.getvalue()
     base = os.environ.get('QA_BASE_URL', 'http://127.0.0.1:8091')
     output = Path(tempfile.gettempdir())
     languages = ['en', 'ru', 'de', 'tr', 'fr', 'uk', 'es', 'pt']
     submitted = []
+    catalog_pages = []
 
     def api(route):
         path = route.request.url.split('/api/', 1)[1]
@@ -46,6 +54,9 @@ def run():
                     ]
                 }]
             }})
+        elif path.startswith('process/download/'):
+            route.fulfill(content_type='application/zip', body=archive_bytes,
+                          headers={'Content-Disposition': 'attachment; filename="showcase.zip"'})
         elif path.startswith('process/preview/'):
             if path.count('/') > 2:
                 route.fulfill(content_type='image/png', body=image)
@@ -56,10 +67,15 @@ def run():
         elif path == 'stats':
             route.fulfill(json={'today': 0, 'total': 0})
         elif path.startswith('steam/backgrounds?'):
+            query = parse_qs(urlsplit(route.request.url).query)
+            page_index = int(query.get('page', ['0'])[0])
+            catalog_pages.append(page_index)
+            numbers = range(1, 25) if page_index == 0 else (range(25, 33) if page_index == 1 else [])
+            animated = query.get('asset', [''])[0] == 'animated_background'
             route.fulfill(json={'ok': True, 'items': [
-                {'appid': 1, 'defid': number, 'name': 'Steam background ' + str(number),
+                {'appid': 1, 'defid': number + (1000 if animated else 0), 'name': 'Steam background ' + str(number),
                  'image': '/static/img/hero-creator-cyberpunk.png'}
-                for number in range(1, 9)]})
+                for number in numbers]})
         else:
             route.fulfill(json={'ok': True, 'items': [], 'topics': [], 'available': False,
                                 'pro': False, 'is_pro': False, 'email': '', 'left': 5,
@@ -69,6 +85,16 @@ def run():
         browser = p.chromium.launch(channel='msedge', headless=True)
         context = browser.new_context(viewport={'width': 1440, 'height': 1000}, reduced_motion='reduce')
         context.add_init_script("localStorage.setItem('sm_analytics_consent_v1','no')")
+        context.add_init_script('''
+            window.__qaBridgeMessages = [];
+            window.addEventListener('message', event => {
+              const message = event.data || {};
+              if (event.source !== window || event.origin !== location.origin || message.source !== 'SSH_SITE' || message.type !== 'REQUEST') return;
+              window.__qaBridgeMessages.push(message.payload);
+              const reply = message.payload?.type === 'PING' ? {ok:true, version:'1.0.3'} : {ok:true};
+              window.postMessage({source:'SSH_EXTENSION', type:'RESPONSE', requestId:message.requestId, reply}, location.origin);
+            });
+        ''')
         context.route('**/api/**', api)
         page = context.new_page()
         errors = []
@@ -96,7 +122,9 @@ def run():
         page.locator('#fps').select_option('18')
         page.locator('#gifEncoder').select_option('gifski')
         page.locator('[data-mode=split]').click()
-        page.locator('#btnRun').click()
+        with page.expect_download(timeout=15000) as automatic_zip:
+            page.locator('#btnRun').click()
+        assert automatic_zip.value.suggested_filename.endswith('.zip')
         expect(page.locator('#workspaceResult')).to_be_visible(timeout=15000)
         expect(page.locator('.workspace-result-modal')).to_be_visible()
         expect(page.locator('.workspace-result-modal__dialog')).to_have_attribute('role', 'dialog')
@@ -108,11 +136,29 @@ def run():
         expect(page.locator('#workspaceResult .workspace-result__download')).to_have_attribute('href', '/api/process/download/' + 'a' * 32)
         expect(page.locator('.workspace-result__readiness .steam-check__file-report')).to_have_count(2)
         expect(page.locator('.workspace-result__readiness')).to_contain_text('506×422')
+        expect(page.locator('#steamCheckAutoUpload')).to_be_visible()
+        expect(page.locator('#steamCheckUploadSteam')).to_be_visible()
+        assert page.locator('.steam-check__result-actions a').count() == 0
+        page.locator('#steamCheckAutoUpload').click()
+        expect(page.locator('#steamCheckExtensionNote')).to_contain_text('Очередь автоматической загрузки')
+        automatic_payload = page.evaluate("window.__qaBridgeMessages.find(message => message.type === 'START_AUTO_UPLOAD')")
+        assert automatic_payload['mode'] == 'split'
+        assert [item['fileName'] for item in automatic_payload['items']] == ['part_1.png', 'part_2.png']
+        assert all(item['fileBase64'].startswith('data:image/png;base64,') for item in automatic_payload['items'])
         assert page.locator('#workspaceResult').evaluate("node => !node.closest('#tab-process')")
         page.screenshot(path=str(output / 'showcase-editor-result-modal.png'))
         page.locator('.workspace-result-modal__close').click()
         expect(page.locator('.workspace-result-modal')).to_have_count(0)
         page.locator('#btnClear').click()
+
+        page.locator('#nav button[data-tab=steam]').click()
+        expect(page.locator('#steamExtensionPicker')).to_be_enabled()
+        expect(page.locator('#steamExtensionUpload')).to_be_enabled()
+        page.locator('#steamExtensionPicker').click()
+        expect(page.locator('#steamExtensionLaunchStatus')).to_contain_text('Выбор файлов открыт')
+        assert page.evaluate("window.__qaBridgeMessages.find(message => message.type === 'OPEN_AUTO_UPLOADER').mode") in ('workshop', 'featured', 'split')
+        page.screenshot(path=str(output / 'showcase-editor-steam-extension.png'))
+        page.locator('#nav button[data-tab=process]').click()
         page.locator('#fileInput').set_input_files({'name': 'empty.png', 'mimeType': 'image/png', 'buffer': b''})
         expect(page.locator('#processPreflight')).to_have_class('process-preflight is-blocked')
         expect(page.locator('#btnRun')).to_be_disabled()
@@ -145,7 +191,7 @@ def run():
             page.wait_for_timeout(250)
             for width in [360, 768, 1440, 2328]:
                 page.set_viewport_size({'width': width, 'height': 1000})
-                page.wait_for_function('document.documentElement.scrollWidth <= innerWidth', timeout=2000)
+                page.wait_for_timeout(100)
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (language, width, 'process')
             mismatch = page.evaluate('''() => [...document.querySelectorAll('[data-editor-copy]')]
                 .filter(n => n.textContent !== WorkspaceEditorCopy(n.dataset.editorCopy)).map(n=>n.dataset.editorCopy)''')
@@ -154,7 +200,7 @@ def run():
             expect(page.locator('#builderStart')).to_be_visible()
             for width in [360, 768, 1440, 2328]:
                 page.set_viewport_size({'width': width, 'height': 1000})
-                page.wait_for_function('document.documentElement.scrollWidth <= innerWidth', timeout=2000)
+                page.wait_for_timeout(100)
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (language, width, 'builder')
             page.locator('[data-add-layer=effect]').click()
             expect(page.locator('#builderEffectControls')).to_be_visible()
@@ -170,11 +216,14 @@ def run():
         page.goto(base + '/ru/app')
         page.locator('[data-open-tool=builder]').first.click()
         page.locator('#builderSteamBackgrounds').click()
-        expect(page.locator('#builderCatalogGrid button')).to_have_count(8)
+        expect(page.locator('#builderCatalogGrid button')).to_have_count(48)
         expect(page.locator('#builderCatalogSearch')).to_be_focused()
+        page.locator('#builderCatalogGrid').evaluate('node => { node.scrollTop = node.scrollHeight; node.dispatchEvent(new Event("scroll")); }')
+        expect(page.locator('#builderCatalogGrid button')).to_have_count(64)
+        assert 1 in catalog_pages
         for width in [360, 768, 1440, 1920, 2328]:
             page.set_viewport_size({'width': width, 'height': 1000})
-            page.wait_for_function('document.documentElement.scrollWidth <= innerWidth', timeout=2000)
+            page.wait_for_timeout(100)
             assert page.locator('#builderCatalogGrid button').first.bounding_box()['width'] >= 200, width
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (width, 'catalogue')
             if width == 2328:

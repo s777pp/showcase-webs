@@ -4,25 +4,32 @@
   const state = document.getElementById('steamExtensionState');
   const installAction = document.getElementById('steamExtensionAction');
   const uploadAction = document.getElementById('steamExtensionUpload');
+  const pickerAction = document.getElementById('steamExtensionPicker');
   const launchStatus = document.getElementById('steamExtensionLaunchStatus');
   const modeSelect = document.getElementById('steamMode');
   const modeButtons = Array.from(document.querySelectorAll('[data-steam-upload-mode]'));
-  if (!state || !installAction || !uploadAction || !modeSelect || !modeButtons.length) return;
+  if (!state || !installAction || !uploadAction || !pickerAction || !modeSelect || !modeButtons.length) return;
 
   const EXTENSION_ID = 'nopmeakgeongafdhgmlpllalpcfpedej';
   const MIN_UPLOAD_VERSION = '0.9.8';
+  const MIN_PICKER_VERSION = '1.0.3';
   let installed = false;
   let version = '';
 
   const ru = () => (window.SMLang && SMLang.get ? SMLang.get() : document.documentElement.lang) === 'ru';
-  const text = () => ru() ? {
+  const text = () => {
+    const values = ru() ? {
     checking: 'Проверяем расширение…', installed: 'Расширение подключено', missing: 'Расширение не найдено', outdated: 'Нужно обновить расширение',
-    install: 'Установить расширение', update: 'Обновить расширение', upload: 'Загрузить через расширение',
-    starting: 'Открываем загрузчик Steam…', opened: 'Страница Steam открыта. Выбери указанный файл.', failed: 'Не удалось запустить загрузку через расширение.'
-  } : {
+    install: 'Установить расширение', update: 'Обновить расширение', upload: 'Ручная загрузка через расширение', picker: 'Открыть выбор файлов',
+    starting: 'Открываем загрузчик Steam…', pickerStarting: 'Открываем выбор готовых файлов…', opened: 'Страница Steam открыта. Выбери указанный файл.', pickerOpened: 'Выбор файлов открыт в расширении.', failed: 'Не удалось запустить загрузку через расширение.'
+    } : {
     checking: 'Checking extension…', installed: 'Extension connected', missing: 'Extension not detected', outdated: 'Extension update required',
-    install: 'Install extension', update: 'Update extension', upload: 'Upload through extension',
-    starting: 'Opening the Steam uploader…', opened: 'Steam is open. Choose the requested file.', failed: 'Could not start the extension upload.'
+    install: 'Install extension', update: 'Update extension', upload: 'Manual extension upload', picker: 'Open file selection',
+    starting: 'Opening the Steam uploader…', pickerStarting: 'Opening the ready-file selector…', opened: 'Steam is open. Choose the requested file.', pickerOpened: 'File selection is open in the extension.', failed: 'Could not start the extension upload.'
+    };
+    const language = window.SMLang?.get?.() || 'en';
+    if (language === 'en' || language === 'ru' || !window.SMLang?.translate) return values;
+    return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, SMLang.translate(value, language)]));
   };
 
   function versionAtLeast(value, minimum) {
@@ -41,17 +48,24 @@
     return installed && versionAtLeast(version, MIN_UPLOAD_VERSION);
   }
 
+  function readyForPicker() {
+    return installed && versionAtLeast(version, MIN_PICKER_VERSION);
+  }
+
   function paint(status) {
     const copy = text();
     const ready = readyForUpload();
-    const visibleStatus = installed && !ready ? 'outdated' : status;
+    const pickerReady = readyForPicker();
+    const visibleStatus = installed && !pickerReady ? 'outdated' : status;
     state.dataset.state = visibleStatus;
     state.querySelector('span').textContent = visibleStatus === 'installed'
       ? copy.installed + (version ? ' · v' + version : '')
       : copy[visibleStatus];
     uploadAction.textContent = copy.upload;
     uploadAction.disabled = !ready || visibleStatus === 'checking';
-    installAction.hidden = ready;
+    pickerAction.textContent = copy.picker;
+    pickerAction.disabled = !pickerReady || visibleStatus === 'checking';
+    installAction.hidden = pickerReady;
     installAction.textContent = visibleStatus === 'outdated' ? copy.update : copy.install;
   }
 
@@ -165,9 +179,32 @@
     }
   }
 
+  async function openFileSelection() {
+    const copy = text();
+    launchStatus.className = 'status steam-extension-card__launch-status';
+    launchStatus.textContent = copy.pickerStarting;
+    pickerAction.disabled = true;
+    try {
+      const ping = await extensionMessage({ type: 'PING' });
+      installed = !!(ping && ping.ok);
+      version = installed ? String(ping.version || '') : '';
+      if (!readyForPicker()) throw new Error(installed ? 'extension-outdated' : 'extension-missing');
+      const reply = await extensionMessage({ type: 'OPEN_AUTO_UPLOADER', mode: modeSelect.value, lang: ru() ? 'ru' : 'en' });
+      if (!reply || !reply.ok) throw new Error(reply && reply.error ? reply.error : 'picker-failed');
+      launchStatus.className = 'status ok steam-extension-card__launch-status';
+      launchStatus.textContent = copy.pickerOpened;
+      try { window.SMAnalytics && window.SMAnalytics.track('extension_picker_opened', { mode:modeSelect.value }); } catch (_) {}
+    } catch (_) {
+      launchStatus.className = 'status err steam-extension-card__launch-status';
+      launchStatus.textContent = copy.failed;
+      paint(installed ? (readyForPicker() ? 'installed' : 'outdated') : 'missing');
+    } finally { pickerAction.disabled = !readyForPicker(); }
+  }
+
   modeButtons.forEach((button) => button.addEventListener('click', () => selectMode(button.dataset.steamUploadMode, true)));
   modeSelect.addEventListener('change', () => selectMode(modeSelect.value, false));
   uploadAction.addEventListener('click', startUpload);
+  pickerAction.addEventListener('click', openFileSelection);
   document.querySelector('#nav button[data-tab="steam"]')?.addEventListener('click', pingExtension);
   window.addEventListener('focus', () => { if (document.getElementById('tab-steam')?.classList.contains('active')) pingExtension(); });
   window.addEventListener('sm:langchange', () => paint(installed ? 'installed' : state.dataset.state || 'missing'));

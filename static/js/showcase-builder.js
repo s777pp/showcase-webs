@@ -10,6 +10,9 @@
   var selected = null;
   var uploadType = 'character';
   var catalogPage = 0;
+  var catalogLoading = false;
+  var catalogDone = false;
+  var catalogGeneration = 0;
   var currentProjectId = '';
   var dragging = null;
   var editorHistory = null;
@@ -338,13 +341,36 @@
   });
   window.addEventListener('resize',updateGuides);
 
-  function openCatalog(reset){var wasHidden=el('builderCatalog').hidden;if(reset){catalogPage=0;el('builderCatalogGrid').innerHTML=''}el('builderCatalog').hidden=false;window.WorkspaceEditor?.catalogOpened(wasHidden);var q=el('builderCatalogSearch').value.trim();Promise.all([
-    fetch('/api/steam/backgrounds?asset=points_background&kind=static&page='+catalogPage+'&count=24&q='+encodeURIComponent(q)).then(function(r){return r.json()}),
-    fetch('/api/steam/backgrounds?asset=animated_background&kind=animated&page='+catalogPage+'&count=24&q='+encodeURIComponent(q)).then(function(r){return r.json()})
-  ]).then(function(parts){parts.forEach(function(d){(d.items||[]).forEach(addCatalogItem)});catalogPage++}).catch(function(e){status(e.message,'bad')})}
+  function catalogMessage(message){var target=el('builderCatalogStatus');if(target)target.textContent=window.SMLang?.translate?.(message)||message||''}
+  function nearCatalogEnd(){var grid=el('builderCatalogGrid');return !el('builderCatalog').hidden&&grid.scrollHeight-grid.scrollTop-grid.clientHeight<160}
+  async function openCatalog(reset){
+    var wasHidden=el('builderCatalog').hidden;
+    if(reset){catalogGeneration++;catalogPage=0;catalogDone=false;catalogLoading=false;el('builderCatalogGrid').innerHTML='';el('builderCatalogMore').hidden=true}
+    if(catalogLoading||catalogDone)return;
+    el('builderCatalog').hidden=false;window.WorkspaceEditor?.catalogOpened(wasHidden);
+    var requestGeneration=catalogGeneration,q=el('builderCatalogSearch').value.trim(),page=catalogPage;
+    catalogLoading=true;var received=false;catalogMessage((window.SMLang?.get?.()||document.documentElement.lang)==='ru'?'Загружаем фоны…':'Loading backgrounds…');
+    try{
+      var parts=await Promise.all([
+        fetch('/api/steam/backgrounds?asset=points_background&kind=static&page='+page+'&count=24&q='+encodeURIComponent(q)).then(function(r){if(!r.ok)throw Error('HTTP '+r.status);return r.json()}),
+        fetch('/api/steam/backgrounds?asset=animated_background&kind=animated&page='+page+'&count=24&q='+encodeURIComponent(q)).then(function(r){if(!r.ok)throw Error('HTTP '+r.status);return r.json()})
+      ]);
+      if(requestGeneration!==catalogGeneration)return;
+      if(parts.some(function(d){return !d.ok}))throw Error(parts.find(function(d){return !d.ok}).msg||'Steam catalog is unavailable');
+      var before=el('builderCatalogGrid').children.length;
+      parts.forEach(function(d){(d.items||[]).forEach(addCatalogItem)});catalogPage=page+1;
+      catalogDone=parts.every(function(d){return d.total!=null?(page+1)*24>=Number(d.total):(d.items||[]).length<24})||el('builderCatalogGrid').children.length===before;
+      el('builderCatalogMore').hidden=true;
+      catalogMessage(!el('builderCatalogGrid').children.length?((window.SMLang?.get?.()||document.documentElement.lang)==='ru'?'По запросу фоны не найдены':'No backgrounds found'):(catalogDone?((window.SMLang?.get?.()||document.documentElement.lang)==='ru'?'Все фоны загружены':'All backgrounds loaded'):''));
+      received=true;
+    }catch(e){if(requestGeneration===catalogGeneration){catalogMessage((window.SMLang?.get?.()||document.documentElement.lang)==='ru'?'Не удалось загрузить следующую страницу':'Could not load the next page');el('builderCatalogMore').hidden=false;var retryText=(window.SMLang?.get?.()||document.documentElement.lang)==='ru'?'Повторить загрузку':'Retry loading';el('builderCatalogMore').textContent=window.SMLang?.translate?.(retryText)||retryText;status(e.message,'bad')}}
+    finally{
+      if(requestGeneration===catalogGeneration){catalogLoading=false;if(received)requestAnimationFrame(function(){if(!catalogDone&&nearCatalogEnd())openCatalog(false)})}
+    }
+  }
   function closeCatalog(){el('builderCatalog').hidden=true;window.WorkspaceEditor?.catalogClosed()}
   function addCatalogItem(item){var grid=el('builderCatalogGrid'),key=String(item.appid||'')+':'+String(item.defid||item.image);if(grid.querySelector('[data-key="'+CSS.escape(key)+'"]'))return;var b=document.createElement('button');b.type='button';b.dataset.key=key;var src=item.movie||item.image,poster=item.image||src;b.innerHTML=item.movie?'<video muted loop autoplay playsinline></video>':'<img alt="">';var n=b.firstElementChild;n.src=safeSource(item.movie||poster);if(item.movie)n.poster=safeSource(poster);var caption=document.createElement('span');caption.textContent=item.name||t('background');b.title=caption.textContent;b.appendChild(caption);b.onclick=function(){var layer=defaultLayer('background');layer.name=item.name||t('background');layer.src=src;layer.mediaType=item.movie?'video/webm':'image/jpeg';project.layers=project.layers.filter(function(x){return x.type!=='background'});project.layers.unshift(layer);selected=layer.id;renderLayers();closeCatalog()};grid.appendChild(b)}
-  el('builderSteamBackgrounds').onclick=function(){openCatalog(true)};el('builderCatalogMore').onclick=function(){openCatalog(false)};el('builderCatalogClose').onclick=closeCatalog;var searchTimer;el('builderCatalogSearch').oninput=function(){clearTimeout(searchTimer);searchTimer=setTimeout(function(){openCatalog(true)},350)};
+  el('builderSteamBackgrounds').onclick=function(){openCatalog(true)};el('builderCatalogMore').onclick=function(){openCatalog(false)};el('builderCatalogGrid').addEventListener('scroll',function(){if(nearCatalogEnd())openCatalog(false)},{passive:true});el('builderCatalogClose').onclick=closeCatalog;var searchTimer;el('builderCatalogSearch').oninput=function(){clearTimeout(searchTimer);searchTimer=setTimeout(function(){openCatalog(true)},350)};
 
   async function saveProject(){var r=await fetch('/api/builder/projects',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:currentProjectId,name:el('builderProjectName').value,project:project})}),d=await r.json();if(!r.ok||!d.ok){if(r.status===401)el('btnAuth')&&el('btnAuth').click();throw Error(d.msg||t('failed'))}currentProjectId=d.item.id;status(t('saved')+(d.retention_days?' · 7 days':''),'ok');loadProjects()}
   el('builderSave').onclick=async function(){this.disabled=true;try{for(var layer of project.layers){if(!layer.src||!layer.src.startsWith('blob:'))continue;var source=await fetch(layer.src),blob=await source.blob(),fd=new FormData(),extension=({'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/gif':'gif','video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'})[layer.mediaType||blob.type]||'png';fd.append('file',blob,'restored.'+extension);var response=await fetch('/api/builder/assets',{method:'POST',credentials:'same-origin',body:fd}),data=await response.json();if(!response.ok||!data.ok)throw Error(data.msg||t('failed'));editorHistory?.remember(data.url,blob);layer.src=data.url;layer.mediaType=data.media_type}await saveProject();editorHistory?.commit()}catch(e){status(e.message==='Login required'?t('login'):e.message,'bad')}finally{this.disabled=false}};

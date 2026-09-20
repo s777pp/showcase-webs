@@ -3,6 +3,7 @@
   const t = window.WorkspaceCopy;
   const editorText = key => window.WorkspaceEditorCopy ? WorkspaceEditorCopy(key) : key;
   let urls = [], generation = 0, modal = null, previousFocus = null;
+  const automaticallyDownloaded = new Set();
 
   function node(tag, text, className) {
     const element = document.createElement(tag);
@@ -74,17 +75,22 @@
       toolbar.append(zoom, select); panel.append(toolbar);
       const viewport = node('div', null, 'workspace-result__viewport'); panel.append(viewport);
       const files = node('div', null, 'workspace-result__files'); panel.append(files);
-      const downloadButton = node('a', t('download'), 'btn workspace-result__download'); downloadButton.href = download; panel.append(downloadButton);
+      const downloadButton = node('a', editorText('downloadAgain'), 'btn workspace-result__download');
+      downloadButton.href = download; downloadButton.download = 'showcase_' + String(job.mode || 'out') + '.zip'; panel.append(downloadButton);
       body.append(panel);
 
       const readiness = node('section', null, 'workspace-result__readiness steam-check');
       readiness.append(node('h3', editorText('readinessTitle'), 'workspace-result__section-title'));
       const reportMount = node('div', null, 'workspace-result__readiness-report'); readiness.append(reportMount); body.append(readiness);
-      const integrated = !!(job.readiness && window.SteamCheckResult?.open(job.readiness, download, reportMount));
+      const integrated = !!(job.readiness && window.SteamCheckResult?.open(job.readiness, download, reportMount, {jobId:id}));
       if (integrated) readiness.dataset.status = job.readiness.status || 'ready';
       else {
         const notice = node('div', null, 'workspace-result__readiness-empty');
         notice.append(node('span', 'i'), node('p', editorText('readinessUnavailable'))); reportMount.append(notice);
+      }
+      if (!automaticallyDownloaded.has(String(id))) {
+        automaticallyDownloaded.add(String(id));
+        requestAnimationFrame(() => { if (token === generation && downloadButton.isConnected) downloadButton.click(); });
       }
 
       let groups = [], view = 'result', previousGroup = null;

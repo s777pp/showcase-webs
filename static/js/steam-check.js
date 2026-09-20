@@ -14,8 +14,8 @@
       checking: 'Inspecting files…', ready: 'Ready for Steam', warn: 'Check warnings', fail: 'Not ready',
       files: 'Files', groups: 'Sets', problems: 'Problems', statusLine: '{groups} set(s) · {files} file(s)',
       remove: 'Remove', toProcess: 'Send originals to Process', newCheck: 'New check', downloadSet: 'Download ready set', safeFix: 'Fix names + HEX 21', fixing: 'Preparing a lossless fix…', fixed: 'Safe fix downloaded. No pixels or animation frames were changed.', zipNoTransfer: 'ZIP contents will be transferable when the repair stage is added.',
-      uploadSteam: 'Upload through extension', chooseShowcases: 'Choose showcases', extensionMissing: 'Install SteamShowcase Helper to open the correct Steam uploader and apply long-showcase settings automatically.',
-      installExtension: 'Install extension', extensionOld: 'Update SteamShowcase Helper to version 0.9.8 or newer.', extensionStarting: 'Opening Steam…', extensionFailed: 'The extension could not start the Steam upload.',
+      uploadSteam: 'Manual upload', autoUploadSteam: 'Upload automatically', chooseShowcases: 'Choose showcases', extensionMissing: 'Install SteamShowcase Helper to open the correct Steam uploader and apply long-showcase settings automatically.',
+      installExtension: 'Install extension', extensionOld: 'Update SteamShowcase Helper to version 0.9.8 or newer.', extensionAutoOld: 'Automatic upload requires SteamShowcase Helper 1.0.3 or newer.', extensionStarting: 'Opening Steam…', extensionPreparing: 'Preparing verified files for the extension…', extensionStarted: 'The automatic upload queue is open in the extension.', extensionFailed: 'The extension could not start the Steam upload.',
       mode: { auto: 'Auto', workshop: 'Workshop', featured: 'Featured', split: 'Artwork Split', unknown: 'Unknown set' },
       state: { pass: 'Passed', warn: 'Review', fail: 'Failed' },
       checks: { format: 'Format', geometry: 'Geometry', weight: 'Weight', animation: 'Animation', sync: 'Sync', hex21: 'HEX 21', set: 'Complete set', naming: 'Order' },
@@ -40,8 +40,8 @@
       checking: 'Проверяем файлы…', ready: 'Готово для Steam', warn: 'Проверь замечания', fail: 'Не готово',
       files: 'Файлов', groups: 'Комплектов', problems: 'Проблем', statusLine: 'Комплектов: {groups} · файлов: {files}',
       remove: 'Удалить', toProcess: 'Передать исходники в Обработку', newCheck: 'Новая проверка', downloadSet: 'Скачать готовый комплект', safeFix: 'Исправить названия + HEX 21', fixing: 'Готовим исправление без потери качества…', fixed: 'Исправленный ZIP скачан. Пиксели и кадры анимации не изменялись.', zipNoTransfer: 'Передача содержимого ZIP появится вместе с этапом исправлений.',
-      uploadSteam: 'Загрузить через расширение', chooseShowcases: 'Перейти к выбору витрин', extensionMissing: 'Установи SteamShowcase Helper: он откроет нужный загрузчик Steam и автоматически применит настройки длинной витрины.',
-      installExtension: 'Установить расширение', extensionOld: 'Обнови SteamShowcase Helper до версии 0.9.8 или новее.', extensionStarting: 'Открываем Steam…', extensionFailed: 'Расширение не смогло начать загрузку в Steam.',
+      uploadSteam: 'Загрузить вручную', autoUploadSteam: 'Загрузить автоматически', chooseShowcases: 'Перейти к выбору витрин', extensionMissing: 'Установи SteamShowcase Helper: он откроет нужный загрузчик Steam и автоматически применит настройки длинной витрины.',
+      installExtension: 'Установить расширение', extensionOld: 'Обнови SteamShowcase Helper до версии 0.9.8 или новее.', extensionAutoOld: 'Для автоматической загрузки нужен SteamShowcase Helper 1.0.3 или новее.', extensionStarting: 'Открываем Steam…', extensionPreparing: 'Передаём проверенные файлы в расширение…', extensionStarted: 'Очередь автоматической загрузки открыта в расширении.', extensionFailed: 'Расширение не смогло начать загрузку в Steam.',
       mode: { auto: 'Авто', workshop: 'Workshop', featured: 'Featured', split: 'Artwork Split', unknown: 'Тип не определён' },
       state: { pass: 'Пройдено', warn: 'Проверить', fail: 'Ошибка' },
       checks: { format: 'Формат', geometry: 'Размеры', weight: 'Вес', animation: 'Анимация', sync: 'Синхронность', hex21: 'HEX 21', set: 'Комплект', naming: 'Порядок' },
@@ -64,6 +64,7 @@
   let quota = null;
   let lastReport = null;
   let resultDownload = '';
+  let resultJobId = '';
   let integratedMount = null;
   const EXTENSION_ID = 'nopmeakgeongafdhgmlpllalpcfpedej';
   const EXTENSION_URL = 'https://chromewebstore.google.com/detail/steamshowcase-helper/' + EXTENSION_ID;
@@ -226,7 +227,7 @@
       '<div class="steam-check__metrics"><div class="steam-check__metric"><b>' + report.file_count + '</b><span>' + esc(p.files) + '</span></div><div class="steam-check__metric"><b>' + report.group_count + '</b><span>' + esc(p.groups) + '</span></div><div class="steam-check__metric"><b>' + problemCount + '</b><span>' + esc(p.problems) + '</span></div></div></div>' +
       '<div class="steam-check__pipeline">' + pipeline + '</div><div class="steam-check__groups">' + groups + '</div>' +
       '<div class="steam-check__extension-note" id="steamCheckExtensionNote" hidden></div>' +
-      '<div class="steam-check__result-actions">' + (resultDownload ? '<a class="btn" href="' + esc(resultDownload) + '">' + esc(p.downloadSet) + '</a>' : '') +
+      '<div class="steam-check__result-actions">' + (resultDownload && uploadGroup ? '<button class="btn" type="button" id="steamCheckAutoUpload">' + esc(p.autoUploadSteam) + '</button>' : '') +
       (uploadGroup ? '<button class="btn" type="button" id="steamCheckUploadSteam">' + esc(p.uploadSteam) + '</button>' : '') +
       (canSafeFix ? '<button class="btn ghost" type="button" id="steamCheckSafeFix">' + esc(p.safeFix) + '</button>' : '') +
       '<button class="btn ghost" type="button" id="steamCheckChooseShowcases">' + esc(p.chooseShowcases) + '</button>' +
@@ -236,6 +237,7 @@
     $('steamCheckResults').hidden = false;
     $('steamCheckAgain').onclick = reset;
     if ($('steamCheckToProcess')) $('steamCheckToProcess').onclick = transferToProcess;
+    if ($('steamCheckAutoUpload')) $('steamCheckAutoUpload').onclick = startAutomaticUpload;
     if ($('steamCheckUploadSteam')) $('steamCheckUploadSteam').onclick = startSteamUpload;
     if ($('steamCheckSafeFix')) $('steamCheckSafeFix').onclick = runSafeFix;
     $('steamCheckChooseShowcases').onclick = openShowcasePicker;
@@ -283,6 +285,74 @@
     if (group.mode === 'split') files.sort((a, b) => Number(b.width || 0) - Number(a.width || 0));
     return { type: 'START_STEAM_UPLOAD', mode: group.mode === 'split' ? 'artwork' : group.mode, files: files.map((file) => ({ name: file.name, width: file.width, height: file.height })), lang: language() };
   }
+  function uploadGroup() {
+    return lastReport && lastReport.groups.find((item) => item.mode !== 'unknown' && item.status !== 'fail');
+  }
+  function sortedPrimaryFiles(group) {
+    const files = group.files.filter((file) => !file.auxiliary).slice();
+    if (group.mode === 'workshop') files.sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true }));
+    if (group.mode === 'split') files.sort((a, b) => Number(b.width || 0) - Number(a.width || 0));
+    return files;
+  }
+  function fileAsDataUrl(blob, name) {
+    const extension = String(name || '').split('.').pop().toLowerCase();
+    const mime = /gif/.test(extension) ? 'image/gif' : /jpe?g/.test(extension) ? 'image/jpeg' : 'image/png';
+    const typed = blob.type && /^image\/(png|jpe?g|gif)$/i.test(blob.type) ? blob : blob.slice(0, blob.size, mime);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error || new Error('file-read-failed'));
+      reader.readAsDataURL(typed);
+    });
+  }
+  async function automaticUploadPayload() {
+    const group = uploadGroup();
+    if (!group || !resultJobId) throw new Error(t().extensionFailed);
+    const response = await fetch('/api/process/preview/' + encodeURIComponent(resultJobId), { credentials:'include', cache:'no-store' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok || !Array.isArray(data.files)) throw new Error(data.msg || t().requestFailed);
+    const previewFiles = data.files.slice();
+    const primary = sortedPrimaryFiles(group);
+    const used = new Set();
+    const items = [];
+    for (const target of primary) {
+      const wanted = String(target.name || '').replace(/\\/g, '/');
+      const wantedBase = wanted.split('/').pop();
+      const matchIndex = previewFiles.findIndex((candidate, index) => {
+        if (used.has(index)) return false;
+        const name = String(candidate.name || '').replace(/\\/g, '/');
+        return name === wanted || name.endsWith('/' + wanted) || name.endsWith('/' + wantedBase) || name.split('/').pop() === wantedBase;
+      });
+      if (matchIndex < 0) throw new Error(t().requestFailed);
+      used.add(matchIndex);
+      const file = previewFiles[matchIndex];
+      const fileUrl = new URL(String(file.url || ''), location.origin);
+      if (fileUrl.origin !== location.origin || !fileUrl.pathname.startsWith('/api/process/preview/' + encodeURIComponent(resultJobId) + '/')) throw new Error(t().requestFailed);
+      const fileResponse = await fetch(fileUrl.href, { credentials:'include', cache:'no-store' });
+      if (!fileResponse.ok) throw new Error(t().requestFailed);
+      const blob = await fileResponse.blob();
+      if (!blob.size || blob.size > 5 * 1024 * 1024) throw new Error(t().requestFailed);
+      items.push({ fileName: wantedBase, fileSize: blob.size, fileBase64: await fileAsDataUrl(blob, wantedBase) });
+    }
+    return { type:'START_AUTO_UPLOAD', mode:group.mode, lang:language(), items };
+  }
+  async function startAutomaticUpload() {
+    const button = $('steamCheckAutoUpload');
+    if (!button) return;
+    button.disabled = true;
+    button.textContent = t().extensionPreparing;
+    try {
+      const ping = await extensionMessage({ type:'PING' });
+      if (!ping.ok) throw new Error('extension-missing');
+      if (!versionAtLeast(ping.version, '1.0.3')) { showExtensionOffer(t().extensionAutoOld); return; }
+      const reply = await extensionMessage(await automaticUploadPayload());
+      if (!reply.ok) throw new Error(reply.error || t().extensionFailed);
+      const note = $('steamCheckExtensionNote');
+      if (note) { note.hidden = false; note.textContent = t().extensionStarted; }
+    } catch (error) {
+      showExtensionOffer(error && error.message && !/extension-missing/.test(error.message) ? error.message : t().extensionMissing);
+    } finally { button.disabled = false; button.textContent = t().autoUploadSteam; }
+  }
   function showExtensionOffer(message) {
     const note = $('steamCheckExtensionNote');
     if (!note) return;
@@ -322,6 +392,7 @@
     selected = [];
     lastReport = null;
     resultDownload = '';
+    resultJobId = '';
     renderFiles();
     $('steamCheckStatus').textContent = '';
     $('steamCheckResults').hidden = true;
@@ -397,10 +468,11 @@
   refreshAccess();
 
   window.SteamCheckResult = {
-    open(report, downloadUrl, mount) {
+    open(report, downloadUrl, mount, options) {
       if (!report || !Array.isArray(report.groups)) return false;
       root.dataset.integrated = '1';
       resultDownload = String(downloadUrl || '');
+      resultJobId = String(options && options.jobId || '');
       selected = [];
       renderFiles();
       renderReport(report);
@@ -426,6 +498,7 @@
       root.removeAttribute('data-status');
       lastReport = null;
       resultDownload = '';
+      resultJobId = '';
       integratedMount = null;
       paintGate();
     }

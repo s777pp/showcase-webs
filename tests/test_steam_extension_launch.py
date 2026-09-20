@@ -10,11 +10,14 @@ class SteamExtensionLaunchTests(unittest.TestCase):
         cls.script = (root / "static" / "js" / "steam-extension-status.js").read_text(encoding="utf-8")
 
     def test_steam_tab_has_all_three_quick_modes_and_launch_button(self):
+        self.assertIn('id="steamExtensionPicker"', self.html)
         self.assertIn('id="steamExtensionUpload"', self.html)
         for mode in ("workshop", "featured", "split"):
             self.assertIn(f'data-steam-upload-mode="{mode}"', self.html)
 
     def test_quick_launch_reuses_existing_extension_protocol(self):
+        self.assertIn("type: 'OPEN_AUTO_UPLOADER'", self.script)
+        self.assertIn("MIN_PICKER_VERSION = '1.0.3'", self.script)
         self.assertIn("type: 'START_STEAM_UPLOAD'", self.script)
         self.assertIn("mode === 'split' ? 'artwork' : mode", self.script)
         for expected_name in ("part_1", "part_5", "featured_630", "center_506", "side_100"):

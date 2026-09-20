@@ -18,7 +18,7 @@ def run():
         page = context.new_page()
         for language in ['ru', 'en', 'de', 'tr', 'fr', 'uk', 'es', 'pt']:
             page.goto(base + '/' + language)
-            page.wait_for_function("!document.documentElement.classList.contains('home-is-loading')")
+            page.locator('html:not(.home-is-loading)').wait_for(state='attached')
             page.evaluate('document.fonts.ready')
             for width in [390, 1440, 1920, 2560]:
                 page.set_viewport_size({'width': width, 'height': 1080})
@@ -40,16 +40,16 @@ def run():
         # Real scroll reveal: containers must be transparent before cards appear.
         page.emulate_media(reduced_motion='no-preference')
         page.goto(base + '/ru')
-        page.wait_for_function("!document.documentElement.classList.contains('home-is-loading')")
+        page.locator('html:not(.home-is-loading)').wait_for(state='attached')
         for selector in ['.q-grid', '.grid2 .triage-card']:
             assert page.locator(selector).evaluate("n=>getComputedStyle(n).backgroundColor") == 'rgba(0, 0, 0, 0)'
         for selector in ['.subc', '.q-card']:
             page.goto(base + '/ru')
             page.evaluate('window.scrollTo(0,0)')
-            page.wait_for_function("!document.documentElement.classList.contains('home-is-loading')")
+            page.locator('html:not(.home-is-loading)').wait_for(state='attached')
             card = page.locator(selector).first
             expect(card).to_have_attribute('data-home-reveal', 'block')
-            page.wait_for_function("s=>getComputedStyle(document.querySelector(s)).opacity==='0'", arg=selector)
+            expect(card).to_have_css('opacity', '0')
             assert card.evaluate("n=>getComputedStyle(n).opacity") == '0', (selector, card.get_attribute('data-home-visible'), card.bounding_box())
             card.scroll_into_view_if_needed()
             expect(card).to_have_attribute('data-home-visible', 'true')

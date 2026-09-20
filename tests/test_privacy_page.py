@@ -79,7 +79,8 @@ class PrivacyPageTests(unittest.TestCase):
             source = (static / page).read_text(encoding='utf-8')
             self.assertIn('ss-shell.js?v=20260911-account3', source)
             self.assertIn('analytics.js?v=20260910a', source)
-            self.assertIn('locales-extra.js?v=20260909-languages8', source)
+            locale_version = '20260920-auto-upload1' if page == 'app.html' else '20260909-languages8'
+            self.assertIn(f'locales-extra.js?v={locale_version}', source)
             self.assertIn('i18n.js?v=20260909-languages4', source)
         for page in ['profile.html', 'profile-view.html']:
             self.assertIn('id="ssFootHost"', (static / page).read_text(encoding='utf-8'))
