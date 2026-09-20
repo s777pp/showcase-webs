@@ -1,0 +1,24 @@
+/* More breathing room, retaining the existing hero artwork and type palette. */
+body.page-home {--home-frame:min(1600px,calc(100% - 64px))}
+@media(min-width:1181px) {
+  body.page-home .hero {grid-template-columns:minmax(0,.95fr) minmax(0,1.2fr)!important;column-gap:clamp(32px,3vw,64px)!important}
+  body.page-home .hero>.hero-studio {width:100%!important;max-width:100%!important;margin:0!important;aspect-ratio:1.44!important}
+}
+/* Long localized words stay in the text column rather than crossing the artwork. */
+body.page-home .hero-echo-h1 {min-width:0!important}
+body.page-home .hero-echo-h1 .echo-text__echo--front {overflow-wrap:anywhere!important;hyphens:auto;text-wrap:balance}
+/* Card backgrounds belong to the cards themselves. Parent gap-colours previously
+   appeared as solid blue-grey slabs while the children were still transparent. */
+body.page-home .q-grid,
+body.page-home .grid2 .triage-card {background:transparent!important}
+body.page-home .q-card,
+body.page-home .grid2 .subc {border:1px solid var(--os-line,#243242)!important}
+body.page-home :is(.q-card,.subc)[data-home-reveal][data-home-reveal] {
+  translate:none!important;
+  transition:opacity .7s ease!important;
+  transition-delay:0s!important;
+}
+@media(max-width:820px) {body.page-home {--home-frame:calc(100% - 28px)}}
+@media(prefers-reduced-motion:reduce) {
+  body.page-home :is(.q-card,.subc)[data-home-reveal][data-home-reveal] {transition:none!important}
+}

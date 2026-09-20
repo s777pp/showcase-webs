@@ -64,6 +64,7 @@
   let quota = null;
   let lastReport = null;
   let resultDownload = '';
+  let integratedMount = null;
   const EXTENSION_ID = 'nopmeakgeongafdhgmlpllalpcfpedej';
   const EXTENSION_URL = 'https://chromewebstore.google.com/detail/steamshowcase-helper/' + EXTENSION_ID;
   const $ = (id) => document.getElementById(id);
@@ -328,7 +329,7 @@
     $('steamCheckEmpty').hidden = false;
     root.removeAttribute('data-status');
     paintGate();
-    if (integrated) document.querySelector('#nav button[data-tab="process"]')?.click();
+    if (integrated) window.ProcessResult?.close?.();
   }
 
   function transferToProcess() {
@@ -396,18 +397,37 @@
   refreshAccess();
 
   window.SteamCheckResult = {
-    open(report, downloadUrl) {
+    open(report, downloadUrl, mount) {
       if (!report || !Array.isArray(report.groups)) return false;
       root.dataset.integrated = '1';
       resultDownload = String(downloadUrl || '');
       selected = [];
       renderFiles();
-      const tab = document.querySelector('#nav button[data-tab="check"]');
-      if (tab) tab.click();
       renderReport(report);
+      integratedMount = mount || null;
+      if (integratedMount) {
+        integratedMount.append($('steamCheckResults'));
+        integratedMount.closest('.steam-check')?.setAttribute('data-status', report.status || 'ready');
+      } else {
+        const tab = document.querySelector('#nav button[data-tab="check"]');
+        if (tab) tab.click();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       paintGate();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
       return true;
+    },
+    release() {
+      const results = $('steamCheckResults');
+      const home = $('steamCheckReport');
+      if (results && home && results.parentElement !== home) home.append(results);
+      if (results) { results.hidden = true; results.innerHTML = ''; }
+      if ($('steamCheckEmpty')) $('steamCheckEmpty').hidden = false;
+      delete root.dataset.integrated;
+      root.removeAttribute('data-status');
+      lastReport = null;
+      resultDownload = '';
+      integratedMount = null;
+      paintGate();
     }
   };
 })();

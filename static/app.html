@@ -79,38 +79,46 @@
     <div class="topbar">
       <div>
         <div class="workspace-heading"><div class="h-title" id="pageTitle">Process</div>
+        <div class="h-sub" id="pageSub">Workshop / Featured / Split cuts, watermark and Steam ZIP</div>
           <div class="workspace-switch" role="navigation" aria-label="Showcase workspace">
-            <button type="button" class="active" data-open-tool="process" data-i="workspace_process">Process</button>
-            <button type="button" data-open-tool="dna">DNA <span class="workspace-exp">EXP</span></button>
-            <button type="button" data-open-tool="builder">Builder</button>
+            <button type="button" class="active" data-open-tool="process"><span data-editor-icon="cut"></span><span><b data-editor-copy="processTab">Prepare a file</b><small data-editor-copy="processTabHint">Cut a finished image or video for Steam</small></span></button>
+            <button type="button" data-open-tool="builder"><span data-editor-icon="layers"></span><span><b data-editor-copy="builderTab">Create a design</b><small data-editor-copy="builderTabHint">Combine a background, character and effects</small></span></button>
             <button type="button" data-open-tool="projects" data-i="workspace_projects">My projects</button>
             <button type="button" data-job-center>Jobs</button>
+            <details class="workspace-more"><summary data-editor-copy="more">More</summary><button type="button" data-open-tool="dna">Steam DNA · EXP</button></details>
           </div>
         </div>
-        <div class="h-sub" id="pageSub">Workshop / Featured / Split cuts, watermark and Steam ZIP</div>
       </div>
     </div>
 
   <section class="tab active" id="tab-process">
     <nav class="process-route" id="processRoute" aria-label="Processing steps">
-      <button type="button" class="is-active" data-process-step="mode"><span>01</span><b data-workspace-copy="stepMode">Showcase</b><small data-workspace-copy="stepModeHint">Choose the Steam layout</small></button>
-      <button type="button" data-process-step="settings"><span>02</span><b data-workspace-copy="stepSettings">Settings</b><small data-workspace-copy="stepSettingsHint">Set quality and watermark</small></button>
-      <button type="button" data-process-step="files"><span>03</span><b data-workspace-copy="stepFiles">Files</b><small data-workspace-copy="stepFilesHint">Add and check sources</small></button>
-      <button type="button" data-process-step="result"><span>04</span><b data-workspace-copy="stepResult">Result</b><small data-workspace-copy="stepResultHint">Preview and download</small></button>
+      <button type="button" class="is-active" data-process-step="files"><span>1</span><b data-editor-copy="stepFile">Add a file</b></button>
+      <button type="button" data-process-step="mode"><span>2</span><b data-editor-copy="stepLayout">Choose a showcase</b></button>
+      <button type="button" data-process-step="result"><span>3</span><b data-editor-copy="stepResult">Get your files</b></button>
     </nav>
+    <div class="process-controls">
+    <div class="card process-step-card" id="processFilesCard" data-process-card="files">
+      <h2><span class="editor-step">1</span><span data-editor-copy="addFile">Add your image or video</span></h2>
+      <div class="drop" id="drop" role="button" tabindex="0" aria-labelledby="uploadTitle" data-sm-enhanced="1"><span class="editor-upload-icon" data-editor-icon="upload"></span><strong id="uploadTitle" data-editor-copy="chooseFile">Choose a file</strong><span data-editor-copy="dropHint">or drag it here</span><small>PNG · JPG · GIF · MP4 · WebM · AVI</small></div>
+      <button type="button" class="btn ghost asset-library-open" data-asset-library>My media · upload once</button>
+      <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif,.avi,.mp4,.mov,.webm"/>
+      <div class="files" id="fileList"></div>
+      <section class="process-preflight" id="processPreflight" aria-live="polite">
+        <div class="process-preflight__empty"><span>✓</span><p><b data-workspace-copy="preflightTitle">Source check</b><small data-workspace-copy="preflightEmpty">Add files to check format, size, duration and resolution before processing.</small></p></div>
+      </section>
+    </div>
     <div class="card process-step-card" id="processModeCard" data-process-card="mode">
-      <h2 data-i="mode">Mode</h2>
+      <h2><span class="editor-step">2</span><span data-editor-copy="chooseLayout">Choose your Steam showcase</span></h2><p class="editor-note" data-editor-copy="layoutHelp">Match the type selected in your Steam profile. The preview shows the cut.</p>
       <div class="modes">
-        <button type="button" class="mode active" data-mode="workshop"><div class="mode-diagram mode-diagram--workshop" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><strong>Workshop</strong><span data-i="mode_ws">5 panels for Workshop showcase</span></button>
-        <button type="button" class="mode" data-mode="featured"><div class="mode-diagram mode-diagram--featured" aria-hidden="true"><i></i></div><strong>Featured</strong><span data-i="mode_ft">Artwork 630px wide</span></button>
-        <button type="button" class="mode" data-mode="split"><div class="mode-diagram mode-diagram--split" aria-hidden="true"><i></i><i></i></div><strong>Artwork Split</strong><span data-i="mode_sp">Center 506 + side 100</span></button>
+        <button type="button" class="mode active" data-mode="workshop"><div class="mode-diagram mode-diagram--workshop" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><strong data-editor-copy="mode_ws">Workshop</strong><span data-editor-copy="mode_ws_hint">5 panels for Workshop showcase</span><small>Workshop</small></button>
+        <button type="button" class="mode" data-mode="featured"><div class="mode-diagram mode-diagram--featured" aria-hidden="true"><i></i></div><strong data-editor-copy="mode_ft">Featured</strong><span data-editor-copy="mode_ft_hint">Artwork 630px wide</span><small>Featured</small></button>
+        <button type="button" class="mode" data-mode="split"><div class="mode-diagram mode-diagram--split" aria-hidden="true"><i></i><i></i></div><strong data-editor-copy="mode_sp">Artwork Split</strong><span data-editor-copy="mode_sp_hint">Center 506 + side 100</span><small>Artwork Split</small></button>
       </div>
     </div>
     <div class="card process-step-card" id="processSettingsCard" data-process-card="settings">
-      <div class="process-step-heading">
-        <h2 data-i="params">Settings</h2>
-        <span data-workspace-copy="settingsSummary">Steam-ready defaults are already selected</span>
-      </div>
+      <details class="process-advanced" id="processAdvanced">
+        <summary><span data-editor-icon="sliders"></span><span><b data-editor-copy="adjustments">Appearance and quality</b><small data-editor-copy="optional">Optional — you can keep the default settings</small></span><i aria-hidden="true"></i></summary>
       <div class="row process-basics">
         <label class="field process-basics__fps" translate="no"><span class="lbl-fps">FPS</span><select id="fps"><option value="12" selected>12 FPS</option><option value="15">15 FPS</option><option value="18">18 FPS</option><option value="20">20 FPS</option><option value="24">24 FPS</option></select></label>
         <label class="field process-basics__size"><span data-i="lbl_size">Width</span>
@@ -123,8 +131,6 @@
         </label>
         <label class="field process-switch process-basics__watermark"><input type="checkbox" id="wmEnable" checked/> <span data-i="lbl_wm">Watermark</span></label>
       </div>
-      <details class="process-advanced" id="processAdvanced">
-        <summary><span><b data-workspace-copy="advanced">Advanced settings</b><small data-workspace-copy="advancedHint">Watermark, encoder, all modes and panel outline</small></span><i aria-hidden="true"></i></summary>
         <div class="row process-advanced__grid">
         <label class="field process-field--watermark"><span data-i="lbl_wm">Watermark</span><input id="wmText" value="n1t1337"/></label>
         <label class="field process-field--font"><span data-i="lbl_font">Font</span><select id="wmFont">
@@ -173,13 +179,16 @@
         <div id="wmTip" style="display:none;margin-top:10px;font-size:12px;color:rgba(0,210,255,.9);padding:8px 12px;border-radius:10px;border:1px solid rgba(0,210,255,.25);background:rgba(0,210,255,.06)"></div>
       </details>
     </div>
+    </div>
+    <div class="process-preview-column">
     <div class="card process-step-card" id="wmPreviewCard" data-process-card="preview">
       <h2 data-i="wm_preview_h">Showcase preview</h2>
       <p data-i="wm_hint" style="font-size:12px;color:var(--muted);margin:0 0 12px">The selected showcase layout is shown directly on the frame. For video/GIF the first frame is used; drag the watermark to set its position.</p>
       <div id="wmCanvasWrap" style="position:relative;max-width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#111;min-height:160px;display:flex;align-items:center;justify-content:center">
         <canvas id="wmCanvas" style="max-width:100%;max-height:420px;display:none;cursor:grab;touch-action:none"></canvas>
-        <div id="wmCanvasEmpty" data-i="wm_empty" style="padding:28px;font-size:13px;color:var(--muted);text-align:center">No preview — add an image in «Files»</div>
+        <div id="wmCanvasEmpty"><div class="editor-preview-sample" data-preview-mode="workshop" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><strong data-editor-copy="previewEmpty">Your showcase will appear here</strong><span data-editor-copy="previewHint">Add a file on the left to see how it will be cut.</span><button type="button" class="btn ghost" data-editor-upload data-editor-copy="chooseFile">Choose a file</button></div>
       </div>
+      <p class="editor-preview-caption" id="processLayoutCaption"></p>
       <input type="hidden" id="wmX" value=""/>
       <input type="hidden" id="wmY" value=""/>
       <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">
@@ -199,17 +208,8 @@
         </div>
       </div>
     </div>
-    <div class="card process-step-card" id="processFilesCard" data-process-card="files">
-      <h2 data-i="files">Files</h2>
-      <div class="drop" id="drop" data-i="drop">Drop PNG, JPG, GIF, MP4 or AVI — or click to browse</div>
-      <button type="button" class="btn ghost asset-library-open" data-asset-library>My media · upload once</button>
-      <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif,.avi,.mp4,.mov,.webm"/>
-      <div class="files" id="fileList"></div>
-      <section class="process-preflight" id="processPreflight" aria-live="polite">
-        <div class="process-preflight__empty"><span>✓</span><p><b data-workspace-copy="preflightTitle">Source check</b><small data-workspace-copy="preflightEmpty">Add files to check format, size, duration and resolution before processing.</small></p></div>
-      </section>
-      <div class="row" style="margin-top:16px">
-        <button class="btn" id="btnRun" disabled data-i="run">Process</button>
+<div class="card process-submit" id="processSubmit" data-process-card="result"><h2><span class="editor-step">3</span><span data-editor-copy="finish">Prepare the Steam files</span></h2><p class="editor-note" id="processNextHint" aria-live="polite"></p>      <div class="row" style="margin-top:16px">
+        <button class="btn" id="btnRun" disabled data-editor-copy="run">Create Steam files</button>
         <button class="btn ghost" id="btnCancelProcess" type="button" hidden>Cancel job</button>
         <button class="btn ghost" id="btnClear" type="button" data-i="clear">Clear</button>
         <a class="btn ghost" id="dlProcess" data-i="dl_zip" style="display:none;text-decoration:none" href="#">Download ZIP</a>
@@ -229,6 +229,7 @@
         <span data-i="process_check_hint_body">Sign in before processing to receive a detailed Steam compatibility report after the ZIP is built.</span>
         <button class="btn ghost" type="button" id="processReadinessLogin" data-i="login">Log in</button>
       </div>
+    </div>
     </div>
   </section>
 
@@ -824,15 +825,20 @@
   </section>
 
   <section class="tab" id="tab-builder">
+    <nav class="editor-mobile-nav" aria-label="Builder">
+      <button type="button" data-editor-jump="add"><span data-editor-icon="layers"></span><span data-editor-copy="add">Add</span></button>
+      <button type="button" data-editor-jump="canvas"><span data-editor-icon="background"></span><span data-editor-copy="canvas">Canvas</span></button>
+      <button type="button" data-editor-jump="edit" disabled><span data-editor-icon="sliders"></span><span data-editor-copy="edit">Edit</span></button>
+    </nav>
     <div class="builder-shell" id="showcaseBuilder">
       <aside class="builder-tools card">
-        <div class="builder-panel-title"><span>01</span><strong data-builder-i="add-layer">Add layer</strong></div>
+        <div class="builder-panel-title"><strong data-editor-copy="addElement">Add to your design</strong></div>
         <div class="builder-add-grid">
-          <button type="button" data-add-layer="background"><b>▧</b><span data-builder-i="background">Background</span></button>
-          <button type="button" data-add-layer="character"><b>♙</b><span data-builder-i="character">Character</span></button>
-          <button type="button" data-add-layer="text"><b>T</b><span data-builder-i="text">Text</span></button>
-          <button type="button" data-add-layer="frame"><b>□</b><span data-builder-i="frame">Frame</span></button>
-          <button type="button" data-add-layer="effect"><b>✦</b><span data-builder-i="effect">Effect</span></button>
+          <button type="button" data-add-layer="background"><b data-editor-icon="background"></b><span data-builder-i="background">Background</span><small data-editor-copy="add_background"></small></button>
+          <button type="button" data-add-layer="character"><b data-editor-icon="character"></b><span data-builder-i="character">Character</span><small data-editor-copy="add_character"></small></button>
+          <button type="button" data-add-layer="text"><b data-editor-icon="text"></b><span data-builder-i="text">Text</span><small data-editor-copy="add_text"></small></button>
+          <button type="button" data-add-layer="frame"><b data-editor-icon="frame"></b><span data-builder-i="frame">Frame</span><small data-editor-copy="add_frame"></small></button>
+          <button type="button" data-add-layer="effect"><b data-editor-icon="effect"></b><span data-builder-i="effect">Effect</span><small data-editor-copy="add_effect"></small></button>
         </div>
         <input id="builderMediaInput" type="file" accept="image/*,video/*,.gif,.webm,.mp4,.mov" hidden data-sm-enhanced="1"/>
         <div class="builder-source" id="builderSourcePanel">
@@ -848,13 +854,54 @@
             <button type="button" data-builder-template="cinematic"><b data-builder-i="template-cinematic">Cinematic</b><span data-builder-i="template-cinematic-hint">Wide title and light streaks</span></button>
           </div>
         </details>
-        <div class="builder-catalog" id="builderCatalog" hidden>
-          <div class="builder-catalog-head"><input id="builderCatalogSearch" placeholder="Search Steam"/><button type="button" id="builderCatalogClose">×</button></div>
+
+      </aside>
+
+      <section class="builder-stage card">
+        <section class="builder-catalog" id="builderCatalog" aria-labelledby="builderCatalogTitle" hidden>
+          <div class="builder-catalog-head"><strong id="builderCatalogTitle" data-builder-i="steam-backgrounds">Steam backgrounds</strong><button type="button" id="builderCatalogClose" data-editor-copy="closeCatalog">Close</button></div>
+          <input id="builderCatalogSearch" type="search" placeholder="Search Steam backgrounds" aria-label="Search Steam backgrounds"/>
           <div class="builder-catalog-grid" id="builderCatalogGrid"></div>
           <button type="button" class="btn ghost" id="builderCatalogMore" data-builder-i="more">More</button>
+        </section>
+        <div class="builder-stage-head">
+          <div class="builder-mode-switch" id="builderModes">
+            <button type="button" class="active" data-builder-mode="workshop"><span class="mode-diagram mode-diagram--workshop"><i></i><i></i><i></i><i></i><i></i></span>Workshop</button>
+            <button type="button" data-builder-mode="featured"><span class="mode-diagram mode-diagram--featured"><i></i></span>Featured</button>
+            <button type="button" data-builder-mode="split"><span class="mode-diagram mode-diagram--split"><i></i><i></i></span>Split</button>
+          </div>
+          <span class="builder-live"><i></i> LIVE</span>
         </div>
+        <div class="builder-canvas-toolbar" aria-label="Canvas tools">
+          <label class="builder-toggle builder-snap-toggle"><input id="builderSnap" type="checkbox" checked/><i></i><span data-builder-i="snap">Smart guides</span></label>
+          <div class="builder-backdrops" role="group" aria-label="Preview background">
+            <span data-builder-i="backdrop">Edge check</span>
+            <button type="button" class="active" data-builder-backdrop="project" data-builder-i-title="backdrop-project" title="Project preview">A</button>
+            <button type="button" data-builder-backdrop="dark" data-builder-i-title="backdrop-dark" title="Dark background">●</button>
+            <button type="button" data-builder-backdrop="light" data-builder-i-title="backdrop-light" title="Light background">○</button>
+            <button type="button" data-builder-backdrop="checker" data-builder-i-title="backdrop-checker" title="Transparency grid">▦</button>
+          </div>
+        </div>
+        <div class="builder-canvas-wrap"><div class="editor-builder-empty" id="builderStart"><span data-editor-icon="layers"></span><h2 data-editor-copy="blankTitle">Start with a background</h2><p data-editor-copy="blankHint">Use your own image or video, or choose a Steam background. Then add a character, text and effects.</p><button class="btn" type="button" data-editor-start="background"><span data-editor-icon="upload"></span><span data-editor-copy="uploadBackground">Upload a background</span></button><button class="btn ghost" type="button" data-editor-start="steam" data-editor-copy="steamBackground">Choose from Steam</button></div><canvas id="builderCanvas" width="750" height="1000" aria-label="Showcase canvas"></canvas><div class="builder-guides" id="builderGuides" data-mode="workshop"></div><div class="builder-snap-guides" id="builderSnapGuides" aria-hidden="true"><i></i><b></b></div></div>
+        <p class="builder-stage-help" data-builder-i="stage-help">Select a layer, then drag it directly on the showcase. Guides show the exact Steam cut.</p>
+        <p class="builder-shortcuts" data-builder-i="shortcuts">Arrow keys: move · Shift: 10 px · Ctrl/Cmd+D: duplicate</p>
+        <p class="editor-note editor-export-hint" data-editor-copy="exportHint">Next, preview the cut and create the files for Steam.</p>
+        <div class="builder-actions">
+          <input id="builderProjectName" value="My showcase" maxlength="80" aria-label="Project name"/>
+          <button type="button" class="btn ghost" id="builderSave" data-builder-i="save">Save project</button>
+          <button type="button" class="btn" id="builderExport" data-editor-copy="continue">Continue to cutting</button>
+        </div>
+        <div class="status" id="builderStatus" aria-live="polite"></div>
+      </section>
+
+      <aside class="builder-layers card">
+        <div class="editor-inspector-empty" id="builderInspectorEmpty"><span data-editor-icon="pointer"></span><strong data-editor-copy="selectElement">Select an element to edit it</strong><p data-editor-copy="selectHint">Click it on the canvas or in the list below.</p></div>
+
+        <div class="builder-panel-title"><strong data-editor-copy="elements">Your elements</strong><span id="builderElementCount">0</span></div>
+        <div class="builder-layer-list" id="builderLayerList"></div>
+        <div class="builder-empty-layers" id="builderEmptyLayers" data-editor-copy="noElements">Your added elements appear here. Elements higher in the list appear in front.</div>
         <div class="builder-inspector" id="builderInspector" hidden>
-          <div class="builder-panel-title"><span>02</span><strong data-builder-i="settings">Layer settings</strong></div>
+          <div class="builder-panel-title"><strong data-editor-copy="elementSettings">Element settings</strong></div>
           <label><span data-builder-i="layer-name">Name</span><input id="builderLayerName" maxlength="80"/></label>
           <div class="builder-text-controls" id="builderTextControls" hidden>
             <label><span data-builder-i="content">Content</span><textarea id="builderText" rows="3" maxlength="500"></textarea></label>
@@ -886,42 +933,6 @@
           <label><span data-builder-i="rotation">Rotation</span><input id="builderRotation" type="range" min="-180" max="180" value="0"/></label>
           <label><span data-builder-i="opacity">Opacity</span><input id="builderOpacity" type="range" min="0" max="100" value="100"/></label>
         </div>
-      </aside>
-
-      <section class="builder-stage card">
-        <div class="builder-stage-head">
-          <div class="builder-mode-switch" id="builderModes">
-            <button type="button" class="active" data-builder-mode="workshop"><span class="mode-diagram mode-diagram--workshop"><i></i><i></i><i></i><i></i><i></i></span>Workshop</button>
-            <button type="button" data-builder-mode="featured"><span class="mode-diagram mode-diagram--featured"><i></i></span>Featured</button>
-            <button type="button" data-builder-mode="split"><span class="mode-diagram mode-diagram--split"><i></i><i></i></span>Split</button>
-          </div>
-          <span class="builder-live"><i></i> LIVE</span>
-        </div>
-        <div class="builder-canvas-toolbar" aria-label="Canvas tools">
-          <label class="builder-toggle builder-snap-toggle"><input id="builderSnap" type="checkbox" checked/><i></i><span data-builder-i="snap">Smart guides</span></label>
-          <div class="builder-backdrops" role="group" aria-label="Preview background">
-            <span data-builder-i="backdrop">Edge check</span>
-            <button type="button" class="active" data-builder-backdrop="project" data-builder-i-title="backdrop-project" title="Project preview">A</button>
-            <button type="button" data-builder-backdrop="dark" data-builder-i-title="backdrop-dark" title="Dark background">●</button>
-            <button type="button" data-builder-backdrop="light" data-builder-i-title="backdrop-light" title="Light background">○</button>
-            <button type="button" data-builder-backdrop="checker" data-builder-i-title="backdrop-checker" title="Transparency grid">▦</button>
-          </div>
-        </div>
-        <div class="builder-canvas-wrap"><canvas id="builderCanvas" width="750" height="1000" aria-label="Showcase canvas"></canvas><div class="builder-guides" id="builderGuides" data-mode="workshop"></div><div class="builder-snap-guides" id="builderSnapGuides" aria-hidden="true"><i></i><b></b></div></div>
-        <p class="builder-stage-help" data-builder-i="stage-help">Select a layer, then drag it directly on the showcase. Guides show the exact Steam cut.</p>
-        <p class="builder-shortcuts" data-builder-i="shortcuts">Arrow keys: move · Shift: 10 px · Ctrl/Cmd+D: duplicate</p>
-        <div class="builder-actions">
-          <input id="builderProjectName" value="My showcase" maxlength="80" aria-label="Project name"/>
-          <button type="button" class="btn ghost" id="builderSave" data-builder-i="save">Save project</button>
-          <button type="button" class="btn" id="builderExport" data-builder-i="to-process">Send to Process</button>
-        </div>
-        <div class="status" id="builderStatus" aria-live="polite"></div>
-      </section>
-
-      <aside class="builder-layers card">
-        <div class="builder-panel-title"><span>03</span><strong data-builder-i="layers">Layers</strong></div>
-        <div class="builder-layer-list" id="builderLayerList"></div>
-        <div class="builder-empty-layers" id="builderEmptyLayers" data-builder-i="empty-layers">Add a background, character, text, frame or effect.</div>
         <div class="builder-retention"><b data-builder-i="storage">Project storage</b><span data-builder-i="storage-hint">Free: 7 days · Pro: until you delete it</span></div>
       </aside>
     </div>
@@ -1049,10 +1060,10 @@
   </div>
 </div>
 
-  <script src="/static/js/tool-loader.js?v=20260916a"></script>
-  <script src="/static/js/app.js?v=20260916-jobs1"></script>
+  <script src="/static/js/tool-loader.js?v=20260920-editor2"></script>
+  <script src="/static/js/app.js?v=20260920-editor1"></script>
   <script src="/static/js/workspace-copy.js?v=20260910-finish1"></script>
-  <script src="/static/js/process-guide.js?v=20260910-finish1"></script>
+  <script src="/static/js/process-guide.js?v=20260920-editor1"></script>
 
 
 
@@ -1106,14 +1117,17 @@
 <link rel="stylesheet" href="/static/css/analytics-consent.css?v=20260910a">
 <script src="/static/js/analytics.js?v=20260910a"></script>
 <script src="/static/js/app-tail.js?v=20260909-observer3"></script>
-<script src="/static/js/steam-check.js?v=20260910-usability1"></script>
+<script src="/static/js/steam-check.js?v=20260920-result1"></script>
 <script src="/static/js/profile-insights.js?v=20260906-unique-tags"></script>
 <script src="/static/js/steam-extension-status.js?v=20260910-analytics1"></script>
 
 
 <script src="/static/ss-shell.js?v=20260911-account3"></script>
 <script src="/static/js/workspace-help.js?v=20260910-usability1"></script>
-<script src="/static/js/process-result.js?v=20260910-usability1"></script>
+<script src="/static/js/process-result.js?v=20260920-result1"></script>
 <link rel="stylesheet" href="/static/css/workspace-usability.css?v=20260910-process-layout2">
+<link rel="stylesheet" href="/static/css/workspace-editor.css?v=20260920-editor4">
+<script src="/static/js/workspace-editor-copy.js?v=20260920-editor4"></script>
+<script src="/static/js/workspace-editor.js?v=20260920-editor4"></script>
 </body>
 </html>

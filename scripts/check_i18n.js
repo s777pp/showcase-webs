@@ -107,6 +107,14 @@ const workspaceWords = evaluateDictionary('static/js/workspace-copy.js', 'const 
 for (const [key, translations] of Object.entries(workspaceWords)) {
   if (!Array.isArray(translations) || translations.length !== 8 || translations.some(value => typeof value !== 'string' || !value.trim())) errors.push(`workspace: incomplete translations for ${key}`);
 }
+const editorWords = evaluateDictionary('static/js/workspace-editor-copy.js', 'const words =');
+for (const [key, translations] of Object.entries(editorWords)) {
+  if (!Array.isArray(translations) || translations.length !== 8 || translations.some(value => typeof value !== 'string' || !value.trim())) errors.push(`workspace editor: incomplete translations for ${key}`);
+}
+const editorHtml = fs.readFileSync(path.join(root, 'static/app.html'), 'utf8');
+for (const match of editorHtml.matchAll(/data-editor-copy="([^"]+)"/g)) {
+  if (!(match[1] in editorWords)) errors.push(`workspace editor: missing ${match[1]}`);
+}
 const builderManual = evaluateDictionary('static/js/showcase-builder.js', 'var NEW_COPY =');
 const builderManualKeys = Object.keys(builderManual.en || {}).sort().join('|');
 for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {

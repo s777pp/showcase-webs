@@ -51,6 +51,7 @@
   }
   function paint(result, elapsed) {
     latest = result;
+    window.dispatchEvent(new Event('sm:processchange'));
     var run=document.getElementById('btnRun');
     if (!result.items.length) {
       if(run)run.disabled=true;
@@ -74,28 +75,30 @@
     panel.innerHTML=html+'</div>';
   }
   async function inspect(files, rotations) {
-    var token=++generation, started=performance.now(), target=Number(document.getElementById('size')?.value)||750;
-    if (!files.length) { paint({blocked:false,pending:false,items:[]},0); updateRoute('mode'); return latest; }
+    var token=++generation, started=performance.now(), mode=window.state?.mode||'workshop';
+    var target=mode==='featured'?630:mode==='split'?606:(Number(document.getElementById('size')?.value)||750);
+    if (!files.length) { paint({blocked:false,pending:false,items:[]},0); updateRoute('files'); return latest; }
     panel.className='process-preflight is-checking';
     var run=document.getElementById('btnRun');if(run)run.disabled=true;
     panel.innerHTML='<div class="process-preflight__empty"><span class="is-spin">◌</span><p><b>'+escape(copy('preflightChecking'))+'</b></p></div>';
     var items=await Promise.all(files.map(function(file,index){return probe(file,rotations[index]||0,target);}));
     if(token!==generation)return latest;
     paint({blocked:items.some(function(x){return x.errors.length;}),pending:false,items:items},performance.now()-started);
-    updateRoute('files');
+    updateRoute(latest.blocked ? 'files' : 'mode');
     return latest;
   }
   function updateRoute(active) {
     root.querySelectorAll('[data-process-step]').forEach(function(button){
       var name=button.dataset.processStep;
       button.classList.toggle('is-active',name===active);
-      var complete=(name==='mode')||(name==='settings')||(name==='files'&&latest.items.length&&!latest.blocked)||(name==='result'&&active==='result');
+      var complete=(name==='files'&&latest.items.length&&!latest.blocked)||(name==='mode'&&active==='result');
       button.classList.toggle('is-complete',!!complete&&name!==active);
+      if(name===active)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');
     });
   }
   root.querySelectorAll('[data-process-step]').forEach(function(button){
     button.addEventListener('click',function(){
-      var name=button.dataset.processStep, target=name==='result'?root.querySelector('.workspace-result'):document.querySelector('[data-process-card="'+(name==='settings'?'settings':name)+'"]');
+      var name=button.dataset.processStep, target=name==='result'?(root.querySelector('.workspace-result')||document.getElementById('processSubmit')):document.querySelector('[data-process-card="'+name+'"]');
       if(target)target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
     });
   });
@@ -105,7 +108,7 @@
 
   window.ProcessGuide = {
     filesChanged:function(files,rotations){ return inspect(Array.from(files||[]),Array.from(rotations||[])); },
-    modeChanged:function(){ return inspect(Array.from(window.state?.files||[]),Array.from(window.state?.fileRotations||[])); },
+    modeChanged:async function(){ var result=await inspect(Array.from(window.state?.files||[]),Array.from(window.state?.fileRotations||[]));if(result.items.length&&!result.blocked)updateRoute('result');return result; },
     beforeRun:async function(files,rotations){ var result=await inspect(Array.from(files||[]),Array.from(rotations||[])); if(result.blocked){panel.scrollIntoView({behavior:'smooth',block:'center'});return false;} return true; },
     running:function(){processStartedAt=performance.now();updateRoute('result');root.classList.add('is-processing');},
     complete:function(){root.classList.remove('is-processing');updateRoute('result');if(processStartedAt)console.info('[Showcase Maker] process UI elapsed:',Math.round(performance.now()-processStartedAt),'ms');},

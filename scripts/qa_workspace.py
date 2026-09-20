@@ -41,7 +41,7 @@ def run():
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.goto(base+'/ru/app')
         page.wait_for_timeout(900)
-        assert page.locator('#processRoute [data-process-step]').count() == 4
+        assert page.locator('#processRoute [data-process-step]').count() == 3
         page.locator('#fileInput').set_input_files({'name':'source.png','mimeType':'image/png','buffer':image})
         page.wait_for_timeout(500)
         assert page.locator('#processPreflight.is-ready').count() == 1
@@ -89,6 +89,7 @@ def run():
         page.locator('#builderTemplates summary').click()
         page.locator('[data-builder-template=minimal]').click()
         assert page.locator('#builderLayerList .builder-layer').count()==5
+        page.locator('.editor-canvas-options summary').click()
         page.locator('[data-builder-backdrop=light]').click()
         assert 'active' in page.locator('[data-builder-backdrop=light]').get_attribute('class')
         page.locator('[data-open-tool=process]').first.click()
@@ -100,6 +101,7 @@ def run():
         assert page.locator('.workspace-result__parts img').count()==5
         assert page.locator('.workspace-result__original img').count()==1
         assert page.locator('.workspace-result__files a').count()==5
+        assert page.locator('.workspace-result__readiness-empty').is_visible()
         page.screenshot(path=str(Path(tempfile.gettempdir()) / 'showcase-usability-result.png'))
         for width in [390,1440]:
             page.set_viewport_size({'width':width,'height':1000})
@@ -111,7 +113,8 @@ def run():
           const report={status:'ready',file_count:5,group_count:1,failures:0,warnings:0,groups:[{name:'demo_workshop',mode:'workshop',status:'ready',checks:[],files}]};
           await ProcessResult.open({readiness:report},'aaaaaaaaaaaaaaaaaaaaaaaa',[]);
         }''')
-        assert page.locator('#steamCheckResults #workspaceResult').count()==1
+        assert page.locator('.workspace-result-modal #workspaceResult').count()==1
+        assert page.locator('.workspace-result__readiness #steamCheckResults').count()==1
         page.wait_for_timeout(500)
         assert page.locator('#steamCheckUploadSteam').is_visible()
         page.locator('#steamCheckAgain').click()
@@ -133,7 +136,7 @@ def run():
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), language
             assert page.locator('.builder-history button').first.inner_text()
             actual_template=page.locator('#builderTemplates summary').inner_text().strip()
-            assert actual_template.casefold()==expected_templates[language].upper().casefold(), (language,actual_template,expected_templates[language])
+            assert actual_template.casefold()==expected_templates[language].casefold(), (language,actual_template,expected_templates[language])
         assert not errors, errors
         print('Workspace QA passed: guided process, preflight, help, history, media draft restore, layer tools, templates, actual result comparison, mobile layout.')
         context.close()

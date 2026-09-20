@@ -107,7 +107,9 @@ def test_process_rotation_editor_is_below_preview_and_uses_active_file():
     preview = html.index('id="wmPreviewCard"')
     rotation = html.index('id="processRotationPanel"')
     files = html.index('id="fileList"')
-    assert preview < rotation < files
+    # The redesigned flow introduces the source first, then keeps rotation
+    # directly below the large visual preview for the selected source.
+    assert files < preview < rotation
     assert "activeProcessFileIndex" in script
     assert "ctx.rotate(radians)" in script
     assert "--range-progress" in styles

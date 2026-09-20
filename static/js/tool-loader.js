@@ -9,7 +9,7 @@
       '/static/js/builder-history.js?v=20260910-finish1',
       '/static/js/builder-motion-copy.js?v=20260913-motion1',
       '/static/js/builder-motion.js?v=20260913-motion1',
-      '/static/js/showcase-builder.js?v=20260914-no-ai-animation'
+      '/static/js/showcase-builder.js?v=20260920-editor2'
     ],
     dna: ['/static/js/steam-dna.js?v=20260912-exp7'],
     loop: ['/static/js/builder-motion-copy.js?v=20260913-motion1','/static/js/seamless-loop.js?v=20260913-motion1']

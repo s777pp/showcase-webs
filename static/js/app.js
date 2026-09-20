@@ -1392,7 +1392,7 @@ window.applyAppLang = function applyAppLang(lang) {
 
   const setTxt = (id, val) => {
     const el = document.getElementById(id);
-    if (el && val != null) el.textContent = val;
+    if (el && val != null && !el.hasAttribute('data-editor-copy')) el.textContent = val;
   };
   setTxt('btnAuth', pack.login);
   setTxt('btnLogout', pack.logout);
@@ -1412,13 +1412,13 @@ window.applyAppLang = function applyAppLang(lang) {
 
   // drop zone text
   const dropEl = document.getElementById('drop');
-  if (dropEl && pack.drop) dropEl.textContent = pack.drop;
+  if (dropEl && pack.drop && !dropEl.querySelector('[data-editor-copy]')) dropEl.textContent = pack.drop;
 
   /* process card titles come from data-i (mode / params / wm_preview_h / files).
      The old positional lookup clobbered the watermark-preview heading with "Files". */
 
   // mode descriptions
-  const modes = document.querySelectorAll('.mode span');
+  const modes = document.querySelectorAll('.mode span:not([data-editor-copy])');
   if (modes[0] && pack.mode_ws) modes[0].textContent = pack.mode_ws;
   if (modes[1] && pack.mode_ft) modes[1].textContent = pack.mode_ft;
   if (modes[2] && pack.mode_sp) modes[2].textContent = pack.mode_sp;
@@ -2551,6 +2551,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
     try { if (typeof refreshSteamUI === "function") refreshSteamUI(); } catch (e) {}
     try { if (typeof window.applyAppLang === "function") window.applyAppLang(L); } catch (e) {}
+    window.WorkspaceEditor?.language();
   }
 
   window.__smApplyDict = function () { applyDict(getLang()); };
