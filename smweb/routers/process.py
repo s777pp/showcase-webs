@@ -51,6 +51,7 @@ from smweb.core import (
     MAX_UPLOAD_MB,
     _auth_user,
     _ip,
+    max_jobs_for_user,
     quota_inc,
     quota_state,
 )
@@ -228,7 +229,7 @@ async def api_process_start(
         user_key = ""
     # Check the per-user cap BEFORE registering the job or charging quota,
     # otherwise a rejected request still burns a free-tier slot.
-    if user_key and rs.job_count_user(user_key) >= int(os.environ.get("MAX_JOBS_PER_USER", "2")):
+    if user_key and rs.job_count_user(user_key) >= max_jobs_for_user(int(u["id"]) if u else None):
         return JSONResponse(
             {"ok": False, "msg": "Too many active jobs. Wait for current processing to finish."},
             status_code=429,

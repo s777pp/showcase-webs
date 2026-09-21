@@ -17,8 +17,8 @@ from typing import Any
 import auth_db
 import processor as proc
 import redis_store as rs
-from smweb import analytics, maintenance, object_store, runtime_settings
-from smweb.jobs import MAX_JOB_WORKERS, _worker_mode
+from smweb import admin_content, analytics, maintenance, object_store, runtime_settings, user_limits
+from smweb.jobs import MAX_JOB_WORKERS, _job_pool, _run_process_job_from_payload, _worker_mode
 
 
 ADMIN_COOKIE = "sm_admin"
@@ -242,7 +242,42 @@ def account_summary() -> dict:
 def overview(days: int = 30) -> dict:
     return {"ok": True, "system": system_snapshot(), "accounts": account_summary(),
             "analytics": analytics.report(days), "maintenance": maintenance.get_state(),
-            "settings": runtime_settings.snapshot()}
+            "settings": runtime_settings.snapshot(), "attention": attention_items()}
+
+
+def attention_items() -> list[dict]:
+    """Rank the small number of situations that need an operator decision."""
+    items = []
+    system = system_snapshot()
+    for component in system["components"]:
+        if component["state"] != "ok":
+            items.append({"kind": "system", "severity": "critical" if component["state"] == "down" else "warning",
+                          "title": component["summary"], "detail": component["impact"],
+                          "action": component.get("action") or "Открой состояние системы.", "target": "system"})
+    recent_jobs = jobs(100)["items"]
+    failed = [job for job in recent_jobs if job["status"] == "error"]
+    stale = [job for job in recent_jobs if job["status"] in {"queued", "running"} and time.time() - job["updated"] > 1800]
+    if failed:
+        items.append({"kind": "jobs", "severity": "warning", "title": f"Заданий с ошибкой: {len(failed)}",
+                      "detail": "Пользователь мог не получить готовый файл.", "action": "Проверь причину и возможность повтора.", "target": "jobs"})
+    if stale:
+        items.append({"kind": "jobs", "severity": "critical", "title": f"Долго не обновляются: {len(stale)}",
+                      "detail": "Задания остаются активными больше 30 минут.", "action": "Проверь worker и очередь.", "target": "jobs"})
+    open_tickets = admin_content.tickets("open", 250)
+    if open_tickets:
+        items.append({"kind": "support", "severity": "info", "title": f"Новых обращений: {len(open_tickets)}",
+                      "detail": "Пользователи ждут ответа или решения.", "action": "Открой обращения.", "target": "support"})
+    summary = account_summary()
+    if summary["gallery_pending"]:
+        items.append({"kind": "gallery", "severity": "info", "title": f"На модерации: {summary['gallery_pending']}",
+                      "detail": "Работы ещё не опубликованы.", "action": "Проверь галерею.", "target": "gallery"})
+    backup = admin_content.backup_snapshot()
+    if backup["state"] != "ok":
+        items.append({"kind": "backup", "severity": "warning", "title": "Свежая резервная копия не найдена",
+                      "detail": "Последняя копия старше 36 часов или каталог пуст.",
+                      "action": "Проверь backup-задачу на VPS.", "target": "backups"})
+    order = {"critical": 0, "warning": 1, "info": 2}
+    return sorted(items, key=lambda item: order.get(item["severity"], 3))
 
 
 def users(query: str = "", page: int = 1, per_page: int = 30) -> dict:
@@ -281,6 +316,49 @@ def users(query: str = "", page: int = 1, per_page: int = 30) -> dict:
         connection.close()
 
 
+def user_detail(user_id: int) -> dict:
+    uid = int(user_id)
+    connection = auth_db._conn()
+    try:
+        user = connection.execute(
+            """SELECT id,email,display_name,profile_username,avatar_path,steam_id,created_at,is_pro,pro_until,
+                      email_verified,COALESCE(is_suspended,0) AS is_suspended,suspended_reason,suspended_until
+               FROM users WHERE id=?""", (uid,),
+        ).fetchone()
+        if not user:
+            raise LookupError("Account not found")
+        projects = connection.execute(
+            """SELECT id,name,showcase_mode,created_at,updated_at,expires_at
+               FROM builder_projects WHERE user_id=? ORDER BY updated_at DESC LIMIT 30""", (uid,),
+        ).fetchall()
+        gallery = connection.execute(
+            """SELECT id,title,mode,status,created_at FROM gallery
+               WHERE user_id=? ORDER BY created_at DESC LIMIT 30""", (uid,),
+        ).fetchall()
+        session_row = connection.execute(
+            "SELECT COUNT(*) AS total,MAX(created_at) AS last_active FROM sessions WHERE user_id=?", (uid,),
+        ).fetchone()
+        audit_items = connection.execute(
+            """SELECT action,target,details_json,created_at FROM admin_audit
+               WHERE target=? ORDER BY created_at DESC LIMIT 30""", (f"user:{uid}",),
+        ).fetchall()
+    finally:
+        connection.close()
+    recent_jobs = [item for item in jobs(250)["items"] if str(item.get("user_id") or "") == str(uid)][:30]
+    audit_safe = []
+    for row in audit_items:
+        value = dict(row)
+        try:
+            value["details"] = json.loads(value.pop("details_json") or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            value["details"] = {}
+        audit_safe.append(value)
+    return {"ok": True, "user": dict(user), "projects": [dict(row) for row in projects],
+            "gallery": [dict(row) for row in gallery], "jobs": recent_jobs,
+            "sessions": {"count": int(session_row["total"] or 0), "last_active": session_row["last_active"]},
+            "limits": user_limits.get(uid), "audit": audit_safe}
+
+
 def user_action(user_id: int, action: str, payload: dict) -> dict:
     uid = int(user_id)
     action = str(action or "")
@@ -305,6 +383,18 @@ def user_action(user_id: int, action: str, payload: dict) -> dict:
             connection.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
         elif action == "unsuspend":
             connection.execute("UPDATE users SET is_suspended=0,suspended_reason=NULL,suspended_until=NULL WHERE id=?", (uid,))
+        elif action == "set_limits":
+            connection.commit()
+            limits = user_limits.set_limits(uid, free_daily_limit=payload.get("free_daily_limit"),
+                                           max_jobs=payload.get("max_jobs"), note=payload.get("note", ""))
+            audit("user.set_limits", f"user:{uid}", {"free_daily_limit": limits.get("free_daily_limit"),
+                                                       "max_jobs": limits.get("max_jobs")})
+            return {"ok": True, "limits": limits}
+        elif action == "clear_limits":
+            connection.commit()
+            user_limits.clear(uid)
+            audit("user.clear_limits", f"user:{uid}")
+            return {"ok": True, "limits": user_limits.get(uid)}
         else:
             raise ValueError("Unknown action")
         connection.commit()
@@ -333,12 +423,17 @@ def user_action(user_id: int, action: str, payload: dict) -> dict:
 def jobs(limit: int = 100) -> dict:
     items = []
     for jid, job in rs.job_list_all(limit):
+        source_paths = [Path(str(item.get("path") or "")) for item in job.get("files") or []]
+        status = str(job.get("status") or "queued")
         items.append({
-            "id": jid, "kind": str(job.get("kind") or "process"), "status": str(job.get("status") or "queued"),
+            "id": jid, "kind": str(job.get("kind") or "process"), "status": status,
             "pct": int(job.get("pct") or 0), "stage": str(job.get("stage") or ""),
             "queue": str(job.get("queue") or rs.queue_for_kind(str(job.get("kind") or "process"))),
             "created": float(job.get("created") or 0), "updated": float(job.get("updated") or 0),
             "error": str(job.get("error") or "")[:240], "user_id": job.get("user_id"),
+            "can_retry": str(job.get("kind") or "process") == "process" and status in {"done", "error", "cancelled"}
+                         and bool(source_paths) and all(path.is_file() for path in source_paths),
+            "stale": status in {"queued", "running"} and time.time() - float(job.get("updated") or job.get("created") or 0) > 1800,
         })
     return {"ok": True, "items": items, "queues": rs.queue_depths()}
 
@@ -349,6 +444,29 @@ def cancel_job(job_id: str) -> dict:
         raise LookupError("Job not found")
     audit("job.cancel", f"job:{job_id}")
     return {"ok": True}
+
+
+def retry_job(job_id: str) -> dict:
+    old = rs.job_get(str(job_id))
+    if not old:
+        raise LookupError("Job not found")
+    if str(old.get("kind") or "process") != "process":
+        raise ValueError("Для этого типа нужно повторно загрузить исходник")
+    paths = [Path(str(item.get("path") or "")) for item in old.get("files") or []]
+    if not paths or any(not path.is_file() for path in paths):
+        raise ValueError("Исходные файлы уже удалены — попроси пользователя загрузить их снова")
+    jid = secrets.token_hex(12)
+    payload = {key: value for key, value in old.items() if key not in {
+        "status", "pct", "stage", "error", "updated", "result_path", "result_key", "zip_path",
+        "processed", "errors", "listed", "readiness", "cancel_requested", "cache_hit",
+    }}
+    payload.update({"status": "queued", "pct": 1, "stage": "queued", "created": time.time(), "retry_of": str(job_id)})
+    external = _worker_mode() == "external" and rs.redis_ok() and rs.worker_alive()
+    rs.job_create(jid, payload, enqueue=external)
+    if not external:
+        _job_pool.submit(_run_process_job_from_payload, jid, payload)
+    audit("job.retry", f"job:{job_id}", {"new_job_id": jid})
+    return {"ok": True, "job_id": jid}
 
 
 def _read_codes() -> dict:
@@ -389,25 +507,31 @@ def codes() -> dict:
         claim = used.get(code)
         items.append({"code": code, "type": meta.get("type", "unlimited"), "label": meta.get("label", "Pro"),
                       "hours": meta.get("hours"), "used": bool(claim), "user_id": claim.get("user_id") if claim else None,
-                      "used_at": claim.get("used_at") if claim else None})
+                      "used_at": claim.get("used_at") if claim else None, "campaign": meta.get("campaign", ""),
+                      "created_at": meta.get("created_at"), "expires_at": meta.get("expires_at"),
+                      "expired": bool(meta.get("expires_at") and float(meta.get("expires_at")) <= time.time())})
     items.sort(key=lambda item: (item["used"], item["code"]))
     return {"ok": True, "items": items}
 
 
-def generate_codes(count: int, duration_days: int, label: str = "Pro") -> dict:
+def generate_codes(count: int, duration_days: int, label: str = "Pro", campaign: str = "", expires_days: int = 0) -> dict:
     count = max(1, min(100, int(count or 1)))
     duration_days = max(0, min(3650, int(duration_days or 0)))
     source = _read_codes()
     created = []
+    expires_days = max(0, min(3650, int(expires_days or 0)))
+    expires_at = time.time() + expires_days * 86400 if expires_days else None
     while len(created) < count:
         code = f"SM-{'TRIAL' if duration_days else 'WEB'}-{secrets.token_hex(3).upper()}-{secrets.token_hex(2).upper()}"
         if code in source:
             continue
         meta = {"type": "trial", "label": str(label or "Pro")[:50], "hours": duration_days * 24} if duration_days else {"type": "unlimited", "label": str(label or "Pro")[:50]}
+        meta.update({"campaign": str(campaign or "")[:80], "created_at": time.time(), "expires_at": expires_at})
         source[code] = meta
         created.append(code)
     _write_codes(source)
-    audit("codes.generate", "access_codes", {"count": count, "duration_days": duration_days})
+    audit("codes.generate", "access_codes", {"count": count, "duration_days": duration_days,
+                                                "campaign": str(campaign or "")[:80], "expires_days": expires_days})
     return {"ok": True, "codes": created}
 
 

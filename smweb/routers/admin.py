@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 import auth_db
-from smweb import admin_control, maintenance, runtime_settings
+from smweb import admin_content, admin_control, maintenance, runtime_settings
 
 
 router = APIRouter(prefix="/api/admin/control", tags=["admin-control"])
@@ -71,6 +71,12 @@ def overview(request: Request, days: int = 30):
     return admin_control.overview(days)
 
 
+@router.get("/attention")
+def attention(request: Request):
+    _require(request)
+    return {"ok": True, "items": admin_control.attention_items()}
+
+
 @router.get("/system")
 def system(request: Request):
     _require(request)
@@ -81,6 +87,15 @@ def system(request: Request):
 def users(request: Request, q: str = "", page: int = 1, per_page: int = 30):
     _require(request)
     return admin_control.users(q, page, per_page)
+
+
+@router.get("/users/{user_id}")
+def user_detail(user_id: int, request: Request):
+    _require(request)
+    try:
+        return admin_control.user_detail(user_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/users/{user_id}/action")
@@ -105,7 +120,8 @@ def codes(request: Request):
 async def generate_codes(request: Request):
     _require(request, mutation=True)
     body = await _json_object(request)
-    return admin_control.generate_codes(body.get("count", 1), body.get("duration_days", 7), body.get("label", "Pro"))
+    return admin_control.generate_codes(body.get("count", 1), body.get("duration_days", 7), body.get("label", "Pro"),
+                                        body.get("campaign", ""), body.get("expires_days", 0))
 
 
 @router.delete("/codes/{code}")
@@ -130,6 +146,101 @@ def cancel_job(job_id: str, request: Request):
         return admin_control.cancel_job(job_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/jobs/{job_id}/retry")
+def retry_job(job_id: str, request: Request):
+    _require(request, mutation=True)
+    try:
+        return admin_control.retry_job(job_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/support")
+def support_tickets(request: Request, status: str = "open"):
+    _require(request)
+    return {"ok": True, "items": admin_content.tickets(status)}
+
+
+@router.post("/support/{ticket_id}")
+async def update_support_ticket(ticket_id: str, request: Request):
+    _require(request, mutation=True)
+    body = await _json_object(request)
+    try:
+        result = admin_content.update_ticket(ticket_id, str(body.get("status") or "working"), str(body.get("note") or ""))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    admin_control.audit("support.update", f"ticket:{ticket_id}", {"status": body.get("status")})
+    return result
+
+
+@router.get("/announcements")
+def announcements(request: Request):
+    _require(request)
+    return {"ok": True, "items": admin_content.announcements()}
+
+
+@router.post("/announcements")
+async def save_announcement(request: Request):
+    _require(request, mutation=True)
+    body = await _json_object(request)
+    try:
+        result = admin_content.save_announcement(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    admin_control.audit("announcement.save", f"announcement:{result['id']}", {"audience": body.get("audience"), "enabled": body.get("enabled") is not False})
+    return result
+
+
+@router.delete("/announcements/{announcement_id}")
+def delete_announcement(announcement_id: str, request: Request):
+    _require(request, mutation=True)
+    try:
+        result = admin_content.delete_announcement(announcement_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    admin_control.audit("announcement.delete", f"announcement:{announcement_id}")
+    return result
+
+
+@router.get("/catalog")
+def catalog_rules(request: Request):
+    _require(request)
+    return {"ok": True, "items": admin_content.catalog_rules()}
+
+
+@router.post("/catalog")
+async def save_catalog_rule(request: Request):
+    _require(request, mutation=True)
+    body = await _json_object(request)
+    try:
+        result = admin_content.save_catalog_rule(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    admin_control.audit("catalog.save", f"catalog:{result['key']}", {"hidden": bool(body.get("hidden")), "featured": bool(body.get("featured"))})
+    return result
+
+
+@router.delete("/catalog/{rule_key}")
+def delete_catalog_rule(rule_key: str, request: Request):
+    _require(request, mutation=True)
+    try:
+        result = admin_content.delete_catalog_rule(rule_key)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    admin_control.audit("catalog.delete", f"catalog:{rule_key}")
+    return result
+
+
+@router.get("/backups")
+def backups(request: Request):
+    _require(request)
+    return {"ok": True, "backup": admin_content.backup_snapshot()}
 
 
 @router.get("/gallery")

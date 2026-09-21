@@ -24,6 +24,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageSequence
 
 import processor as proc
 import steam_catalog
+from smweb import admin_content
 from smweb.remote_media import fetch_media, validate_media_url
 
 LOGGER = logging.getLogger("sm.tools")
@@ -191,7 +192,11 @@ async def optimizer(
 # ==========================================================================
 @router.get("/steam/backgrounds")
 def steam_backgrounds(q: str = "", page: int = 0, kind: str = "all", count: int = 24, asset: str = "background"):
-    return steam_catalog.backgrounds(q=q, page=page, kind=kind, count=count, asset=asset)
+    result = steam_catalog.backgrounds(q=q, page=page, kind=kind, count=count, asset=asset)
+    if isinstance(result, dict) and isinstance(result.get("items"), list):
+        result = dict(result)
+        result["items"] = admin_content.apply_catalog_rules(result["items"])
+    return result
 
 
 @router.get("/steam/cards/{appid}")

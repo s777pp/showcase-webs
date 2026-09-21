@@ -104,6 +104,45 @@ CREATE TABLE IF NOT EXISTS admin_audit (
 );
 CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit(created_at DESC);
 
+CREATE TABLE IF NOT EXISTS support_tickets (
+ id TEXT PRIMARY KEY,
+ user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+ email TEXT,
+ message TEXT NOT NULL,
+ page TEXT,
+ context_json TEXT,
+ status TEXT NOT NULL DEFAULT 'new',
+ admin_note TEXT,
+ created_at DOUBLE PRECISION NOT NULL,
+ updated_at DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_status_updated ON support_tickets(status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS admin_announcements (
+ id TEXT PRIMARY KEY,
+ title_ru TEXT,
+ title_en TEXT,
+ body_ru TEXT,
+ body_en TEXT,
+ level TEXT NOT NULL DEFAULT 'info',
+ audience TEXT NOT NULL DEFAULT 'all',
+ enabled INTEGER NOT NULL DEFAULT 1,
+ starts_at DOUBLE PRECISION,
+ ends_at DOUBLE PRECISION,
+ created_at DOUBLE PRECISION NOT NULL,
+ updated_at DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_announcements_active ON admin_announcements(enabled, starts_at, ends_at);
+
+CREATE TABLE IF NOT EXISTS user_limit_overrides (
+ user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+ free_daily_limit INTEGER,
+ max_jobs INTEGER,
+ note TEXT,
+ updated_at DOUBLE PRECISION NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS builder_projects (
  id TEXT PRIMARY KEY,
  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

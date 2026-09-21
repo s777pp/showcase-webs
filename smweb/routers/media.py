@@ -54,6 +54,7 @@ from smweb.core import (
     _auth_user,
     _check_public_url,
     _ip,
+    max_jobs_for_user,
     quota_inc,
     quota_state,
 )
@@ -520,7 +521,7 @@ async def api_upscale_start(
         return JSONResponse({"ok": False, "msg": "Upscale worker is temporarily unavailable"}, status_code=503)
 
     user_key = _upscale_owner(user)
-    if rs.job_count_user(user_key) >= int(os.environ.get("MAX_JOBS_PER_USER", "2")):
+    if rs.job_count_user(user_key) >= max_jobs_for_user(int(user["id"])):
         return JSONResponse({"ok": False, "msg": "Too many active jobs. Wait for the current job."}, status_code=429)
     allowed, _ = rs.rate_limit(f"upscale-start:{user_key}", 8, 3600)
     if not allowed:
@@ -670,7 +671,7 @@ async def api_compose_start(
 
     # Same budget as /api/process/start. Without this a single client could keep
     # the render pool busy indefinitely -- compose is the most expensive route.
-    if user_key and rs.job_count_user(user_key) >= int(os.environ.get("MAX_JOBS_PER_USER", "2")):
+    if user_key and rs.job_count_user(user_key) >= max_jobs_for_user(int(user["id"]) if user else None):
         return JSONResponse(
             {"ok": False, "msg": "Too many active jobs. Wait for current processing to finish."},
             status_code=429,

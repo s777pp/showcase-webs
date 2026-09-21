@@ -38,7 +38,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
-from smweb import runtime_settings
+from smweb import runtime_settings, user_limits
 
 
 logging.basicConfig(
@@ -445,6 +445,8 @@ def quota_state(req: Request) -> dict:
         _save_usage(_usage)
     used = int(u.get("count") or 0)
     free_limit = runtime_settings.integer("free_daily_limit", FREE_LIMIT)
+    if uid:
+        free_limit = user_limits.integer(int(uid), "free_daily_limit", free_limit)
     return {
         "used": used,
         "limit": free_limit,
@@ -457,6 +459,12 @@ def quota_state(req: Request) -> dict:
         "remaining_sec": None,
         "is_trial": False,
     }
+
+
+def max_jobs_for_user(user_id: int | None) -> int:
+    """Return the global concurrent-job cap with an optional account override."""
+    fallback = max(1, min(20, int(os.environ.get("MAX_JOBS_PER_USER", "2"))))
+    return user_limits.integer(user_id, "max_jobs", fallback) if user_id else fallback
 
 
 def quota_inc(req: Request, n: int) -> None:

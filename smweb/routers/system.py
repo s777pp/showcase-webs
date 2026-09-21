@@ -446,6 +446,12 @@ async def unlock(request: Request):
         return JSONResponse({"ok": False, "msg": "Code already used"}, status_code=400)
 
     meta = codes[code] if isinstance(codes.get(code), dict) else {"type": "unlimited", "label": "Pro"}
+    try:
+        code_expires = float(meta.get("expires_at") or 0)
+    except (TypeError, ValueError):
+        code_expires = 0
+    if code_expires and code_expires <= time.time():
+        return JSONResponse({"ok": False, "msg": "Code expired"}, status_code=400)
     ctype = str(meta.get("type") or "unlimited")
     hours = float(meta.get("hours") or 0)
     label = str(meta.get("label") or "Pro")

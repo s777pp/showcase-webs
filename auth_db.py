@@ -346,6 +346,53 @@ def _create_schema(c: sqlite3.Connection) -> None:
         """
     )
     c.execute("CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit(created_at DESC)")
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS support_tickets (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER,
+            email TEXT,
+            message TEXT NOT NULL,
+            page TEXT,
+            context_json TEXT,
+            status TEXT NOT NULL DEFAULT 'new',
+            admin_note TEXT,
+            created_at REAL NOT NULL,
+            updated_at REAL NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS admin_announcements (
+            id TEXT PRIMARY KEY,
+            title_ru TEXT,
+            title_en TEXT,
+            body_ru TEXT,
+            body_en TEXT,
+            level TEXT NOT NULL DEFAULT 'info',
+            audience TEXT NOT NULL DEFAULT 'all',
+            enabled INTEGER NOT NULL DEFAULT 1,
+            starts_at REAL,
+            ends_at REAL,
+            created_at REAL NOT NULL,
+            updated_at REAL NOT NULL
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_limit_overrides (
+            user_id INTEGER PRIMARY KEY,
+            free_daily_limit INTEGER,
+            max_jobs INTEGER,
+            note TEXT,
+            updated_at REAL NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
 
     for ddl in (
         # Hot paths that had no index at all - see docs/ARCHITECTURE_AUDIT.md.
@@ -362,6 +409,9 @@ def _create_schema(c: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at)",
         "CREATE INDEX IF NOT EXISTS idx_analytics_event_created ON analytics_events(event_name, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_analytics_day ON analytics_events(day_key)",
+        "CREATE INDEX IF NOT EXISTS idx_support_tickets_status_updated ON support_tickets(status, updated_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id, updated_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_admin_announcements_active ON admin_announcements(enabled, starts_at, ends_at)",
     ):
         try:
             c.execute(ddl)

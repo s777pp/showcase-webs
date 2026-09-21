@@ -30,6 +30,10 @@
         <button data-view="codes"><i>◇</i><span>Ключи и Pro</span></button>
         <button data-view="jobs"><i>⇄</i><span>Задания</span></button>
         <button data-view="gallery"><i>▦</i><span>Галерея</span></button>
+        <button data-view="support"><i>?</i><span>Обращения</span><b id="supportNavCount"></b></button>
+        <button data-view="announcements"><i>!</i><span>Объявления</span></button>
+        <button data-view="catalog"><i>▤</i><span>Steam-каталог</span></button>
+        <button data-view="backups"><i>↧</i><span>Резервные копии</span></button>
         <button data-view="settings"><i>⌘</i><span>Управление сайтом</span></button>
         <button data-view="analytics"><i>⌁</i><span>Аналитика</span></button>
         <button data-view="audit"><i>≡</i><span>Журнал действий</span></button>
@@ -51,6 +55,7 @@
           <article class="panel"><div class="panel-head"><div><p class="overline">ПОЛЬЗОВАТЕЛИ</p><h2>Путь до результата</h2></div><button class="text-button" data-go="analytics">Вся аналитика →</button></div><div id="overviewFunnel" class="funnel"></div></article>
           <article class="panel"><div class="panel-head"><div><p class="overline">БЫСТРЫЕ ДЕЙСТВИЯ</p><h2>Управление</h2></div></div><div class="quick-actions"><button data-go="users">Найти пользователя<span>Pro, блокировки и сессии</span></button><button data-go="codes">Создать ключ<span>7 дней или постоянный Pro</span></button><button data-go="settings">Включить техработы<span>Сообщение появится на сайте</span></button><button data-go="jobs">Проверить задания<span>Очереди и зависшие операции</span></button></div></article>
         </div>
+        <article class="panel attention-panel"><div class="panel-head"><div><p class="overline">ТРЕБУЕТ ВНИМАНИЯ</p><h2>Что стоит проверить сейчас</h2></div></div><div id="attentionList" class="attention-list"></div></article>
       </section>
 
       <section class="admin-view" data-page="system">
@@ -65,8 +70,8 @@
       </section>
 
       <section class="admin-view" data-page="codes">
-        <div class="split-grid"><form class="panel form-panel" id="codeForm"><p class="overline">НОВАЯ ПАРТИЯ</p><h2>Создать ключи</h2><label>Количество<input id="codeCount" type="number" min="1" max="100" value="1"></label><label>Срок<select id="codeDuration"><option value="7">7 дней</option><option value="30">30 дней</option><option value="365">1 год</option><option value="0">Навсегда</option></select></label><label>Название<input id="codeLabel" value="Pro"></label><button class="button" type="submit">Создать ключи</button><div class="generated-codes" id="generatedCodes" hidden></div></form><article class="panel"><p class="overline">КАК ЭТО РАБОТАЕТ</p><h2>Статус ключа</h2><p class="muted">Новый ключ сразу записывается в приватное хранилище VPS. После активации он привязывается к одному аккаунту и повторно не применяется.</p><button class="button button--ghost" id="exportCodes">Скачать CSV</button></article></div>
-        <div class="table-wrap"><table><thead><tr><th>Ключ</th><th>Тип</th><th>Статус</th><th>Аккаунт</th><th></th></tr></thead><tbody id="codesBody"></tbody></table></div>
+        <div class="split-grid"><form class="panel form-panel" id="codeForm"><p class="overline">НОВАЯ ПАРТИЯ</p><h2>Создать ключи</h2><label>Количество<input id="codeCount" type="number" min="1" max="100" value="1"></label><label>Срок Pro<select id="codeDuration"><option value="7">7 дней</option><option value="30">30 дней</option><option value="365">1 год</option><option value="0">Навсегда</option></select></label><label>Название<input id="codeLabel" value="Pro"></label><label>Кампания<input id="codeCampaign" maxlength="80" placeholder="Например: Telegram сентябрь"></label><label>Сам ключ истекает через<input id="codeExpires" type="number" min="0" max="3650" value="0"><small>0 — не истекает до активации</small></label><button class="button" type="submit">Создать ключи</button><div class="generated-codes" id="generatedCodes" hidden></div></form><article class="panel"><p class="overline">КАК ЭТО РАБОТАЕТ</p><h2>Статус ключа</h2><p class="muted">Новый ключ сразу записывается в приватное хранилище VPS. После активации он привязывается к одному аккаунту и повторно не применяется.</p><button class="button button--ghost" id="exportCodes">Скачать CSV</button></article></div>
+        <div class="table-wrap"><table><thead><tr><th>Ключ</th><th>Тип</th><th>Кампания</th><th>Статус</th><th>Аккаунт</th><th></th></tr></thead><tbody id="codesBody"></tbody></table></div>
       </section>
 
       <section class="admin-view" data-page="jobs">
@@ -76,6 +81,23 @@
 
       <section class="admin-view" data-page="gallery">
         <article class="panel panel--toolbar"><div><p class="overline">МОДЕРАЦИЯ</p><h2>Галерея</h2></div><select id="galleryStatus"><option value="pending">Ожидают проверки</option><option value="approved">Опубликованы</option><option value="rejected">Отклонены</option></select></article><div class="gallery-admin-grid" id="galleryGrid"></div>
+      </section>
+
+      <section class="admin-view" data-page="support">
+        <article class="panel panel--toolbar"><div><p class="overline">ОБРАТНАЯ СВЯЗЬ</p><h2>Обращения пользователей</h2></div><select id="supportStatus"><option value="open">Новые и в работе</option><option value="new">Только новые</option><option value="working">В работе</option><option value="resolved">Решённые</option><option value="closed">Закрытые</option><option value="all">Все</option></select></article>
+        <div id="supportList" class="ticket-list"></div>
+      </section>
+
+      <section class="admin-view" data-page="announcements">
+        <div class="split-grid"><form class="panel form-panel" id="announcementForm"><p class="overline">СООБЩЕНИЕ НА САЙТЕ</p><h2>Новое объявление</h2><input id="announcementId" type="hidden"><label>Заголовок RU<input id="announcementTitleRu" maxlength="100"></label><label>Текст RU<textarea id="announcementBodyRu" rows="4" maxlength="500"></textarea></label><label>Заголовок EN<input id="announcementTitleEn" maxlength="100"></label><label>Текст EN<textarea id="announcementBodyEn" rows="4" maxlength="500"></textarea></label><label>Тип<select id="announcementLevel"><option value="info">Информация</option><option value="success">Хорошая новость</option><option value="warning">Важно</option></select></label><label>Кому<select id="announcementAudience"><option value="all">Всем</option><option value="guests">Только гостям</option><option value="users">Авторизованным</option><option value="pro">Только Pro</option></select></label><label class="switch-row"><span><b>Опубликовать</b><small>Можно сохранить выключенным</small></span><input id="announcementEnabled" type="checkbox" checked></label><button class="button" type="submit">Сохранить объявление</button><button class="button button--ghost" id="announcementReset" type="button">Очистить форму</button></form><article class="panel"><p class="overline">АКТИВНЫЕ И АРХИВНЫЕ</p><h2>Объявления</h2><div id="announcementList" class="announcement-admin-list"></div></article></div>
+      </section>
+
+      <section class="admin-view" data-page="catalog">
+        <div class="split-grid"><form class="panel form-panel" id="catalogForm"><p class="overline">STEAM-КАТАЛОГ</p><h2>Скрыть или поднять фон</h2><label>Ссылка покупки или URL изображения<input id="catalogIdentity" type="url" maxlength="1000" required placeholder="https://..."></label><label>Название<input id="catalogName" maxlength="120"></label><label>Заметка<input id="catalogNote" maxlength="240"></label><label class="switch-row"><span><b>Показывать первым</b><small>Поднимет элемент в начало каталога</small></span><input id="catalogFeatured" type="checkbox"></label><label class="switch-row"><span><b>Скрыть</b><small>Элемент исчезнет из выдачи</small></span><input id="catalogHidden" type="checkbox"></label><button class="button" type="submit">Сохранить правило</button><p class="muted">Вставь точную ссылку покупки или изображения из карточки Steam-фона.</p></form><article class="panel"><p class="overline">РУЧНЫЕ ПРАВИЛА</p><h2>Контроль выдачи</h2><div id="catalogList" class="catalog-rule-list"></div></article></div>
+      </section>
+
+      <section class="admin-view" data-page="backups">
+        <article class="panel"><div class="panel-head"><div><p class="overline">БЕЗОПАСНОСТЬ ДАННЫХ</p><h2>Резервные копии</h2></div><button class="button button--ghost" id="exportBackupReport">Скачать отчёт</button></div><div id="backupSummary"></div><div id="backupFiles" class="backup-list"></div><p class="section-note">Панель ничего не восстанавливает автоматически. Проверка восстановления выполняется отдельно на тестовой базе.</p></article>
       </section>
 
       <section class="admin-view" data-page="settings">
@@ -93,6 +115,7 @@
       </section>
     </main>
   </div>
-  <script src="/static/js/analytics-dashboard.js?v=20260921-polish1"></script>
+  <dialog class="user-detail-dialog" id="userDetailDialog"><form method="dialog"><button class="dialog-close" aria-label="Закрыть">×</button></form><div id="userDetailContent"></div></dialog>
+  <script src="/static/js/analytics-dashboard.js?v=20260921-control2"></script>
 </body>
 </html>

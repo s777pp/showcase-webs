@@ -16,7 +16,7 @@ import auth_db
 import redis_store as rs
 from smweb import object_store
 from smweb import media_assets
-from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, LOGGER
+from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, LOGGER, max_jobs_for_user
 from smweb.jobs import _job_pool, _worker_mode
 
 router = APIRouter()
@@ -48,7 +48,7 @@ async def start(request: Request, file: UploadFile | None = File(None), asset_id
         return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
     if not auth_db.effective_pro(user):
         return JSONResponse({"ok": False, "msg": "Seamless Loop is available for Pro subscribers", "code": "pro"}, status_code=403)
-    if rs.job_count_user(owner) >= int(os.environ.get("MAX_JOBS_PER_USER", "2")):
+    if rs.job_count_user(owner) >= max_jobs_for_user(int(user["id"])):
         return JSONResponse({"ok": False, "msg": "Too many active jobs"}, status_code=429)
     allowed, _ = rs.rate_limit(f"loop-start:{owner}", 12, 3600)
     if not allowed:
