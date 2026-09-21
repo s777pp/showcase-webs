@@ -288,7 +288,41 @@
     renderLayers();
   }
   function syncInspector(){var layer=currentLayer(),box=el('builderInspector');box.hidden=!layer;if(!layer)return;el('builderLayerName').value=layer.name||'';el('builderScale').value=Math.round((layer.scale||1)*100);el('builderRotation').value=layer.rotation||0;el('builderOpacity').value=Math.round((layer.opacity==null?1:layer.opacity)*100);el('builderTextControls').hidden=layer.type!=='text';el('builderFrameControls').hidden=layer.type!=='frame';el('builderEffectControls').hidden=layer.type!=='effect';el('builderMediaControls').hidden=!['background','character'].includes(layer.type);if(layer.type==='text'){el('builderText').value=layer.text||'';el('builderFont').value=layer.font||'Mulish';el('builderColor').value=layer.color||'#ffffff';el('builderFontSize').value=layer.fontSize||64;syncFontPreview(layer)}if(layer.type==='frame'){el('builderFrameColor').value=layer.color||'#52d5ff';el('builderFrameWidth').value=layer.frameWidth||4;el('builderFrameStyle').value=layer.frameStyle||'solid';el('builderFrameTarget').value=layer.frameTarget||'panels'}if(layer.type==='effect'){el('builderEffectType').value=layer.effect||'petals';el('builderEffectColor').value=layer.color||'#52d5ff';el('builderEffectSpeed').value=layer.effectSpeed==null?100:layer.effectSpeed;el('builderEffectDensity').value=layer.effectDensity==null?100:layer.effectDensity;el('builderEffectColorRow').hidden=layer.effect==='custom'||!!layer.src;el('builderEffectSwatch').dataset.effect=layer.src?'custom':(layer.effect||'petals')}if(['background','character'].includes(layer.type)){var tolerance=layer.chromaTolerance==null?45:layer.chromaTolerance,feather=layer.chromaFeather==null?16:layer.chromaFeather;el('builderChroma').checked=!!layer.chroma;el('builderChromaSettings').hidden=!layer.chroma;el('builderChromaTolerance').value=tolerance;el('builderChromaToleranceValue').value=tolerance;el('builderChromaFeather').value=feather;el('builderChromaFeatherValue').value=(feather/10).toFixed(1);el('builderAnimation').value=layer.animation||'none'}box.classList.toggle('is-locked',!!layer.locked);box.querySelectorAll('input,select,textarea,button').forEach(function(control){control.disabled=!!layer.locked});box.title=layer.locked?t('layer-locked'):''}
+  function steamPurchase(url) {
+    try {
+      var parsed=new URL(url);
+      if(parsed.protocol!=='https:'||parsed.username||parsed.password||parsed.port)return null;
+      var kind=parsed.hostname==='steamcommunity.com'&&/^\/market\/listings\/753\/[^/]+$/.test(parsed.pathname)?'market':
+        parsed.hostname==='store.steampowered.com'&&/^\/points\/shop\/app\/\d+(\/reward\/\d+)?\/?$/.test(parsed.pathname)?'points':'';
+      return kind?{url:parsed.href,kind:kind}:null;
+    } catch (_) { return null; }
+  }
+  function syncBackgroundPurchase() {
+    var button=el('builderBuyBackground');
+    if(!button){
+      var toolbar=root.querySelector('.builder-history');if(!toolbar)return;
+      button=document.createElement('a');button.id='builderBuyBackground';button.className='btn ghost';
+      button.target='_blank';button.rel='noopener noreferrer';button.setAttribute('data-no-translate','');
+      button.style.cssText='white-space:normal;max-width:100%;text-decoration:none';toolbar.appendChild(button);
+    }
+    var layer=currentLayer();
+    if(!layer||layer.type!=='background')layer=project.layers.find(function(item){return item.type==='background'&&item.visible!==false});
+    var purchase=layer&&steamPurchase(layer.buyUrl);
+    button.hidden=!purchase;
+    if(!purchase){button.removeAttribute('href');button.removeAttribute('title');return}
+    var labels={
+      en:['Buy on Steam Market','Buy with Steam Points'],ru:['Купить на торговой площадке','Купить за очки Steam'],
+      de:['Auf dem Steam-Markt kaufen','Mit Steam-Punkten kaufen'],tr:['Steam Pazarından satın al','Steam Puanlarıyla satın al'],
+      fr:['Acheter sur le marché Steam','Acheter avec des points Steam'],uk:['Купити на торговельному майданчику','Купити за бали Steam'],
+      es:['Comprar en el Mercado de Steam','Comprar con puntos de Steam'],pt:['Comprar no Mercado Steam','Comprar com pontos Steam']
+    };
+    button.href=purchase.url;button.textContent=(labels[lang()]||labels.en)[purchase.kind==='points'?1:0];
+    button.title=layer.name||'';
+  }
+  window.addEventListener('sm:langchange',syncBackgroundPurchase);
   var syncInspectorBase=syncInspector;
+  var purchaseInspectorBase=syncInspectorBase;
+  syncInspectorBase=function(){purchaseInspectorBase();syncBackgroundPurchase()};
   syncInspector=function(){syncInspectorBase();if(motionEngine)motionEngine.sync();window.WorkspaceEditor?.builderState({count:project.layers.length,selected:!!currentLayer(),exportable:project.layers.some(function(layer){return layer.visible!==false})})};
   function bind(id,event,fn){el(id).addEventListener(event,function(){var layer=currentLayer();if(!layer)return;fn(layer,this);motionEngine?.invalidate();if(id==='builderLayerName')renderLayers()})}
   bind('builderLayerName','input',function(l,n){l.name=n.value});bind('builderScale','input',function(l,n){l.scale=+n.value/100});bind('builderRotation','input',function(l,n){l.rotation=+n.value});bind('builderOpacity','input',function(l,n){l.opacity=+n.value/100});bind('builderText','input',function(l,n){l.text=n.value;syncFontPreview(l)});bind('builderFont','change',function(l,n){l.font=n.value;syncFontPreview(l);if(document.fonts)document.fonts.load('800 64px "'+safeFontName(n.value)+'"')});bind('builderColor','input',function(l,n){l.color=n.value});bind('builderFontSize','input',function(l,n){l.fontSize=+n.value});bind('builderFrameColor','input',function(l,n){l.color=n.value});bind('builderFrameWidth','input',function(l,n){l.frameWidth=+n.value});bind('builderFrameStyle','change',function(l,n){l.frameStyle=n.value});bind('builderFrameTarget','change',function(l,n){l.frameTarget=n.value});bind('builderEffectType','change',function(l,n){var colors={petals:'#ff9fc8',snow:'#e7f7ff',rain:'#8bdcff',lightning:'#73dfff'};l.effect=n.value;l.name=n.options[n.selectedIndex].text;if(colors[n.value]){l.color=colors[n.value];el('builderEffectColor').value=l.color}renderLayers()});bind('builderEffectColor','input',function(l,n){l.color=n.value;effectTintCache.clear()});bind('builderEffectSpeed','input',function(l,n){l.effectSpeed=+n.value});bind('builderEffectDensity','input',function(l,n){l.effectDensity=+n.value});bind('builderChroma','change',function(l,n){l.chroma=n.checked;chromaCache.clear();syncInspector()});bind('builderChromaTolerance','input',function(l,n){l.chromaTolerance=+n.value;chromaCache.clear();el('builderChromaToleranceValue').value=n.value});bind('builderChromaFeather','input',function(l,n){l.chromaFeather=+n.value;chromaCache.clear();el('builderChromaFeatherValue').value=(+n.value/10).toFixed(1)});bind('builderAnimation','change',function(l,n){l.animation=n.value});
@@ -370,6 +404,19 @@
   }
   function closeCatalog(){el('builderCatalog').hidden=true;window.WorkspaceEditor?.catalogClosed()}
   function addCatalogItem(item){var grid=el('builderCatalogGrid'),key=String(item.appid||'')+':'+String(item.defid||item.image);if(grid.querySelector('[data-key="'+CSS.escape(key)+'"]'))return;var b=document.createElement('button');b.type='button';b.dataset.key=key;var src=item.movie||item.image,poster=item.image||src;b.innerHTML=item.movie?'<video muted loop autoplay playsinline></video>':'<img alt="">';var n=b.firstElementChild;n.src=safeSource(item.movie||poster);if(item.movie)n.poster=safeSource(poster);var caption=document.createElement('span');caption.textContent=item.name||t('background');b.title=caption.textContent;b.appendChild(caption);b.onclick=function(){var layer=defaultLayer('background');layer.name=item.name||t('background');layer.src=src;layer.mediaType=item.movie?'video/webm':'image/jpeg';project.layers=project.layers.filter(function(x){return x.type!=='background'});project.layers.unshift(layer);selected=layer.id;renderLayers();closeCatalog()};grid.appendChild(b)}
+  var addCatalogItemBase=addCatalogItem;
+  addCatalogItem=function(item){
+    var grid=el('builderCatalogGrid'),count=grid.children.length;
+    addCatalogItemBase(item);
+    if(grid.children.length===count)return;
+    var button=grid.lastElementChild,select=button.onclick;
+    button.onclick=function(){
+      select();
+      var layer=currentLayer(),purchase=steamPurchase(item.buy_url||item.market_url);
+      if(layer&&purchase)layer.buyUrl=purchase.url;
+      syncBackgroundPurchase();editorHistory?.commit();
+    };
+  };
   el('builderSteamBackgrounds').onclick=function(){openCatalog(true)};el('builderCatalogMore').onclick=function(){openCatalog(false)};el('builderCatalogGrid').addEventListener('scroll',function(){if(nearCatalogEnd())openCatalog(false)},{passive:true});el('builderCatalogClose').onclick=closeCatalog;var searchTimer;el('builderCatalogSearch').oninput=function(){clearTimeout(searchTimer);searchTimer=setTimeout(function(){openCatalog(true)},350)};
 
   async function saveProject(){var r=await fetch('/api/builder/projects',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:currentProjectId,name:el('builderProjectName').value,project:project})}),d=await r.json();if(!r.ok||!d.ok){if(r.status===401)el('btnAuth')&&el('btnAuth').click();throw Error(d.msg||t('failed'))}currentProjectId=d.item.id;status(t('saved')+(d.retention_days?' · 7 days':''),'ok');loadProjects()}
