@@ -356,14 +356,14 @@
         fetch('/api/steam/backgrounds?asset=animated_background&kind=animated&page='+page+'&count=24&q='+encodeURIComponent(q)).then(function(r){if(!r.ok)throw Error('HTTP '+r.status);return r.json()})
       ]);
       if(requestGeneration!==catalogGeneration)return;
-      if(parts.some(function(d){return !d.ok}))throw Error(parts.find(function(d){return !d.ok}).msg||'Steam catalog is unavailable');
+      if(parts.some(function(d){return !d.ok}))throw Error('catalog_unavailable');
       var before=el('builderCatalogGrid').children.length;
       parts.forEach(function(d){(d.items||[]).forEach(addCatalogItem)});catalogPage=page+1;
       catalogDone=parts.every(function(d){return d.total!=null?(page+1)*24>=Number(d.total):(d.items||[]).length<24})||el('builderCatalogGrid').children.length===before;
       el('builderCatalogMore').hidden=true;
       catalogMessage(!el('builderCatalogGrid').children.length?((window.SMLang?.get?.()||document.documentElement.lang)==='ru'?'По запросу фоны не найдены':'No backgrounds found'):(catalogDone?((window.SMLang?.get?.()||document.documentElement.lang)==='ru'?'Все фоны загружены':'All backgrounds loaded'):''));
       received=true;
-    }catch(e){if(requestGeneration===catalogGeneration){catalogMessage((window.SMLang?.get?.()||document.documentElement.lang)==='ru'?'Не удалось загрузить следующую страницу':'Could not load the next page');el('builderCatalogMore').hidden=false;var retryText=(window.SMLang?.get?.()||document.documentElement.lang)==='ru'?'Повторить загрузку':'Retry loading';el('builderCatalogMore').textContent=window.SMLang?.translate?.(retryText)||retryText;status(e.message,'bad')}}
+    }catch(e){if(requestGeneration===catalogGeneration){catalogMessage((window.SMLang?.get?.()||document.documentElement.lang)==='ru'?'Не удалось загрузить следующую страницу':'Could not load the next page');el('builderCatalogMore').hidden=false;var retryText=(window.SMLang?.get?.()||document.documentElement.lang)==='ru'?'Повторить загрузку':'Retry loading';el('builderCatalogMore').textContent=window.SMLang?.translate?.(retryText)||retryText;status(el('builderCatalogStatus').textContent,'bad')}}
     finally{
       if(requestGeneration===catalogGeneration){catalogLoading=false;if(received)requestAnimationFrame(function(){if(!catalogDone&&nearCatalogEnd())openCatalog(false)})}
     }

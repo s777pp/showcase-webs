@@ -9,7 +9,7 @@
       '/static/js/builder-history.js?v=20260910-finish1',
       '/static/js/builder-motion-copy.js?v=20260913-motion1',
       '/static/js/builder-motion.js?v=20260913-motion1',
-      '/static/js/showcase-builder.js?v=20260920-auto-upload1'
+      '/static/js/showcase-builder.js?v=20260921-polish1'
     ],
     dna: ['/static/js/steam-dna.js?v=20260912-exp7'],
     loop: ['/static/js/builder-motion-copy.js?v=20260913-motion1','/static/js/seamless-loop.js?v=20260913-motion1']
@@ -19,7 +19,8 @@
     if (scripts.has(src)) return scripts.get(src);
     const pending = new Promise(function (resolve, reject) {
       const node = document.createElement('script');
-      node.src = src; node.async = false; node.onload = resolve; node.onerror = reject;
+      node.src = src; node.async = false; node.onload = resolve;
+      node.onerror = function (event) { scripts.delete(src); node.remove(); reject(event); };
       document.body.appendChild(node);
     });
     scripts.set(src, pending);
@@ -30,8 +31,9 @@
     const promise = (groups[name] || []).reduce(function (chain, src) {
       return chain.then(function () { return script(src); });
     }, Promise.resolve());
-    loaded.set(name, promise);
-    return promise;
+    const retryable = promise.catch(function (error) { loaded.delete(name); throw error; });
+    loaded.set(name, retryable);
+    return retryable;
   }
   window.SMToolLoader = { load: load };
 

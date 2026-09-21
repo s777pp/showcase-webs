@@ -416,6 +416,11 @@ class CachedStaticFiles(StaticFiles):
     )
 
     async def get_response(self, path: str, scope):
+        # Match the edge rule when assets are served directly by FastAPI.
+        # Preserve local backups, but never expose them as public resources.
+        if re.search(r"(?:^|[\\/])\.|\.before-|\.bak(?:\.|[\\/]|$)|~$", path, re.I):
+            from starlette.exceptions import HTTPException
+            raise HTTPException(status_code=404)
         response = await super().get_response(path, scope)
         lower = path.lower()
         for exts, value in self.POLICY:

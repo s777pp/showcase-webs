@@ -99,6 +99,10 @@ function extraPacks() {
 }
 
 const errors = [];
+const clarityWords = evaluateDictionary('static/js/tool-clarity-copy.js', 'const words =');
+for (const [key, translations] of Object.entries(clarityWords)) {
+  if (!Array.isArray(translations) || translations.length !== 8 || translations.some(value => typeof value !== 'string' || !value.trim())) errors.push(`tool clarity: incomplete translations for ${key}`);
+}
 const motionWords = evaluateDictionary('static/js/builder-motion-copy.js', 'const words =');
 for (const [key, translations] of Object.entries(motionWords)) {
   if (!Array.isArray(translations) || translations.length !== 8 || translations.some(value => typeof value !== 'string' || !value.trim())) errors.push(`builder motion: incomplete translations for ${key}`);

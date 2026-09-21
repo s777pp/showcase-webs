@@ -261,18 +261,13 @@ def _visual_urls(profile: dict, showcase_first: bool = False) -> list[str]:
 
 
 def _visual_parts(profile: dict, showcase_first: bool = False) -> list[dict]:
+    from smweb.remote_media import fetch_media
+
     parts = []
     for url in _visual_urls(profile, showcase_first=showcase_first):
         try:
-            response = requests.get(url, timeout=(5, 12), allow_redirects=True, stream=True, headers={"User-Agent": "ShowcaseMaker/1.0"})
-            final_host = (urlparse(response.url).hostname or "").lower().rstrip(".")
-            if response.status_code != 200 or not any(final_host.endswith(suffix) for suffix in _IMAGE_HOST_SUFFIXES):
-                continue
-            raw = bytearray()
-            for chunk in response.iter_content(65536):
-                raw.extend(chunk)
-                if len(raw) > 3 * 1024 * 1024:
-                    raise ValueError("visual_too_large")
+            raw, _ = fetch_media(url, max_bytes=3 * 1024 * 1024, hosts=(),
+                                 suffixes=_IMAGE_HOST_SUFFIXES, schemes=("https",), timeout=(5, 12))
             with Image.open(io.BytesIO(raw)) as image:
                 image.seek(0)
                 image = image.convert("RGB")

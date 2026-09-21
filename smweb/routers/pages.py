@@ -30,7 +30,7 @@ from typing import Optional
 from urllib.parse import quote, urlparse
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
@@ -116,6 +116,24 @@ def index(request: Request):
     return _legacy_redirect(request, "/")
 
 
+@router.get("/robots.txt", include_in_schema=False)
+def robots_txt():
+    # Public discovery only; access control is still enforced by the APIs.
+    return PlainTextResponse("User-agent: *\nDisallow: /api/\nDisallow: /admin/\n"
+                             "Disallow: /preview/\nSitemap: https://showcasemaker.com/sitemap.xml\n",
+                             headers={"Cache-Control": "public, max-age=3600"})
+
+
+@router.get("/sitemap.xml", include_in_schema=False)
+def sitemap_xml():
+    # Do not enumerate private projects, jobs or user accounts.
+    urls = ["https://showcasemaker.com" + localized_path(language, path)
+            for language in SUPPORTED_LANGUAGES for path in ("/", "/app", "/gallery", "/privacy")]
+    body = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    body += "".join(f"<url><loc>{html.escape(url)}</loc></url>" for url in urls) + "</urlset>"
+    return Response(body, media_type="application/xml", headers={"Cache-Control": "public, max-age=3600"})
+
+
 @router.get("/app", include_in_schema=False)
 def app_page(request: Request):
     return _legacy_redirect(request, "/app")
@@ -125,6 +143,7 @@ def app_page(request: Request):
 def analytics_dashboard():
     response = _html(_page(STATIC / "analytics.html"))
     response.headers["Cache-Control"] = "private, no-store"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
     return response
 
 
@@ -184,7 +203,9 @@ def _privacy(language: str):
 def _profile(language: str):
     if not (STATIC / "profile.html").is_file():
         return _html("profile.html missing", status_code=404)
-    return _localized_html("profile.html", language, "/profile")
+    response = _localized_html("profile.html", language, "/profile")
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
 
 
 def _public_profile(language: str, username: str):

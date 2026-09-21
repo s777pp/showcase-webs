@@ -18,13 +18,13 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-import requests
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 from PIL import Image, ImageDraw, ImageFilter, ImageSequence
 
 import processor as proc
 import steam_catalog
+from smweb.remote_media import fetch_media, validate_media_url
 
 LOGGER = logging.getLogger("sm.tools")
 
@@ -229,37 +229,16 @@ def steam_proxy_image(url: str):
     # exhaustive host list silently breaks images over time. Match the whole
     # steamstatic.com zone instead and keep the handful of non-steamstatic
     # hosts explicit. Still a closed allowlist - not a generic fetcher.
-    allowed_suffixes = (".steamstatic.com", ".steampowered.com")
-    allowed_hosts = (
-        "images.steamusercontent.com",
-        "steamuserimages-a.akamaihd.net",
-        "steamcommunity-a.akamaihd.net",
-    )
-    from urllib.parse import urlparse
-
     try:
-        parsed = urlparse(url)
-        host = (parsed.hostname or "").lower()
-    except Exception:
-        return _err("Bad URL")
-    if parsed.scheme not in ("http", "https"):
-        return _err("Only Steam CDN images are allowed")
-    if host not in allowed_hosts and not host.endswith(allowed_suffixes):
+        validate_media_url(url)
+    except ValueError:
         return _err("Only Steam CDN images are allowed")
     try:
-        r = requests.get(url, timeout=15, headers={"User-Agent": steam_catalog.UA})
-        if r.status_code != 200:
-            return _err(f"Upstream HTTP {r.status_code}", 502)
-        ctype = r.headers.get("Content-Type", "image/png")
-        # Animated backgrounds and avatars are webm/mp4, not images.
-        if not (ctype.startswith("image/") or ctype in ("video/webm", "video/mp4")):
-            return _err("Not an image or video", 502)
-        if len(r.content) > 25 * 1024 * 1024:
-            return _err("Image too large", 502)
-        return Response(content=r.content, media_type=ctype,
+        body, ctype = fetch_media(url, max_bytes=25 * 1024 * 1024, user_agent=steam_catalog.UA)
+        return Response(content=body, media_type=ctype,
                         headers={"Cache-Control": "public, max-age=86400"})
-    except Exception:
-        LOGGER.exception("Steam media proxy failed")
+    except Exception as exc:
+        LOGGER.warning("Steam media proxy failed (%s)", type(exc).__name__)
         return _err("Steam media is temporarily unavailable", 502)
 
 
@@ -506,18 +485,17 @@ async def builder_render(
         bg_raw = await background.read()
         bg_ext = Path(background.filename or "background.png").suffix.lower()
     elif background_url:
-        from urllib.parse import urlparse
-
-        host = (urlparse(background_url).hostname or "").lower()
-        if not host.endswith("steamstatic.com") and not host.endswith("akamaihd.net"):
+        try:
+            validate_media_url(background_url)
+        except ValueError:
             return _err("Background URL must point at the Steam CDN")
         try:
-            r = requests.get(background_url, timeout=15, headers={"User-Agent": steam_catalog.UA})
-            if r.status_code != 200:
-                return _err(f"Background fetch failed (HTTP {r.status_code})", 502)
-            bg_raw = r.content
-        except Exception as e:
-            return _err(f"Background fetch failed: {e}", 502)
+            bg_raw, bg_type = fetch_media(background_url, max_bytes=_max_mb() * 1024 * 1024,
+                                         user_agent=steam_catalog.UA)
+            bg_ext = {"video/webm": ".webm", "video/mp4": ".mp4"}.get(bg_type, "")
+        except Exception as exc:
+            LOGGER.warning("Builder background fetch failed (%s)", type(exc).__name__)
+            return _err("Steam media is temporarily unavailable", 502)
 
     if not bg_raw:
         return _err("A background is required")

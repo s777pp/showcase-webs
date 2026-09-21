@@ -59,8 +59,17 @@
       });
       frame.className = 'tools-profile-editor';
       frame.title = document.documentElement.lang === 'ru' ? 'Редактор профиля' : 'Profile editor';
-      frame.src = '/profile?embed=tools';
       preview.prepend(frame);
+      // The editor has its own scripts, API requests and images. Load it only
+      // when opened, not on every visit to an unrelated processing tool.
+      var frameObserver = new MutationObserver(loadFrame);
+      function loadFrame() {
+        if (!preview.classList.contains('active') || frame.hasAttribute('src')) return;
+        frame.src = '/profile?embed=tools';
+        frameObserver.disconnect();
+      }
+      frameObserver.observe(preview, { attributes: true, attributeFilter: ['class'] });
+      loadFrame();
       function syncFrame() {
         frame.title = document.documentElement.lang === 'ru' ? 'Редактор профиля' : 'Profile editor';
         try { frame.contentWindow.dispatchEvent(new CustomEvent('sm:langchange', { detail: { lang: document.documentElement.lang } })); } catch (e) {}

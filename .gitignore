@@ -29,6 +29,10 @@ venv/
 .tmp_u2net_test/
 .coverage
 .pytest_cache/
+.playwright-cli/
+output/playwright/
+data/media-assets/
+data/projects/
 *.egg-info/
 
 # local binaries / os
