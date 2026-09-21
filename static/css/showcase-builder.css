@@ -65,3 +65,4 @@
 .builder-snap-guides{position:absolute;inset:0;pointer-events:none}.builder-snap-guides i,.builder-snap-guides b{display:none;position:absolute;background:#52d5ff;box-shadow:0 0 8px rgba(82,213,255,.65)}.builder-snap-guides i{top:0;bottom:0;left:50%;width:1px}.builder-snap-guides b{left:0;right:0;top:50%;height:1px}.builder-snap-guides.show-x i,.builder-snap-guides.show-y b{display:block}
 .builder-layer__actions button{width:21px}.builder-layer.is-locked{border-style:dashed}.builder-layer.is-locked .builder-layer__icon{color:#7f95a0}
 @media(max-width:760px){.builder-canvas-toolbar{align-items:flex-start;flex-direction:column}.builder-backdrops{width:100%;justify-content:flex-end}}
+.builder-history #builderBuyBackground{white-space:normal;max-width:100%;text-decoration:none}

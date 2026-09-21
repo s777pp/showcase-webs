@@ -2,10 +2,82 @@
 from __future__ import annotations
 
 import os
+from html import escape
 import requests
 
 RESEND_API_KEY = (os.environ.get("RESEND_API_KEY") or "").strip()
 MAIL_FROM = (os.environ.get("MAIL_FROM") or os.environ.get("EMAIL_FROM") or "Showcase Maker <onboarding@resend.dev>").strip()
+
+
+def _email_shell(*, language: str, subject: str, preheader: str, eyebrow: str,
+                 heading: str, body_html: str, panel_html: str,
+                 action_label: str = "", action_url: str = "") -> str:
+    """Email-client-safe Showcase Maker shell; all arguments are trusted copy or escaped."""
+    footers = {
+        "en": "This is an automated message. If you did not perform this action, you can ignore it.",
+        "ru": "Это автоматическое письмо. Если действие выполняли не вы, просто проигнорируйте его.",
+        "de": "Dies ist eine automatische Nachricht. Wenn Sie diese Aktion nicht ausgeführt haben, können Sie sie ignorieren.",
+        "tr": "Bu otomatik bir iletidir. Bu işlemi siz yapmadıysanız iletiyi yok sayabilirsiniz.",
+        "fr": "Ceci est un message automatique. Si vous n’êtes pas à l’origine de cette action, ignorez-le.",
+        "uk": "Це автоматичний лист. Якщо цю дію виконували не ви, просто проігноруйте його.",
+        "es": "Este es un mensaje automático. Si no realizaste esta acción, puedes ignorarlo.",
+        "pt": "Esta é uma mensagem automática. Se você não realizou esta ação, pode ignorá-la.",
+    }
+    footer = footers.get(language, footers["en"])
+    action = ""
+    if action_label and action_url:
+        action = (
+            '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:26px 0 0">'
+            '<tr><td bgcolor="#52d5ff" style="border:1px solid #7ce3fb">'
+            f'<a href="{escape(action_url, quote=True)}" style="display:inline-block;padding:13px 22px;'
+            'font-family:Arial,sans-serif;font-size:14px;line-height:18px;font-weight:800;'
+            'letter-spacing:.2px;color:#04131b;text-decoration:none">'
+            f'{escape(action_label)}</a></td></tr></table>'
+        )
+    return (
+        '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">'
+        f'<title>{escape(subject)}</title></head>'
+        '<body style="margin:0;padding:0;background:#030a10;color:#e9f8fd">'
+        f'<div style="display:none;max-height:0;overflow:hidden;opacity:0">{escape(preheader)}</div>'
+        '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" '
+        'style="width:100%;background:#030a10"><tr><td align="center" style="padding:28px 12px">'
+        '<table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" '
+        'style="width:100%;max-width:600px;background:#081721;border:1px solid #1f3c49">'
+        '<tr><td style="height:3px;background:#52d5ff;font-size:0;line-height:0">&nbsp;</td></tr>'
+        '<tr><td style="padding:24px 28px 20px;border-bottom:1px solid #1f3c49">'
+        '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>'
+        '<td width="46" valign="middle"><div style="width:36px;height:36px;border:1px solid #52d5ff;'
+        'font-family:Arial,sans-serif;font-size:20px;line-height:36px;font-weight:900;text-align:center;'
+        'color:#52d5ff;background:#0b202b">S</div></td>'
+        '<td valign="middle"><div style="font-family:Arial,sans-serif;font-size:17px;line-height:20px;'
+        'font-weight:900;letter-spacing:.3px;color:#f2fbff">SHOWCASE</div>'
+        '<div style="font-family:Arial,sans-serif;font-size:12px;line-height:14px;font-weight:900;'
+        'letter-spacing:1.8px;color:#52d5ff">MAKER</div></td></tr></table></td></tr>'
+        '<tr><td style="padding:34px 28px 32px">'
+        f'<div style="font-family:Courier New,monospace;font-size:11px;line-height:16px;font-weight:700;'
+        f'letter-spacing:2px;color:#52d5ff;text-transform:uppercase">{escape(eyebrow)}</div>'
+        f'<h1 style="margin:10px 0 14px;font-family:Arial,sans-serif;font-size:28px;line-height:34px;'
+        f'letter-spacing:-.5px;color:#f2fbff">{escape(heading)}</h1>'
+        f'<div style="font-family:Arial,sans-serif;font-size:15px;line-height:24px;color:#a9c2cd">{body_html}</div>'
+        f'{panel_html}{action}'
+        '</td></tr><tr><td style="padding:18px 28px;border-top:1px solid #1f3c49;'
+        'font-family:Arial,sans-serif;font-size:12px;line-height:19px;color:#688692">'
+        f'{escape(footer)}<br><span style="color:#52d5ff">showcasemaker.com</span>'
+        '</td></tr></table></td></tr></table></body></html>'
+    )
+
+
+def _code_panel(code: str, caption: str) -> str:
+    return (
+        '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" '
+        'style="margin:26px 0 0;background:#041019;border:1px solid #2b6173">'
+        '<tr><td align="center" style="padding:22px 14px 20px">'
+        f'<div style="font-family:Courier New,monospace;font-size:34px;line-height:42px;font-weight:700;'
+        f'letter-spacing:8px;color:#f2fbff">{escape(code)}</div>'
+        f'<div style="margin-top:8px;font-family:Arial,sans-serif;font-size:11px;line-height:16px;'
+        f'letter-spacing:1.4px;text-transform:uppercase;color:#6fa7b9">{escape(caption)}</div>'
+        '</td></tr></table>'
+    )
 
 
 def send_email(to: str, subject: str, text: str, html: str | None = None) -> tuple[bool, str]:
@@ -48,11 +120,21 @@ def send_verify_code(to: str, code: str, lang: str = "en") -> tuple[bool, str]:
     if ru:
         subject = "Showcase Maker — код подтверждения"
         text = "Ваш код: " + code + "\n\nКод действует 15 минут.\nЕсли вы не регистрировались — игнорируйте письмо."
-        html = "<p>Ваш код:</p><p style=\"font-size:28px;font-weight:700;letter-spacing:4px\">" + code + "</p><p>15 минут.</p>"
+        html = _email_shell(
+            language="ru", subject=subject, preheader="Код действует 15 минут.",
+            eyebrow="ACCOUNT / VERIFICATION", heading="Подтвердите электронную почту",
+            body_html="Введите этот код на сайте, чтобы завершить создание аккаунта.",
+            panel_html=_code_panel(code, "Действует 15 минут"),
+        )
     else:
         subject = "Showcase Maker — verification code"
         text = "Your code: " + code + "\n\nValid for 15 minutes.\nIf you did not sign up, ignore this email."
-        html = "<p>Your verification code:</p><p style=\"font-size:28px;font-weight:700;letter-spacing:4px\">" + code + "</p><p>Valid for 15 minutes.</p>"
+        html = _email_shell(
+            language="en", subject=subject, preheader="Your code is valid for 15 minutes.",
+            eyebrow="ACCOUNT / VERIFICATION", heading="Confirm your email address",
+            body_html="Enter this code on the website to finish creating your account.",
+            panel_html=_code_panel(code, "Valid for 15 minutes"),
+        )
     return send_email(to, subject, text, html)
 
 
@@ -70,10 +152,17 @@ def send_password_reset_code(to: str, code: str, lang: str = "en") -> tuple[bool
     }
     subject, heading, note = copy.get(language, copy["en"])
     text = f"{heading}: {code}\n\n{note}"
-    html = (
-        f"<p>{heading}:</p>"
-        f"<p style=\"font-size:28px;font-weight:700;letter-spacing:4px\">{code}</p>"
-        f"<p>{note}</p>"
+    captions = {
+        "en": "Valid for 15 minutes", "ru": "Действует 15 минут",
+        "de": "15 Minuten gültig", "tr": "15 dakika geçerli",
+        "fr": "Valable 15 minutes", "uk": "Діє 15 хвилин",
+        "es": "Válido durante 15 minutos", "pt": "Válido por 15 minutos",
+    }
+    html = _email_shell(
+        language=language, subject=subject, preheader=note,
+        eyebrow="ACCOUNT / RECOVERY", heading=heading,
+        body_html=escape(note),
+        panel_html=_code_panel(code, captions.get(language, captions["en"])),
     )
     return send_email(to, subject, text, html)
 
@@ -137,24 +226,24 @@ def send_pro_granted_email(to: str, days: float, lang: str = "en") -> tuple[bool
         footer = "If you have any questions, reach out via the support chat on the website."
 
     text = f"{heading}\n\n{body_text}\n\n{footer}"
-    html = (
-        f'<div style="font-family:Inter,system-ui,sans-serif;max-width:520px;margin:0 auto;'
-        f'padding:32px 24px;background:#0d1117;color:#e6edf3;border-radius:12px">'
-        f'<h1 style="font-size:22px;margin:0 0 8px;color:#58a6ff">Showcase Maker</h1>'
-        f'<p style="font-size:18px;font-weight:700;margin:0 0 20px;color:#fff">{heading}</p>'
-        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;'
-        f'padding:20px;margin:0 0 20px">'
-        f'<p style="margin:0 0 4px;font-size:13px;color:#8b949e;text-transform:uppercase;'
-        f'letter-spacing:1px">{"Статус" if ru else "Status"}</p>'
-        f'<p style="margin:0;font-size:24px;font-weight:700;color:#3fb950">PRO ✓</p>'
-        f'</div>'
-        f'<p style="font-size:14px;line-height:1.6;color:#c9d1d9;margin:0 0 20px">'
-        f'{body_text.replace(chr(10), "<br>")}</p>'
-        f'<a href="https://showcasemaker.com/app" style="display:inline-block;'
-        f'background:linear-gradient(135deg,#238636,#2ea043);color:#fff;'
-        f'text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;'
-        f'font-size:14px">{"Открыть Showcase Maker" if ru else "Open Showcase Maker"}</a>'
-        f'<p style="font-size:12px;color:#484f58;margin:20px 0 0">{footer}</p>'
-        f'</div>'
+    panel = (
+        '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" '
+        'style="margin:26px 0 0;background:#041019;border:1px solid #2b6173"><tr>'
+        '<td style="padding:18px 20px"><div style="font-family:Courier New,monospace;font-size:10px;'
+        f'line-height:15px;letter-spacing:1.6px;color:#6fa7b9">{"СТАТУС ДОСТУПА" if ru else "ACCESS STATUS"}</div>'
+        '<div style="margin-top:5px;font-family:Arial,sans-serif;font-size:25px;line-height:31px;'
+        f'font-weight:900;color:#52d5ff">PRO · {escape(duration.upper())}</div></td></tr></table>'
+    )
+    detail = (
+        "Обработка без водяного знака, AI-апскейл и расширенные лимиты уже доступны в вашем аккаунте."
+        if ru else
+        "Watermark-free processing, AI upscaling, and extended limits are now available in your account."
+    )
+    html = _email_shell(
+        language="ru" if ru else "en", subject=subject, preheader=heading,
+        eyebrow="ACCOUNT / PRO ACCESS", heading=heading,
+        body_html=escape(detail), panel_html=panel,
+        action_label="Открыть Showcase Maker" if ru else "Open Showcase Maker",
+        action_url="https://showcasemaker.com/ru/app" if ru else "https://showcasemaker.com/en/app",
     )
     return send_email(to, subject, text, html)

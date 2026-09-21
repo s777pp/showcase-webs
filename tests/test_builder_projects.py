@@ -83,6 +83,21 @@ class BuilderProjectTests(unittest.TestCase):
         self.assertEqual(enhanced["layers"][1]["frameStyle"], "corners")
         self.assertEqual(enhanced["layers"][1]["frameTarget"], "panels")
 
+    def test_steam_background_purchase_url_is_preserved_safely(self):
+        points_url = "https://store.steampowered.com/points/shop/app/123/reward/456"
+        project = _validated_project({"layers": [
+            {"type": "background", "buyUrl": points_url},
+            {"type": "background", "buyUrl": "https://evil.example/points/shop/app/123/reward/456"},
+            {"type": "character", "buyUrl": points_url},
+        ]})
+        self.assertEqual(project["layers"][0]["buyUrl"], points_url)
+        self.assertEqual(project["layers"][1]["buyUrl"], "")
+        self.assertNotIn("buyUrl", project["layers"][2])
+
+        market_url = "https://steamcommunity.com/market/listings/753/123-Test%20Background"
+        market = _validated_project({"layers": [{"type": "background", "buyUrl": market_url}]})
+        self.assertEqual(market["layers"][0]["buyUrl"], market_url)
+
     def test_builder_markup_exposes_compact_controls(self):
         root = Path(__file__).resolve().parents[1]
         markup = (root / "static" / "app.html").read_text(encoding="utf-8")

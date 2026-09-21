@@ -316,7 +316,8 @@ def user_action(user_id: int, action: str, payload: dict) -> dict:
                 try:
                     from mailer import send_pro_granted_email
                     days_val = max(0.0, min(3650.0, float(payload.get("days") or 0)))
-                    send_pro_granted_email(email, days_val, lang="ru")
+                    language = str(payload.get("language") or "ru").lower()
+                    send_pro_granted_email(email, days_val, lang=language if language in {"ru", "en"} else "ru")
                 except Exception:
                     pass  # Pro is granted regardless of email delivery
         return {"ok": True}

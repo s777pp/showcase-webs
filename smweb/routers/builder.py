@@ -12,6 +12,7 @@ import io
 import os
 import re
 import secrets
+from urllib.parse import urlsplit
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
@@ -64,6 +65,20 @@ def _bounded_number(value, minimum, maximum, default):
         return max(minimum, min(maximum, number)) if math.isfinite(number) else default
     except (TypeError, ValueError):
         return default
+
+
+def _steam_purchase_url(value) -> str:
+    raw = str(value or "").strip()[:1000]
+    try:
+        parsed = urlsplit(raw)
+        unsafe_authority = parsed.username or parsed.password or parsed.port
+    except ValueError:
+        return ""
+    if parsed.scheme != "https" or unsafe_authority or parsed.fragment:
+        return ""
+    market = parsed.hostname == "steamcommunity.com" and re.fullmatch(r"/market/listings/753/[^/]+", parsed.path)
+    points = parsed.hostname == "store.steampowered.com" and re.fullmatch(r"/points/shop/app/\d+(?:/reward/\d+)?/?", parsed.path)
+    return raw if market or points else ""
 
 
 def _validated_local_motion(raw):
@@ -188,6 +203,10 @@ def _validated_project(raw) -> dict:
                     src.startswith("https://cdn.cloudflare.steamstatic.com/")):
                 src = ""
             item["src"] = src
+        if item["type"] == "background" and item.get("buyUrl"):
+            item["buyUrl"] = _steam_purchase_url(item["buyUrl"])
+        else:
+            item.pop("buyUrl", None)
         clean_layers.append(item)
     motion = raw.get("motion") if isinstance(raw.get("motion"), dict) else {}
     return {

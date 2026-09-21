@@ -74,7 +74,10 @@ def run():
             animated = query.get('asset', [''])[0] == 'animated_background'
             route.fulfill(json={'ok': True, 'items': [
                 {'appid': 1, 'defid': number + (1000 if animated else 0), 'name': 'Steam background ' + str(number),
-                 'image': '/static/img/hero-creator-cyberpunk.png'}
+                 'image': '/static/img/hero-creator-cyberpunk.png',
+                 'buy_url': ('https://store.steampowered.com/points/shop/app/1/reward/' + str(number + 1000)
+                             if animated else
+                             'https://steamcommunity.com/market/listings/753/1-Steam%20background%20' + str(number))}
                 for number in numbers]})
         else:
             route.fulfill(json={'ok': True, 'items': [], 'topics': [], 'available': False,
@@ -237,6 +240,17 @@ def run():
         page.locator('#builderCatalogGrid button').first.click()
         expect(page.locator('#builderCatalog')).to_be_hidden()
         expect(page.locator('#builderLayerName')).to_have_value('Steam background 1')
+        buy_background = page.locator('#builderBuyBackground')
+        expect(buy_background).to_be_visible()
+        expect(buy_background).to_have_text('Купить на торговой площадке')
+        expect(buy_background).to_have_attribute('href', 'https://steamcommunity.com/market/listings/753/1-Steam%20background%201')
+        expect(buy_background).to_have_attribute('target', '_blank')
+        page.screenshot(path=str(output / 'showcase-editor-purchase.png'), full_page=True)
+        page.locator('#builderSteamBackgrounds').click()
+        expect(page.locator('#builderCatalogGrid button')).to_have_count(48)
+        page.locator('#builderCatalogGrid button').nth(24).click()
+        expect(buy_background).to_have_text('Купить за очки Steam')
+        expect(buy_background).to_have_attribute('href', 'https://store.steampowered.com/points/shop/app/1/reward/1001')
         assert not errors, errors
         page.goto(base + '/ru/app')
         page.set_viewport_size({'width': 1440, 'height': 1000})
