@@ -290,7 +290,7 @@ def user_action(user_id: int, action: str, payload: dict) -> dict:
         if not row:
             raise LookupError("Account not found")
         if action == "grant_pro":
-            days = max(0, min(3650, int(payload.get("days") or 0)))
+            days = max(0.0, min(3650.0, float(payload.get("days") or 0)))
             until = time.time() + days * 86400 if days else None
             connection.execute("UPDATE users SET is_pro=1,pro_code=?,pro_until=? WHERE id=?", ("ADMIN-GRANT", until, uid))
         elif action == "revoke_pro":
@@ -309,9 +309,20 @@ def user_action(user_id: int, action: str, payload: dict) -> dict:
             raise ValueError("Unknown action")
         connection.commit()
         audit(f"user.{action}", f"user:{uid}", {"email": str(row["email"]), "days": payload.get("days")})
+        # Send Pro-granted email notification (fire-and-forget)
+        if action == "grant_pro":
+            email = str(row["email"] or "").strip()
+            if email and "@" in email:
+                try:
+                    from mailer import send_pro_granted_email
+                    days_val = max(0.0, min(3650.0, float(payload.get("days") or 0)))
+                    send_pro_granted_email(email, days_val, lang="ru")
+                except Exception:
+                    pass  # Pro is granted regardless of email delivery
         return {"ok": True}
     finally:
         connection.close()
+
 
 
 def jobs(limit: int = 100) -> dict:

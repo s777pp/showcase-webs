@@ -76,3 +76,85 @@ def send_password_reset_code(to: str, code: str, lang: str = "en") -> tuple[bool
         f"<p>{note}</p>"
     )
     return send_email(to, subject, text, html)
+
+
+def _format_duration(days: float, ru: bool) -> str:
+    """Human-readable duration label for the Pro grant email."""
+    if not days:
+        return "навсегда" if ru else "forever"
+    hours = days * 24
+    if hours < 24:
+        h = int(round(hours))
+        if ru:
+            if h % 10 == 1 and h != 11:
+                return f"{h} час"
+            if h % 10 in (2, 3, 4) and h not in (12, 13, 14):
+                return f"{h} часа"
+            return f"{h} часов"
+        return f"{h} hour" + ("s" if h != 1 else "")
+    d = int(round(days))
+    if ru:
+        if d % 10 == 1 and d != 11:
+            return f"{d} день"
+        if d % 10 in (2, 3, 4) and d not in (12, 13, 14):
+            return f"{d} дня"
+        return f"{d} дней"
+    return f"{d} day" + ("s" if d != 1 else "")
+
+
+def send_pro_granted_email(to: str, days: float, lang: str = "en") -> tuple[bool, str]:
+    """Notify a user that Pro access has been granted by the administrator."""
+    to = (to or "").strip()
+    if not to or "@" not in to:
+        return False, "No email"
+    ru = (lang or "").lower().startswith("ru")
+    duration = _format_duration(days, ru)
+    if ru:
+        if days:
+            subject = f"Showcase Maker — вам выдан Pro на {duration}"
+            heading = f"Вам предоставлен доступ Pro на {duration}!"
+        else:
+            subject = "Showcase Maker — вам выдан Pro навсегда"
+            heading = "Вам предоставлен бессрочный доступ Pro!"
+        body_text = (
+            "Теперь вам доступны все Pro-функции: обработка без водяного знака, "
+            "AI-апскейл, расширенные лимиты и многое другое.\n\n"
+            "Откройте сайт и начните работу: https://showcasemaker.com/app"
+        )
+        footer = "Если у вас есть вопросы — обратитесь через чат поддержки на сайте."
+    else:
+        if days:
+            subject = f"Showcase Maker — Pro access granted for {duration}"
+            heading = f"You've been granted Pro access for {duration}!"
+        else:
+            subject = "Showcase Maker — permanent Pro access granted"
+            heading = "You've been granted permanent Pro access!"
+        body_text = (
+            "You now have access to all Pro features: watermark-free processing, "
+            "AI upscaling, extended limits, and more.\n\n"
+            "Open the app and get started: https://showcasemaker.com/app"
+        )
+        footer = "If you have any questions, reach out via the support chat on the website."
+
+    text = f"{heading}\n\n{body_text}\n\n{footer}"
+    html = (
+        f'<div style="font-family:Inter,system-ui,sans-serif;max-width:520px;margin:0 auto;'
+        f'padding:32px 24px;background:#0d1117;color:#e6edf3;border-radius:12px">'
+        f'<h1 style="font-size:22px;margin:0 0 8px;color:#58a6ff">Showcase Maker</h1>'
+        f'<p style="font-size:18px;font-weight:700;margin:0 0 20px;color:#fff">{heading}</p>'
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;'
+        f'padding:20px;margin:0 0 20px">'
+        f'<p style="margin:0 0 4px;font-size:13px;color:#8b949e;text-transform:uppercase;'
+        f'letter-spacing:1px">{"Статус" if ru else "Status"}</p>'
+        f'<p style="margin:0;font-size:24px;font-weight:700;color:#3fb950">PRO ✓</p>'
+        f'</div>'
+        f'<p style="font-size:14px;line-height:1.6;color:#c9d1d9;margin:0 0 20px">'
+        f'{body_text.replace(chr(10), "<br>")}</p>'
+        f'<a href="https://showcasemaker.com/app" style="display:inline-block;'
+        f'background:linear-gradient(135deg,#238636,#2ea043);color:#fff;'
+        f'text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;'
+        f'font-size:14px">{"Открыть Showcase Maker" if ru else "Open Showcase Maker"}</a>'
+        f'<p style="font-size:12px;color:#484f58;margin:20px 0 0">{footer}</p>'
+        f'</div>'
+    )
+    return send_email(to, subject, text, html)
