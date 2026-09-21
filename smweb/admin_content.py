@@ -14,6 +14,7 @@ import threading
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import auth_db
 
@@ -233,6 +234,9 @@ def save_catalog_rule(payload: dict) -> dict:
     name = str(payload.get("name") or identity or "Steam item").strip()[:120]
     if not identity:
         raise ValueError("Steam item URL or image URL is required")
+    parsed = urlparse(identity)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("Only an http(s) Steam or image URL is allowed")
     key = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:20]
     rule = {"identity": identity, "name": name, "hidden": bool(payload.get("hidden")),
             "featured": bool(payload.get("featured")), "note": str(payload.get("note") or "")[:240],

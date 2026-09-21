@@ -19,9 +19,10 @@
     else window.addEventListener('load',openLinkedTool,{once:true});
     let topics=[],available=false,loaded=false,pending=false,history=[],topicsExpanded=false;
     const root=document.createElement('aside');root.className='studio-support';
-    root.innerHTML='<button class="studio-chat-launch" type="button" aria-expanded="false" aria-controls="studioChat"><span aria-hidden="true">✦</span><span class="chat-launch-label"></span></button><section id="studioChat" class="studio-chat-panel" role="dialog" aria-labelledby="studioChatTitle" hidden><header><div><small>SHOWCASE MAKER</small><h2 id="studioChatTitle"></h2></div><button class="studio-chat-close" type="button">×</button></header><p class="studio-chat-note"></p><div class="studio-chat-suggestions" hidden><div id="studioChatTopics" class="studio-chat-topics" role="group"></div><button class="studio-chat-topics-toggle" type="button" aria-expanded="false" aria-controls="studioChatTopics"><span></span><span aria-hidden="true">⌄</span></button></div><div class="studio-chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div><form><label for="studioChatInput" class="studio-sr-only"></label><textarea id="studioChatInput" maxlength="1500" rows="2" required></textarea><button class="studio-chat-send" type="submit">↑</button></form><p class="studio-chat-privacy"></p></section>';
+    root.innerHTML='<button class="studio-chat-launch" type="button" aria-expanded="false" aria-controls="studioChat"><span aria-hidden="true">✦</span><span class="chat-launch-label"></span></button><section id="studioChat" class="studio-chat-panel" role="dialog" aria-labelledby="studioChatTitle" hidden><header><div><small>SHOWCASE MAKER</small><h2 id="studioChatTitle"></h2></div><button class="studio-chat-close" type="button">×</button></header><p class="studio-chat-note"></p><div class="studio-chat-suggestions" hidden><div id="studioChatTopics" class="studio-chat-topics" role="group"></div><button class="studio-chat-topics-toggle" type="button" aria-expanded="false" aria-controls="studioChatTopics"><span></span><span aria-hidden="true">⌄</span></button></div><div class="studio-chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div><form class="studio-chat-form"><label for="studioChatInput" class="studio-sr-only"></label><textarea id="studioChatInput" maxlength="1500" rows="2" required></textarea><button class="studio-chat-send" type="submit">↑</button></form><button class="studio-ticket-toggle" type="button" aria-expanded="false"></button><form class="studio-ticket-form" hidden><label><span class="studio-ticket-message-label"></span><textarea name="message" minlength="10" maxlength="2000" rows="3" required></textarea></label><label><span class="studio-ticket-email-label"></span><input name="email" type="email" maxlength="254" autocomplete="email"></label><button type="submit"></button><output role="status"></output></form><p class="studio-chat-privacy"></p></section>';
     document.body.append(root);
-    const find=s=>root.querySelector(s),panel=find('.studio-chat-panel'),input=find('textarea'),log=find('[role=log]'),form=find('form'),launcher=find('.studio-chat-launch');
+    const find=s=>root.querySelector(s),panel=find('.studio-chat-panel'),input=find('#studioChatInput'),log=find('[role=log]'),form=find('.studio-chat-form'),launcher=find('.studio-chat-launch');
+    const ticketToggle=find('.studio-ticket-toggle'),ticketForm=find('.studio-ticket-form');
     const suggestions=find('.studio-chat-suggestions'),topicsToggle=find('.studio-chat-topics-toggle');
     function paintTopicsState(){
       suggestions.hidden=topics.length===0;
@@ -43,6 +44,10 @@
       find('label').textContent=t('Твой вопрос','Your question');
       input.placeholder=t('Как подготовить GIF для Steam?','How do I prepare a GIF for Steam?');
       find('.studio-chat-privacy').textContent=t('При включённом ИИ сообщения отправляются Groq. Не отправляй пароли и ключи. Ответы могут содержать ошибки.','When AI is enabled, messages are sent to Groq. Don’t share passwords or keys. Answers may contain mistakes.');
+      ticketToggle.textContent=t('Сообщить о проблеме','Report a problem');
+      find('.studio-ticket-message-label').textContent=t('Что произошло?','What happened?');
+      find('.studio-ticket-email-label').textContent=t('Email для ответа (необязательно)','Reply email (optional)');
+      ticketForm.querySelector('button').textContent=t('Отправить обращение','Send report');
       find('.studio-chat-note').textContent=!loaded?t('Загружаем справку…','Loading help…'):available?t('Спроси об инструментах, витринах или аккаунте. Есть лимит запросов.','Ask about tools, showcases or your account. Request limits apply.'):t('ИИ ещё не подключён. Пока можно открыть инструкции ниже.','AI is not connected yet. Explore the help topics below.');
       input.disabled=!available||pending;find('.studio-chat-send').disabled=!available||pending;
       const list=find('.studio-chat-topics');list.replaceChildren();
@@ -58,6 +63,7 @@
       if(!loaded){try{const response=await fetch('/api/support/info');if(!response.ok)throw Error();const data=await response.json();topics=data.topics||[];available=!!data.available;loaded=true;}catch{loaded=true;message(t('Справка недоступна. Поддержка: https://t.me/showcasemaker','Help is unavailable. Contact: https://t.me/showcasemaker'));}paint();}
     });
     find('.studio-chat-close').addEventListener('click',close);
+    ticketToggle.addEventListener('click',()=>{const opening=ticketForm.hidden;ticketForm.hidden=!opening;ticketToggle.setAttribute('aria-expanded',String(opening));if(opening)ticketForm.message.focus();});
     panel.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
     input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!pending&&available)form.requestSubmit();}});
     form.addEventListener('submit',async e=>{
@@ -70,6 +76,14 @@
         else{waiting.textContent=data.answer;history.push({role:'user',content:value},{role:'assistant',content:data.answer.slice(0,1500)});history=history.slice(-6);}
       }catch{waiting.textContent=t('Не удалось получить ответ. Попробуй ещё раз.','Couldn’t get an answer. Please try again.');}
       finally{pending=false;paint();input.focus();log.scrollTop=log.scrollHeight;}
+    });
+    ticketForm.addEventListener('submit',async e=>{
+      e.preventDefault();const button=ticketForm.querySelector('button'),status=ticketForm.querySelector('output');button.disabled=true;status.textContent=t('Отправляем…','Sending…');
+      try{
+        const response=await fetch('/api/support/tickets',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:ticketForm.message.value.trim(),email:ticketForm.email.value.trim(),page:location.pathname,context:{language:language(),viewport:`${innerWidth}x${innerHeight}`,browser:navigator.userAgent.slice(0,120)}})});
+        const data=await response.json();if(!response.ok)throw Error(data.code||'failed');ticketForm.reset();status.textContent=`${t('Обращение принято. Номер:','Report received. ID:')} #${data.ticket_id}`;
+      }catch(error){status.textContent=error.message==='limit'?t('Сегодня отправлено слишком много обращений.','Too many reports were sent today.'):t('Не удалось отправить. Попробуй позже.','Could not send. Please try later.');}
+      finally{button.disabled=false;}
     });
     paint();window.addEventListener('sm:langchange',()=>{history=[];log.replaceChildren();paint();});
   }

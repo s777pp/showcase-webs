@@ -31,6 +31,8 @@ def run() -> None:
             "modes": [], "failures": [], "languages": [], "file_types": [], "performance": [],
         },
         "maintenance": {"enabled": False}, "settings": {},
+        "attention": [{"kind": "support", "severity": "info", "title": "Новых обращений: 1",
+                       "detail": "Пользователь ждёт ответа.", "action": "Открой обращения.", "target": "support"}],
     }
     users = {"ok": True, "page": 1, "pages": 1, "total": 1, "items": [{
         "id": 7, "email": "creator@example.test", "display_name": "Creator", "profile_username": "creator",
@@ -43,8 +45,13 @@ def run() -> None:
          "queue": "media", "created": 1_790_000_000, "updated": 1_790_000_100, "error": "", "user_id": 7},
         {"id": "b" * 32, "kind": "upscale", "status": "error", "pct": 14, "stage": "Modal",
          "queue": "gpu", "created": 1_790_000_000, "updated": 1_790_000_200,
-         "error": "Провайдер временно недоступен", "user_id": 8},
+         "error": "Провайдер временно недоступен", "user_id": 8, "can_retry": True, "stale": False},
     ]}
+    user_detail = {"ok": True, "user": users["items"][0], "projects": [{"id":"p1","name":"My showcase","showcase_mode":"workshop","updated_at":1_790_000_500}],
+                   "gallery": [], "jobs": jobs["items"][:1], "sessions": {"count": 2, "last_active": 1_790_000_500},
+                   "limits": {"free_daily_limit": None, "max_jobs": None, "note": ""}, "audit": []}
+    tickets = {"ok": True, "items": [{"id":"ticket123","user_id":7,"email":"creator@example.test","message":"Preview is not updating after upload.",
+              "page":"/app","context":{"language":"en","viewport":"1440x900"},"status":"new","admin_note":"","created_at":1_790_000_000,"updated_at":1_790_000_000,"display_name":"Creator"}]}
 
     def route_api(route):
         url = route.request.url
@@ -56,10 +63,20 @@ def run() -> None:
         elif path.startswith("/users/7/action"):
             mutations.append(route.request.post_data_json)
             route.fulfill(json={"ok": True, "notification": {"attempted": True, "delivered": True, "language": "en"}})
+        elif path == "/users/7":
+            route.fulfill(json=user_detail)
         elif path.startswith("/users"):
             route.fulfill(json=users)
         elif path.startswith("/jobs"):
             route.fulfill(json=jobs)
+        elif path.startswith("/support"):
+            route.fulfill(json=tickets if route.request.method == "GET" else {"ok": True})
+        elif path.startswith("/announcements"):
+            route.fulfill(json={"ok": True, "items": []})
+        elif path.startswith("/catalog"):
+            route.fulfill(json={"ok": True, "items": []})
+        elif path.startswith("/backups"):
+            route.fulfill(json={"ok": True, "backup": {"state":"ok","directory":"/backups","latest":{"name":"db.sql.gz","size":1024,"updated_at":1_790_000_000},"files":[],"restore_verified":False}})
         else:
             route.fulfill(json={"ok": True, "items": [], "settings": {}, "maintenance": {"enabled": False}})
 
@@ -80,8 +97,12 @@ def run() -> None:
         expect(page.locator('[data-language-wrap="7"]')).to_be_visible()
         page.locator('[data-language-for="7"]').select_option("en")
         page.locator('[data-apply-user="7"]').click()
-        expect(page.locator("#toast")).to_contain_text("письмо отправлено")
+        expect(page.locator("#toast")).to_contain_text("Действие выполнено")
         assert mutations and mutations[0]["language"] == "en"
+        page.locator('[data-user-detail="7"]').click()
+        expect(page.locator("#userDetailDialog")).to_be_visible()
+        expect(page.locator("#userDetailContent")).to_contain_text("Индивидуальные лимиты")
+        page.locator("#userDetailDialog .dialog-close").click()
         page.screenshot(path=str(output / "admin-users-polish.png"), full_page=True)
 
         page.locator('[data-view="jobs"]').click()
@@ -92,6 +113,11 @@ def run() -> None:
         expect(page.locator(".job-details")).to_contain_text("Провайдер временно недоступен")
         page.screenshot(path=str(output / "admin-jobs-polish.png"), full_page=True)
 
+        page.locator('[data-view="support"]').click()
+        expect(page.locator(".ticket")).to_have_count(1)
+        expect(page.locator(".ticket")).to_contain_text("Preview is not updating")
+        page.screenshot(path=str(output / "admin-support-polish.png"), full_page=True)
+
         page.set_viewport_size({"width": 390, "height": 844})
         page.reload(wait_until="domcontentloaded")
         expect(page.locator("#adminApp")).to_be_visible()
@@ -99,7 +125,7 @@ def run() -> None:
         page.screenshot(path=str(output / "admin-mobile-polish.png"), full_page=True)
         browser.close()
 
-    print("Admin dashboard QA passed: Pro email language/result, job filtering/details, desktop and mobile layout.")
+    print("Admin dashboard QA passed: user detail, support, jobs, mutations, desktop and mobile layout.")
 
 
 if __name__ == "__main__":

@@ -74,9 +74,11 @@ async def create_ticket(request: Request):
         return reply({"ok": False, "code": "origin"}, 403)
     if request.headers.get("content-type", "").split(";")[0].strip() != "application/json":
         return reply({"ok": False, "code": "invalid"}, 415)
-    raw = await request.body()
-    if len(raw) > 12000:
-        return reply({"ok": False, "code": "too_large"}, 413)
+    raw = bytearray()
+    async for chunk in request.stream():
+        raw.extend(chunk)
+        if len(raw) > 12000:
+            return reply({"ok": False, "code": "too_large"}, 413)
     allowed_call, _ = rs.rate_limit("support-ticket:" + hashlib.sha256(_ip(request).encode()).hexdigest()[:24], 5, 86400)
     if not allowed_call:
         return reply({"ok": False, "code": "limit"}, 429)
@@ -84,7 +86,10 @@ async def create_ticket(request: Request):
         body = json.loads(raw)
         if not isinstance(body, dict):
             raise ValueError
-        user = _auth_user(request)
+        try:
+            user = _auth_user(request)
+        except Exception:
+            user = None
         result = admin_content.create_ticket(
             user_id=int(user["id"]) if user else None,
             email=str(user.get("email") or "") if user else str(body.get("email") or "")[:254],

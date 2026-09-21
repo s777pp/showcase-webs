@@ -82,3 +82,13 @@ The owner supplied Compose status and the Tunnel-only override, confirming the i
 - The 2.3 MB legacy character PNG is no longer downloaded during the normal WebGL path. It is fetched only if save-data/WebGL/model failure requires the visual fallback.
 - Help popovers can be pinned by click/touch and remain open through incidental page scrolling; outside click, Escape and a second activation still close them.
 - Regression after this pass: 183 pytest tests and 12 subtests passed. JavaScript/Python syntax and the eight-language key checker passed. Browser QA passed for Workspace, editor/result, admin desktop/mobile, landing layout, slow/failed 3D startup, polish recovery and all 11 tool tabs. No production deployment or external email/GPU/OAuth/Steam request was performed.
+
+## Follow-up: operator control centre
+
+- The overview now ranks actionable items instead of forcing the operator to inspect every section: degraded components, failed or stale jobs, unanswered tickets, pending gallery work and missing/stale backups.
+- Added privacy-bounded user cards with project/gallery/job metadata, session count, per-account Free and concurrency limits and relevant admin audit entries. The control centre does not expose project JSON, uploaded media, credentials or impersonation.
+- Added public problem reports with same-origin enforcement, bounded request bodies and rate limiting. The operator can triage new/working/resolved/closed tickets and keep an internal note. The RU/EN privacy pages distinguish saved reports from the stateless AI chat.
+- Added audience-aware RU/EN site announcements, dismissible shared-shell notices, access-key campaign/expiry fields, safe process-job retry while source files still exist, Steam catalogue feature/hide rules and read-only backup freshness/reporting.
+- All new admin mutations reuse the signed HttpOnly admin session, CSRF header, origin validation and audit log. Catalogue links accept only absolute HTTP(S) URLs. Backup restoration remains deliberately unavailable from the browser.
+- Reviewed support/notice copy was added to all six generated non-RU/EN language packs. No runtime machine translation is introduced.
+- Verification: 188 pytest tests and 12 subtests passed; JavaScript syntax, Python compilation, localization coverage and `git diff --check` passed. Real-browser QA covered user cards, job filtering/details, support triage, mobile layout, public notices and successful ticket submission. Screenshots were visually inspected. Production database migration, backup restoration, real email delivery and live queue retry remain deployment/staging checks; no production action was performed.

@@ -6,8 +6,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 import auth_db
-from smweb import admin_control, maintenance, runtime_settings
-from smweb.routers import admin as admin_router
+from smweb import admin_content, admin_control, maintenance, runtime_settings, user_limits
+from smweb.routers import admin as admin_router, support as support_router
 
 
 def _isolate(monkeypatch, tmp_path):
@@ -16,6 +16,7 @@ def _isolate(monkeypatch, tmp_path):
     monkeypatch.setattr(auth_db, "DATA", tmp_path)
     monkeypatch.setattr(auth_db, "_SCHEMA_READY", False)
     monkeypatch.setattr(admin_control, "ACCESS_FILE", tmp_path / "access_codes.json")
+    monkeypatch.setattr(admin_content, "CATALOG_FILE", tmp_path / "steam_catalog_controls.json")
     monkeypatch.setattr(runtime_settings, "STATE_FILE", tmp_path / "runtime_settings.json")
     monkeypatch.setattr(runtime_settings, "_cache", None)
     monkeypatch.setattr(runtime_settings, "_cache_mtime", -1.0)
@@ -27,6 +28,7 @@ def _isolate(monkeypatch, tmp_path):
 def _client():
     app = FastAPI()
     app.include_router(admin_router.router)
+    app.include_router(support_router.router)
     return TestClient(app)
 
 
@@ -177,3 +179,107 @@ def test_user_rows_link_public_profiles_and_load_safe_avatar_routes():
     assert '/api/auth/avatar/${u.id}' in source
     assert '/profile/${encodeURIComponent(u.profile_username)}' in source
     assert 'target="_blank" rel="noopener"' in source
+
+
+def test_support_ticket_public_create_and_admin_workflow(monkeypatch, tmp_path):
+    _isolate(monkeypatch, tmp_path)
+    monkeypatch.setattr(support_router.rs, "rate_limit", lambda *args, **kwargs: (True, 1))
+    client = _client()
+    rejected = client.post("/api/support/tickets", json={"message": "Something is broken"})
+    assert rejected.status_code == 403
+    created = client.post(
+        "/api/support/tickets",
+        json={"message": "The preview stopped after uploading a file.", "email": "guest@example.com",
+              "page": "/app?secret=no", "context": {"language": "en", "viewport": "1280x720"}},
+        headers={"Origin": "http://testserver"},
+    )
+    assert created.status_code == 201
+    ticket_id = created.json()["ticket_id"]
+    csrf = _login(client)
+    listed = client.get("/api/admin/control/support?status=open").json()["items"]
+    assert listed[0]["id"] == ticket_id
+    assert listed[0]["page"] == "/app"
+    assert listed[0]["context"]["viewport"] == "1280x720"
+    updated = client.post(
+        f"/api/admin/control/support/{ticket_id}",
+        json={"status": "resolved", "note": "Checked and fixed"}, headers=_mutation_headers(csrf),
+    )
+    assert updated.status_code == 200
+    assert client.get("/api/admin/control/support?status=resolved").json()["items"][0]["admin_note"] == "Checked and fixed"
+
+
+def test_announcements_obey_audience_and_are_admin_managed(monkeypatch, tmp_path):
+    _isolate(monkeypatch, tmp_path)
+    client = _client()
+    csrf = _login(client)
+    response = client.post(
+        "/api/admin/control/announcements",
+        json={"title_ru": "Обновление", "body_ru": "Новая версия готова", "body_en": "A new version is ready",
+              "audience": "guests", "level": "success", "enabled": True},
+        headers=_mutation_headers(csrf),
+    )
+    assert response.status_code == 200
+    public = client.get("/api/announcements").json()["items"]
+    assert public[0]["body_ru"] == "Новая версия готова"
+    assert public[0]["audience"] == "guests"
+    announcement_id = response.json()["id"]
+    assert client.delete(f"/api/admin/control/announcements/{announcement_id}", headers=_mutation_headers(csrf)).status_code == 200
+    assert client.get("/api/announcements").json()["items"] == []
+
+
+def test_user_detail_is_metadata_only_and_limits_are_manageable(monkeypatch, tmp_path):
+    _isolate(monkeypatch, tmp_path)
+    assert auth_db.register("limits@example.com", "password-12345")[0]
+    connection = auth_db._conn()
+    user_id = int(connection.execute("SELECT id FROM users WHERE email=?", ("limits@example.com",)).fetchone()["id"])
+    connection.execute(
+        "INSERT INTO builder_projects(id,user_id,name,showcase_mode,project_json,created_at,updated_at,expires_at) VALUES (?,?,?,?,?,?,?,?)",
+        ("private-project", user_id, "Visible metadata", "workshop", '{"secret":"must-not-leak"}', time.time(), time.time(), None),
+    )
+    connection.commit()
+    connection.close()
+    client = _client()
+    csrf = _login(client)
+    set_result = client.post(
+        f"/api/admin/control/users/{user_id}/action",
+        json={"action": "set_limits", "free_daily_limit": 12, "max_jobs": 4, "note": "Support override"},
+        headers=_mutation_headers(csrf),
+    )
+    assert set_result.status_code == 200
+    assert user_limits.integer(user_id, "max_jobs", 2) == 4
+    detail = client.get(f"/api/admin/control/users/{user_id}").json()
+    assert detail["limits"]["free_daily_limit"] == 12
+    assert detail["projects"][0]["name"] == "Visible metadata"
+    assert "project_json" not in detail["projects"][0]
+    assert "secret" not in str(detail)
+
+
+def test_catalog_rules_feature_and_hide_exact_items(monkeypatch, tmp_path):
+    _isolate(monkeypatch, tmp_path)
+    client = _client()
+    csrf = _login(client)
+    url = "https://steamcommunity.com/market/listings/example"
+    created = client.post(
+        "/api/admin/control/catalog",
+        json={"identity": url, "name": "Featured background", "featured": True},
+        headers=_mutation_headers(csrf),
+    )
+    assert created.status_code == 200
+    output = admin_content.apply_catalog_rules([{"name": "Other"}, {"name": "Featured background", "buy_url": url}])
+    assert output[0]["buy_url"] == url
+    hidden = client.post(
+        "/api/admin/control/catalog",
+        json={"identity": url, "name": "Featured background", "hidden": True},
+        headers=_mutation_headers(csrf),
+    )
+    assert hidden.status_code == 200
+    assert admin_content.apply_catalog_rules([{"name": "Featured background", "buy_url": url}]) == []
+
+
+def test_access_codes_can_expire_before_activation(monkeypatch, tmp_path):
+    _isolate(monkeypatch, tmp_path)
+    created = admin_control.generate_codes(1, 7, "Campaign", "Launch", 1)
+    item = admin_control.codes()["items"][0]
+    assert created["codes"] == [item["code"]]
+    assert item["campaign"] == "Launch"
+    assert item["expires_at"] > time.time()

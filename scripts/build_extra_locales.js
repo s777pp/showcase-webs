@@ -281,6 +281,21 @@ const automaticUploadGuideCopy = {
 for (const language of targets) {
   automaticUploadGuideKeys.forEach((key, index) => { taskCopyOverrides[language][key] = automaticUploadGuideCopy[language][index]; });
 }
+const supportTicketCopyKeys = [
+  'Dismiss announcement', 'Report a problem', 'What happened?', 'Reply email (optional)',
+  'Send report', 'Sending…', 'Report received. ID:', 'Too many reports were sent today.', 'Could not send. Please try later.'
+];
+const supportTicketCopy = {
+  de: ['Ankündigung schließen','Problem melden','Was ist passiert?','E-Mail für Rückfragen (optional)','Meldung senden','Wird gesendet…','Meldung erhalten. ID:','Heute wurden zu viele Meldungen gesendet.','Senden fehlgeschlagen. Bitte später erneut versuchen.'],
+  tr: ['Duyuruyu kapat','Sorun bildir','Ne oldu?','Yanıt e-postası (isteğe bağlı)','Bildirimi gönder','Gönderiliyor…','Bildirim alındı. Kimlik:','Bugün çok fazla bildirim gönderildi.','Gönderilemedi. Lütfen daha sonra tekrar deneyin.'],
+  fr: ['Fermer l’annonce','Signaler un problème','Que s’est-il passé ?','E-mail de réponse (facultatif)','Envoyer le signalement','Envoi…','Signalement reçu. ID :','Trop de signalements ont été envoyés aujourd’hui.','Envoi impossible. Réessayez plus tard.'],
+  uk: ['Закрити оголошення','Повідомити про проблему','Що сталося?','Email для відповіді (необов’язково)','Надіслати звернення','Надсилаємо…','Звернення прийнято. Номер:','Сьогодні надіслано забагато звернень.','Не вдалося надіслати. Спробуйте пізніше.'],
+  es: ['Cerrar anuncio','Informar de un problema','¿Qué ocurrió?','Correo de respuesta (opcional)','Enviar informe','Enviando…','Informe recibido. ID:','Hoy se han enviado demasiados informes.','No se pudo enviar. Inténtalo más tarde.'],
+  pt: ['Fechar aviso','Relatar um problema','O que aconteceu?','E-mail para resposta (opcional)','Enviar relato','Enviando…','Relato recebido. ID:','Muitos relatos foram enviados hoje.','Não foi possível enviar. Tente novamente mais tarde.']
+};
+for (const language of targets) {
+  supportTicketCopyKeys.forEach((key, index) => { taskCopyOverrides[language][key] = supportTicketCopy[language][index]; });
+}
 for (const language of targets) Object.assign(overrides[language], taskCopyOverrides[language]);
 
 function maskProducts(text) {

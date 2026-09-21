@@ -177,6 +177,41 @@
       .catch(function(){ banner.hidden = true; document.documentElement.style.setProperty('--maintenance-h','0px'); });
   }
 
+  function announcementsHTML() {
+    return '<aside class="ss-notices" id="ssNotices" aria-label="Site announcements" hidden></aside>';
+  }
+
+  function loadAnnouncements() {
+    var host = document.getElementById('ssNotices');
+    if (!host) return;
+    fetch('/api/announcements', { credentials:'same-origin' })
+      .then(function(response){ if (!response.ok) throw new Error('notices'); return response.json(); })
+      .then(function(data){
+        var items = data && Array.isArray(data.items) ? data.items : [];
+        var current = lang();
+        host.innerHTML = items.map(function(item){
+          var dismissed = false;
+          try { dismissed = sessionStorage.getItem('sm_notice_' + item.id) === '1'; } catch (e) {}
+          if (dismissed) return '';
+          var useRu = current === 'ru';
+          var title = useRu ? (item.title_ru || item.title_en) : (item.title_en || item.title_ru);
+          var body = useRu ? (item.body_ru || item.body_en) : (item.body_en || item.body_ru);
+          return '<article class="ss-notice" data-level="' + esc(item.level || 'info') + '" data-notice-id="' + esc(item.id) + '">' +
+            '<span class="ss-notice__signal" aria-hidden="true"></span><div>' +
+            (title ? '<strong>' + esc(title) + '</strong>' : '') + '<p>' + esc(body || '') + '</p></div>' +
+            '<button type="button" data-dismiss-notice="' + esc(item.id) + '" aria-label="' + esc(t({ ru:'Закрыть объявление', en:'Dismiss announcement' })) + '">×</button></article>';
+        }).join('');
+        host.hidden = !host.children.length;
+        host.querySelectorAll('[data-dismiss-notice]').forEach(function(button){
+          button.addEventListener('click', function(){
+            try { sessionStorage.setItem('sm_notice_' + button.getAttribute('data-dismiss-notice'), '1'); } catch (e) {}
+            var card = button.closest('.ss-notice'); if (card) card.remove(); host.hidden = !host.children.length;
+          });
+        });
+      })
+      .catch(function(){ host.hidden = true; });
+  }
+
   function activationHTML() {
     var ru = lang() === 'ru';
     return '<div class="ss-activation" id="ssActivation" aria-hidden="true"><div class="ss-activation__card" role="dialog" aria-modal="true" aria-labelledby="ssActivationTitle">' +
@@ -727,6 +762,9 @@
     if (!document.getElementById('ssMaintenance')) {
       document.body.insertAdjacentHTML('afterbegin', maintenanceHTML());
     }
+    if (!document.getElementById('ssNotices')) {
+      document.body.insertAdjacentHTML('beforeend', announcementsHTML());
+    }
     if (head) head.innerHTML = headerHTML() + authHTML() + activationHTML();
     if (foot) foot.innerHTML = footerHTML();
     document.querySelectorAll('[data-privacy-link]').forEach(function (link) {
@@ -736,6 +774,7 @@
     wire();
     paintUser(window.SS_ME);
     loadMaintenance();
+    loadAnnouncements();
   }
 
   window.SSShell = { mount: mount, loadMe: loadMe, me: me, lang: lang, t: t, esc: esc, openAuth: openAuth, closeAuth: closeAuth, openActivation: openActivation, closeActivation: closeActivation };

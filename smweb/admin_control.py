@@ -362,6 +362,22 @@ def user_detail(user_id: int) -> dict:
 def user_action(user_id: int, action: str, payload: dict) -> dict:
     uid = int(user_id)
     action = str(action or "")
+    if action in {"set_limits", "clear_limits"}:
+        check = auth_db._conn()
+        try:
+            if not check.execute("SELECT id FROM users WHERE id=?", (uid,)).fetchone():
+                raise LookupError("Account not found")
+        finally:
+            check.close()
+        if action == "set_limits":
+            limits = user_limits.set_limits(uid, free_daily_limit=payload.get("free_daily_limit"),
+                                            max_jobs=payload.get("max_jobs"), note=payload.get("note", ""))
+            audit("user.set_limits", f"user:{uid}", {"free_daily_limit": limits.get("free_daily_limit"),
+                                                       "max_jobs": limits.get("max_jobs")})
+            return {"ok": True, "limits": limits}
+        user_limits.clear(uid)
+        audit("user.clear_limits", f"user:{uid}")
+        return {"ok": True, "limits": user_limits.get(uid)}
     connection = auth_db._conn()
     try:
         row = connection.execute("SELECT id,email FROM users WHERE id=?", (uid,)).fetchone()
@@ -383,18 +399,6 @@ def user_action(user_id: int, action: str, payload: dict) -> dict:
             connection.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
         elif action == "unsuspend":
             connection.execute("UPDATE users SET is_suspended=0,suspended_reason=NULL,suspended_until=NULL WHERE id=?", (uid,))
-        elif action == "set_limits":
-            connection.commit()
-            limits = user_limits.set_limits(uid, free_daily_limit=payload.get("free_daily_limit"),
-                                           max_jobs=payload.get("max_jobs"), note=payload.get("note", ""))
-            audit("user.set_limits", f"user:{uid}", {"free_daily_limit": limits.get("free_daily_limit"),
-                                                       "max_jobs": limits.get("max_jobs")})
-            return {"ok": True, "limits": limits}
-        elif action == "clear_limits":
-            connection.commit()
-            user_limits.clear(uid)
-            audit("user.clear_limits", f"user:{uid}")
-            return {"ok": True, "limits": user_limits.get(uid)}
         else:
             raise ValueError("Unknown action")
         connection.commit()
