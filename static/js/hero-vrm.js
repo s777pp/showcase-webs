@@ -26,6 +26,21 @@ function settleHeroLoad(status) {
   document.dispatchEvent(new CustomEvent('showcasemaker:hero-ready', { detail: { status } }));
 }
 
+function showFallback() {
+  const image = sceneRoot?.querySelector('.creator-scene__character');
+  const reveal = () => {
+    sceneRoot?.classList.add('is-vrm-fallback');
+    settleHeroLoad('fallback');
+  };
+  if (!image || !image.dataset.src || image.hasAttribute('src')) {
+    reveal();
+    return;
+  }
+  image.addEventListener('load', reveal, { once: true });
+  image.addEventListener('error', reveal, { once: true });
+  image.src = image.dataset.src;
+}
+
 const MOTION_PACK_URL = '/static/animations/saba/opensourceavatars.motionpack.json.gz?v=20260915-saba3';
 const REACTION_MOTION_URL = '/static/animations/saba/Goodbye.vrma?v=20260915-saba2';
 const DEFAULT_BLEND_SECONDS = 1.55;
@@ -59,8 +74,7 @@ const MICRO_MOODS = [
 
 if (host && canvas && sceneRoot && studio) {
   initHeroVrm().catch(() => {
-    sceneRoot.classList.add('is-vrm-fallback');
-    settleHeroLoad('fallback');
+    showFallback();
   });
 } else {
   settleHeroLoad('unavailable');
@@ -70,8 +84,7 @@ async function initHeroVrm() {
   const saveData = Boolean(navigator.connection?.saveData);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (saveData || !hasWebGL()) {
-    sceneRoot.classList.add('is-vrm-fallback');
-    settleHeroLoad('fallback');
+    showFallback();
     return;
   }
 
@@ -398,7 +411,7 @@ async function initHeroVrm() {
   canvas.addEventListener('webglcontextlost', event => {
     event.preventDefault();
     sceneRoot.classList.remove('is-vrm-ready');
-    sceneRoot.classList.add('is-vrm-fallback');
+    showFallback();
     active = false;
   });
 

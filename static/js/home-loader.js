@@ -27,9 +27,10 @@
   var bar = document.getElementById('homeLoaderProgress');
   var percent = document.getElementById('homeLoaderPercent');
   var startedAt = window.__SM_HOME_LOADER_START || performance.now();
-  var pageReady = document.readyState === 'complete';
+  var pageReady = document.readyState !== 'loading';
   var fontsReady = !document.fonts;
   var heroReady = false;
+  var heroWaitElapsed = false;
   var heroObserver = null;
   var finished = false;
   var progress = 4;
@@ -47,7 +48,7 @@
   }
 
   function maybeFinish() {
-    if (finished || !pageReady || !fontsReady || !heroReady) return;
+    if (finished || !pageReady || !fontsReady || (!heroReady && !heroWaitElapsed)) return;
     var minimumDelay = Math.max(0, 650 - (performance.now() - startedAt));
     window.setTimeout(finish, minimumDelay);
   }
@@ -96,15 +97,22 @@
     heroObserver.observe(heroScene, { attributes: true, attributeFilter: ['class'] });
   }
 
-  if (document.readyState === 'complete') markPageReady();
-  else window.addEventListener('load', markPageReady, { once: true });
+  if (document.readyState !== 'loading') markPageReady();
+  else document.addEventListener('DOMContentLoaded', markPageReady, { once: true });
 
   if (document.fonts) {
+    var fontTimer = window.setTimeout(function () {
+      fontsReady = true;
+      paint(heroReady ? 94 : 78);
+      maybeFinish();
+    }, 1600);
     document.fonts.ready.then(function () {
+      window.clearTimeout(fontTimer);
       fontsReady = true;
       paint(78);
       maybeFinish();
     }, function () {
+      window.clearTimeout(fontTimer);
       fontsReady = true;
       maybeFinish();
     });
@@ -120,6 +128,13 @@
     }, 180);
   });
 
-  // A broken third-party font or graphics driver must never trap the visitor.
-  window.setTimeout(finish, 45000);
+  // The interface must not wait for the 3D asset. Its local scene loader remains
+  // visible and swaps in the full-quality model as soon as the first frame exists.
+  window.setTimeout(function () {
+    heroWaitElapsed = true;
+    maybeFinish();
+  }, 2600);
+
+  // A broken script or graphics driver must never trap the visitor.
+  window.setTimeout(finish, 12000);
 }());

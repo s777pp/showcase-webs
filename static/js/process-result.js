@@ -75,8 +75,21 @@
       toolbar.append(zoom, select); panel.append(toolbar);
       const viewport = node('div', null, 'workspace-result__viewport'); panel.append(viewport);
       const files = node('div', null, 'workspace-result__files'); panel.append(files);
+      const actions = node('div', null, 'workspace-result__next');
+      const downloadState = node('span', editorText('autoDownloadReady'), 'workspace-result__download-state');
+      downloadState.setAttribute('role', 'status');
+      const actionButtons = node('div', null, 'workspace-result__next-actions');
       const downloadButton = node('a', editorText('downloadAgain'), 'btn workspace-result__download');
-      downloadButton.href = download; downloadButton.download = 'showcase_' + String(job.mode || 'out') + '.zip'; panel.append(downloadButton);
+      downloadButton.href = download; downloadButton.download = 'showcase_' + String(job.mode || 'out') + '.zip';
+      const anotherButton = node('button', editorText('anotherVariant'), 'btn ghost workspace-result__another');
+      anotherButton.type = 'button'; anotherButton.title = editorText('anotherVariantHint');
+      anotherButton.onclick = () => {
+        close();
+        const target = document.getElementById('processModeCard') || document.getElementById('processFilesCard');
+        target?.scrollIntoView({ block:'start', behavior:matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth' });
+        target?.querySelector('button,select,input')?.focus({ preventScroll:true });
+      };
+      actionButtons.append(downloadButton, anotherButton); actions.append(downloadState, actionButtons); panel.append(actions);
       body.append(panel);
 
       const readiness = node('section', null, 'workspace-result__readiness steam-check');

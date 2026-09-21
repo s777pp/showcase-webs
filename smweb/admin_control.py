@@ -309,18 +309,22 @@ def user_action(user_id: int, action: str, payload: dict) -> dict:
             raise ValueError("Unknown action")
         connection.commit()
         audit(f"user.{action}", f"user:{uid}", {"email": str(row["email"]), "days": payload.get("days")})
-        # Send Pro-granted email notification (fire-and-forget)
+        notification = None
+        # Access is granted even if the optional notification provider is down.
         if action == "grant_pro":
             email = str(row["email"] or "").strip()
             if email and "@" in email:
+                language = str(payload.get("language") or "ru").lower()
+                language = language if language in {"ru", "en"} else "ru"
                 try:
                     from mailer import send_pro_granted_email
                     days_val = max(0.0, min(3650.0, float(payload.get("days") or 0)))
-                    language = str(payload.get("language") or "ru").lower()
-                    send_pro_granted_email(email, days_val, lang=language if language in {"ru", "en"} else "ru")
+                    delivered, _provider_message = send_pro_granted_email(email, days_val, lang=language)
+                    notification = {"attempted": True, "delivered": bool(delivered), "language": language}
                 except Exception:
-                    pass  # Pro is granted regardless of email delivery
-        return {"ok": True}
+                    notification = {"attempted": True, "delivered": False, "language": language}
+                audit("email.pro_granted", f"user:{uid}", notification)
+        return {"ok": True, "notification": notification}
     finally:
         connection.close()
 

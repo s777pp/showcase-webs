@@ -56,7 +56,8 @@ def run():
         page.wait_for_timeout(80)
         help_button.click()
         page.wait_for_timeout(120)
-        assert page.locator('.sm-help__popup:not([hidden])').count() == 1
+        visible_help = page.locator('.sm-help__popup:not([hidden])').count()
+        assert visible_help == 1, {'visible': visible_help, 'expanded': help_button.get_attribute('aria-expanded'), 'errors': errors}
         page.keyboard.press('Escape')
         assert page.locator('.sm-help__popup:not([hidden])').count() == 0
         page.locator('[data-open-tool=builder]').first.click()
@@ -117,7 +118,8 @@ def run():
         assert page.locator('.workspace-result__readiness #steamCheckResults').count()==1
         page.wait_for_timeout(500)
         assert page.locator('#steamCheckUploadSteam').is_visible()
-        page.locator('#steamCheckAgain').click()
+        page.locator('.workspace-result__another').click()
+        assert page.locator('.workspace-result-modal').count() == 0
         assert page.locator('#tab-process').evaluate('n=>n.classList.contains("active")')
         expected_templates={'ru':'Быстрые шаблоны','en':'Quick templates','de':'Schnellvorlagen','tr':'Hızlı şablonlar','fr':'Modèles rapides','uk':'Швидкі шаблони','es':'Plantillas rápidas','pt':'Modelos rápidos'}
         for language in ['ru','en','de','tr','fr','uk','es','pt']:

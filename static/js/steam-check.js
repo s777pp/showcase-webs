@@ -232,10 +232,10 @@
       (canSafeFix ? '<button class="btn ghost" type="button" id="steamCheckSafeFix">' + esc(p.safeFix) + '</button>' : '') +
       '<button class="btn ghost" type="button" id="steamCheckChooseShowcases">' + esc(p.chooseShowcases) + '</button>' +
       (!resultDownload ? '<button class="btn ghost" type="button" id="steamCheckToProcess"' + (hasZip ? ' disabled title="' + esc(p.zipNoTransfer) + '"' : '') + '>' + esc(p.toProcess) + '</button>' : '') +
-      '<button class="btn ghost" type="button" id="steamCheckAgain">' + esc(p.newCheck) + '</button></div>';
+      (!resultDownload ? '<button class="btn ghost" type="button" id="steamCheckAgain">' + esc(p.newCheck) + '</button>' : '') + '</div>';
     $('steamCheckEmpty').hidden = true;
     $('steamCheckResults').hidden = false;
-    $('steamCheckAgain').onclick = reset;
+    if ($('steamCheckAgain')) $('steamCheckAgain').onclick = reset;
     if ($('steamCheckToProcess')) $('steamCheckToProcess').onclick = transferToProcess;
     if ($('steamCheckAutoUpload')) $('steamCheckAutoUpload').onclick = startAutomaticUpload;
     if ($('steamCheckUploadSteam')) $('steamCheckUploadSteam').onclick = startSteamUpload;

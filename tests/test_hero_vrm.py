@@ -27,9 +27,9 @@ class HeroVrmTests(unittest.TestCase):
             html,
         )
         self.assertIn('data-model-fallback="/static/models/saba-0.1.vrm?v=20260915-saba1"', html)
-        self.assertIn('/static/js/hero-vrm.js?v=20260918-reaction6', html)
+        self.assertIn('/static/js/hero-vrm.js?v=20260921-polish1', html)
         self.assertIn('/static/css/hero-vrm.css?v=20260918-reaction1', html)
-        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260918-reaction6"', html)
+        self.assertIn('rel="modulepreload" href="/static/js/hero-vrm.js?v=20260921-polish1"', html)
         self.assertIn('rel="modulepreload" href="/static/vendor/vrm-runtime.module.js?v=20260915-saba2"', html)
         self.assertIn(
             'rel="preload" href="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1"',
@@ -89,6 +89,9 @@ class HeroVrmTests(unittest.TestCase):
         self.assertIn('const fallbackUrl = host.dataset.modelFallback', source)
         self.assertIn('return loader.loadAsync(fallbackUrl)', source)
         self.assertIn("const yaw = smoothPointer.x * .24", source)
+        self.assertIn("image.src = image.dataset.src", source)
+        self.assertIn('data-src="/static/img/hero-anime-character-v2.png"', html)
+        self.assertNotIn('class="creator-scene__character" src=', html)
         self.assertIn("applyIdlePose(vrm)", source)
         self.assertIn("THREE.LoopRepeat", source)
         self.assertNotIn("/static/animations/saba/Relax.vrma", source)

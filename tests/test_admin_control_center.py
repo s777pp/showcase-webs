@@ -83,6 +83,8 @@ def test_admin_session_settings_codes_and_audit(monkeypatch, tmp_path):
 
 def test_user_admin_actions_enforce_suspension(monkeypatch, tmp_path):
     _isolate(monkeypatch, tmp_path)
+    import mailer
+    monkeypatch.setattr(mailer, "send_pro_granted_email", lambda to, days, lang="en": (True, "sent"))
     assert auth_db.register("person@example.com", "password-12345")[0]
     connection = auth_db._conn()
     user_id = int(connection.execute("SELECT id FROM users WHERE email=?", ("person@example.com",)).fetchone()["id"])
@@ -101,6 +103,7 @@ def test_user_admin_actions_enforce_suspension(monkeypatch, tmp_path):
         headers=_mutation_headers(csrf),
     )
     assert response.status_code == 200
+    assert response.json()["notification"] == {"attempted": True, "delivered": True, "language": "ru"}
     item = client.get("/api/admin/control/users?q=person").json()["items"][0]
     assert item["is_pro"] is True
     assert item["profile_username"] == "person"
@@ -121,6 +124,9 @@ def test_user_admin_actions_enforce_suspension(monkeypatch, tmp_path):
     )
     assert response.status_code == 200
     assert auth_db.login("person@example.com", "password-12345")[0] is True
+    actions = client.get("/api/admin/control/audit").json()["items"]
+    email_event = next(row for row in actions if row["action"] == "email.pro_granted")
+    assert email_event["details"] == {"attempted": True, "delivered": True, "language": "ru"}
 
 
 def test_system_status_explains_impact_in_plain_language(monkeypatch, tmp_path):
@@ -161,6 +167,8 @@ def test_dashboard_does_not_store_admin_secret_in_web_storage():
     assert "sessionStorage" not in source
     assert "X-Admin-Secret" not in source
     assert "X-Admin-CSRF" in source
+    assert "prompt('Язык уведомления" not in source
+    assert "data-language-for" in source
 
 
 def test_user_rows_link_public_profiles_and_load_safe_avatar_routes():
