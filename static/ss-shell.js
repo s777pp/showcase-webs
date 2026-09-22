@@ -239,7 +239,7 @@
         '<label id="ssAuthPassWrap"><span id="ssAuthPassLabel">' + (ru ? 'Пароль' : 'Password') + '</span><input id="ssAuthPass" type="password" autocomplete="current-password" minlength="10" required placeholder="••••••••••"></label>' +
         '<label id="ssAuthRepeatWrap" style="display:none"><span id="ssAuthRepeatLabel"></span><input id="ssAuthRepeat" type="password" autocomplete="new-password" minlength="10" placeholder="••••••••••"></label>' +
         '<label id="ssAuthCodeWrap" style="display:none"><span id="ssAuthCodeLabel">' + (ru ? 'Код из письма' : 'Code from email') + '</span><input id="ssAuthCode" type="text" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" minlength="6" maxlength="6" required placeholder="' + (ru ? 'ВАШ КОД' : 'YOUR CODE') + '"></label>' +
-        '<p class="ss-auth__state" id="ssAuthState"></p>' +
+        '<p class="ss-auth__state" id="ssAuthState" role="status" aria-live="polite"></p>' +
         '<button class="ss-auth__submit" id="ssAuthSubmit" type="submit">' + (ru ? 'Войти' : 'Log in') + '</button>' +
       '</form>' +
       '<div class="ss-auth__div" id="ssAuthDiv"><span>' + (ru ? 'или войти через' : 'or continue with') + '</span></div>' +
@@ -247,9 +247,9 @@
         '<button type="button" class="ss-auth__oauth-btn" id="ssAuthDiscord" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(88,101,242,.45);background:rgba(88,101,242,.18);color:#fff;font-weight:700;font-size:14px;cursor:pointer">' + OAUTH_ICONS.discord + '<span>Discord</span></button>' +
         '<button type="button" class="ss-auth__oauth-btn" id="ssAuthGoogle" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-weight:700;font-size:14px;cursor:pointer">' + OAUTH_ICONS.google + '<span>Google</span></button>' +
         '<button type="button" class="ss-auth__oauth-btn" id="ssAuthTelegram" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(38,165,228,.45);background:rgba(38,165,228,.14);color:#fff;font-weight:700;font-size:14px;cursor:pointer">' + OAUTH_ICONS.telegram + '<span>Telegram</span></button>' +
+        '<div id="ssTgHost" style="display:none;text-align:center"></div>' +
         '<button type="button" class="ss-auth__oauth-btn" id="ssAuthSteam" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:14px;border:1px solid rgba(27,40,56,.9);background:linear-gradient(180deg,#2a475e,#1b2838);color:#fff;font-weight:700;font-size:14px;cursor:pointer">' + OAUTH_ICONS.steam + '<span>Steam</span></button>' +
       '</div>' +
-      '<div id="ssTgHost" style="display:none;text-align:center;margin-top:8px"></div>' +
       '<button class="ss-auth__switch" id="ssAuthSwitch" type="button">' + (ru ? 'Нет аккаунта? Создать' : 'No account? Sign up') + '</button>' +
       '<button class="ss-auth__recover" id="ssAuthRecover" type="button"></button>' +
     '</div></div>';
@@ -499,10 +499,57 @@
   }
 
   var authMode = 'login';
+  var telegramLoginPoll = null;
+  var telegramLoginChecking = false;
+  var telegramLoginDeadline = 0;
+  function stopTelegramLoginWatch() {
+    if (telegramLoginPoll) clearInterval(telegramLoginPoll);
+    telegramLoginPoll = null;
+  }
+  function checkTelegramLogin(force) {
+    if ((!telegramLoginPoll && force !== true) || telegramLoginChecking) return;
+    telegramLoginChecking = true;
+    fetch('/api/auth/me', { credentials:'same-origin', cache:'no-store' })
+      .then(function (response) { return response.json(); })
+      .then(function (user) {
+        if (user && user.logged_in) {
+          stopTelegramLoginWatch();
+          location.reload();
+        }
+      })
+      .catch(function () {})
+      .then(function () {
+        telegramLoginChecking = false;
+        if (telegramLoginPoll && Date.now() >= telegramLoginDeadline) {
+          stopTelegramLoginWatch();
+          resetTelegramWidget();
+          var state = document.getElementById('ssAuthState');
+          if (state) {
+            state.textContent = lang() === 'ru'
+              ? 'Вход через Telegram не завершён. Попробуй ещё раз.'
+              : 'Telegram sign-in was not completed. Please try again.';
+            state.className = 'ss-auth__state is-bad';
+          }
+        }
+      });
+  }
+  function watchTelegramLogin() {
+    stopTelegramLoginWatch();
+    telegramLoginDeadline = Date.now() + 120000;
+    telegramLoginPoll = setInterval(checkTelegramLogin, 2500);
+  }
+  function resetTelegramWidget() {
+    var button = document.getElementById('ssAuthTelegram');
+    var host = document.getElementById('ssTgHost');
+    if (button) button.style.display = 'flex';
+    if (host) { host.style.display = 'none'; host.innerHTML = ''; }
+  }
   function openAuth(mode) {
     authMode = mode === 'register' ? 'register' : 'login';
     var modal = document.getElementById('ssAuth');
     if (!modal) return;
+    stopTelegramLoginWatch();
+    resetTelegramWidget();
     paintAuth();
     modal.classList.add('is-open'); modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
@@ -513,11 +560,14 @@
     if (!modal) return;
     modal.classList.remove('is-open'); modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
+    stopTelegramLoginWatch();
+    resetTelegramWidget();
   }
   function authErrorMessage(data, fallback) {
     var ru = lang() === 'ru';
     var messages = {
       invalid_email: ru ? 'Проверь адрес электронной почты.' : 'Check the email address.',
+      email_registered: ru ? 'Аккаунт с этой почтой уже существует. Войди через кнопку ниже или восстанови пароль.' : 'An account with this email already exists. Use the log in button below or reset your password.',
       rate_limited: ru ? 'Слишком много попыток. Попробуй немного позже.' : 'Too many attempts. Try again later.',
       verification_unavailable: ru ? 'Подтверждение почты временно недоступно.' : 'Email verification is temporarily unavailable.',
       delivery_failed: ru ? 'Не удалось отправить письмо. Попробуй позже.' : 'The email could not be sent. Try again later.',
@@ -579,8 +629,8 @@
         if (recover) sub.textContent = copy.forgotSub;
         else if (reset) sub.textContent = copy.resetSub;
         else if (ver) sub.textContent = ru
-          ? 'Код отправляется только для нового адреса. Если аккаунт с этой почтой уже есть, письмо не придёт — войди в него. Также проверь, нет ли опечатки в адресе.'
-          : 'Codes are sent only for new addresses. If an account already uses this email, no code will arrive — log in instead. Also check the address for typos.';
+          ? 'Мы отправили код на указанную почту. Введи его, чтобы завершить регистрацию.'
+          : 'We sent a code to your email. Enter it to complete registration.';
         else sub.textContent = reg ? (ru ? 'Один аккаунт для проектов, галереи и Pro.' : 'One account for projects, gallery and Pro.') : (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.');
     }
     if (submit) {
@@ -617,6 +667,8 @@
     if (close) close.onclick = closeAuth;
     if (modal) modal.onclick = function (e) { if (e.target === modal) closeAuth(); };
     if (sw) sw.onclick = function () { 
+        stopTelegramLoginWatch();
+        resetTelegramWidget();
         if (authMode === 'reset_request' || authMode === 'reset_confirm') {
             authMode = 'login';
         } else if (authMode === 'verify') {
@@ -731,15 +783,31 @@
           if (!d || !d.ok || !d.bot_username) { alert((d && d.msg) || 'Telegram not configured'); return; }
           var host = document.getElementById('ssTgHost');
           if (!host) return;
+          telegram.style.display = 'none';
           host.style.display = 'block'; host.innerHTML = '';
+          var state = document.getElementById('ssAuthState');
+          if (state) {
+            state.textContent = lang() === 'ru' ? 'Подтверди вход в Telegram…' : 'Confirm sign-in in Telegram…';
+            state.className = 'ss-auth__state is-wait';
+          }
           var script = document.createElement('script');
+          script.async = true;
           script.src = 'https://telegram.org/js/telegram-widget.js?22';
           script.setAttribute('data-telegram-login', d.bot_username);
           script.setAttribute('data-size', 'large');
           script.setAttribute('data-radius', '12');
           script.setAttribute('data-auth-url', location.origin + '/api/auth/telegram/callback');
           script.setAttribute('data-request-access', 'write');
+          script.onerror = function () {
+            stopTelegramLoginWatch();
+            resetTelegramWidget();
+            if (state) {
+              state.textContent = lang() === 'ru' ? 'Не удалось загрузить вход через Telegram. Попробуй ещё раз.' : 'Could not load Telegram sign-in. Please try again.';
+              state.className = 'ss-auth__state is-bad';
+            }
+          };
           host.appendChild(script);
+          watchTelegramLogin();
         }).catch(function (e) { alert(String(e)); });
     };
   }
@@ -761,7 +829,14 @@
     if (!document.getElementById('ssNotices')) {
       document.body.insertAdjacentHTML('beforeend', announcementsHTML());
     }
-    if (head) head.innerHTML = headerHTML() + authHTML() + activationHTML();
+    var previousAuth = document.getElementById('ssAuth');
+    if (previousAuth && previousAuth.parentElement === document.body) previousAuth.remove();
+    if (head) {
+      head.innerHTML = headerHTML() + authHTML() + activationHTML();
+      // Keep the modal above page-level overlays even when the header sits
+      // inside a lower stacking context (for example the landing .shell).
+      document.body.appendChild(document.getElementById('ssAuth'));
+    }
     if (foot) foot.innerHTML = footerHTML();
     document.querySelectorAll('[data-privacy-link]').forEach(function (link) {
       link.href = siteUrl('/privacy');
@@ -780,19 +855,28 @@
     // Old bearer tokens in localStorage are deliberately discarded. The
     // server-owned HttpOnly cookie is the only session source.
     try { localStorage.removeItem('sm_session'); } catch (e) {}
-    loadMe();
     var authQuery = new URLSearchParams(location.search).get('auth');
-    if (authQuery === '1' || authQuery === 'register') openAuth('register');
+    loadMe().then(function (user) {
+      if (!user.logged_in && (authQuery === '1' || authQuery === 'register')) openAuth('register');
+    });
   }
 
   if (!window._ssOAuthMsgBound) {
     window._ssOAuthMsgBound = true;
     window.addEventListener('message', function (ev) {
       if (ev.origin !== location.origin || !ev.data) return;
+      if (ev.data.type === 'telegram_login') { checkTelegramLogin(true); return; }
       if (ev.data.type === 'discord_login' || ev.data.type === 'google_login' ||
-          ev.data.type === 'telegram_login' || ev.data.type === 'steam_login') location.reload();
+          ev.data.type === 'steam_login') location.reload();
     });
   }
+  if ('BroadcastChannel' in window) {
+    var telegramChannel = new BroadcastChannel('showcasemaker-auth');
+    telegramChannel.onmessage = function (ev) {
+      if (ev.data && ev.data.type === 'telegram_login') checkTelegramLogin(true);
+    };
+  }
+  window.addEventListener('focus', checkTelegramLogin);
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize, { once:true });
   else initialize();

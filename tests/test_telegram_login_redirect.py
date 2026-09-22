@@ -31,6 +31,7 @@ def test_telegram_widget_redirect_verifies_payload_and_returns_to_app(monkeypatc
     response = client.get("/api/auth/telegram/callback", params=payload)
     assert response.status_code == 200
     assert 'window.location.replace("https://showcasemaker.example/app")' in response.text
+    assert "new BroadcastChannel('showcasemaker-auth')" in response.text
     assert "sm_session=" in response.headers.get("set-cookie", "")
 
     payload["hash"] = "0" * 64

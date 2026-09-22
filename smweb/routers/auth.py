@@ -167,11 +167,12 @@ async def auth_send_code(request: Request):
     if not rs.rate_limit(f"auth-send-code:{identity}", 3, 300)[0]:
         return JSONResponse({"ok": False, "msg": "Too many requests. Try later.", "code": "rate_limited"}, status_code=429)
 
-    # Always give the browser the same answer for registered and new addresses.
-    # This prevents the registration form from becoming an account-enumeration API.
     generic = "If this address can be registered, a code has been sent"
     if auth_db.user_exists(email):
-        return JSONResponse({"ok": True, "msg": generic, "code": "code_sent"})
+        return JSONResponse(
+            {"ok": False, "msg": "An account with this email already exists", "code": "email_registered"},
+            status_code=409,
+        )
 
     created, create_msg, code = auth_db.create_email_code(email, ttl_sec=900)
     if not created:

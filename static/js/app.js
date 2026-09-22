@@ -2035,6 +2035,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 (function () {
   var DICT = {
     en: {
+      nav_tools: "Tools",
       nav_process: "Process", nav_compose: "Character", nav_download: "Download", nav_convert: "Converter", nav_hex: "HEX",
       nav_preview: "Profile", nav_upscale: "Upscale", nav_loop: "Loop", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Account", nav_about: "About", nav_doctor: "Profile Rating", "nav_design-ai": "Design Selection",
       title_upscale: "Upscale", sub_upscale: "AI upscaling with detail preserved — Pro feature",
@@ -2193,6 +2194,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       free: "Free", pro: "Pro"
     },
     ru: {
+      nav_tools: "Инструменты",
       nav_process: "Обработка", nav_compose: "Персонаж", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
       nav_preview: "Профиль", nav_upscale: "Апскейл", nav_loop: "Зациклить", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе", nav_doctor: "Оценка профиля", "nav_design-ai": "Подбор оформления",
       title_upscale: "Апскейл", sub_upscale: "ИИ-увеличение с сохранением деталей — функция Pro",

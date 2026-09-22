@@ -3,6 +3,7 @@
 /* ---- i18n ---- */
 var PDICT={
  en:{
+  nav_profile:'Profile',
   steam_profile_cooldown:'Steam is temporarily limiting profile requests. Your current design has not changed. Try again later or import via the extension.',
   steam_profile_incomplete:'Steam did not provide the full profile. Your current design has not changed. Try again later or use the extension.',
   steam_profile_cached:'Steam is temporarily unavailable. Loaded the last successful cached profile; it may not reflect recent changes.',
@@ -58,6 +59,7 @@ var PDICT={
   account_current_password:'Current password',account_new_password:'New password',account_repeat_password:'Repeat new password',account_change_password:'Change password'
  },
  ru:{
+  nav_profile:'Профиль',
   steam_profile_cooldown:'Steam временно ограничивает запросы профиля. Текущее оформление не изменено. Попробуйте позже или импортируйте через расширение.',
   steam_profile_incomplete:'Steam не отдал полный профиль. Текущее оформление не изменено. Попробуйте позже или используйте расширение.',
   steam_profile_cached:'Steam временно недоступен. Загружена последняя успешная копия профиля из кеша; недавние изменения могут отсутствовать.',

@@ -77,11 +77,10 @@ class PrivacyPageTests(unittest.TestCase):
             self.assertIn('data-privacy-link', (static / page).read_text(encoding='utf-8'))
         for page in ['index.html', 'app.html', 'gallery.html', 'profile.html', 'profile-view.html']:
             source = (static / page).read_text(encoding='utf-8')
-            self.assertIn('ss-shell.js?v=20260922-telegram1', source)
+            self.assertIn('ss-shell.js?v=20260923-auth1', source)
             self.assertIn('ss.css?v=20260922-a11y1', source)
             self.assertIn('analytics.js?v=20260922a', source)
-            locale_version = '20260920-auto-upload1' if page == 'app.html' else '20260909-languages8'
-            self.assertIn(f'locales-extra.js?v={locale_version}', source)
+            self.assertIn('locales-extra.js?v=20260923-auth1', source)
             self.assertIn('i18n.js?v=20260909-languages4', source)
         for page in ['profile.html', 'profile-view.html']:
             self.assertIn('id="ssFootHost"', (static / page).read_text(encoding='utf-8'))

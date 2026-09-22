@@ -296,6 +296,25 @@ const supportTicketCopy = {
 for (const language of targets) {
   supportTicketCopyKeys.forEach((key, index) => { taskCopyOverrides[language][key] = supportTicketCopy[language][index]; });
 }
+const authRecoveryCopyKeys = [
+  'Telegram sign-in was not completed. Please try again.',
+  'An account with this email already exists. Use the log in button below or reset your password.',
+  'Already have an account? Log in',
+  'We sent a code to your email. Enter it to complete registration.',
+  'Confirm sign-in in Telegram…',
+  'Could not load Telegram sign-in. Please try again.'
+];
+const authRecoveryCopy = {
+  de: ['Die Telegram-Anmeldung wurde nicht abgeschlossen. Bitte versuche es erneut.','Ein Konto mit dieser E-Mail-Adresse existiert bereits. Melde dich unten an oder setze dein Passwort zurück.','Du hast schon ein Konto? Anmelden','Wir haben einen Code an deine E-Mail-Adresse gesendet. Gib ihn ein, um die Registrierung abzuschließen.','Bestätige die Anmeldung in Telegram…','Die Telegram-Anmeldung konnte nicht geladen werden. Bitte versuche es erneut.'],
+  tr: ['Telegram ile giriş tamamlanmadı. Lütfen tekrar deneyin.','Bu e-posta adresiyle bir hesap zaten var. Aşağıdan giriş yapın veya şifrenizi sıfırlayın.','Zaten hesabınız var mı? Giriş yapın','E-postanıza bir kod gönderdik. Kaydı tamamlamak için kodu girin.','Telegram’da girişi onaylayın…','Telegram ile giriş yüklenemedi. Lütfen tekrar deneyin.'],
+  fr: ['La connexion avec Telegram n’a pas été terminée. Réessayez.','Un compte existe déjà avec cette adresse e-mail. Connectez-vous ci-dessous ou réinitialisez votre mot de passe.','Déjà un compte ? Se connecter','Nous avons envoyé un code à votre adresse e-mail. Saisissez-le pour terminer l’inscription.','Confirmez la connexion dans Telegram…','Impossible de charger la connexion Telegram. Réessayez.'],
+  uk: ['Вхід через Telegram не завершено. Спробуйте ще раз.','Обліковий запис із цією електронною адресою вже існує. Увійдіть нижче або відновіть пароль.','Уже маєте обліковий запис? Увійти','Ми надіслали код на вашу пошту. Введіть його, щоб завершити реєстрацію.','Підтвердьте вхід у Telegram…','Не вдалося завантажити вхід через Telegram. Спробуйте ще раз.'],
+  es: ['No se completó el inicio de sesión con Telegram. Inténtalo de nuevo.','Ya existe una cuenta con esta dirección de correo. Inicia sesión abajo o restablece tu contraseña.','¿Ya tienes una cuenta? Inicia sesión','Te enviamos un código por correo. Introdúcelo para completar el registro.','Confirma el inicio de sesión en Telegram…','No se pudo cargar el inicio de sesión con Telegram. Inténtalo de nuevo.'],
+  pt: ['O login pelo Telegram não foi concluído. Tente novamente.','Já existe uma conta com este endereço de e-mail. Entre abaixo ou redefina sua senha.','Já tem uma conta? Entrar','Enviamos um código para seu e-mail. Digite-o para concluir o cadastro.','Confirme o login no Telegram…','Não foi possível carregar o login pelo Telegram. Tente novamente.']
+};
+for (const language of targets) {
+  authRecoveryCopyKeys.forEach((key, index) => { taskCopyOverrides[language][key] = authRecoveryCopy[language][index]; });
+}
 for (const language of targets) Object.assign(overrides[language], taskCopyOverrides[language]);
 
 function maskProducts(text) {
