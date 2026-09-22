@@ -180,6 +180,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/preview-build", 6, 60),
         ("/api/preview_wm", 20, 60),
         ("/api/builder/render", 8, 60),
+        # Paid remove.bg calls: the router also applies account/day and global/day caps.
+        ("/api/builder/remove-background", 6, 60),
         # The preflight reads and decodes complete showcase sets. It is Pro-only,
         # but a compromised account must not become an unbounded CPU/RAM source.
         ("/api/steam-check", 12, 300),

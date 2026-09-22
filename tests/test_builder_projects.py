@@ -83,6 +83,13 @@ class BuilderProjectTests(unittest.TestCase):
         self.assertEqual(enhanced["layers"][1]["frameStyle"], "corners")
         self.assertEqual(enhanced["layers"][1]["frameTarget"], "panels")
 
+        source_flags = _validated_project({"layers": [
+            {"type": "character", "animatedSource": True},
+            {"type": "text", "animatedSource": True},
+        ]})
+        self.assertTrue(source_flags["layers"][0]["animatedSource"])
+        self.assertNotIn("animatedSource", source_flags["layers"][1])
+
     def test_steam_background_purchase_url_is_preserved_safely(self):
         points_url = "https://store.steampowered.com/points/shop/app/123/reward/456"
         project = _validated_project({"layers": [
@@ -111,6 +118,8 @@ class BuilderProjectTests(unittest.TestCase):
         self.assertIn('id="builderEffectDensity"', markup)
         self.assertIn('id="builderFrameStyle"', markup)
         self.assertIn('id="builderFrameTarget"', markup)
+        self.assertIn('id="builderAiHelpText"', markup)
+        self.assertIn('data-builder-i="ai-remove-help"', markup)
         self.assertIn('<option value="Rubik Mono One">Rubik Mono One</option>', markup)
         self.assertIn('<option value="Unbounded">Unbounded</option>', markup)
         self.assertIn("applyChroma", script)
@@ -119,6 +128,11 @@ class BuilderProjectTests(unittest.TestCase):
         self.assertIn("syncFontPreview", script)
         self.assertIn("drawFlowingTexture", script)
         self.assertIn("frameRects", script)
+        self.assertIn("aiRemovalEligible", script)
+        self.assertIn("animatedSource", script)
+
+        requirements = (root / "requirements.txt").read_text(encoding="utf-8").lower()
+        self.assertNotIn("rembg", requirements)
 
         effects = root / "static" / "assets" / "builder" / "effects"
         for name in ("petals.png", "snow.png", "rain.png", "lightning.png"):

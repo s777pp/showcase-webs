@@ -92,3 +92,10 @@ The owner supplied Compose status and the Tunnel-only override, confirming the i
 - All new admin mutations reuse the signed HttpOnly admin session, CSRF header, origin validation and audit log. Catalogue links accept only absolute HTTP(S) URLs. Backup restoration remains deliberately unavailable from the browser.
 - Reviewed support/notice copy was added to all six generated non-RU/EN language packs. No runtime machine translation is introduced.
 - Verification: 188 pytest tests and 12 subtests passed; JavaScript syntax, Python compilation, localization coverage and `git diff --check` passed. Real-browser QA covered user cards, job filtering/details, support triage, mobile layout, public notices and successful ticket submission. Screenshots were visually inspected. Production database migration, backup restoration, real email delivery and live queue retry remain deployment/staging checks; no production action was performed.
+
+## Follow-up: remove.bg background removal
+
+- Replaced local `rembg`/U2Net processing with one bounded server-side remove.bg request for still PNG/JPG/WebP Builder layers. The credential remains server-only; source type, byte size, resolution and returned transparent PNG are validated before storage.
+- Animated GIF and video layers no longer enter AI removal or consume provider credits. Their AI button is disabled and a compact translated help disclosure directs users to the existing chromakey controls for solid-color backgrounds.
+- Added daily Free, Pro and global credit guards, sanitized provider errors, request timeouts, redirect blocking and an explicit privacy disclosure for the user-triggered third-party transfer.
+- Verification: 193 pytest tests and 12 subtests passed; Python compilation, JavaScript syntax and `git diff --check` passed. Browser QA verified enabled still-image behavior, disabled GIF behavior, translated help and no horizontal overflow at 390 px, plus the existing 11-tab/eight-language regression. Provider responses were mocked; no remove.bg credit or production request was used.

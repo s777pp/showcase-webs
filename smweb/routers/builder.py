@@ -12,6 +12,7 @@ import io
 import os
 import re
 import secrets
+from datetime import datetime, timezone
 from urllib.parse import urlsplit
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +25,7 @@ import auth_db
 import redis_store as rs
 from smweb import object_store
 from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, _safe_data_path
+from smweb.remove_bg_client import configured as remove_bg_configured
 
 
 router = APIRouter(prefix="/api/builder", tags=["builder"])
@@ -168,12 +170,14 @@ def _validated_project(raw) -> dict:
                 item.pop("protectedArea", None)
         item["intensityLinked"] = item.get("intensityLinked") is not False
         if item["type"] in {"background", "character"}:
+            item["animatedSource"] = item.get("animatedSource") is True
             motion = _validated_local_motion(item.get("localMotion"))
             if motion is not None:
                 item["localMotion"] = motion
             else:
                 item.pop("localMotion", None)
         else:
+            item.pop("animatedSource", None)
             item.pop("localMotion", None)
         if item["type"] == "frame":
             item["frameStyle"] = item.get("frameStyle") if item.get("frameStyle") in _FRAME_STYLES else "solid"
@@ -294,9 +298,11 @@ async def upload_asset(request: Request, file: UploadFile = File(...)):
     data = await file.read((MAX_UPLOAD_MB + 1) * 1024 * 1024)
     if not data or len(data) > MAX_UPLOAD_MB * 1024 * 1024:
         return JSONResponse({"ok": False, "msg": f"File limit is {MAX_UPLOAD_MB} MB"}, status_code=413)
+    animated = media_type.startswith("video/") or suffix == ".gif"
     if media_type.startswith("image/"):
         try:
             with Image.open(io.BytesIO(data)) as image:
+                animated = int(getattr(image, "n_frames", 1) or 1) > 1
                 image.verify()
         except (UnidentifiedImageError, OSError, ValueError):
             return JSONResponse({"ok": False, "msg": "Invalid image file"}, status_code=400)
@@ -309,6 +315,7 @@ async def upload_asset(request: Request, file: UploadFile = File(...)):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
     return {"ok": True, "url": f"/api/builder/assets/{name}", "media_type": media_type,
+            "animated": animated,
             "name": (file.filename or name)[:160]}
 
 
@@ -349,11 +356,59 @@ async def remove_background(request: Request):
     if not match:
         return JSONResponse({"ok": False, "msg": "Upload this layer before AI removal"}, status_code=400)
     name = match.group(1)
+    if Path(name).suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+        return JSONResponse(
+            {"ok": False, "code": "image_only",
+             "msg": "AI background removal supports still images only; use chromakey for GIF and video"},
+            status_code=415,
+        )
+    if not remove_bg_configured():
+        return JSONResponse(
+            {"ok": False, "code": "not_configured",
+             "msg": "AI background removal is temporarily unavailable"},
+            status_code=503,
+        )
     source_key = f"builder/{int(user['id'])}/{name}"
     user_key = f"builder-bg:{int(user['id'])}"
     existing = rs.job_find_active(user_key, "builder_bg_remove", source_key)
     if existing:
         return {"ok": True, "job_id": existing[0], "queued": True}
+    try:
+        free_limit = max(1, int(os.environ.get("REMOVE_BG_FREE_DAILY", "5")))
+        pro_limit = max(free_limit, int(os.environ.get("REMOVE_BG_PRO_DAILY", "20")))
+        global_limit = max(1, int(os.environ.get("REMOVE_BG_GLOBAL_DAILY", "100")))
+        monthly_limit = max(1, int(os.environ.get("REMOVE_BG_GLOBAL_MONTHLY", "50")))
+    except ValueError:
+        free_limit, pro_limit, global_limit, monthly_limit = 5, 20, 100, 50
+    user_limit = pro_limit if auth_db.effective_pro(user) else free_limit
+    allowed_user, _ = rs.rate_limit(
+        f"builder-bg:user:{int(user['id'])}", user_limit, 86400, fail_closed=True
+    )
+    if not allowed_user:
+        return JSONResponse(
+            {"ok": False, "code": "remove_bg_limit",
+             "msg": "Background-removal limit reached. Try again later"},
+            status_code=429,
+        )
+    allowed_global, _ = rs.rate_limit(
+        "builder-bg:global", global_limit, 86400, fail_closed=True
+    )
+    if not allowed_global:
+        return JSONResponse(
+            {"ok": False, "code": "remove_bg_limit",
+             "msg": "Background-removal limit reached. Try again later"},
+            status_code=429,
+        )
+    month = datetime.now(timezone.utc).strftime("%Y-%m")
+    allowed_month, _ = rs.rate_limit(
+        f"builder-bg:global:month:{month}", monthly_limit, 32 * 86400, fail_closed=True
+    )
+    if not allowed_month:
+        return JSONResponse(
+            {"ok": False, "code": "remove_bg_limit",
+             "msg": "Background-removal limit reached. Try again later"},
+            status_code=429,
+        )
     jid = secrets.token_hex(12)
     payload = {
         "kind": "builder_bg_remove", "status": "queued", "pct": 1,
@@ -383,4 +438,5 @@ def remove_background_status(job_id: str, request: Request):
         out["result"] = job.get("result") or {}
     elif job.get("status") == "error":
         out["error"] = job.get("error") or "Background removal failed"
+        out["error_code"] = job.get("error_code") or "provider_unavailable"
     return out

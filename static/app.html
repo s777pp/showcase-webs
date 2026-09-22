@@ -24,7 +24,7 @@
 <link rel="stylesheet" href="/static/css/support-chat.css?v=20260921-tickets1">
 <link rel="stylesheet" href="/static/css/tools-polish.css?v=20260908-controls8">
 <link href="https://fonts.googleapis.com/css2?family=Alumni+Sans:wght@700;800&family=Arsenal:wght@700&family=Bebas+Neue&family=Bungee&family=Caveat:wght@600;700&family=Comfortaa:wght@600;700&family=Cormorant+Garamond:wght@700&family=Exo+2:wght@700;800&family=Jura:wght@700&family=Kelly+Slab&family=Neucha&family=Oswald:wght@600;700&family=Play:wght@700&family=Poiret+One&family=Press+Start+2P&family=Readex+Pro:wght@600;700&family=Rubik+Mono+One&family=Russo+One&family=Sofia+Sans+Extra+Condensed:wght@700;800&family=Tenor+Sans&family=Unbounded:wght@600;700;800&family=Yeseva+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/showcase-builder.css?v=20260921-buy-background1">
+<link rel="stylesheet" href="/static/css/showcase-builder.css?v=20260922-removebg1">
 <link rel="stylesheet" href="/static/css/builder-motion.css?v=20260913-motion1">
 <link rel="stylesheet" href="/static/css/steam-dna.css?v=20260912-exp5">
 <script defer src="/static/js/support-chat.js?v=20260921-tickets1"></script>
@@ -930,7 +930,13 @@
               <label><span><b data-builder-i="chroma-tolerance">Tolerance</b><output id="builderChromaToleranceValue">45</output></span><input id="builderChromaTolerance" type="range" min="10" max="120" value="45"/></label>
               <label><span><b data-builder-i="chroma-feather">Edge feather</b><output id="builderChromaFeatherValue">1.6</output></span><input id="builderChromaFeather" type="range" min="0" max="40" value="16"/></label>
             </div>
-            <button type="button" class="btn ghost builder-ai-cut" id="builderAiRemove"><span>✦</span> <b data-builder-i="ai-remove">Remove background with AI</b></button>
+            <div class="builder-ai-cut-row">
+              <button type="button" class="btn ghost builder-ai-cut" id="builderAiRemove" aria-describedby="builderAiHelpText"><span>✦</span> <b data-builder-i="ai-remove">Remove background with AI</b></button>
+              <details class="builder-ai-help">
+                <summary data-builder-i-title="ai-remove-help">?</summary>
+                <p id="builderAiHelpText" data-builder-i="ai-remove-help">AI removal works only for still images. For GIF and video, use chromakey: the background must be a solid color.</p>
+              </details>
+            </div>
             <label><span data-builder-i="animation">Animation</span><select id="builderAnimation"><option value="none" data-builder-i="none">None</option><option value="breathing" data-builder-i="breathing">Breathing</option><option value="wave" data-builder-i="wave">Wave</option></select></label>
           </div>
           <label><span data-builder-i="scale">Scale</span><input id="builderScale" type="range" min="10" max="300" value="100"/></label>
@@ -1064,7 +1070,7 @@
   </div>
 </div>
 
-  <script src="/static/js/tool-loader.js?v=20260921-buy-background1"></script>
+  <script src="/static/js/tool-loader.js?v=20260922-removebg1"></script>
 <script src="/static/js/app.js?v=20260920-auto-upload1"></script>
   <script src="/static/js/workspace-copy.js?v=20260910-finish1"></script>
   <script src="/static/js/process-guide.js?v=20260920-editor1"></script>
