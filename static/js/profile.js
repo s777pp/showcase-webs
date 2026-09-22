@@ -162,7 +162,15 @@ $('saveBtn').onclick=function(){setStatus('saveState',pT('save_wait'),'wait');fe
   el('accountDisplayName').value=d.display_name||'';el('accountEmail').value=d.email||'';
   el('accountPlan').textContent=d.is_pro?t('pro'):t('free');el('accountPlan').className=d.is_pro?'is-pro':'';
   el('accountGalleryCount').textContent=d.gallery_uploads||0;el('accountShowcaseCount').textContent=d.showcase_count||0;
-  var av=el('accountAvatar');if(d.avatar_url)av.innerHTML='<img src="'+d.avatar_url+'" alt="">';else av.textContent=(d.display_name||d.email||'S').charAt(0).toUpperCase();
+  var av=el('accountAvatar');
+  av.replaceChildren();
+  if(d.avatar_url){
+   var avatarImage=document.createElement('img');
+   avatarImage.src=d.avatar_url;
+   avatarImage.alt='';
+   avatarImage.decoding='async';
+   av.appendChild(avatarImage);
+  }else av.textContent=(d.display_name||d.email||'S').charAt(0).toUpperCase();
  }
  function load(){return fetch('/api/profile/account-overview',{credentials:'same-origin'}).then(function(r){return r.json()}).then(paint).catch(function(){paint(null)})}
  var login=el('accountLogin');if(login)login.onclick=function(){if(window.SSShell&&SSShell.openAuth)SSShell.openAuth('login')};

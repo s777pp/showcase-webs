@@ -387,8 +387,13 @@
     $('#mSub').textContent = item.username ? '@' + item.username : '';
     const av = $('#mAv');
     av.href = profileUrl;
+    av.replaceChildren();
     if (item.avatar_url) {
-      av.innerHTML = `<img src="${item.avatar_url}" alt=""/>`;
+      const avatarImage = document.createElement('img');
+      avatarImage.src = item.avatar_url;
+      avatarImage.alt = '';
+      avatarImage.decoding = 'async';
+      av.appendChild(avatarImage);
     } else {
       av.textContent = (author[0] || '?').toUpperCase();
     }

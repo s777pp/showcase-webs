@@ -401,7 +401,8 @@ async def remove_background(request: Request):
         )
     month = datetime.now(timezone.utc).strftime("%Y-%m")
     allowed_month, _ = rs.rate_limit(
-        f"builder-bg:global:month:{month}", monthly_limit, 32 * 86400, fail_closed=True
+        f"builder-bg:global:month:{month}", monthly_limit, 32 * 86400,
+        fail_closed=True, fixed_bucket=True,
     )
     if not allowed_month:
         return JSONResponse(

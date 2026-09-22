@@ -206,6 +206,7 @@ img,video{max-width:100%;display:block}
 @media(max-width:760px){.ss-activate span{display:none}.ss-activate{width:34px;padding:0;justify-content:center}.ss-activation__card{padding:26px 20px}.ss-activation__shops{grid-template-columns:1fr}.ss-activation__entry{grid-template-columns:1fr}.ss-activation__entry button{width:100%}}
 
 /* ============================ primitives ============================ */
+.ss-sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 .ss-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm)}
 .ss-h1{font-size:clamp(24px,3.4vw,34px);font-weight:900;letter-spacing:-.8px;line-height:1.1}
 .ss-h2{font-size:17px;font-weight:800;letter-spacing:-.3px}

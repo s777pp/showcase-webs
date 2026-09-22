@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-showcase}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-showcase_change_me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-showcase}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -46,13 +46,16 @@ services:
       WORKER_MODE: external
       UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
       MAX_JOBS_PER_USER: ${MAX_JOBS_PER_USER:-2}
+      # The embedded pool is emergency fallback only. Media encoders already
+      # use multiple cores; one fallback job keeps the API responsive.
+      MAX_JOB_WORKERS: ${MAX_JOB_WORKERS:-1}
       MAX_FILES_PER_JOB: ${MAX_FILES_PER_JOB:-10}
       ALLOW_SYNC_PROCESS: ${ALLOW_SYNC_PROCESS:-0}
       FREE_LIMIT: ${FREE_LIMIT:-5}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-40}
       MAX_REQUEST_MB: ${MAX_REQUEST_MB:-100}
       APP_URL: ${APP_URL:-http://localhost}
-      SECRET_KEY: ${SECRET_KEY:-}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
       COOKIE_SECURE: ${COOKIE_SECURE:-1}
       SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-30}
       PASSWORD_PBKDF2_ITERATIONS: ${PASSWORD_PBKDF2_ITERATIONS:-600000}
@@ -130,7 +133,7 @@ services:
     networks: [internal]
 
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.30.5-alpine
     restart: unless-stopped
     ports:
       # Loopback only: traffic arrives through the Cloudflare tunnel, which reaches
@@ -148,9 +151,9 @@ services:
     networks: [internal]
 
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared:2026.9.1
     restart: unless-stopped
-    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARE_TUNNEL_TOKEN}"]
+    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN in .env}"]
     depends_on:
       - nginx
     networks: [internal]

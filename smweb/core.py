@@ -443,7 +443,15 @@ def quota_state(req: Request) -> dict:
         u = {"count": 0, "day": _day()}
         _usage[ip] = u
         _save_usage(_usage)
-    used = int(u.get("count") or 0)
+    legacy_used = int(u.get("count") or 0)
+    # Redis is shared by every API worker and is therefore authoritative in
+    # production. Keep the file-backed value as a migration/outage floor so a
+    # rolling deploy or brief Redis failure can never make spent quota vanish.
+    try:
+        shared_used = rs.quota_get(ip, _day())
+    except Exception:
+        shared_used = 0
+    used = max(legacy_used, int(shared_used or 0))
     free_limit = runtime_settings.integer("free_daily_limit", FREE_LIMIT)
     if uid:
         free_limit = user_limits.integer(int(uid), "free_daily_limit", free_limit)

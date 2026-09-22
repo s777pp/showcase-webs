@@ -99,7 +99,13 @@ from smweb.routers import (
 )
 
 
-app = FastAPI(title="Showcase Maker Web")
+_api_docs_enabled = (os.environ.get("ENABLE_API_DOCS") or "").strip().lower() in {"1", "true", "yes", "on"}
+app = FastAPI(
+    title="Showcase Maker Web",
+    docs_url="/docs" if _api_docs_enabled else None,
+    redoc_url="/redoc" if _api_docs_enabled else None,
+    openapi_url="/openapi.json" if _api_docs_enabled else None,
+)
 
 _app_host = urlparse((os.environ.get("APP_URL") or "").strip()).hostname
 _allowed_hosts = {"localhost", "127.0.0.1", "app", "testserver"}

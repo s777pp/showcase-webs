@@ -562,31 +562,47 @@ def access_session_del(token: str) -> None:
 
 
 # ---------- rate limit ----------
-def rate_limit(key: str, limit: int, window_sec: int, *, fail_closed: bool = False) -> tuple[bool, int]:
-    """Return (allowed, remaining). Paid callers may require a shared fail-closed cap."""
+def rate_limit(key: str, limit: int, window_sec: int, *, fail_closed: bool = False, fixed_bucket: bool = False) -> tuple[bool, int]:
+    """Return (allowed, remaining).
+
+    fixed_bucket is for caller-keyed calendar periods: the key MUST contain the
+    period and window_sec must exceed its duration. Do not split it again at an
+    unrelated epoch boundary, which would reset a paid monthly cap mid-month.
+    """
     now = int(time.time())
     r = _r()
     if fail_closed and configured() and not r:
         return False, 0
     if r:
         try:
-            k = "sm:rl:{}:{}".format(key, now // window_sec)
+            k = f"sm:rl:calendar:{key}" if fixed_bucket else "sm:rl:{}:{}".format(key, now // window_sec)
             count = r.incr(k)
             if count == 1:
                 r.expire(k, window_sec + 1)
+            if fixed_bucket:
+                # Keep usage from the old epoch-suffixed implementation during
+                # rolling updates. A caller period shorter than window_sec can
+                # overlap at most these two buckets. Never reset paid allowance
+                # just because a new release uses the calendar namespace.
+                epoch = now // window_sec
+                count += sum(int(r.get(f"sm:rl:{key}:{slot}") or 0)
+                             for slot in (epoch - 1, epoch))
             return count <= limit, max(0, limit - count)
         except Exception as e:
             _note(e)
             if fail_closed:
                 return False, 0
     with _local_lock:
-        bucket = "rl:{}".format(key)
+        bucket = ("rl:calendar:" if fixed_bucket else "rl:") + key
         data = _local_usage.setdefault(bucket, {"t": now, "n": 0})
         if now - int(data.get("t") or 0) >= window_sec:
             data = {"t": now, "n": 0}
         data["n"] = int(data.get("n") or 0) + 1
         _local_usage[bucket] = data
-        return data["n"] <= limit, max(0, limit - data["n"])
+        legacy = _local_usage.get("rl:" + key, {}) if fixed_bucket else {}
+        legacy_count = int(legacy.get("n") or 0) if now - int(legacy.get("t") or 0) < window_sec else 0
+        count = data["n"] + legacy_count
+        return count <= limit, max(0, limit - count)
 
 
 def profile_insight_history_add(user_id: int, item: dict, ttl: int = 7 * 86400) -> None:

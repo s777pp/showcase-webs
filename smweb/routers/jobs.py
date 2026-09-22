@@ -5,14 +5,16 @@ import asyncio
 import json
 import re
 import secrets
+import shutil
 import time
 from pathlib import Path
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.concurrency import run_in_threadpool
 
 import redis_store as rs
-from smweb.core import _auth_user, _ip
+from smweb.core import JOBS, _auth_user, _ip, max_jobs_for_user, quota_state, quota_inc
 from smweb.jobs import _job_pool, _worker_mode
 
 
@@ -32,7 +34,37 @@ def _owned(request: Request, jid: str) -> dict | None:
     if not _JOB_ID.fullmatch(str(jid or "")):
         return None
     job = rs.job_get(jid)
-    return job if job and secrets.compare_digest(str(job.get("user_key") or ""), _owner(request)) else None
+    if not job:
+        return None
+    key = str(job.get("user_key") or "")
+    if secrets.compare_digest(key, _owner(request)):
+        return job
+    expected = _scoped_owners(request).get(key)
+    return job if expected and job.get("kind") == expected else None
+
+
+def _scoped_owners(request: Request) -> dict[str, str]:
+    try:
+        user = _auth_user(request)
+    except Exception:
+        user = None
+    if not user:
+        return {}
+    uid = int(user["id"])
+    return {f"{prefix}:{uid}": kind for prefix, kind in (
+        ("builder-bg", "builder_bg_remove"), ("steam", "steam_profile_import"),
+        ("insight", "profile_insight"), ("steam-dna", "steam_dna"),
+    )}
+
+
+def _history(owner: str, scoped: dict[str, str], limit: int) -> list[dict]:
+    limit = max(1, min(50, limit))
+    rows = dict(rs.job_list_user(owner, limit))
+    for key, kind in scoped.items():
+        rows.update((jid, job) for jid, job in rs.job_list_user(key, limit)
+                    if job.get("kind") == kind)
+    ordered = sorted(rows.items(), key=lambda item: float(item[1].get("created") or 0), reverse=True)
+    return [_public(jid, job) for jid, job in ordered[:limit]]
 
 
 def _urls(jid: str, job: dict) -> tuple[str, str]:
@@ -55,7 +87,7 @@ def _public(jid: str, job: dict) -> dict:
     # Local encoders can be terminated for real. Modal exposes no cancellation
     # endpoint in the current proxy, so the UI must not promise that GPU billing
     # stops when an upscale result is no longer needed.
-    cancellable = {"process", "compose", "seamless_loop", "builder_bg_remove"}
+    cancellable = {"process", "compose", "seamless_loop"}
     process_sources = [Path(str(item.get("path") or "")) for item in job.get("files") or []]
     return {
         "id": jid,
@@ -77,20 +109,17 @@ def _public(jid: str, job: dict) -> dict:
 
 @router.get("/api/jobs")
 def list_jobs(request: Request, limit: int = 30):
-    jobs = [_public(jid, job) for jid, job in rs.job_list_user(_owner(request), limit)]
+    jobs = _history(_owner(request), _scoped_owners(request), limit)
     return {"ok": True, "jobs": jobs, "queues": rs.queue_depths()}
-
-
-@router.get("/api/jobs/{job_id}")
-def get_job(job_id: str, request: Request):
-    job = _owned(request, job_id)
-    return {"ok": True, "job": _public(job_id, job)} if job else JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
 
 
 @router.post("/api/jobs/{job_id}/cancel")
 def cancel_job(job_id: str, request: Request):
-    if not _owned(request, job_id):
+    owned = _owned(request, job_id)
+    if not owned:
         return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
+    if not _public(job_id, owned)["can_cancel"]:
+        return JSONResponse({"ok": False, "msg": "This job cannot be cancelled"}, status_code=409)
     job = rs.job_cancel(job_id)
     return {"ok": True, "job": _public(job_id, job or {})}
 
@@ -118,18 +147,53 @@ def retry_job(job_id: str, request: Request):
     # have external side effects. Their own screens remain the retry interface.
     if kind != "process":
         return JSONResponse({"ok": False, "msg": "Upload the source again for this job"}, status_code=409)
+    if old.get("status") not in {"done", "error", "cancelled"}:
+        return JSONResponse({"ok": False, "msg": "Wait for the current job to finish"}, status_code=409)
     paths = [Path(str(item.get("path") or "")) for item in old.get("files") or []]
     paths += [Path(str(old.get(key) or "")) for key in ("source_path", "background_path", "character_path") if old.get(key)]
     if not paths or any(not path.is_file() for path in paths):
         return JSONResponse({"ok": False, "msg": "Source files have expired"}, status_code=410)
+    # Retry is a new processing request, not a way around current account limits.
+    quota = quota_state(request)
+    file_count = len(old.get("files") or [])
+    if not quota.get("pro") and int(quota.get("left") or 0) < file_count:
+        return JSONResponse({"ok": False, "msg": "Daily processing limit reached"}, status_code=403)
+    if rs.job_count_user(_owner(request)) >= max_jobs_for_user(quota.get("user_id")):
+        return JSONResponse({"ok": False, "msg": "Too many active jobs. Wait for current processing to finish."}, status_code=429)
+    allowed, _ = rs.rate_limit(f"job-retry:{_owner(request)}", 1, 5, fail_closed=True)
+    if not allowed:
+        return JSONResponse({"ok": False, "msg": "Please wait before retrying again"}, status_code=429)
     jid = secrets.token_hex(12 if kind == "process" else 16)
     payload = {key: value for key, value in old.items() if key not in {
-        "status", "pct", "stage", "error", "updated", "result_path", "result_key", "zip_path",
+        "status", "pct", "stage", "error", "updated", "result_path", "result_key", "zip_path", "job_dir",
         "processed", "errors", "listed", "readiness", "cancel_requested", "cache_hit",
     }}
     payload.update({"status": "queued", "pct": 1, "stage": "queued", "created": time.time(), "retry_of": job_id})
+    payload["opts"] = dict(old.get("opts") or {})
+    payload["opts"]["steam_check"] = bool(quota.get("email"))
+    if not quota.get("pro"):
+        from smweb.routers.process import _watermark_options
+        keys = ("text", "wm_font", "opacity", "corner", "scale", "color", "wm_x", "wm_y")
+        payload["opts"].update(zip(keys, _watermark_options(quota, "", "", 0, "0", "bl", 1.0, "#ffffff", "", "")))
+    # The previous job may expire while this one waits in the queue. Give the
+    # retry its own inputs so ordinary cleanup cannot break accepted work.
+    retry_dir = JOBS / jid
+    retry_dir.mkdir(parents=True, exist_ok=False)
+    try:
+        files = []
+        for index, item in enumerate(old.get("files") or []):
+            source = Path(item["path"])
+            target = retry_dir / f"input_{index}{source.suffix}"
+            shutil.copyfile(source, target)
+            files.append({**item, "path": str(target)})
+        payload["files"] = files
+    except OSError:
+        shutil.rmtree(retry_dir, ignore_errors=True)
+        return JSONResponse({"ok": False, "msg": "Source files are unavailable. Upload them again."}, status_code=410)
     external = _worker_mode() == "external" and rs.redis_ok() and rs.worker_alive()
     rs.job_create(jid, payload, enqueue=external)
+    if not quota.get("pro"):
+        quota_inc(request, file_count)
     if not external:
         _dispatch_embedded(jid, payload)
     return JSONResponse({"ok": True, "job_id": jid}, status_code=202)
@@ -138,13 +202,22 @@ def retry_job(job_id: str, request: Request):
 @router.get("/api/jobs/events")
 async def events(request: Request):
     owner = _owner(request)
+    scoped = _scoped_owners(request)
 
     async def stream():
         previous = ""
-        for _ in range(240):
+        for iteration in range(240):
             if await request.is_disconnected():
                 break
-            payload = [_public(jid, job) for jid, job in rs.job_list_user(owner, 30)]
+            # A stream may stay open for six minutes. Re-check the session so
+            # logout, expiry or switching accounts cannot keep receiving the
+            # previous account's job history through an already-open socket.
+            if iteration and iteration % 20 == 0:
+                current_owner = await run_in_threadpool(_owner, request)
+                current_scoped = await run_in_threadpool(_scoped_owners, request)
+                if current_owner != owner or current_scoped != scoped:
+                    break
+            payload = await run_in_threadpool(_history, owner, scoped, 30)
             encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
             if encoded != previous:
                 yield f"event: jobs\ndata: {encoded}\n\n"
@@ -156,3 +229,10 @@ async def events(request: Request):
     return StreamingResponse(stream(), media_type="text/event-stream", headers={
         "Cache-Control": "private, no-cache", "X-Accel-Buffering": "no",
     })
+
+
+# Literal GET routes must precede this catch-all, including the event stream.
+@router.get("/api/jobs/{job_id}")
+def get_job(job_id: str, request: Request):
+    job = _owned(request, job_id)
+    return {"ok": True, "job": _public(job_id, job)} if job else JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)

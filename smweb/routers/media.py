@@ -76,6 +76,16 @@ def _job_output_files(directory: Path) -> list[Path]:
     ]
 
 
+def _download_failure(kind: str, exc: Exception, out_dir: Path) -> JSONResponse:
+    """Log diagnostics server-side without exposing provider or filesystem details."""
+    LOGGER.warning("%s download failed (%s)", kind, type(exc).__name__, exc_info=True)
+    shutil.rmtree(out_dir, ignore_errors=True)
+    return JSONResponse(
+        {"ok": False, "msg": "Не удалось скачать файл. Проверь ссылку и попробуй ещё раз."},
+        status_code=400,
+    )
+
+
 @router.post("/api/convert")
 async def api_convert(
     request: Request,
@@ -134,7 +144,11 @@ async def api_convert(
             },
         )
     except Exception as e:
-        return JSONResponse({"ok": False, "msg": f"{type(e).__name__}: {e}"[:400]}, status_code=400)
+        LOGGER.warning("media conversion failed (%s)", type(e).__name__, exc_info=True)
+        return JSONResponse(
+            {"ok": False, "msg": "Не удалось конвертировать файл. Проверь формат и настройки."},
+            status_code=400,
+        )
     finally:
         try:
             shutil.rmtree(work, ignore_errors=True)
@@ -235,7 +249,12 @@ def download_url(request: Request, body: dict = Body(...)):
     bind_job(out_dir, request)
 
     # --- Pinterest (video first, then image) ---
-    if "pinterest." in url.lower() or "pin.it" in url.lower():
+    hostname = (urlparse(url).hostname or "").lower().rstrip(".")
+    is_pinterest = hostname == "pin.it" or hostname.endswith(".pin.it") or hostname in {
+        "pinterest.com",
+        "www.pinterest.com",
+    } or hostname.endswith(".pinterest.com")
+    if is_pinterest:
         try:
             import re as _re
             import requests as _req
@@ -272,7 +291,7 @@ def download_url(request: Request, body: dict = Body(...)):
                     }
                 # if only image from yt-dlp, keep trying video extract below
             except Exception as _ye:
-                print("pinterest yt-dlp:", _ye)
+                LOGGER.info("Pinterest yt-dlp fallback (%s)", type(_ye).__name__)
 
             # 2) scrape page for video urls (v.pinimg / videos)
             try:
@@ -329,9 +348,9 @@ def download_url(request: Request, body: dict = Body(...)):
                             }
                         dest.unlink(missing_ok=True)
                     except Exception as ve:
-                        print("pin video cand:", ve)
+                        LOGGER.info("Pinterest video candidate skipped (%s)", type(ve).__name__)
             except Exception as se:
-                print("pinterest scrape:", se)
+                LOGGER.info("Pinterest page fallback skipped (%s)", type(se).__name__)
 
             # 3) image fallback
             f = _download_pinterest(url, out_dir)
@@ -343,12 +362,17 @@ def download_url(request: Request, body: dict = Body(...)):
                 **quota_state(request),
             }
         except Exception as e:
-            return JSONResponse({"ok": False, "msg": f"Pinterest: {e}"[:400]}, status_code=400)
+            return _download_failure("Pinterest", e, out_dir)
 
     try:
         import yt_dlp
     except ImportError:
-        return JSONResponse({"ok": False, "msg": "yt-dlp не установлен: pip install yt-dlp"}, status_code=500)
+        LOGGER.error("download-url is unavailable because yt-dlp is not installed")
+        shutil.rmtree(out_dir, ignore_errors=True)
+        return JSONResponse(
+            {"ok": False, "msg": "Скачивание временно недоступно. Попробуй позже."},
+            status_code=503,
+        )
 
     outtmpl = str(out_dir / "%(title).80s.%(ext)s")
     ydl_opts = {
@@ -392,7 +416,7 @@ def download_url(request: Request, body: dict = Body(...)):
             **quota_state(request),
         }
     except Exception as e:
-        return JSONResponse({"ok": False, "msg": str(e)[:400]}, status_code=400)
+        return _download_failure("Remote media", e, out_dir)
 
 
 # ====================== Watermark live preview ======================

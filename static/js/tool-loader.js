@@ -4,7 +4,7 @@
   const scripts = new Map();
   const groups = {
     assets: ['/static/js/media-assets.js?v=20260916a'],
-    jobs: ['/static/js/job-center.js?v=20260916a'],
+    jobs: ['/static/js/job-center.js?v=20260922-release'],
     builder: [
       '/static/js/builder-history.js?v=20260910-finish1',
       '/static/js/builder-motion-copy.js?v=20260913-motion1',

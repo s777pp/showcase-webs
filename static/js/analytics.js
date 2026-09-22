@@ -62,7 +62,8 @@
     box.querySelector('.sm-consent__text').append(document.createTextNode(c[1]+' '));
     const link=document.createElement('a'); link.href=privacy; link.textContent=c[4]; box.querySelector('.sm-consent__text').append(link);
     box.querySelector('[data-choice="no"]').textContent=c[2]; box.querySelector('[data-choice="yes"]').textContent=c[3];
-    box.addEventListener('click', e => { const choice=e.target.closest('[data-choice]'); if(!choice)return; localStorage.setItem(CONSENT_KEY,choice.dataset.choice); box.remove(); if(choice.dataset.choice==='yes')recordHome(); });
+    box.addEventListener('click', e => { const choice=e.target.closest('[data-choice]'); if(!choice)return; localStorage.setItem(CONSENT_KEY,choice.dataset.choice); box.remove(); document.body.classList.remove('sm-consent-open'); if(choice.dataset.choice==='yes')recordHome(); });
+    document.body.classList.add('sm-consent-open');
     document.body.appendChild(box);
   }
   function classifyFile(file) {

@@ -1,4 +1,5 @@
 import time
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import auth_db
@@ -11,6 +12,7 @@ from smweb.oauth_util import (
     _oauth_state_verify,
 )
 from smweb.middleware import OriginGuardMiddleware
+from smweb import core
 
 
 def test_current_and_legacy_password_hashes_are_supported():
@@ -69,3 +71,19 @@ def test_cookie_authenticated_writes_require_same_origin(monkeypatch):
     assert client.post("/change", headers={"Origin": "https://showcasemaker.com"}).status_code == 200
     assert client.post("/change", headers={"Origin": "https://evil.example"}).status_code == 403
     assert client.post("/change").status_code == 403
+
+
+def test_free_quota_uses_shared_counter_without_forgetting_legacy_usage(monkeypatch):
+    request = SimpleNamespace()
+    monkeypatch.setattr(core, "_auth_user", lambda _request: None)
+    monkeypatch.setattr(core, "_ip", lambda _request: "203.0.113.8")
+    monkeypatch.setattr(core, "_day", lambda: "2026-09-22")
+    monkeypatch.setattr(core, "_usage", {"203.0.113.8": {"day": "2026-09-22", "count": 2}})
+    monkeypatch.setattr(core.rs, "quota_get", lambda _ip, _day: 4)
+    shared = core.quota_state(request)
+    assert shared["used"] == 4
+    assert shared["left"] == max(0, shared["limit"] - 4)
+
+    monkeypatch.setattr(core.rs, "quota_get", lambda _ip, _day: 1)
+    legacy_floor = core.quota_state(request)
+    assert legacy_floor["used"] == 2

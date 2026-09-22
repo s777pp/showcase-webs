@@ -14,7 +14,7 @@ def run():
         context.add_init_script("localStorage.setItem('sm_analytics_consent_v1','no')")
         context.route('**/api/**', lambda r: r.fulfill(json={'ok': True, 'items': [], 'topics': [], 'used': 0, 'limit': 5}))
         context.route('**/*.vrm*', lambda r: r.abort())
-        context.route('**/hero-vrm.js*', lambda r: r.fulfill(content_type='application/javascript', body="document.querySelector('.creator-scene').classList.add('is-vrm-fallback');"))
+        context.route('**/hero-vrm.js*', lambda r: r.fulfill(content_type='application/javascript', body="const image=document.querySelector('.creator-scene__character');if(image)image.src=image.dataset.src;document.querySelector('.creator-scene').classList.add('is-vrm-fallback');"))
         page = context.new_page()
         for language in ['ru', 'en', 'de', 'tr', 'fr', 'uk', 'es', 'pt']:
             page.goto(base + '/' + language)
