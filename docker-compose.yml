@@ -133,6 +133,7 @@ services:
     networks: [internal]
 
   nginx:
+    # nginx >=1.27.3 is required for upstream DNS re-resolution (resolve).
     image: nginx:1.30.5-alpine
     restart: unless-stopped
     ports:
