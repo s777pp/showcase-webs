@@ -1,13 +1,18 @@
 # Release audit — 2026-09-22
 
-Status: in progress, **not a production-readiness certification**.
-Baseline local and VPS revision: `98a6ba6`. Application changes remain local.
-After explicit owner approval: recreated nginx only and pruned unused Docker
-build cache older than seven days. No database, credential or user-file changes.
+Status: deployed and regression-tested on production at revision `207b1ee`.
+This is evidence for the checked release scope, **not an unconditional security
+or production-readiness certification**. Baseline revision was `98a6ba6`.
+After explicit owner approval: deployed app/worker/nginx/cloudflared, recreated
+nginx earlier to remove stale static exposure, and pruned unused Docker build
+cache older than seven days. No database, credential or user-file changes.
 
 ## Confirmed production observations
 
 - App, worker, PostgreSQL, Redis, nginx and Cloudflare Tunnel are running.
+- Application container is healthy at revision `207b1ee`; nginx reports 1.30.5
+  and Cloudflare Tunnel reports 2026.9.1. The production-only compose override
+  was pinned as well so it no longer replaces the tracked pin with `latest`.
 - `/api/ready` with the production Host: HTTP 200. Health reports DB, Redis,
   worker heartbeat, R2, FFmpeg and gifski healthy/available.
 - Public `/ru` from VPS: HTTP 200; one sample TTFB 0.251 seconds. This is
@@ -16,6 +21,9 @@ build cache older than seven days. No database, credential or user-file changes.
   build-cache pruning (`until=168h`, reserve 10 GB). Remaining free space 68 GB.
   No image, volume, backup or user-data pruning. Discarded cache is rebuildable.
 - OS reports pending security updates and reboot requirement. Not applied.
+- Before deployment, PostgreSQL was backed up to
+  `/opt/showcasemaker/backups/release/pre-207b1ee-20260922T191733Z.dump`;
+  `pg_restore -l` successfully read the archive.
 - Production secret presence was checked without printing values: application,
   admin, database, Redis and remove.bg settings are present; PostgreSQL does not
   use the compose placeholder password. The last 30 minutes of app/worker/nginx
@@ -56,9 +64,8 @@ build cache older than seven days. No database, credential or user-file changes.
 9. Calendar quota now includes both possible legacy epoch buckets, preserving
    consumed allowance across the namespace change/rolling update.
 10. FastAPI documentation and OpenAPI are disabled by default and require an
-    explicit `ENABLE_API_DOCS=1`. Current production still exposes them until
-    this application candidate is deployed; the post-deploy smoke must require
-    404 for `/docs`, `/redoc` and `/openapi.json`.
+    explicit `ENABLE_API_DOCS=1`. Production now returns 404 for `/docs`,
+    `/redoc` and `/openapi.json`.
 11. Compose now refuses to start with missing PostgreSQL/application/tunnel
     secrets instead of silently accepting the database placeholder. The sample
     environment no longer presents `showcase_change_me` as a usable password.
@@ -109,19 +116,30 @@ build cache older than seven days. No database, credential or user-file changes.
   Workshop outline. No test packages installed in production services.
 - Python dependency audit against `requirements.txt`: no known vulnerabilities
   reported by `pip-audit` on 2026-09-22.
-- Real browser public `/ru` check on 1440×1000 and 390×844: no failed requests,
-  broken images or horizontal overflow; loader released correctly. In the sample
-  run, DOMContentLoaded was 969/763 ms and load event 1218/1101 ms on
-  desktop/mobile. These are point-in-time synthetic measurements, not field CWV.
+- Post-deploy real-browser public `/ru` check on 1440×1000 and 390×844: no
+  failed requests, broken images or horizontal overflow; loader released
+  correctly. A warm sample measured DOMContentLoaded at 907/985 ms and the load
+  event at 1157/1420 ms on desktop/mobile. These are point-in-time synthetic
+  measurements, not field CWV.
 - Accessibility browser smoke passed home, tools, gallery and profile at
   1440×1000 and 390×844: localized document language, one page heading, unique
   IDs, visible control names and image alt attributes.
 - Threat model and release verification gates are documented in
   `docs/THREAT_MODEL.md`.
+- Post-deploy checks confirmed HTTP 200 for `/ru` and `/api/ready`, HTTP 404 for
+  disabled API docs and the known historical backup URL, the new static cache
+  key, expected security headers, and zero critical exceptions/HTTP 5xx in the
+  initial release log window.
+- Post-deploy Playwright regression repeated tool clarity (11 tabs, eight
+  languages), home layout (eight languages/four widths), polish/Builder and
+  accessibility suites against `https://showcasemaker.com` successfully.
 
-## Still required before final release
+## Remaining external and infrastructure follow-ups
 
-- Audit remaining historical public backup URLs/CDN cache as needed.
+- Apply the pending Ubuntu security updates in a planned maintenance window and
+  reboot the VPS; this was deliberately not combined with the application
+  release.
+- Audit any additional historical backup URL names/CDN cache as needed.
 - Concurrent quota admission across different start routes is not yet proven
   atomic. SSE sessions also need a dedicated session-expiry review.
 - Authenticated end-to-end Free/Pro/admin/OAuth and extension integration checks;
