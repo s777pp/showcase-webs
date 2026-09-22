@@ -583,19 +583,6 @@ document.addEventListener("DOMContentLoaded", function () {
       var host = document.getElementById('tgWidgetHost');
       host.style.display = 'block';
       host.innerHTML = '';
-      window.onTelegramAuth = async function(user){
-        try {
-          var res = await fetch('/api/auth/telegram', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'include',
-            body: JSON.stringify(user)
-          });
-          var j = await res.json();
-          if (!j.ok) { alert(j.msg || 'Telegram auth failed'); return; }
-          location.reload();
-        } catch(e) { alert(String(e)); }
-      };
       var s = document.createElement('script');
       s.async = true;
       s.src = 'https://telegram.org/js/telegram-widget.js?22';
@@ -604,7 +591,7 @@ document.addEventListener("DOMContentLoaded", function () {
       s.setAttribute('data-radius', '12');
       s.setAttribute('data-request-access', 'write');
       s.setAttribute('data-userpic', 'true');
-      s.setAttribute('data-onauth', 'onTelegramAuth(user)');
+      s.setAttribute('data-auth-url', location.origin + '/api/auth/telegram/callback');
       host.appendChild(s);
     } catch(e) { alert(String(e)); }
   });

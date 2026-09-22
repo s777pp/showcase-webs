@@ -77,7 +77,7 @@ class PrivacyPageTests(unittest.TestCase):
             self.assertIn('data-privacy-link', (static / page).read_text(encoding='utf-8'))
         for page in ['index.html', 'app.html', 'gallery.html', 'profile.html', 'profile-view.html']:
             source = (static / page).read_text(encoding='utf-8')
-            self.assertIn('ss-shell.js?v=20260921-notices1', source)
+            self.assertIn('ss-shell.js?v=20260922-telegram1', source)
             self.assertIn('ss.css?v=20260922-a11y1', source)
             self.assertIn('analytics.js?v=20260922a', source)
             locale_version = '20260920-auto-upload1' if page == 'app.html' else '20260909-languages8'

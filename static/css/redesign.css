@@ -146,6 +146,7 @@ button,a,input,select,textarea{transition:color .18s ease,border-color .18s ease
 .ss-auth,.ss-activation,.sm-buy-overlay{background:rgba(0,3,5,.84)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
 .ss-auth__card,.ss-activation__card,.sm-buy-card{width:min(100% - 32px,560px)!important;padding:34px!important;border:1px solid var(--cut-line-hi)!important;border-radius:16px!important;background:
   linear-gradient(135deg,rgba(85,217,255,.055),transparent 35%),var(--cut-surface)!important;box-shadow:0 44px 140px rgba(0,0,0,.72)!important}
+.ss-auth__card{max-height:calc(100dvh - 40px);overflow-y:auto;overscroll-behavior:contain}
 .ss-activation__card{width:min(100% - 32px,620px)!important}
 .ss-auth__close{top:16px!important;right:16px!important;border:1px solid var(--cut-line)!important;border-radius:7px!important;background:var(--cut-deep)!important;color:var(--cut-muted)!important}
 .ss-auth__eyebrow{color:var(--cut-cyan)!important;font:700 10px/1 Consolas,monospace!important;letter-spacing:.18em!important}

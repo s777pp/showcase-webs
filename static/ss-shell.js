@@ -564,7 +564,10 @@
     if (repeatInput) repeatInput.required = reset;
     if (div) div.style.display = (ver || recover || reset) ? 'none' : 'block';
     if (oauth) oauth.style.display = (ver || recover || reset) ? 'none' : 'flex';
-    if (recoverButton) { recoverButton.style.display = authMode === 'login' ? 'block' : 'none'; recoverButton.textContent = copy.forgot; }
+    if (recoverButton) {
+      recoverButton.style.display = authMode === 'login' || ver ? 'block' : 'none';
+      recoverButton.textContent = ver ? (ru ? 'Уже есть аккаунт? Войти' : 'Already have an account? Log in') : copy.forgot;
+    }
 
     if (title) {
         if (recover) title.textContent = copy.forgotTitle;
@@ -575,7 +578,9 @@
     if (sub) {
         if (recover) sub.textContent = copy.forgotSub;
         else if (reset) sub.textContent = copy.resetSub;
-        else if (ver) sub.textContent = ru ? 'Код отправлен на ваш email.' : 'Code sent to your email.';
+        else if (ver) sub.textContent = ru
+          ? 'Код отправляется только для нового адреса. Если аккаунт с этой почтой уже есть, письмо не придёт — войди в него. Также проверь, нет ли опечатки в адресе.'
+          : 'Codes are sent only for new addresses. If an account already uses this email, no code will arrive — log in instead. Also check the address for typos.';
         else sub.textContent = reg ? (ru ? 'Один аккаунт для проектов, галереи и Pro.' : 'One account for projects, gallery and Pro.') : (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.');
     }
     if (submit) {
@@ -624,7 +629,7 @@
         paintAuth(); 
     };
     if (recoverButton) recoverButton.onclick = function () {
-      authMode = 'reset_request';
+      authMode = authMode === 'verify' ? 'login' : 'reset_request';
       var state = document.getElementById('ssAuthState');
       if (state) { state.textContent = ''; state.className = 'ss-auth__state'; }
       paintAuth();
@@ -727,21 +732,12 @@
           var host = document.getElementById('ssTgHost');
           if (!host) return;
           host.style.display = 'block'; host.innerHTML = '';
-          window.onTelegramAuth = function (user) {
-            fetch('/api/auth/telegram', {
-              method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
-              body:JSON.stringify(user)
-            }).then(function (r) { return r.json(); }).then(function (j) {
-              if (!j || !j.ok) { alert((j && j.msg) || 'Telegram auth failed'); return; }
-              location.reload();
-            });
-          };
           var script = document.createElement('script');
           script.src = 'https://telegram.org/js/telegram-widget.js?22';
           script.setAttribute('data-telegram-login', d.bot_username);
           script.setAttribute('data-size', 'large');
           script.setAttribute('data-radius', '12');
-          script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+          script.setAttribute('data-auth-url', location.origin + '/api/auth/telegram/callback');
           script.setAttribute('data-request-access', 'write');
           host.appendChild(script);
         }).catch(function (e) { alert(String(e)); });

@@ -393,7 +393,11 @@ async def telegram_callback(request: Request):
 <a href="{_esc_html(app_url)}/app" style="color:#7b5cff">Back to app</a></div>
 <script>
 try {{ if (window.opener) window.opener.postMessage({{type:'telegram_login'}}, {target_origin}); }} catch(e) {{}}
-setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
+if (window.opener) {{
+  setTimeout(function(){{ try {{ window.close(); }} catch(e) {{}} }}, 1200);
+}} else {{
+  window.location.replace({json.dumps(app_url + '/app')});
+}}
 </script></body></html>"""
     )
     return _attach_session_cookie(resp, token, request)
