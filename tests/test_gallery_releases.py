@@ -1,6 +1,7 @@
 """Contract tests for the new community gallery; never touch the real data directory."""
 
 import io
+import random
 import zipfile
 
 import pytest
@@ -24,6 +25,17 @@ def _gif():
     frames = [Image.new("RGB", (64, 96), color) for color in ("#ff4477", "#3377dd")]
     frames[0].save(output, format="GIF", save_all=True, append_images=frames[1:],
                    duration=100, loop=0)
+    return output.getvalue()
+
+
+def _large_gif():
+    rng = random.Random(42)
+    size = (630, 1200)
+    frames = [Image.frombytes("L", size, rng.randbytes(size[0] * size[1]))
+              for _ in range(7)]
+    output = io.BytesIO()
+    frames[0].save(output, format="GIF", save_all=True, append_images=frames[1:],
+                   duration=100, loop=0, optimize=False)
     return output.getvalue()
 
 
@@ -119,6 +131,24 @@ def test_free_release_preview_download_and_author_stats(gallery_site):
     assert listed["author"]["stats"] == {"works": 1, "downloads": 1, "likes": 0}
 
 
+def test_gallery_accepts_gif_archive_above_steam_file_limit(gallery_site):
+    client, _ = gallery_site
+    large_gif = _large_gif()
+    archive = _zip(large_gif, name="featured.gif")
+    assert len(large_gif) > 5 * 1024 * 1024
+    assert len(archive) > 5 * 1024 * 1024
+    response = client.post("/api/gallery/works", data={"title": "Long GIF", "mode": "featured",
+        "rights_confirmed": "true"}, files={"preview": ("preview.gif", _gif(), "image/gif"),
+        "archive": ("work.zip", archive, "application/zip")},
+        headers={"X-Session-Token": "owner"})
+    assert response.status_code == 200, response.text
+    downloaded = client.get(f"/api/gallery/works/{response.json()['id']}/download",
+                            headers={"X-Session-Token": "visitor"})
+    assert downloaded.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(downloaded.content)) as saved:
+        assert saved.read("featured.gif") == large_gif
+
+
 def test_paid_release_uses_external_sale_link_without_private_archive(gallery_site):
     client, _ = gallery_site
     response = _publish(client, paid=True, mode="featured",
@@ -188,7 +218,6 @@ def test_publish_rejects_invalid_metadata(gallery_site, overrides, expected):
     ("ready.zip", _zip(_png(), "../part_1.png")),
     ("ready.zip", _zip(_png(), "/part_1.png")),
     ("ready.zip", _zip(_png(), "C:/part_1.png")),
-    ("ready.zip", _zip(_png(), "part_1.png")),
 ])
 def test_publish_rejects_invalid_archive_contents(gallery_site, name, payload):
     client, _ = gallery_site
@@ -249,10 +278,10 @@ def test_owner_can_edit_and_remove_but_other_user_cannot(gallery_site):
     assert edited.status_code == 200 and edited.json()["ok"] is True
     detail = client.get(f"/api/gallery/works/{item_id}").json()["item"]
     assert detail["title"] == "Renamed" and detail["mode"] == "workshop" and detail["adult"]
-    wrong_mode = client.put(f"/api/gallery/works/{item_id}", json={**payload, "mode": "featured"},
-                            headers={"X-Session-Token": "owner"})
-    assert wrong_mode.status_code == 400
-    assert auth_db.gallery_get(item_id)["mode"] == "workshop"
+    reclassified = client.put(f"/api/gallery/works/{item_id}", json={**payload, "mode": "featured"},
+                              headers={"X-Session-Token": "owner"})
+    assert reclassified.status_code == 200
+    assert auth_db.gallery_get(item_id)["mode"] == "featured"
     assert client.delete(f"/api/gallery/works/{item_id}",
                          headers={"X-Session-Token": "visitor"}).status_code == 404
     assert client.delete(f"/api/gallery/works/{item_id}",

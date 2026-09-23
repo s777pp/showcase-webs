@@ -17,7 +17,7 @@ from starlette.concurrency import run_in_threadpool
 
 import auth_db
 from smweb import object_store
-from smweb.steam_readiness import Candidate, analyze_group
+from smweb.steam_readiness import Candidate, SUPPORTED_FORMATS, inspect_file
 import redis_store as rs
 from smweb.core import DATA, LOGGER, _auth_user, _safe_data_path
 
@@ -107,9 +107,12 @@ def _preview_thumb(data: bytes, suffix: str) -> bytes:
         raise ValueError("Could not read the preview") from exc
 
 
-def _check_archive(data: bytes, mode: str) -> None:
+def _check_archive(data: bytes) -> None:
+    # A gallery release is a downloadable work, not a Steam upload. Keep ZIP
+    # and media safety checks here; Steam's per-part weight/layout/sync rules
+    # belong to the separate readiness check.
     if not data.startswith(b"PK\x03\x04"):
-        raise ValueError("Upload a ZIP with ready Steam files")
+        raise ValueError("Upload a ZIP with PNG, JPG or GIF files")
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             seen_names = set()
@@ -128,11 +131,10 @@ def _check_archive(data: bytes, mode: str) -> None:
             if not files or len(files) > 120:
                 raise ValueError("ZIP must contain 1–120 files")
             total = 0
-            groups: dict[str, list[Candidate]] = {}
             for entry in files:
                 name = Path(entry.filename.replace("\\", "/")).name
                 if not name or Path(name).suffix.lower() not in {".png", ".jpg", ".jpeg", ".gif"}:
-                    raise ValueError("ZIP may contain only Steam image/GIF files")
+                    raise ValueError("ZIP may contain only PNG, JPG or GIF files")
                 if entry.flag_bits & 1:
                     raise ValueError("Password-protected ZIPs are not supported")
                 total += entry.file_size
@@ -144,15 +146,16 @@ def _check_archive(data: bytes, mode: str) -> None:
                     raw = member.read(25 * 1024 * 1024 + 1)
                 if len(raw) != entry.file_size:
                     raise ValueError("ZIP file size does not match its contents")
-                group = str(Path(entry.filename.replace("\\", "/")).parent).replace("\\", "/")
-                groups.setdefault(group, []).append(Candidate(entry.filename, raw))
-            for candidates in groups.values():
-                report = analyze_group("Files", candidates, mode)
-                required = {check["id"]: check["state"] for check in report["checks"]}
-                if any(required.get(key) != "pass" for key in ("format", "weight", "geometry", "set", "sync")):
-                    raise ValueError("ZIP is not a complete Steam-ready set for this showcase type")
-                if any(issue["code"] == "unreadable" for item in report["files"] for issue in item["issues"]):
+                info = inspect_file(Candidate(entry.filename, raw))
+                issues = {issue["code"] for issue in info["issues"]}
+                if "unreadable" in issues or "empty" in issues:
                     raise ValueError("ZIP contains an unreadable image or GIF")
+                if info["format"] not in SUPPORTED_FORMATS:
+                    raise ValueError("ZIP contains an unsupported image or GIF")
+                if info["width"] * info["height"] > 40_000_000:
+                    raise ValueError("ZIP image dimensions are too large")
+                if "too_many_frames" in issues:
+                    raise ValueError("GIF has too many frames")
     except (zipfile.BadZipFile, RuntimeError) as exc:
         raise ValueError("ZIP is damaged") from exc
 
@@ -328,9 +331,9 @@ async def work_publish(request: Request, title: str = Form(""), description: str
         else:
             zip_data = await _read_bounded(archive, ARCHIVE_LIMIT)
         if not is_paid and not zip_data:
-            raise ValueError("Add the ready ZIP")
+            raise ValueError("Add a ZIP with the work files")
         if zip_data:
-            await run_in_threadpool(_check_archive, zip_data, mode)
+            await run_in_threadpool(_check_archive, zip_data)
         preview_data = await _read_bounded(preview, PREVIEW_LIMIT)
         if not preview_data and zip_data:
             preview_data = await run_in_threadpool(_preview_from_archive, zip_data)
@@ -435,7 +438,7 @@ async def work_edit(item_id: int, request: Request):
                     object_store.key_from_stored(stored), public=False)
             else:
                 raise ValueError("ZIP is temporarily unavailable")
-            await run_in_threadpool(_check_archive, zip_data, mode)
+            await run_in_threadpool(_check_archive, zip_data)
         except ValueError as exc:
             return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
         except Exception:
