@@ -191,6 +191,7 @@ def _create_schema(c: sqlite3.Connection) -> None:
         ("steam_username", "TEXT"),
         ("steam_profile_json", "TEXT"),
         ("profile_builder_json", "TEXT"),
+        ("author_links_json", "TEXT"),
         ("is_suspended", "INTEGER DEFAULT 0"),
         ("suspended_reason", "TEXT"),
         ("suspended_until", "REAL"),
@@ -215,6 +216,16 @@ def _create_schema(c: sqlite3.Connection) -> None:
         )
         """
     )
+    gallery_cols = {r[1] for r in c.execute("PRAGMA table_info(gallery)").fetchall()}
+    for col, typ in (
+        ("release_version", "INTEGER DEFAULT 0"), ("description", "TEXT"),
+        ("archive_path", "TEXT"), ("background_url", "TEXT"),
+        ("sale_url", "TEXT"), ("is_paid", "INTEGER DEFAULT 0"),
+        ("is_adult", "INTEGER DEFAULT 0"), ("is_animated", "INTEGER DEFAULT 0"),
+        ("download_count", "INTEGER DEFAULT 0"), ("storage_bytes", "INTEGER DEFAULT 0"),
+    ):
+        if col not in gallery_cols:
+            c.execute(f"ALTER TABLE gallery ADD COLUMN {col} {typ}")
     c.execute(
         """
         CREATE TABLE IF NOT EXISTS gallery_likes (
@@ -397,6 +408,8 @@ def _create_schema(c: sqlite3.Connection) -> None:
     for ddl in (
         # Hot paths that had no index at all - see docs/ARCHITECTURE_AUDIT.md.
         "CREATE INDEX IF NOT EXISTS idx_gallery_status_created ON gallery(status, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_gallery_release_feed ON gallery(status, release_version, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_gallery_release_author ON gallery(user_id, status, release_version)",
         "CREATE INDEX IF NOT EXISTS idx_gallery_user ON gallery(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_showcases_user ON profile_showcases(user_id, sort_order)",
@@ -774,7 +787,7 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
             c.rollback()
             raise LookupError("Account not found")
         gallery_rows = c.execute(
-            "SELECT id,image_path,thumb_path FROM gallery WHERE user_id=?",
+            "SELECT id,image_path,thumb_path,archive_path FROM gallery WHERE user_id=?",
             (uid,),
         ).fetchall()
         owned_ids = [int(item["id"]) for item in gallery_rows]
@@ -825,6 +838,11 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
                 for item in gallery_rows
                 for value in (item["image_path"], item["thumb_path"])
                 if value
+            ],
+            "gallery_archive_paths": [
+                str(item["archive_path"])
+                for item in gallery_rows
+                if item["archive_path"]
             ],
         }
     except Exception:
@@ -1521,19 +1539,21 @@ def gallery_add(user_id: int | None, title: str, mode: str, image_path: str, thu
     return int(gid or 0)
 
 
-def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0) -> list[dict]:
+def gallery_list(status: str = "approved", limit: int = 40, offset: int = 0,
+                 release_version: int | None = None) -> list[dict]:
     c = _conn()
     _ensure_gallery(c)
+    version_filter = " AND g.release_version=?" if release_version is not None else ""
     rows = c.execute(
         """
         SELECT g.id, g.user_id, g.title, g.mode, g.image_path, g.thumb_path, g.status, g.created_at,
                u.display_name, u.email, u.discord_username, u.avatar_path, u.profile_username
         FROM gallery g LEFT JOIN users u ON u.id = g.user_id
-        WHERE g.status=?
+        WHERE g.status=?{version_filter}
         ORDER BY g.created_at DESC
         LIMIT ? OFFSET ?
-        """,
-        (status, limit, offset),
+        """.format(version_filter=version_filter),
+        (status, release_version, limit, offset) if release_version is not None else (status, limit, offset),
     ).fetchall()
     c.close()
     return [dict(r) for r in rows]
@@ -1557,6 +1577,141 @@ def gallery_get(item_id: int) -> dict | None:
     row = c.execute("SELECT * FROM gallery WHERE id=?", (item_id,)).fetchone()
     c.close()
     return dict(row) if row else None
+
+
+def gallery_release_create(user_id: int, *, title: str, mode: str, image_path: str,
+                           thumb_path: str | None, archive_path: str | None,
+                           description: str, background_url: str, sale_url: str,
+                           is_paid: bool, is_adult: bool, is_animated: bool,
+                           storage_bytes: int = 0) -> int:
+    c = _conn()
+    try:
+        cur = c.execute(
+            """INSERT INTO gallery(user_id,title,mode,image_path,thumb_path,status,created_at,
+                   release_version,archive_path,description,background_url,sale_url,is_paid,is_adult,is_animated,download_count,storage_bytes)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (user_id, title[:80], mode, image_path, thumb_path, "approved", time.time(),
+             2, archive_path, description[:2000], background_url[:1000], sale_url[:1000],
+             int(is_paid), int(is_adult), int(is_animated), 0, max(0, int(storage_bytes))),
+        )
+        c.commit()
+        return int(cur.lastrowid or 0)
+    finally:
+        c.close()
+
+
+def gallery_release_list(*, mode: str = "", animation: str = "", author_id: int | None = None,
+                         sort: str = "new", limit: int = 24, offset: int = 0) -> tuple[list[dict], int]:
+    conditions = ["g.status='approved'", "g.release_version=2"]
+    params: list = []
+    if mode in ("workshop", "featured", "split"):
+        conditions.append("g.mode=?")
+        params.append(mode)
+    if animation in ("static", "animated"):
+        conditions.append("g.is_animated=?")
+        params.append(1 if animation == "animated" else 0)
+    if author_id is not None:
+        conditions.append("g.user_id=?")
+        params.append(int(author_id))
+    where = " AND ".join(conditions)
+    order = {"new": "g.created_at DESC", "popular": "g.download_count DESC, g.created_at DESC",
+             "liked": "likes DESC, g.created_at DESC"}.get(sort, "g.created_at DESC")
+    c = _conn()
+    try:
+        total = int(c.execute(f"SELECT COUNT(*) AS n FROM gallery g WHERE {where}", params).fetchone()["n"])
+        rows = c.execute(
+            f"""SELECT g.*, u.display_name, u.profile_username, u.avatar_path,
+                       (SELECT COUNT(*) FROM gallery_likes gl WHERE gl.item_id=g.id) AS likes
+                FROM gallery g LEFT JOIN users u ON u.id=g.user_id
+                WHERE {where} ORDER BY {order} LIMIT ? OFFSET ?""",
+            params + [max(1, min(limit, 60)), max(0, offset)],
+        ).fetchall()
+        return [dict(row) for row in rows], total
+    finally:
+        c.close()
+
+
+def gallery_release_update(item_id: int, user_id: int, **fields) -> bool:
+    allowed = {"title", "description", "mode", "background_url", "sale_url", "is_paid", "is_adult"}
+    updates = {k: v for k, v in fields.items() if k in allowed}
+    if not updates:
+        return False
+    c = _conn()
+    try:
+        cur = c.execute(
+            f"UPDATE gallery SET {', '.join(k+'=?' for k in updates)} WHERE id=? AND user_id=? AND release_version=2",
+            list(updates.values()) + [int(item_id), int(user_id)],
+        )
+        c.commit()
+        return cur.rowcount > 0
+    finally:
+        c.close()
+
+
+def gallery_release_downloaded(item_id: int) -> None:
+    c = _conn()
+    try:
+        c.execute("UPDATE gallery SET download_count=COALESCE(download_count,0)+1 WHERE id=? AND release_version=2", (int(item_id),))
+        c.commit()
+    finally:
+        c.close()
+
+
+def gallery_release_storage_bytes(user_id: int) -> int:
+    c = _conn()
+    try:
+        row = c.execute(
+            "SELECT COALESCE(SUM(storage_bytes),0) AS total FROM gallery "
+            "WHERE user_id=? AND status='approved' AND release_version=2",
+            (int(user_id),),
+        ).fetchone()
+        return int(row["total"] or 0)
+    finally:
+        c.close()
+
+
+def gallery_author_stats(user_id: int) -> dict:
+    c = _conn()
+    try:
+        row = c.execute(
+            """SELECT COUNT(*) AS works, COALESCE(SUM(g.download_count),0) AS downloads,
+                      COALESCE(SUM((SELECT COUNT(*) FROM gallery_likes gl WHERE gl.item_id=g.id)),0) AS likes
+               FROM gallery g WHERE g.user_id=? AND g.status='approved' AND g.release_version=2""",
+            (int(user_id),),
+        ).fetchone()
+        return {k: int(row[k] or 0) for k in ("works", "downloads", "likes")}
+    finally:
+        c.close()
+
+
+def get_author_links(user_id: int) -> dict:
+    c = _conn()
+    try:
+        row = c.execute("SELECT author_links_json FROM users WHERE id=?", (int(user_id),)).fetchone()
+        data = json.loads(row["author_links_json"] or "{}") if row else {}
+        return data if isinstance(data, dict) else {}
+    except (ValueError, TypeError):
+        return {}
+    finally:
+        c.close()
+
+
+def set_author_links(user_id: int, links: dict) -> None:
+    c = _conn()
+    try:
+        c.execute("UPDATE users SET author_links_json=? WHERE id=?", (json.dumps(links), int(user_id)))
+        c.commit()
+    finally:
+        c.close()
+
+
+def user_avatar_path(user_id: int) -> str:
+    c = _conn()
+    try:
+        row = c.execute("SELECT avatar_path FROM users WHERE id=?", (int(user_id),)).fetchone()
+        return str(row["avatar_path"] or "") if row else ""
+    finally:
+        c.close()
 
 
 # ─── Discord ────────────────────────────────────────────────────────────────

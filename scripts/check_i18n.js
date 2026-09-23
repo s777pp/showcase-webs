@@ -71,6 +71,7 @@ function jsUiStrings(file, output) {
   if (file === 'static/js/showcase-builder.js' && source.includes('var NEW_COPY =')) {
     source = source.replace(objectLiteral(source, 'var NEW_COPY ='), '{}');
     if (source.includes('var VFX_COPY =')) source = source.replace(objectLiteral(source, 'var VFX_COPY ='), '{}');
+    if (source.includes('var GRADE_COPY =')) source = source.replace(objectLiteral(source, 'var GRADE_COPY ='), '{}');
   }
   if (file === 'static/js/steam-dna.js' && source.includes('var DNA_COPY=')) {
     source = source.replace(objectLiteral(source, 'var DNA_COPY='), '{}');
@@ -129,6 +130,11 @@ const builderVfxManualKeys = Object.keys(builderVfxManual.en || {}).sort().join(
 for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
   if (Object.keys(builderVfxManual[language] || {}).sort().join('|') !== builderVfxManualKeys) errors.push(`builder VFX copy: incomplete ${language}`);
 }
+const builderGradeManual = evaluateDictionary('static/js/showcase-builder.js', 'var GRADE_COPY =');
+const builderGradeKeys = Object.keys(builderGradeManual.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  if (Object.keys(builderGradeManual[language] || {}).sort().join('|') !== builderGradeKeys) errors.push(`builder grade copy: incomplete ${language}`);
+}
 const dnaManual = evaluateDictionary('static/js/steam-dna.js', 'var DNA_COPY=');
 const dnaManualKeys = Object.keys(dnaManual.en || {}).sort().join('|');
 for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
@@ -156,6 +162,16 @@ for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
   const values = dnaDesignManual[language] || {};
   if (Object.keys(values).sort().join('|') !== dnaDesignManualKeys) errors.push(`Steam DNA design copy: incomplete ${language}`);
   if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`Steam DNA design copy: empty ${language}`);
+}
+const workshopSource = fs.readFileSync(path.join(root, 'static/js/workshop-studio.js'), 'utf8');
+const workshopKeySource = workshopSource.match(/var keys=(\[[^;]+\]);/);
+const workshopKeys = workshopKeySource ? Function(`return ${workshopKeySource[1]}`)() : [];
+const workshopManual = evaluateDictionary('static/js/workshop-studio.js', 'var translations=');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  const values = workshopManual[language];
+  if (!values || values.length !== workshopKeys.length || values.some(value => typeof value !== 'string' || !value.trim())) {
+    errors.push(`Workshop Studio copy: incomplete ${language}`);
+  }
 }
 for (const [name, dictionary] of [
   ['account copy', evaluateDictionary('static/ss-shell.js', 'var ACCOUNT_COPY =')],

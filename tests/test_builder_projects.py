@@ -90,6 +90,20 @@ class BuilderProjectTests(unittest.TestCase):
         self.assertTrue(source_flags["layers"][0]["animatedSource"])
         self.assertNotIn("animatedSource", source_flags["layers"][1])
 
+    def test_media_grading_is_bounded_and_removed_from_other_layers(self):
+        project = _validated_project({"layers": [
+            {"type": "character", "grade": {"brightness": 200, "contrast": "bad", "saturation": -4, "hue": 1000}},
+            {"type": "background", "grade": {"brightness": 80, "contrast": 105}},
+            {"type": "text", "grade": {"brightness": 50}},
+        ]})
+        self.assertEqual(project["layers"][0]["grade"], {
+            "brightness": 150, "contrast": 100, "saturation": 0, "hue": 180,
+        })
+        self.assertEqual(project["layers"][1]["grade"], {
+            "brightness": 80, "contrast": 105, "saturation": 100, "hue": 0,
+        })
+        self.assertNotIn("grade", project["layers"][2])
+
     def test_steam_background_purchase_url_is_preserved_safely(self):
         points_url = "https://store.steampowered.com/points/shop/app/123/reward/456"
         project = _validated_project({"layers": [

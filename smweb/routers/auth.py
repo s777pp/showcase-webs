@@ -101,10 +101,11 @@ def _account_media_cleanup(plan: dict) -> None:
                 object_store.delete_prefix(prefix, public=True)
             except Exception:
                 LOGGER.exception("account delete: R2 public prefix cleanup failed prefix=%s", prefix)
-        try:
-            object_store.delete_prefix(f"builder/{uid}", public=False)
-        except Exception:
-            LOGGER.exception("account delete: R2 private prefix cleanup failed user_id=%s", uid)
+        for prefix in (f"builder/{uid}", f"gallery_releases/u{uid}"):
+            try:
+                object_store.delete_prefix(prefix, public=False)
+            except Exception:
+                LOGGER.exception("account delete: R2 private prefix cleanup failed prefix=%s", prefix)
         for stored in (plan.get("avatar_path"), plan.get("profile_background"), *(plan.get("gallery_paths") or [])):
             value = str(stored or "").strip()
             if not value or value.startswith(("http://", "https://")):
@@ -122,6 +123,7 @@ def _account_media_cleanup(plan: dict) -> None:
         Path("builder") / str(uid),
         Path("projects") / str(uid),
         Path("gallery") / f"u{uid}",
+        Path("gallery_releases") / f"u{uid}",
     ):
         target = (Path(DATA) / relative).resolve()
         try:
@@ -144,6 +146,19 @@ def _account_media_cleanup(plan: dict) -> None:
                 path.unlink(missing_ok=True)
             except OSError:
                 LOGGER.exception("account delete: local object cleanup failed")
+    for stored in plan.get("gallery_archive_paths") or []:
+        value = str(stored or "").strip()
+        if not value or value.startswith(("http://", "https://")):
+            continue
+        if not value.startswith(f"gallery_releases/u{uid}/"):
+            LOGGER.warning("account delete: skipped archive outside owner prefix user_id=%s", uid)
+            continue
+        path = _safe_data_path(value)
+        if path is not None:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                LOGGER.exception("account delete: local archive cleanup failed")
 
 
 def _deliver_password_reset(email: str, code: str, language: str, identity: str) -> None:

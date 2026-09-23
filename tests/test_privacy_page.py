@@ -1,4 +1,5 @@
 import unittest
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -75,13 +76,15 @@ class PrivacyPageTests(unittest.TestCase):
         static = Path(__file__).resolve().parents[1] / 'static'
         for page in ['index.html', 'app.html']:
             self.assertIn('data-privacy-link', (static / page).read_text(encoding='utf-8'))
+        versions = {}
         for page in ['index.html', 'app.html', 'gallery.html', 'profile.html', 'profile-view.html']:
             source = (static / page).read_text(encoding='utf-8')
-            self.assertIn('ss-shell.js?v=20260923-auth1', source)
-            self.assertIn('ss.css?v=20260922-a11y1', source)
-            self.assertIn('analytics.js?v=20260922a', source)
-            self.assertIn('locales-extra.js?v=20260923-auth1', source)
-            self.assertIn('i18n.js?v=20260909-languages4', source)
+            for asset in ('ss-shell.js', 'ss.css', 'analytics.js', 'locales-extra.js', 'i18n.js'):
+                match = re.search(re.escape(asset) + r'\?v=([^"\s]+)', source)
+                self.assertIsNotNone(match, f'{page}: missing cache-busted {asset}')
+                if asset in versions:
+                    self.assertEqual(match.group(1), versions[asset], f'{page}: inconsistent {asset} version')
+                versions[asset] = match.group(1)
         for page in ['profile.html', 'profile-view.html']:
             self.assertIn('id="ssFootHost"', (static / page).read_text(encoding='utf-8'))
 

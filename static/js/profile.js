@@ -138,12 +138,104 @@ function steamLogin(){return fetch('/api/auth/steam/login',{credentials:'same-or
 function getTicket(afterLogin){return fetch('/api/profile/import-ticket',{method:'POST',credentials:'same-origin'}).then(function(r){return r.json().then(function(d){return{status:r.status,data:d}})}).then(function(x){if((x.status===401||x.status===409)&&!afterLogin){setStatus('extensionState',pT('steam_confirm'),'wait');return steamLogin().then(function(){return getTicket(true)})}if(!x.data.ok)throw Error(x.data.msg||pT('ticket_fail'));return x.data})}
 function extensionImport(){setStatus('extensionState',pT('ext_check'),'wait');$('importProgress').classList.add('on');extMessage({type:'PING'}).then(function(p){if(!p.ok)throw Error(pT('ext_no_reply'));setStatus('extensionState',pT('ext_found_a')+p.version+pT('ext_found_b'),'wait');return getTicket(false)}).then(function(t){setStatus('extensionState',pT('ext_opening'),'wait');return extMessage({type:'IMPORT_STEAM_PROFILE',ticket:t.ticket,steamid:t.steamid,profileUrl:t.profile_url,apiBase:location.origin})}).then(function(d){applyImported(d,pT('sync_ext'));setStatus('extensionState',pT('ext_done'),'ok')}).catch(function(e){setStatus('extensionState',e.message,'bad')}).finally(function(){$('importProgress').classList.remove('on')})}$('extensionImportBtn').onclick=extensionImport;
 function ensureAssetBuy(){var a=$('selectedAssetBuy');if(a)return a;a=document.createElement('a');a.id='selectedAssetBuy';a.className='btn asset-buy full';a.target='_blank';a.rel='noopener noreferrer';a.hidden=true;a.textContent=pT('pf_buy_selected');$('catalog').insertAdjacentElement('beforebegin',a);return a}
-function selectCatalogItem(it,u,poster,card){if(asset==='background'){state.background=it.image||poster||'';state.backgroundMovie=it.movie||it.video||'';stage.scrollTop=0}else if(asset==='badge'){state.favBadge={image:it.image||u,title:it.name||'Favorite Badge',xp:''};state.badges=[{image:it.image||u}].concat(state.badges||[])}else state[asset]=it.movie||it.image||u;document.querySelectorAll('.asset.is-selected').forEach(function(x){x.classList.remove('is-selected')});if(card)card.classList.add('is-selected');var buy=ensureAssetBuy(),url=it.buy_url||it.market_url||'';buy.hidden=!url;if(url){buy.href=url;buy.textContent=pT('pf_buy_selected')}render()}
+function selectCatalogItem(it,u,poster,card){if(asset==='background'){state.background=it.image||poster||'';state.backgroundMovie=it.movie||it.video||''}else if(asset==='badge'){state.favBadge={image:it.image||u,title:it.name||'Favorite Badge',xp:''};state.badges=[{image:it.image||u}].concat(state.badges||[])}else state[asset]=it.movie||it.image||u;document.querySelectorAll('.asset.is-selected').forEach(function(x){x.classList.remove('is-selected')});if(card)card.classList.add('is-selected');var buy=ensureAssetBuy(),url=it.buy_url||it.market_url||'';buy.hidden=!url;if(url){buy.href=url;buy.textContent=pT('pf_buy_selected')}render()}
 function catalogItemFits(it,kind){if(!it)return false;var declared=String(it.asset||'').toLowerCase();if(asset==='avatar'&&declared&&declared!=='avatar')return false;if(asset==='frame'&&declared&&declared!=='frame')return false;if(asset==='background'&&declared&&['background','animated_background','points_background'].indexOf(declared)<0)return false;if(asset==='background'&&kind==='animated'&&!it.animated&&!it.movie&&!it.video)return false;if(asset==='background'&&kind==='static'&&(it.animated||it.movie||it.video))return false;return true}
-function appendCatalog(items,q,kind){var host=$('catalog');(items||[]).filter(function(it){return catalogItemFits(it,kind)&&(!q||String(it.name||it.game||'').toLowerCase().indexOf(q.toLowerCase())>=0)}).forEach(function(it){var u=it.movie||it.video||it.image||it.url||'';if(!u)return;var key=[it.asset||asset,it.appid||'',it.defid||it.market_url||it.buy_url||u].join(':');if(host.querySelector('[data-asset-key="'+CSS.escape(String(key))+'"]'))return;var poster=it.preview||it.image||u,b=document.createElement('button');b.type='button';b.className='asset';b.dataset.assetKey=String(key);b.innerHTML=/\.(webm|mp4)(\?|$)/i.test(u)?'<video src="'+SteamMockup.esc(SteamMockup.px(u))+'" poster="'+SteamMockup.esc(SteamMockup.px(poster))+'" muted autoplay loop playsinline></video>':'<img src="'+SteamMockup.esc(SteamMockup.px(poster))+'" alt=""><span>'+SteamMockup.esc(it.name||it.game||'Steam')+'</span>';b.onclick=function(){selectCatalogItem(it,u,poster,b)};host.appendChild(b)})}
-function extensionCatalog(q,kind){var currentPage=extensionPage,types;if(asset==='background')types=kind==='animated'?['animated_background']:(kind==='static'?['background']:['animated_background','background']);else if(asset==='frame'||asset==='avatar')types=[asset];else return Promise.resolve(false);return extMessage({type:'PING'}).then(function(){return Promise.all(types.map(function(t){return extMessage({type:'GET_CUSTOMIZATION_CATALOG',asset:t,page:currentPage,count:30})}))}).then(function(parts){parts.forEach(function(d){if(d&&d.ok)appendCatalog(d.items||[],q,kind)});extensionPage++;return true})}
-function serverCatalog(q,kind){var currentPage=serverPage,requests=[];if(asset==='background'){if(kind!=='animated')requests.push(['background','static'],['points_background','all']);if(kind!=='static')requests.push(['animated_background','animated'])}else requests.push([asset,kind]);return Promise.all(requests.map(function(pair){return fetch('/api/steam/backgrounds?asset='+pair[0]+'&kind='+pair[1]+'&q='+encodeURIComponent(q)+'&page='+currentPage+'&count=30').then(function(r){return r.json()})})).then(function(parts){var ok=false,msg='Catalog unavailable';parts.forEach(function(d){if(d&&d.ok){ok=true;appendCatalog(d.items||[],q,kind)}else if(d&&d.msg)msg=d.msg});if(!ok)throw Error(msg);serverPage++;return true})}
-function loadAssets(reset){if(reset){serverPage=0;extensionPage=0;$('catalog').innerHTML='';var buy=ensureAssetBuy();buy.hidden=true}var q=$('assetSearch').value.trim(),kind=$('assetKind').value;Promise.allSettled([serverCatalog(q,kind),extensionCatalog(q,kind)]).then(function(results){if(results.every(function(x){return x.status==='rejected'})){var e=results[0].reason;setStatus('saveState',e&&e.message||'Catalog unavailable','bad')}})}
+var catalogKeys=new Set();
+// The page itself scrolls on mobile, while .panel-scroll scrolls on desktop.
+// A viewport-root observer respects clipping by either ancestor in both layouts.
+var catalogImageObserver=window.IntersectionObserver?new IntersectionObserver(function(entries){entries.forEach(function(entry){
+ if(!entry.isIntersecting||!entry.target.isConnected)return;
+ var media=entry.target;
+ if(media.dataset.src){media.src=media.dataset.src;delete media.dataset.src}
+ if(media.dataset.poster){media.poster=media.dataset.poster;delete media.dataset.poster}
+ catalogImageObserver.unobserve(media);
+})},{rootMargin:'160px'}):null;
+function appendCatalog(items,q,kind){
+ var host=$('catalog'),fragment=document.createDocumentFragment(),created=[],added=0;
+ (items||[]).filter(function(it){return catalogItemFits(it,kind)&&(!q||String(it.name||it.game||'').toLowerCase().indexOf(q.toLowerCase())>=0)}).forEach(function(it){
+  var u=it.movie||it.video||it.image||it.url||'';
+  if(!u)return;
+  var key=[it.asset||asset,it.appid||'',it.defid||it.market_url||it.buy_url||u].join(':');
+  if(catalogKeys.has(key))return;
+  catalogKeys.add(key);
+  var poster=it.preview||it.image||u,b=document.createElement('button'),animated=/\.(webm|mp4)(\?|$)/i.test(u),media=document.createElement(animated?'video':'img');
+  b.type='button';b.className='asset';b.dataset.assetKey=String(key);
+  media.width=160;media.height=160;
+  if(animated){
+   media.dataset.poster=SteamMockup.px(poster);media.preload='none';media.muted=true;media.loop=true;media.playsInline=true;
+   b.addEventListener('pointerenter',function(){if(!media.src)media.src=SteamMockup.px(u);var playing=media.play();if(playing&&playing.catch)playing.catch(function(){})});
+   b.addEventListener('pointerleave',function(){media.pause()});
+  }else{
+   media.dataset.src=SteamMockup.px(poster);media.loading='lazy';media.decoding='async';media.alt='';media.fetchPriority='low';
+  }
+  created.push(media);b.appendChild(media);
+  var label=document.createElement('span');label.textContent=it.name||it.game||'Steam';b.appendChild(label);
+  b.onclick=function(){selectCatalogItem(it,u,poster,b)};
+  fragment.appendChild(b);added++;
+ });
+ host.appendChild(fragment);
+ created.forEach(function(media){if(catalogImageObserver)catalogImageObserver.observe(media);else{if(media.dataset.src){media.src=media.dataset.src;delete media.dataset.src}if(media.dataset.poster){media.poster=media.dataset.poster;delete media.dataset.poster}}});
+ return added;
+}
+var catalogGeneration=0,catalogLoading=false,catalogSource='',catalogExhausted=false,catalogAbortController=null;
+function extensionCatalog(q,kind,generation){
+ var currentPage=extensionPage,types;
+ if(asset==='background')types=kind==='animated'?['animated_background']:(kind==='static'?['background']:['animated_background','background']);
+ else if(asset==='frame'||asset==='avatar')types=[asset];
+ else return Promise.resolve({added:0,hasMore:false});
+ return extMessage({type:'PING'}).then(function(){if(generation!==catalogGeneration)return null;return Promise.all(types.map(function(t){return extMessage({type:'GET_CUSTOMIZATION_CATALOG',asset:t,page:currentPage,count:12})}))}).then(function(parts){
+  if(!parts||generation!==catalogGeneration)return null;
+  var added=0,hasMore=false,ok=false;
+  parts.forEach(function(d){if(d&&d.ok){ok=true;var items=d.items||[];added+=appendCatalog(items,q,kind);hasMore=hasMore||items.length>=12}});
+  if(!ok)throw Error('Catalog unavailable');
+  extensionPage++;
+  return {added:added,hasMore:hasMore};
+ });
+}
+function serverCatalog(q,kind,generation){
+ var currentPage=serverPage,requests=[];
+ if(asset==='background'){
+  if(kind!=='animated')requests.push(['background','static'],['points_background','all']);
+  if(kind!=='static')requests.push(['animated_background','animated']);
+ }else requests.push([asset,kind]);
+ catalogAbortController=window.AbortController?new AbortController():null;
+ var signal=catalogAbortController&&catalogAbortController.signal;
+ var added=0;
+ return Promise.allSettled(requests.map(function(pair){return fetch('/api/steam/backgrounds?asset='+pair[0]+'&kind='+pair[1]+'&q='+encodeURIComponent(q)+'&page='+currentPage+'&count=12',{signal:signal}).then(function(r){if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(function(d){
+  // Show each source as soon as it arrives; a slow Market response must not
+  // hold back cached Points Shop backgrounds, frames or avatars.
+  if(generation===catalogGeneration&&d&&d.ok)added+=appendCatalog(d.items||[],q,kind);
+  return d;
+ })})).then(function(parts){
+  if(generation!==catalogGeneration)return null;
+  var hasMore=false,ok=false,msg='Catalog unavailable';
+  parts.forEach(function(part){var d=part.status==='fulfilled'?part.value:null;if(d&&d.ok){ok=true;var items=d.items||[];hasMore=hasMore||(typeof d.total==='number'?d.total>(currentPage+1)*12:items.length>=12)}else if(d&&d.msg)msg=d.msg});
+  if(!ok)throw Error(msg);
+  serverPage++;
+  return {added:added,hasMore:hasMore};
+ });
+}
+function loadAssets(reset){
+ if(reset){
+  catalogGeneration++;catalogLoading=false;catalogSource='';catalogExhausted=false;serverPage=0;extensionPage=0;catalogKeys.clear();
+  if(catalogAbortController)catalogAbortController.abort();
+  if(catalogImageObserver)catalogImageObserver.disconnect();
+  $('catalog').querySelectorAll('video').forEach(function(video){video.pause()});
+  $('catalog').replaceChildren();ensureAssetBuy().hidden=true;
+  $('moreAssets').hidden=false;
+ }
+ if(catalogLoading||catalogExhausted)return Promise.resolve();
+ catalogLoading=true;$('catalog').setAttribute('aria-busy','true');$('moreAssets').disabled=true;
+ var generation=catalogGeneration,q=$('assetSearch').value.trim(),kind=$('assetKind').value;
+ function finish(result,source){if(!result||generation!==catalogGeneration)return;catalogSource=source;catalogExhausted=!result.hasMore;$('moreAssets').hidden=catalogExhausted}
+ function fallback(){return extensionCatalog(q,kind,generation).then(function(result){finish(result,'extension')})}
+ var run=catalogSource==='extension'?fallback():serverCatalog(q,kind,generation).then(function(result){
+  if(!result||generation!==catalogGeneration)return;
+  if(!catalogSource&&result.added===0&&asset!=='badge')return fallback().catch(function(){finish(result,'server')});
+  finish(result,'server');
+ }).catch(function(error){if(generation!==catalogGeneration||error.name==='AbortError')return;if(asset!=='badge')return fallback();throw error});
+ return run.catch(function(error){if(generation===catalogGeneration)setStatus('saveState',error&&error.message||'Catalog unavailable','bad')}).finally(function(){if(generation===catalogGeneration){catalogLoading=false;$('catalog').removeAttribute('aria-busy');$('moreAssets').disabled=false}});
+}
 $('assetTabs').querySelectorAll('button').forEach(function(b){b.onclick=function(){$('assetTabs').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b)});asset=b.dataset.asset;$('assetKind').disabled=asset==='badge';loadAssets(true)}});var searchTimer;$('assetSearch').oninput=function(){clearTimeout(searchTimer);searchTimer=setTimeout(function(){loadAssets(true)},350)};$('assetKind').onchange=function(){loadAssets(true)};$('moreAssets').onclick=function(){loadAssets(false)};
 stage.addEventListener('click',function(e){var el=e.target.closest('[data-slot]');if(!el)return;pending={slot:el.dataset.slot,index:el.dataset.index};$('mediaInput').value='';$('mediaInput').click()});$('mediaInput').onchange=function(){var f=this.files&&this.files[0];if(!f||!pending)return;var fd=new FormData();fd.append('file',f);setStatus('saveState',pT('up_wait'),'wait');fetch('/api/profile/asset',{method:'POST',credentials:'same-origin',body:fd}).then(function(r){return r.json()}).then(function(d){if(!d.ok)throw Error(d.msg||'Upload failed');if(pending.slot==='avatar')state.avatar=d.url;else if(pending.slot==='favBadge')state.favBadge.image=d.url;else{var p=String(pending.index).split(':'),sc=state.showcases[+p[0]];if(sc){sc.images=sc.images||[];sc.images[+p[1]]=d.url}}render();setStatus('saveState',pT('up_ok'),'ok')}).catch(function(e){setStatus('saveState',e.message,'bad')})};
 $('saveBtn').onclick=function(){setStatus('saveState',pT('save_wait'),'wait');fetch('/api/profile/snapshot',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({snapshot:state})}).then(function(r){return r.json()}).then(function(d){if(!d.ok)throw Error(d.msg||'Save failed');lastSaved=JSON.parse(JSON.stringify(state));$('publicLink').href=d.url;$('publicLink').hidden=false;localStorage.setItem(draftKey,JSON.stringify(state));if(window.SSShell&&window.SSShell.loadMe)window.SSShell.loadMe();setStatus('saveState',pT('save_ok'),'ok')}).catch(function(e){setStatus('saveState',e.message==='Login required'?pT('save_login'):e.message,'bad')})};$('resetBtn').onclick=function(){state=lastSaved?JSON.parse(JSON.stringify(lastSaved)):SteamMockup.defaultState();sync();render()};$('topBtn').onclick=function(){stage.scrollTo({top:0,behavior:'smooth'})};

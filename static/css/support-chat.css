@@ -1,4 +1,14 @@
 /* Isolated support widget. Does not restyle the original site or Steam preview. */
+.studio-support-choice{position:fixed;inset:0;z-index:1300;display:grid;place-items:center;padding:18px;background:rgba(2,9,15,.76);backdrop-filter:blur(6px);font-family:Mulish,'Segoe UI',Arial,sans-serif;color:#edfaff}
+.studio-support-choice[hidden]{display:none}
+.studio-support-choice__card{width:min(100%,440px);padding:24px;background:#0d1a25;border:1px solid #33576b;border-top:2px solid #58d9ff;box-shadow:0 20px 70px #000a}
+.studio-support-choice__head{display:flex;justify-content:space-between;align-items:start;gap:16px}
+.studio-support-choice__head h2{font-size:21px;line-height:1.25;margin:0;color:#edfaff}
+.studio-support-choice__close{width:36px;height:36px;border:1px solid #33576b;background:#101f2b;color:#edfaff;cursor:pointer;font-size:24px}
+.studio-support-choice__hint{font-size:13px;line-height:1.6;color:#a7bfcc;margin:12px 0 22px}
+.studio-support-choice__telegram,.studio-support-choice__report{display:block;box-sizing:border-box;width:100%;padding:13px 15px;margin-top:9px;text-align:center;text-decoration:none;font:700 13px Mulish,'Segoe UI',Arial,sans-serif;cursor:pointer;border:1px solid #5adaff;background:#58d9ff;color:#07141d}
+.studio-support-choice__report{background:#102c3b;color:#def7ff}
+.studio-support-choice a:focus-visible,.studio-support-choice button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 body .studio-support{position:fixed;right:20px;bottom:76px;z-index:1200;font-family:'Segoe UI',Arial,sans-serif;color:#edfaff;text-align:left;line-height:1.5;letter-spacing:normal;text-transform:none}
 .studio-support *{box-sizing:border-box}
 .studio-support button,.studio-support textarea{font-family:inherit;letter-spacing:normal;text-transform:none;box-shadow:none;background-image:none;transform:none}

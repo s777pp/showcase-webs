@@ -671,7 +671,7 @@ document.addEventListener("DOMContentLoaded", function () {
             await fetch('/api/notifications/read',{method:'POST',credentials:'include',headers:{...smHeaders(),'Content-Type':'application/json'},body:JSON.stringify({ids:[it.id]})});
           }catch(e){}
           document.getElementById('smNotifPanel').classList.remove('open');
-          if(it.item_id) location.href=SMLang.url('/gallery?item='+it.item_id);
+          if(it.item_id) location.href=SMLang.url('/gallery?work='+it.item_id);
           else refreshBadge(true);
         };
         list.appendChild(el);

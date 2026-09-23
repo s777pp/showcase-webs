@@ -24,6 +24,17 @@
     const find=s=>root.querySelector(s),panel=find('.studio-chat-panel'),input=find('#studioChatInput'),log=find('[role=log]'),form=find('.studio-chat-form'),launcher=find('.studio-chat-launch');
     const ticketToggle=find('.studio-ticket-toggle'),ticketForm=find('.studio-ticket-form');
     const suggestions=find('.studio-chat-suggestions'),topicsToggle=find('.studio-chat-topics-toggle');
+    const choice=document.createElement('div');choice.className='studio-support-choice';choice.hidden=true;
+    choice.innerHTML='<div class="studio-support-choice__card" role="dialog" aria-modal="true" aria-labelledby="studioSupportChoiceTitle"><div class="studio-support-choice__head"><h2 id="studioSupportChoiceTitle"></h2><button type="button" class="studio-support-choice__close" aria-label="Close">×</button></div><p class="studio-support-choice__hint"></p><a class="studio-support-choice__telegram" href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer"></a><button type="button" class="studio-support-choice__report"></button></div>';
+    document.body.append(choice);
+    let choiceOrigin=null;
+    function closeChoice(){choice.hidden=true;choiceOrigin?.focus();choiceOrigin=null}
+    function paintChoice(){choice.querySelector('h2').textContent=t('Как связаться с нами?','How would you like to contact us?');choice.querySelector('.studio-support-choice__hint').textContent=t('Выбери удобный способ — обращение через сайт попадёт туда же, что и «Сообщить о проблеме».','Choose a channel. A report sent here uses the same form as “Report a problem”.');choice.querySelector('a').textContent=t('Написать в Telegram ↗','Open Telegram ↗');choice.querySelector('.studio-support-choice__report').textContent=t('Сообщить о проблеме на сайте','Report a problem on the site');choice.querySelector('.studio-support-choice__close').setAttribute('aria-label',t('Закрыть','Close'))}
+    document.addEventListener('click',function(event){var link=event.target.closest('[data-support-choice]');if(!link)return;event.preventDefault();choiceOrigin=link;paintChoice();choice.hidden=false;choice.querySelector('.studio-support-choice__report').focus()});
+    choice.querySelector('.studio-support-choice__close').addEventListener('click',closeChoice);
+    choice.addEventListener('click',function(event){if(event.target===choice)closeChoice()});
+    choice.addEventListener('keydown',function(event){if(event.key==='Escape')closeChoice()});
+    choice.querySelector('.studio-support-choice__report').addEventListener('click',function(){closeChoice();if(panel.hidden)launcher.click();if(ticketForm.hidden)ticketToggle.click();ticketForm.message.focus()});
     function paintTopicsState(){
       suggestions.hidden=topics.length===0;
       suggestions.classList.toggle('is-expanded',topicsExpanded);
@@ -85,7 +96,7 @@
       }catch(error){status.textContent=error.message==='limit'?t('Сегодня отправлено слишком много обращений.','Too many reports were sent today.'):t('Не удалось отправить. Попробуй позже.','Could not send. Please try later.');}
       finally{button.disabled=false;}
     });
-    paint();window.addEventListener('sm:langchange',()=>{history=[];log.replaceChildren();paint();});
+    paint();paintChoice();window.addEventListener('sm:langchange',()=>{history=[];log.replaceChildren();paint();paintChoice();});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();

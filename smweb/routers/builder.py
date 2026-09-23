@@ -151,6 +151,16 @@ def _validated_project(raw) -> dict:
             if key not in item:
                 continue
             item[key] = _bounded_number(item[key], minimum, maximum, default)
+        if item["type"] in {"background", "character"}:
+            grade = item.get("grade") if isinstance(item.get("grade"), dict) else {}
+            item["grade"] = {
+                "brightness": _bounded_number(grade.get("brightness"), 50, 150, 100),
+                "contrast": _bounded_number(grade.get("contrast"), 50, 150, 100),
+                "saturation": _bounded_number(grade.get("saturation"), 0, 200, 100),
+                "hue": _bounded_number(grade.get("hue"), -180, 180, 0),
+            }
+        else:
+            item.pop("grade", None)
         if "color" in item:
             color = str(item["color"])
             item["color"] = color if re.fullmatch(r"#[0-9a-fA-F]{6}", color) else "#52d5ff"

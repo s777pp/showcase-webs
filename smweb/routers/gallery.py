@@ -68,7 +68,8 @@ def gallery_list(request: Request, status: str = "approved", limit: int = 40, of
     # ask for anything other than the approved feed.
     if status != "approved" and not (_admin_ok(request) or _is_gallery_admin(viewer)):
         status = "approved"
-    items = auth_db.gallery_list(status=status, limit=min(int(limit), 100), offset=max(0, int(offset)))
+    items = auth_db.gallery_list(status=status, limit=min(int(limit), 100), offset=max(0, int(offset)),
+                                 release_version=2 if status == "approved" else None)
     # filter + collect ids
     filtered = []
     for it in items:
@@ -159,7 +160,7 @@ def _publish_to_r2(key: str, data: bytes, local: Path, thumb_key: str | None) ->
 @router.get("/api/gallery/image/{item_id}")
 def gallery_image(item_id: int):
     item = auth_db.gallery_get(item_id)
-    if not item or item.get("status") != "approved":
+    if not item or item.get("status") != "approved" or item.get("release_version") != 2:
         return JSONResponse({"ok": False}, status_code=404)
     stored = str(item["image_path"])
     if object_store.configured():
@@ -182,6 +183,7 @@ async def gallery_submit(
     mode: str = Form("workshop"),
     file: UploadFile = File(...),
 ):
+    return JSONResponse({"ok": False, "msg": "This publishing form was replaced. Open /gallery to publish a complete work."}, status_code=410)
     # Was anonymous (uid 0), so anyone could fill the disk and the public feed
     # without an account. /api/gallery/publish — the endpoint the UI actually
     # uses — has always required login; this one was the way around it.
@@ -242,6 +244,7 @@ async def gallery_publish(
     file: UploadFile = File(...),
 ):
     """Build showcase preview (with/without WM) and submit to gallery as pending."""
+    return JSONResponse({"ok": False, "msg": "This publishing form was replaced. Open /gallery to publish a complete work."}, status_code=410)
     from PIL import ImageOps
     user = _auth_user(request)
     if not user:

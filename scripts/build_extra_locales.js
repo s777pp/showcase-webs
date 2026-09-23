@@ -315,6 +315,22 @@ const authRecoveryCopy = {
 for (const language of targets) {
   authRecoveryCopyKeys.forEach((key, index) => { taskCopyOverrides[language][key] = authRecoveryCopy[language][index]; });
 }
+const workshopSupportKeys = [
+  'Workshop Studio', 'Prepare one file for each Workshop row',
+  'Prepare one full-height file for each Workshop row',
+  'How would you like to contact us?',
+  'Choose a channel. A report sent here uses the same form as “Report a problem”.',
+  'Open Telegram ↗', 'Report a problem on the site', 'Value'
+];
+const workshopSupportCopy = {
+  de:['Workshop-Studio','Bereite eine Datei für jede Workshop-Reihe vor','Bereite für jede Workshop-Reihe eine Datei in voller Höhe vor','Wie möchtest du uns kontaktieren?','Wähle einen Weg. Die Meldung nutzt dasselbe Formular wie „Problem melden“.','Telegram öffnen ↗','Problem auf der Website melden','Wert'],
+  tr:['Workshop Stüdyosu','Her Workshop satırı için bir dosya hazırla','Her Workshop satırı için tam boy bir dosya hazırla','Bizimle nasıl iletişime geçmek istersin?','Bir yöntem seç. Buradaki bildirim “Sorun bildir” ile aynı formu kullanır.','Telegram’ı aç ↗','Siteden sorun bildir','Değer'],
+  fr:['Studio Workshop','Préparez un fichier pour chaque rangée Workshop','Préparez un fichier en pleine hauteur pour chaque rangée Workshop','Comment souhaitez-vous nous contacter ?','Choisissez un moyen. Ce signalement utilise le même formulaire que « Signaler un problème ».','Ouvrir Telegram ↗','Signaler un problème sur le site','Valeur'],
+  uk:['Майстерня Workshop','Підготуй файл для кожного ряду вітрини','Підготуй файл повної висоти для кожного ряду вітрини','Як хочеш зв’язатися з нами?','Обери спосіб. Звернення використовує ту саму форму, що й «Повідомити про проблему».','Відкрити Telegram ↗','Повідомити про проблему на сайті','Значення'],
+  es:['Estudio Workshop','Prepara un archivo para cada fila Workshop','Prepara un archivo de altura completa para cada fila Workshop','¿Cómo quieres contactarnos?','Elige un canal. Este aviso usa el mismo formulario que «Informar de un problema».','Abrir Telegram ↗','Informar de un problema en el sitio','Valor'],
+  pt:['Estúdio Workshop','Prepare um arquivo para cada linha Workshop','Prepare um arquivo de altura completa para cada linha Workshop','Como deseja falar conosco?','Escolha um canal. Este relato usa o mesmo formulário de «Relatar um problema».','Abrir Telegram ↗','Relatar um problema no site','Valor']
+};
+for (const language of targets) workshopSupportKeys.forEach((key,index)=>{taskCopyOverrides[language][key]=workshopSupportCopy[language][index]});
 for (const language of targets) Object.assign(overrides[language], taskCopyOverrides[language]);
 
 function maskProducts(text) {

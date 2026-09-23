@@ -29,6 +29,7 @@ syncAllRangeVisuals();
 try { localStorage.removeItem('sm_session'); } catch (e) {}
 const titles = {
   process:['Process','Workshop / Featured / Split cuts, watermark and Steam ZIP'],
+  workshop:['Workshop Studio','Prepare one full-height file for each Workshop row'],
   compose:['Character + BG','Composite character on background, then send to Process'],
   download:['Download','Sources from YouTube, TikTok, X, Reddit and Pinterest'],
   preview:['Preview','How the showcase looks on a Steam profile'],
@@ -643,6 +644,7 @@ document.getElementById('btnRun').onclick = async () => {
             await new Promise(function (done) { setTimeout(done, 850); });
           }
           if (!job || job.status !== 'done') throw new Error(ru ? 'Превышено время ожидания' : 'Processing timed out');
+          window.__lastGalleryJobId = jid;
           if (window.ProcessResult && await window.ProcessResult.open(job, jid, processOriginals)) {
             setProg(100, ru ? 'Проверка завершена' : 'Check complete', ru ? 'Открой итоговый отчёт' : 'Review the final report');
             st.className = 'status ok';
@@ -1230,11 +1232,12 @@ const APP_I18N = window.APP_I18N = {
   ru: {
     back: "← На главную",
     nav: {
-      process: "Обработка", download: "Скачать", convert: "Конвертер", hex: "HEX",
+      process: "Обработка", workshop: "Мастерская", download: "Скачать", convert: "Конвертер", hex: "HEX",
       preview: "Предпросмотр", steam: "Steam", da: "DeviantArt", account: "Аккаунт", about: "О сервисе"
     },
     titles: {
       process: ["Обработка", "Нарезка Workshop / Featured / Split, водяной знак и ZIP для Steam"],
+      workshop: ["Мастерская", "Подготовь отдельный файл для каждого ряда витрины"],
       download: ["Скачать", "Исходники с YouTube, TikTok, X, Reddit и Pinterest"],
       convert: ["Конвертер", "Видео ↔ GIF и другие форматы"],
       hex: ["HEX", "Последний байт 0x21 для загрузки в Steam"],
@@ -1301,11 +1304,12 @@ const APP_I18N = window.APP_I18N = {
   en: {
     back: "← Home",
     nav: {
-      process: "Process", download: "Download", convert: "Converter", hex: "HEX",
+      process: "Process", workshop: "Workshop Studio", download: "Download", convert: "Converter", hex: "HEX",
       preview: "Preview", steam: "Steam", da: "DeviantArt", account: "Account", about: "About"
     },
     titles: {
       process: ["Process", "Workshop / Featured / Split cuts, watermark and Steam ZIP"],
+      workshop: ["Workshop Studio", "Prepare one file for each Workshop row"],
       download: ["Download", "Sources from YouTube, TikTok, X, Reddit and Pinterest"],
       convert: ["Converter", "Video ↔ GIF and other formats"],
       hex: ["HEX", "Last byte 0x21 for Steam upload"],
@@ -2036,7 +2040,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   var DICT = {
     en: {
       nav_tools: "Tools",
-      nav_process: "Process", nav_compose: "Character", nav_download: "Download", nav_convert: "Converter", nav_hex: "HEX",
+      nav_process: "Process", nav_workshop: "Workshop Studio", nav_compose: "Character", nav_download: "Download", nav_convert: "Converter", nav_hex: "HEX",
       nav_preview: "Profile", nav_upscale: "Upscale", nav_loop: "Loop", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Account", nav_about: "About", nav_doctor: "Profile Rating", "nav_design-ai": "Design Selection",
       title_upscale: "Upscale", sub_upscale: "AI upscaling with detail preserved — Pro feature",
       title_loop: "Loop", sub_loop: "Build a seamless cycle from a short GIF or video — Pro feature",
@@ -2072,6 +2076,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       auth_discord: "Continue with Discord", auth_telegram: "Continue with Telegram",
       save_profile: "Save profile", back: "← Home",
       title_process: "Process", sub_process: "Workshop / Featured / Split cuts, watermark and Steam ZIP",
+      title_workshop: "Workshop Studio", sub_workshop: "Prepare one file for each Workshop row",
       title_builder: "Builder", sub_builder: "Layers, Steam backgrounds, text, characters, frames and effects",
       title_projects: "My projects", sub_projects: "Editable showcases and their storage period",
       workspace_process: "Process", workspace_projects: "My projects",
@@ -2195,7 +2200,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     },
     ru: {
       nav_tools: "Инструменты",
-      nav_process: "Обработка", nav_compose: "Персонаж", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
+      nav_process: "Обработка", nav_workshop: "Мастерская", nav_compose: "Персонаж", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
       nav_preview: "Профиль", nav_upscale: "Апскейл", nav_loop: "Зациклить", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе", nav_doctor: "Оценка профиля", "nav_design-ai": "Подбор оформления",
       title_upscale: "Апскейл", sub_upscale: "ИИ-увеличение с сохранением деталей — функция Pro",
       title_loop: "Цикл", sub_loop: "Бесшовное зацикливание коротких GIF и видео — функция Pro",
@@ -2231,6 +2236,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       auth_discord: "Продолжить с Discord", auth_telegram: "Продолжить с Telegram",
       save_profile: "Сохранить профиль", back: "← На главную",
       title_process: "Обработка", sub_process: "Нарезка Workshop / Featured / Split, водяной знак и ZIP для Steam",
+      title_workshop: "Мастерская", sub_workshop: "Подготовь отдельный файл для каждого ряда витрины",
       title_builder: "Билдер", sub_builder: "Слои, фоны Steam, текст, персонажи, рамки и эффекты",
       title_projects: "Мои проекты", sub_projects: "Редактируемые витрины и срок их хранения",
       workspace_process: "Обработка", workspace_projects: "Мои проекты",
@@ -3526,6 +3532,13 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   }
 
   document.getElementById('btnPublishGallery')?.addEventListener('click', function(){
+    const p = new URLSearchParams({publish:'1',mode:window.state?.mode||'workshop'});
+    if (window.__lastGalleryJobId) p.set('job',window.__lastGalleryJobId);
+    const meta = window.__builderGalleryMeta || {};
+    if (meta.title) p.set('title',meta.title);
+    if (meta.background) p.set('background',meta.background);
+    location.href = '/gallery?' + p;
+    return;
     const f = firstImageFile();
     const ru = (SMLang.isRu());
 

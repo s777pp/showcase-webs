@@ -82,6 +82,7 @@ from smweb.routers import (
     billing,
     profile,
     gallery,
+    gallery_releases,
     process,
     media,
     preview,
@@ -174,6 +175,7 @@ app.include_router(auth.router)
 app.include_router(oauth.router)
 app.include_router(billing.router)
 app.include_router(profile.router)
+app.include_router(gallery_releases.router)
 app.include_router(gallery.router)
 app.include_router(process.router)
 app.include_router(media.router)

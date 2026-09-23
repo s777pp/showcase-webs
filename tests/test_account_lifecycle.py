@@ -2,7 +2,8 @@ import json
 import stat
 
 import auth_db
-from smweb import maintenance
+from smweb import core, maintenance
+from smweb.routers import auth as auth_routes
 
 
 def _isolated_auth_db(monkeypatch, tmp_path):
@@ -92,6 +93,26 @@ def test_account_export_omits_credentials_and_delete_keeps_code_consumed(monkeyp
         "SELECT COUNT(*) AS n FROM builder_projects WHERE user_id=?", (user_id,)
     ).fetchone()["n"] == 0
     connection.close()
+
+
+def test_account_delete_removes_private_gallery_archives(monkeypatch, tmp_path):
+    _isolated_auth_db(monkeypatch, tmp_path)
+    monkeypatch.setattr(core, "DATA", tmp_path)
+    monkeypatch.setattr(auth_routes, "DATA", tmp_path)
+    monkeypatch.setattr(auth_routes.object_store, "configured", lambda: False)
+    user_id, _ = _registered_user()
+    archive_key = f"gallery_releases/u{user_id}/release/files.zip"
+    archive_path = tmp_path / archive_key
+    archive_path.parent.mkdir(parents=True)
+    archive_path.write_bytes(b"test zip")
+    auth_db.gallery_release_create(user_id, title="Work", mode="workshop",
+        image_path=f"gallery/u{user_id}/preview.png", thumb_path=None,
+        archive_path=archive_key, description="", background_url="", sale_url="",
+        is_paid=False, is_adult=False, is_animated=False)
+    plan = auth_db.delete_account_data(user_id)
+    assert plan["gallery_archive_paths"] == [archive_key]
+    auth_routes._account_media_cleanup(plan)
+    assert not archive_path.exists()
 
 
 def test_maintenance_state_is_atomic_and_persistent(monkeypatch, tmp_path):

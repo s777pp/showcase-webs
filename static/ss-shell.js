@@ -95,7 +95,7 @@
 
   function navHTML() {
     return NAV.map(function (n) {
-      return '<a class="ss-nav__i' + (active(n.href) ? ' is-on' : '') + '" href="' + siteUrl(n.href) + '"' +
+      return '<a class="ss-nav__i' + (active(n.href) ? ' is-on' : '') + '" href="' + siteUrl(n.href) + '"' + (n.key === 'support' ? ' data-support-choice' : '') +
         (n.external ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
         svg(n.icon) + '<span>' + esc(t(n.label)) + '</span>' +
         (n.tag ? '<i class="ss-nav__tag">' + esc(lang() === 'ru' ? 'новое' : n.tag) + '</i>' : '') + '</a>';
@@ -111,7 +111,7 @@
       var links = g.items.map(function (k) {
         var n = byKey[k];
         if (!n) return '';
-        return '<a href="' + siteUrl(n.href) + '"' + (active(n.href) ? ' class="is-on"' : '') +
+        return '<a href="' + siteUrl(n.href) + '"' + (n.key === 'support' ? ' data-support-choice' : '') + (active(n.href) ? ' class="is-on"' : '') +
           (n.external ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
           svg(n.icon) + esc(t(n.label)) + '</a>';
       }).join('');

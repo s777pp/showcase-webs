@@ -81,6 +81,12 @@
       const actionButtons = node('div', null, 'workspace-result__next-actions');
       const downloadButton = node('a', editorText('downloadAgain'), 'btn workspace-result__download');
       downloadButton.href = download; downloadButton.download = 'showcase_' + String(job.mode || 'out') + '.zip';
+      const publishButton = node('a', window.SMLang?.get?.() === 'ru' ? 'Опубликовать в галерее' : 'Publish in gallery', 'btn ghost workspace-result__publish');
+      const galleryParams = new URLSearchParams({publish:'1',job:String(id),mode:String(window.state?.mode || 'workshop')});
+      const builderMeta = window.__builderGalleryMeta || {};
+      if (builderMeta.title) galleryParams.set('title', builderMeta.title);
+      if (builderMeta.background) galleryParams.set('background', builderMeta.background);
+      publishButton.href = '/gallery?' + galleryParams;
       const anotherButton = node('button', editorText('anotherVariant'), 'btn ghost workspace-result__another');
       anotherButton.type = 'button'; anotherButton.title = editorText('anotherVariantHint');
       anotherButton.onclick = () => {
@@ -89,7 +95,7 @@
         target?.scrollIntoView({ block:'start', behavior:matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth' });
         target?.querySelector('button,select,input')?.focus({ preventScroll:true });
       };
-      actionButtons.append(downloadButton, anotherButton); actions.append(downloadState, actionButtons); panel.append(actions);
+      actionButtons.append(downloadButton, publishButton, anotherButton); actions.append(downloadState, actionButtons); panel.append(actions);
       body.append(panel);
 
       const readiness = node('section', null, 'workspace-result__readiness steam-check');

@@ -71,6 +71,99 @@ from smweb.jobs import (
 router = APIRouter()
 
 
+@router.post("/api/workshop-studio/start")
+async def api_workshop_studio_start(
+    request: Request,
+    rows: int = Form(1),
+    fps: int = Form(12),
+    duration: float = Form(8),
+    outline: str = Form("0"),
+    settings: str = Form("[]"),
+    files: list[UploadFile] = File(default=[]),
+):
+    """Create one full-height output per Workshop row in a background job."""
+    if rows not in (1, 2, 3) or len(files) != rows:
+        return JSONResponse({"ok": False, "msg": "Select one file for each row"}, status_code=400)
+    q = quota_state(request)
+    if not q["pro"] and q["left"] < rows:
+        return JSONResponse({"ok": False, "msg": "Not enough free files left today"}, status_code=403)
+    try:
+        parsed = json.loads(settings)
+        if not isinstance(parsed, list) or len(parsed) != rows:
+            raise ValueError
+        normalized = []
+        for item in parsed:
+            if not isinstance(item, dict):
+                raise ValueError
+            normalized.append({
+                "brightness": max(50, min(150, int(item.get("brightness", 100)))),
+                "contrast": max(50, min(150, int(item.get("contrast", 100)))),
+                "saturation": max(0, min(200, int(item.get("saturation", 100)))),
+                "hue": max(-180, min(180, int(item.get("hue", 0)))),
+                "start": max(0.0, min(600.0, float(item.get("start", 0)))),
+            })
+    except (TypeError, ValueError, OverflowError, json.JSONDecodeError):
+        return JSONResponse({"ok": False, "msg": "Invalid row settings"}, status_code=400)
+
+    fps = max(5, min(24, fps))
+    duration = max(1.0, min(8.0, duration))
+    user = _auth_user(request)
+    user_key = str(user.get("id") or "") if user else _ip(request)
+    if user_key and rs.job_count_user(user_key) >= max_jobs_for_user(int(user["id"]) if user else None):
+        return JSONResponse({"ok": False, "msg": "Too many active jobs"}, status_code=429)
+
+    jid = secrets.token_hex(12)
+    job_dir = JOBS / jid
+    job_dir.mkdir(parents=True, exist_ok=True)
+    uploaded = []
+    uploaded_bytes = 0
+    allowed = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".webm"}
+    try:
+        for index, file in enumerate(files, 1):
+            suffix = Path(file.filename or "").suffix.lower()
+            if suffix not in allowed:
+                raise ValueError("Unsupported file format")
+            path = job_dir / f"upload_{index}{suffix}"
+            written = 0
+            with path.open("wb") as output:
+                while chunk := await file.read(1024 * 1024):
+                    written += len(chunk)
+                    uploaded_bytes += len(chunk)
+                    if written > MAX_UPLOAD_MB * 1024 * 1024:
+                        raise ValueError(f"Each source must be under {MAX_UPLOAD_MB} MB")
+                    if uploaded_bytes > 95 * 1024 * 1024:
+                        raise ValueError("All sources together must be under 100 MB")
+                    output.write(chunk)
+            if not written:
+                raise ValueError("One source file is empty")
+            uploaded.append({"name": file.filename, "path": str(path), "size": written})
+    except ValueError as exc:
+        shutil.rmtree(job_dir, ignore_errors=True)
+        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
+
+    worker_mode = _worker_mode()
+    external = worker_mode == "external" and rs.redis_ok() and rs.worker_alive()
+    payload = {
+        "kind": "workshop_studio", "queue": "media", "status": "queued", "pct": 1,
+        "stage": "queued", "created": time.time(), "user_key": user_key,
+        "files": uploaded,
+        "options": {"rows": normalized, "fps": fps, "duration": duration,
+                    "outline": outline.lower() in ("1", "true", "on"),
+                    "free_watermark": not q["pro"]},
+        "opts": {"modes": ["workshop_studio"]},
+    }
+    rs.job_create(jid, payload, enqueue=external)
+    _job_set(jid, status="queued", pct=1, stage="queued", user_key=user_key)
+    try:
+        quota_inc(request, rows)
+    except Exception:
+        pass
+    if not external:
+        from smweb.workshop_studio_jobs import run
+        _job_pool.submit(run, jid, payload)
+    return {"ok": True, "job_id": jid}
+
+
 def _analytics_mode(opts: dict) -> str:
     modes = list(opts.get("modes") or [])
     return "all" if len(modes) > 1 else (str(modes[0]) if modes else "")

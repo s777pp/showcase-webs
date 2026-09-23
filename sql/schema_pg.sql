@@ -42,6 +42,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_id TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_username TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_profile_json TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_builder_json TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS author_links_json TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified INTEGER DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS discord_id TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS discord_username TEXT;
@@ -68,7 +69,19 @@ CREATE TABLE IF NOT EXISTS profile_import_tickets (ticket_hash TEXT PRIMARY KEY,
 CREATE INDEX IF NOT EXISTS idx_profile_import_tickets_user ON profile_import_tickets(user_id, expires_at);
 
 CREATE TABLE IF NOT EXISTS gallery (id BIGSERIAL PRIMARY KEY, user_id BIGINT REFERENCES users(id) ON DELETE SET NULL, title TEXT, mode TEXT, image_path TEXT NOT NULL, thumb_path TEXT, status TEXT DEFAULT 'pending', created_at DOUBLE PRECISION);
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS release_version INTEGER DEFAULT 0;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS archive_path TEXT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS background_url TEXT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS sale_url TEXT;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS is_paid INTEGER DEFAULT 0;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS is_adult INTEGER DEFAULT 0;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS is_animated INTEGER DEFAULT 0;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS download_count INTEGER DEFAULT 0;
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS storage_bytes BIGINT DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_gallery_status_created ON gallery(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_gallery_release_feed ON gallery(status, release_version, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_gallery_release_author ON gallery(user_id, status, release_version);
 CREATE INDEX IF NOT EXISTS idx_gallery_user ON gallery(user_id);
 CREATE TABLE IF NOT EXISTS gallery_likes (item_id BIGINT NOT NULL REFERENCES gallery(id) ON DELETE CASCADE, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at DOUBLE PRECISION, PRIMARY KEY(item_id,user_id));
 CREATE INDEX IF NOT EXISTS idx_likes_item ON gallery_likes(item_id);
