@@ -167,6 +167,7 @@ def retry_job(job_id: str, request: Request):
     payload = {key: value for key, value in old.items() if key not in {
         "status", "pct", "stage", "error", "updated", "result_path", "result_key", "zip_path", "job_dir",
         "processed", "errors", "listed", "readiness", "cancel_requested", "cache_hit",
+        "error_traces", "runner", "started", "finished",
     }}
     payload.update({"status": "queued", "pct": 1, "stage": "queued", "created": time.time(), "retry_of": job_id})
     payload["opts"] = dict(old.get("opts") or {})

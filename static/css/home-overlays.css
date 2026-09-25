@@ -113,6 +113,46 @@ html body.page-home .sm-consent__text{font:500 13px/1.5 var(--ov-font)!important
 html body.page-home .sm-consent a{color:var(--ov-cyan-hi)!important}
 html body.page-home .sm-consent__button{min-height:42px!important;padding:0 18px!important;font:700 13.5px var(--ov-font)!important}
 
+/* ---------------------------------------------------- maintenance notice */
+/* On the landing the notice floats as a capsule under the top bar instead of
+   pushing the hero down (the VRM and copy are aligned to the painted desk). */
+html body.page-home .ss-maintenance{
+  position:fixed!important;top:calc(var(--home-head-h,60px) + 14px)!important;left:50%!important;z-index:39!important;
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:12px!important;
+  width:max-content!important;max-width:min(780px,calc(100vw - 32px))!important;min-height:0!important;margin:0!important;
+  padding:10px 10px 10px 16px!important;overflow:hidden!important;
+  border:1px solid var(--ov-line)!important;border-radius:var(--ov-radius)!important;background:var(--ov-panel)!important;
+  color:var(--ov-ink)!important;font:500 13.5px/1.45 var(--ov-font)!important;text-align:left!important;
+  box-shadow:0 24px 60px rgba(0,0,0,.5),0 0 34px rgba(255,196,74,.08)!important;
+  transform:translateX(-50%)!important;animation:home-maint-in .45s cubic-bezier(.2,.8,.2,1) both;
+}
+html body.page-home .ss-maintenance::before{
+  content:""!important;position:absolute!important;left:0!important;right:0!important;top:0!important;height:2px!important;
+  background:linear-gradient(90deg,#ffc44a,var(--ov-violet))!important;
+}
+html body.page-home .ss-maintenance[hidden]{display:none!important}
+html body.page-home .ss-maintenance__dot{width:8px!important;height:8px!important;background:#ffc44a!important;box-shadow:0 0 0 4px rgba(255,196,74,.14),0 0 14px #ffc44a!important;animation:home-maint-pulse .9s ease-in-out infinite alternate}
+html body.page-home .ss-maintenance__label{
+  padding:5px 8px!important;border:1px solid rgba(255,196,74,.45)!important;border-radius:6px!important;background:rgba(255,196,74,.08)!important;
+  color:#ffd27a!important;font:700 10.5px/1 var(--ov-font)!important;letter-spacing:.14em!important;
+}
+html body.page-home .ss-maintenance__text{color:var(--ov-muted)!important;min-width:0}
+html body.page-home .ss-maintenance__until{color:var(--ov-cyan-hi)!important;font:600 12.5px var(--ov-font)!important}
+html body.page-home .ss-maintenance__close{
+  width:30px!important;height:30px!important;margin-left:2px!important;border:1px solid var(--ov-line)!important;border-radius:8px!important;
+  background:rgba(3,8,24,.6)!important;color:var(--ov-muted)!important;font-size:18px!important;
+}
+html body.page-home .ss-maintenance__close:hover{border-color:var(--ov-line-hi)!important;color:#fff!important}
+@keyframes home-maint-in{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes home-maint-pulse{from{opacity:1}to{opacity:.4}}
+@media(max-width:820px){
+  html body.page-home .ss-maintenance{top:calc(var(--home-head-h,60px) + 10px)!important;width:calc(100vw - 20px)!important;max-width:none!important;flex-wrap:wrap!important;gap:8px 10px!important;padding:10px 10px 11px 14px!important;font-size:13px!important}
+  html body.page-home .ss-maintenance__text{flex:1 1 100%;order:3}
+  html body.page-home .ss-maintenance__until{order:4}
+  html body.page-home .ss-maintenance__close{margin-left:auto!important}
+}
+@media(prefers-reduced-motion:reduce){html body.page-home .ss-maintenance,html body.page-home .ss-maintenance__dot{animation:none!important}}
+
 /* ------------------------------------------------------------- notices */
 html body.page-home .ss-notices>*{border-left:2px solid var(--ov-cyan)!important}
 html body.page-home .ss-notices *{font-family:var(--ov-font)!important}

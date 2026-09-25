@@ -20,7 +20,7 @@ import processor as proc
 import redis_store as rs
 
 from smweb import analytics
-from smweb import object_store, process_control
+from smweb import job_diagnostics, object_store, process_control
 
 
 from smweb.core import JOBS, MAX_UPLOAD_MB
@@ -175,6 +175,30 @@ def _public_process_error(exc: Exception, job_dir: Path) -> str:
     return detail[-500:]
 
 
+def _discard_outputs(job_dir: Path, keep: set[Path]) -> None:
+    """Delete partial results but keep the uploaded sources of a failed job.
+
+    The admin console needs the exact user file to reproduce a failure, and
+    retry needs it too. The regular cleanup loop removes the folder after
+    JOB_RESULT_TTL_SECONDS like any other finished job.
+    """
+    keep = {path.resolve() for path in keep}
+    try:
+        children = list(job_dir.iterdir())
+    except OSError:
+        return
+    for child in children:
+        try:
+            if child.resolve() in keep:
+                continue
+            if child.is_dir():
+                shutil.rmtree(child, ignore_errors=True)
+            else:
+                child.unlink(missing_ok=True)
+        except OSError:
+            continue
+
+
 def _job_cleanup_old(max_age: float = 600.0) -> None:
     now = time.time()
     with _process_jobs_lock:
@@ -229,10 +253,13 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
     # in their shared /data volume, never in the worker-only /tmp filesystem.
     job_dir = JOBS / jid
     job_dir.mkdir(parents=True, exist_ok=True)
-    _job_set(jid, status="running", pct=5, stage="prepare", job_dir=str(job_dir), error=None)
+    _job_set(jid, status="running", pct=5, stage="prepare", job_dir=str(job_dir), error=None,
+             runner=job_diagnostics.runner_label(), started=time.time())
     zip_path = job_dir / "result.zip"
+    sources = {Path(item[1]) for item in files_data if isinstance(item[1], Path)}
     processed = 0
     errors: list[str] = []
+    traces: list[str] = []
     listed: list[dict] = []
     modes = opts["modes"]
     text = opts["text"]
@@ -397,17 +424,22 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                         except Exception:
                             pass
                 processed += 1
+            except process_control.JobCancelled:
+                raise
             except Exception as e:
                 errors.append(f"{name}: {_public_process_error(e, job_dir)}")
+                if len(traces) < 3:
+                    traces.append(f"{name}\n{job_diagnostics.trace_text(e, job_dir)}")
         try:
             zf.close()
         except Exception:
             pass
         if processed == 0:
             detail = "; ".join(errors) if errors else "unknown error"
-            _job_set(jid, status="error", pct=100, stage="error", error=f"Failed: {detail}", errors=errors)
+            _job_set(jid, status="error", pct=100, stage="error", error=f"Failed: {detail}", errors=errors,
+                     error_traces=traces, finished=time.time())
             _record_process_event(jid, "process_failed", opts, int((_sm_time.perf_counter()-_sm_job_t0)*1000), "processing")
-            shutil.rmtree(job_dir, ignore_errors=True)
+            _discard_outputs(job_dir, sources)
             return
         process_control.checkpoint(jid)
         result_key = ""
@@ -445,6 +477,8 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
             errors=errors,
             listed=listed,
             readiness=readiness,
+            error_traces=traces,
+            finished=time.time(),
         )
         cache_key = str((_job_get(jid) or {}).get("cache_key") or "")
         if cache_key:
@@ -454,6 +488,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
         process_control.mark_cancelled(jid)
         shutil.rmtree(job_dir, ignore_errors=True)
     except Exception as e:
-        _job_set(jid, status="error", pct=100, stage="error", error=_public_process_error(e, job_dir))
+        _job_set(jid, status="error", pct=100, stage="error", error=_public_process_error(e, job_dir),
+                 error_traces=[*traces, job_diagnostics.trace_text(e, job_dir)][-3:], finished=time.time())
         _record_process_event(jid, "process_failed", opts, int((_sm_time.perf_counter()-_sm_job_t0)*1000), "internal")
-        shutil.rmtree(job_dir, ignore_errors=True)
+        _discard_outputs(job_dir, sources)

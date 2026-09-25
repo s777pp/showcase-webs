@@ -11,12 +11,14 @@ import logging
 import math
 import shutil
 import subprocess
+import time
 import zipfile
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
 import processor as proc
+from smweb import job_diagnostics
 from smweb.core import JOBS
 from smweb.jobs import _job_set
 
@@ -291,6 +293,8 @@ def run(jid: str, job: dict) -> None:
     zip_path = job_dir / "result.zip"
     files = job.get("files") or []
     options = job.get("options") or {}
+    failed = False
+    _job_set(jid, runner=job_diagnostics.runner_label(), started=time.time())
     try:
         with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as archive:
             if options.get("layout") == "squares":
@@ -312,12 +316,18 @@ def run(jid: str, job: dict) -> None:
                     output.unlink(missing_ok=True)
                 else:
                     raise ValueError("Unsupported source format")
-        _job_set(jid, status="done", pct=100, stage="done", zip_path=str(zip_path), processed=len(files))
+        _job_set(jid, status="done", pct=100, stage="done", zip_path=str(zip_path), processed=len(files),
+                 finished=time.time())
     except Exception as exc:
+        failed = True
         LOG.exception("Workshop Studio job %s failed", jid)
         detail = str(exc)[:200] if isinstance(exc, ValueError) else "Could not process one of the rows"
-        _job_set(jid, status="error", pct=100, stage="error", error=detail)
+        # The user sees the short text; the admin console also gets the real cause.
+        _job_set(jid, status="error", pct=100, stage="error", error=detail,
+                 error_traces=[job_diagnostics.trace_text(exc, job_dir)], finished=time.time())
         zip_path.unlink(missing_ok=True)
     finally:
-        for item in files:
-            Path(item["path"]).unlink(missing_ok=True)
+        # Sources of a failed job stay until the regular cleanup so the admin can reproduce it.
+        if not failed:
+            for item in files:
+                Path(item["path"]).unlink(missing_ok=True)

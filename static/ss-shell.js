@@ -156,10 +156,25 @@
       '<div class="ss-drawer" id="ssDrawer">' + drawerHTML() + '</div>';
   }
 
+  var MAINTENANCE_UI = {
+    label: { en:'Maintenance', ru:'Техработы', de:'Wartung', tr:'Bakım', fr:'Maintenance', uk:'Техроботи', es:'Mantenimiento', pt:'Manutenção' },
+    until: { en:'until {t}', ru:'до {t}', de:'bis {t}', tr:'{t} saatine kadar', fr:'jusqu’à {t}', uk:'до {t}', es:'hasta las {t}', pt:'até {t}' },
+    close: { en:'Hide notice', ru:'Скрыть уведомление', de:'Hinweis ausblenden', tr:'Bildirimi gizle', fr:'Masquer l’avis', uk:'Приховати повідомлення', es:'Ocultar aviso', pt:'Ocultar aviso' }
+  };
+
   function maintenanceHTML() {
     return '<div class="ss-maintenance" id="ssMaintenance" role="status" hidden>' +
       '<span class="ss-maintenance__dot" aria-hidden="true"></span>' +
-      '<span id="ssMaintenanceText"></span></div>';
+      '<span class="ss-maintenance__label" id="ssMaintenanceLabel"></span>' +
+      '<span class="ss-maintenance__text" id="ssMaintenanceText"></span>' +
+      '<span class="ss-maintenance__until" id="ssMaintenanceUntil" hidden></span>' +
+      '<button type="button" class="ss-maintenance__close" id="ssMaintenanceClose">×</button></div>';
+  }
+
+  function setMaintenanceHeight(banner) {
+    requestAnimationFrame(function(){
+      document.documentElement.style.setProperty('--maintenance-h', banner && !banner.hidden ? banner.offsetHeight + 'px' : '0px');
+    });
   }
 
   function loadMaintenance() {
@@ -170,11 +185,34 @@
       .then(function(response){ return response.json(); })
       .then(function(state){
         var enabled = !!(state && state.enabled);
+        // A dismissed notice stays hidden for this tab until the admin changes it.
+        var dismissKey = 'sm_maintenance_' + String(state && state.updated_at || '');
+        try { if (enabled && sessionStorage.getItem(dismissKey) === '1') enabled = false; } catch (e) {}
         banner.hidden = !enabled;
         textNode.textContent = enabled ? (state.message || accountCopy().maintenance) : '';
-        requestAnimationFrame(function(){
-          document.documentElement.style.setProperty('--maintenance-h', enabled ? banner.offsetHeight + 'px' : '0px');
-        });
+        var label = document.getElementById('ssMaintenanceLabel');
+        var until = document.getElementById('ssMaintenanceUntil');
+        var close = document.getElementById('ssMaintenanceClose');
+        if (label) label.textContent = t(MAINTENANCE_UI.label);
+        if (until) {
+          var ends = enabled && state.ends_at ? new Date(Number(state.ends_at) * 1000) : null;
+          until.hidden = !ends || isNaN(ends.getTime());
+          if (!until.hidden) {
+            var sameDay = ends.toDateString() === new Date().toDateString();
+            var when = ends.toLocaleString(lang(), sameDay ? { hour:'2-digit', minute:'2-digit' } : { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+            until.textContent = t(MAINTENANCE_UI.until).replace('{t}', when);
+          }
+        }
+        if (close) {
+          close.setAttribute('aria-label', t(MAINTENANCE_UI.close));
+          close.title = t(MAINTENANCE_UI.close);
+          close.onclick = function(){
+            try { sessionStorage.setItem(dismissKey, '1'); } catch (e) {}
+            banner.hidden = true;
+            setMaintenanceHeight(banner);
+          };
+        }
+        setMaintenanceHeight(banner);
       })
       .catch(function(){ banner.hidden = true; document.documentElement.style.setProperty('--maintenance-h','0px'); });
   }

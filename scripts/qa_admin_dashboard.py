@@ -40,13 +40,36 @@ def run() -> None:
         "is_pro": False, "pro_until": None, "email_verified": True, "is_suspended": False,
         "suspended_reason": "", "providers": ["Steam"], "project_count": 2, "gallery_count": 1,
     }]}
-    jobs = {"ok": True, "queues": {"media": 1, "profile": 0, "gpu": 0}, "items": [
-        {"id": "a" * 32, "kind": "process", "status": "running", "pct": 62, "stage": "Собираем GIF",
-         "queue": "media", "created": 1_790_000_000, "updated": 1_790_000_100, "error": "", "user_id": 7},
-        {"id": "b" * 32, "kind": "upscale", "status": "error", "pct": 14, "stage": "Modal",
-         "queue": "gpu", "created": 1_790_000_000, "updated": 1_790_000_200,
-         "error": "Провайдер временно недоступен", "user_id": 8, "can_retry": True, "stale": False},
-    ]}
+    gpu_problem = {"category": "gpu", "severity": "critical", "title": "Сбой GPU-апскейла (Modal)",
+                   "meaning": "Внешний GPU-сервис не вернул результат.", "cause": "Холодный старт Modal.",
+                   "fault": "external", "fault_label": "Сбой внешнего сервиса", "user_fix": "Повторить через пару минут.",
+                   "admin_fix": "Проверь дашборд Modal.", "partial": False}
+    base_job = {"queue": "media", "created": 1_790_000_000, "duration": 4.2, "files": [{"name": "art.gif", "size": 2_400_000}],
+                "file_count": 1, "total_size": 2_400_000, "settings": ["Режим: Workshop"], "preview": None,
+                "source_preview": None, "outputs": 0, "has_sources": True, "can_retry": False, "stale": False,
+                "cached": False, "retry_of": "", "explanation": None}
+    job_items = [
+        {**base_job, "id": "a" * 24, "kind": "process", "kind_label": "Обработка витрины", "status": "running", "pct": 62,
+         "stage": "Собираем GIF", "updated": 1_790_000_100, "error": "", "user_id": 7,
+         "user": {"id": 7, "name": "Creator", "email": "creator@example.test", "pro": False}},
+        {**base_job, "id": "b" * 24, "kind": "upscale", "kind_label": "Апскейл", "status": "error", "pct": 14, "stage": "Modal",
+         "queue": "gpu", "updated": 1_790_000_200, "error": "Upscale service failed (HTTPError)", "user_id": None,
+         "user": {"id": None, "name": "Гость #1a2b3c", "email": "", "guest": "1a2b3c"}, "can_retry": True,
+         "explanation": gpu_problem},
+    ]
+    summary = {"counts": {"total": 2, "done": 0, "error": 1, "active": 1, "stale": 0, "success_rate": 0},
+               "reasons": [{"category": "gpu", "title": gpu_problem["title"], "fault": "external", "count": 1}]}
+
+    def jobs_for(url):
+        problem = "status=problem" in url
+        items = [item for item in job_items if item["explanation"]] if problem else job_items
+        return {"ok": True, "queues": {"media": 1, "profile": 0, "gpu": 0}, "items": items, "summary": summary,
+                "kinds": [{"key": "process", "label": "Обработка витрины"}, {"key": "upscale", "label": "Апскейл"}]}
+
+    job_detail = {"ok": True, "job": job_items[1], "sources": [], "outputs": [], "result_download": "", "remote_result": False,
+                  "errors": [], "error_detail": "", "traces": ["Traceback ...\nHTTPError: 503"], "runner": "worker · external · qa",
+                  "started": 1_790_000_010, "finished": 1_790_000_200, "raw_settings": {"preset": "anime"}, "readiness": None}
+    jobs = {"items": job_items}
     user_detail = {"ok": True, "user": users["items"][0], "projects": [{"id":"p1","name":"My showcase","showcase_mode":"workshop","updated_at":1_790_000_500}],
                    "gallery": [], "jobs": jobs["items"][:1], "sessions": {"count": 2, "last_active": 1_790_000_500},
                    "limits": {"free_daily_limit": None, "max_jobs": None, "note": ""}, "audit": []}
@@ -67,8 +90,10 @@ def run() -> None:
             route.fulfill(json=user_detail)
         elif path.startswith("/users"):
             route.fulfill(json=users)
+        elif path.startswith("/jobs/" + "b" * 24):
+            route.fulfill(json=job_detail)
         elif path.startswith("/jobs"):
-            route.fulfill(json=jobs)
+            route.fulfill(json=jobs_for(url))
         elif path.startswith("/support"):
             route.fulfill(json=tickets if route.request.method == "GET" else {"ok": True})
         elif path.startswith("/announcements"):
@@ -106,12 +131,18 @@ def run() -> None:
         page.screenshot(path=str(output / "admin-users-polish.png"), full_page=True)
 
         page.locator('[data-view="jobs"]').click()
-        expect(page.locator("#jobsBody tr")).to_have_count(2)
-        page.locator("#jobsFilter").select_option("error")
-        expect(page.locator("#jobsBody tr")).to_have_count(1)
-        page.locator(".job-details summary").click()
-        expect(page.locator(".job-details")).to_contain_text("Провайдер временно недоступен")
+        expect(page.locator(".job-card")).to_have_count(2)
+        page.locator('#jobsStatus [data-status="problem"]').click()
+        expect(page.locator(".job-card")).to_have_count(1)
+        expect(page.locator(".job-card .job-problem")).to_contain_text("Сбой GPU-апскейла")
+        page.locator(".job-card__open").first.click()
+        expect(page.locator("#jobDetailDialog")).to_be_visible()
+        expect(page.locator("#jobDetailContent .explain")).to_contain_text("Что сказать пользователю")
+        expect(page.locator("#jobDetailContent")).to_contain_text("worker · external · qa")
         page.screenshot(path=str(output / "admin-jobs-polish.png"), full_page=True)
+        page.locator("#jobDetailDialog .dialog-close").click()
+        page.locator('#jobsLayout [data-layout="table"]').click()
+        expect(page.locator("#jobsBody tr")).to_have_count(1)
 
         page.locator('[data-view="support"]').click()
         expect(page.locator(".ticket")).to_have_count(1)

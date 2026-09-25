@@ -17,8 +17,8 @@ from typing import Any
 import auth_db
 import processor as proc
 import redis_store as rs
-from smweb import admin_content, analytics, maintenance, object_store, runtime_settings, user_limits
-from smweb.jobs import MAX_JOB_WORKERS, _job_pool, _run_process_job_from_payload, _worker_mode
+from smweb import admin_content, admin_jobs, analytics, maintenance, object_store, runtime_settings, user_limits
+from smweb.jobs import MAX_JOB_WORKERS, _worker_mode
 
 
 ADMIN_COOKIE = "sm_admin"
@@ -254,15 +254,20 @@ def attention_items() -> list[dict]:
             items.append({"kind": "system", "severity": "critical" if component["state"] == "down" else "warning",
                           "title": component["summary"], "detail": component["impact"],
                           "action": component.get("action") or "Открой состояние системы.", "target": "system"})
-    recent_jobs = jobs(100)["items"]
+    recent = jobs(100)
+    recent_jobs = recent["items"]
     failed = [job for job in recent_jobs if job["status"] == "error"]
-    stale = [job for job in recent_jobs if job["status"] in {"queued", "running"} and time.time() - job["updated"] > 1800]
+    stale = [job for job in recent_jobs if job["stale"]]
     if failed:
-        items.append({"kind": "jobs", "severity": "warning", "title": f"Заданий с ошибкой: {len(failed)}",
-                      "detail": "Пользователь мог не получить готовый файл.", "action": "Проверь причину и возможность повтора.", "target": "jobs"})
+        server_side = [job for job in failed if (job.get("explanation") or {}).get("fault") in {"server", "external"}]
+        top = [reason["title"] for reason in recent["summary"]["reasons"][:2]]
+        items.append({"kind": "jobs", "severity": "critical" if server_side else "warning",
+                      "title": f"Заданий с ошибкой: {len(failed)}" + (f" (на стороне сервера: {len(server_side)})" if server_side else ""),
+                      "detail": "Чаще всего: " + "; ".join(top) if top else "Пользователь мог не получить готовый файл.",
+                      "action": "Открой задания с проблемами.", "target": "jobs:problem"})
     if stale:
         items.append({"kind": "jobs", "severity": "critical", "title": f"Долго не обновляются: {len(stale)}",
-                      "detail": "Задания остаются активными больше 30 минут.", "action": "Проверь worker и очередь.", "target": "jobs"})
+                      "detail": "Задания остаются активными больше 30 минут.", "action": "Проверь worker и очередь.", "target": "jobs:active"})
     open_tickets = admin_content.tickets("open", 250)
     if open_tickets:
         items.append({"kind": "support", "severity": "info", "title": f"Новых обращений: {len(open_tickets)}",
@@ -424,22 +429,8 @@ def user_action(user_id: int, action: str, payload: dict) -> dict:
 
 
 
-def jobs(limit: int = 100) -> dict:
-    items = []
-    for jid, job in rs.job_list_all(limit):
-        source_paths = [Path(str(item.get("path") or "")) for item in job.get("files") or []]
-        status = str(job.get("status") or "queued")
-        items.append({
-            "id": jid, "kind": str(job.get("kind") or "process"), "status": status,
-            "pct": int(job.get("pct") or 0), "stage": str(job.get("stage") or ""),
-            "queue": str(job.get("queue") or rs.queue_for_kind(str(job.get("kind") or "process"))),
-            "created": float(job.get("created") or 0), "updated": float(job.get("updated") or 0),
-            "error": str(job.get("error") or "")[:240], "user_id": job.get("user_id"),
-            "can_retry": str(job.get("kind") or "process") == "process" and status in {"done", "error", "cancelled"}
-                         and bool(source_paths) and all(path.is_file() for path in source_paths),
-            "stale": status in {"queued", "running"} and time.time() - float(job.get("updated") or job.get("created") or 0) > 1800,
-        })
-    return {"ok": True, "items": items, "queues": rs.queue_depths()}
+def jobs(limit: int = 100, status: str = "all", kind: str = "", query: str = "") -> dict:
+    return admin_jobs.list_jobs(limit, status, kind, query)
 
 
 def cancel_job(job_id: str) -> dict:
@@ -451,26 +442,9 @@ def cancel_job(job_id: str) -> dict:
 
 
 def retry_job(job_id: str) -> dict:
-    old = rs.job_get(str(job_id))
-    if not old:
-        raise LookupError("Job not found")
-    if str(old.get("kind") or "process") != "process":
-        raise ValueError("Для этого типа нужно повторно загрузить исходник")
-    paths = [Path(str(item.get("path") or "")) for item in old.get("files") or []]
-    if not paths or any(not path.is_file() for path in paths):
-        raise ValueError("Исходные файлы уже удалены — попроси пользователя загрузить их снова")
-    jid = secrets.token_hex(12)
-    payload = {key: value for key, value in old.items() if key not in {
-        "status", "pct", "stage", "error", "updated", "result_path", "result_key", "zip_path",
-        "processed", "errors", "listed", "readiness", "cancel_requested", "cache_hit",
-    }}
-    payload.update({"status": "queued", "pct": 1, "stage": "queued", "created": time.time(), "retry_of": str(job_id)})
-    external = _worker_mode() == "external" and rs.redis_ok() and rs.worker_alive()
-    rs.job_create(jid, payload, enqueue=external)
-    if not external:
-        _job_pool.submit(_run_process_job_from_payload, jid, payload)
-    audit("job.retry", f"job:{job_id}", {"new_job_id": jid})
-    return {"ok": True, "job_id": jid}
+    result = admin_jobs.retry(str(job_id))
+    audit("job.retry", f"job:{job_id}", {"new_job_id": result["job_id"]})
+    return result
 
 
 def _read_codes() -> dict:

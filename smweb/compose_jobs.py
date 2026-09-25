@@ -10,6 +10,7 @@ from PIL import Image
 
 import processor as proc
 import redis_store as rs
+from smweb import job_diagnostics
 from smweb import object_store
 from smweb import process_control
 
@@ -58,14 +59,18 @@ def run(jid: str, job: dict) -> None:
         shutil.rmtree(Path(str(job.get("job_dir") or "")), ignore_errors=True)
     except Exception as exc:
         traceback.print_exc()
+        job_dir = Path(str(job.get("job_dir") or ""))
         rs.job_update(
             jid, status="error", pct=100, stage="error",
-            error=f"{type(exc).__name__}: {exc}",
+            error=job_diagnostics.scrub(f"{type(exc).__name__}: {exc}", job_dir)[:500],
+            error_traces=[job_diagnostics.trace_text(exc, job_dir)],
         )
-        try:
-            shutil.rmtree(Path(str(job.get("job_dir") or "")), ignore_errors=True)
-        except Exception:
-            pass
+        # Sources (background + character) stay until the regular job cleanup so
+        # the admin console can reproduce the failure; partial outputs go.
+        keep = {Path(str(job.get(key) or "")) for key in ("background_path", "character_path") if job.get(key)}
+        if job_dir.is_dir():
+            from smweb.jobs import _discard_outputs
+            _discard_outputs(job_dir, keep)
 
 
 def _run(jid: str, job: dict) -> None:

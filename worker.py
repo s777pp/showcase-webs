@@ -43,7 +43,10 @@ def _process_one(jid: str) -> None:
         return
     if job.get("status") not in ("queued", "running"):
         return
-    rs.job_update(jid, status="running", pct=5, stage="prepare")
+    from smweb import job_diagnostics
+
+    rs.job_update(jid, status="running", pct=5, stage="prepare",
+                  runner=job_diagnostics.runner_label(), started=time.time())
     try:
         if job.get("kind") == "steam_profile_import":
             from smweb.profile_import_jobs import run
@@ -82,11 +85,16 @@ def _process_one(jid: str) -> None:
         _run_process_job_from_payload(jid, job)
     except Exception as e:
         traceback.print_exc()
-        rs.job_update(jid, status="error", pct=100, stage="error", error=f"{type(e).__name__}: {e}")
+        rs.job_update(jid, status="error", pct=100, stage="error",
+                      error=job_diagnostics.scrub(f"{type(e).__name__}: {e}")[:500],
+                      error_traces=[job_diagnostics.trace_text(e)], finished=time.time())
 
 
 def main() -> None:
     import redis_store as rs
+
+    # Shown in the admin job card ("runner"), so a failure can be tied to the process.
+    os.environ["SM_PROCESS_ROLE"] = "worker"
 
     if not rs.configured():
         print("[worker] REDIS_URL is not set — nothing to consume. Exiting.", flush=True)

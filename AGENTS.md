@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 250 passed on 2026-09-25 (~39 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 256 passed on 2026-09-25 (~39 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -92,6 +92,20 @@ Modal GPU (Real-ESRGAN upscale). Compose services: `postgres redis app worker ng
   Google, Telegram, Steam OpenID. Registration UI lives only in `static/ss-shell.js`.
 - Admin: `ADMIN_SECRET` → stateless HMAC cookie `sm_admin` (8 h, CSRF header, audit table).
   It cannot be revoked server-side except by rotating `ADMIN_SECRET`.
+- Admin console (`/admin/analytics` = `static/analytics.html` + `js/analytics-dashboard.js`, RU only,
+  reorganised 2026-09-25 on owner request): grouped nav; "Работы и задания" is a feed/table of recent
+  jobs with result previews, owner (guests shown as `Гость #hash`, never the IP), files, settings and a
+  job card (`#job=<id>` deep link) with sources (probed format/size/codec), outputs, download, retry,
+  cancel and technical details. `smweb/job_diagnostics.py` turns raw errors into "what happened / why /
+  whose fault / what to tell the user / what to do" (regex rules, first match wins; add a rule when a
+  new error shows up as "Неизвестная ошибка"). `smweb/admin_jobs.py` serves files only from inside
+  DATA_DIR with sniffed media types. Jobs record `runner`, `started`, `finished`, `error_traces`
+  (scrubbed, admin-only; user-facing status endpoints whitelist their fields). **Failed process /
+  Workshop Studio / compose / loop jobs keep their uploaded sources** until the normal
+  `JOB_RESULT_TTL_SECONDS` cleanup (so the owner can reproduce and retry); partial outputs are deleted.
+  The admin JS must not use localStorage/sessionStorage (a test enforces it).
+- Maintenance notice: `ss-shell.js` (`MAINTENANCE_UI`, 8 languages, label + "until" time + dismiss per
+  tab); on the landing it is a floating capsule under the top bar (`home-overlays.css`).
 - Pro: DB flag/`pro_until` set by activation code (`data/access_codes.json` on the volume),
   Stripe (needs verified webhook secret), Gumroad, trial. Enforce Pro **server-side**; UI gating
   is cosmetic. Pro-only: Upscale, Loop, `/api/steam-check` standalone + `fix-safe`, Design Selection.
@@ -285,11 +299,11 @@ The Railway/SQLite/HF-era files (`RAILWAY.md`, `UPSCALER_SETUP.md`, `README_REVE
 
 ## 11. Verification baseline (2026-09-25)
 
-- `pytest`: 250 passed, 12 subtests (~39 s). `node scripts/check_i18n.js`: complete.
+- `pytest`: 256 passed, 12 subtests (~39 s). `node scripts/check_i18n.js`: complete.
   `node --check` passes on all `static/js/*.js` except `hero-vrm.js`, which is an ES module
   (loaded with `type="module"`) — that failure is expected, not a bug.
 - Playwright UI suites passed against a local server: `qa_accessibility`, `qa_tool_clarity`,
-  `qa_polish`, `qa_job_center`, `qa_home_layout`. How to repeat:
+  `qa_polish`, `qa_job_center`, `qa_home_layout`, `qa_admin_dashboard` (updated for the jobs feed). How to repeat:
   ```powershell
   $env:DATA_DIR="$env:TEMP\sm-qa"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
   $env:PORT="8091"; $env:COOKIE_SECURE="0"; $env:APP_URL="http://127.0.0.1:8091"; $env:FREE_LIMIT="100"

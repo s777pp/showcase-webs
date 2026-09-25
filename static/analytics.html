@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Центр управления · Showcase Maker</title>
   <link rel="icon" href="/static/icon.png">
-  <link rel="stylesheet" href="/static/css/analytics-dashboard.css?v=20260921-control2">
+  <link rel="stylesheet" href="/static/css/analytics-dashboard.css?v=20260925-admin2">
 </head>
 <body>
   <section class="admin-login" id="loginView">
@@ -24,17 +24,22 @@
     <aside class="admin-side">
       <a href="/" class="brand"><img src="/static/icon.png" alt="" width="40" height="40"><span>SHOWCASE <b>MAKER</b><small>CONTROL CENTER</small></span></a>
       <nav class="admin-nav" aria-label="Разделы панели">
+        <p class="admin-nav__group">Главное</p>
         <button class="is-active" data-view="overview"><i>⌁</i><span>Обзор</span></button>
-        <button data-view="system"><i>◉</i><span>Состояние системы</span><b id="systemNavState"></b></button>
+        <button data-view="jobs"><i>▣</i><span>Работы и задания</span><b class="nav-count" id="jobsNavCount"></b></button>
+        <button data-view="support"><i>?</i><span>Обращения</span><b class="nav-count" id="supportNavCount"></b></button>
+        <p class="admin-nav__group">Люди и доступ</p>
         <button data-view="users"><i>◎</i><span>Пользователи</span></button>
         <button data-view="codes"><i>◇</i><span>Ключи и Pro</span></button>
-        <button data-view="jobs"><i>⇄</i><span>Задания</span></button>
+        <p class="admin-nav__group">Контент</p>
         <button data-view="gallery"><i>▦</i><span>Галерея</span></button>
-        <button data-view="support"><i>?</i><span>Обращения</span><b id="supportNavCount"></b></button>
         <button data-view="announcements"><i>!</i><span>Объявления</span></button>
         <button data-view="catalog"><i>▤</i><span>Steam-каталог</span></button>
+        <p class="admin-nav__group">Сайт</p>
+        <button data-view="settings"><i>⌘</i><span>Техработы и функции</span><b class="nav-dot" id="maintenanceNavState" hidden></b></button>
+        <button data-view="system"><i>◉</i><span>Состояние системы</span><b class="nav-dot" id="systemNavState"></b></button>
         <button data-view="backups"><i>↧</i><span>Резервные копии</span></button>
-        <button data-view="settings"><i>⌘</i><span>Управление сайтом</span></button>
+        <p class="admin-nav__group">Статистика</p>
         <button data-view="analytics"><i>⌁</i><span>Аналитика</span></button>
         <button data-view="audit"><i>≡</i><span>Журнал действий</span></button>
       </nav>
@@ -44,7 +49,7 @@
     <main class="admin-main">
       <header class="admin-top">
         <div><p class="overline" id="viewKicker">ЦЕНТР УПРАВЛЕНИЯ</p><h1 id="viewTitle">Обзор</h1></div>
-        <div class="admin-top__actions"><label>Период<select id="days"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option></select></label><button class="button button--ghost" id="refresh">Обновить</button></div>
+        <div class="admin-top__actions"><button type="button" class="maint-chip" id="maintenanceChip" data-go="settings" hidden><i></i>Техработы включены</button><label id="daysWrap">Период<select id="days"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option></select></label><button class="button button--ghost" id="refresh">Обновить</button></div>
       </header>
       <output id="toast" class="toast" role="status"></output>
 
@@ -56,6 +61,7 @@
           <article class="panel"><div class="panel-head"><div><p class="overline">БЫСТРЫЕ ДЕЙСТВИЯ</p><h2>Управление</h2></div></div><div class="quick-actions"><button data-go="users">Найти пользователя<span>Pro, блокировки и сессии</span></button><button data-go="codes">Создать ключ<span>7 дней или постоянный Pro</span></button><button data-go="settings">Включить техработы<span>Сообщение появится на сайте</span></button><button data-go="jobs">Проверить задания<span>Очереди и зависшие операции</span></button></div></article>
         </div>
         <article class="panel attention-panel"><div class="panel-head"><div><p class="overline">ТРЕБУЕТ ВНИМАНИЯ</p><h2>Что стоит проверить сейчас</h2></div></div><div id="attentionList" class="attention-list"></div></article>
+        <article class="panel recent-works"><div class="panel-head"><div><p class="overline">ЧТО ДЕЛАЮТ ЛЮДИ</p><h2>Последние работы</h2></div><button class="text-button" data-go="jobs:done">Вся лента →</button></div><div id="recentWorks" class="works-strip"></div></article>
       </section>
 
       <section class="admin-view" data-page="system">
@@ -75,8 +81,17 @@
       </section>
 
       <section class="admin-view" data-page="jobs">
-        <article class="panel panel--toolbar"><div><p class="overline">ОБРАБОТКА</p><h2>Последние задания</h2></div><div class="jobs-toolbar"><label>Показать<select id="jobsFilter"><option value="all">Все задания</option><option value="active">В работе</option><option value="error">С ошибкой</option><option value="done">Завершённые</option></select></label><div class="queue-strip" id="jobsQueues"></div></div></article>
-        <div class="table-wrap"><table><thead><tr><th>Задание</th><th>Тип</th><th>Состояние</th><th>Прогресс</th><th>Обновлено</th><th></th></tr></thead><tbody id="jobsBody"></tbody></table></div>
+        <article class="panel jobs-summary"><div class="jobs-summary__stats" id="jobsStats"></div><div class="jobs-summary__reasons"><p class="overline">ЧАСТЫЕ ПРИЧИНЫ ПРОБЛЕМ</p><div id="jobsReasons" class="reason-chips"></div></div><div class="queue-strip" id="jobsQueues"></div></article>
+        <div class="jobs-toolbar">
+          <div class="segmented" role="group" aria-label="Фильтр по состоянию" id="jobsStatus"><button data-status="all" class="is-active">Все</button><button data-status="problem">Проблемы</button><button data-status="active">В работе</button><button data-status="done">Готово</button><button data-status="cancelled">Отменено</button></div>
+          <label class="jobs-toolbar__kind">Инструмент<select id="jobsKind"><option value="">Все инструменты</option></select></label>
+          <form id="jobsSearch" class="jobs-toolbar__search"><input id="jobsQuery" type="search" placeholder="Email, ник, имя файла или ID задания"></form>
+          <div class="segmented" role="group" aria-label="Вид" id="jobsLayout"><button data-layout="feed" class="is-active">Лента</button><button data-layout="table">Таблица</button></div>
+          <label class="auto-refresh"><input type="checkbox" id="jobsAuto"> Автообновление</label>
+        </div>
+        <p class="section-note" id="jobsNote">Здесь задания примерно за последние сутки: столько Redis хранит их историю, а готовые файлы хранятся столько же. Исходник упавшего задания сохраняется, его можно скачать и повторить.</p>
+        <div id="jobsFeed" class="jobs-feed"></div>
+        <div class="table-wrap" id="jobsTable" hidden><table><thead><tr><th>Задание</th><th>Кто</th><th>Файлы</th><th>Состояние</th><th>Время</th><th></th></tr></thead><tbody id="jobsBody"></tbody></table></div>
       </section>
 
       <section class="admin-view" data-page="gallery">
@@ -116,6 +131,7 @@
     </main>
   </div>
   <dialog class="user-detail-dialog" id="userDetailDialog"><form method="dialog"><button class="dialog-close" aria-label="Закрыть">×</button></form><div id="userDetailContent"></div></dialog>
-  <script src="/static/js/analytics-dashboard.js?v=20260921-control2"></script>
+  <dialog class="user-detail-dialog job-dialog" id="jobDetailDialog"><form method="dialog"><button class="dialog-close" aria-label="Закрыть">×</button></form><div id="jobDetailContent"></div></dialog>
+  <script src="/static/js/analytics-dashboard.js?v=20260925-admin2"></script>
 </body>
 </html>

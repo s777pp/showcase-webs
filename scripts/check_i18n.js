@@ -80,7 +80,7 @@ function jsUiStrings(file, output) {
     if (source.includes('var DESIGN_COPY=')) source = source.replace(objectLiteral(source, 'var DESIGN_COPY='), '{}');
   }
   if (file === 'static/ss-shell.js') {
-    for (const marker of ['var ACCOUNT_COPY =', 'var RESET_ERROR_COPY =']) {
+    for (const marker of ['var ACCOUNT_COPY =', 'var RESET_ERROR_COPY =', 'var MAINTENANCE_UI =']) {
       if (source.includes(marker)) source = source.replace(objectLiteral(source, marker), '{}');
     }
   }
@@ -171,6 +171,12 @@ for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
   const values = workshopManual[language];
   if (!values || values.length !== workshopKeys.length || values.some(value => typeof value !== 'string' || !value.trim())) {
     errors.push(`Workshop Studio copy: incomplete ${language}`);
+  }
+}
+// Maintenance notice labels: { key: { language: text } }, reviewed in all eight languages.
+for (const [key, values] of Object.entries(evaluateDictionary('static/ss-shell.js', 'var MAINTENANCE_UI ='))) {
+  for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+    if (typeof values[language] !== 'string' || !values[language].trim()) errors.push(`maintenance notice ${key}: missing ${language}`);
   }
 }
 for (const [name, dictionary] of [

@@ -1,13 +1,15 @@
 """Authenticated control-center routes."""
 from __future__ import annotations
 
+import re
 import time
+import zipfile
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 
 import auth_db
-from smweb import admin_content, admin_control, maintenance, runtime_settings
+from smweb import admin_content, admin_control, admin_jobs, maintenance, runtime_settings
 
 
 router = APIRouter(prefix="/api/admin/control", tags=["admin-control"])
@@ -134,9 +136,75 @@ def revoke_code(code: str, request: Request):
 
 
 @router.get("/jobs")
-def jobs(request: Request, limit: int = 100):
+def jobs(request: Request, limit: int = 150, status: str = "all", kind: str = "", q: str = ""):
     _require(request)
-    return admin_control.jobs(limit)
+    return admin_control.jobs(limit, status, kind, q)
+
+
+# Literal job sub-routes live under /jobs/{id}/... ; the files are served inline
+# only for sniffed image/video types, otherwise as attachments, and never cached.
+_FILE_HEADERS = {"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                 "Content-Security-Policy": "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox"}
+
+
+def _disposition(name: str, inline: bool) -> str:
+    safe = re.sub(r'[^A-Za-z0-9._ -]', "_", name)[:120] or "file"
+    return f'{"inline" if inline else "attachment"}; filename="{safe}"'
+
+
+@router.get("/jobs/{job_id}")
+def job_detail(job_id: str, request: Request):
+    _require(request)
+    try:
+        return admin_jobs.job_detail(job_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/jobs/{job_id}/output/{index}")
+def job_output(job_id: str, index: int, request: Request, download: int = 0):
+    _require(request)
+    try:
+        data, media_type, name = admin_jobs.output_entry(job_id, index)
+    except (LookupError, ValueError, OSError, zipfile.BadZipFile) as exc:
+        raise HTTPException(status_code=404, detail=str(exc) or "Result unavailable") from exc
+    inline = not download and media_type != "application/octet-stream"
+    return Response(data, media_type=media_type,
+                    headers={**_FILE_HEADERS, "Content-Disposition": _disposition(name, inline)})
+
+
+@router.get("/jobs/{job_id}/source/{index}")
+def job_source(job_id: str, index: int, request: Request, download: int = 0):
+    _require(request)
+    try:
+        path, media_type, name = admin_jobs.source_file(job_id, index)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if download:
+        admin_control.audit("job.source_download", f"job:{job_id}", {"index": index})
+    inline = not download and media_type != "application/octet-stream"
+    return FileResponse(path, media_type=media_type,
+                        headers={**_FILE_HEADERS, "Content-Disposition": _disposition(name, inline)})
+
+
+@router.get("/jobs/{job_id}/result")
+def job_result(job_id: str, request: Request, inline: int = 0):
+    _require(request)
+    try:
+        path, media_type, name, remote_key = admin_jobs.result_file(job_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if path is None:
+        # Private R2 object: short redirect, the URL itself is never put in JSON.
+        from smweb import object_store
+        try:
+            url = object_store.presigned_get_url(remote_key, expires=300, download_name=name, media_type=media_type)
+        except Exception as exc:
+            raise HTTPException(status_code=404, detail="Result is not available") from exc
+        return RedirectResponse(url, status_code=302, headers={"Cache-Control": "private, no-store"})
+    show_inline = bool(inline) and media_type.startswith(("image/", "video/"))
+    return FileResponse(path, media_type=media_type,
+                        headers={**_FILE_HEADERS, "Content-Disposition": _disposition(name, show_inline)})
 
 
 @router.post("/jobs/{job_id}/cancel")

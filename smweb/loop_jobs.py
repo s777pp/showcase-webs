@@ -12,6 +12,7 @@ from PIL import Image
 
 import processor as proc
 import redis_store as rs
+from smweb import job_diagnostics
 from smweb import object_store
 from smweb import process_control
 
@@ -144,11 +145,11 @@ def run(jid: str, job: dict) -> None:
     except process_control.JobCancelled:
         process_control.mark_cancelled(jid)
         shutil.rmtree(root, ignore_errors=True)
-    except Exception:
+    except Exception as exc:
         traceback.print_exc()
-        rs.job_update(jid, status="error", pct=100, stage="error", error="Loop processing failed")
+        # Users see a generic message; the admin console gets the real cause. The
+        # source stays in the job folder until the regular cleanup for reproduction.
+        rs.job_update(jid, status="error", pct=100, stage="error", error="Loop processing failed",
+                      error_detail=job_diagnostics.scrub(f"{type(exc).__name__}: {exc}", root)[:500],
+                      error_traces=[job_diagnostics.trace_text(exc, root)])
         shutil.rmtree(root / "decoded", ignore_errors=True); shutil.rmtree(root / "sequence", ignore_errors=True)
-        try:
-            source.unlink(missing_ok=True)
-        except Exception:
-            pass
