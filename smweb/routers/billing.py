@@ -1,41 +1,16 @@
 """Stripe checkout and webhook.
 
-Moved out of main.py unchanged; see docs/STRUCTURE.md.
+Moved out of main.py unchanged.
 """
 
 
 from __future__ import annotations
 
 import hashlib
-import hmac
-import html
-import io
-import ipaddress
-import json
-import logging
-import os
-import re
-import socket
-import secrets
-import tempfile
-import shutil
-import time
-import uuid
-import warnings
-import zipfile
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Optional
-from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from PIL import Image
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
-import processor as proc
-import redis_store as rs
 
 import auth_db
 from smweb import analytics
@@ -45,7 +20,6 @@ from fastapi import APIRouter
 
 
 from smweb.core import LOGGER, STRIPE_SECRET, STRIPE_WEBHOOK_SECRET
-
 
 
 router = APIRouter()

@@ -5,28 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <script>document.documentElement.classList.add('has-js');document.documentElement.classList.add('home-is-loading');window.__SM_HOME_LOADER_START=performance.now()</script>
 <title>Showcase Maker — Steam showcases without the grind</title>
+<meta name="description" content="Workshop, Featured and Split cuts, watermark, Steam size limits and profile preview — one browser tool for Steam showcase creators."/>
+<link rel="icon" type="image/png" href="/static/icon.png?v=1"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link rel="modulepreload" href="/static/js/hero-vrm.js?v=20260921-polish1"/>
+<link rel="preload" as="image" type="image/avif" imagesrcset="/static/img/home/fon-1000.avif?v=20260925-home22 1000w, /static/img/home/fon-1280.avif?v=20260925-home22 1280w, /static/img/home/fon-1920.avif?v=20260925-home22 1920w, /static/img/home/fon-2560.avif?v=20260925-home22 2560w, /static/img/home/fon-3840.avif?v=20260925-home22 3840w" imagesizes="max(100vw, 177.7svh)" media="(min-width: 821px)" fetchpriority="high"/>
+<link rel="modulepreload" href="/static/js/home-vrm.js?v=20260925-home22"/>
 <link rel="modulepreload" href="/static/vendor/vrm-runtime.module.js?v=20260915-saba2"/>
 <link rel="preload" href="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1" as="fetch" type="application/octet-stream" crossorigin fetchpriority="high"/>
-<link href="https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap&subset=cyrillic,cyrillic-ext,latin" rel="stylesheet"/>
-<link rel="stylesheet" href="/static/ss.css?v=20260923-langmenu1"/>
-<link rel="stylesheet" href="/static/css/index.css?v=20260907-footer-align"/>
-  <link rel="icon" type="image/png" href="/static/icon.png?v=1">
-  <link rel="stylesheet" href="/static/css/mobile.css?v=20260903m"/>
-  <link rel="stylesheet" href="/static/css/redesign.css?v=20260922-auth1"/>
-  <link rel="stylesheet" href="/static/css/creator-os.css?v=20260923-auth1"/>
-<link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260909-german1">
-<link rel="stylesheet" href="/static/css/hero-vrm.css?v=20260918-reaction1">
-<link rel="stylesheet" href="/static/css/home-loader.css?v=20260921-polish1">
-<link rel="stylesheet" href="/static/css/home-layout-polish.css?v=20260920-layout1">
-<script src="/static/js/layout-refinement.js?v=20260904d"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Great+Vibes&display=swap&subset=cyrillic,latin" rel="stylesheet"/>
+<link rel="stylesheet" href="/static/ss.css?v=20260925-ext1"/>
+<link rel="stylesheet" href="/static/css/redesign.css?v=20260922-auth1"/>
+<link rel="stylesheet" href="/static/css/home-loader.css?v=20260925-loader2"/>
+<link rel="stylesheet" href="/static/css/support-chat.css?v=20260925-icon1"/>
+<link rel="stylesheet" href="/static/css/analytics-consent.css?v=20260923-auth1"/>
+<link rel="stylesheet" href="/static/css/home.css?v=20260925-home23"/>
+<link rel="stylesheet" href="/static/css/home-blocks.css?v=20260925-blocks4"/>
+<link rel="stylesheet" href="/static/css/home-overlays.css?v=20260925-ov5"/>
 <script src="/static/js/locales-extra.js?v=20260923-workshop2"></script>
-<script src="/static/js/i18n.js?v=20260909-languages4"></script>
+<script src="/static/js/i18n.js?v=20260925-ext1"></script>
 <script defer src="/static/js/home-loader.js?v=20260921-polish1" onerror="document.documentElement.classList.remove('home-is-loading')"></script>
-<link rel="stylesheet" href="/static/css/support-chat.css?v=20260923-chooser1">
-<script defer src="/static/js/support-chat.js?v=20260923-chooser1"></script>
+<script defer src="/static/js/support-chat.js?v=20260925-icon1"></script>
 </head>
 <body class="page-home">
 <div class="home-loader" id="homeLoader" role="status" aria-live="polite" aria-label="Loading Showcase Maker">
@@ -46,475 +45,314 @@
     </div>
   </div>
 </div>
-<svg width="0" height="0" style="position:absolute">
-  <filter id="c3-noise">
-    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
-    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.35 0"/>
-    <feComposite in2="SourceGraphic" operator="in" result="noise"/>
-    <feBlend in="SourceGraphic" in2="noise" mode="multiply"/>
-  </filter>
-</svg>
 
 <div class="shell">
   <div id="ssHeadHost"></div>
-  <nav class="nav">
-    <a href="/" aria-label="Showcase Maker" class="logo-link">
-      <img class="logo-mark" src="/static/icon.png" alt="Showcase Maker" width="32" height="32"/>
-    </a>
-    <div style="position:relative">
-      <button type="button" class="logo-menu-btn" id="logoMenuBtn" aria-expanded="false" aria-haspopup="true" aria-controls="mobileMenu" data-i-title="menu">
-        <img src="/static/icon.png" alt=""/>
-        <span class="menu-hint" data-i="menu_label">Menu</span>
-        <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="mobile-menu" id="mobileMenu" role="menu">
-        <a class="nav-split" href="#features" data-i="nav_feat" role="menuitem">Features</a>
-        <a class="nav-split" href="/gallery" data-i="nav_gallery" role="menuitem">Gallery</a>
-        <a class="nav-split" href="/profile" data-i="nav_profile" role="menuitem">Profile</a>
-        <a class="nav-split" href="#pricing" data-i="nav_price" role="menuitem">Pricing</a>
-        <a class="nav-split" href="/app" data-i="nav_tools" role="menuitem">Tools</a>
-        <div class="mm-sep"></div>
-        <a href="/app" data-i="cta_tools" role="menuitem">Open tools →</a>
-        <div class="mm-sep"></div>
-        <button type="button" class="mm-item mm-auth" id="mobileNavLogin" data-i="nav_login" role="menuitem">Log in</button>
-        <button type="button" class="mm-item mm-auth mm-auth--logout" id="mobileNavLogout" data-i="nav_logout" role="menuitem" hidden>Log out</button>
-      </div>
-    </div>
-    <div class="nav-links">
-      <a class="nav-split" href="#features" data-i="nav_feat">Features</a>
-      <a class="nav-split" href="/gallery" data-i="nav_gallery">Gallery</a>
-      <a class="nav-split" href="/profile" data-i="nav_profile">Profile</a>
-      <a class="nav-split" href="#pricing" data-i="nav_price">Pricing</a>
-      <a class="nav-split" href="/app" data-i="nav_tools">Tools</a>
-    </div>
-    <div class="nav-right">
-      <a href="#" class="btn-shiny-nav" data-i="nav_login" id="navReg" role="button">Log in</a>
-      <button type="button" class="btn-shiny-nav" id="navLogout" data-i="nav_logout" hidden style="background:#c0392b;color:#fff;border:none;cursor:pointer">Log out</button>
-      <a href="/profile" class="nav-user-pill" id="navUserPill" title="Profile"></a>
+
+  <main class="home">
+    <section class="home-hero" aria-labelledby="homeTitle">
+      <div class="home-art creator-scene" aria-hidden="true">
+        <picture>
+          <!-- Phones: the art is ~139svh wide; cap at 2560 so a 3x screen does not fetch 4K. -->
+          <source media="(max-width: 820px)" type="image/avif" srcset="/static/img/home/fon-1000.avif?v=20260925-home22 1000w, /static/img/home/fon-1280.avif?v=20260925-home22 1280w, /static/img/home/fon-1920.avif?v=20260925-home22 1920w, /static/img/home/fon-2560.avif?v=20260925-home22 2560w" sizes="139svh"/>
+          <source media="(max-width: 820px)" type="image/webp" srcset="/static/img/home/fon-1000.webp?v=20260925-home22 1000w, /static/img/home/fon-1280.webp?v=20260925-home22 1280w, /static/img/home/fon-1920.webp?v=20260925-home22 1920w, /static/img/home/fon-2560.webp?v=20260925-home22 2560w" sizes="139svh"/>
+          <source type="image/avif" srcset="/static/img/home/fon-1000.avif?v=20260925-home22 1000w, /static/img/home/fon-1280.avif?v=20260925-home22 1280w, /static/img/home/fon-1920.avif?v=20260925-home22 1920w, /static/img/home/fon-2560.avif?v=20260925-home22 2560w, /static/img/home/fon-3840.avif?v=20260925-home22 3840w" sizes="max(100vw, 177.7svh)"/>
+          <source type="image/webp" srcset="/static/img/home/fon-1000.webp?v=20260925-home22 1000w, /static/img/home/fon-1280.webp?v=20260925-home22 1280w, /static/img/home/fon-1920.webp?v=20260925-home22 1920w, /static/img/home/fon-2560.webp?v=20260925-home22 2560w, /static/img/home/fon-3840.webp?v=20260925-home22 3840w" sizes="max(100vw, 177.7svh)"/>
+          <img class="home-art__bg" src="/static/img/home/fon-1920.webp?v=20260925-home22" alt="" width="3840" height="2160" decoding="async" fetchpriority="high"/>
+        </picture>
 
 
-      <div class="sm-bell-wrap" id="smBellWrap">
-        <button type="button" class="sm-bell" id="smBtnBell" title="Notifications" aria-label="Notifications">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>
-          <span class="sm-dot" id="smBellDot">0</span>
-        </button>
-        <div class="sm-notif-panel" id="smNotifPanel">
-          <div class="sm-notif-head">
-            <span data-i="notif_h">Notifications</span>
-            <button type="button" class="sm-btn-mini" id="smBtnReadAll" data-i="notif_read_all">Mark all read</button>
-          </div>
-          <div class="sm-notif-list" id="smNotifList"><div class="sm-notif-empty" data-i="notif_empty">Nothing yet</div></div>
-        </div>
-      </div>
-
-      <a class="btn-pill" href="/app" data-i="cta_tools">Open tools →</a>
-    </div>
-  </nav>
-
-  <section class="hero">
-    <h1 class="hero-echo-h1">
-      <span class="echo-text" id="heroEchoA" data-echo-text data-i-key="h1a">
-        <span class="echo-text__echo echo-text__echo--front" data-i="h1a">Steam showcases.</span>
-      </span><br/>
-      <span class="echo-text" id="heroEchoB" data-echo-text data-i-key="h1b">
-        <span class="echo-text__echo echo-text__echo--front shiny" data-i="h1b">Revitalized</span>
-      </span>
-    </h1>
-    <p data-i="hero_p">Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool for creators.</p>
-    <div class="hero-cta">
-      <a class="btn-pill" href="/app" data-i="cta_open">Open Showcase Maker</a>
-      <span class="hero-note" data-i="hero_note">Free · 5 files/day  ·  Pro · unlimited</span>
-      <a class="hero-telegram-offer" href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer">
-        <span class="hero-telegram-offer__mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="m19.7 4.4-2.8 14.1c-.2 1-1 1.2-1.8.8l-4.3-3.2-2.1 2c-.2.2-.4.4-.8.4l.3-4.5 8.2-7.4c.4-.3-.1-.5-.5-.2L5.8 12.7l-4.3-1.3c-.9-.3-.9-.9.2-1.3l16.8-6.5c.8-.3 1.5.2 1.2.8Z"/></svg>
-          <b>7D</b>
-        </span>
-        <span class="hero-telegram-offer__copy">
-          <span data-i="tg_offer_kicker">TELEGRAM / 7-DAY ACCESS</span>
-          <strong data-i="tg_offer_title">Get 7 days of Pro free</strong>
-          <small data-i="tg_offer_text">Join the channel and claim your free key.</small>
-        </span>
-        <span class="hero-telegram-offer__action"><span data-i="tg_offer_action">Get the key</span><i aria-hidden="true">↗</i></span>
-      </a>
-    </div>
-    <div class="hero-studio">
-      <div class="creator-scene">
-        <img class="creator-scene__ribbons creator-scene__ribbons--back" src="/static/img/hero-ribbons-v2.png" alt="" />
-        <img class="creator-scene__character" data-src="/static/img/hero-anime-character-v2.png" alt="" decoding="async" />
-        <div class="creator-scene__vrm" id="heroVrm" data-model="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1" data-model-fallback="/static/models/saba-0.1.vrm?v=20260915-saba1" aria-hidden="true">
+        <div class="home-vrm" id="heroVrm" data-model="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1" data-model-fallback="/static/models/saba-0.1.vrm?v=20260915-saba1">
           <canvas id="heroVrmCanvas"></canvas>
-          <span class="creator-scene__vrm-loader"></span>
+          <span class="home-vrm__hit" id="heroVrmHit" aria-hidden="true"></span>
         </div>
-        <img class="creator-scene__ui creator-scene__ui--color" src="/static/img/hero-ui-color-v2.png" alt="" />
-        <img class="creator-scene__ui creator-scene__ui--preview" src="/static/img/hero-ui-preview-v2.png" alt="" />
-        <img class="creator-scene__ui creator-scene__ui--timeline" src="/static/img/hero-ui-timeline-v2.png" alt="" />
-        <img class="creator-scene__ui creator-scene__ui--layers" src="/static/img/hero-ui-layers-v2.png" alt="" />
-        <img class="creator-scene__ui creator-scene__ui--split" src="/static/img/hero-ui-split-v2.png" alt="" />
-        <img class="creator-scene__ui creator-scene__ui--export" src="/static/img/hero-ui-export-v2.png" alt="" />
-        <div class="creator-scene__aura"></div>
-        <div class="creator-scene__particles"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        <div class="creator-scene__scan"></div>
-        <a class="creator-scene__credit" href="https://hub.vroid.com/en/characters/8524332363497057331/models/524490645277532236" target="_blank" rel="noopener noreferrer author"><span>3D model:</span> SABA_0.1</a>
       </div>
-    </div>
-  </section>
+      <div class="home-hero__shade" aria-hidden="true"></div>
 
-  <section class="mock extension-console" id="features">
-    <div class="mock-frame">
-      <div class="mock-title">
-        <span class="mock-title-label"><span data-i="mock_title">Showcase Maker — Tools</span></span>
-        <div class="win-controls" aria-hidden="true">
-          <span class="win-btn" title="Minimize">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5h8" stroke="currentColor" stroke-width="1.2"/></svg>
-          </span>
-          <span class="win-btn" title="Maximize">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="1.2" y="1.2" width="7.6" height="7.6" stroke="currentColor" stroke-width="1.2"/></svg>
-          </span>
-          <span class="win-btn win-close" title="Close">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.2"/></svg>
-          </span>
+      <div class="home-hero__content">
+        <p class="home-script" aria-hidden="true"><span data-i="hero_script_a">Your Art</span><span data-i="hero_script_b">Bigger Stories</span></p>
+        <h1 class="home-title" id="homeTitle">
+          <span data-i="h1a">Steam showcases.</span>
+          <span class="home-title__accent" data-i="h1b">Revitalized</span>
+        </h1>
+        <p class="home-lead" data-i="hero_p">Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool for creators.</p>
+        <div class="home-actions">
+          <a class="home-btn home-btn--primary" href="/app"><span data-i="cta_open">Open Showcase Maker</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12h7m-3-3 3 3-3 3"/></svg></a>
+          <a class="home-btn home-btn--ghost" href="/gallery" data-i="cta_gallery">View gallery</a>
         </div>
-      </div>
-      <div class="extension-browser-strip">
-        <div class="extension-browser-icons" aria-hidden="true"><img class="extension-browser-icon" src="/static/img/browser-icons/chrome.svg" alt=""><img class="extension-browser-icon" src="/static/img/browser-icons/edge.svg" alt=""></div>
-        <div class="extension-browser-copy">
-          <b data-i="ext_eyebrow">Browser extension</b>
-          <p data-i="ext_hint">Download the ZIP, unpack it and select “Load unpacked” on the browser extensions page.</p>
-          <div class="extension-browser-flow" aria-hidden="true"><span>1 · ZIP</span><i>→</i><span data-i="flow_unpack">2 · UNPACK</span><i>→</i><span data-i="flow_load">3 · LOAD</span></div>
-        </div>
-        <a class="extension-browser-cta" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=item-share-cb" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span data-i="ext_install">Install extension</span></a>
-      </div>
-      <div class="mock-body">
-        <div class="mock-side">
-          <a class="compose" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=item-share-cb" target="_blank" rel="noopener" data-i="ext_install">Install extension</a>
-          <div class="nav-item active"><span data-i="ext_nav_overview">Overview</span><span class="nav-state">●</span></div>
-          <div class="nav-item"><span data-i="ext_nav_steam">Steam tools</span></div>
-          <div class="nav-item"><span data-i="ext_nav_browser">Browser Engine</span></div>
-          <div class="nav-item"><span data-i="ext_nav_preview">Profile preview</span></div>
-          <div class="nav-item"><span data-i="ext_nav_privacy">Privacy</span></div>
-          <div class="labels" data-i="ext_supports">Supports</div>
-          <div class="label-row"><span class="ldot" style="background:#00d2ff"></span> Chrome</div>
-          <div class="label-row"><span class="ldot" style="background:#A4F4FD"></span> Edge</div>
-          <div class="label-row"><span class="ldot" style="background:#f59e0b"></span> Chromium</div>
-          <div class="label-row"><span class="ldot" style="background:#10b981"></span> Manifest V3</div>
-        </div>
-        <div class="mock-list">
-          <div class="msg unread active">
-            <div class="top"><span class="name" data-i="ext_list_steam">Steam integration</span><span class="time" data-i="badge_live">live</span></div>
-            <div class="sub" data-i="ext_list_steam_sub">Tools inside Steam pages</div>
-            <div class="prev" data-i="ext_list_steam_prev">Edit showcases without switching tabs</div>
-          </div>
-          <div class="msg unread">
-            <div class="top"><span class="name" data-i="ext_nav_browser">Browser Engine</span><span class="time" data-i="badge_local">local</span></div>
-            <div class="sub" data-i="ext_list_engine_sub">PNG · JPG · WEBP · GIF</div>
-            <div class="prev" data-i="ext_list_engine_prev">Files stay on your computer</div>
-          </div>
-          <div class="msg">
-            <div class="top"><span class="name" data-i="ext_list_modes">Showcase modes</span><span class="time">3</span></div>
-            <div class="sub">Workshop ×5 · Featured 630 · Split</div>
-            <div class="prev" data-i="ext_list_modes_prev">Ready-made Steam dimensions and layouts</div>
-          </div>
-          <div class="msg">
-            <div class="top"><span class="name" data-i="ext_list_profile">Profile preview</span><span class="time" data-i="badge_instant">instant</span></div>
-            <div class="sub" data-i="ext_list_profile_sub">Backgrounds · frames · avatars</div>
-            <div class="prev" data-i="ext_list_profile_prev">Try the look before applying it</div>
-          </div>
-          <div class="msg">
-            <div class="top"><span class="name" data-i="ext_list_privacy">Private by design</span><span class="time" data-i="badge_safe">safe</span></div>
-            <div class="sub" data-i="ext_list_privacy_sub">No passwords · no cookies</div>
-            <div class="prev" data-i="ext_list_privacy_prev">Only the permissions required for Steam</div>
-          </div>
-        </div>
-        <div class="mock-reader reader">
-          <div class="reader-tools"><span>↩</span><span>↪</span><span>⬇</span><span>✕</span></div>
-          <h3 data-i="ext_reader_title">SteamShowcase Helper</h3>
-          <div class="reader-meta">
-            <div class="av">S</div>
-            <div><b style="color:#fff">SteamShowcase</b><br/><span data-i="ext_reader_meta">extension · v0.9.9</span></div>
-            <span class="pill">Manifest V3</span>
-          </div>
-          <div class="summary">
-            <b data-i="ext_reader_summary">✦ Everything close at hand</b>
-            <p data-i="ext_reader_summary_p">Showcase preparation, local media processing and live Steam profile preview in one lightweight browser extension.</p>
-          </div>
-          <p data-i="ext_reader_body">Open a supported Steam page and the required tool appears automatically. Your media is processed locally whenever possible.</p>
-          <a class="extension-reader-download" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=item-share-cb" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 18v2h14v-2"/></svg>
-            <span data-i="ext_install">Install extension</span>
-          </a>
-          <p class="extension-reader-hint" data-i="ext_hint">Download the ZIP, unpack it and select “Load unpacked” on the browser extensions page.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="grid2">
-      <div>
-        <div class="eyebrow"><i></i> <span data-i="tri_label">Process</span> <span class="tag" data-i="steam_native">Steam-native</span></div>
-        <h2 data-i="tri_h">Clear the busywork.<br/>Ship the showcase.</h2>
-        <p class="lead" data-i="tri_p">Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.</p>
-        <div class="chips">
-          <span class="chip">Workshop ×5</span>
-          <span class="chip">Featured 630</span>
-          <span class="chip">Artwork Split</span>
-          <span class="chip">HEX 21</span>
-          <span class="chip">GIF · MP4</span>
-        </div>
-      </div>
-      <div class="liquid-glass triage-card">
-        <div class="t" data-i="tri_today">Today · showcase pipeline</div>
-        <div class="liquid-glass subc">
-          <div class="h" style="color:#fff"><span data-i="pipe_process">Process</span> <span data-i="pipe_core">core</span></div>
-          <ul><li>Workshop / Featured / Split</li><li data-i="pipe_watermark">Watermark · font · opacity</li></ul>
-        </div>
-        <div class="liquid-glass subc">
-          <div class="h" style="color:#e5e5e5"><span data-i="pipe_download">Download</span> <span data-i="pipe_sources">sources</span></div>
-          <ul><li>YouTube · TikTok · X</li><li>Reddit · Pinterest</li></ul>
-        </div>
-        <div class="liquid-glass subc">
-          <div class="h" style="color:#a3a3a3"><span data-i="pipe_preview">Preview</span> <span data-i="pipe_profile">profile</span></div>
-          <ul><li data-i="pipe_slots">Template slots</li><li data-i="pipe_animated">Animated GIF / MP4</li></ul>
-        </div>
-        <div class="liquid-glass subc">
-          <div class="h" style="color:#525252">Steam <span data-i="pipe_upload">upload</span></div>
-          <ul><li data-i="pipe_console">Console code</li><li data-i="pipe_guide">Step-by-step guide</li></ul>
-        </div>
-      </div>
-    </div>
-  </section>
-
-    <section class="section logos">
-    <div class="k" data-i="trust">Built for Steam profile creators</div>
-    <div class="logoloop logoloop--fade" id="formatsLoop" role="region" aria-label="Formats">
-      <div class="logoloop__track" id="formatsTrack">
-        <ul class="logoloop__list" id="formatsSeq">
-          <li class="logoloop__item"><span class="logoloop__pill">Workshop</span></li>
-          <li class="logoloop__item"><span class="logoloop__pill">Featured</span></li>
-          <li class="logoloop__item"><span class="logoloop__pill">Split</span></li>
-          <li class="logoloop__item"><span class="logoloop__pill">GIF</span></li>
-          <li class="logoloop__item"><span class="logoloop__pill">MP4</span></li>
-          <li class="logoloop__item"><span class="logoloop__pill">HEX21</span></li>
-          <li class="logoloop__item"><span class="logoloop__pill" data-i="format_preview">Preview</span></li>
-          <li class="logoloop__item"><span class="logoloop__pill">FunPay</span></li>
-          <li class="logoloop__item"><span class="logoloop__pill" data-i="format_watermark">Watermark</span></li>
-          <li class="logoloop__item"><span class="logoloop__pill">Steam</span></li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section class="section quotes">
-    <div class="q-grid">
-      <figure class="liquid-glass q-card">
-        <blockquote><span data-i="q1">“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”</span></blockquote>
-        <figcaption><div class="n" data-i="aud_artists">Profile artists</div><div class="r">Steam Workshop</div><div class="c" data-i="aud_creators">CREATORS</div></figcaption>
-      </figure>
-      <figure class="liquid-glass q-card">
-        <blockquote><span data-i="q2">“Download + process + preview in one tab. No more juggling five sites.”</span></blockquote>
-        <figcaption><div class="n" data-i="aud_sellers">Commission sellers</div><div class="r">FunPay · Discord</div><div class="c" data-i="aud_sellers_badge">SELLERS</div></figcaption>
-      </figure>
-      <figure class="liquid-glass q-card">
-        <blockquote><span data-i="q3">“Pro is worth it when you ship showcases every week — no daily limit stress.”</span></blockquote>
-        <figcaption><div class="n" data-i="aud_power">Power users</div><div class="r" data-i="desktop_web">Desktop + Web</div><div class="c">PRO</div></figcaption>
-      </figure>
-    </div>
-  </section>
-
-  <section class="c3-pricing-section" id="pricing">
-    <svg width="0" height="0" style="position:absolute">
-      <filter id="c3-noise-price">
-        <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" stitchTiles="stitch"/>
-        <feComponentTransfer><feFuncA type="linear" slope="0.075"/></feComponentTransfer>
-        <feComposite in2="SourceGraphic" operator="in" result="noise"/>
-        <feBlend in="SourceGraphic" in2="noise" mode="overlay"/>
-      </filter>
-    </svg>
-    <div class="c3-watermark-container">
-      <div class="c3-watermark-main">
-        <span class="c3-watermark-line-1" data-i="h1a">Steam showcases.</span>
-        <span class="c3-watermark-line-2" data-i="h1b">Revitalized</span>
-      </div>
-    </div>
-    <div class="c3-grid">
-      <div class="c3-card">
-        <div class="c3-tier-small" data-i="price_free">Free</div>
-        <div class="c3-tier-large" data-i="price_free">Free</div>
-        <p class="c3-desc"><span data-i="price_free_d">Try the full pipeline with a daily file limit.</span></p>
-        <ul class="c3-list">
-          <li><span class="c3-check">✓</span> <span data-i="price_files">5 files / day</span></li>
-          <li><span class="c3-check">✓</span> Workshop · Featured · Split</li>
-          <li><span class="c3-check">✓</span> <span data-i="price_watermark">Watermark &amp; preview</span></li>
-          <li><span class="c3-check">✓</span> <span data-i="price_source">Source download</span></li>
-        </ul>
-        <a class="c3-btn" href="/app" data-i="start_free">Start free</a>
-      </div>
-      <div class="c3-card">
-        <div class="c3-tier-small">Pro</div>
-        <div class="c3-tier-large" id="pricePro">FunPay</div>
-        <p class="c3-desc"><span data-i="price_pro_d">Unlimited processing for sellers and daily shippers.</span></p>
-        <ul class="c3-list">
-          <li><span class="c3-check">✓</span> <span data-i="price_unlimited">Unlimited files</span></li>
-          <li><span class="c3-check">✓</span> <span data-i="price_modes">All modes + HEX 21</span></li>
-          <li><span class="c3-check">✓</span> <span data-i="price_account">Account-bound access code</span></li>
-          <li><span class="c3-check">✓</span> <span data-i="price_priority">Priority-ready pipeline</span></li>
-        </ul>
-        <a class="c3-btn" href="#" role="button" data-buy-key="1" data-i="buy_fp">Buy on FunPay</a>
-      </div>
-      <div class="c3-card c3-card-pro">
-        <div class="c3-tier-small" data-i="price_desktop">Desktop</div>
-        <div class="c3-tier-large">EXE</div>
-        <p class="c3-desc"><span data-i="price_desk_d">Full desktop app with offline processing and DeviantArt helpers.</span></p>
-        <ul class="c3-list">
-          <li><span class="c3-check">✓</span> <span data-i="price_same">Same core pipeline</span></li>
-          <li><span class="c3-check">✓</span> <span data-i="price_ffmpeg">Local FFmpeg power</span></li>
-          <li><span class="c3-check">✓</span> <span data-i="price_license">License key system</span></li>
-          <li><span class="c3-check">✓</span> <span data-i="price_update">Auto-update ready</span></li>
-        </ul>
-        <a class="c3-btn" href="#" role="button" data-buy-key="1" data-i="get_desk">Get desktop</a>
-      </div>
-    </div>
-  </section>
-
-  <section class="final">
-    <div class="liquid-glass final-card">
-      <div class="glow"></div>
-      <h2 data-i="cta_h">Close the tabs.<br/>Open your profile.</h2>
-      <p data-i="cta_p">Process, download sources, preview on a Steam template, and ship — without leaving the browser.</p>
-      <div class="final-btns">
-        <a class="btn-pill" href="/app" data-i="cta_open2">Open tools</a>
-        <a href="#" class="btn-shiny-cta" data-i="cta_reg" id="ctaReg" role="button">Create account →</a>
-      </div>
-    </div>
-  </section>
-
-  <footer class="site-footer">
-    <div class="site-footer__main">
-      <a class="site-footer__brand" href="/" aria-label="Showcase Maker">
-        <img src="/static/icon.png" alt="" width="42" height="42">
-        <span><b>Showcase Maker</b><small data-i="footer_tagline">Steam showcase tools by n1t1337</small></span>
-      </a>
-      <nav class="site-footer__nav" aria-label="Footer navigation">
-        <a href="/app" data-i="footer_tools">Tools</a>
-        <a href="/gallery" data-i="footer_gallery">Gallery</a>
-        <a href="#pricing" data-i="footer_pricing">Pricing</a>
-        <a href="/profile" data-i="footer_profile">Profile</a>
-        <a href="#features" data-i="footer_extension">Extension</a>
-        <a href="/privacy" data-privacy-link>Privacy policy</a>
-      </nav>
-    </div>
-    <div class="site-footer__bottom">
-      <span>© 2026 n1t1337 · Showcase Maker</span>
-      <div class="site-footer__socials" aria-label="Social links">
-        <a href="https://steamcommunity.com/id/n1t1337/" target="_blank" rel="noopener noreferrer" aria-label="Steam"><img src="/static/steam.png" alt=""></a>
-        <a href="https://discord.com/invite/me48dhgcw4" target="_blank" rel="noopener noreferrer" aria-label="Discord"><img src="/static/discord.png" alt=""></a>
-        <a href="https://www.youtube.com/@n1t1337/videos" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><img src="/static/youtube.png" alt=""></a>
-        <a href="https://www.tiktok.com/@n1t1337" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><img src="/static/tiktok.png" alt=""></a>
-        <a href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer" aria-label="Showcase Maker Telegram channel">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 3.4 18.3 20c-.2 1.2-.9 1.5-1.9.9l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-8c.4-.3-.1-.5-.6-.2L6 14l-4.7-1.5c-1-.3-1-1 .2-1.5L20 3.8c.9-.3 1.6.2 1.4-.4Z"/></svg>
+        <a class="home-telegram" href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer">
+          <span class="home-telegram__mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m19.7 4.4-2.8 14.1c-.2 1-1 1.2-1.8.8l-4.3-3.2-2.1 2c-.2.2-.4.4-.8.4l.3-4.5 8.2-7.4c.4-.3-.1-.5-.5-.2L5.8 12.7l-4.3-1.3c-.9-.3-.9-.9.2-1.3l16.8-6.5c.8-.3 1.5.2 1.2.8Z"/></svg></span>
+          <span class="home-telegram__copy"><strong data-i="tg_offer_title">Get 7 days of Pro free</strong><small data-i="tg_offer_text">Join the channel and claim your free key.</small></span>
+          <span class="home-telegram__action"><span data-i="tg_offer_action">Get the key</span> ↗</span>
         </a>
+        <ul class="home-features">
+          <li><a href="/app#process">
+            <img src="/static/img/home/card-cuts.webp?v=20260925-home22" alt="" width="320" height="176" loading="lazy"/>
+            <b data-i="feat_cut_t">Showcase cuts</b><small data-i="feat_cut_s">3 Steam formats</small>
+          </a></li>
+          <li><a href="/app#upscale">
+            <img src="/static/img/home/card-upscale.webp?v=20260925-home22" alt="" width="320" height="176" loading="lazy"/>
+            <b data-i="feat_up_t">AI Upscale</b><small data-i="feat_up_s">Higher quality</small>
+          </a></li>
+          <li><a href="/app#loop">
+            <img src="/static/img/home/card-anim.webp?v=20260925-home22" alt="" width="320" height="176" loading="lazy"/>
+            <b data-i="feat_anim_t">Animations</b><small data-i="feat_anim_s">GIF · MP4 · Loop</small>
+          </a></li>
+        </ul>
       </div>
+
+      <a class="home-scroll" href="#features"><span class="home-scroll__mouse" aria-hidden="true"></span><span data-i="scroll">Scroll</span></a>
+      <a class="home-credit" href="https://hub.vroid.com/en/characters/8524332363497057331/models/524490645277532236" target="_blank" rel="noopener noreferrer author"><span>3D model:</span> SABA_0.1</a>
+    </section>
+    <div class="home-blocks">
+      <div class="hb-aurora" aria-hidden="true"></div>
+      <section class="hb-mock hb-extension-console" id="features" aria-labelledby="extTitle">
+        <div class="hb-mock-frame">
+          <div class="hb-mock-title">
+            <span class="hb-mock-title-label"><span data-i="mock_title">Showcase Maker — Tools</span></span>
+            <div class="hb-win-controls" aria-hidden="true">
+              <span class="hb-win-btn" title="Minimize">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5h8" stroke="currentColor" stroke-width="1.2"/></svg>
+              </span>
+              <span class="hb-win-btn" title="Maximize">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="1.2" y="1.2" width="7.6" height="7.6" stroke="currentColor" stroke-width="1.2"/></svg>
+              </span>
+              <span class="hb-win-btn hb-win-close" title="Close">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.2"/></svg>
+              </span>
+            </div>
+          </div>
+          <div class="hb-extension-browser-strip">
+            <div class="hb-extension-browser-icons" aria-hidden="true"><img class="hb-extension-browser-icon" src="/static/img/browser-icons/chrome.svg" alt="" width="32" height="32" loading="lazy"><img class="hb-extension-browser-icon" src="/static/img/browser-icons/edge.svg" alt="" width="32" height="32" loading="lazy"></div>
+            <div class="hb-extension-browser-copy">
+              <b data-i="ext_eyebrow">Browser extension</b>
+              <p data-i="ext_hint">Download the ZIP, unpack it and select “Load unpacked” on the browser extensions page.</p>
+              <div class="hb-extension-browser-flow" aria-hidden="true"><span>1 · ZIP</span><i>→</i><span data-i="flow_unpack">2 · UNPACK</span><i>→</i><span data-i="flow_load">3 · LOAD</span></div>
+            </div>
+            <a class="hb-extension-browser-cta" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=item-share-cb" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span data-i="ext_install">Install extension</span></a>
+          </div>
+          <div class="hb-mock-body">
+            <div class="hb-mock-side">
+              <a class="hb-compose" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=item-share-cb" target="_blank" rel="noopener" data-i="ext_install">Install extension</a>
+              <div class="hb-nav-item hb-active"><span data-i="ext_nav_overview">Overview</span><span class="hb-nav-state">●</span></div>
+              <div class="hb-nav-item"><span data-i="ext_nav_steam">Steam tools</span></div>
+              <div class="hb-nav-item"><span data-i="ext_nav_browser">Browser Engine</span></div>
+              <div class="hb-nav-item"><span data-i="ext_nav_preview">Profile preview</span></div>
+              <div class="hb-nav-item"><span data-i="ext_nav_privacy">Privacy</span></div>
+              <div class="hb-labels" data-i="ext_supports">Supports</div>
+              <div class="hb-label-row"><span class="hb-ldot" style="background:#00d2ff"></span> Chrome</div>
+              <div class="hb-label-row"><span class="hb-ldot" style="background:#A4F4FD"></span> Edge</div>
+              <div class="hb-label-row"><span class="hb-ldot" style="background:#f59e0b"></span> Chromium</div>
+              <div class="hb-label-row"><span class="hb-ldot" style="background:#10b981"></span> Manifest V3</div>
+            </div>
+            <div class="hb-mock-list">
+              <div class="hb-msg hb-unread hb-active">
+                <div class="hb-top"><span class="hb-name" data-i="ext_list_steam">Steam integration</span><span class="hb-time" data-i="badge_live">live</span></div>
+                <div class="hb-sub" data-i="ext_list_steam_sub">Tools inside Steam pages</div>
+                <div class="hb-prev" data-i="ext_list_steam_prev">Edit showcases without switching tabs</div>
+              </div>
+              <div class="hb-msg hb-unread">
+                <div class="hb-top"><span class="hb-name" data-i="ext_nav_browser">Browser Engine</span><span class="hb-time" data-i="badge_local">local</span></div>
+                <div class="hb-sub" data-i="ext_list_engine_sub">PNG · JPG · WEBP · GIF</div>
+                <div class="hb-prev" data-i="ext_list_engine_prev">Files stay on your computer</div>
+              </div>
+              <div class="hb-msg">
+                <div class="hb-top"><span class="hb-name" data-i="ext_list_modes">Showcase modes</span><span class="hb-time">3</span></div>
+                <div class="hb-sub">Workshop ×5 · Featured 630 · Split</div>
+                <div class="hb-prev" data-i="ext_list_modes_prev">Ready-made Steam dimensions and layouts</div>
+              </div>
+              <div class="hb-msg">
+                <div class="hb-top"><span class="hb-name" data-i="ext_list_profile">Profile preview</span><span class="hb-time" data-i="badge_instant">instant</span></div>
+                <div class="hb-sub" data-i="ext_list_profile_sub">Backgrounds · frames · avatars</div>
+                <div class="hb-prev" data-i="ext_list_profile_prev">Try the look before applying it</div>
+              </div>
+              <div class="hb-msg">
+                <div class="hb-top"><span class="hb-name" data-i="ext_list_privacy">Private by design</span><span class="hb-time" data-i="badge_safe">safe</span></div>
+                <div class="hb-sub" data-i="ext_list_privacy_sub">No passwords · no cookies</div>
+                <div class="hb-prev" data-i="ext_list_privacy_prev">Only the permissions required for Steam</div>
+              </div>
+            </div>
+            <div class="hb-mock-reader hb-reader">
+              <div class="hb-reader-tools"><span>↩</span><span>↪</span><span>⬇</span><span>✕</span></div>
+              <h3 id="extTitle" data-i="ext_reader_title">SteamShowcase Helper</h3>
+              <div class="hb-reader-meta">
+                <div class="hb-av">S</div>
+                <div><b>SteamShowcase</b><br/><span data-i="ext_reader_meta">extension · v0.9.9</span></div>
+                <span class="hb-pill">Manifest V3</span>
+              </div>
+              <div class="hb-summary">
+                <b data-i="ext_reader_summary">✦ Everything close at hand</b>
+                <p data-i="ext_reader_summary_p">Showcase preparation, local media processing and live Steam profile preview in one lightweight browser extension.</p>
+              </div>
+              <p data-i="ext_reader_body">Open a supported Steam page and the required tool appears automatically. Your media is processed locally whenever possible.</p>
+              <a class="hb-extension-reader-download" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=item-share-cb" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 18v2h14v-2"/></svg>
+                <span data-i="ext_install">Install extension</span>
+              </a>
+              <p class="hb-extension-reader-hint" data-i="ext_hint">Download the ZIP, unpack it and select “Load unpacked” on the browser extensions page.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="hb-section hb-process">
+        <div class="hb-grid2">
+          <div>
+            <div class="hb-eyebrow"><i></i> <span data-i="tri_label">Process</span> <span class="hb-tag" data-i="steam_native">Steam-native</span></div>
+            <h2 data-i-html="tri_h">Clear the busywork.<br/>Ship the showcase.</h2>
+            <p class="hb-lead" data-i="tri_p">Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.</p>
+            <div class="hb-chips">
+              <span class="hb-chip">Workshop ×5</span>
+              <span class="hb-chip">Featured 630</span>
+              <span class="hb-chip">Artwork Split</span>
+              <span class="hb-chip">HEX 21</span>
+              <span class="hb-chip">GIF · MP4</span>
+            </div>
+          </div>
+          <div class="hb-triage-card">
+            <div class="hb-t" data-i="tri_today">Today · showcase pipeline</div>
+            <div class="hb-subc">
+              <div class="hb-h"><span data-i="pipe_process">Process</span> <span data-i="pipe_core">core</span></div>
+              <ul><li>Workshop / Featured / Split</li><li data-i="pipe_watermark">Watermark · font · opacity</li></ul>
+            </div>
+            <div class="hb-subc">
+              <div class="hb-h"><span data-i="pipe_download">Download</span> <span data-i="pipe_sources">sources</span></div>
+              <ul><li>YouTube · TikTok · X</li><li>Reddit · Pinterest</li></ul>
+            </div>
+            <div class="hb-subc">
+              <div class="hb-h"><span data-i="pipe_preview">Preview</span> <span data-i="pipe_profile">profile</span></div>
+              <ul><li data-i="pipe_slots">Template slots</li><li data-i="pipe_animated">Animated GIF / MP4</li></ul>
+            </div>
+            <div class="hb-subc">
+              <div class="hb-h">Steam <span data-i="pipe_upload">upload</span></div>
+              <ul><li data-i="pipe_console">Console code</li><li data-i="pipe_guide">Step-by-step guide</li></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="hb-section hb-logos">
+        <div class="hb-k" data-i="trust">Built for Steam profile creators</div>
+        <div class="hb-logoloop hb-logoloop--fade" id="formatsLoop" role="region" aria-label="Formats">
+          <div class="hb-logoloop__track" id="formatsTrack">
+            <ul class="hb-logoloop__list" id="formatsSeq">
+              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">Workshop</span></li>
+              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">Featured</span></li>
+              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">Split</span></li>
+              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">GIF</span></li>
+              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">MP4</span></li>
+              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">HEX21</span></li>
+              <li class="hb-logoloop__item"><span class="hb-logoloop__pill" data-i="format_preview">Preview</span></li>
+              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">FunPay</span></li>
+              <li class="hb-logoloop__item"><span class="hb-logoloop__pill" data-i="format_watermark">Watermark</span></li>
+              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">Steam</span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="hb-section hb-quotes">
+        <div class="hb-q-grid">
+          <figure class="hb-q-card">
+            <blockquote><span data-i="q1">“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”</span></blockquote>
+            <figcaption><div class="hb-n" data-i="aud_artists">Profile artists</div><div class="hb-r">Steam Workshop</div><div class="hb-c" data-i="aud_creators">CREATORS</div></figcaption>
+          </figure>
+          <figure class="hb-q-card">
+            <blockquote><span data-i="q2">“Download + process + preview in one tab. No more juggling five sites.”</span></blockquote>
+            <figcaption><div class="hb-n" data-i="aud_sellers">Commission sellers</div><div class="hb-r">FunPay · Discord</div><div class="hb-c" data-i="aud_sellers_badge">SELLERS</div></figcaption>
+          </figure>
+          <figure class="hb-q-card">
+            <blockquote><span data-i="q3">“Pro is worth it when you ship showcases every week — no daily limit stress.”</span></blockquote>
+            <figcaption><div class="hb-n" data-i="aud_power">Power users</div><div class="hb-r" data-i="desktop_web">Desktop + Web</div><div class="hb-c">PRO</div></figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="hb-c3-pricing-section" id="pricing">
+        <div class="hb-c3-watermark-container">
+          <div class="hb-c3-watermark-main">
+            <span class="hb-c3-watermark-line-1" data-i="h1a">Steam showcases.</span>
+            <span class="hb-c3-watermark-line-2" data-i="h1b">Revitalized</span>
+          </div>
+        </div>
+        <div class="hb-c3-grid">
+          <div class="hb-c3-card">
+            <div class="hb-c3-tier-small" data-i="price_free">Free</div>
+            <div class="hb-c3-tier-large" data-i="price_free">Free</div>
+            <p class="hb-c3-desc"><span data-i="price_free_d">Try the full pipeline with a daily file limit.</span></p>
+            <ul class="hb-c3-list">
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_files">5 files / day</span></li>
+              <li><span class="hb-c3-check">✓</span> Workshop · Featured · Split</li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_watermark">Watermark &amp; preview</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_source">Source download</span></li>
+            </ul>
+            <a class="hb-c3-btn" href="/app" data-i="start_free">Start free</a>
+          </div>
+          <div class="hb-c3-card">
+            <div class="hb-c3-tier-small">Pro</div>
+            <div class="hb-c3-tier-large" id="pricePro">FunPay</div>
+            <p class="hb-c3-desc"><span data-i="price_pro_d">Unlimited processing for sellers and daily shippers.</span></p>
+            <ul class="hb-c3-list">
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_unlimited">Unlimited files</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_modes">All modes + HEX 21</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_account">Account-bound access code</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_priority">Priority-ready pipeline</span></li>
+            </ul>
+            <a class="hb-c3-btn" href="#" role="button" data-buy-key="1" data-i="buy_fp">Buy on FunPay</a>
+          </div>
+          <div class="hb-c3-card hb-c3-card-pro">
+            <div class="hb-c3-tier-small" data-i="price_desktop">Desktop</div>
+            <div class="hb-c3-tier-large">EXE</div>
+            <p class="hb-c3-desc"><span data-i="price_desk_d">Full desktop app with offline processing and DeviantArt helpers.</span></p>
+            <ul class="hb-c3-list">
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_same">Same core pipeline</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_ffmpeg">Local FFmpeg power</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_license">License key system</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_update">Auto-update ready</span></li>
+            </ul>
+            <a class="hb-c3-btn" href="#" role="button" data-buy-key="1" data-i="get_desk">Get desktop</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="hb-final">
+        <div class="hb-final-card">
+          <div class="hb-glow"></div>
+          <h2 data-i-html="cta_h">Close the tabs.<br/>Open your profile.</h2>
+          <p data-i="cta_p">Process, download sources, preview on a Steam template, and ship — without leaving the browser.</p>
+          <div class="hb-final-btns">
+            <a class="home-btn home-btn--primary" href="/app" data-i="cta_open2">Open tools</a>
+            <a href="#" class="home-btn home-btn--ghost" data-i="cta_reg" id="ctaReg" role="button">Create account →</a>
+          </div>
+        </div>
+      </section>
     </div>
+  </main>
+
+  <footer class="home-footer" id="homeFooter">
+    <a class="home-footer__brand" href="/" aria-label="Showcase Maker"><img src="/static/icon.png" alt="" width="32" height="32"/><span><b>Showcase Maker</b><small data-i="footer_tagline">Steam showcase tools by n1t1337</small></span></a>
+    <nav class="home-footer__nav" aria-label="Footer navigation">
+      <a href="/app" data-i="footer_tools">Tools</a>
+      <a href="/gallery" data-i="footer_gallery">Gallery</a>
+      <a href="#pricing" data-i="footer_pricing">Pricing</a>
+      <a href="/profile" data-i="footer_profile">Profile</a>
+      <a href="#features" data-i="footer_extension">Extension</a>
+      <a href="/privacy" data-privacy-link>Privacy policy</a>
+    </nav>
+    <div class="home-footer__socials" aria-label="Social links">
+      <a href="https://steamcommunity.com/id/n1t1337/" target="_blank" rel="noopener noreferrer" aria-label="Steam"><img src="/static/steam.png" alt="" width="20" height="20"/></a>
+      <a href="https://discord.com/invite/me48dhgcw4" target="_blank" rel="noopener noreferrer" aria-label="Discord"><img src="/static/discord.png" alt="" width="20" height="20"/></a>
+      <a href="https://www.youtube.com/@n1t1337/videos" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><img src="/static/youtube.png" alt="" width="20" height="20"/></a>
+      <a href="https://www.tiktok.com/@n1t1337" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><img src="/static/tiktok.png" alt="" width="20" height="20"/></a>
+      <a href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer" aria-label="Showcase Maker Telegram channel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 3.4 18.3 20c-.2 1.2-.9 1.5-1.9.9l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-8c.4-.3-.1-.5-.6-.2L6 14l-4.7-1.5c-1-.3-1-1 .2-1.5L20 3.8c.9-.3 1.6.2 1.4-.4Z"/></svg></a>
+    </div>
+    <small class="home-footer__copy">© 2026 n1t1337 · Showcase Maker</small>
   </footer>
 </div>
 
-
-<div class="modal-bg" id="authModal" aria-hidden="true">
-  <div class="modal">
-    <button type="button" class="close-x" id="authClose" aria-label="Close">×</button>
-    <h3 id="authTitle">Log in</h3>
-    <p class="sub" id="authSub">Log in to buy Pro and keep access</p>
-    <div class="stack">
-      <input id="authEmail" type="email" placeholder="Email" autocomplete="email"/>
-      <input id="authPass" type="password" placeholder="Password (min 10)" minlength="10" autocomplete="new-password"/>
-      <button type="button" class="btn-auth" id="authSubmit">Log in</button>
-    </div>
-    <div class="status" id="authStatus"></div>
-    <div class="auth-divider"><span data-i="auth_or">or continue with</span></div>
-    <div class="auth-oauth">
-      <button type="button" class="btn-oauth" id="authDiscord">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#5865F2" d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515.07.07 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.74 19.74 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.1 13.1 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-        <span class="oauth-label" data-i="nav_discord">Continue with Discord</span>
-      </button>
-      <button type="button" class="btn-oauth" id="authGoogle">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="#EA4335" d="M12 10.2v3.6h5.1c-.2 1.2-.9 2.2-1.9 2.9l3.1 2.4c1.8-1.7 2.9-4.1 2.9-7 0-.7-.1-1.3-.2-1.9H12z"/>
-          <path fill="#34A853" d="M5.3 14.3l-.8.6-2.3 1.8C3.9 19.5 7.7 22 12 22c2.7 0 5-.9 6.7-2.4l-3.1-2.4c-.9.6-2 .9-3.6.9-2.8 0-5.1-1.9-6-4.4z"/>
-          <path fill="#4A90E2" d="M3 7.1C2.4 8.3 2 9.6 2 11s.4 2.7 1 3.9l2.3-1.8C5 12.4 4.8 11.7 4.8 11s.2-1.4.5-2z"/>
-          <path fill="#FBBC05" d="M12 4.8c1.5 0 2.8.5 3.8 1.5l2.8-2.8C16.9 1.9 14.7 1 12 1 7.7 1 3.9 3.5 2.2 7.1l3.1 2.4C6.9 6.7 9.2 4.8 12 4.8z"/>
-        </svg>
-        <span class="oauth-label" data-i="nav_google">Continue with Google</span>
-      </button>
-      <button type="button" class="btn-oauth" id="authSteam">
-        <span class="oauth-label" data-i="nav_steam">Continue with Steam</span>
-      </button>
-      <button type="button" class="btn-oauth" id="authTelegram">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#2AABEE" d="M9.78 14.65l-.3 4.2c.43 0 .62-.18.85-.4l2.04-1.94 4.23 3.1c.78.43 1.33.2 1.54-.72l2.8-13.13h.01c.25-1.16-.42-1.61-1.18-1.33L3.3 9.7c-1.13.44-1.11 1.07-.19 1.35l4.37 1.36 10.15-6.4c.48-.29.91-.13.55.18L9.78 14.65z"/></svg>
-        <span class="oauth-label" data-i="nav_telegram">Continue with Telegram</span>
-      </button>
-      <div id="tgWidgetHost" style="display:none;margin-top:8px;text-align:center"></div>
-    </div>
-    <div class="switch" id="authSwitch">Already have an account? <a id="authToggle">Log in</a></div>
-  </div>
-</div>
-
-<script src="/static/js/index.js?v=20260923-gallery1"></script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div class="sm-buy-overlay" id="smBuyOverlay" aria-hidden="true">
-  <div class="sm-buy-card" role="dialog" aria-labelledby="smBuyTitle">
-    <h3 id="smBuyTitle">Buy Pro key</h3>
-    <p class="sm-buy-sub" id="smBuySub">Choose where to buy. After payment, activate the code in your account.</p>
-    <div class="sm-buy-opts">
-      <a class="sm-buy-opt funpay" id="smBuyFunpay" href="https://funpay.com/lots/offer?id=76420307" target="_blank" rel="noopener">
-        <span class="ico ico-funpay" aria-hidden="true">
-          <img src="/static/img/funpay-logo.svg" alt="FunPay" width="28" height="12"/>
-        </span>
-        <span class="txt">
-          <span class="t">FunPay</span>
-          <span class="d" id="smBuyFunpayD">Instant code after payment</span>
-        </span>
-        <span class="arrow">→</span>
-      </a>
-      <a class="sm-buy-opt tg" id="smBuyTg" href="https://t.me/SteamMakerBot" target="_blank" rel="noopener">
-        <span class="ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="#fff"><path d="M9.78 14.65l-.3 4.2c.43 0 .62-.18.85-.4l2.04-1.94 4.23 3.1c.78.43 1.33.2 1.54-.72l2.8-13.13h.01c.25-1.16-.42-1.61-1.18-1.33L3.3 9.7c-1.13.44-1.11 1.07-.19 1.35l4.37 1.36 10.15-6.4c.48-.29.91-.13.55.18L9.78 14.65z"/></svg>
-        </span>
-        <span class="txt">
-          <span class="t">Telegram</span>
-          <span class="d" id="smBuyTgD">Buy via bot / support</span>
-        </span>
-        <span class="arrow">→</span>
-      </a>
-      <a class="sm-buy-opt card" id="smBuyCard" href="https://store.showcasemaker.com" target="_blank" rel="noopener">
-        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5" width="19" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M6 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-        <span class="txt"><span class="t" id="smBuyCardT">Pay by card</span><span class="d" id="smBuyCardD">Bank card · secure checkout</span></span>
-        <span class="arrow">→</span>
-      </a>
-    </div>
-    <button type="button" class="sm-buy-close" id="smBuyClose">Close</button>
-  </div>
-</div>
-
-<link rel="stylesheet" href="/static/css/analytics-consent.css?v=20260923-auth1">
 <script src="/static/js/analytics.js?v=20260922a"></script>
-<script src="/static/js/index-tail.js?v=20260903g"></script>
-<script src="/static/ss-shell.js?v=20260923-chooser1"></script>
-<script type="module" src="/static/js/hero-vrm.js?v=20260921-polish1"></script>
+<script src="/static/ss-shell.js?v=20260925-ext1"></script>
+<script src="/static/js/home.js?v=20260925-home22"></script>
+<script type="module" src="/static/js/home-vrm.js?v=20260925-home22"></script>
 </body>
 </html>

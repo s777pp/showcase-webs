@@ -1,538 +1,350 @@
-# SteamShowcase Maker Web — Coding Agent Handoff
-
-This is the root handoff and operating guide for coding agents. Read it before changing the project. It records the production architecture, recent decisions, known limitations, and safest next steps. Never add secrets, `.env` values, API tokens, credentials, presigned URLs, or production user data here.
-
-### Removed Builder AI animation experiment — 2026-09-14
-
-- The owner rejected and removed the Modal/Wan image-to-video experiment, its
-  automatic masks, Builder UI, API, queue path, configuration and tests. Do not
-  reintroduce AI animation without a new explicit request.
-- Builder scene motion, manual local brush motion, weather/effects, looping and
-  AI background removal are separate features and remain supported.
-
-## 1. Product and Current Development State
-
-### Footer alignment follow-up — 2026-09-07
-
-- Landing `.site-footer__nav a` now shares zero padding and 1.5 line-height;
-  the flex row centers items. This overrides the privacy link's shared 8px
-  padding only in the landing navigation, fixing its lower text baseline.
-- `static/index.html` uses `index.css?v=20260907-footer-align`. RU/EN desktop
-  links have identical Y/height; 390px RU view wraps within the viewport.
-- No extension, policy content, auth or backend changes in this follow-up.
-- Owner approved GitHub publication. VPS deployment still requires the owner's
-  SSH session: the local host cannot resolve `vps-3fb68f0f`. Rebuild app after
-  pulling for the updated HTML cache key; no worker or extension release needed.
-
-### Privacy release — 2026-09-07 (Git commit 38e8623)
-
-- Chrome Web Store rejected the latest extension for `Purple Nickel`: missing
-  Privacy Policy URL in the dedicated dashboard field. A description link is not
-  a substitute. See `PRIVACY_RELEASE.md` for deployment/submission and disclosures.
-- Public `/privacy` and `/privacy/` serve EN by default, `?lang=ru` serves RU.
-  `smweb/routers/pages.py` selects only fixed HTML files; no auth, JS or upstream
-  service required. `static/privacy-en.html`, `static/privacy-ru.html`, isolated
-  `static/css/privacy.css`. Keep the languages substantively aligned.
-- Policy links added to landing/Tools and shared profile footers; shared
-  `ss.css` / `ss-shell.js` cache keys bumped to `20260907-privacy`. Original design,
-  account behavior and support chatbot retained. Three policy tests added.
-- Current extension source provided by owner is
-  `C:\Users\n1t1337\Downloads\0.9.8` (NOT the older 0.9.7 directory). Its manifest
-  is now 0.9.9. Popup footer has a localized privacy link above the author credit.
-  This source is outside Git: a website push does not publish the extension.
-- Audit: local Browser Engine has no upload requests; extension stores language,
-  theme, preview snapshots/favourites and upload filename/dimension/progress data.
-  Steam preview reads the page's loyalty Web API token for Steam API calls.
-  Do NOT claim the extension never handles authentication data or is wholly local.
-  Extension-triggered import sends a profile snapshot using a one-use site ticket
-  to `/api/profile/extension-import`; the website saves it and may cache the avatar.
-  Steam cookies / Steam token are not part of that imported snapshot.
-- Retention must not be advertised as universally seven days: account snapshots,
-  local settings and backups differ from temporary job links and AI history. The
-  policy explicitly avoids unverified log/backup/lifecycle deletion deadlines.
-  Operator must honour its Limited Use and deletion-request commitments; retain
-  the public contact paths and review actual infrastructure retention separately.
-- No credentials, migrations, new permissions or provider changes. Website-only
-  deployment needs app rebuild; no worker/Modal/R2 migration. Public HTTPS access
-  (without Cloudflare Access login) must be verified before submitting the URL.
-
-### Current local override — 2026-09-07 Support assistant only
-
-The owner rejected the anime-studio redesign and explicitly requested restoration
-of their previous visual design, retaining only the support chatbot. All five HTML
-pages now match the pre-redesign HEAD except for isolated support CSS/JS includes.
-The original layered animated hero, navigation, layouts, RU/EN and mobile auth are
-restored. Do not reinstate studio.css/studio.js or the alternative hero.
-
-- Chatbot is now on `main`; the owner approved publishing the compact FAQ UI on
-  2026-09-07. The rejected anime-studio redesign is not part of this release.
-- Chat: `smweb/support_chat.py`, `smweb/support_knowledge.json`,
-  `smweb/routers/support.py`; router included in main.py. Frontend:
-  `static/js/support-chat.js`, isolated cyan/dark `static/css/support-chat.css`.
-  Widget is omitted in embedded Tools profile editor to avoid duplicates.
-- FAQ links to `/app#<tab>` use existing nav handlers, excluding internal check.
-  No category filtering, gallery changes or processing layout changes remain.
-- Chat suggestions now default to one horizontally scrollable row with a bilingual
-  Expand/Collapse disclosure. Expanded topics wrap in a bounded area; selecting one
-  collapses the list to prioritize the reply. aria-expanded/aria-controls reflect
-  the state. Panel height stays bounded and the conversation owns the free space.
-- Owner selected Groq Free. No key supplied: explicitly marked FAQ mode with 11
-  bilingual help topics. `GROQ_API_KEY`, `GROQ_CHAT_MODEL=openai/gpt-oss-20b`,
-  Groq Responses endpoint, low reasoning, `store:false`. Old OPENAI_API_KEY and
-  SUPPORT_CHAT_MODEL are ignored. No provider/model fallback or retry; Groq 429
-  returns the safe limit response while FAQ stays accessible. Free billing depends
-  on the owner's Groq plan, not application settings. Live replies untested.
-- Public curated knowledge only; never send internal documents, secrets, user
-  records or uploaded media. Chat history is browser memory only, not persisted.
-- Limits: 4/min/IP, 20/day/IP, 300/day globally; six history messages,
-  1500 chars/message, 3000 chars of upstream history, 1600 output tokens.
-  Redis rate_limit has an optional
-  `fail_closed=True` used only by support; existing callers unchanged.
-- This UI release has no migrations or processing changes. Groq setup is unchanged.
-  Preserve pre-existing dirty `data/steam_cache.json`; do not stage it.
-- Setup, checks and future deployment instructions: `SUPPORT_CHAT_SETUP.md`.
-  Owner manages VPS secrets privately. Next: pull the approved compact FAQ release
-  on VPS, rebuild app for the HTML cache keys, then verify collapse/expand and one
-  reply. Do not assume a successful GitHub push also updated the VPS.
-
-SteamShowcase Maker is a bilingual (RU/EN) web application for preparing Steam profile showcases. It provides image/GIF/video processing, Workshop/Featured/Artwork Split output, profile design and import, gallery publishing, downloads, character composition, HEX 21 handling, Pro access, and Modal GPU upscaling.
-
-Current state as of 2026-09-07 (including the local Steam-output/catalog work described below; verify the latest commit):
-
-- Production is an OVH Ubuntu VPS at `/opt/showcasemaker`, deployed with Docker Compose and exposed only through a Cloudflare Tunnel.
-- The local and production branch is `main`; always verify live state with `git rev-parse HEAD` and `git status --short` rather than assuming a documented hash is still current.
-- Modal upscaling works for images, GIFs, and short videos.
-- Async CPU processing and shared result storage work in production.
-- Public Steam profile import uses a Bright Data remote browser because direct Steam requests from the VPS are frequently HTTP 429.
-- The latest work embeds the Pro-only **Steam Check / Готово для Steam** report at the end of normal Process jobs, adds a guided handoff to SteamShowcase Helper 0.9.8, and adds a lossless safe-fix download for naming/order and HEX 21. Steam Check is no longer a visible top-navigation tab; its hidden internal pane is retained because successful Pro Process jobs open that report programmatically. It does not silently resize or recompress failed output.
-- Profile Doctor and Smart Design have async APIs/UI and reuse the Bright Data profile queue plus Gemini multimodal analysis. Profile facts now recognize nested/animated Steam background fields, Gemini output is schema-constrained, and Smart Design uses a larger response budget to prevent truncated JSON.
-- The complete test suite passes locally with `py -3.14 -m unittest discover -s tests -p "test_*.py"`; avoid recording a fixed count here because new feature suites change it frequently.
-- `node scripts/check_i18n.js` statically verifies that the main tools, landing, profile editor, and gallery `data-i` bindings exist in both RU and EN dictionaries. Run it whenever user-facing labels or tabs change.
-- The latest readiness/localization pass exposes the integrated report to authenticated Free as well as Pro users, keeps anonymous ZIP download behavior, adds an anonymous sign-in hint, and reserves the red `NOT READY` verdict for oversized primary Steam files.
-- The current profile-tools refinement aligns the Profile Rating/Design Selection input and result panels, detects SteamShowcase Helper on the Steam tab through the existing constrained site bridge, and replaces generic image-search links with Steam-profile-specific reference destinations.
-- Mobile authentication now lives inside the hamburger drawer: guests see `Log in / Войти`, authenticated users see `Log out / Выйти`, and no auth action is persistently rendered beside the burger. Keep the desktop action and the drawer action synchronized through `static/ss-shell.js`; the landing page also retains matching legacy-menu behavior in `static/js/index.js`.
-
-Do not trust older notes claiming `processor.py` or `requirements.txt` are currently modified. Always run `git status --short` for live state.
-
-## 2. Runtime Architecture
-
-### Request path
-
-`Browser -> Cloudflare -> Cloudflare Tunnel -> nginx -> FastAPI app`
-
-- Cloudflare Tunnel is the intended and only public ingress.
-- nginx binds to host loopback (`127.0.0.1:8080` by default), serves `/static/`, caches Steam catalog assets, and proxies API/page requests to `app:8080`.
-- FastAPI is created in `main.py`. Routers live under `smweb/routers/` and are explicitly included in `main.py`.
-- Router ordering matters: literal routes must not be shadowed by parameterized routes.
-
-### Docker Compose services
-
-- `postgres`: PostgreSQL 16, persistent `pgdata` volume; production source of truth for users, sessions, profiles, gallery, and related records.
-- `redis`: Redis 7, persistent `redisdata` volume; job metadata, queues, liveness, rate limits, and quota counters.
-- `app`: FastAPI/Uvicorn; two workers by default. Uses `/data` from `appdata`.
-- `worker`: external background worker. Uses the same `appdata` volume as app.
-- `nginx`: reverse proxy/static server. Repository `./static` is mounted read-only.
-- `cloudflared`: authenticated Cloudflare Tunnel client.
-
-The app and worker **must share the same `/data` volume**. CPU process results are ZIP files on that shared volume. If storage is not shared, downloads fail with `Result expired or stored on another instance`.
-
-### Background execution
-
-`worker.py` maintains three independent thread pools and Redis queues:
-
-- media processing: `MAX_JOB_WORKERS` (default 1);
-- Steam profile imports: `MAX_PROFILE_WORKERS` (default 1);
-- Modal coordination: `MAX_UPSCALE_WORKERS` (default 4).
-
-Media encoders already use multiple CPU threads. On the current 6-vCPU/12-GB OVH VPS, increasing `MAX_JOB_WORKERS` above 1 can reduce throughput and make the whole site less responsive. Profile and Modal coordination are separated so network-bound work does not block CPU encoding.
-
-The worker publishes a Redis heartbeat. With `WORKER_MODE=external`, the API uses the external worker only when Redis and the heartbeat are healthy; ordinary process jobs can fall back to the embedded pool. Modal upscale intentionally requires Redis plus a live external worker.
-
-## 3. Code Organization
-
-### Backend entry and shared infrastructure
-
-- `main.py`: FastAPI construction, middleware registration, static mounts, and router inclusion.
-- `smweb/core.py`: paths/config, authentication helpers, quota state, client-IP resolution, Pro integration, shared constants.
-- `smweb/middleware.py`: request IDs, security headers/CSP, Origin/CSRF guard, Redis-backed sensitive-route rate limits, selective gzip, static caching.
-- `auth_db.py`: PostgreSQL production backend with SQLite-compatible local behavior, users/sessions/profile persistence, Pro state, OAuth credential protection. This is custom auth, not Better Auth.
-- `smweb/db_backend.py`: database abstraction/pooling support.
-- `redis_store.py`: job storage/queues, worker heartbeat, rate limiting, quota, and local fallback.
-- `smweb/object_store.py`: Cloudflare R2 public/private object operations and presigned URL generation.
-
-### Core product paths
-
-- `smweb/routers/process.py`: async process start/status/download plus disabled legacy synchronous endpoint.
-- `smweb/jobs.py`: shared process-job execution and cleanup.
-- `processor.py`: Pillow/FFmpeg/gifski implementation for Workshop, Featured, Artwork Split, watermarking, animation, and HEX 21. It is large and sensitive; avoid opportunistic refactors.
-- `smweb/routers/media.py`: download/convert/compose/upscale endpoints.
-- `smweb/compose_jobs.py`: character/background composition jobs.
-- `smweb/routers/profile.py`, `tools_api.py`: profile editor and persistence APIs.
-- `steam_browser_import.py`: safe Bright Data CDP adapter for rendered public Steam profiles.
-- `smweb/profile_import_jobs.py`: asynchronous Steam import runner.
-- `steam_profile_guard.py`: direct Steam request cache/cooldown/global gate.
-- `steam_catalog.py`: Steam points/background/avatar/frame/badge catalog access.
-- `smweb/routers/gallery.py`: gallery upload, processing, and moderation.
-- `smweb/routers/auth.py`, `smweb/routers/oauth.py`, `smweb/routers/billing.py`: sessions, social authentication, Pro billing, and webhook handling.
-
-### Frontend
-
-Frontend pages are server-served static HTML with classic JavaScript, not a bundled SPA:
-
-- `static/index.html`: cinematic landing page.
-- `static/app.html`: Tools shell and tabs.
-- `static/profile.html`: profile editor shell.
-- `static/gallery.html`, `static/profile-view.html`: gallery/public profile.
-- `static/js/app.js`: main Tools state and processing behavior. It exposes `window.state`; do not break this compatibility seam.
-- `static/js/app-tail.js`: upload affordances and navigation motion.
-- `static/ss-shell.js`: shared left shell, account/login/activation UI.
-- `static/js/i18n.js`: shared language state.
-- `static/css/creator-os.css`, `redesign.css`, `layout-refinement.css`, `mobile.css`: layered current visual system. Later files intentionally refine earlier styles; CSS order and cache-busting query strings matter.
-
-The intended visual language is dark technical/cinematic, square or minimally rounded panels, cyan/blue accents, strong typography, restrained scan/grid details, and visible but not distracting motion. Preserve RU/EN behavior and test both languages.
-
-## 4. Processing Flow and Endpoints
-
-### CPU showcase processing
-
-1. Frontend sends files/options to `POST /api/process/start`.
-2. The API enforces free/Pro limits, watermark policy, file count, per-user concurrency, safe modes/options, and streams uploads to `/data/jobs/<jid>`.
-3. Job metadata is stored in Redis. With a live external worker the ID enters the media queue; otherwise the API can use the embedded executor.
-4. `worker.py -> smweb.jobs._run_process_job_from_payload -> processor.py`.
-5. Frontend polls `GET /api/process/status/{job_id}`.
-6. Completed ZIP is downloaded from `GET /api/process/download/{job_id}`.
-
-`POST /api/process` is legacy and normally returns HTTP 410 because `ALLOW_SYNC_PROCESS=0`. Do not re-enable synchronous encoding on production: it previously caused site-wide stalls under only a few concurrent users.
-
-Important limits/defaults:
-
-- `MAX_UPLOAD_MB=40` per uploaded input;
-- `MAX_FILES_PER_JOB=10`;
-- `MAX_JOBS_PER_USER=2`;
-- `JOB_RESULT_TTL_SECONDS=900` for completed process ZIPs;
-- Steam-oriented animation processing is capped to 8 seconds and normally 12 FPS.
-
-### Modal upscale flow
-
-The current production flow is:
-
-`browser -> OVH /api/upscale/start -> private R2 input -> Redis upscale queue -> OVH worker -> protected Modal API -> Modal L4 Real-ESRGAN -> private R2 result -> OVH authenticated redirect download`
-
-Endpoints:
-
-- `POST /api/upscale/start`: authenticated Pro-only upload/validation/job create.
-- `GET /api/upscale/status/{job_id}`: owner-only status/progress.
-- `GET /api/upscale/download/{job_id}`: owner-only short-lived R2 redirect.
-- `POST /api/upscale`: disabled legacy sync route (HTTP 410).
-- Modal service: `POST <MODAL_UPSCALE_URL>/submit` and `GET <MODAL_UPSCALE_URL>/result/{call_id}`; `/health` is available behind Modal proxy authentication.
-
-Files:
-
-- `modal_upscale.py`: Modal deployment and protected ASGI API.
-- `smweb/modal_upscale_client.py`: sanitized HTTP client using Modal proxy-auth headers. Never log headers or URLs.
-- `smweb/upscale_jobs.py`: presigned URL creation, Modal submit/poll, safe Redis progress, source cleanup.
-- `smweb/routers/media.py`: application-side upscale endpoints.
-- `smweb/object_store.py`: R2 storage boundary.
-
-Security/data decisions:
-
-- Modal never receives R2 credentials. It receives two short-lived, exact-object presigned URLs.
-- Source and result objects are private. The original is deleted after the job.
-- Download URLs are created only after owner validation and use private/no-store.
-- Modal credentials and R2 credentials live only in `.env`.
-- Errors returned to users are sanitized; raw HTTP exceptions can contain signed URLs and must never be copied into Redis/logs/client responses.
-- Job IDs support the current 32-hex OVH identifier and older valid Modal call identifiers where rolling-deploy compatibility requires it.
-
-Modal model behavior:
-
-- `general` supports 2x and 4x Real-ESRGAN;
-- `anime` uses the anime 4x model but can emit the requested output scale;
-- videos support 2x only;
-- input maximum is currently 40 MB;
-- GIF/video input is limited to 1280x720 and 900 frames; Modal currently accepts up to 30 seconds, while the Steam product flow normally uses <=8 seconds;
-- Modal uses an L4, `min_containers=0`, max 2 containers, so cold starts are expected and save cost.
-
-`UPSCALER_SETUP.md` still describes the older Hugging Face/Nick088 approach and is stale. Treat `modal_upscale.py`, `.env.example`, and this section as current.
-
-## 5. Steam Profile Import
-
-Direct requests from the OVH IP are regularly limited by Steam with HTTP 429. The direct path remains guarded/cached, but it cannot be the reliable production source for full showcases.
-
-Current authenticated import flow:
-
-1. `POST /api/profile/steam-import` validates the public Steam URL and queues a `steam_profile_import` job.
-2. Worker uses `steam_browser_import.fetch_html()` to connect to Bright Data Browser API over CDP, opens and scrolls the public profile, blocks image/media/font bytes for speed, and returns rendered HTML.
-3. Existing Steam parsers extract profile/showcase information; Steam Web API can enrich level/games/summary when configured.
-4. Frontend polls the job and applies the snapshot in `static/js/profile.js`.
-
-Observed behavior: a full browser import may take roughly 30–40 seconds. Do not remove the browser path solely because a local/direct request works. The browser adapter deliberately sanitizes connection errors because CDP URLs contain the Bright Data password.
-
-The browser extension remains a supported alternative and can import from the user's already-open Steam page. Some users will not install it, which is why the server-side browser path must remain functional.
-
-## 6. Steam Check / “Готово для Steam” (Integrated Feature)
-
-The checker is used as the final report for Pro Process jobs. It is no longer presented as a separate top-navigation tool, but `#tab-check` and its hidden navigation trigger intentionally remain in the DOM because `window.SteamCheckResult.open(...)` uses them to display the integrated report after processing. Do not delete that internal pane or hidden button without first replacing this programmatic transition. The analyzer is the shared source of truth.
-
-Files:
-
-- `smweb/steam_readiness.py`: pure, reusable analyzer with no HTTP/UI dependency.
-- `smweb/routers/steam_check.py`: `POST /api/steam-check`, server-side Pro gate, bounded upload and safe ZIP handling.
-- `static/js/steam-check.js`: upload, RU/EN UI, report rendering, direct-file transfer to Process, processed-ZIP download, and extension handoff.
-- `static/css/steam-check.css`: isolated responsive visual module.
-- `static/img/tool-icons/check.svg`: Tools navigation icon.
-- `tests/test_steam_readiness.py`: generated PNG/GIF and mode checks.
-
-Checks currently performed:
-
-- PNG/JPEG/GIF readability and format;
-- per-file 5 MiB limit;
-- animation duration (over 8 seconds is a recommendation/warning, not an automatic failure) and defensive frame cap;
-- Workshop/Featured/Artwork Split auto-detection;
-- expected set count and geometry;
-- generated naming/order conventions;
-- animated-part duration/frame/FPS synchronization;
-- HEX 21 trailer;
-- auxiliary `full_original`, `full_with_bars`, `full_with_watermark`, and preview assets are excluded from final-set requirements.
-
-Security boundaries:
-
-- Pro is enforced again in the API; hiding the tab is not access control.
-- ZIP processing rejects excessive entries, total expanded size, oversized entries, unsafe paths, extreme compression ratios, and unsupported media.
-- Analysis runs in a thread pool rather than blocking the async event loop.
-
-Deliberate first-version limitations:
-
-- It reports problems but does not yet resize, compress, resynchronize, rename, or apply HEX automatically.
-- Separate original files can be sent to Process using `window.state` and `window.renderFiles()`.
-- ZIP contents cannot yet be transferred to Process; the button is disabled for ZIP input until the repair/extraction stage exists.
-- Only finished PNG/JPG/GIF files are checked. Raw video belongs in Process, not this final-output checker.
-
-For Pro users, `process.py` adds `steam_check` to the queued options, `smweb/jobs.py` analyzes generated image/GIF ZIP entries after encoding, and the status endpoint returns `readiness`. `static/js/app.js` opens the final report instead of immediately downloading the ZIP. Free processing retains the previous automatic-download behavior.
-
-`POST /api/steam-check/fix-safe` is the first repair endpoint. It is Pro-gated and uses the same bounded direct/ZIP input rules. It produces a stored ZIP containing only the final set, normalizes Workshop/Featured/Split names and order, and applies HEX 21 without decoding or modifying pixels/frames. It deliberately does not fix geometry, upscale, synchronize, or compress; those actions require an explicit comparison/confirmation flow.
-
-### Browser extension upload flow
-
-The current owner-provided extension source is outside this repository at `C:\Users\n1t1337\Downloads\0.9.8` (manifest 0.9.9 after the privacy release). The older 0.9.7 directory is historical. Do not assume Git deployment updates the Chrome extension.
-
-Version 0.9.8 adds a constrained website-to-extension protocol:
-
-- `START_STEAM_UPLOAD` accepts only sanitized display metadata, stores a short local upload flow, and opens one of the hard-coded trusted Steam uploader URLs;
-- the user always selects each local file manually; the website and extension cannot silently attach local files;
-- existing artwork/workshop content scripts continue applying the transparent title, long-showcase dimensions/settings, visibility/type, and terms;
-- `content-upload-flow.js` shows the expected filename and progress, lets the user advance manually, and opens Steam's showcase-selection page after the final file;
-- `OPEN_SHOWCASE_PICKER` opens `https://steamcommunity.com/my/edit/showcases`;
-- arbitrary URLs from site messages must never be opened.
-
-The Chrome Web Store extension ID is referenced client-side so the site can detect the installed helper. Site deployment requiring 0.9.8 should be coordinated with publishing/testing the 0.9.8 extension package; until the store update is available, users receive the install/update prompt.
-
-The visible Steam tool no longer contains the old `/static/steam_upload_guide.mp4` video. Its right-hand panel is now an RU/EN extension card linking to the known Chrome Web Store ID and explaining the intended flow: choose showcase type, open Steam, manually select local files; the extension applies the transparent title and long-showcase settings. The manual console instructions on the left remain as the fallback for users without the extension.
-
-The extension card was visually refined into a bounded three-step route. Its text must wrap within a `minmax(300px,390px)` column and collapse to one column below 900px; avoid restoring large unbounded prose or a fixed-width video frame.
-
-## 6.1 Profile Doctor and Smart Design
-
-Both tools are separate Tools tabs and share one background pipeline:
-
-`POST /api/profile-insights/start -> Redis profile queue -> Bright Data Steam import -> bounded Gemini multimodal request -> Redis result/history`
-
-- `kind=doctor`: authenticated; Free is limited to one successful result per seven-day Redis history window, with a short start throttle so temporary upstream failures do not consume the weekly use. Pro has a hidden daily abuse cap. If Gemini is unavailable, it returns an explicitly labeled deterministic baseline instead of inventing AI output.
-- `kind=design`: Pro-only and requires Gemini; returns up to three static showcase directions, palettes, prompts, and image-search queries. It does not generate a fake complete profile and does not store reference media.
-- `GET /api/profile-insights/status/{job_id}` is owner-only.
-- `GET /api/profile-insights/history` returns up to ten owner-only results. Redis history expires after seven days.
-- `smweb/profile_insights.py` contains the single universal prompt, bounded profile projection, Gemini client, fallback, and Steam-CDN visual collection.
-- Steam profile facts are authoritative: background detection must cover `background`, string `background_movie`, and nested `background_item` poster/webm/mp4 fields. Do not let Gemini infer that an imported element is absent when these fields say it exists.
-- Gemini `generateContent` uses a kind-specific JSON response schema. Smart Design also tolerates the historical `directions`/`designs` aliases, but the canonical output key is `concepts`. Doctor `priority` is an actionable sentence, not a low/medium/high severity label.
-- Smart Design needs a larger output allowance than Doctor because it returns three concepts. Its current cap is 4096 output tokens plus explicit compact field limits; lowering this back to 1800 caused truncated JSON (`finishReason=MAX_TOKENS`).
-- `smweb/profile_insight_jobs.py` owns the network job. `worker.py` routes `profile_insight` onto the profile pool, not the CPU media pool.
-- `smweb/routers/profile_insights.py`, `static/js/profile-insights.js`, and `static/css/profile-insights.css` are the API/UI boundary.
-- Product naming is now RU `Оценка профиля` / `Подбор оформления` and EN `Profile Rating` / `Design Selection`. Their large per-tab headings are RU `ОЦЕНКА` / `ПОДБОР` and EN `RATING` / `SELECTION`, not the generic Process heading.
-- Navigation labels, page title/subtitle, kickers, field labels, style choices, notes, and empty states are localized independently for RU and EN. Preserve both languages when changing either AI tab; do not leave static English strings visible in RU mode. The Gemini prompt also explicitly requires every returned natural-language string to use the requested interface language.
-- Navigation icons are `static/img/tool-icons/profile-rating.svg` (diagnostic shield/pulse) and `static/img/tool-icons/design-selection.svg` (swatches/spark), wired in `static/css/creator-os.css`.
-- `static/js/steam-extension-status.js` owns the visible Steam-tab extension status. It sends a bridge `PING`, falls back to Chrome's externally-connectable runtime API, repeats the check when the Steam tab/focus returns, and changes the install action into a connected version badge when 0.9.8 responds. Keep this detection on the existing allowlisted bridge; do not infer installation from cookies or server state.
-- Design Selection now offers explicit `gothic` and `automotive` preferences. Its Gemini prompt must preserve the detected concrete subject (vehicle, character, architecture, etc.) separately from genre/mood/palette; dark colors alone must not erase automotive or gothic subject matter.
-- Design Selection reference actions are deliberately DeviantArt-only buttons. Every query is normalized to the exact working form `Steam showcase <one English keyword>` (for example `Steam showcase anime`, `Steam showcase cars`, `Steam showcase blue`). Long literal queries return empty DeviantArt results and must not be restored. Gemini may return up to four keywords covering only visually confirmed showcase subject/style and dominant colors. Explanatory AI output still follows the RU/EN interface language. Third-party reference media is not stored by the service.
-- The result UI displays only the keyword as a compact button (for example `ANIME`), while the complete DeviantArt query remains in the link URL/title. Keywords are deduplicated globally across all three concepts; repeated Gemini tags are discarded and filled with distinct safe discovery tags so the three directions do not show nearly identical links.
-- Design analysis sends actual showcase images before avatar/background/frame context, accepts the Steam CDN suffix `.steamusercontent.com`, and may send up to seven bounded images. The prompt explicitly forbids inventing concrete objects (especially dragons) from frames, badges, silhouettes, gothic ornament or palette alone.
-
-Security boundaries: only public `https://steamcommunity.com/id|profiles/...` URLs are accepted; visual context can only be fetched from allowlisted Steam CDN suffixes, redirect destinations are revalidated, each source image is capped and re-encoded to a bounded JPEG, profile text is explicitly treated as untrusted prompt data, AI text is rendered escaped, API keys remain server-side, and errors sent to clients are sanitized.
-
-## 6.3 Steam Output Quality and Profile Catalog (local 2026-09-07 state)
-
-- Process now exposes the existing adaptive GIF size fitter as **Smart compression to 5 MB / Умное сжатие до 5 МБ**. This is an always-on guarantee for final Steam GIFs, not a cosmetic browser-only toggle: `processor.ensure_under_mb()` already retries quality/palette/frame strategies and is called by Workshop, Featured, Split, Compose, and Loop output paths. Auxiliary full-size previews remain exempt where documented.
-- Workshop processing has an optional per-panel inner outline with configurable 1–8 px thickness and color. The outline is drawn after the five-way cut, so each uploaded panel receives its own border and output dimensions do not change. Static PNG uses Pillow; animated/video Workshop output adds FFmpeg `drawbox` to each crop before GIF encoding and size fitting. Options flow from `static/app.html` / `static/js/app.js` through `/api/process/start`, `smweb/routers/process.py`, and `smweb/jobs.py` into `processor.py`.
-- The watermark preview canvas also previews all five outlines. Keep the feature Workshop-only; Featured and Split must ignore these options.
-- The profile editor now loads the official server-side Steam catalog first, without requiring the browser extension or opening a Steam profile. For backgrounds it merges market static backgrounds, Points Shop static backgrounds, and animated backgrounds; avatar/frame pages use the Points Shop catalog. Extension data is a best-effort supplement only.
-- Selecting a catalog background/avatar/frame reveals a localized **Buy selected item on Steam** action. Market items use their exact Community Market listing; Points Shop items use the exact `/points/shop/app/{appid}/reward/{defid}` URL. Do not regress this to a generic app page when `defid` is available.
-- `tests/test_workshop_outline.py` covers static per-panel outlines and exact Points Shop reward URLs. The Windows development host still lacks FFmpeg, so animated outline output requires a production-container smoke test.
-
-Required production variables are documented in `.env.example`: `GEMINI_API_KEY`, optional `GEMINI_MODEL`, and `PROFILE_AI_PRO_DAILY`. The current default is `gemini-3.6-flash`; Google returns HTTP 404 for `gemini-2.5-flash` to new API users. A consumer Gemini/Google AI subscription is not the API credential or API quota.
-
-## 6.2 Seamless Loop
-
-The Pro-only **Loop / Зациклить** tab creates a repeatable animation from an existing animated GIF or video without modifying the source. It is intentionally a separate tool now, but its downloaded GIF/MP4 is compatible with the normal Process upload flow.
-
-- `POST /api/loop/start` accepts content-validated GIF, MP4, WebM, or AVI input, enforces authentication/Pro, upload size, active-job and route limits, then uses the existing media queue.
-- `GET /api/loop/status/{job_id}` and `GET /api/loop/download/{job_id}` are owner-only. Results use private R2 when configured and shared `/data` as the fallback.
-- `smweb/loop_jobs.py` performs work outside Uvicorn. FFmpeg decodes a bounded, even-width PNG sequence; the worker then creates the join frame-by-frame before gifski/FFmpeg encodes it. The public product exposes only `pingpong` (forward, then backward), and the router forces that mode even for stale clients. The internal sequence helper still supports `blend` for compatibility/tests, but do not expose it without a new product decision. Do not restore the original direct `xfade -> libx264` graph: it failed with zero output packets in the production FFmpeg build. Audio is deliberately removed because Steam showcase output is visual.
-- GIF output reuses the existing high-quality GIF pipeline and Steam size fitting; MP4 uses H.264. Input width is preserved up to 1280 px rather than blindly upscaling small sources.
-- Sources up to 30 seconds are accepted. The browser uses an editor-style timeline with two draggable trim handles, a playhead, a large source preview, and Start/Result/End readouts. A source fragment may be at most 4 seconds because `pingpong` doubles it; the generated Steam loop is therefore hard-bounded to 8 seconds. Video preview seeks and repeats the selected source interval, while GIF preview plays normally and applies the selection during server processing. There is no user-facing transition-length control.
-- `static/js/seamless-loop.js` owns upload, polling, preview/trim, RU/EN text, and Process navigation. `static/css/seamless-loop.css` owns the two-column motion-workbench and timeline layout. Keep the server-side Pro gate and 8-second cap even if the frontend controls change.
-
-## 7. Security and Operational Decisions
-
-- Authentication is server-side session-cookie auth backed by the `sessions` table. Password hashing uses the configured PBKDF2 iteration count.
-- Cookies must be Secure in production. Session TTL is configurable.
-- `OriginGuardMiddleware` rejects cross-origin cookie-authenticated writes.
-- `TrustedHostMiddleware` uses `APP_URL`/`ALLOWED_HOSTS`.
-- `RateLimitMiddleware` protects login/register/unlock/admin/process/profile import/compose/gallery/download paths. New expensive endpoints should receive explicit route-level and/or middleware limits.
-- Client IP resolution depends on `TRUSTED_PROXY_HOPS`. With Cloudflare plus nginx the production value is normally 2, but verify with the admin whoami endpoint after proxy changes.
-- Free-tier watermark behavior is enforced server-side in `process.py`.
-- Stripe Pro grants require a configured, verified webhook secret. Never parse unsigned webhook bodies as proof of payment.
-- OAuth credentials and DeviantArt refresh/access tokens are protected at rest where supported by the auth database layer.
-- R2 private objects must never be exposed through the public media base URL.
-- CSP still permits inline script/style because the frontend contains legacy inline code. Removing `'unsafe-inline'` requires a deliberate frontend migration, not a one-line header edit.
-
-## 8. VPS Deployment and Backups
-
-Production repository: `/opt/showcasemaker` on the OVH VPS.
-
-The VPS working tree intentionally contains many untracked historical `.before-*`, `.bak`, Dockerfile backup files, `backups/`, and a production `docker-compose.override.yml`. **Never run `git clean`, delete these files, or overwrite the override without inspecting it.** Normal `git pull --ff-only` leaves them untouched.
-
-Persistent data is not fully represented by Git:
-
-- PostgreSQL: Docker volume `pgdata` — create a `pg_dump` before risky updates.
-- Redis: Docker volume `redisdata` — operational/transient but still persisted.
-- app working/results/codes: Docker volume `appdata` mounted at `/data`.
-- persistent uploaded media: Cloudflare R2 public/private buckets.
-- secrets/config: VPS `.env` and Cloudflare/Modal dashboards — never commit.
-
-Safe update outline:
-
-1. Record `git rev-parse HEAD` and create a timestamped PostgreSQL dump.
-2. Optionally archive only material `/data` configuration (for example access codes), not disposable job outputs.
-3. `git fetch origin`, inspect status, then `git pull --ff-only`.
-4. `sudo docker compose config --quiet`.
-5. Rebuild `app` and `worker`, then recreate services with Compose.
-6. Verify Compose status, `/api/ready`, `/api/health`, app/worker/nginx logs, and the public smoke test.
-
-Do not use `docker compose down -v`; `-v` deletes named persistent volumes. Rolling code back must not delete PostgreSQL, R2, or appdata.
-
-Static files are served by nginx from the repository mount, but backend/router changes require rebuilding/recreating app and worker. Rebuild both because they share Python code and dependencies.
-
-## 9. Known Bugs, Risks, and Unresolved Work
-
-- Steam Check only has the lossless safe-fix stage. Geometry correction, upscale confirmation, synchronization, and an explicit checker-side compression comparison/confirmation flow are unresolved. Normal Process output already performs adaptive <=5 MiB fitting automatically.
-- Seamless Loop has syntax/unit/UI coverage but still needs its first production-container smoke test with real GIF and MP4 inputs because the Windows development host does not have FFmpeg. Verify both `blend` and `pingpong`, GIF/MP4 download, private R2 preview, and a result passed into Process.
-- Steam Check ZIP input cannot yet be handed directly to Process.
-- The integrated Process report has automated unit/syntax coverage but still needs production browser testing with real Workshop, Featured, and Artwork Split outputs and the unpacked 0.9.8 extension.
-- Profile Rating and Design Selection have been exercised against production Gemini/Bright Data. Remaining QA should focus on subjective output quality and factual consistency. Design Selection currently shows AI palettes/directions and thematic Steam-profile reference actions; inline licensed reference thumbnails and a richer seven-day history UI remain follow-up work.
-- The updated Design Selection classifier/prompt still needs production sampling across automotive, gothic, horror, realism, mixed-theme and ambiguous profiles. Add prompt regression fixtures before making large prompt changes; subjective output quality cannot be proven by schema tests alone.
-- Chrome extension publishing is a separate manual release. A Git/VPS deployment alone does not distribute extension 0.9.8.
-- Direct Steam profile scraping from OVH is unreliable due to Steam HTTP 429; Bright Data browser import is the current workaround and has latency/cost.
-- Modal `min_containers=0` means the first upscale after idle can be noticeably slower. Do not raise warm containers without discussing cost.
-- CPU media processing capacity remains limited by 6 vCPU. Keep heavy work out of Uvicorn and avoid raising media concurrency blindly.
-- Process ZIP files expire and are local to shared `/data`; loss of volume sharing or cleanup produces the explicit “Result expired…” response.
-- The classic frontend has multiple layered scripts and style sheets. DOM IDs, `window.state`, `window.renderFiles`, nav tab conventions, and script order are compatibility boundaries.
-- Authentication buttons previously responded intermittently because bindings were overwritten/raced. Commit `551a8f7` rewired OAuth/auth openers; monitor after changes to `ss-shell.js`, `app.js`, or `app-tail.js`.
-- Profile showcase import previously placed an author/avatar image into the first showcase slot; regression coverage is in `tests/test_showcase_avatar_filter.py`.
-- `README.md` describes only the landing-page replacement and is not a complete product README. `UPSCALER_SETUP.md` is obsolete for the current Modal flow.
-- Steam Check was visually tested in locked, unlocked, warning, RU, and EN states. Its current product entry is the Process completion flow, not top navigation. Full browser E2E with a real production Pro session is still recommended after deployment.
-- Process now sets `opts.steam_check` for any authenticated account (`quota.email`), not only Pro. Anonymous users receive the ZIP plus a localized sign-in hint; authenticated Free/Pro users receive the integrated report. The standalone upload checker and `/api/steam-check/fix-safe` remain Pro-only.
-- Readiness rows keep auxiliary files yellow and non-blocking. The headline is `READY` unless a primary Steam upload file exceeds 5 MiB; other geometry/naming/HEX/sync findings remain visible as recommendations/check states without changing the headline to red.
-
-## 10. Files That Require Extra Care
-
-- `processor.py`: output dimensions, names, animation timing, HEX, and encoding.
-- `auth_db.py`, `sql/schema_pg.sql`: production identities and migrations.
-- `smweb/core.py`, `smweb/middleware.py`: auth, IP trust, quotas, CSP, CSRF, limits.
-- `redis_store.py`, `worker.py`, `smweb/jobs.py`: concurrency and job durability.
-- `smweb/object_store.py`, `smweb/upscale_jobs.py`, `smweb/modal_upscale_client.py`: private media/security boundary.
-- `modal_upscale.py`: deployed separately to Modal; committing it does not update the Modal service until `py -m modal deploy modal_upscale.py` is run.
-- `docker-compose.yml`, `nginx/nginx.conf`: production reachability, volumes, and resource behavior.
-- `static/app.html`, `static/js/app.js`, `static/js/app-tail.js`, `static/ss-shell.js`: shared Tools/auth/nav behavior.
-- `static/css/creator-os.css` and later refinement files: global layout cascade.
-
-## 11. Rules for Future Agents
-
-1. Preserve user files and existing dirty-worktree changes. Never delete `backups/`, `.tmp-*`, production `.before-*` files, or Compose overrides.
-2. Never commit secrets, tokens, `.env`, credentials, presigned URLs, database dumps, user media, or production cache data.
-3. Do not refactor or relocate root modules merely for tidiness. Several are intentional compatibility seams.
-4. Add routers under `smweb/routers/`, include them explicitly in `main.py`, and keep route ordering safe.
-5. Add database changes idempotently and support the current PostgreSQL source of truth. Test migrations before production.
-6. Keep expensive processing asynchronous and outside Uvicorn.
-7. Enforce Pro/access/security server-side; frontend gates are presentation only.
-8. Validate media by content/magic and decoded metadata, never only filename or client MIME type.
-9. Keep errors safe. Network exceptions may contain API credentials or signed object URLs.
-10. Maintain both RU and EN text and test desktop plus narrow layouts.
-11. Bump static `?v=` cache keys whenever changing linked CSS/JS.
-12. Before committing, run Python compile checks, JS syntax checks for changed scripts, the full unittest suite, and `git diff --check`.
-
-## 12. Next Steps
-
-Recommended order for the next coding agent:
-
-1. Load extension 0.9.8 unpacked and test the complete Process -> final report -> correct Steam uploader -> sequential file guidance -> showcase selection path.
-2. Test the integrated report on production with generated Workshop PNG/GIF, Featured, and Artwork Split output; verify ZIP download still works before the job TTL expires.
-3. Collect mismatches between analyzer rules and actual `processor.py` output; add regression tests before changing rules.
-4. Design a repair plan/result contract in `smweb/steam_readiness.py`, then add optional Pro-only fixes incrementally: naming/order; HEX 21; geometry/upscale confirmation; animation synchronization; <=5 MiB compression with quality reporting.
-5. Improve Profile Doctor/Smart Design result quality using regression fixtures from real public profiles, while keeping imported presence facts authoritative and all visual conclusions labeled as AI estimates.
-6. Add optional licensed/static reference thumbnails and a richer seven-day history UI to Smart Design without permanently storing third-party media.
-7. Production-smoke-test Seamless Loop with real GIF/MP4 files, then add a deliberate direct handoff into Process only after deciding whether to download/re-upload or add an owner-only server-side result-transfer contract.
-8. Update or replace stale `UPSCALER_SETUP.md`, expand README, and add browser E2E coverage for RU/EN, the Process-integrated report, Steam extension card/handoff, Loop, and auth/Pro gates.
-9. Smoke-test Workshop outline in the Linux worker with one real MP4 and GIF using both gifski and FFmpeg encoders; visually verify border continuity across all five uploaded parts and that each primary GIF remains <=5 MiB.
-10. Production-test catalog pagination/search for market backgrounds, Points Shop backgrounds, animated avatars, and frames; Steam may rate-limit the VPS, so confirm cached fallback behavior without making the extension mandatory again.
-
-## 13. Verification Commands
-
-From the repository root on Windows development:
-
-```powershell
-py -3.14 -m py_compile main.py smweb/steam_readiness.py smweb/routers/steam_check.py
-node --check static/js/steam-check.js
-py -3.14 -m unittest discover -s tests -p "test_*.py" -v
-git diff --check
-git status --short
-```
-
-Production health checks are documented in `DEPLOY.md`. Always inspect command output; a container being “Up” is not sufficient if `/api/ready`, Redis worker heartbeat, PostgreSQL, R2, or Modal configuration is unhealthy.
-
-## 14. Local Rotation, Controls, and Email Verification (2026-09-08)
-
-- This work was intentionally kept local. No commit, push, Sites publish, or VPS deployment was performed.
-- Process owns a per-file clockwise rotation value. `static/js/app.js` keeps it in `state.fileRotations`, displays an animated image/video thumbnail with left/right/reset controls, and posts the aligned JSON array as `rotations`. `smweb/routers/process.py` validates/snap-normalizes it to quarter turns, persists it beside each upload, and `smweb/jobs.py` applies it before resizing/cutting. Do not collapse this into one job-wide rotation.
-- `processor.rotate_image()` and `_ffmpeg_rotation_filter()` define the shared rotation convention: positive degrees are clockwise, the canvas expands, proportions are preserved, and the original upload is never changed. Still images use Pillow; GIF/video sources are rotated during frame extraction before Steam resizing and cutting.
-- Character compose accepts a free `-180..180` degree angle. The browser canvas computes the rotated bounding box and the server passes the same angle through `smweb/routers/media.py` -> `smweb/compose_jobs.py` -> `_place_character()`. Keep preview and rendered output using the same bottom-center anchor semantics.
-- Process mode buttons now contain code-native diagrams for Workshop (five panels), Featured (one wide panel), and Artwork Split (506+100). Keep diagram nodes out of the generic `.mode > span` localization path.
-- `static/css/tools-polish.css` is the final Tools-only cohesion layer. It owns mode diagrams, per-file controls, unified checkbox/range/color styling, focus states, overflow protection, and narrow layouts. Load it after the older cascade and bump its cache key after edits.
-- Registration verification codes now live only in `email_codes`, are HMAC-SHA256 keyed by `SECRET_KEY`, expire, permit at most eight attempts, and are consumed atomically with account creation. `SECRET_KEY` must contain at least 32 characters. Failed mail delivery invalidates the code. `/api/auth/send-code` returns a neutral success response for an existing address to prevent account enumeration and has IP plus address rate limits.
-- `auth_db.register_with_email_code()` is the registration transaction seam. Validate the password before starting it so password mistakes do not consume a valid code; retain the SQLite `BEGIN IMMEDIATE` / PostgreSQL `FOR UPDATE` split so concurrent requests cannot spend one code twice.
-- Shared auth verification UI uses `КОД ИЗ ПИСЬМА` / `CODE FROM EMAIL` and `ВАШ КОД` / `YOUR CODE`, numeric six-digit input filtering, and deliberate label/input spacing. Shared auth/script and global creator-style cache keys were bumped across all public pages.
-- `static/ss-shell.js` is the only registration UI allowed to call `/api/auth/register`; legacy home/app auth modals may still exist for compatibility, but their registration paths delegate to `SSShell.openAuth('register')`. Keep `?auth=1` and `?auth=register` opening this shared verified-email flow, and add RU/EN text for any new structured backend error code.
-- Rotation/auth regressions live in `tests/test_rotation_and_email_verification.py`. UI QA covered every visible Tools tab in RU/EN at 1440px and 390px; deliberate top-nav scrolling is allowed, document-level horizontal overflow is not.
-- Process rotation controls live below the large watermark preview, not inside every compact file card. `state.activeProcessFileIndex` owns which file is shown and rotated; clicking or keyboard-selecting a file card changes it. The canvas rotates around its centre, recomputes its aspect ratio immediately, and keeps watermark coordinates in the same post-rotation space used by the backend.
-- Tools checkboxes intentionally render as cyan on/off switches, and every range uses a round cyan thumb plus a progress-filled rail. `syncRangeVisual()` owns `--range-progress`; call it whenever code changes a slider value without dispatching an input event.
-- FPS choices are intentionally constrained to 12/15/18/20/24 in Process, Character, and Loop so all animation tools share the same Steam-oriented presets.
-- `--sm-action-radius` in `static/css/layout-refinement.css` is the shared geometry seam for ordinary buttons and button-like links. Do not use it for switches, avatars, or status pills.
-- Workshop and Artwork Split GIF output are synchronized groups, not independent conversions. Each mode decodes and scales the source once, derives every panel from that shared timeline, and `_encode_synchronized_frame_group()` selects the highest one quality setting that keeps every related panel within 5 MiB. Never run per-panel FPS, frame dropping, scaling, or quality fitting; a lower common setting is preferable to visible seams or timeline drift. Different panel widths will naturally produce different file sizes even though their quality setting is identical.
-
-## 15. Local Workspace Finishing Pass (2026-09-10)
-
-- This pass is local only. Do not claim it is committed, on GitHub, or deployed to the VPS.
-- `static/js/process-guide.js` owns the small Process guidance interface: local source probing, route state, pre-submit blocking and elapsed UI timing. Keep media bytes in the browser during probing; backend validation remains authoritative.
-- Process has four visible stages. Advanced settings are collapsed by default, while FPS, output width and the watermark switch stay immediately visible. `#processModeCard`, `#processSettingsCard`, `#wmPreviewCard` and `#processFilesCard` are explicit layout seams; do not return to fragile `nth-child` placement.
-- Builder templates add only generated decoration layers and preserve user media. Layers support duplicate, lock, smart snapping, arrow-key movement and Ctrl/Cmd+D. Locked layers may be shown/hidden or duplicated but not edited, dragged, reordered or deleted until unlocked.
-- Builder diagnostic backdrops are preview-only. During export `exportingCanvas` forces the actual project background and all visible background layers. Do not let a dark/light/checker edge-check mode leak into saved output.
-- Static chromakey previews are cached; video chromakey refresh is bounded. The hidden Builder tab skips canvas rendering. Preserve these limits when changing the draw loop.
-- New Process and Builder strings are hand-written for all eight languages. `scripts/check_i18n.js` excludes the reviewed `NEW_COPY` block from generated-pack checks and separately verifies identical key sets for EN/RU/DE/TR/FR/UK/ES/PT.
-
-## 16. Local Builder Motion Experiment (2026-09-13)
-
-- Local only: no commit, push or deployment. `BUILDER_MOTION.md` records controls, limitations and manual acceptance checks.
-- `static/js/builder-motion.js` owns scene intensity, depth/protection/light passes, static masked brush animation and preview-only Steam cut gaps. The ordinary Builder integrates it through an adapter; do not introduce per-panel animation timelines or mutate layer transforms when changing intensity.
-- New motion copy lives in `builder-motion-copy.js` with eight translations per key, checked separately by `scripts/check_i18n.js`. CSS is Builder-scoped; shared existing design/control geometry remains in use.
-- Static brush animation is deliberately experimental and capped to a 1024px processing side. It is not an AI animation feature and does not warp animated GIF/video layers. Stroke and pin complexity are bounded both in the browser and saved-project validation.
-- Depth-enabled weather uses background/far/character/near/title planes. Protection is a manual softened rectangle, not detected faces. Scene lighting is artistic screen blending, with lightning pulses sharing the source effect timing.
-- The earlier pingpong-only public loop restriction is superseded: `/api/loop/start` now accepts validated `blend` and `pingpong` and a bounded overlap. Existing Pro/auth/rate limits and owner-only downloads remain mandatory. Looping occurs once on the full scene before synchronized Process cutting.
-- Live loop preview is exact for procedural/local motion but does not seek/reverse source GIF/video playback. The rendered join preview is the actual worker output and requires Pro. Do not describe the live canvas as a frame-exact video loop preview.
-- Regressions are in `tests/test_builder_motion.py` and `tests/builder-motion.test.js`: saved-field validation, pure scene math, real GIF/MP4 loop encoding, API mode validation and Pro enforcement. The full suite passed 104 tests; a real signed-in Pro Builder-to-Process flow remains manual acceptance work.
+# SteamShowcase Maker Web — agent handoff
+
+Read this file fully before touching the project. It was rewritten on 2026-09-25 after
+a full code audit; every claim below was checked against the code on that date. Never put
+secrets, `.env` values, tokens, presigned URLs, access codes or user data in this file.
+The owner speaks Russian: reply in Russian, write code/comments in English.
+
+## 0. Start here (30-second orientation)
+
+1. **What it is:** FastAPI web app that turns images/GIFs/video into Steam profile showcases
+   (Workshop 5 panels, Featured, Artwork Split), plus GPU upscale, Loop, Character compose,
+   layered Builder, Steam profile import, AI profile rating, gallery, Pro access.
+   Production: `showcasemaker.com`, OVH VPS, Docker Compose. Load is small (2–5 concurrent users).
+2. **Working folder:** `C:\Users\n1t1337\Desktop\showcaseclaude`. It is **not its own git repo**:
+   it sits untracked inside the home-directory repo (`C:\Users\n1t1337`). The owner will run a
+   proper `git init` / link to GitHub **after the cleanup is finished**. Until they say so:
+   no git write commands, no commits, no pushes. Do not touch sibling folders
+   (`Desktop\CLAUDE`, `ANT`, `OVH` are older copies).
+3. **Verify before you change anything:**
+   ```powershell
+   $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
+   Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 245 passed on 2026-09-25 (~35 s)
+   node scripts/check_i18n.js                          # must print "complete"
+   ```
+   The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
+   FFmpeg 8.1 and gifski are installed on the dev machine (older notes saying otherwise are wrong).
+4. **`.env` exists locally** (a possibly outdated copy of the VPS one). Never print its values.
+   Code reads only process environment variables (no dotenv), so tests never load it.
+5. **Cleanup status and what remains:** see section 12 (only the owner's VPS `.env` tidy-up and the git baseline remain).
+
+## 1. Stack and runtime
+
+`Browser → Cloudflare → Tunnel (cloudflared) → nginx → FastAPI (app:8080)`;
+side services: PostgreSQL 16 (source of truth), Redis 7 (queues, quotas, rate limits, job
+state), `worker` container (same image, `python worker.py`), Cloudflare R2 (persistent media),
+Modal GPU (Real-ESRGAN upscale). Compose services: `postgres redis app worker nginx cloudflared`.
+
+- `app` and `worker` **must share the `appdata:/data` volume** (result ZIPs live there).
+- nginx binds only to `127.0.0.1:8080`; serves `/static/` itself; blocks `.bak`/`.before-*`.
+- `TRUSTED_PROXY_HOPS=2` (Cloudflare + nginx). Client IP is taken from the RIGHT of
+  `X-Forwarded-For` (`smweb/core.py:_ip`). Quota and rate limits depend on it.
+- Python 3.12 in the image, 3.14 locally. Dockerfile builds gifski 1.34 from Rust.
+- Uvicorn workers: Dockerfile default 1, compose sets 2. `WORKER_MODE=external` in compose;
+  if the worker heartbeat (`sm:worker:beat`, TTL 30 s) is missing the API silently falls back to
+  its embedded thread pool (`MAX_JOB_WORKERS`, default 1). Upscale/Modal requires the worker.
+- 8 UI languages: `en ru de tr fr uk es pt` (`smweb/locales.py`). Pages are served at
+  `/<lang>/…`; unprefixed paths redirect by cookie `sm_lang` / `Accept-Language`.
+
+## 2. Repository map
+
+| Path | Role |
+|---|---|
+| `main.py` | wiring only: middleware, static mounts, `include_router()` (order matters) |
+| `worker.py` | external worker: 3 thread pools (media / profile / upscale), one multi-queue `BRPOP` |
+| `smweb/core.py` | env/paths, `_ip`, `_auth_user`, `quota_state/quota_inc`, cookies |
+| `smweb/middleware.py` | request id, security headers/CSP, Origin guard, rate limits, feature gates, own gzip, static cache |
+| `smweb/routers/*.py` | HTTP routes (auth, oauth, billing, process, media, profile, gallery, builder, admin, system, …) |
+| `smweb/*_jobs.py` | background job bodies (process in `jobs.py`, compose, loop, upscale, profile import/insight, steam_dna, workshop_studio, background_remove) |
+| `auth_db.py` | users/sessions/gallery/profiles; SQLite **and** PostgreSQL via `smweb/db_backend.py` |
+| `sql/schema_pg.sql` | idempotent PG schema applied at first connection (keep in sync with `auth_db._create_schema`) |
+| `processor.py` | Pillow/FFmpeg/gifski pipeline — sensitive, avoid opportunistic refactors |
+| `redis_store.py` | job store/queues, rate limit, quota, caches; degrades to in-process dicts without Redis |
+| `smweb/object_store.py` | R2 (public/private buckets, presigned URLs) |
+| `steam_catalog.py`, `steam_browser_import.py`, `steam_profile_guard.py`, `smweb/steam*.py` | Steam integrations |
+| `modal_upscale.py` | Modal service, deployed separately (`py -m modal deploy modal_upscale.py`) |
+| `tools_api.py` | extra `/api/*` routes (optimizer, Steam catalog, builder render); mounted in `try/except` |
+| `static/` | classic HTML + JS/CSS, no bundler; `?v=` query is the cache key — bump it on every edit |
+| `tests/` | pytest suite (39 files); `scripts/qa_*.py` are Playwright UI checks (not in CI) |
+| `docs/` | audits; only `THREAT_MODEL.md` and `RELEASE_AUDIT_2026-09-22.md` are current |
+
+## 3. Request and job flow
+
+- **Process:** `POST /api/process/start` (quota, per-user job cap, streams uploads to
+  `/data/jobs/<jid>`, SHA-256 dedup cache) → Redis job → worker (`smweb/jobs.py` →
+  `processor.py`) → `GET /api/process/status/{id}` → `GET /api/process/download/{id}` (ZIP,
+  TTL `JOB_RESULT_TTL_SECONDS`, default 86400). `POST /api/process` is a permanent HTTP 410 stub.
+- **Upscale (Pro):** private R2 input → Redis `gpu` queue → worker → Modal with two exact-object
+  presigned URLs (Modal never sees R2 keys) → private R2 result → authenticated redirect.
+- **Steam import:** queue `profile` → Bright Data browser over CDP (Playwright) → parsers →
+  snapshot in DB. Direct Steam requests from the VPS get HTTP 429; keep the browser path.
+- **Cancel:** API sets `cancel_requested` in Redis; `process_control.run()` polls it and
+  terminates FFmpeg/gifski. Modal upscale cannot be cancelled.
+- **Health:** `/api/ready` (compose healthcheck), `/api/health` (DB, Redis, R2 cached, worker,
+  ffmpeg, gifski). Expected on prod: `database_backend=postgresql`, `worker.external_alive=true`.
+
+## 4. Auth, access, security decisions
+
+- Custom session auth: cookie `sm_session` (HttpOnly, SameSite=Lax, Secure); DB stores
+  `sha256:<token>`. PBKDF2-SHA256 passwords. E-mail codes are HMAC(`SECRET_KEY`) in
+  `email_codes`, attempts-limited; `SECRET_KEY` must be ≥ 32 chars. Providers: e-mail, Discord,
+  Google, Telegram, Steam OpenID. Registration UI lives only in `static/ss-shell.js`.
+- Admin: `ADMIN_SECRET` → stateless HMAC cookie `sm_admin` (8 h, CSRF header, audit table).
+  It cannot be revoked server-side except by rotating `ADMIN_SECRET`.
+- Pro: DB flag/`pro_until` set by activation code (`data/access_codes.json` on the volume),
+  Stripe (needs verified webhook secret), Gumroad, trial. Enforce Pro **server-side**; UI gating
+  is cosmetic. Pro-only: Upscale, Loop, `/api/steam-check` standalone + `fix-safe`, Design Selection.
+  Free (signed in): integrated readiness report, Profile Rating once per 7 days.
+- Free watermark is forced server-side only in `/api/process/start` (`_watermark_options`);
+  `tools_api.enforce_watermark` intentionally returns options unchanged (two policies — known).
+- Never expose errors that may contain provider URLs/credentials (Modal, R2 presigned, Bright
+  Data CDP URL). Validate media by magic bytes/decoded metadata, not names or MIME.
+- CSP still allows `'unsafe-inline'` (legacy inline scripts). Removing it is a frontend project.
+- Keep expensive endpoints behind route limits in `RateLimitMiddleware.RULES` and job caps.
+
+## 5. External services (env names only)
+
+Modal (`MODAL_UPSCALE_URL`, `MODAL_PROXY_TOKEN_*`), R2 (`R2_*`), Bright Data
+(`BRIGHTDATA_BROWSER_*`), Gemini (`GEMINI_API_KEY`, model default `gemini-3.6-flash`) for
+Profile Rating / Design Selection, Groq (`GROQ_API_KEY`) for support chat and Steam DNA
+(no key ⇒ FAQ mode), Resend (`RESEND_API_KEY`, `MAIL_FROM`/`EMAIL_FROM`), Stripe, Gumroad,
+remove.bg (`REMOVE_BG_API_KEY`, Builder still layers only), DeviantArt (`DA_*`), Steam Web API
+(`STEAM_API_KEY`), yt-dlp for `/api/download-url` (domain allow-list + resolved-IP check).
+Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
+
+## 6. Feature notes worth remembering
+
+- **Steam Check** (`smweb/steam_readiness.py`, `routers/steam_check.py`): shown as the final
+  report of Process jobs; `#tab-check` is hidden but must stay (programmatic navigation).
+  Only a primary file > 5 MiB turns the headline red. `fix-safe` is lossless (naming/order, HEX 21).
+- **Process quality:** final GIFs are fitted to ≤ 5 MB (`processor.ensure_under_mb`).
+  Workshop/Split GIF panels are one synchronized group — never fit/scale panels independently.
+  Workshop inner outline is Workshop-only. Rotation is per file, quarter turns in Process,
+  free angle in Character.
+- **Loop (Pro):** `/api/loop/start` accepts `pingpong` and `blend`; result ≤ 8 s.
+- **Design Selection:** DeviantArt reference queries must keep the exact form
+  `Steam showcase <one English keyword>`. Imported profile facts are authoritative over AI guesses.
+- **Removed on purpose:** Builder AI animation (Modal/Wan). Do not reintroduce without a new
+  explicit request. Anime-studio redesign was rejected; the original visual design stays.
+- **Browser extension** (SteamShowcase Helper 0.9.8/0.9.9, owner-provided, NOT in this repo):
+  site talks to it via an allow-listed bridge; a website deploy does not publish the extension.
+  Do not claim it is entirely local or never handles auth data. `/privacy` (8 languages) is
+  required for the Chrome Web Store listing — keep the languages aligned.
+- **Support chat:** `smweb/support_chat.py` + `support_knowledge.json`; only curated public
+  knowledge goes upstream; limits 4/min/IP, 20/day/IP, 300/day global, fail-closed on Redis loss.
+- **Frontend contracts:** `window.state`, `window.renderFiles`, DOM ids, tab conventions and
+  script order in `static/app.html`; heavy tools load lazily via `static/js/tool-loader.js`.
+  Add RU + EN (+ the six generated languages, see `scripts/check_i18n.js`) for any new label.
+
+## 6.1 Landing page (rebuilt 2026-09-25, local, not deployed)
+
+Owner brief: the home page follows `IMAGE/gg.png` (composition reference) on the owner's
+background `IMAGE/fonn-4k.jpg` (5460×3072 master, 2026-09-25; the monitor already shows a Steam profile, so
+there is no HTML card on it), with the SABA_0.1 VRM sitting on the desk: calm idle, cursor gaze, a light
+emotion only when the character itself is clicked. Header follows `IMAGE/hedder.jpg`.
+Only the hero exists for now; content blocks will be added below it later.
+
+- Files: `static/index.html` (self-contained), `static/css/home.css`, `static/js/home.js`
+  (EN/RU copy, adds the "Extension · new" nav link on the landing only), `static/js/home-vrm.js`,
+  images in `static/img/home/`: `fon-{1000,1280,1920,2560,3840}.{avif,webp}` generated from the
+  master (AVIF q72 / WebP q88, LANCZOS) and served via `<picture>`: desktop `sizes="max(100vw,
+  177.7svh)"`, phones (`max-width:820px`) `sizes="139svh"` capped at 2560 so 3x screens never fetch
+  4K. Verified picks: 1366->1920, 1920->1920, 2546->2560, 1440@2x and 4K->3840, phones->2560; `card-*.webp` are feature thumbnails generated with
+  Pillow from project art. Regenerate the set whenever the owner supplies a new master.
+- **Always bump `?v=20260925-homeN` in index.html after editing home.css/home.js/home-vrm.js
+  or images** — the owner once saw a stale mix of old CSS/JS because keys were not bumped.
+- The page does NOT load the Tools cascade (`creator-os.css`, `layout-refinement.css`,
+  `mobile.css`). It loads `ss.css` + `redesign.css` (shell + auth dialog), loader, support chat,
+  consent and `home.css`. The shell header becomes a top bar only under `body.page-home`:
+  logo mark + two-line wordmark, centred nav with icons/cyan underline (Home, Tools, Profile,
+  Gallery, Extension[new], Support), Activate, globe language, Log in. Other pages keep the rail.
+- Layout unit `--rp` = one reference pixel of 1672×941, `min(vw/1672, svh/941) × 0.86`, capped
+  at 1.02 px (owner asked for a smaller grid). Header is a fixed 60 px (`--home-head-h`).
+  Copy column (script line, title, lead, buttons, Telegram 7-day Pro offer, 3 cards) is one
+  flow with ONE left edge at `max(24px, 7.75vw)` (the owner's red line in `IMAGE/dd.png`);
+  the rotated script line is offset so its glyphs align with that edge and it reserves top
+  padding so it never slides under the header. The right edge is shared too: buttons (grid
+  `auto 1fr`), the Telegram offer and the last card end on the same line (3 cards wide).
+  `qa_home_layout.py` asserts left and right edges. The hero bottom fades into the site background
+  `#03070a` (same as `redesign.css --cut-bg`) and the footer uses it too.
+- `.home-art` is a cover-sized frame (`container-type:size`); the VRM box lives in its
+  percentages (`left:24%; width:56%`). On viewports taller than 16:9 the art (and character)
+  scales by height; wider/taller background masters would allow a calmer framing (see below).
+- VRM (`home-vrm.js`): procedural only. `POSE` = Euler XYZ radians per normalized bone in the
+  VRM 0.x rig (faces -Z, model left = -X; legs forward = +x on upper legs, knees bend with -x;
+  a hand laid flat = +z on `rightHand`). Head/neck pitch uses `+gaze.y` (was inverted before).
+  Reactions (hearts, sound, smile) fire only from `#heroVrmHit`, a plain rectangle over the
+  character (the canvas has `pointer-events:none`). Do not bring back raycasting on hover: a
+  skinned-mesh raycast every move stalled frames. Fingers are posed too (`*Proximal/…`).
+  Pose reference for the arms: `IMAGE/ii.png`. Hands are placed by an analytic two-bone IK
+  with elbow pole vectors every frame (`HANDS` in home-vrm.js): the
+  supporting hand (model's right, viewer's left) is planted palm-down on the desk beside and
+  behind the hip, the other hand rests palm-down on the knee of the horizontal leg (target
+  taken from the knee bone). Tune `HANDS` offsets, not arm angles; `POSE` arm values only
+  decide which way the elbows bend. Hand orientation starts from the T-pose (palms down).
+  On localhost `window.__homeVrm.hands` can be changed live. `FRAME` maps seat/crown to reference pixels. On localhost
+  `window.__homeVrm` (`setPose`, `setFrame`, `react`) allows tuning without reloads.
+  Loader contract: `.creator-scene.is-vrm-ready|is-vrm-fallback` + `showcasemaker:hero-ready`.
+- Copy: headline/lead are the existing texts; new strings are EN/RU only (owner decision);
+  other languages show English for them until `scripts/build_extra_locales.js` is re-run.
+- Background: one 4K+ 16:9 master is enough (current 5460×3072, same geometry as before, so the VRM
+  seat did not move). Optional extras: a 16:10
+  version with the same desk line and a 1080×1920 portrait crop for phones.
+- Blocks below the hero: same markup/text/order as the live landing (showcasemaker.com, checked
+  2026-09-25): extension console `#features`, process pipeline (one panel, 2x2 cards on the right),
+  formats marquee, quotes (one joined panel), pricing `#pricing` (visible title + round checks),
+  final CTA. They live in `.home-blocks`, styled by `static/css/home-blocks.css` in the hero
+  palette. Every class inside carries the `hb-` prefix on purpose: legacy `redesign.css` (still
+  loaded for the shell/auth dialog) has `!important` rules for `.section`, `.mock-frame`,
+  `.c3-card`, etc. Buy buttons (`data-buy-key`) open `SSShell.openActivation()` (shops listed
+  there), `#ctaReg` opens registration, the marquee list is duplicated by `home.js`.
+  Strings: `home.js` (EN/RU); `tri_h`/`cta_h` contain `<br/>` and use `data-i-html`.
+- Appearance on scroll (`initReveal` in home.js): cards get `data-hb-reveal`, fade and rise once
+  with a 90 ms stagger; the two section headings are split by `<br>` into masked lines that slide
+  up. Hidden only under `.has-js`; reduced motion shows everything immediately.
+- Animated background of the blocks: three large radial light fields (`::before`, `::after`,
+  `.hb-aurora`) drift for 38-54 s using transforms only. The hero image itself is not animated
+  (the VRM is aligned to the painted desk).
+- Support assistant (`support-chat.js`, all pages): while a footer is on screen the launcher is
+  lifted by the visible footer height (`--support-lift`), so it never covers footer links.
+- Extension guide page `/<lang>/extension` (`static/extension.html`, `extension-guide.css/js`,
+  `static/img/extension-guide/`) was ported on 2026-09-25 from `Desktop\showcase-webs` (the owner's
+  git checkout, which had this uncommitted feature). Shared shell nav now has "Extension · new"
+  (`ss-shell.js`), `i18n.js` localizes `/extension`, `pages.py` serves it (EN/RU indexed, other
+  languages `noindex, follow`), sitemap lists it. Shared cache keys were unified to
+  `20260925-ext1` on all pages.
+- Purchase lists (shell activation dialog and Tools buy overlay) use the real Telegram mark.
+- Startup loader (`home-loader.css`, behaviour unchanged in `home-loader.js`): navy card with the
+  cyan-violet top line, Montserrat wordmark, breathing dots, gradient progress with a light sweep,
+  drifting glows and twinkling stars on `#03070a`. Pure CSS, no image download during startup.
+- Landing popups (language menu, login/registration, activation + shops, consent banner,
+  notices, mobile drawer, support assistant launcher/panel/choice/ticket form) are restyled by
+  `static/css/home-overlays.css`, loaded only by `index.html`. Every selector starts with
+  `html body.page-home` (a test enforces it), so Tools and other pages keep their own look.
+  Panels are fully opaque navy (`#0e1a3c` -> `#050a1c`) with a cyan-to-violet top line.
+- QA: `scripts/qa_home_layout.py`, `qa_home_loader_performance.py`, `tests/test_hero_vrm.py`,
+  `tests/test_home_loader.py`. Visual check: 1672×941 screenshot vs `IMAGE/gg.png`.
+
+## 7. Rules for agents
+
+1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or
+   the VPS `docker-compose.override.yml`. Never `git clean`, `docker compose down -v`.
+2. No secrets in commits/docs/logs. Do not print `.env` or `data/access_codes.json`.
+3. Keep heavy work out of Uvicorn (worker only). Do not re-enable synchronous processing.
+4. New routers go in `smweb/routers/`, included explicitly in `main.py`; literal routes before
+   parameterised ones.
+5. DB changes must be idempotent in **both** `auth_db._create_schema` and `sql/schema_pg.sql`.
+6. Bump `?v=` for every edited CSS/JS; keep RU/EN parity; test desktop and 390 px.
+7. Before finishing: `py -3.14 -m compileall -q .`, pytest, `node scripts/check_i18n.js`,
+   `node --check` on changed JS, `git diff --check` (once git exists).
+8. The system may block bulk deletion (`rm -rf`) — ask the owner to run those commands.
+
+## 8. Known limitations and risks (verified 2026-09-25)
+
+- `quota_state` mixes a file counter (`usage.json`, per process) with the Redis counter;
+  quota admission across different start routes is not atomic. Fine at current load.
+- Anonymous job ownership is the client IP (NAT neighbours share jobs).
+- `process_jobs` table exists in both schemas but is never written (only deleted on account
+  deletion). Harmless; candidate for removal.
+- `steam_profile_guard.py` keeps a separate SQLite file under `/data`.
+- Upscale results and the SSE job stream are not cancellable/revocable beyond their TTLs.
+- `/api/download-url` runs yt-dlp on user-chosen URLs of allow-listed hosts; egress filtering
+  on the VPS is recommended by `docs/THREAT_MODEL.md`.
+- `auth_db.py` (~2.6k lines), `processor.py` (~2.4k), `static/js/app.js` (~4.2k) are large
+  monoliths; refactor only with tests and a clear goal.
+- VPS: pending Ubuntu security updates/reboot (per release audit 2026-09-22).
+- Real Linux worker smoke tests of Workshop outline and Loop were done on 2026-09-22 only;
+  FFmpeg is now available locally, so they can be repeated on this machine.
+
+## 9. Deployment (VPS `/opt/showcasemaker`)
+
+`DEPLOY.md` is current. Short form: record `git rev-parse HEAD`, `pg_dump`, `git pull --ff-only`,
+`docker compose config --quiet`, `docker compose build --pull app worker`, `docker compose up -d`,
+check `/api/ready`, `/api/health`, logs, `python scripts/smoke_test.py https://showcasemaker.com`.
+Backend changes need app + worker rebuilt; static-only changes need only new `?v=` keys.
+The VPS tree holds untracked backups and a production compose override — never overwrite them.
+A local change is not deployed until the owner does it on the VPS.
+
+## 10. Documentation status
+
+Current: `AGENTS.md`, `README.md`, `DEPLOY.md`, `.env.example`, `docs/THREAT_MODEL.md`,
+`docs/RELEASE_AUDIT_2026-09-22.md`, `docs/POLISH_AUDIT_2026-09-21.md`, `docs/ANALYTICS.md`,
+`docs/STEAM_EXTENSION_IMPORT.md`, `docs/WORKSPACE_USABILITY.md`, `docs/workspace-editor.md`,
+`PRIVACY_RELEASE.md`, `SUPPORT_CHAT_SETUP.md`, `BUILDER_MOTION.md`.
+The Railway/SQLite/HF-era files (`RAILWAY.md`, `UPSCALER_SETUP.md`, `README_REVERT.md`,
+`TELEGRAM_SETUP.md`, `docs/ARCHITECTURE_AUDIT.md`, `docs/STRUCTURE.md`, `docs/FINAL_REPORT.md`,
+`.old_app.html`) were deleted on 2026-09-25 — do not recreate or trust references to them.
+
+## 11. Verification baseline (2026-09-25)
+
+- `pytest`: 245 passed, 12 subtests (~35 s). `node scripts/check_i18n.js`: complete.
+  `node --check` passes on all `static/js/*.js` except `hero-vrm.js`, which is an ES module
+  (loaded with `type="module"`) — that failure is expected, not a bug.
+- Playwright UI suites passed against a local server: `qa_accessibility`, `qa_tool_clarity`,
+  `qa_polish`, `qa_job_center`, `qa_home_layout`. How to repeat:
+  ```powershell
+  $env:DATA_DIR="$env:TEMP\sm-qa"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
+  $env:PORT="8091"; $env:COOKIE_SECURE="0"; $env:APP_URL="http://127.0.0.1:8091"; $env:FREE_LIMIT="100"
+  Start-Process py -ArgumentList "-3.14","main.py"        # then: $env:QA_BASE_URL="http://127.0.0.1:8091"
+  py -3.14 scripts/qa_accessibility.py                     # Edge is used (channel="msedge")
+  ```
+- Real media smoke (local FFmpeg 8.1 + gifski, embedded pool, anonymous): PNG/GIF/MP4 × Workshop /
+  Featured / Split and Workshop outline (GIF and MP4) all completed in 1–3 s with every primary
+  file ≤ 5 MB and no errors in the server log. Free limit (5 files/day) and the 8/min route
+  limit behaved as designed. Not covered locally: Redis + external worker, Modal upscale,
+  R2, PostgreSQL, authenticated Pro flows (Loop is covered by `tests/test_seamless_loop.py`).
+- The Release audit of 2026-09-22 covers production; nothing was deployed after it.
+
+## 12. Cleanup log and what is left (2026-09-25)
+
+The pre-cleanup tree was copied to a tar in the Claude scratchpad temp folder (temporary; the
+real safety net is the future `git init`).
+
+**Done**
+- `processor.py`: removed the appended duplicate "TEMP TIMING" wrappers and every `[… TIMING]`
+  print; `smweb/jobs.py`: removed `[JOB TIMING]` prints.
+- `smweb/routers/process.py`: legacy synchronous `/api/process` body (~260 lines) replaced by a
+  410 stub; `ALLOW_SYNC_PROCESS` removed from compose/.env.example.
+- Deleted `smweb/upscale_models.py` (Hugging Face upscaler), unused `_sessions`/`_session`,
+  `access_session_*`, `/api/health_legacy`, `/api/admin/wipe-users` (+ `auth_db.wipe_all_users`),
+  the `USE_EXTERNAL_WORKER` fallback, and the obsolete docs listed in section 10.
+- Removed ~550 unused imports from 26 modules; removed dangling doc references in docstrings.
+- `requirements.txt`: dropped `passlib`, `bcrypt`, `python-telegram-bot`, `aiofiles`,
+  `gradio_client`; new `requirements-dev.txt` (pytest, httpx). Dockerfile: dropped `xz-utils`.
+- `/api/health`: one DB connection, no DDL on PostgreSQL (was `CREATE TABLE` per poll).
+- `worker.py` + `redis_store.queue_pop`: one `BRPOP` over all free queues (was up to 2 s extra
+  pickup latency). `redis_store.job_update`: atomic `WATCH/MULTI` merge with retry (a worker
+  progress write could erase a concurrent `cancel_requested`).
+  Tests: `tests/test_redis_store_queue_and_update.py`.
+- `main.py`: startup banner is ASCII only (redirected Windows console crashed on `→`/Cyrillic
+  when running `py main.py`); removed the stale "Unlock: …" hint.
+- `static/js/index.js`: notification badge poll (45 s) skips hidden tabs and guests
+  (`?v=20260925-poll1` in `static/index.html`).
+- `.env.example`: added `RESEND_API_KEY`, `MAIL_FROM`. README and this file rewritten.
+- Frontend audit result: no orphan JS/CSS files; only ~135 of ~2,500 CSS classes look unused
+  (dynamic class names make automatic pruning unsafe — deliberately left). Polling: only
+  the landing badge (fixed), DA-connect loops (bounded, 2 s × 90) and a 4 s DOM-only
+  `syncLock`; SSE opens only when the job panel is open.
+
+**Static cleanup (done by the owner, since the sandbox refuses recursive `rm -rf`)**
+Removed unreferenced `static/steam-mockup/images/`, `static/steam-mockup/media/`,
+`static/downloads/` (old Helper v0.9.3 zip) and `static/img/funpay-favicon.png`:
+`static/` went from 122 MB to 87 MB; no references remained. The landing rebuild then
+removed the old hero stack, `steam_upload_guide.mp4` (49 MB, unreferenced) and old landing
+screenshots: `static/` is now ~31 MB.
+
+**Owner actions on the VPS `.env`** (agents never edit it): remove leftovers no code reads:
+`MODAL_ANIMATE_URL`, `HF_IMAGE_UPSCALE_SPACE`, `HF_VIDEO_UPSCALE_SPACE`, `UPSCALE_GIF_*`,
+`UPSCALE_VIDEO_*`, `UPSCALE_JOB_TTL`, `USE_EXTERNAL_WORKER`, `ALLOW_SYNC_PROCESS`,
+`EMAIL_VERIFY_SECRET`. Add `REMOVE_BG_API_KEY` if Builder background removal is wanted.
+Rebuild `app` and `worker` when deploying these changes.
+
+**Next steps, in order**
+1. The tree is ready for the baseline commit.
+2. `git init` in this folder (or link the real GitHub repo), commit the baseline, then switch to a
+   normal branch workflow; update sections 0 and 7 accordingly. Deploy per section 9.
+3. Optional hygiene: drop the unused `process_jobs` table (both schemas + `delete_account_data`),
+   remove the `[FIT Q]` print in `processor._ensure_under_mb_impl`, collapse the two duplicate
+   DeviantArt-connect polling handlers in `static/js/app.js` (~lines 1677 and 2713).
+4. Test with Redis + external worker + PostgreSQL via `docker compose` before the next release.

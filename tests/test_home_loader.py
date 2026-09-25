@@ -10,7 +10,7 @@ class HomeLoaderTests(unittest.TestCase):
         html = (ROOT / 'static' / 'index.html').read_text(encoding='utf-8')
         self.assertIn("classList.add('home-is-loading')", html)
         self.assertLess(html.index('id="homeLoader"'), html.index('<div class="shell">'))
-        self.assertIn('/static/css/home-loader.css?v=20260921-polish1', html)
+        self.assertIn('/static/css/home-loader.css?v=20260925-loader2', html)
         self.assertIn('/static/js/home-loader.js?v=20260921-polish1', html)
 
     def test_loader_waits_for_shell_but_does_not_block_on_large_hero(self):
@@ -24,7 +24,7 @@ class HomeLoaderTests(unittest.TestCase):
         self.assertIn('window.setTimeout(finish, 12000)', source)
 
     def test_vrm_settles_success_and_fallback(self):
-        source = (ROOT / 'static' / 'js' / 'hero-vrm.js').read_text(encoding='utf-8')
+        source = (ROOT / 'static' / 'js' / 'home-vrm.js').read_text(encoding='utf-8')
         self.assertIn("settleHeroLoad('ready')", source)
         self.assertIn("settleHeroLoad('fallback')", source)
         self.assertIn("new CustomEvent('showcasemaker:hero-ready'", source)

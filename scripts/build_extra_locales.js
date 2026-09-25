@@ -7,7 +7,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const targets = ['de', 'tr', 'fr', 'uk', 'es', 'pt'];
 const sourceFiles = [
-  ['static/js/index.js', 'const I18N ='],
+  ['static/js/home.js', 'var I18N ='],
   ['static/js/app.js', 'const APP_I18N ='],
   ['static/js/app.js', 'var DICT ='],
   ['static/js/app.js', 'var WM_TIPS ='],
@@ -87,7 +87,7 @@ for (const file of ['static/index.html', 'static/app.html', 'static/profile.html
 }
 visibleHtmlStrings(fs.readFileSync(path.join(root, 'static/privacy-en.html'), 'utf8'), strings);
 const uiLiteralFiles = [
-  'static/ss-shell.js', 'static/js/index.js', 'static/js/index-tail.js',
+  'static/ss-shell.js', 'static/js/home.js',
   'static/js/app.js', 'static/js/app-tail.js', 'static/js/gallery.js',
   'static/js/profile.js', 'static/js/profile-insights.js', 'static/js/support-chat.js',
   'static/js/seamless-loop.js', 'static/js/showcase-builder.js',

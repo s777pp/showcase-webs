@@ -533,7 +533,7 @@ input[type="range"]{
 }
 .sm-buy-opt .ico svg{width:24px;height:24px;display:block}
 .sm-buy-opt.funpay .ico{background:linear-gradient(135deg,#ff8a3d,#e85d04)}
-.sm-buy-opt.tg .ico{background:linear-gradient(135deg,#2AABEE,#229ED9)}
+.sm-buy-opt.tg .ico{background:transparent}.sm-buy-opt.tg .ico svg{width:32px;height:32px}
 .sm-buy-opt .txt{flex:1;min-width:0}
 .sm-buy-opt .txt .t{font-size:15px;font-weight:700;display:block}
 .sm-buy-opt .txt .d{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px}

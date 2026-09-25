@@ -16,7 +16,7 @@ def run() -> None:
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
         # Simulate a failed/very slow graphics module. The surrounding page must
         # still become usable while the hero keeps its local loading placeholder.
-        page.route("**/static/js/hero-vrm.js*", lambda route: route.abort())
+        page.route("**/static/js/home-vrm.js*", lambda route: route.abort())
         started = time.monotonic()
         page.goto(base + "/ru", wait_until="domcontentloaded")
         expect(page.locator("html")).not_to_have_class(re.compile(r"(?:^|\s)home-is-loading(?:\s|$)"), timeout=5000)

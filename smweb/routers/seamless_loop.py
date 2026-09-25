@@ -1,7 +1,6 @@
 """Authenticated asynchronous seamless-loop API."""
 from __future__ import annotations
 
-import os
 import hashlib
 import math
 import re

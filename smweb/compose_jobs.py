@@ -1,7 +1,6 @@
 """Background Character compositor used by the external Docker worker."""
 from __future__ import annotations
 
-import io
 import shutil
 import time
 import traceback

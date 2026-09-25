@@ -2,19 +2,15 @@ fastapi==0.141.1
 uvicorn[standard]==0.34.0
 python-multipart==0.0.32
 Pillow>=12.1.0,<13
-aiofiles==24.1.0
 yt-dlp>=2024.1.0
 requests>=2.31.0
+# CDP client for the Bright Data remote browser (steam_browser_import.py).
+# No local browser binaries are installed in the image.
 playwright>=1.50.0,<2.0
 stripe>=8.0.0
-passlib[bcrypt]>=1.7.4
-bcrypt<4.1
-python-telegram-bot==20.*
-# Production stack
 redis>=5.0.0
 psycopg[binary,pool]>=3.2.0
 boto3>=1.35.0
 cryptography>=50.0.1,<51
 defusedxml>=0.7.1,<1
-gradio_client>=1.0.0
 numpy>=2.0,<3.0

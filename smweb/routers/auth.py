@@ -1,41 +1,25 @@
 """Email/password accounts, avatars, sessions.
 
-Moved out of main.py unchanged; see docs/STRUCTURE.md.
+Moved out of main.py unchanged.
 """
 
 
 from __future__ import annotations
 
 import hashlib
-import hmac
-import html
 import io
 import asyncio
-import ipaddress
 import json
-import logging
-import os
-import re
-import socket
-import tempfile
 import shutil
 import secrets
-import time
-import uuid
-import warnings
-import zipfile
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
 
-from fastapi import BackgroundTasks, FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import BackgroundTasks, Request
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from PIL import Image
 
-import processor as proc
 import redis_store as rs
 import mailer
 
@@ -48,14 +32,12 @@ from fastapi import APIRouter
 from smweb.core import (
     DATA,
     LOGGER,
-    _admin_ok,
     _attach_session_cookie,
     _auth_user,
     _clear_session_cookie,
     _is_gallery_admin,
     _safe_data_path,
 )
-
 
 
 router = APIRouter()
@@ -377,15 +359,6 @@ async def auth_account_delete(request: Request):
     response = JSONResponse({"ok": True, "msg": "Account deleted"})
     _clear_session_cookie(response)
     return response
-
-
-@router.post("/api/admin/wipe-users")
-async def admin_wipe_users(request: Request):
-    """Delete all accounts. Requires header X-Admin-Secret = ADMIN_SECRET env."""
-    if not _admin_ok(request):
-        return JSONResponse({"ok": False, "msg": "Forbidden"}, status_code=403)
-    n = auth_db.wipe_all_users()
-    return JSONResponse({"ok": True, "deleted": n})
 
 
 @router.post("/api/auth/profile")

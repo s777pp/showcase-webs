@@ -1,4 +1,4 @@
-"""Redis helpers: jobs, quota, rate limit, access-code sessions.
+"""Redis helpers: jobs, quota, rate limit, caches.
 
 Redis is OPTIONAL. When REDIS_URL is unset -- or the server is unreachable -- every
 helper transparently degrades to in-process dicts, so the app keeps working.
@@ -17,7 +17,6 @@ REDIS_URL = (os.environ.get("REDIS_URL") or "").strip()
 
 _local_jobs: dict[str, dict] = {}
 _local_usage: dict[str, dict] = {}
-_local_sessions: dict[str, dict] = {}
 _local_insight_history: dict[int, list[dict]] = {}
 _local_dna_cache: dict[str, tuple[float, dict]] = {}
 _local_job_cache: dict[str, tuple[float, str]] = {}
@@ -89,7 +88,7 @@ def get_redis():
             REDIS_URL,
             decode_responses=True,
             socket_connect_timeout=3,
-            # must stay above the longest blocking call (job_pop uses 3s)
+            # must stay above the longest blocking call (queue_pop waits 2s)
             socket_timeout=10,
             retry_on_timeout=True,
             health_check_interval=30,
@@ -174,18 +173,32 @@ def job_update(jid: str, **kw) -> None:
     if r:
         try:
             key = JOB_KEY.format(jid)
-            raw = r.get(key)
-            data = json.loads(raw) if raw else {}
-            data.update(kw)
-            data["updated"] = time.time()
-            r.set(key, json.dumps(data), ex=JOB_TTL)
-            uk = data.get("user_key")
-            # Keep terminal jobs in the per-user set for the unified job center.
-            # The set and job keys expire together, so history remains bounded.
-            if uk:
-                r.sadd(USER_JOBS_KEY.format(uk), jid)
-                r.expire(USER_JOBS_KEY.format(uk), JOB_TTL)
-            return
+            # Optimistic transaction: a worker's progress write must not clobber
+            # a concurrent change made by the API (for example cancel_requested).
+            # WATCH makes EXEC fail if the key changed after we read it, and we
+            # simply re-read and merge again.
+            from redis.exceptions import WatchError
+            for _attempt in range(8):
+                with r.pipeline() as pipe:
+                    try:
+                        pipe.watch(key)
+                        raw = pipe.get(key)
+                        data = json.loads(raw) if raw else {}
+                        data.update(kw)
+                        data["updated"] = time.time()
+                        pipe.multi()
+                        pipe.set(key, json.dumps(data), ex=JOB_TTL)
+                        uk = data.get("user_key")
+                        # Keep terminal jobs in the per-user set for the unified job center.
+                        # The set and job keys expire together, so history remains bounded.
+                        if uk:
+                            pipe.sadd(USER_JOBS_KEY.format(uk), jid)
+                            pipe.expire(USER_JOBS_KEY.format(uk), JOB_TTL)
+                        pipe.execute()
+                        return
+                    except WatchError:
+                        continue
+            raise RuntimeError("job_update: too much contention on " + jid)
         except Exception as e:
             _note(e)
     with _local_lock:
@@ -209,49 +222,27 @@ def job_get(jid: str) -> Optional[dict]:
         return dict(j) if j else None
 
 
-def job_pop(timeout: int = 3) -> Optional[str]:
-    """Blocking pop for the external worker. Local mode: non-blocking scan."""
+def queue_pop(names: list[str], timeout: int = 2) -> Optional[tuple[str, str]]:
+    """One blocking pop across several queues ("profile", "media", "gpu").
+
+    Returns (queue_name, job_id). Names are tried in the order given, so the
+    caller controls priority. A single BRPOP replaces three sequential 1-second
+    waits, which used to delay a queued media job by up to two seconds.
+    """
+    keys = {"profile": PROFILE_JOB_QUEUE, "media": JOB_QUEUE, "gpu": UPSCALE_JOB_QUEUE}
+    wanted = [keys[n] for n in names if n in keys]
+    if not wanted:
+        return None
+    reverse = {v: k for k, v in keys.items()}
     r = _r()
     if r:
         try:
-            item = r.brpop(JOB_QUEUE, timeout=timeout)
-            return item[1] if item else None
+            item = r.brpop(wanted, timeout=timeout)
+            return (reverse[item[0]], item[1]) if item else None
         except Exception as e:
             _note(e)
-            time.sleep(1)
-            return None
-    with _local_lock:
-        for jid, j in list(_local_jobs.items()):
-            if j.get("status") == "queued":
-                j["status"] = "running"
-                return jid
-    time.sleep(min(timeout, 1))
-    return None
-
-
-def profile_job_pop(timeout: int = 1) -> Optional[str]:
-    """Pop a network-heavy Steam import independently of media encoding."""
-    r = _r()
-    if r:
-        try:
-            item = r.brpop(PROFILE_JOB_QUEUE, timeout=timeout)
-            return item[1] if item else None
-        except Exception as e:
-            _note(e)
-            time.sleep(1)
-    return None
-
-
-def upscale_job_pop(timeout: int = 1) -> Optional[str]:
-    """Pop lightweight Modal coordination jobs without blocking CPU encoders."""
-    r = _r()
-    if r:
-        try:
-            item = r.brpop(UPSCALE_JOB_QUEUE, timeout=timeout)
-            return item[1] if item else None
-        except Exception as e:
-            _note(e)
-            time.sleep(1)
+    # Redis is down or unconfigured: back off instead of spinning the caller.
+    time.sleep(1)
     return None
 
 
@@ -521,44 +512,6 @@ def quota_inc(ip: str, day: str, n: int = 1) -> int:
         u["count"] = int(u.get("count") or 0) + n
         _local_usage[ip] = u
         return u["count"]
-
-
-# ---------- access-code sessions (non-user) ----------
-def access_session_set(token: str, payload: dict, ttl: int = 86400 * 7) -> None:
-    r = _r()
-    if r:
-        try:
-            r.set("sm:asess:{}".format(token), json.dumps(payload), ex=ttl)
-            return
-        except Exception as e:
-            _note(e)
-    with _local_lock:
-        _local_sessions[token] = payload
-
-
-def access_session_get(token: str) -> Optional[dict]:
-    r = _r()
-    if r:
-        try:
-            raw = r.get("sm:asess:{}".format(token))
-            if raw:
-                return json.loads(raw)
-        except Exception as e:
-            _note(e)
-    with _local_lock:
-        return _local_sessions.get(token)
-
-
-def access_session_del(token: str) -> None:
-    r = _r()
-    if r:
-        try:
-            r.delete("sm:asess:{}".format(token))
-            return
-        except Exception as e:
-            _note(e)
-    with _local_lock:
-        _local_sessions.pop(token, None)
 
 
 # ---------- rate limit ----------

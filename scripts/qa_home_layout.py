@@ -2,7 +2,7 @@
 import os
 import tempfile
 from pathlib import Path
-from playwright.sync_api import sync_playwright, expect
+from playwright.sync_api import sync_playwright
 
 
 def run():
@@ -14,7 +14,7 @@ def run():
         context.add_init_script("localStorage.setItem('sm_analytics_consent_v1','no')")
         context.route('**/api/**', lambda r: r.fulfill(json={'ok': True, 'items': [], 'topics': [], 'used': 0, 'limit': 5}))
         context.route('**/*.vrm*', lambda r: r.abort())
-        context.route('**/hero-vrm.js*', lambda r: r.fulfill(content_type='application/javascript', body="const image=document.querySelector('.creator-scene__character');if(image)image.src=image.dataset.src;document.querySelector('.creator-scene').classList.add('is-vrm-fallback');"))
+        # Without the model the hero releases through the fallback path.
         page = context.new_page()
         for language in ['ru', 'en', 'de', 'tr', 'fr', 'uk', 'es', 'pt']:
             page.goto(base + '/' + language)
@@ -22,41 +22,31 @@ def run():
             page.evaluate('document.fonts.ready')
             for width in [390, 1440, 1920, 2560]:
                 page.set_viewport_size({'width': width, 'height': 1080})
-                page.wait_for_timeout(250)  # Shell's resize handler updates rail spacing.
+                page.wait_for_timeout(250)
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (language, width)
-                if width > 1180:
-                    geometry = page.evaluate('''() => {
-                        const title = document.querySelector('.hero h1').getBoundingClientRect();
-                        const art = document.querySelector('.hero-studio').getBoundingClientRect();
-                        const rects = [...document.querySelectorAll('.hero .echo-text__echo--front')].flatMap(n=>{
-                            const r=document.createRange();r.selectNodeContents(n);return [...r.getClientRects()];
-                        });
-                        return {titleRight:title.right,artLeft:art.left,wordsRight:Math.max(...rects.map(r=>r.right))};
-                    }''')
-                    assert geometry['titleRight'] < geometry['artLeft'], (language, width, geometry)
-                    assert geometry['wordsRight'] <= geometry['artLeft'], (language, width, geometry)
+                geometry = page.evaluate('''() => {
+                    const box = s => document.querySelector(s).getBoundingClientRect();
+                    const head = box('.ss-head'), title = box('.home-title'), actions = box('.home-actions');
+                    const cards = box('.home-features');
+                    const lefts = ['.home-title', '.home-lead', '.home-actions', '.home-telegram', '.home-features']
+                        .map(s => box(s).left);
+                    return {headBottom: head.bottom, titleTop: title.top, actionsBottom: actions.bottom,
+                            cardsTop: cards.top, cardsBottom: cards.bottom, height: innerHeight,
+                            leftSpread: Math.max(...lefts) - Math.min(...lefts), titleLeft: title.left,
+                            rightSpread: (() => { const rs = [box('.home-actions').right, box('.home-telegram').right,
+                                box('.home-features li:last-child').right]; return Math.max(...rs) - Math.min(...rs); })()};
+                }''')
+                assert geometry['titleTop'] >= geometry['headBottom'], (language, width, geometry)
+                assert geometry['cardsTop'] >= geometry['actionsBottom'], (language, width, geometry)
+                if width > 820:
+                    assert geometry['cardsBottom'] <= geometry['height'], (language, width, geometry)
+                    # One left edge for the whole copy column, on the owner's 7.75vw line.
+                    assert geometry['leftSpread'] <= 1.5, (language, width, geometry)
+                    assert abs(geometry['titleLeft'] - max(24, width * .0775)) <= 1.5, (language, width, geometry)
+                    # Buttons, Telegram offer and cards end on one right edge too.
+                    assert geometry['rightSpread'] <= 2, (language, width, geometry)
             if language == 'de':
                 page.screenshot(path=str(output / 'showcase-home-german-wide.png'))
-        # Real scroll reveal: containers must be transparent before cards appear.
-        page.emulate_media(reduced_motion='no-preference')
-        page.goto(base + '/ru')
-        page.locator('html:not(.home-is-loading)').wait_for(state='attached')
-        for selector in ['.q-grid', '.grid2 .triage-card']:
-            assert page.locator(selector).evaluate("n=>getComputedStyle(n).backgroundColor") == 'rgba(0, 0, 0, 0)'
-        for selector in ['.subc', '.q-card']:
-            page.goto(base + '/ru')
-            page.evaluate('window.scrollTo(0,0)')
-            page.locator('html:not(.home-is-loading)').wait_for(state='attached')
-            card = page.locator(selector).first
-            expect(card).to_have_attribute('data-home-reveal', 'block')
-            expect(card).to_have_css('opacity', '0')
-            assert card.evaluate("n=>getComputedStyle(n).opacity") == '0', (selector, card.get_attribute('data-home-visible'), card.bounding_box())
-            card.scroll_into_view_if_needed()
-            expect(card).to_have_attribute('data-home-visible', 'true')
-            page.wait_for_timeout(800)
-            assert card.evaluate("n=>getComputedStyle(n).opacity") == '1'
-            assert card.evaluate("n=>getComputedStyle(n).translate") == 'none'
-        page.screenshot(path=str(output / 'showcase-home-card-reveal.png'))
         page.goto(base + '/ru/app')
         page.locator('#processAdvanced summary').click()
         for width in [390, 1440, 2560]:
@@ -69,7 +59,7 @@ def run():
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         page.locator('#processSettingsCard').screenshot(path=str(output / 'showcase-horizontal-switches.png'))
         browser.close()
-    print('Home layout QA passed: eight languages, four widths, text/art separation, transparent reveal and horizontal switches.')
+    print('Home layout QA passed: eight languages, four widths, header/title/actions/cards separation and horizontal switches.')
 
 
 if __name__ == '__main__':

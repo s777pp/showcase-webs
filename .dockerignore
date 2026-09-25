@@ -67,3 +67,6 @@ scripts/_*.py
 # Backups
 backups/
 backups
+
+# Owner design references (not served)
+IMAGE/

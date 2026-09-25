@@ -1,52 +1,26 @@
 """HTML pages: landing, app, profile, gallery, preview.
 
-Moved out of main.py unchanged; see docs/STRUCTURE.md.
+Moved out of main.py unchanged.
 """
 
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import html
-import io
-import ipaddress
-import json
-import logging
-import os
 import re
-import socket
-import secrets
-import tempfile
-import shutil
-import time
-import uuid
-import warnings
-import zipfile
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse, PlainTextResponse, Response
-from fastapi.staticfiles import StaticFiles
-from PIL import Image
-
-import processor as proc
-import redis_store as rs
-
-import auth_db
+from fastapi import Request
+from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse, Response
 
 
 from fastapi import APIRouter
 
 
-from smweb.core import JOBS, STATIC, _auth_user
+from smweb.core import JOBS, STATIC
 from smweb.job_access import browser_owns_job
 from smweb.locales import SUPPORTED_LANGUAGES, localized_path, localized_request_url
-
 
 
 router = APIRouter()
@@ -97,7 +71,8 @@ def _localized_html(filename: str, language: str, route_path: str = "/", status_
     content = content.replace('href="/"', f'href="{localized_path(language, "/")}"')
     if 'rel="canonical"' not in content:
         canonical_path = localized_path(language, route_path)
-        locale_links = [f'<link rel="alternate" hreflang="{code}" href="https://showcasemaker.com{localized_path(code, route_path)}">' for code in SUPPORTED_LANGUAGES]
+        alternate_languages = ("en", "ru") if route_path == "/extension" else SUPPORTED_LANGUAGES
+        locale_links = [f'<link rel="alternate" hreflang="{code}" href="https://showcasemaker.com{localized_path(code, route_path)}">' for code in alternate_languages]
         locale_links.append(f'<link rel="alternate" hreflang="x-default" href="https://showcasemaker.com{localized_path("en", route_path)}">')
         metadata = f'<link rel="canonical" href="https://showcasemaker.com{canonical_path}">\n' + "\n".join(locale_links) + "\n"
         content = content.replace("</head>", metadata + "</head>", 1)
@@ -129,6 +104,7 @@ def sitemap_xml():
     # Do not enumerate private projects, jobs or user accounts.
     urls = ["https://showcasemaker.com" + localized_path(language, path)
             for language in SUPPORTED_LANGUAGES for path in ("/", "/app", "/gallery", "/privacy")]
+    urls += ["https://showcasemaker.com" + localized_path(language, "/extension") for language in ("en", "ru")]
     body = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
     body += "".join(f"<url><loc>{html.escape(url)}</loc></url>" for url in urls) + "</urlset>"
     return Response(body, media_type="application/xml", headers={"Cache-Control": "public, max-age=3600"})
@@ -179,6 +155,11 @@ def preview_page(job_id: str, request: Request):
     return _html(path.read_text(encoding="utf-8"))
 
 
+@router.get("/extension", include_in_schema=False)
+def extension_page(request: Request):
+    return _legacy_redirect(request, "/extension")
+
+
 @router.get("/gallery", include_in_schema=False)
 def gallery_page(request: Request):
     return _legacy_redirect(request, "/gallery")
@@ -215,6 +196,13 @@ def _public_profile(language: str, username: str):
     return _localized_html(filename, language, "/profile/" + quote(username, safe=""))
 
 
+def _extension(language: str):
+    response = _localized_html("extension.html", language, "/extension")
+    if language not in ("en", "ru"):
+        response.headers["X-Robots-Tag"] = "noindex, follow"
+    return response
+
+
 def _gallery(language: str):
     if (STATIC / "gallery.html").is_file():
         return _localized_html("gallery.html", language, "/gallery")
@@ -249,6 +237,8 @@ for _language in SUPPORTED_LANGUAGES:
     router.add_api_route(f"/{_language}/profile/", _language_page(_profile, _language),
                          methods=["GET"], response_class=HTMLResponse, include_in_schema=False)
     router.add_api_route(f"/{_language}/profile/{{username}}", _language_profile(_language),
+                         methods=["GET"], response_class=HTMLResponse, include_in_schema=False)
+    router.add_api_route(f"/{_language}/extension", _language_page(_extension, _language),
                          methods=["GET"], response_class=HTMLResponse, include_in_schema=False)
     router.add_api_route(f"/{_language}/gallery", _language_page(_gallery, _language),
                          methods=["GET"], response_class=HTMLResponse, include_in_schema=False)

@@ -8,13 +8,14 @@
   var NAV = [
     { href: '/',        key: 'home',    label: { ru: 'Главная',    en: 'Home' },     icon: 'home' },
     { href: '/app',     key: 'tools',   label: { ru: 'Инструменты',en: 'Tools' },    icon: 'tools' },
-    { href: '/profile', key: 'builder', label: { ru: 'Профиль',    en: 'Profile' },  icon: 'user', tag: 'new' },
+    { href: '/profile', key: 'builder', label: { ru: 'Профиль',    en: 'Profile' },  icon: 'user' },
     { href: '/gallery', key: 'gallery', label: { ru: 'Галерея',    en: 'Gallery' },  icon: 'grid' },
+    { href: '/extension', key: 'extension', label: { ru: 'Расширение', en: 'Extension' }, icon: 'extension', tag: 'new' },
     { href: 'https://t.me/showcasemaker', key: 'support', label: { ru: 'Техподдержка', en: 'Support' }, icon: 'support', external: true }
   ];
 
   var GROUPS = [
-    { title: { ru: 'Сайт',        en: 'Site' },    items: ['home', 'gallery'] },
+    { title: { ru: 'Сайт',        en: 'Site' },    items: ['home', 'gallery', 'extension'] },
     { title: { ru: 'Инструменты', en: 'Tools' },   items: ['tools', 'builder', 'support'] },
     { title: { ru: 'Аккаунт',     en: 'Account' }, items: ['account'] }
   ];
@@ -22,6 +23,7 @@
   var ICONS = {
     home: '<path d="M3 10.5 12 3l9 7.5V21H3z"/>',
     tools: '<path d="M4 7h16M4 12h10M4 17h7"/>',
+    extension: '<path d="M8 4h4v3a2 2 0 1 0 4 0V4h4v6h-3a2 2 0 1 0 0 4h3v6h-6v-3a2 2 0 1 0-4 0v3H4v-6h3a2 2 0 1 0 0-4H4V4h4z"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>',
     grid: '<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
     support: '<path d="M4 13v-1a8 8 0 0 1 16 0v1"/><path d="M4 13h3v6H5a1 1 0 0 1-1-1v-5Zm16 0h-3v6h2a1 1 0 0 0 1-1v-5ZM17 19c0 1.1-.9 2-2 2h-3"/>',
@@ -113,7 +115,7 @@
         if (!n) return '';
         return '<a href="' + siteUrl(n.href) + '"' + (n.key === 'support' ? ' data-support-choice' : '') + (active(n.href) ? ' class="is-on"' : '') +
           (n.external ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
-          svg(n.icon) + esc(t(n.label)) + '</a>';
+          svg(n.icon) + esc(t(n.label)) + (n.tag ? '<i class="ss-drawer__tag">' + esc(lang() === 'ru' ? 'новое' : n.tag) + '</i>' : '') + '</a>';
       }).join('');
       return '<div class="ss-drawer__g"><p class="ss-drawer__t">' + esc(t(g.title)) + '</p>' + links + '</div>';
     }).join('');
@@ -222,7 +224,7 @@
       '<p class="ss-auth__sub">' + (ru ? 'Ключ привязывается к аккаунту. Один ключ нельзя использовать повторно.' : 'The key is linked to your account and cannot be reused.') + '</p>' +
       '<form class="ss-activation__form" id="ssActivationForm"><label><span>' + (ru ? 'Ключ доступа' : 'Access key') + '</span><div class="ss-activation__entry"><input id="ssActivationCode" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX"><button type="submit">' + (ru ? 'Активировать' : 'Activate') + '</button></div></label><p class="ss-auth__state" id="ssActivationState"></p></form>' +
       '<div class="ss-activation__divide"><span>' + (ru ? 'Купить ключ' : 'Buy a key') + '</span></div>' +
-      '<div class="ss-activation__shops"><a class="ss-shop ss-shop--funpay" href="https://funpay.com/lots/offer?id=76420307" target="_blank" rel="noopener"><span class="ss-shop__icon"><img src="/static/img/funpay-favicon.ico" alt=""></span><span><b>FunPay</b><small>' + (ru ? 'Код сразу после оплаты' : 'Instant code after payment') + '</small></span><i>↗</i></a><a class="ss-shop ss-shop--telegram" href="https://t.me/SteamMakerBot" target="_blank" rel="noopener"><span class="ss-shop__icon ss-shop__icon--telegram">➤</span><span><b>Telegram</b><small>' + (ru ? 'Покупка через бота' : 'Buy via bot') + '</small></span><i>↗</i></a><a class="ss-shop ss-shop--card" href="https://store.showcasemaker.com" target="_blank" rel="noopener"><span class="ss-shop__icon">' + svg('card') + '</span><span><b>' + (ru ? 'Оплата картой' : 'Pay by card') + '</b><small>' + (ru ? 'Банковская карта · защищённая оплата' : 'Bank card · secure checkout') + '</small></span><i>↗</i></a></div>' +
+      '<div class="ss-activation__shops"><a class="ss-shop ss-shop--funpay" href="https://funpay.com/lots/offer?id=76420307" target="_blank" rel="noopener"><span class="ss-shop__icon"><img src="/static/img/funpay-favicon.ico" alt=""></span><span><b>FunPay</b><small>' + (ru ? 'Код сразу после оплаты' : 'Instant code after payment') + '</small></span><i>↗</i></a><a class="ss-shop ss-shop--telegram" href="https://t.me/SteamMakerBot" target="_blank" rel="noopener"><span class="ss-shop__icon ss-shop__icon--telegram"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#229ED9"/><path fill="#fff" d="M17.6 7.2 15.7 16.6c-.14.64-.52.8-1.06.5l-2.9-2.14-1.4 1.35c-.16.16-.29.29-.6.29l.21-3 5.45-4.92c.24-.21-.05-.33-.37-.12L8.3 12.8l-2.9-.9c-.63-.2-.64-.63.13-.93l11.3-4.36c.52-.19.98.13.8.59Z"/></svg></span><span><b>Telegram</b><small>' + (ru ? 'Покупка через бота' : 'Buy via bot') + '</small></span><i>↗</i></a><a class="ss-shop ss-shop--card" href="https://store.showcasemaker.com" target="_blank" rel="noopener"><span class="ss-shop__icon">' + svg('card') + '</span><span><b>' + (ru ? 'Оплата картой' : 'Pay by card') + '</b><small>' + (ru ? 'Банковская карта · защищённая оплата' : 'Bank card · secure checkout') + '</small></span><i>↗</i></a></div>' +
     '</div></div>';
   }
 

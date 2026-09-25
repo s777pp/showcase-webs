@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import logging
-import shutil
 import subprocess
 import zipfile
 from pathlib import Path

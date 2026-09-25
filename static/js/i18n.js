@@ -142,7 +142,7 @@
       if (parsed.origin !== location.origin) return href;
       var path = stripLanguage(parsed.pathname);
       if (/^\/(?:api|static|fonts|preview)(?:\/|$)/.test(path)) return href;
-      if (!(path === '/' || /^\/(?:app|gallery|profile|privacy)(?:\/|$)/.test(path))) return href;
+      if (!(path === '/' || /^\/(?:app|gallery|extension|profile|privacy)(?:\/|$)/.test(path))) return href;
       parsed.pathname = '/' + L + (path === '/' ? '/' : path);
       return parsed.pathname + parsed.search + parsed.hash;
     } catch (e) { return href; }

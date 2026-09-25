@@ -62,7 +62,7 @@ if not DATA_WRITABLE:
         f"[storage] FATAL: {DATA} is not writable ({DATA_ERROR}). "
         f"Uploads and DB writes will fail with 'readonly database'. "
         f"On Railway this means the volume is owned by root while the app runs as a "
-        f"non-root user — see RAILWAY.md.",
+        f"non-root user.",
         flush=True,
     )
 
@@ -406,7 +406,7 @@ def _create_schema(c: sqlite3.Connection) -> None:
     )
 
     for ddl in (
-        # Hot paths that had no index at all - see docs/ARCHITECTURE_AUDIT.md.
+        # Hot paths that had no index at all.
         "CREATE INDEX IF NOT EXISTS idx_gallery_status_created ON gallery(status, created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_gallery_release_feed ON gallery(status, release_version, created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_gallery_release_author ON gallery(user_id, status, release_version)",
@@ -1498,19 +1498,6 @@ def user_exists(email: str) -> bool:
     row = c.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone()
     c.close()
     return bool(row)
-
-
-def wipe_all_users() -> int:
-    """Delete all users, sessions, email codes. Returns deleted user count."""
-    c = _conn()
-    n = c.execute("SELECT COUNT(*) AS n FROM users").fetchone()["n"]
-    c.execute("DELETE FROM sessions")
-    c.execute("DELETE FROM email_codes")
-    c.execute("DELETE FROM used_codes")
-    c.execute("DELETE FROM users")
-    c.commit()
-    c.close()
-    return int(n or 0)
 
 
 # ─── Gallery ────────────────────────────────────────────────────────────────

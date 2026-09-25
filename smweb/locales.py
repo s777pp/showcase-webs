@@ -5,7 +5,6 @@ for legacy/unprefixed links; otherwise the first visit follows Accept-Language.
 """
 from __future__ import annotations
 
-from urllib.parse import quote
 
 from fastapi import Request
 

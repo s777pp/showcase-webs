@@ -1,6 +1,6 @@
 """Request id, security headers, rate limits, compression, static caching.
 
-The first three moved out of main.py unchanged; see docs/STRUCTURE.md. The last
+The first three moved out of main.py unchanged; see AGENTS.md. The last
 two were added afterwards - nothing was compressing responses and nothing was
 telling browsers they could keep a static asset.
 """
@@ -8,38 +8,15 @@ telling browsers they could keep a static asset.
 
 from __future__ import annotations
 
-import hashlib
-import hmac
-import html
-import io
-import ipaddress
-import json
-import logging
 import os
 import re
-import socket
-import secrets
-import tempfile
-import shutil
-import time
-import uuid
-import warnings
-import zipfile
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from PIL import Image
 
-import processor as proc
 import redis_store as rs
 
-import auth_db
 from smweb import runtime_settings
 
 

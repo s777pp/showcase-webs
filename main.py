@@ -11,39 +11,15 @@ has to be registered before a parameterised one that could swallow it.
 
 from __future__ import annotations
 
-import hashlib
-import hmac
-import html
-import io
-import ipaddress
-import json
-import logging
 import os
-import re
-import socket
-import secrets
-import tempfile
-import shutil
-import time
-import uuid
-import warnings
-import zipfile
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from PIL import Image
 
 import processor as proc
-import redis_store as rs
-
-import auth_db
 
 
 from smweb.core import (
@@ -214,7 +190,8 @@ except Exception as e:
 
 if __name__ == "__main__":
     import uvicorn
-    print(f"\n  Showcase Maker WEB  →  http://{HOST}:{PORT}")
-    print(f"  FFmpeg: {proc.find_ffmpeg() or 'НЕ НАЙДЕН'}")
-    print(f"  Free limit: {FREE_LIMIT}/day  |  Unlock: SHOWCASE-WEB-PRO\n")
+    # ASCII only: a redirected Windows console (cp1252) cannot encode arrows or Cyrillic.
+    print(f"\n  Showcase Maker WEB  ->  http://{HOST}:{PORT}")
+    print(f"  FFmpeg: {proc.find_ffmpeg() or 'NOT FOUND'}")
+    print(f"  Free limit: {FREE_LIMIT}/day\n")
     uvicorn.run("main:app", host=HOST, port=PORT, reload=False)

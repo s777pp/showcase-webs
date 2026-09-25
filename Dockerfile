@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
     ca-certificates \
-    xz-utils \
     gosu \
     && rm -rf /var/lib/apt/lists/*
 

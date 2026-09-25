@@ -1,43 +1,24 @@
 """Background job store and the worker that runs the heavy pipelines.
 
-Moved out of main.py unchanged; see docs/STRUCTURE.md.
+Moved out of main.py unchanged.
 """
 
 
 from __future__ import annotations
 
-import hashlib
-import hmac
-import html
 import io
-import ipaddress
-import json
-import logging
 import os
-import re
-import socket
-import secrets
-import tempfile
 import shutil
 import time
-import uuid
-import warnings
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
-from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
 import processor as proc
 import redis_store as rs
 
-import auth_db
 from smweb import analytics
 from smweb import object_store, process_control
 
@@ -153,9 +134,6 @@ def _worker_mode() -> str:
     m = (os.environ.get("WORKER_MODE") or "").strip().lower()
     if m in ("embedded", "external"):
         return m
-    # back-compat: USE_EXTERNAL_WORKER=1 used to mean "an external worker exists"
-    if (os.environ.get("USE_EXTERNAL_WORKER") or "0").lower() in ("1", "true", "yes", "on"):
-        return "external"
     return "embedded"
 
 
@@ -247,7 +225,6 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
     """Background worker: same pipeline as /api/process, updates progress."""
     import time as _sm_time
     _sm_job_t0 = _sm_time.perf_counter()
-    print(f"[JOB TIMING] START jid={jid}", flush=True)
     # The API and external worker are different containers. Results must live
     # in their shared /data volume, never in the worker-only /tmp filesystem.
     job_dir = JOBS / jid
@@ -422,22 +399,16 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                 processed += 1
             except Exception as e:
                 errors.append(f"{name}: {_public_process_error(e, job_dir)}")
-        _sm_zip_t0 = _sm_time.perf_counter()
         try:
             zf.close()
         except Exception:
             pass
-        print(
-            f"[JOB TIMING] ZIP close: {_sm_time.perf_counter()-_sm_zip_t0:.3f}s",
-            flush=True,
-        )
         if processed == 0:
             detail = "; ".join(errors) if errors else "unknown error"
             _job_set(jid, status="error", pct=100, stage="error", error=f"Failed: {detail}", errors=errors)
             _record_process_event(jid, "process_failed", opts, int((_sm_time.perf_counter()-_sm_job_t0)*1000), "processing")
             shutil.rmtree(job_dir, ignore_errors=True)
             return
-        print(f"[JOB TIMING] ZIP size={zip_path.stat().st_size / 1024 / 1024:.2f}MB", flush=True)
         process_control.checkpoint(jid)
         result_key = ""
         if object_store.configured():
@@ -479,10 +450,6 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
         if cache_key:
             rs.job_cache_put(cache_key, jid)
         _record_process_event(jid, "process_success", opts, int((_sm_time.perf_counter()-_sm_job_t0)*1000))
-        print(
-            f"[JOB TIMING] TOTAL: {_sm_time.perf_counter()-_sm_job_t0:.3f}s | jid={jid}",
-            flush=True,
-        )
     except process_control.JobCancelled:
         process_control.mark_cancelled(jid)
         shutil.rmtree(job_dir, ignore_errors=True)

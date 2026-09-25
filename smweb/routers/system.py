@@ -1,38 +1,18 @@
 """Health, readiness, quota, access codes and site meta.
 
-Moved out of main.py unchanged; see docs/STRUCTURE.md.
+Moved out of main.py unchanged.
 """
 
 
 from __future__ import annotations
 
 import hashlib
-import hmac
-import html
-import io
-import ipaddress
-import json
 import logging
 import os
-import re
-import socket
-import secrets
-import tempfile
-import shutil
 import time
-import uuid
-import warnings
-import zipfile
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Optional
-from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from PIL import Image
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 import processor as proc
 import redis_store as rs
@@ -45,7 +25,6 @@ from fastapi import APIRouter
 
 
 from smweb.core import (
-    DATA,
     FONTS,
     PRO_PRICE_LABEL,
     SOCIALS,
@@ -63,7 +42,6 @@ from smweb.core import (
     quota_state,
 )
 from smweb.jobs import MAX_JOB_WORKERS, _worker_mode
-
 
 
 router = APIRouter()
@@ -96,30 +74,32 @@ def api_ready():
 
 @router.get("/api/health")
 def api_health_prod():
-    db_ok = True
+    db_ok = False
+    db_writable = False
     try:
         c = auth_db._conn()
-        c.execute("SELECT 1")
-        c.close()
+        try:
+            c.execute("SELECT 1")
+            db_ok = True
+            if auth_db.USING_POSTGRES:
+                # PostgreSQL answers writes whenever it answers reads; running DDL
+                # here on every poll only added catalog locks.
+                db_writable = True
+            else:
+                # A readonly SQLite volume still answers SELECT 1, so probe a write.
+                c.execute("CREATE TABLE IF NOT EXISTS _health_probe (id INTEGER PRIMARY KEY)")
+                c.commit()
+                db_writable = True
+        finally:
+            c.close()
     except Exception:
-        db_ok = False
+        pass
     try:
         redis_ok = rs.redis_ok()
     except Exception:
         redis_ok = False
     r2_ok, _r2_error = object_store.health()
     mode = _worker_mode()
-    # writability, not just readability: a readonly volume still answers SELECT 1,
-    # which is why the old db:true hid the "readonly database" failure entirely.
-    db_writable = False
-    try:
-        c = auth_db._conn()
-        c.execute("CREATE TABLE IF NOT EXISTS _health_probe (id INTEGER PRIMARY KEY)")
-        c.commit()
-        c.close()
-        db_writable = True
-    except Exception:
-        pass
     ff = None
     gs = None
     try:
@@ -149,22 +129,6 @@ def api_health_prod():
         "ffmpeg": bool(ff),
         "gifski": bool(gs),
         "version": "prod-opt-2",
-    }
-
-
-@router.get("/api/health_legacy")
-
-def health():
-    ff = proc.find_ffmpeg()
-    gs = proc.find_gifski() if hasattr(proc, "find_gifski") else None
-    return {
-        "ok": True,
-        "ffmpeg": bool(ff),
-        "gifski": bool(gs),
-        "ffmpeg_path": ff or None,
-        "gifski_path": gs or None,
-        "fonts": [f.name for f in FONTS.glob("*.ttf")] if FONTS.is_dir() else [],
-        "templates": [f.name for f in TEMPLATES.glob("*.png")] if TEMPLATES.is_dir() else [],
     }
 
 
@@ -200,7 +164,6 @@ def api_admin_whoami(request: Request):
 @router.get("/api/quota")
 def api_quota(request: Request):
     return quota_state(request)
-
 
 
 # === GUMROAD LICENSE ACTIVATION ===
@@ -314,7 +277,6 @@ def _gumroad_sale_marker(sale_id: str) -> str:
     ).hexdigest().upper()
 
     return "GR-" + digest[:48]
-
 
 
 @router.post("/api/unlock")

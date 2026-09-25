@@ -184,11 +184,12 @@ for (const [name, dictionary] of [
   }
 }
 errors.push(...check('app', evaluateDictionary('static/js/app.js', 'var DICT ='), attributeKeys('static/app.html')));
-errors.push(...check('index', evaluateDictionary('static/js/index.js', 'const I18N ='), attributeKeys('static/index.html')));
+errors.push(...check('home', evaluateDictionary('static/js/home.js', 'var I18N ='), attributeKeys('static/index.html')));
 errors.push(...check('profile', evaluateDictionary('static/js/profile.js', 'var PDICT='), attributeKeys('static/profile.html')));
 errors.push(...check('gallery', evaluateDictionary('static/js/gallery.js', 'const GDICT ='), attributeKeys('static/gallery.html')));
+// static/js/home.js is intentionally EN/RU only for now (owner decision 2026-09-25);
+// other languages fall back to English until scripts/build_extra_locales.js is re-run.
 const dictionaries = [
-  evaluateDictionary('static/js/index.js', 'const I18N ='),
   evaluateDictionary('static/js/app.js', 'const APP_I18N ='),
   evaluateDictionary('static/js/app.js', 'var DICT ='),
   evaluateDictionary('static/js/app.js', 'var WM_TIPS ='),
@@ -206,7 +207,7 @@ const preserved = /^(?:Steam|Steam DNA(?: ·)?|Showcase Maker|SteamShowcase Help
 const expected = new Set(dictionaries.flatMap(dictionary => collectStrings(dictionary.en || {})).filter(value => /[A-Za-z]/.test(value) && !preserved.test(value.trim())));
 const literalStrings = new Set();
 for (const file of [
-  'static/ss-shell.js', 'static/js/index.js', 'static/js/index-tail.js',
+  'static/ss-shell.js',
   'static/js/app.js', 'static/js/app-tail.js', 'static/js/gallery.js',
   'static/js/profile.js', 'static/js/profile-insights.js', 'static/js/support-chat.js',
   'static/js/seamless-loop.js', 'static/js/showcase-builder.js',

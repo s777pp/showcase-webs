@@ -1,42 +1,24 @@
 """Public gallery, moderation, likes, comments, notifications.
 
-Moved out of main.py unchanged; see docs/STRUCTURE.md.
+Moved out of main.py unchanged.
 """
 
 
 from __future__ import annotations
 
-import hashlib
-import hmac
-import html
 import io
-import ipaddress
-import json
-import logging
-import os
-import re
-import socket
 import secrets
 import tempfile
 import shutil
 import time
-import uuid
-import warnings
-import zipfile
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
-from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import File, Form, Request, UploadFile
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 from PIL import Image
 
 import processor as proc
-import redis_store as rs
 
 import auth_db
 from smweb import object_store
@@ -46,7 +28,6 @@ from fastapi import APIRouter
 
 
 from smweb.core import DATA, LOGGER, MAX_UPLOAD_MB, _admin_ok, _auth_user, _is_gallery_admin, _safe_data_path
-
 
 
 router = APIRouter()

@@ -1017,3 +1017,13 @@ html[lang="ru"] .page-tools .h-title::before{content:"РАБОЧАЯ ЗОНА / 
 @media (max-width:520px){
   .ss-auth__card h2{font-size:clamp(22px,6.4vw,30px)!important;line-height:1.05!important;overflow-wrap:anywhere}
 }
+
+/* A compact discovery cue for the new extension guide, without turning the rail item into a banner. */
+.ss-nav__i[href$="/extension"] svg{color:#70e1fa!important;opacity:1!important}
+.ss-nav__i[href$="/extension"] .ss-nav__tag,
+.ss-drawer__tag{display:inline-flex;align-items:center;justify-content:center;flex:none;padding:3px 6px;border:1px solid #9aebfb;border-radius:3px;background:#6fe1fa;color:#061923;font:900 9px/1 var(--os-body),sans-serif;letter-spacing:.04em;text-transform:uppercase;box-shadow:2px 2px 0 #215290}
+.ss-nav__i[href$="/extension"] .ss-nav__tag{margin-left:auto!important}
+.ss-drawer__tag{margin-left:auto;font-style:normal}
+@media (min-width:821px) and (max-width:1180px){
+  .ss-nav__i[href$="/extension"] .ss-nav__tag{position:absolute;top:6px;right:6px;width:8px;height:8px;padding:0;border-radius:50%;font-size:0;box-shadow:0 0 0 2px #09101a}
+}

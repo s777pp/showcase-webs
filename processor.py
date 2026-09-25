@@ -450,7 +450,6 @@ def media_to_gif(
         frames = tmp / "frames"
         frames.mkdir()
         # Extract scaled frames as PNG (source for both encoders)
-        _m2g_t0 = time.perf_counter()
         rotation_filter = _ffmpeg_rotation_filter(rotation)
         video_filter = ",".join(part for part in (
             rotation_filter,
@@ -487,32 +486,13 @@ def media_to_gif(
                 str(frames / "frame_%04d.png"),
             ])
 
-        _m2g_t1 = time.perf_counter()
-        print(
-            f"[M2G TIMING] ffmpeg->PNG: {_m2g_t1-_m2g_t0:.3f}s | "
-            f"src={src.name} width={width} fps={fps}",
-            flush=True,
-        )
-
         if not list(frames.glob("frame_*.png")):
             raise RuntimeError("no frames extracted for GIF")
 
         if encoder == "gifski":
             if not find_gifski():
                 raise RuntimeError("gifski selected but binary not found")
-            _m2g_t2 = time.perf_counter()
             ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
-            _m2g_t3 = time.perf_counter()
-            print(
-                f"[M2G TIMING] gifski q100: {_m2g_t3-_m2g_t2:.3f}s | "
-                f"dest={dest.name} width={width} fps={fps}",
-                flush=True,
-            )
-            print(
-                f"[M2G TIMING] TOTAL: {_m2g_t3-_m2g_t0:.3f}s | "
-                f"{src.name} -> {dest.name}",
-                flush=True,
-            )
             if not ok:
                 raise RuntimeError("gifski encode failed (no fallback to ffmpeg when gifski is selected)")
         else:
@@ -944,18 +924,7 @@ def _ensure_under_mb_impl(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
 
 
 def ensure_under_mb(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
-    _fit_t0 = time.perf_counter()
-    _fit_before = _gif_mb(Path(path)) if Path(path).is_file() else 0.0
-    try:
-        return _ensure_under_mb_impl(path, max_mb)
-    finally:
-        _fit_after = _gif_mb(Path(path)) if Path(path).is_file() else 0.0
-        _fit_t1 = time.perf_counter()
-        print(
-            f"[FIT TIMING] {_fit_t1-_fit_t0:.3f}s | "
-            f"{Path(path).name} | {_fit_before:.2f}MB -> {_fit_after:.2f}MB",
-            flush=True,
-        )
+    return _ensure_under_mb_impl(path, max_mb)
 
 
 
@@ -1159,20 +1128,11 @@ def _gif_full_with_bar_split(
         else:
             fps = 12
 
-        _t0 = time.perf_counter()
-
         ok = _gifski_from_frames(
             frames_dir,
             out_path,
             fps=fps,
             quality=100,
-        )
-
-        _t1 = time.perf_counter()
-        print(
-            f"[PROCESS TIMING] split bars gifski q100: "
-            f"{_t1-_t0:.3f}s | frames={frame_no} fps={fps}",
-            flush=True,
         )
 
         if not ok:
@@ -1200,8 +1160,6 @@ def _reencode_crop_hq(
         frames = tmp / "f"
         frames.mkdir()
         # crop → PNG sequence
-        import time
-        _sm_t0 = time.perf_counter()
         _run([
             ff, "-y", "-hide_banner", "-loglevel", "error",
             "-i", str(src_gif),
@@ -1209,18 +1167,12 @@ def _reencode_crop_hq(
             "-vf", f"{crop_vf},fps={max(5, min(24, int(fps)))}",
             str(frames / "frame_%04d.png"),
         ])
-        _sm_t1 = time.perf_counter()
-        print(f"[PROCESS TIMING] decode+crop PNG: {_sm_t1-_sm_t0:.3f}s | {crop_vf}", flush=True)
         if not list(frames.glob("frame_*.png")):
             raise RuntimeError("crop produced no frames")
         if encoder == "gifski":
             if not find_gifski():
                 raise RuntimeError("gifski selected but binary not found")
-            _sm_t2 = time.perf_counter()
             ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
-            _sm_t3 = time.perf_counter()
-            print(f"[PROCESS TIMING] gifski q100: {_sm_t3-_sm_t2:.3f}s | {dest.name}", flush=True)
-            print(f"[PROCESS TIMING] crop total: {_sm_t3-_sm_t0:.3f}s | {dest.name}", flush=True)
             if not ok:
                 raise RuntimeError("gifski crop-encode failed (no ffmpeg fallback)")
         else:
@@ -2489,59 +2441,3 @@ def compose_animated_layers(
     )
 
     return output, [frame_ms] * len(output)
-
-# === TEMP PROCESS PIPELINE TIMING ===
-_sm_orig_save_animated_gif = _save_animated_gif
-def _save_animated_gif(frames_p, durations, out_path):
-    _t0 = time.perf_counter()
-    try:
-        return _sm_orig_save_animated_gif(frames_p, durations, out_path)
-    finally:
-        _t1 = time.perf_counter()
-        print(
-            f"[PIL TIMING] save GIF: {_t1-_t0:.3f}s | "
-            f"{Path(out_path).name} | frames={len(frames_p)}",
-            flush=True,
-        )
-
-
-_sm_orig_workshop_bars = _gif_full_with_bars_workshop
-def _gif_full_with_bars_workshop(*args, **kwargs):
-    _t0 = time.perf_counter()
-    try:
-        return _sm_orig_workshop_bars(*args, **kwargs)
-    finally:
-        _t1 = time.perf_counter()
-        out = args[1] if len(args) > 1 else kwargs.get("out_path", "?")
-        print(
-            f"[PIL TIMING] workshop bars TOTAL: {_t1-_t0:.3f}s | {Path(out).name}",
-            flush=True,
-        )
-
-
-_sm_orig_split_bars = _gif_full_with_bar_split
-def _gif_full_with_bar_split(*args, **kwargs):
-    _t0 = time.perf_counter()
-    try:
-        return _sm_orig_split_bars(*args, **kwargs)
-    finally:
-        _t1 = time.perf_counter()
-        out = args[1] if len(args) > 1 else kwargs.get("out_path", "?")
-        print(
-            f"[PIL TIMING] split bars TOTAL: {_t1-_t0:.3f}s | {Path(out).name}",
-            flush=True,
-        )
-
-
-_sm_orig_apply_watermark = _gif_apply_watermark
-def _gif_apply_watermark(*args, **kwargs):
-    _t0 = time.perf_counter()
-    try:
-        return _sm_orig_apply_watermark(*args, **kwargs)
-    finally:
-        _t1 = time.perf_counter()
-        out = args[1] if len(args) > 1 else kwargs.get("out_path", "?")
-        print(
-            f"[PIL TIMING] watermark TOTAL: {_t1-_t0:.3f}s | {Path(out).name}",
-            flush=True,
-        )

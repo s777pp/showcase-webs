@@ -50,7 +50,6 @@ services:
       # use multiple cores; one fallback job keeps the API responsive.
       MAX_JOB_WORKERS: ${MAX_JOB_WORKERS:-1}
       MAX_FILES_PER_JOB: ${MAX_FILES_PER_JOB:-10}
-      ALLOW_SYNC_PROCESS: ${ALLOW_SYNC_PROCESS:-0}
       FREE_LIMIT: ${FREE_LIMIT:-5}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-40}
       MAX_REQUEST_MB: ${MAX_REQUEST_MB:-100}

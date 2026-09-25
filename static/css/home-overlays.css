@@ -1,0 +1,166 @@
+/* Popups on the landing page (language menu, auth / registration, activation
+   and purchase, consent banner, notices, support assistant) restyled to the
+   hero palette. Scoped to body.page-home: Tools and other pages keep theirs.
+   The shared shell/redesign styles use !important, hence the same here. */
+
+html body.page-home{
+  --ov-panel:linear-gradient(165deg,#0e1a3c,#050a1c);
+  --ov-line:rgba(110,170,255,.26);
+  --ov-line-hi:rgba(111,227,255,.6);
+  --ov-ink:#e9f3ff;
+  --ov-muted:rgba(214,229,250,.7);
+  --ov-faint:rgba(200,214,238,.5);
+  --ov-field:rgba(3,8,24,.72);
+  --ov-cyan:var(--home-cyan,#1fc9f1);
+  --ov-cyan-hi:var(--home-cyan-hi,#6fe3ff);
+  --ov-violet:#8a7dff;
+  --ov-font:var(--home-display,'Montserrat',sans-serif);
+  --ov-radius:12px;
+}
+
+/* ------------------------------------------------------ shared panels */
+html body.page-home .ss-auth__card,
+html body.page-home .ss-activation__card,
+html body.page-home .studio-chat-panel,
+html body.page-home .studio-support-choice__card,
+html body.page-home .sm-consent,
+html body.page-home .ss-lang__menu,
+html body.page-home .ss-notices>*{
+  border:1px solid var(--ov-line)!important;border-radius:var(--ov-radius)!important;
+  background:var(--ov-panel)!important;color:var(--ov-ink)!important;font-family:var(--ov-font)!important;
+  box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.02) inset,0 0 40px rgba(31,201,241,.06)!important;
+}
+/* Signature cyan-to-violet line on the top edge of dialogs. */
+html body.page-home .ss-auth__card::before,
+html body.page-home .ss-activation__card::before,
+html body.page-home .studio-chat-panel::before,
+html body.page-home .studio-support-choice__card::before{
+  content:""!important;position:absolute!important;left:0!important;right:0!important;top:0!important;width:auto!important;height:2px!important;
+  border-radius:var(--ov-radius) var(--ov-radius) 0 0!important;background:linear-gradient(90deg,var(--ov-cyan),var(--ov-violet))!important;box-shadow:none!important;
+}
+html body.page-home .ss-auth,
+html body.page-home .ss-activation,
+html body.page-home .studio-support-choice{
+  background:rgba(2,5,16,.72)!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important;
+}
+
+/* --------------------------------------------------- auth & activation */
+html body.page-home .ss-auth__card,html body.page-home .ss-activation__card{position:relative!important;overflow:hidden!important;padding:30px 30px 26px!important}
+html body.page-home .ss-auth__card h2,html body.page-home .ss-activation__card h2{
+  font:800 30px/1.1 var(--ov-font)!important;letter-spacing:-.01em!important;text-transform:none!important;color:#fff!important;
+}
+html body.page-home .ss-auth__eyebrow{font:700 10.5px/1 var(--ov-font)!important;letter-spacing:.16em!important;color:var(--ov-cyan-hi)!important}
+html body.page-home .ss-auth__sub{color:var(--ov-muted)!important;font-size:13.5px!important;line-height:1.5!important}
+html body.page-home .ss-auth__mark,html body.page-home .ss-activation__icon{
+  border:1px solid var(--ov-line-hi)!important;border-radius:10px!important;background:rgba(31,201,241,.08)!important;color:var(--ov-cyan-hi)!important;box-shadow:0 0 18px rgba(31,201,241,.15)!important;
+}
+html body.page-home .ss-auth__close,html body.page-home .studio-chat-close,html body.page-home .studio-support-choice__close{
+  border:1px solid var(--ov-line)!important;border-radius:8px!important;background:rgba(3,8,24,.6)!important;color:var(--ov-muted)!important;
+}
+html body.page-home .ss-auth__close:hover,html body.page-home .studio-chat-close:hover,html body.page-home .studio-support-choice__close:hover{border-color:var(--ov-line-hi)!important;color:#fff!important}
+html body.page-home .ss-auth__form label>span,html body.page-home .ss-activation__form label>span{
+  font:700 10.5px/1 var(--ov-font)!important;letter-spacing:.12em!important;text-transform:uppercase!important;color:var(--ov-faint)!important;
+}
+html body.page-home .ss-auth input,html body.page-home .ss-activation input,
+html body.page-home .studio-chat-form textarea,html body.page-home .studio-chat-form input,
+html body.page-home .studio-ticket-form textarea,html body.page-home .studio-ticket-form input{
+  height:auto;min-height:46px;padding:12px 14px!important;border:1px solid var(--ov-line)!important;border-radius:8px!important;
+  background:var(--ov-field)!important;color:#fff!important;font:500 14px var(--ov-font)!important;box-shadow:none!important;outline:0!important;
+}
+html body.page-home .ss-auth input::placeholder,html body.page-home .ss-activation input::placeholder,html body.page-home .studio-chat-form textarea::placeholder{color:rgba(200,214,238,.38)!important}
+html body.page-home .ss-auth input:focus,html body.page-home .ss-activation input:focus,
+html body.page-home .studio-chat-form textarea:focus,html body.page-home .studio-ticket-form textarea:focus,html body.page-home .studio-ticket-form input:focus{
+  border-color:var(--ov-cyan)!important;box-shadow:0 0 0 3px rgba(31,201,241,.16)!important;
+}
+/* Primary actions match the hero buttons. */
+html body.page-home .ss-auth__submit,html body.page-home .ss-activation__entry button,
+html body.page-home .sm-consent__button--allow,html body.page-home .studio-chat-send,html body.page-home .studio-chat-launch{
+  border:0!important;border-radius:8px!important;background:var(--ov-cyan)!important;color:#021018!important;
+  font:700 14px/1 var(--ov-font)!important;box-shadow:0 0 26px rgba(31,201,241,.3)!important;transform:none!important;
+  transition:background .2s,box-shadow .2s!important;
+}
+html body.page-home .ss-auth__submit:hover,html body.page-home .ss-activation__entry button:hover,
+html body.page-home .sm-consent__button--allow:hover,html body.page-home .studio-chat-send:hover,html body.page-home .studio-chat-launch:hover{
+  background:var(--ov-cyan-hi)!important;box-shadow:0 0 36px rgba(31,201,241,.48)!important;
+}
+html body.page-home .ss-auth__submit{min-height:48px!important}
+html body.page-home .ss-auth__div{color:var(--ov-faint)!important;font:600 12px var(--ov-font)!important}
+html body.page-home .ss-auth__oauth-btn,html body.page-home .ss-shop,html body.page-home .sm-consent__button:not(.sm-consent__button--allow){
+  border:1px solid var(--ov-line)!important;border-radius:8px!important;background:rgba(8,16,40,.78)!important;color:var(--ov-ink)!important;
+  font-family:var(--ov-font)!important;box-shadow:none!important;transform:none!important;transition:border-color .2s,background .2s!important;
+}
+html body.page-home .ss-auth__oauth-btn:hover,html body.page-home .ss-shop:hover,html body.page-home .sm-consent__button:not(.sm-consent__button--allow):hover{
+  border-color:var(--ov-line-hi)!important;background:rgba(14,30,66,.9)!important;
+}
+html body.page-home .ss-shop small{color:var(--ov-faint)!important}
+html body.page-home .ss-shop i{color:var(--ov-cyan-hi)!important}
+html body.page-home .ss-shop__icon:not(.ss-shop__icon--telegram){border:1px solid var(--ov-line)!important;border-radius:8px!important;background:rgba(3,8,24,.7)!important;color:var(--ov-cyan-hi)!important}
+html body.page-home .ss-activation__divide span{color:var(--ov-faint)!important;font:700 10.5px var(--ov-font)!important;letter-spacing:.14em!important}
+html body.page-home .ss-activation__divide::before,html body.page-home .ss-activation__divide::after{background:var(--ov-line)!important}
+html body.page-home .ss-auth__switch,html body.page-home .ss-auth__recover{color:var(--ov-muted)!important}
+html body.page-home .ss-auth__switch a,html body.page-home .ss-auth__switch button,html body.page-home .ss-auth__recover a,html body.page-home .ss-auth__recover button{color:var(--ov-cyan-hi)!important}
+
+/* ------------------------------------------------------ language menu */
+html body.page-home .ss-lang__menu{padding:6px!important;border-radius:10px!important;min-width:200px}
+html body.page-home .ss-lang__menu button{border-radius:6px!important;font:500 13px var(--ov-font)!important;color:var(--ov-muted)!important;padding:8px 10px!important}
+html body.page-home .ss-lang__menu button b{font:700 10.5px/1 var(--ov-font)!important;color:var(--ov-cyan)!important}
+html body.page-home .ss-lang__menu button:hover,html body.page-home .ss-lang__menu button[aria-selected="true"]{background:rgba(31,201,241,.12)!important;color:#fff!important}
+
+/* ------------------------------------------------------ consent banner */
+html body.page-home .sm-consent{padding:18px 20px!important;border-left:1px solid var(--ov-line)!important}
+html body.page-home .sm-consent__title{font:700 16px var(--ov-font)!important;color:#fff!important}
+html body.page-home .sm-consent__text{font:500 13px/1.5 var(--ov-font)!important;color:var(--ov-muted)!important}
+html body.page-home .sm-consent a{color:var(--ov-cyan-hi)!important}
+html body.page-home .sm-consent__button{min-height:42px!important;padding:0 18px!important;font:700 13.5px var(--ov-font)!important}
+
+/* ------------------------------------------------------------- notices */
+html body.page-home .ss-notices>*{border-left:2px solid var(--ov-cyan)!important}
+html body.page-home .ss-notices *{font-family:var(--ov-font)!important}
+
+/* ---------------------------------------------------- support assistant */
+html body.page-home .studio-chat-launch{min-height:46px!important;padding:0 18px!important;border-radius:999px!important}
+html body.page-home .studio-chat-launch__icon{color:#021018!important}
+html body.page-home .studio-chat-panel{overflow:hidden!important}
+html body.page-home .studio-chat-panel header{border-bottom:1px solid var(--ov-line)!important;background:rgba(3,8,24,.45)!important}
+html body.page-home .studio-chat-panel header small{font:700 10.5px var(--ov-font)!important;letter-spacing:.16em!important;color:var(--ov-cyan-hi)!important}
+html body.page-home .studio-chat-panel h2,html body.page-home .studio-support-choice__card h2{font:800 20px/1.2 var(--ov-font)!important;color:#fff!important;text-transform:none!important}
+html body.page-home .studio-chat-note,html body.page-home .studio-chat-privacy,html body.page-home .studio-support-choice__hint{color:var(--ov-faint)!important;font-family:var(--ov-font)!important}
+html body.page-home .studio-chat-suggestions{border-bottom-color:var(--ov-line)!important}
+html body.page-home .studio-chat-topics button,html body.page-home .studio-chat-topics-toggle{
+  border:1px solid var(--ov-line)!important;border-radius:999px!important;background:rgba(8,16,40,.78)!important;color:var(--ov-ink)!important;font:600 12px var(--ov-font)!important;
+}
+html body.page-home .studio-chat-topics button:hover{border-color:var(--ov-line-hi)!important}
+html body.page-home .studio-chat-topics-toggle{color:var(--ov-cyan-hi)!important}
+html body.page-home .studio-chat-message{border-radius:10px!important;background:rgba(10,20,48,.85)!important;border:1px solid rgba(110,170,255,.14)!important;font-family:var(--ov-font)!important;color:var(--ov-ink)!important}
+html body.page-home .studio-chat-message.user{background:rgba(31,201,241,.14)!important;border-color:rgba(111,227,255,.35)!important}
+html body.page-home .studio-chat-form{border-top:1px solid var(--ov-line)!important;background:rgba(3,8,24,.45)!important}
+html body.page-home .studio-chat-send{min-width:46px!important;min-height:46px!important}
+html body.page-home .studio-ticket-toggle{color:var(--ov-cyan-hi)!important;font-family:var(--ov-font)!important}
+html body.page-home .studio-support-choice__card{position:relative!important;overflow:hidden!important}
+html body.page-home .studio-support-choice__card button:not(.studio-support-choice__close),
+html body.page-home .studio-support-choice__card a{
+  border:1px solid var(--ov-line)!important;border-radius:10px!important;background:rgba(8,16,40,.78)!important;color:var(--ov-ink)!important;font-family:var(--ov-font)!important;
+}
+html body.page-home .studio-support-choice__card button:not(.studio-support-choice__close):hover,
+html body.page-home .studio-support-choice__card a:hover{border-color:var(--ov-line-hi)!important;background:rgba(14,30,66,.9)!important}
+
+/* ------------------------------------------------- mobile drawer menu */
+html body.page-home .ss-drawer{
+  border:0!important;border-bottom:1px solid var(--ov-line)!important;border-radius:0 0 var(--ov-radius) var(--ov-radius)!important;
+  background:var(--ov-panel)!important;box-shadow:0 30px 60px rgba(0,0,0,.5)!important;font-family:var(--ov-font)!important;
+}
+html body.page-home .ss-drawer__t{font:700 10.5px/1 var(--ov-font)!important;letter-spacing:.16em!important;color:var(--ov-faint)!important}
+html body.page-home .ss-drawer a{border:1px solid transparent!important;border-radius:8px!important;color:var(--ov-ink)!important;font:600 14.5px var(--ov-font)!important;background:transparent!important}
+html body.page-home .ss-drawer a svg{color:var(--ov-cyan)!important}
+html body.page-home .ss-drawer a:hover,html body.page-home .ss-drawer a.is-on{border-color:var(--ov-line)!important;background:rgba(31,201,241,.08)!important}
+html body.page-home .ss-drawer__tag{margin-left:auto;padding:3px 6px;border:1px solid var(--ov-line-hi);border-radius:4px;background:rgba(31,201,241,.12);color:var(--ov-cyan-hi);font:800 9px/1 var(--ov-font);font-style:normal;letter-spacing:.06em;text-transform:uppercase}
+html body.page-home .ss-drawer__language{border:1px solid var(--ov-line)!important;border-radius:8px!important;background:rgba(3,8,24,.6)!important}
+html body.page-home .ss-drawer__language select{border:1px solid var(--ov-line)!important;border-radius:6px!important;background:var(--ov-field)!important;color:#fff!important;font:600 14px var(--ov-font)!important}
+html body.page-home .ss-drawer__auth-btn{border:0!important;border-radius:8px!important;background:var(--ov-cyan)!important;color:#021018!important;font:700 14px var(--ov-font)!important;box-shadow:0 0 24px rgba(31,201,241,.3)!important}
+html body.page-home .ss-drawer__auth-btn svg{color:#021018!important}
+
+/* Problem report form inside the assistant */
+html body.page-home .studio-ticket-form{border:1px solid var(--ov-line)!important;border-radius:10px!important;background:rgba(3,8,24,.55)!important;font-family:var(--ov-font)!important}
+html body.page-home .studio-ticket-form label,html body.page-home .studio-ticket-form label span{color:var(--ov-muted)!important;font:600 12px var(--ov-font)!important}
+html body.page-home .studio-ticket-form button{border:0!important;border-radius:8px!important;background:var(--ov-cyan)!important;color:#021018!important;font:700 14px/1 var(--ov-font)!important;min-height:44px!important;box-shadow:0 0 22px rgba(31,201,241,.28)!important}
+html body.page-home .studio-ticket-form button:hover{background:var(--ov-cyan-hi)!important}

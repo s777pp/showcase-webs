@@ -243,3 +243,7 @@ textarea.ss-in{resize:vertical;min-height:78px;line-height:1.5}
 /* Privacy footer actions: shared by the landing and Tools, without changing layout. */
 [data-privacy-link]{display:inline-block;max-width:100%;padding:8px 0;color:#91dff2;font-size:13px;line-height:1.5;white-space:normal;overflow-wrap:anywhere;text-underline-offset:4px}
 [data-privacy-link]:focus-visible{outline:2px solid #49d6f5;outline-offset:4px}
+
+/* Brand Telegram mark in purchase lists (was a generic arrow glyph). */
+.ss-shop__icon--telegram{background:transparent!important;border-color:transparent!important;padding:0!important}
+.ss-shop__icon--telegram svg{width:30px;height:30px;display:block}

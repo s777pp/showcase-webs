@@ -1,43 +1,27 @@
 """The showcase pipeline: start, status, download, legacy sync route.
 
-Moved out of main.py unchanged; see docs/STRUCTURE.md.
+Moved out of main.py unchanged.
 """
 
 
 from __future__ import annotations
 
 import hashlib
-import hmac
-import html
-import io
-import ipaddress
 import json
-import logging
 import os
 import re
-import socket
 import secrets
-import tempfile
 import shutil
 import time
-import uuid
-import warnings
 import zipfile
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
-from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, Response
-from fastapi.staticfiles import StaticFiles
-from PIL import Image
+from fastapi import File, Form, Request, UploadFile
+from fastapi.responses import JSONResponse, FileResponse, Response
 
 import processor as proc
 import redis_store as rs
 
-import auth_db
 from smweb import analytics
 from smweb import media_assets
 
@@ -45,27 +29,16 @@ from smweb import media_assets
 from fastapi import APIRouter
 
 
-from smweb.core import (
-    FREE_LIMIT,
-    JOBS,
-    MAX_UPLOAD_MB,
-    _auth_user,
-    _ip,
-    max_jobs_for_user,
-    quota_inc,
-    quota_state,
-)
+from smweb.core import JOBS, MAX_UPLOAD_MB, _auth_user, _ip, max_jobs_for_user, quota_inc, quota_state
 from smweb.job_access import browser_owns_job
 from smweb.jobs import (
     _job_cleanup_old,
     _job_get,
     _job_pool,
     _job_set,
-    _run_process_job,
     _run_process_job_from_payload,
     _worker_mode,
 )
-
 
 
 router = APIRouter()
@@ -574,263 +547,13 @@ def api_process_preview_file(job_id: str, entry_index: int, request: Request):
 
 
 @router.post("/api/process")
-async def api_process(
-    request: Request,
-    mode: str = Form("workshop"),
-    fps: int = Form(12),
-    size: int = Form(750),
-    wm_text: str = Form("n1t1337"),
-    wm_font: str = Form("lap"),
-    wm_opacity: int = Form(22),
-    wm_enable: str = Form("1"),
-    wm_corner: str = Form("bl"),
-    wm_scale: float = Form(1.0),
-    wm_color: str = Form("#ffffff"),
-    wm_x: str = Form(""),
-    wm_y: str = Form(""),
-    auto_contrast: str = Form("0"),
-    gif_encoder: str = Form("gifski"),
-    all_modes: str = Form("0"),
-    files: list[UploadFile] = File(...),
-):
-    """Process → ZIP download → delete temps."""
-    # Kept only as an opt-in compatibility escape hatch. Running encoders in
-    # Uvicorn is enough to stall every page for all visitors on a small VPS.
-    if (os.environ.get("ALLOW_SYNC_PROCESS") or "0").strip().lower() not in ("1", "true", "yes", "on"):
-        return JSONResponse(
-            {"ok": False, "msg": "Synchronous processing is disabled; use /api/process/start"},
-            status_code=410,
-        )
-    import tempfile
-    import time as _sm_time
-    _sm_req_t0 = _sm_time.perf_counter()
-    print("[API TIMING] START /api/process", flush=True)
-
-    q = quota_state(request)
-    if not q["pro"] and q["left"] <= 0:
-        return JSONResponse(
-            {"ok": False, "msg": f"Limit {q['limit']} files/day. Enter access code or buy Pro."},
-            status_code=403,
-        )
-
-    mode = (mode or "workshop").lower().strip()
-    if mode not in ("workshop", "featured", "split"):
-        return JSONResponse({"ok": False, "msg": "Unknown mode"}, status_code=400)
-
-    do_all = str(all_modes).lower() in ("1", "true", "yes", "on")
-    modes = ["workshop", "featured", "split"] if do_all else [mode]
-
-    text, wm_font, opacity, corner, scale, color, wm_x_f, wm_y_f = _watermark_options(
-        q, wm_text, wm_font, wm_opacity, wm_enable, wm_corner,
-        wm_scale, wm_color, wm_x, wm_y,
+async def api_process():
+    """Retired synchronous endpoint. Encoding inside Uvicorn stalls every visitor;
+    use /api/process/start and poll /api/process/status/{id}."""
+    return JSONResponse(
+        {"ok": False, "msg": "Synchronous processing is disabled; use /api/process/start"},
+        status_code=410,
     )
-    do_ac = str(auto_contrast).lower() in ("1", "true", "yes", "on")
-    try:
-        size_i = int(size)
-    except (TypeError, ValueError):
-        size_i = 750
-    if size_i not in (630, 640, 750, 800):
-        size_i = min((630, 640, 750, 800), key=lambda s: abs(s - size_i))
-
-    left = 999 if q["pro"] else q["left"]
-    files = files[: max(1, left)]
-
-    job_dir = Path(tempfile.mkdtemp(prefix="sm_job_"))
-    zip_buf = io.BytesIO()
-    processed = 0
-    errors: list[str] = []
-    listed: list[dict] = []
-
-    try:
-        zf = zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED)
-        for uf in files:
-            name = uf.filename or "file"
-            try:
-                raw = await uf.read()
-                if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
-                    errors.append(f"{name}: >{MAX_UPLOAD_MB}MB")
-                    continue
-                ext = Path(name).suffix.lower()
-                stem = Path(name).stem[:40]
-                if ext not in (
-                    ".png", ".jpg", ".jpeg", ".webp", ".bmp",
-                    ".gif", ".mp4", ".mov", ".webm", ".avi", ".mkv",
-                ):
-                    errors.append(f"{name}: unsupported format")
-                    continue
-
-                for mode in modes:
-                    _sm_mode_t0 = _sm_time.perf_counter()
-                    folder = f"{stem}_{mode}"
-                    work = job_dir / folder
-                    work.mkdir(exist_ok=True)
-
-                    if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp"):
-                        img = Image.open(io.BytesIO(raw))
-                        img.load()
-                        max_side = 4096
-                        if max(img.size) > max_side:
-                            img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
-                        if do_ac:
-                            from PIL import ImageOps
-                            rgb = img.convert("RGB")
-                            rgb = ImageOps.autocontrast(rgb, cutoff=1)
-                            img = rgb
-                        if mode == "workshop" and img.size[0] != size_i:
-                            nh = max(1, int(img.size[1] * (size_i / max(1, img.size[0]))))
-                            img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
-                        if mode == "workshop":
-                            parts = proc.process_image_workshop(
-                                img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
-                            )
-                        elif mode == "featured":
-                            parts = proc.process_image_featured(
-                                img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
-                            )
-                        else:
-                            parts = proc.process_image_split(
-                                img, text, wm_font, opacity, color, corner, scale, wm_x_f, wm_y_f
-                            )
-                        for pname, data in parts.items():
-                            zf.writestr(f"{folder}/{pname}", data)
-                            if len(listed) < 20:
-                                listed.append({"name": f"{folder}/{pname}", "size": len(data)})
-                    else:
-                        src = work / f"source{ext}"
-                        src.write_bytes(raw)
-                        is_video = ext in (".mp4", ".mov", ".webm", ".avi", ".mkv")
-                        v_fps = max(5, min(int(fps), 24))
-                        v_dur = 8.0
-                        enc = (gif_encoder or "ffmpeg").strip().lower()
-                        if enc not in ("ffmpeg", "gifski", "pillow"):
-                            enc = "ffmpeg"
-                        # pillow → treat as ffmpeg for process pipeline
-                        if enc == "pillow":
-                            enc = "ffmpeg"
-                        if is_video:
-                            if not proc.find_ffmpeg():
-                                raise RuntimeError("FFmpeg not available")
-                            if mode == "workshop":
-                                paths = proc.process_video_workshop(
-                                    src, work, fps=v_fps, width=size_i,
-                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
-                                    duration=v_dur, wm_corner=corner, wm_scale=scale,
-                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=enc,
-                                )
-                            elif mode == "featured":
-                                paths = proc.process_video_featured(
-                                    src, work, fps=v_fps, duration=v_dur, encoder=enc,
-                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
-                                    wm_corner=corner, wm_scale=scale, wm_x=wm_x_f, wm_y=wm_y_f,
-                                )
-                            else:
-                                paths = proc.process_video_split(
-                                    src, work, fps=v_fps,
-                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity, wm_color=color,
-                                    duration=v_dur, wm_corner=corner, wm_scale=scale,
-                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=enc,
-                                )
-                        else:
-                            if mode == "workshop":
-                                paths = proc.process_gif_workshop(
-                                    src, work,
-                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
-                                    wm_color=color, wm_corner=corner, wm_scale=scale,
-                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=enc, fps=v_fps,
-                                    width=size_i,
-                                )
-                            elif mode == "featured":
-                                paths = proc.process_gif_featured(
-                                    src, work, fps=v_fps, encoder=enc,
-                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
-                                    wm_color=color, wm_corner=corner, wm_scale=scale,
-                                    wm_x=wm_x_f, wm_y=wm_y_f,
-                                )
-                            else:
-                                paths = proc.process_gif_split(
-                                    src, work, fps=v_fps,
-                                    wm_text=text, wm_font=wm_font, wm_opacity=opacity,
-                                    wm_color=color, wm_corner=corner, wm_scale=scale,
-                                    wm_x=wm_x_f, wm_y=wm_y_f, encoder=enc,
-                                )
-                        for pname, pth in paths.items():
-                            pth = Path(pth)
-                            if not pth.is_file():
-                                continue
-                            data = pth.read_bytes()
-                            zf.writestr(f"{folder}/{pname}", data)
-                            if len(listed) < 20:
-                                listed.append({"name": f"{folder}/{pname}", "size": len(data)})
-                            try:
-                                pth.unlink(missing_ok=True)
-                            except Exception:
-                                pass
-                        try:
-                            src.unlink(missing_ok=True)
-                        except Exception:
-                            pass
-
-                    print(
-                        f"[API TIMING] MODE {mode}: "
-                        f"{_sm_time.perf_counter()-_sm_mode_t0:.3f}s",
-                        flush=True,
-                    )
-
-                processed += 1
-            except Exception as e:
-                errors.append(f"{name}: {type(e).__name__}: {e}")
-                try:
-                    shutil.rmtree(work, ignore_errors=True)
-                except Exception:
-                    pass
-
-        _sm_zip_t0 = _sm_time.perf_counter()
-        try:
-            zf.close()
-        except Exception:
-            pass
-        print(
-            f"[API TIMING] ZIP close: "
-            f"{_sm_time.perf_counter()-_sm_zip_t0:.3f}s",
-            flush=True,
-        )
-
-        if processed == 0:
-            detail = "; ".join(errors) if errors else "unknown error"
-            return JSONResponse(
-                {"ok": False, "msg": f"Failed to process: {detail}", "errors": errors},
-                status_code=400,
-            )
-
-        try:
-            quota_inc(request, processed)
-        except Exception as e:
-            print("quota_inc:", e)
-
-        zip_bytes = zip_buf.getvalue()
-        zip_buf.close()
-        headers_out = {
-            "Content-Disposition": f'attachment; filename="showcase_{"all" if do_all else mode}.zip"',
-            "X-Processed": str(processed),
-            "X-Errors": str(len(errors)),
-            "Access-Control-Expose-Headers": "Content-Disposition, X-Processed, X-Errors",
-        }
-        print(
-            f"[API TIMING] TOTAL before response: "
-            f"{_sm_time.perf_counter()-_sm_req_t0:.3f}s | "
-            f"ZIP={len(zip_bytes)/1024/1024:.2f}MB",
-            flush=True,
-        )
-        return StreamingResponse(
-            io.BytesIO(zip_bytes),
-            media_type="application/zip",
-            headers=headers_out,
-        )
-    finally:
-        try:
-            shutil.rmtree(job_dir, ignore_errors=True)
-        except Exception:
-            pass
 
 
 @router.get("/api/download/{job_id}")

@@ -1,37 +1,28 @@
 """One-shot media tools: convert, hex21, url download, watermark, upscale, compose.
 
-Moved out of main.py unchanged; see docs/STRUCTURE.md.
+Moved out of main.py unchanged.
 """
 
 
 from __future__ import annotations
 
 import hashlib
-import hmac
 import html
 import io
-import ipaddress
 import json
-import logging
 import os
 import re
-import socket
 import secrets
 import tempfile
 import shutil
 import time
 import uuid
-import warnings
 import zipfile
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
-from fastapi import Body, FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import Body, File, Form, Request, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 from PIL import Image
 
@@ -47,7 +38,6 @@ from fastapi import APIRouter
 
 from smweb.core import (
     DATA,
-    FREE_LIMIT,
     JOBS,
     LOGGER,
     MAX_UPLOAD_MB,
@@ -62,7 +52,6 @@ from smweb.job_access import bind_job
 from smweb.downloads import _download_pinterest
 from smweb.jobs import _job_pool, _worker_mode
 from smweb import modal_upscale_client, object_store
-
 
 
 router = APIRouter()

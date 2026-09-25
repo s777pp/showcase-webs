@@ -130,21 +130,24 @@ def main() -> None:
                     len(upscale_inflight) >= MAX_UPSCALE_WORKERS):
                 time.sleep(0.3)
                 continue
+            free = []
             if len(profile_inflight) < MAX_PROFILE_WORKERS:
-                jid = rs.profile_job_pop(timeout=1)
-                if jid:
-                    print(f"[worker] profile pick {jid}", flush=True)
-                    profile_inflight.add(profile_pool.submit(_process_one, jid))
+                free.append("profile")
             if len(media_inflight) < MAX_WORKERS:
-                jid = rs.job_pop(timeout=1)
-                if jid:
-                    print(f"[worker] media pick {jid}", flush=True)
-                    media_inflight.add(media_pool.submit(_process_one, jid))
+                free.append("media")
             if len(upscale_inflight) < MAX_UPSCALE_WORKERS:
-                jid = rs.upscale_job_pop(timeout=1)
-                if jid:
-                    print(f"[worker] upscale pick {jid}", flush=True)
-                    upscale_inflight.add(upscale_pool.submit(_process_one, jid))
+                free.append("gpu")
+            picked = rs.queue_pop(free, timeout=2)
+            if not picked:
+                continue
+            queue, jid = picked
+            print(f"[worker] {queue} pick {jid}", flush=True)
+            if queue == "profile":
+                profile_inflight.add(profile_pool.submit(_process_one, jid))
+            elif queue == "media":
+                media_inflight.add(media_pool.submit(_process_one, jid))
+            else:
+                upscale_inflight.add(upscale_pool.submit(_process_one, jid))
 
 
 if __name__ == "__main__":

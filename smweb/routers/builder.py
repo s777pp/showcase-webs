@@ -24,7 +24,7 @@ from PIL import Image, UnidentifiedImageError
 import auth_db
 import redis_store as rs
 from smweb import object_store
-from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, _safe_data_path
+from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user
 from smweb.remove_bg_client import configured as remove_bg_configured
 
 
