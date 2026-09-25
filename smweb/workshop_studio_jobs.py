@@ -1,9 +1,15 @@
-"""Independent Workshop rows: one full-height Steam file per uploaded row."""
+"""Workshop Studio jobs.
+
+Rows layout: one full-height Steam file per uploaded row.
+Squares layout: a user-chosen 5:1 area of one source cut into five 150x150 files.
+"""
 
 from __future__ import annotations
 
 import io
 import logging
+import math
+import shutil
 import subprocess
 import zipfile
 from pathlib import Path
@@ -126,6 +132,159 @@ def render_animation(path: Path, output: Path, settings: dict, fps: int, duratio
         watermark_image.unlink(missing_ok=True)
 
 
+SQUARE = 150
+SQUARE_COUNT = 5
+STRIP_SIZE = (SQUARE * SQUARE_COUNT, SQUARE)
+SQUARE_GAP = 4
+
+
+def normalize_crop(crop: dict) -> dict:
+    """Clamp a crop given as fractions of the source to the source bounds."""
+    x, y, width, height = (float(crop[key]) for key in ("x", "y", "w", "h"))
+    if not all(math.isfinite(value) for value in (x, y, width, height)):
+        raise ValueError("Crop values must be finite")
+    width = max(0.001, min(1.0, width))
+    height = max(0.001, min(1.0, height))
+    return {
+        "x": max(0.0, min(1.0 - width, x)),
+        "y": max(0.0, min(1.0 - height, y)),
+        "w": width,
+        "h": height,
+    }
+
+
+def _crop_box(size: tuple[int, int], crop: dict) -> tuple[float, float, float, float]:
+    """Pixel box for the crop, corrected to the exact 5:1 strip ratio."""
+    source_width, source_height = size
+    width, height = crop["w"] * source_width, crop["h"] * source_height
+    ratio = STRIP_SIZE[0] / STRIP_SIZE[1]
+    if width / height > ratio:
+        width = height * ratio
+    else:
+        height = width / ratio
+    left = max(0.0, min(source_width - width, crop["x"] * source_width))
+    top = max(0.0, min(source_height - height, crop["y"] * source_height))
+    return left, top, left + width, top + height
+
+
+def _outline(image: Image.Image) -> None:
+    ImageDraw.Draw(image).rectangle((0, 0, image.width - 1, image.height - 1), outline="#8de9ff", width=2)
+
+
+def _squares_preview(parts: list[Image.Image]) -> Image.Image:
+    """The five squares side by side with Steam-like gaps (reference only, no HEX 21)."""
+    width = SQUARE * SQUARE_COUNT + SQUARE_GAP * (SQUARE_COUNT - 1)
+    preview = Image.new("RGB", (width, SQUARE), (0, 0, 0))
+    for index, part in enumerate(parts):
+        tile = part.convert("RGBA")
+        preview.paste(tile, (index * (SQUARE + SQUARE_GAP), 0), tile)
+    return preview
+
+
+def render_squares_image(path: Path, settings: dict, crop: dict, outline: bool = False,
+                         free_watermark: bool = False) -> dict[str, bytes]:
+    """Cut the chosen 5:1 area of a still image into five 150x150 Steam files.
+
+    The free watermark goes on the preview only; the Steam files stay clean.
+    """
+    with Image.open(path) as opened:
+        if getattr(opened, "n_frames", 1) != 1:
+            raise ValueError("Animated image must be exported as GIF")
+        image = ImageOps.exif_transpose(opened)
+        image.load()
+    strip = image.resize(STRIP_SIZE, Image.Resampling.LANCZOS, box=_crop_box(image.size, crop))
+    strip = _grade(strip, settings)
+    parts = []
+    result: dict[str, bytes] = {}
+    for index in range(SQUARE_COUNT):
+        part = strip.crop((index * SQUARE, 0, (index + 1) * SQUARE, SQUARE))
+        if outline:
+            _outline(part)
+        parts.append(part)
+        result[f"part_{index + 1}.png"] = _png_under_limit(part)
+    preview = _squares_preview(parts)
+    if free_watermark:
+        preview = _free_watermark(preview)
+    buffer = io.BytesIO()
+    preview.save(buffer, format="PNG", optimize=True)
+    result["preview.png"] = buffer.getvalue()
+    return result
+
+
+def render_squares_animation(path: Path, work_dir: Path, settings: dict, crop: dict, fps: int,
+                             duration: float, start: float, outline: bool = False,
+                             free_watermark: bool = False) -> dict[str, Path]:
+    """Crop an animation to the 5:1 strip, then reuse the synchronized Workshop cutter.
+
+    The free watermark goes on the preview GIF only; the Steam files stay clean.
+    """
+    ffmpeg = proc.find_ffmpeg()
+    if not ffmpeg:
+        raise RuntimeError("FFmpeg is unavailable")
+    work_dir.mkdir(parents=True, exist_ok=True)
+    strip = work_dir / "squares_strip.mp4"
+    brightness = (settings["brightness"] - 100) / 100
+    contrast = settings["contrast"] / 100
+    saturation = settings["saturation"] / 100
+    # Crop in input fractions (evaluated after autorotation), then force the exact strip size.
+    filters = (
+        f"crop=w='iw*{crop['w']:.6f}':h='ih*{crop['h']:.6f}'"
+        f":x='min(iw*{crop['x']:.6f},iw-ow)':y='min(ih*{crop['y']:.6f},ih-oh)',"
+        f"scale={STRIP_SIZE[0]}:{STRIP_SIZE[1]}:flags=lanczos,setsar=1,"
+        f"eq=brightness={brightness:.3f}:contrast={contrast:.3f}:saturation={saturation:.3f},"
+        f"hue=h={settings['hue']}"
+    )
+    command = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error"]
+    if start:
+        command += ["-ss", f"{start:.3f}"]
+    command += ["-i", str(path), "-t", f"{duration:.3f}", "-an", "-vf", filters,
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "14", "-pix_fmt", "yuv420p", str(strip)]
+    try:
+        subprocess.run(command, check=True, capture_output=True, timeout=90)
+        # wm_* only affects full_with_bars.gif (the preview), never the part_N.gif files.
+        outputs = proc.process_gif_workshop(
+            strip, work_dir, fps=fps, width=STRIP_SIZE[0], duration=duration, encoder="ffmpeg",
+            outline_width=2 if outline else 0, outline_color="#8de9ff",
+            wm_text="ShowcaseMaker" if free_watermark else "", wm_font="Fineday", wm_opacity=0.5,
+        )
+    finally:
+        strip.unlink(missing_ok=True)
+    result = {}
+    for index in range(1, SQUARE_COUNT + 1):
+        part = outputs.get(f"part_{index}.gif")
+        if not part or not part.is_file() or not part.stat().st_size:
+            raise ValueError("GIF encoding produced an empty file")
+        if part.stat().st_size > STEAM_LIMIT:
+            raise ValueError("This animation cannot fit under 5 MB; shorten the clip")
+        result[part.name] = part
+    if outputs.get("full_with_bars.gif"):
+        result["preview.gif"] = outputs["full_with_bars.gif"]
+    return result
+
+
+def _run_squares(job_dir: Path, archive: zipfile.ZipFile, item: dict, options: dict) -> None:
+    path = Path(item["path"])
+    suffix = path.suffix.lower()
+    settings = options["rows"][0]
+    crop = normalize_crop(options["crop"])
+    outline = bool(options.get("outline"))
+    free_watermark = bool(options.get("free_watermark"))
+    if suffix in IMAGE_EXTENSIONS:
+        for name, data in render_squares_image(path, settings, crop, outline, free_watermark).items():
+            archive.writestr(name, data)
+    elif suffix in ANIMATED_EXTENSIONS:
+        work_dir = job_dir / "squares"
+        try:
+            outputs = render_squares_animation(path, work_dir, settings, crop, options["fps"], options["duration"],
+                                               settings["start"], outline, free_watermark)
+            for name, output in outputs.items():
+                archive.write(output, name)
+        finally:
+            shutil.rmtree(work_dir, ignore_errors=True)
+    else:
+        raise ValueError("Unsupported source format")
+
+
 def run(jid: str, job: dict) -> None:
     job_dir = JOBS / jid
     job_dir.mkdir(parents=True, exist_ok=True)
@@ -134,8 +293,12 @@ def run(jid: str, job: dict) -> None:
     options = job.get("options") or {}
     try:
         with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as archive:
-            for index, item in enumerate(files, 1):
-                _job_set(jid, status="running", pct=5 + round(85 * (index - 1) / len(files)), stage=f"row:{index}")
+            if options.get("layout") == "squares":
+                _job_set(jid, status="running", pct=10, stage="squares")
+                _run_squares(job_dir, archive, files[0], options)
+            row_files = [] if options.get("layout") == "squares" else files
+            for index, item in enumerate(row_files, 1):
+                _job_set(jid, status="running", pct=5 + round(85 * (index - 1) / len(row_files)), stage=f"row:{index}")
                 path = Path(item["path"])
                 suffix = path.suffix.lower()
                 settings = options["rows"][index - 1]

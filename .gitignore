@@ -47,3 +47,6 @@ Thumbs.db
 .tmpvol/av.png
 .tmpro/users.db
 scripts/.locale-cache.json
+
+# Owner design references and source masters (not part of the site)
+IMAGE/

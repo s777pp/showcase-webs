@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 245 passed on 2026-09-25 (~35 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 250 passed on 2026-09-25 (~39 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -122,6 +122,13 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
   Workshop/Split GIF panels are one synchronized group — never fit/scale panels independently.
   Workshop inner outline is Workshop-only. Rotation is per file, quarter turns in Process,
   free angle in Character.
+- **Workshop Studio** (`#tab-workshop`, `static/js/workshop-studio.js`, `smweb/workshop_studio_jobs.py`,
+  `POST /api/workshop-studio/start`): two layouts. `rows` = 1–3 full-height files. `squares`
+  (added 2026-09-25, requested by a user; reference `IMAGE/workshop 150x150.jpg`) = one source of any
+  size, dragged/zoomed under a 5:1 window in the browser; `crop` is sent as source fractions and the
+  server cuts it into `part_1..5` 150×150 (PNG, or synchronized GIFs via `process_gif_workshop`),
+  HEX 21, plus `preview.png|gif` with gaps. Free watermark goes on the preview only, never on
+  the five Steam files (owner decision 2026-09-25). Counts as one file for quota. Not in the extension yet.
 - **Loop (Pro):** `/api/loop/start` accepts `pingpong` and `blend`; result ≤ 8 s.
 - **Design Selection:** DeviantArt reference queries must keep the exact form
   `Steam showcase <one English keyword>`. Imported profile facts are authoritative over AI guesses.
@@ -278,7 +285,7 @@ The Railway/SQLite/HF-era files (`RAILWAY.md`, `UPSCALER_SETUP.md`, `README_REVE
 
 ## 11. Verification baseline (2026-09-25)
 
-- `pytest`: 245 passed, 12 subtests (~35 s). `node scripts/check_i18n.js`: complete.
+- `pytest`: 250 passed, 12 subtests (~39 s). `node scripts/check_i18n.js`: complete.
   `node --check` passes on all `static/js/*.js` except `hero-vrm.js`, which is an ES module
   (loaded with `type="module"`) — that failure is expected, not a bug.
 - Playwright UI suites passed against a local server: `qa_accessibility`, `qa_tool_clarity`,

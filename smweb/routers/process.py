@@ -52,11 +52,29 @@ async def api_workshop_studio_start(
     duration: float = Form(8),
     outline: str = Form("0"),
     settings: str = Form("[]"),
+    layout: str = Form("rows"),
+    crop: str = Form(""),
     files: list[UploadFile] = File(default=[]),
 ):
-    """Create one full-height output per Workshop row in a background job."""
+    """Create Workshop files in a background job.
+
+    ``rows``: one full-height output per row. ``squares``: one source, the
+    chosen 5:1 area (``crop`` as source fractions) cut into five 150x150 files.
+    """
+    layout = (layout or "rows").strip().lower()
+    if layout not in ("rows", "squares"):
+        return JSONResponse({"ok": False, "msg": "Unknown layout"}, status_code=400)
+    if layout == "squares" and rows != 1:
+        return JSONResponse({"ok": False, "msg": "Select one file for the squares layout"}, status_code=400)
     if rows not in (1, 2, 3) or len(files) != rows:
         return JSONResponse({"ok": False, "msg": "Select one file for each row"}, status_code=400)
+    crop_box = None
+    if layout == "squares":
+        from smweb.workshop_studio_jobs import normalize_crop
+        try:
+            crop_box = normalize_crop(json.loads(crop))
+        except (TypeError, ValueError, KeyError, OverflowError, json.JSONDecodeError):
+            return JSONResponse({"ok": False, "msg": "Invalid crop area"}, status_code=400)
     q = quota_state(request)
     if not q["pro"] and q["left"] < rows:
         return JSONResponse({"ok": False, "msg": "Not enough free files left today"}, status_code=403)
@@ -122,7 +140,8 @@ async def api_workshop_studio_start(
         "files": uploaded,
         "options": {"rows": normalized, "fps": fps, "duration": duration,
                     "outline": outline.lower() in ("1", "true", "on"),
-                    "free_watermark": not q["pro"]},
+                    "free_watermark": not q["pro"],
+                    "layout": layout, "crop": crop_box},
         "opts": {"modes": ["workshop_studio"]},
     }
     rs.job_create(jid, payload, enqueue=external)

@@ -71,6 +71,93 @@ def test_api_keeps_selected_row_count(tmp_path, monkeypatch):
         assert archive.namelist() == ["row_1.png", "row_2.png"]
 
 
+def test_squares_cut_the_chosen_area_into_five_150px_files(tmp_path):
+    source = tmp_path / "character.png"
+    image = Image.new("RGB", (750, 1000), "black")
+    # A red band exactly where the chosen strip is: y 400..550 of the source.
+    image.paste((230, 20, 20), (0, 400, 750, 550))
+    image.save(source)
+    crop = studio.normalize_crop({"x": 0, "y": 0.4, "w": 1, "h": 0.15})
+    outputs = studio.render_squares_image(source, _settings(), crop)
+    assert sorted(outputs) == ["part_1.png", "part_2.png", "part_3.png", "part_4.png", "part_5.png", "preview.png"]
+    for index in range(1, 6):
+        payload = outputs[f"part_{index}.png"]
+        assert payload[-1] == 0x21
+        with Image.open(io.BytesIO(payload)) as part:
+            assert part.size == (150, 150)
+            red, green, _ = part.convert("RGB").getpixel((75, 75))
+            assert red > 200 and green < 60
+    with Image.open(io.BytesIO(outputs["preview.png"])) as preview:
+        assert preview.size == (766, 150)
+
+
+def test_squares_free_watermark_marks_only_the_preview(tmp_path):
+    source = tmp_path / "flat.png"
+    Image.new("RGB", (750, 150), "#101820").save(source)
+    crop = studio.normalize_crop({"x": 0, "y": 0, "w": 1, "h": 1})
+    clean = studio.render_squares_image(source, _settings(), crop, free_watermark=False)
+    marked = studio.render_squares_image(source, _settings(), crop, free_watermark=True)
+    for index in range(1, 6):
+        assert marked[f"part_{index}.png"] == clean[f"part_{index}.png"]
+    assert marked["preview.png"] != clean["preview.png"]
+
+
+def test_squares_crop_is_clamped_and_kept_at_five_to_one():
+    crop = studio.normalize_crop({"x": 0.9, "y": -3, "w": 0.5, "h": 0.2})
+    assert crop == {"x": 0.5, "y": 0.0, "w": 0.5, "h": 0.2}
+    left, top, right, bottom = studio._crop_box((1000, 1000), crop)
+    assert round((right - left) / (bottom - top), 6) == 5
+    import pytest
+    with pytest.raises(ValueError):
+        studio.normalize_crop({"x": float("nan"), "y": 0, "w": 1, "h": 1})
+
+
+def test_squares_job_writes_five_parts(tmp_path, monkeypatch):
+    monkeypatch.setattr(studio, "JOBS", tmp_path)
+    states = []
+    monkeypatch.setattr(studio, "_job_set", lambda jid, **fields: states.append(fields))
+    path = tmp_path / "wide.png"
+    Image.new("RGB", (1500, 900), "#3060a0").save(path)
+    options = {"layout": "squares", "crop": {"x": 0, "y": 0.2, "w": 1, "h": 1 / 3},
+               "rows": [_settings()], "fps": 12, "duration": 4, "free_watermark": True, "outline": True}
+    studio.run("b" * 24, {"files": [{"path": str(path), "name": path.name}], "options": options})
+    assert states[-1]["status"] == "done"
+    with zipfile.ZipFile(tmp_path / ("b" * 24) / "result.zip") as archive:
+        assert sorted(archive.namelist()) == ["part_1.png", "part_2.png", "part_3.png", "part_4.png", "part_5.png", "preview.png"]
+    assert not path.exists()
+
+
+def test_api_rejects_squares_without_valid_crop(monkeypatch):
+    monkeypatch.setattr(process, "quota_state", lambda request: {"pro": True, "left": -1})
+    buffer = io.BytesIO()
+    Image.new("RGB", (300, 300), "#235070").save(buffer, format="PNG")
+    app = FastAPI()
+    app.include_router(process.router)
+    with TestClient(app) as client:
+        response = client.post("/api/workshop-studio/start", data={"rows": "1", "layout": "squares", "crop": "{}",
+            "settings": json.dumps([_settings()])},
+            files=[("files", ("one.png", buffer.getvalue(), "image/png"))])
+    assert response.status_code == 400
+
+
+def test_squares_animation_stays_synchronized_and_hex_patched(tmp_path):
+    import processor
+    if not processor.find_ffmpeg():
+        return
+    source = tmp_path / "source.gif"
+    frames = [Image.new("RGB", (400, 600), color) for color in ("red", "blue")]
+    frames[0].save(source, save_all=True, append_images=frames[1:], duration=200, loop=0)
+    crop = studio.normalize_crop({"x": 0, "y": 0.3, "w": 1, "h": 400 / 5 / 600})
+    outputs = studio.render_squares_animation(source, tmp_path / "work", _settings(), crop, fps=5, duration=1,
+                                              start=0, outline=True, free_watermark=True)
+    for index in range(1, 6):
+        payload = outputs[f"part_{index}.gif"].read_bytes()
+        assert payload[-1] == 0x21
+        with Image.open(io.BytesIO(payload[:-1] + b";")) as part:
+            assert part.size == (150, 150)
+            assert part.n_frames > 1
+
+
 def test_gif_row_stays_animated_and_hex_patched(tmp_path):
     import processor
     if not processor.find_ffmpeg():
