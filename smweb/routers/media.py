@@ -729,6 +729,9 @@ async def api_compose_start(
     job_dir.mkdir(parents=True, exist_ok=False)
     bg_name = str(bg_asset[0].get("name") or bg_asset[1].name) if bg_asset else (background.filename if background else "background.png")
     ch_name = str(ch_asset[0].get("name") or ch_asset[1].name) if ch_asset else (character.filename if character else "character.png")
+    # Any still image Pillow reads (ICO, TIFF, AVIF, TGA, PSD, ...) is stored as PNG.
+    bg_name, bg_raw = proc.normalize_upload(bg_name or "background.png", bg_raw)
+    ch_name, ch_raw = proc.normalize_upload(ch_name or "character.png", ch_raw)
     bg_ext = Path(bg_name or "background.png").suffix.lower() or ".bin"
     ch_ext = Path(ch_name or "character.png").suffix.lower() or ".bin"
     bg_path, ch_path = job_dir / f"input_bg{bg_ext}", job_dir / f"input_char{ch_ext}"

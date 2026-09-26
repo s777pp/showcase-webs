@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link rel="preload" as="image" type="image/avif" imagesrcset="/static/img/home/fon-1000.avif?v=20260925-home22 1000w, /static/img/home/fon-1280.avif?v=20260925-home22 1280w, /static/img/home/fon-1920.avif?v=20260925-home22 1920w, /static/img/home/fon-2560.avif?v=20260925-home22 2560w, /static/img/home/fon-3840.avif?v=20260925-home22 3840w" imagesizes="max(100vw, 177.7svh)" media="(min-width: 821px)" fetchpriority="high"/>
-<link rel="modulepreload" href="/static/js/home-vrm.js?v=20260925-home22"/>
+<link rel="modulepreload" href="/static/js/home-vrm.js?v=20260927-stars2"/>
 <link rel="modulepreload" href="/static/vendor/vrm-runtime.module.js?v=20260915-saba2"/>
 <link rel="preload" href="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1" as="fetch" type="application/octet-stream" crossorigin fetchpriority="high"/>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Great+Vibes&display=swap&subset=cyrillic,latin" rel="stylesheet"/>
@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="/static/css/home-loader.css?v=20260925-loader2"/>
 <link rel="stylesheet" href="/static/css/support-chat.css?v=20260925-icon1"/>
 <link rel="stylesheet" href="/static/css/analytics-consent.css?v=20260923-auth1"/>
-<link rel="stylesheet" href="/static/css/home.css?v=20260925-home23"/>
+<link rel="stylesheet" href="/static/css/home.css?v=20260927-stars2"/>
 <link rel="stylesheet" href="/static/css/home-blocks.css?v=20260925-blocks4"/>
 <link rel="stylesheet" href="/static/css/home-overlays.css?v=20260926-ov10"/>
 <script src="/static/js/locales-extra.js?v=20260926-perf2"></script>
@@ -60,14 +60,13 @@
           <source type="image/webp" srcset="/static/img/home/fon-1000.webp?v=20260925-home22 1000w, /static/img/home/fon-1280.webp?v=20260925-home22 1280w, /static/img/home/fon-1920.webp?v=20260925-home22 1920w, /static/img/home/fon-2560.webp?v=20260925-home22 2560w, /static/img/home/fon-3840.webp?v=20260925-home22 3840w" sizes="max(100vw, 177.7svh)"/>
           <img class="home-art__bg" src="/static/img/home/fon-1920.webp?v=20260925-home22" alt="" width="3840" height="2160" decoding="async" fetchpriority="high"/>
         </picture>
-
-
         <div class="home-vrm" id="heroVrm" data-model="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1" data-model-fallback="/static/models/saba-0.1.vrm?v=20260915-saba1">
           <canvas id="heroVrmCanvas"></canvas>
           <span class="home-vrm__hit" id="heroVrmHit" aria-hidden="true"></span>
         </div>
       </div>
       <div class="home-hero__shade" aria-hidden="true"></div>
+      <canvas class="home-stars" id="homeStars" aria-hidden="true"></canvas>
 
       <div class="home-hero__content">
         <p class="home-script" aria-hidden="true"><span data-i="hero_script_a">Your Art</span><span data-i="hero_script_b">Bigger Stories</span></p>
@@ -354,6 +353,7 @@
 <script src="/static/js/analytics.js?v=20260922a"></script>
 <script src="/static/ss-shell.js?v=20260926-guides1"></script>
 <script src="/static/js/home.js?v=20260925-home22"></script>
-<script type="module" src="/static/js/home-vrm.js?v=20260925-home22"></script>
+<script src="/static/js/home-stars.js?v=20260927-stars2" defer></script>
+<script type="module" src="/static/js/home-vrm.js?v=20260927-stars2"></script>
 </body>
 </html>

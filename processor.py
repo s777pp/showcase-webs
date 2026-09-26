@@ -205,6 +205,107 @@ def apply_hex21_file(path: Path) -> None:
 
 
 
+# Formats the pipelines handle directly; anything else that Pillow can open as a
+# still picture (ICO/CUR, TIFF, AVIF, TGA, PSD, QOI, JPEG 2000, DDS, ICNS, PCX, ...)
+# is converted to PNG first, so every tool accepts "any image".
+NATIVE_STILL_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+MOTION_EXTENSIONS = {".gif", ".mp4", ".mov", ".webm", ".avi", ".mkv"}
+
+
+def still_image_to_png(raw: bytes) -> bytes | None:
+    """PNG bytes for any still image Pillow can decode, else None (icons: largest size)."""
+    try:
+        with Image.open(io.BytesIO(raw)) as image:
+            if image.format in ("ICO", "ICNS") and hasattr(image, "info") and image.info.get("sizes"):
+                image.size = max(image.info["sizes"], key=lambda size: size[0] * size[1])
+            image.load()
+            frame = image.convert("RGBA") if image.mode not in ("RGB", "RGBA") else image.copy()
+    except Exception:
+        return None
+    out = io.BytesIO()
+    frame.save(out, "PNG", optimize=False)
+    return out.getvalue()
+
+
+def normalize_upload(name: str, raw: bytes) -> tuple[str, bytes]:
+    """Return (name, bytes) the pipelines understand; unknown still images become PNG."""
+    ext = Path(name).suffix.lower()
+    if ext in NATIVE_STILL_EXTENSIONS or ext in MOTION_EXTENSIONS:
+        return name, raw
+    png = still_image_to_png(raw)
+    if png is None:
+        return name, raw
+    return (Path(name).stem or "image") + ".png", png
+
+
+GRADE_RANGES = {"brightness": (50, 150, 100), "contrast": (50, 150, 100), "saturation": (0, 200, 100), "hue": (-180, 180, 0)}
+
+
+def normalize_grade(raw) -> dict | None:
+    """Colour correction options (same ranges as static/js/color-grade.js); None when neutral."""
+    source = raw if isinstance(raw, dict) else {}
+    grade = {}
+    for key, (low, high, default) in GRADE_RANGES.items():
+        try:
+            value = int(round(float(source.get(key, default))))
+        except (TypeError, ValueError):
+            value = default
+        grade[key] = max(low, min(high, value))
+    return None if all(grade[key] == GRADE_RANGES[key][2] for key in grade) else grade
+
+
+def grade_image(image: Image.Image, grade: dict) -> Image.Image:
+    """Brightness / contrast / saturation / hue, alpha kept (same maths as Workshop Studio)."""
+    from PIL import ImageEnhance
+    alpha = image.getchannel("A") if "A" in image.getbands() else None
+    rgb = image.convert("RGB")
+    rgb = ImageEnhance.Brightness(rgb).enhance(grade["brightness"] / 100)
+    rgb = ImageEnhance.Contrast(rgb).enhance(grade["contrast"] / 100)
+    rgb = ImageEnhance.Color(rgb).enhance(grade["saturation"] / 100)
+    if grade["hue"]:
+        hue, saturation, value = rgb.convert("HSV").split()
+        offset = round(grade["hue"] * 256 / 360)
+        hue = hue.point(lambda current: (current + offset) % 256)
+        rgb = Image.merge("HSV", (hue, saturation, value)).convert("RGB")
+    if alpha is not None:
+        rgb = rgb.convert("RGBA")
+        rgb.putalpha(alpha)
+    return rgb
+
+
+def graded_source(name: str, raw: bytes, grade: dict | None, work_dir: Path) -> tuple[str, bytes]:
+    """Apply colour correction once, before any cutting. Stills -> PNG, motion -> lossless FFV1 clip."""
+    if not grade:
+        return name, raw
+    ext = Path(name).suffix.lower()
+    if ext in NATIVE_STILL_EXTENSIONS:
+        with Image.open(io.BytesIO(raw)) as image:
+            image.load()
+            graded = grade_image(image, grade)
+        out = io.BytesIO()
+        graded.save(out, "PNG")
+        return Path(name).stem + ".png", out.getvalue()
+    if ext not in MOTION_EXTENSIONS:
+        return name, raw
+    ff = find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not found")
+    work_dir.mkdir(parents=True, exist_ok=True)
+    source = work_dir / f"grade_source{ext}"
+    output = work_dir / "graded.mkv"
+    source.write_bytes(raw)
+    brightness = (grade["brightness"] - 100) / 100
+    video_filter = (f"eq=brightness={brightness:.3f}:contrast={grade['contrast'] / 100:.3f}:"
+                    f"saturation={grade['saturation'] / 100:.3f},hue=h={grade['hue']}")
+    try:
+        _run([ff, "-y", "-hide_banner", "-loglevel", "error", "-i", str(source), "-t", "20", "-an",
+              "-vf", video_filter, "-c:v", "ffv1", "-pix_fmt", "bgra", str(output)])
+        return Path(name).stem + ".mkv", output.read_bytes()
+    finally:
+        source.unlink(missing_ok=True)
+        output.unlink(missing_ok=True)
+
+
 def process_image_workshop(
     img: Image.Image,
     wm_text: str = "",

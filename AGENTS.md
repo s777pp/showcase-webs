@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 282 passed on 2026-09-26 (~75 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 289 passed on 2026-09-27 (~80 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -132,6 +132,21 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
 - **Steam Check** (`smweb/steam_readiness.py`, `routers/steam_check.py`): shown as the final
   report of Process jobs; `#tab-check` is hidden but must stay (programmatic navigation).
   Only a primary file > 5 MiB turns the headline red. `fix-safe` is lossless (naming/order, HEX 21).
+- **Input formats (2026-09-27):** every still Pillow can decode (ICO/CUR, ICNS, TIFF, AVIF, TGA, PSD, QOI,
+  JPEG 2000, DDS, PCX, APNG...) is accepted by Process, Workshop Studio and Character. `processor.normalize_upload`
+  turns anything outside `NATIVE_STILL_EXTENSIONS`/`MOTION_EXTENSIONS` into PNG (ICO/ICNS: largest size) before
+  the pipelines. No HEIC (pillow-heif is not installed). Browsers cannot preview TIFF/TGA/PSD/QOI/JP2/DDS/ICNS/PCX,
+  so `process-guide.js` shows `fileServerConvert` instead of probing them. Test: `tests/test_image_formats.py`.
+- **Process colour correction (2026-09-27):** `#processGradeBlock` in the Design card, state in
+  `process-layout.js` (`window.SMProcessGrade.get/filter/set`, saved in the settings snapshot, summary chip).
+  The preview uses `SMColorGrade.filter()` on the canvas; the form sends `grade` JSON only when not neutral;
+  the server applies `processor.graded_source` once, before cutting (stills -> PNG via `grade_image`, motion ->
+  FFmpeg `eq`+`hue` into a lossless FFV1 `.mkv`). Same ranges as Workshop Studio/Builder (`GRADE_RANGES`).
+- **Link upload block** in Process is a highlighted `.process-link` panel (title, sources, primary button).
+- **Extension offer on the result (2026-09-27):** `steam-extension-status.js` exposes `window.SMExtension`
+  (`status()`, `openAuto(mode)` = `OPEN_AUTO_UPLOADER`, needs Helper >= 1.0.3, `openManual(mode)` =
+  `START_STEAM_UPLOAD`). `process-result.js:offerExtension` adds a second popup `.workspace-result-ext` to the
+  "files ready" modal only when the extension answers PING; without it nothing is shown.
 - **Process quality:** final GIFs are fitted to ≤ 5 MB (`processor.ensure_under_mb`).
   Workshop/Split GIF panels are one synchronized group — never fit/scale panels independently.
   Frames apply to all three types since 2026-09-26 (see Process layout below). Rotation is per file, quarter turns in Process,
@@ -341,6 +356,14 @@ Only the hero exists for now; content blocks will be added below it later.
 - Animated background of the blocks: three large radial light fields (`::before`, `::after`,
   `.hb-aurora`) drift for 38-54 s using transforms only. The hero image itself is not animated
   (the VRM is aligned to the painted desk).
+- Shooting stars on the hero (2026-09-27, owner reference `IMAGE/stars.png`): `static/js/home-stars.js` draws
+  meteors (upper-left -> lower-right, ~24 deg, one every 0.35-1.4 s, max 8) and faint twinkling stars on
+  `canvas#homeStars`, a sibling placed right after `.home-hero__shade` (so the shade does not dim them).
+  Stars fly BEHIND the character: right after `renderer.render` home-vrm.js calls `window.__homeStarsMask(canvas)`,
+  which copies the VRM frame (half size, every other frame) and the stars canvas erases it with
+  `destination-out`. With the silhouette active the canvas gets `.is-occluded` (CSS mask fades stars out at
+  47-56% of the width, before the monitor); without the VRM the mask stops at 30-41%. Paused off screen /
+  hidden tab, off for reduced motion, DPR capped at 1.5. `window.__homeStars.spawn()/state()` for testing.
 - Support assistant (`support-chat.js`, all pages): while a footer is on screen the launcher is
   lifted by the visible footer height (`--support-lift`), so it never covers footer links.
 - Extension guide page `/<lang>/extension` (`static/extension.html`, `extension-guide.css/js`,
@@ -411,7 +434,7 @@ The Railway/SQLite/HF-era files (`RAILWAY.md`, `UPSCALER_SETUP.md`, `README_REVE
 
 ## 11. Verification baseline (2026-09-25)
 
-- `pytest`: 282 passed, 12 subtests (~75 s) on 2026-09-26 (264 on 2026-09-25). Playwright `qa_workspace`, `qa_workspace_editor`, `qa_tool_clarity`, `qa_polish`, `qa_accessibility`, `qa_job_center`, `qa_home_layout` passed after the Process redesign. `node scripts/check_i18n.js`: complete.
+- `pytest`: 289 passed, 12 subtests (~80 s) on 2026-09-27 (282 on 2026-09-26, 264 on 2026-09-25). Playwright `qa_workspace`, `qa_workspace_editor`, `qa_tool_clarity`, `qa_polish`, `qa_accessibility`, `qa_job_center`, `qa_home_layout` passed after the Process redesign. `node scripts/check_i18n.js`: complete.
   `node --check` passes on all `static/js/*.js` except `hero-vrm.js`, which is an ES module
   (loaded with `type="module"`) — that failure is expected, not a bug.
 - Playwright UI suites passed against a local server: `qa_accessibility`, `qa_tool_clarity`,

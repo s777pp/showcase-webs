@@ -23,7 +23,17 @@
     studioLink: ['Need full-height rows or five 150×150 squares?', 'Нужны ряды на всю высоту или 5 квадратов 150×150?', 'Brauchst du Reihen in voller Höhe oder fünf Quadrate 150×150?', 'Tam yükseklikte satırlar ya da beş 150×150 kare mi lazım?', 'Besoin de rangées pleine hauteur ou de cinq carrés 150×150 ?', 'Потрібні ряди на всю висоту або 5 квадратів 150×150?', '¿Necesitas filas a altura completa o cinco cuadrados de 150×150?', 'Precisa de linhas em altura total ou cinco quadrados 150×150?'],
     sample: ['✦ Try it with a sample picture', '✦ Попробовать на примере', '✦ Mit einem Beispielbild testen', '✦ Örnek bir görselle dene', '✦ Essayer avec une image d’exemple', '✦ Спробувати на прикладі', '✦ Probar con una imagen de ejemplo', '✦ Testar com uma imagem de exemplo'],
     sampleFail: ['Could not load the sample. Check your connection.', 'Не удалось загрузить пример. Проверь соединение.', 'Beispiel konnte nicht geladen werden. Prüfe die Verbindung.', 'Örnek yüklenemedi. Bağlantını kontrol et.', 'Impossible de charger l’exemple. Vérifiez la connexion.', 'Не вдалося завантажити приклад. Перевір з’єднання.', 'No se pudo cargar el ejemplo. Revisa la conexión.', 'Não foi possível carregar o exemplo. Verifique a conexão.'],
-    linkPlaceholder: ['…or paste a link: YouTube, TikTok, X, Reddit, Pinterest, direct file', '…или вставь ссылку: YouTube, TikTok, X, Reddit, Pinterest, прямая ссылка', '…oder einen Link einfügen: YouTube, TikTok, X, Reddit, Pinterest, direkte Datei', '…ya da bağlantı yapıştır: YouTube, TikTok, X, Reddit, Pinterest, doğrudan dosya', '…ou collez un lien : YouTube, TikTok, X, Reddit, Pinterest, fichier direct', '…або встав посилання: YouTube, TikTok, X, Reddit, Pinterest, пряме посилання', '…o pega un enlace: YouTube, TikTok, X, Reddit, Pinterest, archivo directo', '…ou cole um link: YouTube, TikTok, X, Reddit, Pinterest, arquivo direto'],
+    gradeTitle: ['Colour correction', 'Цветокоррекция', 'Farbkorrektur', 'Renk düzeltme', 'Correction des couleurs', 'Корекція кольору', 'Corrección de color', 'Correção de cor'],
+    gradeHint: ['Brightness, contrast, saturation and hue of the source.', 'Яркость, контраст, насыщенность и оттенок исходника.', 'Helligkeit, Kontrast, Sättigung und Farbton der Quelle.', 'Kaynağın parlaklığı, kontrastı, doygunluğu ve tonu.', 'Luminosité, contraste, saturation et teinte de la source.', 'Яскравість, контраст, насиченість і відтінок джерела.', 'Brillo, contraste, saturación y tono del original.', 'Brilho, contraste, saturação e matiz da imagem.'],
+    gradeBrightness: ['Brightness', 'Яркость', 'Helligkeit', 'Parlaklık', 'Luminosité', 'Яскравість', 'Brillo', 'Brilho'],
+    gradeContrast: ['Contrast', 'Контраст', 'Kontrast', 'Kontrast', 'Contraste', 'Контраст', 'Contraste', 'Contraste'],
+    gradeSaturation: ['Saturation', 'Насыщенность', 'Sättigung', 'Doygunluk', 'Saturation', 'Насиченість', 'Saturación', 'Saturação'],
+    gradeHue: ['Hue', 'Оттенок', 'Farbton', 'Ton', 'Teinte', 'Відтінок', 'Tono', 'Matiz'],
+    gradeReset: ['Reset', 'Сбросить', 'Zurücksetzen', 'Sıfırla', 'Réinitialiser', 'Скинути', 'Restablecer', 'Redefinir'],
+    gradeChip: ['Colour adjusted', 'Цвет изменён', 'Farbe angepasst', 'Renk ayarlandı', 'Couleurs ajustées', 'Колір змінено', 'Color ajustado', 'Cor ajustada'],
+    linkTitle: ['Add from a link', 'Добавить по ссылке', 'Per Link hinzufügen', 'Bağlantıdan ekle', 'Ajouter depuis un lien', 'Додати за посиланням', 'Añadir desde un enlace', 'Adicionar por link'],
+    linkSources: ['YouTube · TikTok · X · Reddit · Pinterest · direct file', 'YouTube · TikTok · X · Reddit · Pinterest · прямая ссылка', 'YouTube · TikTok · X · Reddit · Pinterest · direkte Datei', 'YouTube · TikTok · X · Reddit · Pinterest · doğrudan dosya', 'YouTube · TikTok · X · Reddit · Pinterest · fichier direct', 'YouTube · TikTok · X · Reddit · Pinterest · пряме посилання', 'YouTube · TikTok · X · Reddit · Pinterest · archivo directo', 'YouTube · TikTok · X · Reddit · Pinterest · arquivo direto'],
+    linkPlaceholder: ['Paste a link to a picture, GIF or video', 'Вставь ссылку на картинку, GIF или видео', 'Link zu Bild, GIF oder Video einfügen', 'Görsel, GIF veya video bağlantısı yapıştır', 'Collez le lien d’une image, d’un GIF ou d’une vidéo', 'Встав посилання на зображення, GIF або відео', 'Pega el enlace de una imagen, GIF o vídeo', 'Cole o link de uma imagem, GIF ou vídeo'],
     linkAdd: ['Add', 'Добавить', 'Hinzufügen', 'Ekle', 'Ajouter', 'Додати', 'Añadir', 'Adicionar'],
     linkLoading: ['Fetching the file…', 'Скачиваем файл…', 'Datei wird geladen…', 'Dosya alınıyor…', 'Récupération du fichier…', 'Завантажуємо файл…', 'Obteniendo el archivo…', 'Baixando o arquivo…'],
     linkFail: ['Could not fetch this link. Check that it is public or download the file yourself.', 'Не удалось скачать по ссылке. Проверь, что она публичная, или скачай файл сам.', 'Link konnte nicht geladen werden. Ist er öffentlich? Sonst lade die Datei selbst herunter.', 'Bağlantı alınamadı. Herkese açık olduğundan emin ol ya da dosyayı kendin indir.', 'Impossible de récupérer ce lien. Vérifiez qu’il est public ou téléchargez le fichier vous-même.', 'Не вдалося завантажити за посиланням. Перевір, що воно публічне, або завантаж файл сам.', 'No se pudo obtener el enlace. Comprueba que es público o descarga el archivo tú mismo.', 'Não foi possível baixar o link. Verifique se é público ou baixe o arquivo você mesmo.'],
@@ -49,6 +59,46 @@
     var list = WORDS[key] || [], text = list[Math.max(0, LANGS.indexOf(language()))] || list[0] || key;
     return vars ? text.replace(/\{(\w+)\}/g, function (all, name) { return name in vars ? String(vars[name]) : all; }) : text;
   }
+  // Colour correction: same ranges and preview filter as Workshop Studio / Builder (color-grade.js).
+  var gradeInputs = Array.prototype.slice.call(root.querySelectorAll('[data-grade]'));
+  function gradeValue() {
+    var value = {};
+    gradeInputs.forEach(function (input) { value[input.dataset.grade] = Number(input.value); });
+    return window.SMColorGrade ? SMColorGrade.normalize(value) : value;
+  }
+  function gradeChanged() {
+    var value = gradeValue(), ranges = (window.SMColorGrade && SMColorGrade.ranges) || {};
+    return Object.keys(value).some(function (key) { return ranges[key] && value[key] !== ranges[key][2]; });
+  }
+  function paintGrade() {
+    var value = gradeValue();
+    gradeInputs.forEach(function (input) {
+      var out = root.querySelector('[data-grade-out="' + input.dataset.grade + '"]');
+      if (out) out.textContent = value[input.dataset.grade] + (input.dataset.grade === 'hue' ? '°' : '%');
+    });
+    var reset = document.getElementById('processGradeReset');
+    if (reset) reset.disabled = !gradeChanged();
+  }
+  window.SMProcessGrade = {
+    get: function () { return gradeChanged() ? gradeValue() : null; },
+    filter: function () { return gradeChanged() && window.SMColorGrade ? SMColorGrade.filter(gradeValue()) : 'none'; },
+    set: function (value) {
+      var grade = window.SMColorGrade ? SMColorGrade.normalize(value) : (value || {});
+      gradeInputs.forEach(function (input) { if (grade[input.dataset.grade] != null) input.value = grade[input.dataset.grade]; });
+      paintGrade();
+      if (typeof window.__wmRedraw === 'function') window.__wmRedraw();
+    }
+  };
+  gradeInputs.forEach(function (input) {
+    input.addEventListener('input', function () { paintGrade(); if (typeof window.__wmRedraw === 'function') window.__wmRedraw(); });
+  });
+  var gradeReset = document.getElementById('processGradeReset');
+  if (gradeReset) gradeReset.addEventListener('click', function () {
+    window.SMProcessGrade.set(window.SMColorGrade ? SMColorGrade.normalize({}) : {});
+    root.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  paintGrade();
+
   var summary = document.getElementById('processSummary');
   var dock = document.getElementById('processDock');
   var dockSummary = document.getElementById('processDockSummary');
@@ -66,6 +116,7 @@
     list.push(frameName ? word('frame', { name: frameName }) : word('noFrame'));
     var wm = document.getElementById('wmEnable');
     list.push(wm && wm.checked ? word('wmOn') : word('wmOff'));
+    if (gradeChanged()) list.push(word('gradeChip'));
     return list;
   }
   function paint() {
@@ -101,7 +152,7 @@
   }
 
   function addFiles(files) {
-    files = Array.prototype.filter.call(files || [], function (file) { return /^(image|video)\//.test(file.type) || /\.(gif|mp4|webm|mov|avi|png|jpe?g|webp)$/i.test(file.name || ''); });
+    files = Array.prototype.filter.call(files || [], function (file) { return /^(image|video)\//.test(file.type) || /\.(gif|mp4|webm|mov|avi|mkv|png|jpe?g|webp|ico|cur|bmp|tiff?|avif|tga|psd|qoi|jp2|j2k|jfif|dds|icns|pcx|apng)$/i.test(file.name || ''); });
     if (!files.length) return false;
     document.dispatchEvent(new CustomEvent('sm:assets-selected', { detail: { target: 'process', files: files } }));
     return true;
@@ -138,7 +189,8 @@
   if (dropBox) {
     var linkRow = document.createElement('form');
     linkRow.className = 'process-link';
-    linkRow.innerHTML = '<input type="url" inputmode="url" autocomplete="off" required><button type="submit" class="btn ghost" data-pl="linkAdd"></button><p class="process-link__status" role="status"></p>';
+    linkRow.innerHTML = '<p class="process-link__title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.66 0l3.54-3.54a4 4 0 0 0-5.66-5.66L12 6.34M14 10a4 4 0 0 0-5.66 0l-3.54 3.54a4 4 0 0 0 5.66 5.66L12 17.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><b data-pl="linkTitle"></b><small data-pl="linkSources"></small></p>' +
+      '<input type="url" inputmode="url" autocomplete="off" required><button type="submit" class="btn" data-pl="linkAdd"></button><p class="process-link__status" role="status"></p>';
     var linkInput = linkRow.querySelector('input'), linkButton = linkRow.querySelector('button'), linkStatus = linkRow.querySelector('.process-link__status');
     dropBox.after(linkRow);
     var pasteHint = document.createElement('p');
@@ -239,7 +291,8 @@
       allModes: !!(byId('allModes') || {}).checked,
       frame: window.SMProcessFrame && SMProcessFrame.state ? SMProcessFrame.state() : null,
       fps: (byId('fps') || {}).value, size: (byId('size') || {}).value, encoder: (byId('gifEncoder') || {}).value,
-      autoContrast: !!(byId('autoContrast') || {}).checked
+      autoContrast: !!(byId('autoContrast') || {}).checked,
+      grade: window.SMProcessGrade ? SMProcessGrade.get() : null
     };
     // Free accounts have a fixed watermark; never store (or later push) those locked values.
     if (wm && !wm.disabled) {
@@ -278,6 +331,7 @@
       setChecked('autoContrast', data.autoContrast);
       setValue('fps', data.fps); setValue('size', data.size); setValue('gifEncoder', data.encoder);
       if (data.frame && window.SMProcessFrame && SMProcessFrame.set) SMProcessFrame.set(data.frame);
+      if (data.grade && window.SMProcessGrade) SMProcessGrade.set(data.grade);
       if (data.wm && byId('wmEnable') && !byId('wmEnable').disabled) {
         setChecked('wmEnable', data.wm.enabled);
         ['wmText', 'wmColor', 'wmScale', 'wmOpacity'].forEach(function (id) { setValue(id, data.wm[id], 'input'); });

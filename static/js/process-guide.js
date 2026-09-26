@@ -6,7 +6,9 @@
   var panel = document.getElementById('processPreflight');
   if (!root || !panel) return;
 
-  var allowed = /\.(png|jpe?g|gif|webp|mp4|mov|webm|avi)$/i;
+  var allowed = /\.(png|jpe?g|gif|webp|mp4|mov|webm|avi|mkv|ico|cur|bmp|tiff?|avif|tga|psd|qoi|jp2|j2k|jfif|dds|icns|pcx|apng)$/i;
+  // The server converts these to PNG; browsers cannot decode them for a local check or preview.
+  var serverOnly = /\.(tiff?|tga|psd|qoi|jp2|j2k|dds|icns|pcx)$/i;
   var generation = 0;
   var latest = { blocked:false, pending:false, items:[] };
   var processStartedAt = 0;
@@ -40,7 +42,8 @@
     if (!file.size) errors.push(copy('fileEmpty'));
     if (file.size > 40 * 1024 * 1024) errors.push(copy('fileTooLarge'));
     if (!allowed.test(file.name || '') && !/^(image|video)\//.test(file.type || '')) errors.push(copy('fileUnsupported'));
-    if (!errors.length) {
+    if (!errors.length && serverOnly.test(file.name || '')) warnings.push(copy('fileServerConvert'));
+    else if (!errors.length) {
       try { meta = await (isVideo(file) ? probeVideo(file) : probeImage(file)); }
       catch (error) { errors.push(error.message || copy('fileUnsupported')); }
     }

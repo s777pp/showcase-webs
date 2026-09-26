@@ -570,6 +570,8 @@ document.getElementById('btnRun').onclick = async () => {
     fd.append('outline_speed', String(outlineFx.speed));
     fd.append('outline_target', outlineFx.target || 'squares');
   }
+  const processGrade = window.SMProcessGrade ? window.SMProcessGrade.get() : null;
+  if (processGrade) fd.append('grade', JSON.stringify(processGrade));
   fd.append('gif_encoder', document.getElementById('gifEncoder')?.value || 'gifski');
   fd.append('wm_scale', sc ? (Number(sc.value) / 100) : 1);
   fd.append('all_modes', (document.getElementById('allModes') || {}).checked ? '1' : '0');
@@ -2862,6 +2864,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const sctx = source.getContext('2d');
     sctx.clearRect(0, 0, w, h);
     sctx.save();
+    // Colour correction preview (process-layout.js); the server applies the same settings.
+    sctx.filter = window.SMProcessGrade ? window.SMProcessGrade.filter() : 'none';
     sctx.translate(w / 2, h / 2);
     sctx.rotate(radians);
     sctx.drawImage(img, -sourceW * fit / 2, -sourceH * fit / 2, sourceW * fit, sourceH * fit);

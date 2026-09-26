@@ -358,6 +358,8 @@ async function initHomeVrm() {
 
     vrm.update(delta);
     renderer.render(scene, camera);
+    // Shooting stars (home-stars.js) cut the character's silhouette out of their canvas.
+    if (window.__homeStarsMask) window.__homeStarsMask(canvas);
     if (firstFrame) {
       firstFrame = false;
       sceneRoot.classList.add('is-vrm-ready');

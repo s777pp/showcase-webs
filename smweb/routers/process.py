@@ -122,9 +122,8 @@ async def api_workshop_studio_start(
     try:
         for index, file in enumerate(files, 1):
             suffix = Path(file.filename or "").suffix.lower()
-            if suffix not in allowed:
-                raise ValueError("Unsupported file format")
-            path = job_dir / f"upload_{index}{suffix}"
+            # Other still-image formats are stored as-is first and converted to PNG below.
+            path = job_dir / f"upload_{index}{suffix if suffix in allowed else '.src'}"
             written = 0
             with path.open("wb") as output:
                 while chunk := await file.read(1024 * 1024):
@@ -137,6 +136,14 @@ async def api_workshop_studio_start(
                     output.write(chunk)
             if not written:
                 raise ValueError("One source file is empty")
+            if suffix not in allowed:
+                png = proc.still_image_to_png(path.read_bytes())
+                path.unlink(missing_ok=True)
+                if png is None:
+                    raise ValueError("Unsupported file format")
+                path = job_dir / f"upload_{index}.png"
+                path.write_bytes(png)
+                written = len(png)
             uploaded.append({"name": file.filename, "path": str(path), "size": written})
     except ValueError as exc:
         shutil.rmtree(job_dir, ignore_errors=True)
@@ -212,6 +219,14 @@ def _watermark_options(
     return text, wm_font, opacity, corner, scale, color, wm_x_f, wm_y_f
 
 
+def _json_object(raw: str) -> dict:
+    try:
+        value = json.loads(raw or "{}")
+    except (TypeError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
 @router.post("/api/process/start")
 async def api_process_start(
     request: Request,
@@ -235,6 +250,7 @@ async def api_process_start(
     outline_color2: str = Form("#8a62ff"),
     outline_speed: int = Form(1),
     outline_target: str = Form("squares"),
+    grade: str = Form(""),
     gif_encoder: str = Form("gifski"),
     all_modes: str = Form("0"),
     rotations: str = Form("[]"),
@@ -315,6 +331,8 @@ async def api_process_start(
             "width": outline_width_i, "speed": outline_speed, "target": outline_target,
         }) if do_outline else None,
         "size_i": size_i,
+        # Colour correction (brightness/contrast/saturation/hue); None when neutral.
+        "grade": proc.normalize_grade(_json_object(grade)),
         "fps": fps,
         "enc": enc,
         "wm_font": wm_font,

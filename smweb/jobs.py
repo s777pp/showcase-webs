@@ -305,6 +305,8 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                 if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
                     errors.append(f"{name}: >{MAX_UPLOAD_MB}MB")
                     continue
+                name, raw = proc.normalize_upload(name, raw)  # ICO, TIFF, AVIF, TGA, PSD... -> PNG
+                name, raw = proc.graded_source(name, raw, opts.get("grade"), job_dir / f"grade_{fi}")
                 ext = Path(name).suffix.lower()
                 stem = Path(name).stem[:40]
                 if ext not in (

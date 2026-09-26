@@ -121,9 +121,9 @@
     <div class="process-controls">
     <div class="card process-step-card" id="processFilesCard" data-process-card="files">
       <h2><span class="editor-step">1</span><span data-editor-copy="addFile">Add your image or video</span></h2>
-      <div class="drop" id="drop" role="button" tabindex="0" aria-labelledby="uploadTitle" data-sm-enhanced="1"><span class="editor-upload-icon" data-editor-icon="upload"></span><strong id="uploadTitle" data-editor-copy="chooseFile">Choose a file</strong><span data-editor-copy="dropHint">or drag it here</span><small>PNG · JPG · GIF · MP4 · WebM · AVI</small></div>
+      <div class="drop" id="drop" role="button" tabindex="0" aria-labelledby="uploadTitle" data-sm-enhanced="1"><span class="editor-upload-icon" data-editor-icon="upload"></span><strong id="uploadTitle" data-editor-copy="chooseFile">Choose a file</strong><span data-editor-copy="dropHint">or drag it here</span><small>PNG · JPG · GIF · WebP · ICO · TIFF · AVIF · MP4 · WebM</small></div>
       <button type="button" class="btn ghost asset-library-open" data-asset-library>My media · upload once</button>
-      <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif,.avi,.mp4,.mov,.webm"/>
+      <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif,.avi,.mp4,.mov,.webm,.ico,.cur,.bmp,.tif,.tiff,.avif,.tga,.psd,.qoi,.jp2,.j2k,.jfif,.dds,.icns,.pcx,.apng"/>
       <div class="files" id="fileList"></div>
       <section class="process-preflight" id="processPreflight" aria-live="polite">
         <div class="process-preflight__empty"><span>✓</span><p><b data-workspace-copy="preflightTitle">Source check</b><small data-workspace-copy="preflightEmpty">Add files to check format, size, duration and resolution before processing.</small></p></div>
@@ -193,6 +193,18 @@
           </div>
         </details>
         <div id="wmTip" style="display:none;margin-top:10px;font-size:12px;color:rgba(0,210,255,.9);padding:8px 12px;border-radius:10px;border:1px solid rgba(0,210,255,.25);background:rgba(0,210,255,.06)"></div>
+      </section>
+      <section class="process-design__block" id="processGradeBlock" aria-labelledby="processGradeTitle">
+        <header class="process-design__head process-design__head--toggle">
+          <span><b id="processGradeTitle" data-pl="gradeTitle">Colour correction</b><small data-pl="gradeHint">Brightness, contrast, saturation and hue of the source.</small></span>
+          <button type="button" class="process-grade__reset" id="processGradeReset" data-pl="gradeReset">Reset</button>
+        </header>
+        <div class="process-grade__grid">
+          <label class="field process-grade__field"><span><i data-pl="gradeBrightness">Brightness</i><output data-grade-out="brightness">100%</output></span><input type="range" id="processGradeBrightness" data-grade="brightness" min="50" max="150" step="1" value="100"/></label>
+          <label class="field process-grade__field"><span><i data-pl="gradeContrast">Contrast</i><output data-grade-out="contrast">100%</output></span><input type="range" id="processGradeContrast" data-grade="contrast" min="50" max="150" step="1" value="100"/></label>
+          <label class="field process-grade__field"><span><i data-pl="gradeSaturation">Saturation</i><output data-grade-out="saturation">100%</output></span><input type="range" id="processGradeSaturation" data-grade="saturation" min="0" max="200" step="1" value="100"/></label>
+          <label class="field process-grade__field"><span><i data-pl="gradeHue">Hue</i><output data-grade-out="hue">0°</output></span><input type="range" id="processGradeHue" data-grade="hue" min="-180" max="180" step="1" value="0"/></label>
+        </div>
       </section>
     </div>
     <div class="card process-step-card" id="processSettingsCard" data-process-card="settings">
@@ -298,7 +310,7 @@
               <span id="composeBgName" data-i-empty="compose_nofile" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)">no file selected</span>
               <button type="button" class="btn ghost" id="btnComposeBg" data-i="compose_pick" style="padding:6px 14px;flex-shrink:0">Choose</button>
               <button type="button" class="btn ghost" data-asset-library data-asset-target="composeBg" style="padding:6px 10px;flex-shrink:0">Library</button>
-              <input type="file" id="composeBg" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,video/mp4,video/webm,video/quicktime,video/*" style="display:none"/>
+              <input type="file" id="composeBg" accept="image/*,video/*,.ico,.cur,.bmp,.tif,.tiff,.avif,.tga,.psd,.qoi,.jp2,.j2k,.jfif,.dds,.icns,.pcx,.apng" style="display:none"/>
             </div>
           </div>
           <div class="field" style="flex:1;min-width:160px;max-width:100%">
@@ -307,7 +319,7 @@
               <span id="composeCharName" data-i-empty="compose_nofile" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)">no file selected</span>
               <button type="button" class="btn ghost" id="btnComposeChar" data-i="compose_pick" style="padding:6px 14px;flex-shrink:0">Choose</button>
               <button type="button" class="btn ghost" data-asset-library data-asset-target="composeChar" style="padding:6px 10px;flex-shrink:0">Library</button>
-              <input type="file" id="composeChar" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,video/mp4,video/webm,video/quicktime,video/*" style="display:none"/>
+              <input type="file" id="composeChar" accept="image/*,video/*,.ico,.cur,.bmp,.tif,.tiff,.avif,.tga,.psd,.qoi,.jp2,.j2k,.jfif,.dds,.icns,.pcx,.apng" style="display:none"/>
             </div>
           </div>
         </div>
@@ -1132,13 +1144,13 @@
 </div>
 
   <script src="/static/js/tool-loader.js?v=20260926-ux1"></script>
-<script src="/static/js/app.js?v=20260926-gaps1"></script>
+<script src="/static/js/app.js?v=20260927-fmt1"></script>
 <script src="/static/js/color-grade.js?v=20260923-grade2"></script>
 <script src="/static/js/workshop-squares-fx.js?v=20260926-studio2"></script>
 <script src="/static/js/process-frame-fx.js?v=20260926-gaps1"></script>
-<script src="/static/js/workshop-studio.js?v=20260926-results1"></script>
-  <script src="/static/js/workspace-copy.js?v=20260910-finish1"></script>
-  <script src="/static/js/process-guide.js?v=20260920-editor1"></script>
+<script src="/static/js/workshop-studio.js?v=20260927-fmt1"></script>
+  <script src="/static/js/workspace-copy.js?v=20260927-fmt1"></script>
+  <script src="/static/js/process-guide.js?v=20260927-fmt1"></script>
 
 
 
@@ -1194,21 +1206,21 @@
 <script src="/static/js/app-tail.js?v=20260909-observer3"></script>
 <script src="/static/js/steam-check.js?v=20260921-polish1"></script>
 <script src="/static/js/profile-insights.js?v=20260906-unique-tags"></script>
-<script src="/static/js/steam-extension-status.js?v=20260920-auto-upload1"></script>
+<script src="/static/js/steam-extension-status.js?v=20260927-fmt1"></script>
 
 
 <script src="/static/ss-shell.js?v=20260926-guides1"></script>
 <script src="/static/js/workspace-help.js?v=20260921-polish1"></script>
-<script src="/static/js/process-result.js?v=20260926-ux1"></script>
+<script src="/static/js/process-result.js?v=20260927-fmt1"></script>
 <link rel="stylesheet" href="/static/css/workspace-usability.css?v=20260910-process-layout2">
-<link rel="stylesheet" href="/static/css/workspace-editor.css?v=20260926-results1">
-<script src="/static/js/workspace-editor-copy.js?v=20260926-ux1"></script>
+<link rel="stylesheet" href="/static/css/workspace-editor.css?v=20260927-fmt1">
+<script src="/static/js/workspace-editor-copy.js?v=20260927-fmt1"></script>
 <script src="/static/js/workspace-editor.js?v=20260920-editor4"></script>
 <link rel="stylesheet" href="/static/css/tool-clarity.css?v=20260921-ux2">
 <script src="/static/js/tool-clarity-copy.js?v=20260921-ux2"></script>
 <script src="/static/js/tool-clarity.js?v=20260921-ux2"></script>
-<link rel="stylesheet" href="/static/css/process-studio.css?v=20260926-ux1">
-<script src="/static/js/process-layout.js?v=20260926-ux1"></script>
+<link rel="stylesheet" href="/static/css/process-studio.css?v=20260927-fmt1">
+<script src="/static/js/process-layout.js?v=20260927-fmt1"></script>
 <link rel="stylesheet" href="/static/css/nav-groups.css?v=20260926-ux1">
 <script src="/static/js/nav-groups.js?v=20260926-ux2"></script>
 <script src="/static/js/job-notify.js?v=20260926-perf1"></script>

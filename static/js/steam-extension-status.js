@@ -170,10 +170,12 @@
       launchStatus.className = 'status ok steam-extension-card__launch-status';
       launchStatus.textContent = copy.opened;
       try { window.SMAnalytics && window.SMAnalytics.track('extension_launch_confirmed', { mode:modeSelect.value }); } catch (_) {}
+      return true;
     } catch (_) {
       launchStatus.className = 'status err steam-extension-card__launch-status';
       launchStatus.textContent = copy.failed;
       if (!installed) paint('missing');
+      return false;
     } finally {
       uploadAction.disabled = !readyForUpload();
     }
@@ -194,10 +196,12 @@
       launchStatus.className = 'status ok steam-extension-card__launch-status';
       launchStatus.textContent = copy.pickerOpened;
       try { window.SMAnalytics && window.SMAnalytics.track('extension_picker_opened', { mode:modeSelect.value }); } catch (_) {}
+      return true;
     } catch (_) {
       launchStatus.className = 'status err steam-extension-card__launch-status';
       launchStatus.textContent = copy.failed;
       paint(installed ? (readyForPicker() ? 'installed' : 'outdated') : 'missing');
+      return false;
     } finally { pickerAction.disabled = !readyForPicker(); }
   }
 
@@ -211,4 +215,14 @@
 
   selectMode(modeSelect.value, false);
   pingExtension();
+
+  /* Used by the Process result dialog (process-result.js) to offer the extension upload. */
+  window.SMExtension = {
+    status: async function () {
+      await pingExtension();
+      return { installed: installed, version: version, auto: readyForPicker(), manual: readyForUpload() };
+    },
+    openAuto: function (mode) { selectMode(mode, true); return openFileSelection(); },
+    openManual: function (mode) { selectMode(mode, true); return startUpload(); }
+  };
 })();

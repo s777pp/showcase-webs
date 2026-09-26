@@ -89,7 +89,44 @@
       document.querySelector('#nav button[data-tab="steam"]')?.click();
     };
     setMode(initialMode);
-    return { section, setMode };
+    return { section, setMode, mode: () => mode };
+  }
+
+  /* Second popup over the result: only when SteamShowcase Helper answers. */
+  async function offerExtension(token, overlay, currentMode) {
+    if (!window.SMExtension) return;
+    let status;
+    try { status = await window.SMExtension.status(); } catch (_) { return; }
+    if (token !== generation || !overlay.isConnected || !status || !status.installed) return;
+    const card = node('aside', null, 'workspace-result-ext');
+    card.setAttribute('role', 'dialog'); card.setAttribute('aria-labelledby', 'workspaceResultExtTitle');
+    const close = node('button', '×', 'workspace-result-ext__close'); close.type = 'button';
+    close.setAttribute('aria-label', editorText('closeResult')); close.onclick = () => card.remove();
+    const title = node('h3', editorText('extOfferTitle')); title.id = 'workspaceResultExtTitle';
+    const actions = node('div', null, 'workspace-result-ext__actions');
+    const state = node('p', '', 'workspace-result-ext__state'); state.setAttribute('role', 'status');
+    function action(labelKey, hintKey, primary, run, enabled) {
+      const button = node('button', null, 'btn' + (primary ? '' : ' ghost'));
+      button.type = 'button'; button.disabled = !enabled;
+      if (!enabled) button.dataset.off = '1';
+      button.append(node('b', editorText(labelKey)), node('small', editorText(hintKey)));
+      button.onclick = async () => {
+        actions.querySelectorAll('button').forEach(item => { item.disabled = true; });
+        const ok = await run(currentMode()).catch(() => false);
+        state.textContent = editorText(ok ? 'extOfferOpened' : 'extOfferFailed');
+        state.classList.toggle('is-error', !ok);
+        actions.querySelectorAll('button').forEach(item => { item.disabled = item.dataset.off === '1'; });
+      };
+      return button;
+    }
+    actions.append(
+      action('extOfferAuto', 'extOfferAutoHint', true, mode => window.SMExtension.openAuto(mode), status.auto),
+      action('extOfferManual', 'extOfferManualHint', false, mode => window.SMExtension.openManual(mode), status.manual)
+    );
+    card.append(close, node('span', 'STEAMSHOWCASE HELPER', 'workspace-result-ext__kicker'), title,
+      node('p', editorText('extOfferBody'), 'workspace-result-ext__body'), actions, state);
+    if (!status.auto) state.textContent = editorText('extOfferOutdated');
+    overlay.append(card);
   }
 
   window.ProcessResult = {
@@ -155,6 +192,7 @@
       body.append(panel);
       const steam = steamGuide(window.state?.mode);
       panel.append(steam.section);
+      offerExtension(token, modal, steam.mode);
 
       const readiness = node('section', null, 'workspace-result__readiness steam-check');
       readiness.append(node('h3', editorText('readinessTitle'), 'workspace-result__section-title'));
