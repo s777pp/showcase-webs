@@ -70,6 +70,9 @@ def _cleanup_old_jobs(max_age_sec: float | None = None) -> int:
                 job = rs.job_get(p.name)
                 if job and job.get("status") in ("queued", "running"):
                     continue
+                # A shared profile preview stays reachable for 7 days (smweb.routers.preview).
+                if (p / ".public").is_file() and now - (p / ".public").stat().st_mtime < 7 * 86400:
+                    continue
                 # Redis's update timestamp marks actual completion. Directory
                 # mtime can be much older when a long GIF job finishes.
                 updated = float((job or {}).get("updated") or 0)

@@ -42,6 +42,7 @@ from smweb.middleware import (
     OriginGuardMiddleware,
     RateLimitMiddleware,
     RequestBodyLimitMiddleware,
+    GuestCookieMiddleware,
     RequestIdMiddleware,
     SecurityHeadersMiddleware,
 )
@@ -109,6 +110,9 @@ app.add_middleware(RequestBodyLimitMiddleware)
 
 
 app.add_middleware(RequestIdMiddleware)
+
+
+app.add_middleware(GuestCookieMiddleware)
 
 
 # Outermost, so it sees the finished response: add_middleware inserts at the

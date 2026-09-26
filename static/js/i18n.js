@@ -70,11 +70,26 @@
     return typeof fallback === 'string' ? translate(fallback, L) : fallback;
   }
 
+  /* The server includes only the current page language's pack. If the language
+     changes without a reload, fetch the missing pack once and repaint. */
+  var loadingPacks = {};
+  function ensurePack(L) {
+    if (L === 'en' || L === 'ru' || loadingPacks[L] || (window.SM_EXTRA_TRANSLATIONS && window.SM_EXTRA_TRANSLATIONS[L])) return;
+    loadingPacks[L] = true;
+    try {
+      var script = document.createElement('script');
+      script.src = '/static/js/locales/extra-' + L + '.js';
+      script.onload = function () { try { window.dispatchEvent(new CustomEvent('sm:langchange', { detail: { lang: get() } })); } catch (e) {} };
+      document.head.appendChild(script);
+    } catch (e) {}
+  }
+
   function translate(value, language) {
     var L = norm(language) || get();
     if (L === 'en' || L === 'ru' || typeof value !== 'string') return value;
     var pack = window.SM_EXTRA_TRANSLATIONS && window.SM_EXTRA_TRANSLATIONS[L];
-    if (!pack) return value;
+    // Only the page's own language is fetched; extend() also asks about every other language.
+    if (!pack) { if (L === get()) ensurePack(L); return value; }
     var lead = (value.match(/^\s*/) || [''])[0], tail = (value.match(/\s*$/) || [''])[0];
     var end = tail.length ? value.length - tail.length : value.length;
     var core = value.slice(lead.length, end);
@@ -102,7 +117,8 @@
 
   function translateTree(root) {
     var L = get();
-    if (L === 'en' || L === 'ru' || !window.SM_EXTRA_TRANSLATIONS) return;
+    if (L === 'en' || L === 'ru') return;
+    if (!window.SM_EXTRA_TRANSLATIONS || !window.SM_EXTRA_TRANSLATIONS[L]) { ensurePack(L); return; }
     var scope = root && root.nodeType ? root : document;
     var nodes = [];
     if (scope.nodeType === 3) nodes.push(scope);

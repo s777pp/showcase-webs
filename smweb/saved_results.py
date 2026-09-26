@@ -1,8 +1,9 @@
-""""My results": finished ZIPs kept for signed-in users beyond the job TTL.
+""""My results": finished results kept for signed-in users beyond the job TTL.
 
 Normal job folders disappear after ``JOB_RESULT_TTL_SECONDS`` (24 h).  When a
-signed-in user's Process or Workshop Studio job finishes, the worker copies the
-ZIP to durable storage (private R2 when configured, otherwise the shared
+signed-in user's Process / Workshop Studio (ZIP), Character (PNG/GIF/MP4),
+Loop (GIF/MP4) or Upscale job finishes, the worker copies the result to durable
+storage (private R2 when configured, otherwise the shared
 ``/data/results/<user_id>`` folder) and records a row in ``saved_results``.
 A small WebP thumbnail always stays on the data volume.
 
@@ -37,6 +38,10 @@ _PREVIEW_NAME = re.compile(r"preview\.(?:png|gif|jpe?g|webp)", re.I)
 _PANEL_NAME = re.compile(
     r"(?:part_[1-5]|row_[1-3]|featured_630|center_506|side_100)\.(?:png|gif|jpe?g|webp)", re.I
 )
+RESULT_TYPES = {
+    ".zip": "application/zip", ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp",
+    ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".mp4": "video/mp4", ".webm": "video/webm",
+}
 _THUMB_HEIGHT = 120
 _THUMB_MAX_WIDTH = 640
 _THUMB_BG = (8, 14, 22)
@@ -80,8 +85,49 @@ def _first_frame(data: bytes) -> Image.Image:
     return background.convert("RGB")
 
 
-def build_thumbnail(zip_path: Path) -> bytes | None:
-    """A small strip of the first output group (or its ready-made preview)."""
+def _strip(frames: list[Image.Image]) -> bytes | None:
+    if not frames:
+        return None
+    frames = [f.resize((max(1, round(f.width * _THUMB_HEIGHT / max(1, f.height))), _THUMB_HEIGHT), Image.LANCZOS)
+              for f in frames]
+    gap = 4 if len(frames) > 1 else 0
+    strip = Image.new("RGB", (sum(f.width for f in frames) + gap * (len(frames) - 1), _THUMB_HEIGHT), _THUMB_BG)
+    x = 0
+    for frame in frames:
+        strip.paste(frame, (x, 0))
+        x += frame.width + gap
+    if strip.width > _THUMB_MAX_WIDTH:
+        strip = strip.resize((_THUMB_MAX_WIDTH, max(1, round(strip.height * _THUMB_MAX_WIDTH / strip.width))), Image.LANCZOS)
+    out = io.BytesIO()
+    strip.save(out, "WEBP", quality=80, method=4)
+    return out.getvalue()
+
+
+def _video_frame(path: Path) -> Image.Image | None:
+    try:
+        import subprocess
+        import processor
+        ffmpeg = processor.find_ffmpeg()
+        if not ffmpeg:
+            return None
+        run = subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(path), "-frames:v", "1",
+                              "-f", "image2pipe", "-vcodec", "png", "-"], capture_output=True, timeout=30)
+        return _first_frame(run.stdout) if run.returncode == 0 and run.stdout else None
+    except Exception:
+        return None
+
+
+def build_thumbnail(result_path: Path) -> bytes | None:
+    """Thumbnail of any saved result: a ZIP's first output group, an image or a video frame."""
+    suffix = result_path.suffix.lower()
+    if suffix != ".zip":
+        try:
+            frame = _video_frame(result_path) if suffix in (".mp4", ".webm") else _first_frame(result_path.read_bytes())
+            return _strip([frame] if frame else [])
+        except Exception:
+            LOG.warning("saved result thumbnail failed", exc_info=True)
+            return None
+    zip_path = result_path
     try:
         with zipfile.ZipFile(zip_path) as archive:
             entries = [e for e in archive.infolist() if not e.is_dir() and 0 < e.file_size <= 40 * 1024 * 1024]
@@ -97,25 +143,11 @@ def build_thumbnail(zip_path: Path) -> bytes | None:
                     (e for e in panels if str(Path(e.filename).parent) == folder),
                     key=lambda e: Path(e.filename).name,
                 )[:5]
-            frames = []
-            for entry in chosen:
-                frame = _first_frame(archive.read(entry))
-                width = max(1, round(frame.width * _THUMB_HEIGHT / max(1, frame.height)))
-                frames.append(frame.resize((width, _THUMB_HEIGHT), Image.LANCZOS))
+            frames = [_first_frame(archive.read(entry)) for entry in chosen]
     except Exception:
         LOG.warning("saved result thumbnail failed", exc_info=True)
         return None
-    gap = 4 if len(frames) > 1 else 0
-    strip = Image.new("RGB", (sum(f.width for f in frames) + gap * (len(frames) - 1), _THUMB_HEIGHT), _THUMB_BG)
-    x = 0
-    for frame in frames:
-        strip.paste(frame, (x, 0))
-        x += frame.width + gap
-    if strip.width > _THUMB_MAX_WIDTH:
-        strip = strip.resize((_THUMB_MAX_WIDTH, max(1, round(strip.height * _THUMB_MAX_WIDTH / strip.width))), Image.LANCZOS)
-    out = io.BytesIO()
-    strip.save(out, "WEBP", quality=80, method=4)
-    return out.getvalue()
+    return _strip(frames)
 
 
 def _delete_storage(row: dict) -> None:
@@ -134,12 +166,18 @@ def _delete_storage(row: dict) -> None:
         (_user_dir(uid) / f"{rid}.webp").unlink(missing_ok=True)
 
 
-def save_job_result(jid: str, *, user_key: str, zip_path: Path, kind: str, mode: str = "",
-                    title: str = "", file_count: int = 0) -> str | None:
-    """Keep a finished job's ZIP for its signed-in owner. Returns the result id."""
+def save_job_result(jid: str, *, user_key: str, zip_path: Path | None = None, kind: str, mode: str = "",
+                    title: str = "", file_count: int = 0, result_path: Path | None = None) -> str | None:
+    """Keep a finished job's result (ZIP or a single media file) for its signed-in owner.
+
+    Returns the result id, or None when nothing was saved (guest, too large, duplicate).
+    """
     uid = owner_id(user_key)
-    if uid is None:
+    source = Path(result_path or zip_path or "")
+    suffix = source.suffix.lower()
+    if uid is None or suffix not in RESULT_TYPES:
         return None
+    zip_path = source
     try:
         size = zip_path.stat().st_size
     except OSError:
@@ -151,9 +189,9 @@ def save_job_result(jid: str, *, user_key: str, zip_path: Path, kind: str, mode:
     try:
         folder.mkdir(parents=True, exist_ok=True)
         if object_store.configured():
-            storage, zip_ref = "r2", object_store.upload_file(zip_path, f"results/{uid}/{rid}.zip", public=False)
+            storage, zip_ref = "r2", object_store.upload_file(zip_path, f"results/{uid}/{rid}{suffix}", public=False)
         else:
-            storage, zip_ref = "local", f"{rid}.zip"
+            storage, zip_ref = "local", f"{rid}{suffix}"
             shutil.copyfile(zip_path, folder / zip_ref)
         thumb = build_thumbnail(zip_path)
         if thumb:
@@ -209,9 +247,31 @@ def maybe_cleanup(interval: float = 600.0) -> int:
     return cleanup_expired()
 
 
+def result_suffix(row: dict) -> str:
+    suffix = Path(str(row.get("zip_ref") or "")).suffix.lower()
+    return suffix if suffix in RESULT_TYPES else ".zip"
+
+
+def save_from_object(jid: str, *, user_key: str, key: str, suffix: str, kind: str, title: str = "") -> str | None:
+    """Save a result that only exists in private R2 (Upscale) by copying it once."""
+    if owner_id(user_key) is None or not key or suffix.lower() not in RESULT_TYPES:
+        return None
+    import tempfile
+    try:
+        data = object_store.get_bytes(key, public=False)
+    except Exception:
+        LOG.warning("saved result fetch failed job=%s", str(jid)[:8], exc_info=True)
+        return None
+    with tempfile.TemporaryDirectory(prefix="sm_saved_") as tmp:
+        path = Path(tmp) / f"result{suffix.lower()}"
+        path.write_bytes(data)
+        return save_job_result(jid, user_key=user_key, result_path=path, kind=kind, title=title, file_count=1)
+
+
 def public_row(row: dict) -> dict:
     rid = str(row["id"])
     return {
+        "ext": result_suffix(row).lstrip("."),
         "id": rid,
         "kind": row.get("kind") or "",
         "mode": row.get("mode") or "",

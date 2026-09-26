@@ -17,14 +17,15 @@
     note:['Animated frames turn a still picture into a looping GIF (4 s). Videos and GIFs keep their own length.','Анимированная рамка превращает картинку в зацикленный GIF (4 с). Видео и GIF сохраняют свою длину.','Animierte Rahmen machen aus einem Standbild ein Endlos-GIF (4 s). Videos und GIFs behalten ihre Länge.','Animasyonlu çerçeve durağan görseli döngülü bir GIF’e (4 sn) dönüştürür. Video ve GIF’ler kendi sürelerini korur.','Un cadre animé transforme une image fixe en GIF en boucle (4 s). Les vidéos et GIF gardent leur durée.','Анімована рамка перетворює зображення на зациклений GIF (4 с). Відео та GIF зберігають свою тривалість.','Un marco animado convierte una imagen fija en un GIF en bucle (4 s). Los vídeos y GIF mantienen su duración.','Uma moldura animada transforma uma imagem estática em um GIF em loop (4 s). Vídeos e GIFs mantêm a duração.']
   };
   var row=document.createElement('div');row.className='workshop-outline__fx';
-  row.innerHTML='<div class="sqfx__styles process-frame__styles" role="radiogroup"></div>'+
+  row.innerHTML='<div class="process-frame__looks" data-no-translate><span data-pfx="presets"></span><div class="sqfx__presets"></div></div>'+
+    '<div class="sqfx__styles process-frame__styles" role="radiogroup"></div>'+
     '<label class="field workshop-outline__color2"><span data-pfx="color2"></span><input type="color" id="outlineColor2" value="#8a62ff"></label>'+
     '<label class="field workshop-outline__speed"><span data-pfx="speed"></span><input type="range" id="outlineSpeed" min="1" max="4" step="1" value="1"></label>'+
     '<div class="process-frame__target" role="group"><span data-pw="target"></span><button type="button" data-target="squares" data-pw="each"></button><button type="button" data-target="strip" data-pw="whole"></button></div>'+
     '<p class="workshop-outline__fxnote" data-pw="note"></p>';
   host.prepend(row);
   var tiles=row.querySelector('.process-frame__styles'),color2=row.querySelector('#outlineColor2'),speed=row.querySelector('#outlineSpeed');
-  var targetBox=row.querySelector('.process-frame__target');
+  var targetBox=row.querySelector('.process-frame__target'),looks=row.querySelector('.process-frame__looks .sqfx__presets');
   var style='neon',target='squares',loop=0,lastDraw=0;
   row.after(color.closest('label'));color.closest('label').after(width.closest('label'));
 
@@ -37,6 +38,13 @@
     row.querySelectorAll('[data-pfx]').forEach(function(node){node.textContent=api.t(node.dataset.pfx,lang)});
     row.querySelectorAll('[data-pw]').forEach(function(node){node.textContent=word(node.dataset.pw)});
     tiles.setAttribute('aria-label',api.t('frame',lang));
+    looks.replaceChildren();
+    (api.PRESETS||[]).forEach(function(preset){
+      var button=document.createElement('button');button.type='button';button.className='sqfx__preset';button.dataset.preset=preset[0];
+      button.textContent=api.t('pr_'+preset[0],lang);
+      button.addEventListener('click',function(){var f=preset[1];setFrame({style:f.style,color:f.color||'#ffffff',color2:f.color2||'#8a62ff',width:f.width||2,speed:f.speed||1})});
+      looks.append(button);
+    });
     tiles.replaceChildren();
     api.FRAME_STYLES.forEach(function(key){
       var button=document.createElement('button');button.type='button';button.className='sqfx__style';button.dataset.style=key;button.setAttribute('role','radio');
@@ -88,13 +96,30 @@
     return api.panelRects(w,h,'squares');
   }
 
+  /* Programmatic frame change (quick looks, restored settings). Unknown values are ignored. */
+  function setFrame(next){
+    next=next||{};
+    if(next.style==='none'){if(toggle)toggle.checked=false}
+    else if(api.FRAME_STYLES.indexOf(next.style)>0){style=next.style;if(toggle)toggle.checked=true}
+    if(/^#[0-9a-f]{6}$/i.test(next.color||''))color.value=next.color;
+    if(/^#[0-9a-f]{6}$/i.test(next.color2||''))color2.value=next.color2;
+    if(Number(next.width)>=1&&Number(next.width)<=8){width.value=String(Math.round(next.width));width.dispatchEvent(new Event('input',{bubbles:true}))}
+    if(Number(next.speed)>=1&&Number(next.speed)<=4)speed.value=String(Math.round(next.speed));
+    if(next.target==='squares'||next.target==='strip')target=next.target;
+    if(toggle)toggle.dispatchEvent(new Event('change',{bubbles:true}));
+    sync();
+  }
   window.SMProcessFrame={
+    set:setFrame,
+    state:function(){return {style:current(),color:color.value,color2:color2.value,width:Number(width.value)||2,speed:Number(speed.value)||1,target:target}},
     options:function(){return {style:current(),color2:color2.value,speed:Number(speed.value)||1,target:target}},
     styleName:function(){var value=current();return value==='none'?'':api.t(value,language())},
     /* Called by the Process preview (app.js) instead of the plain stroke. */
-    draw:function(ctx,w,h,stroke){
+    /* panels: [x,y,w,h] of each final file on the preview (parts are drawn with gaps). */
+    draw:function(ctx,w,h,stroke,panels){
       var period=4;
-      api.drawFrame(ctx,(performance.now()/1000%period)/period,{style:current(),color:color.value,color2:color2.value,width:stroke,speed:Number(speed.value)||1,target:target==='strip'||mode()!=='workshop'?'strip':'squares'},rects(w,h));
+      var list=panels&&panels.length?(mode()==='featured'||target==='strip'?[[0,0,w,h]]:panels):rects(w,h);
+      api.drawFrame(ctx,(performance.now()/1000%period)/period,{style:current(),color:color.value,color2:color2.value,width:stroke,speed:Number(speed.value)||1,target:target==='strip'||mode()!=='workshop'?'strip':'squares'},list);
       return true;
     },
     refresh:sync

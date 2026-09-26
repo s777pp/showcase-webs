@@ -31,7 +31,7 @@ from smweb import square_fx
 from fastapi import APIRouter
 
 
-from smweb.core import JOBS, MAX_UPLOAD_MB, _auth_user, _ip, max_jobs_for_user, quota_inc, quota_state
+from smweb.core import JOBS, MAX_UPLOAD_MB, _auth_user, max_jobs_for_user, owner_key, quota_inc, quota_state
 from smweb.job_access import browser_owns_job
 from smweb.jobs import (
     _job_cleanup_old,
@@ -109,7 +109,7 @@ async def api_workshop_studio_start(
     fps = max(5, min(24, fps))
     duration = max(1.0, min(8.0, duration))
     user = _auth_user(request)
-    user_key = str(user.get("id") or "") if user else _ip(request)
+    user_key = owner_key(request, user)
     if user_key and rs.job_count_user(user_key) >= max_jobs_for_user(int(user["id"]) if user else None):
         return JSONResponse({"ok": False, "msg": "Too many active jobs"}, status_code=429)
 
@@ -329,7 +329,7 @@ async def api_process_start(
         # Anonymous callers are keyed by IP. Using request.client.host here
         # meant the proxy's address behind Railway, so every logged-out user
         # shared one MAX_JOBS_PER_USER budget and blocked each other.
-        user_key = str(u.get("id") or "") if u else _ip(request)
+        user_key = owner_key(request, u)
     except Exception:
         user_key = ""
     # Check the per-user cap BEFORE registering the job or charging quota,
@@ -441,6 +441,10 @@ async def api_process_start(
     }
     rs.job_create(jid, payload, enqueue=external)
     _job_set(jid, status="queued", pct=1, stage="queued", created=time.time(), user_key=user_key)
+    analytics.record("process_started", session_hash=opts["_analytics"]["session_hash"],
+                     user_id=opts["_analytics"]["user_id"], language=opts["_analytics"]["language"],
+                     properties={"mode": _analytics_mode(opts), "file_type": opts["_analytics"]["file_type"]},
+                     event_key=f"process:{jid}:started")
     try:
         quota_inc(request, len(files_meta))
     except Exception:
@@ -460,7 +464,7 @@ def _process_job_for(request: Request, job_id: str) -> dict | None:
     owner = str(job.get("user_key") or "")
     if owner:
         user = _auth_user(request)
-        caller = str(user.get("id") or "") if user else _ip(request)
+        caller = owner_key(request, user)
         if not secrets.compare_digest(owner, caller):
             return None
     return job
@@ -614,6 +618,8 @@ def job_file(job_id: str, name: str, request: Request):
     if not name or name.startswith("."):
         return JSONResponse({"ok": False}, status_code=404)
     path = JOBS / job_id / name
-    if not browser_owns_job(path.parent, request) or not path.is_file():
+    # Files of a profile preview the owner chose to share (smweb.routers.preview.share_preview).
+    shared = (path.parent / ".public").is_file() and (path.parent / "preview.html").is_file()
+    if not (shared or browser_owns_job(path.parent, request)) or not path.is_file():
         return JSONResponse({"ok": False}, status_code=404)
     return FileResponse(path, filename=name, headers={"Cache-Control": "private, no-store"})

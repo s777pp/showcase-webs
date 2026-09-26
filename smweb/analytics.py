@@ -34,6 +34,8 @@ PUBLIC_EVENTS = frozenset({
     "extension_launch_confirmed",
 })
 SERVER_EVENTS = frozenset({
+    "process_started",
+    "profile_preview",
     "process_success",
     "process_failed",
     "zip_download",
@@ -279,7 +281,7 @@ def report(days: int = 30, *, now: float | None = None) -> dict[str, Any]:
     for row in daily_rows:
         by_day[str(row["day_key"])][str(row["event_name"])] = int(row["total"] or 0)
     funnel_names = [
-        "home_view", "tool_open", "file_added", "process_success", "zip_download",
+        "home_view", "tool_open", "file_added", "process_started", "process_success", "zip_download",
         "extension_launch_confirmed", "registration_success", "pro_activated",
     ]
     funnel = []

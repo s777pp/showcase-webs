@@ -331,22 +331,6 @@ def _create_schema(c: sqlite3.Connection) -> None:
     )
     c.execute(
         """
-        CREATE TABLE IF NOT EXISTS process_jobs (
-            id TEXT PRIMARY KEY,
-            user_id INTEGER,
-            status TEXT NOT NULL DEFAULT 'queued',
-            pct INTEGER DEFAULT 0,
-            stage TEXT,
-            error TEXT,
-            result_path TEXT,
-            created_at REAL,
-            updated_at REAL,
-            meta_json TEXT
-        )
-        """
-    )
-    c.execute(
-        """
         CREATE TABLE IF NOT EXISTS admin_audit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             action TEXT NOT NULL,
@@ -850,7 +834,6 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
         c.execute("DELETE FROM builder_projects WHERE user_id=?", (uid,))
         c.execute("DELETE FROM builder_usage WHERE user_id=?", (uid,))
         c.execute("DELETE FROM saved_results WHERE user_id=?", (uid,))
-        c.execute("DELETE FROM process_jobs WHERE user_id=?", (uid,))
         c.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
         c.execute("UPDATE used_codes SET user_id=NULL WHERE user_id=?", (uid,))
         c.execute("DELETE FROM email_codes WHERE email=?", (str(user["email"]),))

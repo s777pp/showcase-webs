@@ -103,3 +103,14 @@ class PrivacyPageTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def test_pages_ship_only_their_language_pack():
+    from smweb.routers.pages import _language_pack
+    page = '<head><script src="/static/js/locales-extra.js?v=7"></script></head>'
+    assert _language_pack(page, "de") == '<head><script src="/static/js/locales/extra-de.js?v=7"></script></head>'
+    assert _language_pack(page, "ru") == "<head></head>"
+    assert _language_pack(page, "en") == "<head></head>"
+    root = Path(__file__).resolve().parents[1]
+    for language in ("de", "tr", "fr", "uk", "es", "pt"):
+        assert (root / "static" / "js" / "locales" / f"extra-{language}.js").is_file()

@@ -5,6 +5,16 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
 
+
+def open_tab(page, name):
+    """Tools tabs may sit in a navigation group (static/js/nav-groups.js); open it first."""
+    button = page.locator('#nav [data-tab="' + name + '"]')
+    if not button.is_visible():
+        trigger = page.locator('#nav .nav-group:has([data-tab="' + name + '"]) .nav-group__trigger')
+        if trigger.count():
+            trigger.click()
+    button.click()
+
 def run():
     output = Path("output/playwright")
     output.mkdir(parents=True, exist_ok=True)
@@ -39,10 +49,10 @@ def run():
         page.locator(".studio-chat-close").click()
         expect(page.locator(".tools-profile-editor")).to_be_attached()
         assert page.locator(".tools-profile-editor").get_attribute("src") is None
-        page.locator('#nav [data-tab="preview"]').click()
+        open_tab(page, 'preview')
         expect(page.locator(".tools-profile-editor")).to_have_attribute("src", "/profile?embed=tools")
         expect(page.frame_locator(".tools-profile-editor").locator("body")).to_be_visible()
-        page.locator('#nav [data-tab="process"]').click()
+        open_tab(page, 'process')
 
         # A failed lazy module must be fetchable on the next attempt.
         attempts = []

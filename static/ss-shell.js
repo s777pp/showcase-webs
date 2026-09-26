@@ -138,7 +138,7 @@
 
   function headerHTML() {
     return '<header class="ss-head"><div class="ss-wrap ss-head__in">' +
-      '<a class="ss-logo" href="' + siteUrl('/') + '"><span class="ss-logo__mark"><img src="/static/icon.png" alt=""></span>' +
+      '<a class="ss-logo" href="' + siteUrl('/') + '"><span class="ss-logo__mark"><img src="/static/icon-256.png" alt=""></span>' +
       '<span class="ss-logo__txt"><b>Showcase</b><span>Maker</span></span></a>' +
       '<div class="ss-account-primary">' +
         '<a class="ss-pill" id="ssUser" href="' + siteUrl('/profile') + '" hidden></a>' +
@@ -270,7 +270,7 @@
     var ru = lang() === 'ru';
     return '<div class="ss-auth" id="ssAuth" aria-hidden="true"><div class="ss-auth__card" role="dialog" aria-modal="true" aria-labelledby="ssAuthTitle">' +
       '<button class="ss-auth__close" id="ssAuthClose" type="button" aria-label="Close">×</button>' +
-      '<div class="ss-auth__mark"><img src="/static/icon.png" alt=""></div>' +
+      '<div class="ss-auth__mark"><img src="/static/icon-256.png" alt=""></div>' +
       '<p class="ss-auth__eyebrow">SHOWCASE MAKER / ACCOUNT</p>' +
       '<h2 id="ssAuthTitle">' + (ru ? 'С возвращением' : 'Welcome back') + '</h2>' +
       '<p class="ss-auth__sub" id="ssAuthSub">' + (ru ? 'Войди, чтобы сохранять проекты и использовать Pro.' : 'Log in to save projects and use Pro.') + '</p>' +
@@ -303,6 +303,7 @@
       ['/profile', ru ? 'Профиль' : 'Profile'],
       ['/#pricing', ru ? 'Тарифы' : 'Pricing'],
       ['/#faq', 'FAQ'],
+      ['/guides', ru ? 'Инструкции' : 'Guides'],
       ['/privacy', ru ? 'Политика конфиденциальности' : 'Privacy policy']
     ];
     return '<footer class="ss-foot"><div class="ss-wrap ss-foot__in">' +
@@ -881,6 +882,10 @@
     document.querySelectorAll('[data-privacy-link]').forEach(function (link) {
       link.href = siteUrl('/privacy');
       link.textContent = lang() === 'ru' ? 'Политика конфиденциальности' : 'Privacy policy';
+    });
+    document.querySelectorAll('[data-guides-link]').forEach(function (link) {
+      link.href = siteUrl('/guides');
+      link.textContent = lang() === 'ru' ? 'Инструкции' : 'Guides';
     });
     wire();
     paintUser(window.SS_ME);

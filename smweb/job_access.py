@@ -12,7 +12,7 @@ from pathlib import Path
 
 from fastapi import Request
 
-from smweb.core import _ip
+from smweb.core import _ip, guest_token
 
 
 _MARKER = ".owner"
@@ -24,7 +24,8 @@ def _browser_fingerprint(request: Request) -> str:
         or request.cookies.get("sm_session")
         or ""
     ).strip()
-    material = f"session:{token}" if token else f"ip:{_ip(request)}"
+    guest = "" if token else guest_token(request)
+    material = f"session:{token}" if token else (f"guest:{guest}" if guest else f"ip:{_ip(request)}")
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 

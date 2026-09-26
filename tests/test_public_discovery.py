@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from smweb.routers.pages import router
 from smweb.locales import SUPPORTED_LANGUAGES
+from smweb import guides
 
 
 app = FastAPI()
@@ -17,7 +18,8 @@ def test_sitemap_only_contains_public_pages_that_exist():
     assert response.status_code == 200
     root = ElementTree.fromstring(response.content)
     urls = [n.text for n in root.findall('{*}url/{*}loc')]
-    assert len(urls) == len(SUPPORTED_LANGUAGES) * 4 + 2
+    guide_pages = len(guides.GUIDE_LANGUAGES) * (1 + len(guides.GUIDES))
+    assert len(urls) == len(SUPPORTED_LANGUAGES) * 4 + 2 + guide_pages
     assert len(urls) == len(set(urls))
     for url in urls:
         assert '/profile' not in url and '/api/' not in url

@@ -16,7 +16,7 @@
   function preview(){id('CardName').textContent=id('Name').value||'—';id('CardUsername').textContent='@'+(id('Username').value||'your-name');id('CardBio').textContent=id('Bio').value||'';}
   async function load(){const r=await fetch('/api/profile/me',{credentials:'same-origin'});if(!r.ok)throw Error(t('needLogin'));const data=await r.json();profile=data.profile||{};const ar=await fetch('/api/gallery/author/'+encodeURIComponent(profile.username),{credentials:'same-origin'}).then(x=>x.json());
     id('Name').value=profile.display_name||'';id('Username').value=profile.username||'';id('Bio').value=profile.profile_summary||'';
-    id('Avatar').src=profile.avatar_url||'/static/icon.png';id('CardAvatar').src=profile.avatar_url||'/static/icon.png';
+    id('Avatar').src=profile.avatar_url||'/static/icon-256.png';id('CardAvatar').src=profile.avatar_url||'/static/icon-256.png';
     links.querySelectorAll('input').forEach(input=>input.value=ar.links?.[input.dataset.social]||'');
     id('Works').textContent=ar.stats?.works||0;id('Downloads').textContent=ar.stats?.downloads||0;id('Likes').textContent=ar.stats?.likes||0;
     id('View').href='/gallery?author='+encodeURIComponent(profile.username);preview();}

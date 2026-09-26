@@ -106,7 +106,6 @@ DO $$ BEGIN
  END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_showcases_user ON profile_showcases(user_id,sort_order);
-CREATE TABLE IF NOT EXISTS process_jobs (id TEXT PRIMARY KEY, user_id BIGINT, status TEXT NOT NULL DEFAULT 'queued', pct INTEGER DEFAULT 0, stage TEXT, error TEXT, result_path TEXT, created_at DOUBLE PRECISION, updated_at DOUBLE PRECISION, meta_json TEXT);
 
 CREATE TABLE IF NOT EXISTS admin_audit (
  id BIGSERIAL PRIMARY KEY,

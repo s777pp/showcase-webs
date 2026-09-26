@@ -34,7 +34,7 @@ def _row(request: Request, result_id: str):
 
 def _download_name(row: dict) -> str:
     stem = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in str(row.get("title") or ""))[:40].strip("_")
-    return f"showcase_{stem or row['id'][:8]}.zip"
+    return f"showcase_{stem or row['id'][:8]}{saved_results.result_suffix(row)}"
 
 
 @router.get("")
@@ -56,19 +56,20 @@ def download_result(result_id: str, request: Request):
     if error:
         return error
     name = _download_name(row)
+    media_type = saved_results.RESULT_TYPES[saved_results.result_suffix(row)]
     analytics.record("zip_download", request=request, user_id=int(row["user_id"]),
                      properties={"mode": str(row.get("mode") or ""), "value": int(row.get("size") or 0)})
     if row.get("storage") == "r2":
         try:
             url = object_store.presigned_get_url(str(row["zip_ref"]), expires=600, download_name=name,
-                                                 media_type="application/zip")
+                                                 media_type=media_type)
         except Exception:
             return JSONResponse({"ok": False, "msg": "Storage unavailable. Try again later."}, status_code=503)
         return RedirectResponse(url, status_code=302, headers=_PRIVATE)
     path = saved_results.local_zip_path(row)
     if not path:
         return JSONResponse({"ok": False, "msg": "Result file is missing"}, status_code=410)
-    return FileResponse(path, media_type="application/zip", filename=name, headers=_PRIVATE)
+    return FileResponse(path, media_type=media_type, filename=name, headers=_PRIVATE)
 
 
 @router.get("/{result_id}/thumb")

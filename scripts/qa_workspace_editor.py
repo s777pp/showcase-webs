@@ -15,6 +15,16 @@ from PIL import Image
 from playwright.sync_api import sync_playwright, expect
 
 
+
+def open_tab(page, name):
+    """Tools tabs may sit in a navigation group (static/js/nav-groups.js); open it first."""
+    button = page.locator('#nav [data-tab="' + name + '"]')
+    if not button.is_visible():
+        trigger = page.locator('#nav .nav-group:has([data-tab="' + name + '"]) .nav-group__trigger')
+        if trigger.count():
+            trigger.click()
+    button.click()
+
 def run():
     stream = io.BytesIO()
     Image.new('RGB', (900, 1200), '#256a85').save(stream, 'PNG')
@@ -159,14 +169,14 @@ def run():
         expect(page.locator('.workspace-result-modal')).to_have_count(0)
         page.locator('#btnClear').click()
 
-        page.locator('#nav button[data-tab=steam]').click()
+        open_tab(page, 'steam')
         expect(page.locator('#steamExtensionPicker')).to_be_enabled()
         expect(page.locator('#steamExtensionUpload')).to_be_enabled()
         page.locator('#steamExtensionPicker').click()
         expect(page.locator('#steamExtensionLaunchStatus')).to_contain_text('Выбор файлов открыт')
         assert page.evaluate("window.__qaBridgeMessages.find(message => message.type === 'OPEN_AUTO_UPLOADER').mode") in ('workshop', 'featured', 'split')
         page.screenshot(path=str(output / 'showcase-editor-steam-extension.png'))
-        page.locator('#nav button[data-tab=process]').click()
+        open_tab(page, 'process')
         page.locator('#fileInput').set_input_files({'name': 'empty.png', 'mimeType': 'image/png', 'buffer': b''})
         expect(page.locator('#processPreflight')).to_have_class('process-preflight is-blocked')
         expect(page.locator('#btnRun')).to_be_disabled()

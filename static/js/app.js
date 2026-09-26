@@ -2205,7 +2205,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     },
     ru: {
       nav_tools: "Инструменты",
-      nav_process: "Обработка", nav_workshop: "Мастерская", nav_compose: "Персонаж", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
+      nav_process: "Обработка", nav_workshop: "Ряды и квадраты", nav_compose: "Персонаж", nav_download: "Скачать", nav_convert: "Конвертер", nav_hex: "HEX",
       nav_preview: "Профиль", nav_upscale: "Апскейл", nav_loop: "Зациклить", nav_steam: "Steam", nav_da: "DeviantArt", nav_account: "Аккаунт", nav_about: "О сервисе", nav_doctor: "Оценка профиля", "nav_design-ai": "Подбор оформления",
       title_upscale: "Апскейл", sub_upscale: "ИИ-увеличение с сохранением деталей — функция Pro",
       title_loop: "Цикл", sub_loop: "Бесшовное зацикливание коротких GIF и видео — функция Pro",
@@ -2241,7 +2241,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       auth_discord: "Продолжить с Discord", auth_telegram: "Продолжить с Telegram",
       save_profile: "Сохранить профиль", back: "← На главную",
       title_process: "Обработка", sub_process: "Нарезка Workshop / Featured / Split, водяной знак и ZIP для Steam",
-      title_workshop: "Мастерская", sub_workshop: "Подготовь отдельный файл для каждого ряда витрины",
+      title_workshop: "Ряды и квадраты", sub_workshop: "Подготовь отдельный файл для каждого ряда витрины",
       title_builder: "Билдер", sub_builder: "Слои, фоны Steam, текст, персонажи, рамки и эффекты",
       title_projects: "Мои проекты", sub_projects: "Редактируемые витрины и срок их хранения",
       workspace_process: "Обработка", workspace_projects: "Мои проекты",
@@ -2660,336 +2660,6 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   setTimeout(start, 200);
   setTimeout(start, 800);
 })();
-// app.html L3996-4353
-/* DeviantArt Connect — standalone */
-(function () {
-  if (window.__daLegacyBound) return;
-  function msg(text, cls) {
-    var st = document.getElementById("daMsg");
-    if (!st) { try { alert(text); } catch (e) {} return; }
-    st.className = "status" + (cls ? " " + cls : "");
-    st.style.display = "block";
-    st.style.minHeight = "24px";
-    st.style.marginTop = "12px";
-    st.textContent = text;
-  }
-  function sessionHeaders() {
-    var h = { "Content-Type": "application/json" };
-    try {
-      var tk = localStorage.getItem("sm_token");
-      if (tk) h["X-Access-Token"] = tk;
-    } catch (e) {}
-    return h;
-  }
-  window.__daConnect = async function () {
-    var ru = false;
-    try { ru = SMLang.isRu(); } catch (e) {}
-    msg(ru ? "Подключение…" : "Connecting…", "");
-    try {
-      msg(ru ? "Открываю DeviantArt…" : "Opening DeviantArt…", "");
-      var r = await fetch("/api/da/login", { headers: sessionHeaders(), credentials: "include" });
-      var j = {};
-      try { j = await r.json(); } catch (e) {}
-      if (!r.ok || !j.ok) {
-        msg(j.msg || ((ru ? "Ошибка " : "Error ") + r.status), "err");
-        return;
-      }
-      if (!j.url) { msg("No OAuth URL", "err"); return; }
-      var w = null;
-      try { w = window.open(j.url, "da_oauth_" + Date.now(), "width=720,height=800,scrollbars=yes"); } catch (e) {}
-      var st = document.getElementById("daMsg");
-      if (!w || w.closed) {
-        if (st) {
-          st.className = "status err";
-          st.innerHTML = (ru ? "Popup заблокирован. " : "Popup blocked. ") +
-            "<a href=\"" + j.url + "\" target=\"_blank\" rel=\"noopener\" style=\"color:#00d2ff;font-weight:700;text-decoration:underline\">" +
-            (ru ? "НАЖМИ СЮДА" : "CLICK HERE") + "</a>";
-        }
-      } else {
-        try { w.focus(); } catch (e) {}
-        if (st) {
-          st.className = "status";
-          st.innerHTML = (ru ? "Разреши доступ в окне DA. Или " : "Allow access in DA window. Or ") +
-            "<a href=\"" + j.url + "\" target=\"_blank\" rel=\"noopener\" style=\"color:#00d2ff;text-decoration:underline\">" +
-            (ru ? "ссылка" : "link") + "</a>";
-        }
-      }
-      var n = 0;
-      var tmr = setInterval(async function () {
-        n++;
-        try {
-          var stj = await fetch("/api/da/status", { headers: sessionHeaders(), credentials: "include" }).then(function (x) { return x.json(); });
-          if (stj && stj.da) {
-            clearInterval(tmr);
-            try { if (w && !w.closed) w.close(); } catch (e) {}
-            msg(ru ? "Подключено!" : "Connected!", "ok");
-            var pill = document.getElementById("daStatusPill");
-            if (pill) pill.textContent = ru ? "DA: подключено" : "DA: connected";
-            var block = document.getElementById("daConnectedBlock");
-            if (block) block.style.display = "block";
-            var login = document.getElementById("daLogin");
-            if (login) login.style.display = "none";
-          }
-        } catch (e) {}
-        if (n > 90) clearInterval(tmr);
-      }, 2000);
-    } catch (e) {
-      msg(String(e && e.message ? e.message : e), "err");
-      console.error(e);
-    }
-  };
-  function bind() {
-    var btn = document.getElementById("daLogin");
-    if (!btn) return;
-    btn.disabled = false;
-    btn.removeAttribute("disabled");
-    btn.style.pointerEvents = "auto";
-    btn.style.cursor = "pointer";
-    btn.onclick = function (e) {
-      if (e) { e.preventDefault(); e.stopPropagation(); }
-      window.__daConnect();
-      return false;
-    };
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
-  else bind();
-  setTimeout(bind, 300);
-  setTimeout(bind, 1500);
-  document.addEventListener("click", function (e) {
-    var t = e.target;
-    if (!t) return;
-    if (t.id === "daLogin" || (t.closest && t.closest("#daLogin"))) {
-      e.preventDefault();
-      e.stopPropagation();
-      window.__daConnect();
-    }
-
-  // --- file list for DA upload ---
-  window.__daItems = window.__daItems || [];
-
-  function renderDaListSafe() {
-    var box = document.getElementById("daList");
-    if (!box) return;
-    var items = window.__daItems || [];
-    var daPack = APP_I18N[appLang()] || APP_I18N.en;
-    if (!items.length) {
-      box.innerHTML = "";
-      return;
-    }
-    box.innerHTML = items.map(function (it, i) {
-      return '<div class="file-row" style="display:flex;gap:8px;align-items:center;margin:6px 0">' +
-        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">' +
-        escapeHtml(it.name) + "</span>" +
-        '<input class="da-title" data-i="' + i + '" value="' +
-        escapeHtml(it.title) +
-        '" style="flex:1;min-width:100px" placeholder="' + escapeHtml(daPack.da_title_placeholder) + '"/>' +
-        '<button type="button" class="btn ghost da-rm" data-i="' + i + '" style="padding:4px 10px">×</button></div>';
-    }).join("");
-    box.querySelectorAll(".da-title").forEach(function (inp) {
-      inp.oninput = function () {
-        var i = +inp.getAttribute("data-i");
-        if (window.__daItems[i]) window.__daItems[i].title = inp.value;
-      };
-    });
-    box.querySelectorAll(".da-rm").forEach(function (btn) {
-      btn.onclick = function () {
-        window.__daItems.splice(+btn.getAttribute("data-i"), 1);
-        renderDaListSafe();
-      };
-    });
-  }
-
-  window.__daPickFiles = function () {
-    var f = document.getElementById("daFiles");
-    if (!f) {
-      // create on the fly
-      f = document.createElement("input");
-      f.type = "file";
-      f.id = "daFiles";
-      f.multiple = true;
-      f.accept = "image/*,image/gif,video/mp4,video/webm,.gif,.png,.jpg,.jpeg,.mp4,.webm";
-      f.style.cssText = "position:fixed;left:-9999px;opacity:0";
-      document.body.appendChild(f);
-      f.addEventListener("change", onDaFilesChange);
-    }
-    try {
-      f.value = "";
-      f.click();
-    } catch (e) {
-      alert(smT("Не удалось открыть выбор файла: ", "Cannot open file dialog: ") + e);
-    }
-  };
-
-  function onDaFilesChange(e) {
-    var files = (e.target && e.target.files) || [];
-    for (var i = 0; i < files.length; i++) {
-      var f = files[i];
-      window.__daItems.push({
-        file: f,
-        name: f.name,
-        title: f.name.replace(/\.[^.]+$/, "")
-      });
-    }
-    try { e.target.value = ""; } catch (err) {}
-    renderDaListSafe();
-    var st = document.getElementById("daMsg");
-    if (st) {
-      st.className = "status ok";
-      st.textContent = (APP_I18N[appLang()] || APP_I18N.en).da_files_count + ": " + window.__daItems.length;
-    }
-  }
-
-  window.__daClearFiles = function () {
-    window.__daItems = [];
-    renderDaListSafe();
-  };
-
-  window.__daUpload = async function () {
-    var st = document.getElementById("daMsg");
-    var prog = document.getElementById("daProgress");
-    var fill = document.getElementById("daProgFill");
-    var pctEl = document.getElementById("daProgPct");
-    var label = document.getElementById("daProgLabel");
-    var sub = document.getElementById("daProgSub");
-    var upBtn = document.getElementById("daUpload");
-    var items = window.__daItems || [];
-    var ru = false;
-    try { ru = SMLang.isRu(); } catch (e) {}
-
-    function setProg(pct, lab, subText) {
-      pct = Math.max(0, Math.min(100, Math.round(pct)));
-      if (prog) prog.classList.add("show");
-      if (fill) fill.style.width = pct + "%";
-      if (pctEl) pctEl.textContent = pct + "%";
-      if (label && lab) label.textContent = lab;
-      if (sub) sub.textContent = subText || "";
-    }
-    function hideProgLater() {
-      setTimeout(function () {
-        if (prog) prog.classList.remove("show");
-        if (fill) fill.style.width = "0%";
-      }, 2500);
-    }
-
-    if (!items.length) {
-      if (st) { st.className = "status err"; st.textContent = ru ? "Сначала добавь файлы" : "Add files first"; }
-      return;
-    }
-    if (upBtn) upBtn.disabled = true;
-    if (st) { st.className = "status"; st.textContent = ru ? "Загрузка…" : "Uploading…"; }
-    setProg(0, ru ? "Загрузка на Sta.sh…" : "Uploading to Sta.sh…", "0 / " + items.length);
-
-    var fd = new FormData();
-    items.forEach(function (it) {
-      fd.append("file", it.file, it.name);
-      fd.append("title_" + it.name, it.title || it.name);
-    });
-    var hdr = {};
-    try {
-      var tk = localStorage.getItem("sm_token");
-      if (tk) hdr["X-Access-Token"] = tk;
-    } catch (e) {}
-
-    try {
-      await new Promise(function (resolve, reject) {
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/da/upload");
-        Object.keys(hdr).forEach(function (k) { xhr.setRequestHeader(k, hdr[k]); });
-        xhr.withCredentials = true;
-
-        xhr.upload.onprogress = function (ev) {
-          if (!ev.lengthComputable) {
-            setProg(10, ru ? "Загрузка…" : "Uploading…", items.length + " file(s)");
-            return;
-          }
-          var p = (ev.loaded / ev.total) * 100;
-          var mb = (ev.loaded / 1048576).toFixed(1) + " / " + (ev.total / 1048576).toFixed(1) + " MB";
-          setProg(p, ru ? "Отправка файлов…" : "Sending files…", mb);
-        };
-        xhr.upload.onload = function () {
-          setProg(95, ru ? "Обработка на сервере…" : "Processing on server…", "");
-        };
-        xhr.onload = function () {
-          var j = {};
-          try { j = JSON.parse(xhr.responseText || "{}"); } catch (e) {}
-          if (xhr.status >= 200 && xhr.status < 300 && j.ok) {
-            setProg(100, ru ? "Готово!" : "Done!", (j.uploaded || 0) + " / " + (j.total || items.length));
-            if (st) {
-              st.className = "status ok";
-              st.textContent = (ru ? "Загружено " : "Uploaded ") + (j.uploaded || 0) + "/" + (j.total || items.length) + " → Sta.sh";
-              if (j.errors && j.errors.length) st.textContent += " · " + j.errors.join("; ");
-            }
-            hideProgLater();
-            resolve(j);
-          } else {
-            var err = (j && j.msg) || (j.errors && j.errors.join("; ")) || ("HTTP " + xhr.status);
-            setProg(0, ru ? "Ошибка" : "Error", err);
-            if (st) { st.className = "status err"; st.textContent = err; }
-            reject(new Error(err));
-          }
-        };
-        xhr.onerror = function () {
-          var err = ru ? "Сеть / ошибка загрузки" : "Network upload error";
-          setProg(0, ru ? "Ошибка" : "Error", err);
-          if (st) { st.className = "status err"; st.textContent = err; }
-          reject(new Error(err));
-        };
-        xhr.send(fd);
-      });
-    } catch (e) {
-      if (st && st.className.indexOf("err") < 0) {
-        st.className = "status err";
-        st.textContent = String(e && e.message ? e.message : e);
-      }
-    }
-    if (upBtn) upBtn.disabled = false;
-  };
-
-  // bind file input change + buttons
-  function bindDaFiles() {
-    var inp = document.getElementById("daFiles");
-    if (inp && !inp.dataset.bound) {
-      inp.dataset.bound = "1";
-      inp.addEventListener("change", onDaFilesChange);
-    }
-    var add = document.getElementById("daAddFiles");
-    if (add) {
-      add.disabled = false;
-      add.onclick = function (e) {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
-        window.__daPickFiles();
-        return false;
-      };
-    }
-    var clr = document.getElementById("daClearFiles");
-    if (clr) {
-      clr.onclick = function (e) {
-        if (e) { e.preventDefault(); }
-        window.__daClearFiles();
-        return false;
-      };
-    }
-    var up = document.getElementById("daUpload");
-    if (up) {
-      up.onclick = function (e) {
-        if (e) { e.preventDefault(); }
-        window.__daUpload();
-        return false;
-      };
-    }
-    // sync with legacy daItems if main script has it
-    try {
-      if (typeof daItems !== "undefined" && Array.isArray(daItems)) {
-        window.__daItems = daItems;
-      }
-    } catch (e) {}
-  }
-  bindDaFiles();
-  setTimeout(bindDaFiles, 400);
-  setTimeout(bindDaFiles, 1500);
-
-  }, true);
-})();
 // app.html L4356-4776
 /* ===== Watermark manual drag preview + gallery publish ===== */
 (function(){
@@ -3104,44 +2774,28 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
   }
   function firstImageFile(){ return firstPreviewFile(); }
 
-  function drawShowcaseGuide(w, h){
+  // Final files as Steam shows them: parts side by side with a thin black gap.
+  const PREVIEW_GAP = 3;
+  function previewBounds(){
     const mode = ['workshop', 'featured', 'split'].includes(state.mode) ? state.mode : 'workshop';
-    const boundaries = mode === 'workshop'
-      ? [0, .2, .4, .6, .8, 1]
-      : mode === 'split'
-        ? [0, 506 / 606, 1]
-        : [0, 1];
+    return mode === 'workshop' ? [0, .2, .4, .6, .8, 1] : mode === 'split' ? [0, 506 / 606, 1] : [0, 1];
+  }
+  /* Canvas rectangles [x, y, w, h] of each part for an image drawn w px wide. */
+  function previewPanels(w, h){
+    const bounds = previewBounds();
+    const panels = [];
+    for (let i = 0; i < bounds.length - 1; i++) {
+      const left = Math.round(bounds[i] * w), right = Math.round(bounds[i + 1] * w);
+      panels.push([left + i * PREVIEW_GAP, 0, right - left, h]);
+    }
+    return panels;
+  }
+
+  function drawShowcaseGuide(w, h, panels){
+    const mode = ['workshop', 'featured', 'split'].includes(state.mode) ? state.mode : 'workshop';
     const guideLabel = wmT('guide_' + mode);
-    const pixelRatio = Math.max(1, Math.min(2, w / 520));
-    const inset = Math.max(1, pixelRatio);
 
     ctx.save();
-
-    // Alternating glass tint makes the future files readable without hiding the source.
-    for (let i = 0; i < boundaries.length - 1; i++) {
-      if (i % 2 === 0) continue;
-      const left = boundaries[i] * w;
-      const right = boundaries[i + 1] * w;
-      ctx.fillStyle = 'rgba(3, 18, 27, .14)';
-      ctx.fillRect(left, 0, right - left, h);
-    }
-
-    ctx.strokeStyle = 'rgba(81, 215, 250, .9)';
-    ctx.lineWidth = pixelRatio;
-    ctx.setLineDash([Math.max(4, pixelRatio * 4), Math.max(3, pixelRatio * 3)]);
-    ctx.strokeRect(inset / 2, inset / 2, Math.max(1, w - inset), Math.max(1, h - inset));
-    boundaries.slice(1, -1).forEach(function(position){
-      const x = Math.round(position * w) + .5;
-      const gap = Math.max(2, Math.min(5, Math.round(w * .005)));
-      ctx.fillStyle = 'rgba(1, 8, 13, .74)';
-      ctx.fillRect(x - gap / 2, 0, gap, h);
-      ctx.strokeStyle = 'rgba(81, 215, 250, .9)';
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    });
-    ctx.setLineDash([]);
 
     const fontSize = Math.max(9, Math.min(12, Math.round(w / 65)));
     ctx.font = '800 ' + fontSize + 'px ui-monospace, SFMono-Regular, Consolas, monospace';
@@ -3158,9 +2812,9 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       ? ['1', '2', '3', '4', '5']
       : mode === 'split' ? ['506 px', '100 px'] : ['630 px'];
     segmentLabels.forEach(function(label, i){
-      const left = boundaries[i] * w;
-      const right = boundaries[i + 1] * w;
-      const segmentW = right - left;
+      if (!panels[i]) return;
+      const left = panels[i][0];
+      const segmentW = panels[i][2];
       const compactLabel = segmentW < 58 ? String(i + 1) : label;
       const measured = ctx.measureText(compactLabel).width;
       const chipW = Math.min(segmentW - 6, measured + 10);
@@ -3195,34 +2849,44 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const fit = Math.min(maxW / rotatedW, 420 / rotatedH);
     const w = Math.max(1, Math.round(rotatedW * fit));
     const h = Math.max(1, Math.round(rotatedH * fit));
-    if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w;
+    const panels = previewPanels(w, h);
+    const W = w + PREVIEW_GAP * (panels.length - 1);
+    if (canvas.width !== W || canvas.height !== h) {
+      canvas.width = W;
       canvas.height = h;
     }
     canvas.style.display = 'block';
     canvas.style.cursor = 'grab';
     if (empty) empty.style.display = 'none';
-    ctx.clearRect(0,0,w,h);
-    ctx.save();
-    ctx.translate(w / 2, h / 2);
-    ctx.rotate(radians);
-    ctx.drawImage(img, -sourceW * fit / 2, -sourceH * fit / 2, sourceW * fit, sourceH * fit);
-    ctx.restore();
-    drawShowcaseGuide(w, h);
+    const source = previewSource(w, h);
+    const sctx = source.getContext('2d');
+    sctx.clearRect(0, 0, w, h);
+    sctx.save();
+    sctx.translate(w / 2, h / 2);
+    sctx.rotate(radians);
+    sctx.drawImage(img, -sourceW * fit / 2, -sourceH * fit / 2, sourceW * fit, sourceH * fit);
+    sctx.restore();
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, h);
+    const bounds = previewBounds();
+    panels.forEach(function(panel, i){
+      const from = Math.round(bounds[i] * w);
+      ctx.drawImage(source, from, 0, panel[2], h, panel[0], 0, panel[2], h);
+    });
+    drawShowcaseGuide(W, h, panels);
     const outlineOn = document.getElementById('workshopOutline')?.checked;
     if (outlineOn) {
       // Thickness is in final-file pixels: Workshop width setting, Split 606, Featured 630.
       const sourceWidth = state.mode === 'split' ? 606 : state.mode === 'featured' ? 630 : Number(document.getElementById('size')?.value || 750);
       const stroke = Math.max(1, Number(document.getElementById('outlineWidth')?.value || 2) * w / sourceWidth);
       // Styled/animated outline (process-frame-fx.js); plain stroke as a fallback.
-      if (!(window.SMProcessFrame && window.SMProcessFrame.draw(ctx, w, h, stroke))) {
+      if (!(window.SMProcessFrame && window.SMProcessFrame.draw(ctx, W, h, stroke, panels))) {
         ctx.save();
         ctx.strokeStyle = document.getElementById('outlineColor')?.value || '#ffffff';
         ctx.lineWidth = stroke;
-        for (let panel = 0; panel < 5; panel++) {
-          const left = panel * w / 5 + stroke / 2;
-          ctx.strokeRect(left, stroke / 2, w / 5 - stroke, h - stroke);
-        }
+        panels.forEach(function(panel){
+          ctx.strokeRect(panel[0] + stroke / 2, stroke / 2, panel[2] - stroke, h - stroke);
+        });
         ctx.restore();
       }
     }
@@ -3231,10 +2895,11 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     const family = fontReady[key] || ('wm_' + key);
     const fontSize = Math.max(12, Math.round((h / 28) * scaleVal()));
     ctx.font = '600 ' + fontSize + 'px "' + family + '", Mulish, system-ui, sans-serif';
+    const wmWidth = W;
     ctx.fillStyle = colorVal();
     ctx.globalAlpha = opacityVal();
     const tw = ctx.measureText(textVal()).width;
-    const x = wx * w;
+    const x = wx * wmWidth;
     const y = wy * h + fontSize * 0.85;
     ctx.fillText(textVal(), x, y);
     ctx.globalAlpha = 1;
@@ -3243,6 +2908,12 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     ctx.setLineDash([5, 4]);
     ctx.strokeRect(x - 3, y - fontSize - 2, tw + 6, fontSize + 8);
     ctx.setLineDash([]);
+  }
+  let previewCanvas = null;
+  function previewSource(w, h){
+    if (!previewCanvas) previewCanvas = document.createElement('canvas');
+    if (previewCanvas.width !== w || previewCanvas.height !== h) { previewCanvas.width = w; previewCanvas.height = h; }
+    return previewCanvas;
   }
   window.__wmRedraw = draw;
   window.addEventListener('sm:langchange', draw);

@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 import redis_store as rs
-from smweb.core import JOBS, _auth_user, _ip, max_jobs_for_user, quota_state, quota_inc
+from smweb.core import JOBS, _auth_user, max_jobs_for_user, owner_key, quota_state, quota_inc
 from smweb.jobs import _job_pool, _worker_mode
 
 
@@ -27,7 +27,7 @@ def _owner(request: Request) -> str:
         user = _auth_user(request)
     except Exception:
         user = None
-    return str(user.get("id") or "") if user else _ip(request)
+    return owner_key(request, user)
 
 
 def _owned(request: Request, jid: str) -> dict | None:

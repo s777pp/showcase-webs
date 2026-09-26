@@ -139,3 +139,62 @@ def test_account_deletion_and_export_cover_saved_results(monkeypatch, tmp_path):
     connection = auth_db._conn()
     assert connection.execute("SELECT COUNT(*) AS n FROM saved_results").fetchone()["n"] == 0
     connection.close()
+
+
+def test_single_media_results_keep_their_type(monkeypatch, tmp_path):
+    user_id, _other = _setup(monkeypatch, tmp_path)
+    previous = results_routes._auth_user
+    try:
+        gif = tmp_path / "composed.gif"
+        frames = [Image.new("RGB", (300, 200), color) for color in ("#203040", "#402030")]
+        frames[0].save(gif, save_all=True, append_images=frames[1:], duration=100, loop=0)
+        rid = saved_results.save_job_result("e" * 24, user_key=str(user_id), result_path=gif, kind="compose")
+        assert rid and saved_results.thumb_path(user_id, rid)
+        item = _client(user_id).get("/api/results").json()["items"][0]
+        assert item["ext"] == "gif" and item["kind"] == "compose"
+        download = _client(user_id).get(f"/api/results/{rid}/download")
+        assert download.headers["content-type"] == "image/gif"
+        assert download.headers["content-disposition"].endswith('.gif"')
+        # Unknown result types are never stored.
+        bad = tmp_path / "script.exe"
+        bad.write_bytes(b"MZ")
+        assert saved_results.save_job_result("f" * 24, user_key=str(user_id), result_path=bad, kind="compose") is None
+    finally:
+        results_routes._auth_user = previous
+
+
+def test_upscale_result_is_copied_from_private_storage(monkeypatch, tmp_path):
+    user_id, _other = _setup(monkeypatch, tmp_path)
+    buffer = io.BytesIO()
+    Image.new("RGB", (400, 300), "#305070").save(buffer, "PNG")
+    fetched = []
+    monkeypatch.setattr(object_store, "get_bytes", lambda key, public=True: fetched.append((key, public)) or buffer.getvalue())
+    rid = saved_results.save_from_object("a1" * 12, user_key=str(user_id), key="upscale/result/abc.png",
+                                         suffix=".png", kind="upscale", title="art")
+    assert fetched == [("upscale/result/abc.png", False)]
+    row = auth_db.saved_result_get(user_id, rid)
+    assert row["kind"] == "upscale" and row["zip_ref"].endswith(".png")
+    assert saved_results.save_from_object("b2" * 12, user_key="198.51.100.4", key="k.png", suffix=".png", kind="upscale") is None
+
+
+def test_guest_jobs_belong_to_a_browser_not_an_ip(monkeypatch):
+    from fastapi import FastAPI, Request
+    from smweb import core
+    from smweb.middleware import GuestCookieMiddleware
+
+    monkeypatch.setattr(core, "_ip", lambda request: "203.0.113.9")
+    app = FastAPI()
+    app.add_middleware(GuestCookieMiddleware)
+
+    @app.get("/who")
+    def who(request: Request):
+        return {"owner": core.owner_key(request), "signed_in": core.owner_key(request, {"id": 7})}
+
+    first, second = TestClient(app), TestClient(app)
+    a = first.get("/who")
+    assert a.json()["owner"].startswith("g:") and a.json()["signed_in"] == "7"
+    assert "sm_guest" in a.headers["set-cookie"] and "HttpOnly" in a.headers["set-cookie"]
+    # Same browser keeps its id on the next request; another browser on the same IP gets its own.
+    assert first.get("/who").json()["owner"] == a.json()["owner"]
+    assert second.get("/who").json()["owner"] != a.json()["owner"]
+    assert "set-cookie" not in first.get("/who").headers

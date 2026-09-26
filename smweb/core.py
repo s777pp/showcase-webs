@@ -359,6 +359,45 @@ def _check_public_url(url: str) -> tuple[bool, str]:
     return True, ""
 
 
+GUEST_COOKIE = "sm_guest"
+_GUEST_TOKEN = __import__("re").compile(r"[A-Za-z0-9_-]{32,64}")
+
+
+def guest_token(req: Request) -> str:
+    """Random per-browser id for visitors without an account (set by GuestCookieMiddleware)."""
+    raw = (req.cookies.get(GUEST_COOKIE) or "").strip()
+    if _GUEST_TOKEN.fullmatch(raw):
+        return raw
+    try:
+        fresh = str(getattr(req.state, "guest_token", "") or "")
+    except Exception:
+        fresh = ""
+    return fresh if _GUEST_TOKEN.fullmatch(fresh) else ""
+
+
+def owner_key(req: Request, user: dict | None = None) -> str:
+    """Who owns a job: the account id, else this browser, else (no cookie) the client IP.
+
+    Guests used to be keyed by IP only, so visitors behind one NAT could see each
+    other's jobs. Quota and rate limits intentionally stay per IP.
+    """
+    if user and user.get("id"):
+        return str(user["id"])
+    token = guest_token(req)
+    if token:
+        import hashlib
+        return "g:" + hashlib.sha256(token.encode("ascii")).hexdigest()[:32]
+    return _ip(req)
+
+
+def cookie_secure(request: Request | None = None) -> bool:
+    secure = (os.environ.get("COOKIE_SECURE") or "").strip().lower() in ("1", "true", "yes", "on")
+    if request is not None:
+        proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "").lower()
+        secure = secure or proto == "https"
+    return secure
+
+
 def _attach_session_cookie(resp, token: str, request: Request | None = None):
     """Persist login across pages. secure=True only on HTTPS."""
     secure = (os.environ.get("COOKIE_SECURE") or "").strip().lower() in ("1", "true", "yes", "on")

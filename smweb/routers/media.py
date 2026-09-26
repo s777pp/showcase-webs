@@ -37,13 +37,13 @@ from fastapi import APIRouter
 
 
 from smweb.core import (
+    owner_key,
     DATA,
     JOBS,
     LOGGER,
     MAX_UPLOAD_MB,
     _auth_user,
     _check_public_url,
-    _ip,
     max_jobs_for_user,
     quota_inc,
     quota_state,
@@ -222,6 +222,12 @@ def download_url(request: Request, body: dict = Body(...)):
     if not q["pro"] and q["left"] <= 0:
         return JSONResponse({"ok": False, "msg": "Лимит исчерпан"}, status_code=403)
     url = str(body.get("url") or "").strip()
+    # A link fetched as a Process source is charged once, by /api/process/start.
+    for_process = str(body.get("purpose") or "") == "process"
+
+    def _charge(req):
+        if not for_process:
+            quota_inc(req, 1)
     quality = str(body.get("quality") or "best")
     if not url.startswith("http"):
         return JSONResponse({"ok": False, "msg": "Нужна ссылка http(s)"}, status_code=400)
@@ -271,7 +277,7 @@ def download_url(request: Request, body: dict = Body(...)):
                 )
                 if files and files[0].suffix.lower() in (".mp4", ".webm", ".mkv", ".mov", ".gif"):
                     f = files[0]
-                    quota_inc(request, 1)
+                    _charge(request)
                     return {
                         "ok": True,
                         "name": f.name,
@@ -328,7 +334,7 @@ def download_url(request: Request, body: dict = Body(...)):
                                 if chunk:
                                     fh.write(chunk)
                         if dest.stat().st_size > 50_000:
-                            quota_inc(request, 1)
+                            _charge(request)
                             return {
                                 "ok": True,
                                 "name": dest.name,
@@ -343,7 +349,7 @@ def download_url(request: Request, body: dict = Body(...)):
 
             # 3) image fallback
             f = _download_pinterest(url, out_dir)
-            quota_inc(request, 1)
+            _charge(request)
             return {
                 "ok": True,
                 "name": f.name,
@@ -386,7 +392,7 @@ def download_url(request: Request, body: dict = Body(...)):
             return JSONResponse({"ok": False, "msg": "Файл не скачался"}, status_code=400)
         if len(files) == 1:
             f = files[0]
-            quota_inc(request, 1)
+            _charge(request)
             return {
                 "ok": True,
                 "name": f.name,
@@ -397,7 +403,7 @@ def download_url(request: Request, body: dict = Body(...)):
         with zipfile.ZipFile(zpath, "w") as zf:
             for f in files:
                 zf.write(f, f.name)
-        quota_inc(request, 1)
+        _charge(request)
         return {
             "ok": True,
             "name": "download.zip",
@@ -653,7 +659,7 @@ def api_upscale_legacy():
 
 def _compose_user_key(request, user) -> str:
     try:
-        return str(user.get("id") or "") if user else _ip(request)
+        return owner_key(request, user)
     except Exception:
         return ""
 

@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 273 passed on 2026-09-26 (~75 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 282 passed on 2026-09-26 (~75 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -181,6 +181,13 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
   real one is off screen. Styles: `static/css/process-studio.css` (loaded last, scoped to `#tab-process`); copy
   and summary: `static/js/process-layout.js` (8 languages inside). Free users see why the watermark is locked
   (`:has(#wmEnable:disabled)`). All old control ids are unchanged.
+  Polish pass (same day, owner: "удобство и визуальное наслаждение"): the workspace header is one segmented
+  mode switch (`.workspace-switch__modes`: Prepare a file | Create a design) with quiet utility links (My projects,
+  Jobs, More); the task chooser is hidden in the whole workspace (Process/Builder/Projects), not only on Process;
+  `#processModeHelp` explains which Steam showcase name maps to which type (level 10 note); `#btnWmReset` moved
+  into the watermark block ("Reset watermark position"); free users see one explanation instead of greyed
+  watermark fields; animated frames are labelled "animated" (no "beta"); on /app desktop the support launcher is
+  a 48 px round button at the bottom-right so it no longer covers the preview column.
   Frames: `process-frame-fx.js` renders tiles (None = `#workshopOutline` unchecked) and a target switch
   (`outline_target`: `squares` = each part, `strip` = whole showcase; hidden for Featured). Server:
   `processor._split_parts` / `_draw_whole_frame` / `_prepare_featured_frame_sets`; Featured/Split still images
@@ -192,6 +199,63 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
   the preview can show a frame while an old server process still cuts files without it (happened once).
   `_gifski_from_frames` duplicates a lone frame (gifski rejects one input; Split previews of static-looking
   videos used to end up as `full_with_bars_ERROR.txt`).
+- **Round 3 (2026-09-26, owner: "делай всё что считаешь нужным"):**
+  - Tools nav grouping: `static/js/nav-groups.js` + `css/nav-groups.css` MOVE existing `#nav` buttons into
+    a drop-down. Owner decision (same day): only Profile (doctor/design-ai/preview) is grouped; Upscale, Loop,
+    Converter, Download, HEX, DeviantArt and About must stay top-level tabs ("пользователь не найдёт").
+    Workshop Studio's RU label is now "Ряды и квадраты".
+    Group triggers use `.is-current`, never `.active` (app.js/workspace-editor.js read `#nav .active`). Menu hints
+    live in `data-hint` (app.js rewrites button text on language change). `.top-chrome` backdrop-filter is off
+    on /app because it made the fixed menus mis-positioned/clipped. QA scripts use an `open_tab()` helper.
+  - Process: "Try it with a sample picture" (`static/img/samples/sample-art.webp`, fed through the existing
+    `sm:assets-selected` event), Workshop -> "Workshop Studio" cross-link, frame quick looks (frame part of
+    `SMSquaresFx.PRESETS`), last settings remembered in localStorage `sm_process_settings_v1` (watermark only
+    when editable, i.e. Pro), `SMProcessFrame.set/state`.
+  - Result dialog: "See it on a Steam profile" -> `POST /api/process/profile-preview/{job_id}` (routers/preview.py)
+    puts the final files of the job into the Steam profile template and returns `/preview/<id>`.
+  - My results now also keep Character, Loop and Upscale results (`save_job_result(result_path=...)`,
+    `save_from_object` copies the Upscale result from private R2); `public_row.ext`, correct download type.
+  - Guest ownership: `GuestCookieMiddleware` sets HttpOnly `sm_guest`; `core.owner_key(request, user)` returns
+    the account id, `g:<sha256>` for a browser, or the IP only without a cookie. Used by process/jobs/compose
+    routes, `job_access` (preview/job-file binding) and media assets. Quota and rate limits stay per IP.
+- **Round 4 (2026-09-26, owner: "всё остальное можешь сделать"; 3D model and phone navigation explicitly out):**
+  - Language packs: `scripts/build_extra_locales.js` also writes `static/js/locales/extra-<lang>.js`
+    (`--split-only` regenerates them offline); `pages._language_pack()` rewrites the page's
+    `locales-extra.js` tag to the visitor's pack and drops it for EN/RU (~675 KB -> 0 / ~110 KB).
+    `i18n.js` lazy-loads only the ACTIVE language's pack (extend() asks for every language, so never load
+    others). The bundle stays the source of truth; `check_i18n.js` verifies the split packs match it.
+    A full online re-translation now needs `--online` (it calls lingva.ml and rewrites privacy pages).
+  - `static/icon-256.png` (19 KB) replaces the 350 KB `icon.png` on every page (original kept for external use).
+  - Process: paste an image (Ctrl+V), drop a file anywhere on the tab, "…or paste a link" (uses
+    `/api/download-url` with `purpose: "process"`, which skips the extra quota charge; processing charges once),
+    a "you can close / switch the tab" note while processing. `static/js/job-notify.js`: browser notification
+    when a job finishes in a background tab (permission asked once on the first start click).
+  - Analytics funnel gained `process_started` and `profile_preview`.
+  - Shareable profile preview: the preview page has "Copy share link" -> `POST /api/preview/{id}/share`
+    writes `.public`; anyone can then open `/preview/{id}` (without the share button) and its files for 7 days
+    (job cleaner keeps `.public` dirs 7 days); pages are `noindex`.
+  - SEO guides: `smweb/guides.py` (EN/RU content, 3 guides) rendered into `static/guide.html` at
+    `/<lang>/guides` and `/<lang>/guides/<slug>` with HowTo JSON-LD; other languages show English with
+    `noindex, follow`; listed in the sitemap; "Guides" link in footers.
+  - Hygiene: removed the dead second DeviantArt connect block in app.js (~330 lines, guarded by
+    `__daLegacyBound`), the `[FIT Q]` prints and the never-written `process_jobs` table (both schemas + delete).
+  - Not done on purpose: lazy-loading per-tab scripts (remaining gain ~10 KB gzip, would flash English labels)
+    and splitting app.js into modules (multi-day refactor, no user-visible gain; dictionaries are only 18%).
+- **Process preview look** (2026-09-26, owner request): the canvas shows the final parts side by side with
+  3 px black gaps (`PREVIEW_GAP`, `previewPanels()` in app.js), like a Steam profile and like Workshop Studio,
+  instead of dashed cut lines. The watermark position is a fraction of the whole preview (the server stamps
+  `full_with_bars`, gaps included); `SMProcessFrame.draw(ctx, W, h, stroke, panels)` frames each panel.
+- **Site theme v2** (2026-09-26, owner: "переделать /app под новый дизайн главной, чтобы весь сайт выглядел
+  как один проект"): `static/css/site-theme.css`, loaded LAST and enabled by `<body class="site-v2">` on app,
+  gallery, profile, profile-view and extension pages (plus the Montserrat font link). It replaces the Creator OS
+  rail (creator-os.css) with the landing's sticky top bar, turns the tools `.top-chrome` into a sticky tab strip
+  under it, uses the landing background (#03070a + violet/cyan light fields, no grid; `.shell` backdrop layers
+  off) and recolours the tools mostly through tokens (`--os-*`, `--editor-*`, `--eg-*`), plus overrides for
+  cards, buttons, fields, drop zones, Workshop Studio, extension guide, result dialog, job center and notices.
+  Gotchas found: `overflow-x:hidden` on body broke `position:sticky` (use `clip`); an `inset:auto` after `top:0`
+  reset it; hidden tabs need `[hidden]{display:none!important}`; notices must sit below header + tab strip; the
+  Process/Builder workspace keeps full width on wide screens (qa_workspace_editor checks > 1900 px at 2328).
+  The Steam-profile mock-up inside the profile editor keeps its own Steam look on purpose.
 - **Loop (Pro):** `/api/loop/start` accepts `pingpong` and `blend`; result ≤ 8 s.
 - **Design Selection:** DeviantArt reference queries must keep the exact form
   `Steam showcase <one English keyword>`. Imported profile facts are authoritative over AI guesses.
@@ -228,7 +292,8 @@ Only the hero exists for now; content blocks will be added below it later.
   `mobile.css`). It loads `ss.css` + `redesign.css` (shell + auth dialog), loader, support chat,
   consent and `home.css`. The shell header becomes a top bar only under `body.page-home`:
   logo mark + two-line wordmark, centred nav with icons/cyan underline (Home, Tools, Profile,
-  Gallery, Extension[new], Support), Activate, globe language, Log in. Other pages keep the rail.
+  Gallery, Extension[new], Support), Activate, globe language, Log in. Since 2026-09-26 the inner pages use
+  the same bar via `site-theme.css` (see "Site theme v2" below); the Creator OS rail is gone.
 - Layout unit `--rp` = one reference pixel of 1672×941, `min(vw/1672, svh/941) × 0.86`, capped
   at 1.02 px (owner asked for a smaller grid). Header is a fixed 60 px (`--home-head-h`).
   Copy column (script line, title, lead, buttons, Telegram 7-day Pro offer, 3 cards) is one
@@ -288,10 +353,10 @@ Only the hero exists for now; content blocks will be added below it later.
 - Startup loader (`home-loader.css`, behaviour unchanged in `home-loader.js`): navy card with the
   cyan-violet top line, Montserrat wordmark, breathing dots, gradient progress with a light sweep,
   drifting glows and twinkling stars on `#03070a`. Pure CSS, no image download during startup.
-- Landing popups (language menu, login/registration, activation + shops, consent banner,
-  notices, mobile drawer, support assistant launcher/panel/choice/ticket form) are restyled by
-  `static/css/home-overlays.css`, loaded only by `index.html`. Every selector starts with
-  `html body.page-home` (a test enforces it), so Tools and other pages keep their own look.
+- Popups (language menu, login/registration, activation + shops, consent banner, notices, mobile
+  drawer, support assistant launcher/panel/choice/ticket form) are restyled by
+  `static/css/home-overlays.css`, loaded by the landing AND every `site-v2` page (since 2026-09-26).
+  Every selector starts with `html body:is(.page-home,.site-v2)` (tests/test_hero_vrm.py enforces it).
   Panels are fully opaque navy (`#0e1a3c` -> `#050a1c`) with a cyan-to-violet top line.
 - QA: `scripts/qa_home_layout.py`, `qa_home_loader_performance.py`, `tests/test_hero_vrm.py`,
   `tests/test_home_loader.py`. Visual check: 1672×941 screenshot vs `IMAGE/gg.png`.
@@ -315,8 +380,6 @@ Only the hero exists for now; content blocks will be added below it later.
 - `quota_state` mixes a file counter (`usage.json`, per process) with the Redis counter;
   quota admission across different start routes is not atomic. Fine at current load.
 - Anonymous job ownership is the client IP (NAT neighbours share jobs).
-- `process_jobs` table exists in both schemas but is never written (only deleted on account
-  deletion). Harmless; candidate for removal.
 - `steam_profile_guard.py` keeps a separate SQLite file under `/data`.
 - Upscale results and the SSE job stream are not cancellable/revocable beyond their TTLs.
 - `/api/download-url` runs yt-dlp on user-chosen URLs of allow-listed hosts; egress filtering
@@ -348,7 +411,7 @@ The Railway/SQLite/HF-era files (`RAILWAY.md`, `UPSCALER_SETUP.md`, `README_REVE
 
 ## 11. Verification baseline (2026-09-25)
 
-- `pytest`: 273 passed, 12 subtests (~75 s) on 2026-09-26 (264 on 2026-09-25). Playwright `qa_workspace`, `qa_workspace_editor`, `qa_tool_clarity`, `qa_polish`, `qa_accessibility`, `qa_job_center`, `qa_home_layout` passed after the Process redesign. `node scripts/check_i18n.js`: complete.
+- `pytest`: 282 passed, 12 subtests (~75 s) on 2026-09-26 (264 on 2026-09-25). Playwright `qa_workspace`, `qa_workspace_editor`, `qa_tool_clarity`, `qa_polish`, `qa_accessibility`, `qa_job_center`, `qa_home_layout` passed after the Process redesign. `node scripts/check_i18n.js`: complete.
   `node --check` passes on all `static/js/*.js` except `hero-vrm.js`, which is an ES module
   (loaded with `type="module"`) — that failure is expected, not a bug.
 - Playwright UI suites passed against a local server: `qa_accessibility`, `qa_tool_clarity`,
@@ -419,7 +482,5 @@ files with their own 8-language dictionaries (`ss-shell.js`, `showcase-builder.j
 1. The tree is ready for the baseline commit.
 2. `git init` in this folder (or link the real GitHub repo), commit the baseline, then switch to a
    normal branch workflow; update sections 0 and 7 accordingly. Deploy per section 9.
-3. Optional hygiene: drop the unused `process_jobs` table (both schemas + `delete_account_data`),
-   remove the `[FIT Q]` print in `processor._ensure_under_mb_impl`, collapse the two duplicate
-   DeviantArt-connect polling handlers in `static/js/app.js` (~lines 1677 and 2713).
+3. (Done 2026-09-26: `process_jobs` table, `[FIT Q]` prints and the duplicate DeviantArt handler removed.)
 4. Test with Redis + external worker + PostgreSQL via `docker compose` before the next release.

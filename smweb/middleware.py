@@ -30,6 +30,23 @@ import uuid as _uuid
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
+class GuestCookieMiddleware(BaseHTTPMiddleware):
+    """Give every visitor a random HttpOnly id so guest jobs belong to a browser, not an IP."""
+
+    async def dispatch(self, request, call_next):
+        from smweb.core import GUEST_COOKIE, _GUEST_TOKEN, cookie_secure
+        fresh = ""
+        if not request.url.path.startswith("/static/") and not _GUEST_TOKEN.fullmatch(request.cookies.get(GUEST_COOKIE) or ""):
+            import secrets as _secrets
+            fresh = _secrets.token_urlsafe(32)
+            request.state.guest_token = fresh
+        response = await call_next(request)
+        if fresh:
+            response.set_cookie(GUEST_COOKIE, fresh, max_age=60 * 60 * 24 * 365, path="/",
+                                httponly=True, samesite="lax", secure=cookie_secure(request))
+        return response
+
+
 class RequestIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         rid = request.headers.get("X-Request-ID") or _uuid.uuid4().hex[:16]

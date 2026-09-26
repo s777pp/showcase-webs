@@ -124,10 +124,12 @@ def test_process_preview_draws_the_selected_showcase_layout():
     assert 'data-mode="workshop"' in html
     assert 'data-mode="featured"' in html
     assert 'data-mode="split"' in html
-    assert "function drawShowcaseGuide(w, h)" in script
+    assert "function drawShowcaseGuide(w, h, panels)" in script
     assert "[0, .2, .4, .6, .8, 1]" in script
     assert "[0, 506 / 606, 1]" in script
-    assert "drawShowcaseGuide(w, h);" in script
+    # Parts are drawn side by side with a thin black gap, like on a Steam profile.
+    assert "const PREVIEW_GAP = 3;" in script
+    assert "drawShowcaseGuide(W, h, panels);" in script
     assert "window.__wmRedraw" in script
 
 

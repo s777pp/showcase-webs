@@ -56,6 +56,7 @@
   function bytes(value){value=Number(value)||0;return value>=1048576?(value/1048576).toFixed(1)+' MB':Math.max(1,Math.round(value/1024))+' KB';}
   function modeName(item){
     if(item.kind==='workshop_studio')return 'Workshop Studio'+(item.mode==='squares'?' · '+t('5 квадратов','5 squares'):'');
+    if(item.kind!=='process')return jobName(item.kind)+(item.ext&&item.ext!=='zip'?' · '+String(item.ext).toUpperCase():'');
     const names={workshop:'Workshop',featured:'Featured',split:'Artwork Split'};
     return String(item.mode||'').split('+').map(function(m){return names[m]||m;}).filter(Boolean).join(' + ')||jobName(item.kind);
   }
@@ -68,7 +69,7 @@
     try{
       const r=await fetch('/api/results',{credentials:'include',cache:'no-store',headers:authHeaders()});
       if(r.status===401){
-        hint.textContent=t('Готовые ZIP хранятся 30 дней у вошедших пользователей.','Finished ZIPs are kept for 30 days when you are signed in.');
+        hint.textContent=t('Готовые результаты хранятся 30 дней у вошедших пользователей.','Finished results are kept for 30 days when you are signed in.');
         box.innerHTML='';const p=document.createElement('p');p.className='job-center__empty';
         p.textContent=t('Без входа результат доступен только 24 часа. Войди — и следующие работы сохранятся здесь.','Without an account a result is available for 24 hours only. Sign in and your next results will be kept here.');
         const b=document.createElement('button');b.type='button';b.className='btn';b.textContent=t('Войти','Log in');
@@ -78,7 +79,7 @@
       const j=await r.json();if(!r.ok||!j.ok)throw new Error();
       hint.textContent=fill(t('Хранятся {days} дн., до {max} работ. Старые удаляются автоматически.','Kept for {days} days, up to {max} results. Older ones are removed automatically.'),{days:j.keep_days,max:j.max_items});
       box.innerHTML='';
-      if(!j.items.length){const p=document.createElement('p');p.className='job-center__empty';p.textContent=t('Пока пусто. Готовые ZIP из «Подготовить файл» и Workshop Studio появятся здесь автоматически.','Nothing yet. Finished ZIPs from Prepare a file and Workshop Studio appear here automatically.');box.appendChild(p);return;}
+      if(!j.items.length){const p=document.createElement('p');p.className='job-center__empty';p.textContent=t('Пока пусто. Готовые результаты обработки, «Персонажа», цикла и апскейла появятся здесь автоматически.','Nothing yet. Finished results from processing, Character, Loop and Upscale appear here automatically.');box.appendChild(p);return;}
       j.items.forEach(function(item){
         const row=document.createElement('article');row.className='job-center__result';
         const thumb=document.createElement('div');thumb.className='job-center__thumb';
@@ -89,7 +90,7 @@
         const span=document.createElement('span');span.textContent=modeName(item)+' · '+bytes(item.size);
         main.append(small,b,span);
         const actions=document.createElement('div');actions.className='job-center__actions';
-        const a=document.createElement('a');a.className='btn';a.href=item.download_url;a.textContent=t('Скачать ZIP','Download ZIP');
+        const a=document.createElement('a');a.className='btn';a.href=item.download_url;a.textContent=item.ext&&item.ext!=='zip'?t('Скачать','Download'):t('Скачать ZIP','Download ZIP');
         const del=document.createElement('button');del.type='button';del.className='btn ghost';del.textContent=t('Удалить','Delete');
         del.onclick=async function(){
           if(!confirm(t('Удалить эту работу из «Моих работ»?','Delete this result from My results?')))return;

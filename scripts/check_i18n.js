@@ -239,6 +239,17 @@ for (const language of languages) {
   if (Object.keys(pack).some(value => /[А-Яа-яЁёІіЇїЄє]/.test(value))) errors.push(`${language}: source pack contains non-English keys`);
 }
 
+// Per-language packs served by pages.py must equal the bundle (run build_extra_locales.js --split-only).
+for (const language of languages) {
+  const file = path.join(root, 'static/js/locales', `extra-${language}.js`);
+  if (!fs.existsSync(file)) { errors.push(`${language}: missing static/js/locales/extra-${language}.js`); continue; }
+  const sandbox = { window: {} };
+  Function('window', fs.readFileSync(file, 'utf8'))(sandbox.window);
+  if (JSON.stringify(sandbox.window.SM_EXTRA_TRANSLATIONS[language]) !== JSON.stringify(extras[language])) {
+    errors.push(`${language}: per-language pack is out of date (node scripts/build_extra_locales.js --split-only)`);
+  }
+}
+
 if (errors.length) {
   console.error(errors.join('\n'));
   process.exitCode = 1;

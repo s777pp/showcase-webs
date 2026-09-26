@@ -854,15 +854,9 @@ def _ensure_under_mb_impl(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                     files = sorted(frames_dir.glob("frame_*.png"))
                     cmd = [gs, "--fps", str(src_fps), "--quality", str(q), "-o", str(out),
                            *[str(f) for f in files]]
-                    _q_t0 = time.perf_counter()
                     subprocess.run(cmd, check=True, capture_output=True)
-                    _q_dt = time.perf_counter() - _q_t0
                     if out.is_file() and out.stat().st_size > 50:
                         mb = _gif_mb(out)
-                        print(
-                            f"[FIT Q] {path.name} q={q} size={mb:.2f}MB time={_q_dt:.3f}s",
-                            flush=True,
-                        )
                         if mb <= max_mb:
                             best = (q, out)
                             break
@@ -883,10 +877,6 @@ def _ensure_under_mb_impl(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                     except Exception:
                         continue
             if best is not None:
-                print(
-                    f"[FIT Q] CHOSEN {path.name} q={best[0]}",
-                    flush=True,
-                )
                 _safe_replace(best[1], path)
                 return
 

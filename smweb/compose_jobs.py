@@ -13,6 +13,7 @@ import redis_store as rs
 from smweb import job_diagnostics
 from smweb import object_store
 from smweb import process_control
+from smweb import saved_results
 
 
 VIDEO_EXTS = (".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v")
@@ -185,6 +186,7 @@ def _run(jid: str, job: dict) -> None:
         jid, status="done", pct=100, stage="done", result_path=str(result),
         result_key=result_key, filename=result.name, media_type=media_type,
     )
+    saved_results.save_job_result(jid, user_key=str(job.get("user_key") or ""), result_path=result, kind="compose")
     cache_key = str(job.get("cache_key") or "")
     if cache_key:
         rs.job_cache_put(cache_key, jid)

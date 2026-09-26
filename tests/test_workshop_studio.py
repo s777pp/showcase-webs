@@ -48,7 +48,7 @@ def test_api_keeps_selected_row_count(tmp_path, monkeypatch):
     monkeypatch.setattr(studio, "JOBS", tmp_path)
     monkeypatch.setattr(process, "quota_state", lambda request: {"pro": True, "left": -1})
     monkeypatch.setattr(process, "_auth_user", lambda request: None)
-    monkeypatch.setattr(process, "_ip", lambda request: "test-client")
+    monkeypatch.setattr(process, "owner_key", lambda request, user=None: "test-client")
     monkeypatch.setattr(process.rs, "job_count_user", lambda user: 0)
     monkeypatch.setattr(process.rs, "job_create", lambda jid, payload, enqueue=False: None)
     monkeypatch.setattr(process, "_worker_mode", lambda: "embedded")

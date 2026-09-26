@@ -15,6 +15,7 @@ import redis_store as rs
 from smweb import job_diagnostics
 from smweb import object_store
 from smweb import process_control
+from smweb import saved_results
 
 
 def _run_cmd(command: list[str], jid: str = "") -> None:
@@ -134,6 +135,8 @@ def run(jid: str, job: dict) -> None:
         rs.job_update(jid, status="done", pct=100, stage="done", result_path=str(result),
                       result_key=result_key, filename=result.name, media_type=media_type,
                       output_duration=round(frame_count / fps, 3), loop_mode=mode)
+        saved_results.save_job_result(jid, user_key=str(job.get("user_key") or ""), result_path=result,
+                                      kind="seamless_loop", mode=str(mode or ""))
         cache_key = str(job.get("cache_key") or "")
         if cache_key:
             rs.job_cache_put(cache_key, jid)

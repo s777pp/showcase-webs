@@ -20,6 +20,7 @@ from pathlib import Path
 from fastapi import Request
 
 from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, _ip
+from smweb.core import owner_key as _job_owner_key
 
 
 ROOT = Path(DATA) / "media-assets"
@@ -38,7 +39,11 @@ def owner_key(request: Request) -> str:
         user = _auth_user(request)
     except Exception:
         user = None
-    return f"user:{int(user['id'])}" if user and user.get("id") else f"ip:{_ip(request)}"
+    if user and user.get("id"):
+        return f"user:{int(user['id'])}"
+    key = _job_owner_key(request)
+    # Guests: this browser (sm_guest cookie); only a cookie-less client falls back to its IP.
+    return f"guest:{key[2:]}" if key.startswith("g:") else f"ip:{_ip(request)}"
 
 
 def _owner_hash(owner: str) -> str:

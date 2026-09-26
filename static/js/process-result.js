@@ -131,7 +131,23 @@
         target?.scrollIntoView({ block:'start', behavior:matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth' });
         target?.querySelector('button,select,input')?.focus({ preventScroll:true });
       };
-      actionButtons.append(downloadButton, publishButton, anotherButton); actions.append(downloadState, actionButtons); panel.append(actions);
+      const profileButton = node('button', editorText('profilePreview'), 'btn ghost workspace-result__profile');
+      profileButton.type = 'button';
+      profileButton.onclick = async () => {
+        // Open the tab inside the click so pop-up blockers allow it, then point it at the built page.
+        const tab = window.open('', '_blank');
+        profileButton.disabled = true;
+        try {
+          const response = await fetch('/api/process/profile-preview/' + encodeURIComponent(id), {method:'POST', credentials:'include'});
+          const data = await response.json();
+          if (!response.ok || !data.ok || !data.open) throw Error('preview');
+          if (tab) tab.location.href = data.open; else window.location.href = data.open;
+        } catch (_) {
+          if (tab) tab.close();
+          downloadState.textContent = editorText('profilePreviewFail');
+        } finally { profileButton.disabled = false; }
+      };
+      actionButtons.append(downloadButton, profileButton, publishButton, anotherButton); actions.append(downloadState, actionButtons); panel.append(actions);
       if (job.saved_days) panel.append(node('p', editorText('savedNote', {days: job.saved_days}), 'workspace-result__saved is-saved'));
       else Promise.resolve(window.SSShell?.me?.()).then(user => {
         if (token === generation && user && !user.logged_in) actions.after(node('p', editorText('guestNote'), 'workspace-result__saved'));

@@ -8,6 +8,7 @@ import redis_store as rs
 from smweb import object_store
 from smweb import modal_upscale_client as modal_client
 from smweb import process_control
+from smweb import saved_results
 
 
 POLL_SECONDS = max(1.0, float(os.environ.get("MODAL_UPSCALE_POLL_SECONDS", "3")))
@@ -57,6 +58,12 @@ def run(jid: str, job: dict) -> None:
                     result_size=int(result.get("size") or 0),
                     frames=int(result.get("frames") or 0),
                     gpu_elapsed=float(result.get("elapsed") or 0),
+                )
+                result_key = str(job.get("result_key") or "")
+                saved_results.save_from_object(
+                    jid, user_key=str(job.get("user_key") or ""), key=result_key,
+                    suffix=os.path.splitext(result_key)[1], kind="upscale",
+                    title=os.path.splitext(str(job.get("filename") or ""))[0][:80],
                 )
                 cache_key = str(job.get("cache_key") or "")
                 if cache_key:

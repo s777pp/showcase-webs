@@ -4,6 +4,16 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
 
+
+def open_tab(page, name):
+    """Tools tabs may sit in a navigation group (static/js/nav-groups.js); open it first."""
+    button = page.locator('#nav [data-tab="' + name + '"]')
+    if not button.is_visible():
+        trigger = page.locator('#nav .nav-group:has([data-tab="' + name + '"]) .nav-group__trigger')
+        if trigger.count():
+            trigger.click()
+    button.click()
+
 def run():
     base = os.environ.get('QA_BASE_URL', 'http://127.0.0.1:8091')
     output = Path('output/playwright')
@@ -21,7 +31,7 @@ def run():
             expect(page.locator('#composeFineSettings')).to_be_attached()
             chooser = page.locator('#toolTaskChooser')
             expect(chooser).to_be_attached()
-            page.locator('#nav [data-tab="download"]').click()
+            open_tab(page, 'download')
             page.locator('#dlUrl').fill('https://example.com/my-media')
             for width in [390, 1440]:
                 page.set_viewport_size({'width': width, 'height': 1000})
@@ -44,13 +54,13 @@ def run():
                 page.evaluate("document.getElementById('dlLink').style.display='none'")
                 expect(page.locator('#dlLink + .tool-next-step')).to_be_hidden()
                 for name in ['compose','download','convert','upscale','loop','hex','doctor','design-ai','steam','da','about']:
-                    page.locator('#nav [data-tab="' + name + '"]').click()
+                    open_tab(page, name)
                     expect(page.locator('#tab-' + name)).to_have_class(__import__('re').compile(r'\bactive\b'))
                     page.wait_for_timeout(80)
                     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (language,width,name)
                     if language == 'ru':
                         page.screenshot(path=str(output / f'tool-{name}-{width}.png'),full_page=True)
-            page.locator('#nav [data-tab="compose"]').click()
+            open_tab(page, 'compose')
             expect(page.locator('#composeFineSettings')).not_to_have_attribute('open','')
             assert page.locator('#composeGifEncoder').input_value() == 'gifski'
             page.locator('#composeFineSettings summary').click()
@@ -64,15 +74,19 @@ def run():
             expect(page.locator('#' + help_button.get_attribute('aria-controls'))).to_be_visible()
             page.keyboard.press('Escape')
             expect(page.locator('#' + help_button.get_attribute('aria-controls'))).to_be_hidden()
-            page.locator('#nav [data-tab="steam"]').click()
+            open_tab(page, 'steam')
             expect(page.locator('#steamCode')).to_be_hidden()
             page.locator('#steamManualInstructions summary').click()
             expect(page.locator('#btnCopyCode')).to_be_visible()
             page.locator('#steamMode').select_option('split')
             assert page.locator('#steamMode').input_value() == 'split'
-            page.locator('#nav [data-tab="convert"]').click()
+            open_tab(page, 'convert')
             assert page.locator('#cvDrop').bounding_box()['y'] < page.locator('#cvTarget').bounding_box()['y']
             for target in ['builder','compose','upscale','steam','da','process']:
+                # The chooser is hidden inside the Process/Builder workspace, which has
+                # its own mode switch; open it from a regular tool tab.
+                if not chooser.is_visible():
+                    open_tab(page, 'convert')
                 chooser.locator('summary').click()
                 chooser.locator('[data-task-target="' + target + '"]').click()
                 expect(page.locator('#tab-' + target)).to_have_class(__import__('re').compile(r'\bactive\b'))

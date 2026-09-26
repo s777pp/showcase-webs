@@ -120,21 +120,34 @@ class LandingPolishTests(unittest.TestCase):
 
 
 class LandingOverlayTests(unittest.TestCase):
-    def test_popups_are_restyled_only_on_the_landing(self):
-        html = INDEX.read_text(encoding="utf-8")
-        self.assertIn("/static/css/home-overlays.css?v=", html)
+    def test_popups_are_restyled_on_themed_pages_only(self):
+        # Landing + pages on the new site theme (body.site-v2) share the popup styles.
+        scope = "html body:is(.page-home,.site-v2)"
+        for page in ("index.html", "app.html", "gallery.html", "profile.html", "extension.html"):
+            self.assertIn("/static/css/home-overlays.css?v=", (ROOT / "static" / page).read_text(encoding="utf-8"), page)
         css = (ROOT / "static" / "css" / "home-overlays.css").read_text(encoding="utf-8")
         for selector in (".ss-auth__card", ".ss-activation__card", ".ss-lang__menu", ".sm-consent",
                          ".studio-chat-panel", ".studio-support-choice__card", ".ss-drawer", ".studio-ticket-form"):
-            self.assertIn("html body.page-home " + selector, css)
-        # Every rule stays scoped to the landing page.
+            self.assertIn(scope + " " + selector, css)
+        # Every rule stays scoped to themed pages (legacy pages without site-v2 keep their look).
         import re
         css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
         for block in re.findall(r"([^{}]+)\{", css):
-            for selector in block.split(","):
+            # split on top-level commas only (":is(.page-home,.site-v2)" contains one)
+            parts, depth, current = [], 0, ""
+            for char in block:
+                depth += char == "("
+                depth -= char == ")"
+                if char == "," and depth == 0:
+                    parts.append(current)
+                    current = ""
+                else:
+                    current += char
+            parts.append(current)
+            for selector in parts:
                 selector = selector.strip()
                 if selector and not selector.startswith(("@", "from", "to")):
-                    self.assertTrue(selector.startswith("html body.page-home"), selector)
+                    self.assertTrue(selector.startswith(scope), selector)
 
 
 if __name__ == "__main__":

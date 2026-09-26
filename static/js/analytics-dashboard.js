@@ -10,7 +10,7 @@
   };
   const statusLabel = {queued:'В очереди',running:'Выполняется',done:'Готово',error:'Ошибка',cancelled:'Отменено'};
   const mediaTypes = ['png','gif','jpeg','jpg','webp','mp4','webm','mov'];
-  const events = {home_view:'Посещения главной',tool_open:'Открытия инструментов',file_added:'Добавили файл',process_success:'Успешные обработки',process_failed:'Ошибки обработки',zip_download:'Скачивания ZIP',extension_launch_confirmed:'Запуски расширения',registration_success:'Регистрации',pro_activated:'Активации Pro'};
+  const events = {home_view:'Посещения главной',tool_open:'Открытия инструментов',file_added:'Добавили файл',process_started:'Нажали «Подготовить»',profile_preview:'Смотрели на профиле',process_success:'Успешные обработки',process_failed:'Ошибки обработки',zip_download:'Скачивания ZIP',extension_launch_confirmed:'Запуски расширения',registration_success:'Регистрации',pro_activated:'Активации Pro'};
   const features = {registration_enabled:['Регистрация','Новые аккаунты'],process_enabled:['Обработка','Нарезка и сборка витрин'],upscale_enabled:['Апскейл','AI-увеличение изображений'],builder_enabled:['Билдер','Редактор витрин'],gallery_submissions_enabled:['Публикация в галерею','Новые работы от пользователей'],experimental_enabled:['Эксперименты','Тестовые функции сайта']};
   const statuses = {ok:'РАБОТАЕТ',warn:'ВНИМАНИЕ',warning:'ВНИМАНИЕ',down:'НЕДОСТУПНО'};
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
