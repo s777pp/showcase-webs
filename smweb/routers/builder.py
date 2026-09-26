@@ -37,7 +37,8 @@ _EFFECTS = {
     "particle", "stars", "matrix", "streaks", "sparks", "custom",
 }
 _ANIMATIONS = {"none", "breathing", "wave"}
-_FRAME_STYLES = {"solid", "double", "corners", "neon"}
+# Animated styles are drawn by the shared static/js/workshop-squares-fx.js renderer.
+_FRAME_STYLES = {"solid", "double", "corners", "neon", "rgb", "comet", "pulse", "dashes"}
 _FRAME_TARGETS = {"panels", "outer"}
 _SAFE_MEDIA = {
     ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
@@ -139,6 +140,7 @@ def _validated_project(raw) -> dict:
         numeric_fields = {
             "fontSize": (14, 180, 64),
             "frameWidth": (1, 30, 4),
+            "frameSpeed": (1, 4, 1),
             "effectSpeed": (25, 250, 100),
             "effectDensity": (25, 200, 100),
             "chromaTolerance": (10, 120, 45),
@@ -192,6 +194,12 @@ def _validated_project(raw) -> dict:
         if item["type"] == "frame":
             item["frameStyle"] = item.get("frameStyle") if item.get("frameStyle") in _FRAME_STYLES else "solid"
             item["frameTarget"] = item.get("frameTarget") if item.get("frameTarget") in _FRAME_TARGETS else "panels"
+            if "color2" in item:
+                color2 = str(item["color2"])
+                item["color2"] = color2 if re.fullmatch(r"#[0-9a-fA-F]{6}", color2) else "#8a62ff"
+        else:
+            item.pop("color2", None)
+            item.pop("frameSpeed", None)
         if item["type"] == "dna":
             raw_signals = item.get("signals") if isinstance(item.get("signals"), dict) else {}
             item["signals"] = {}

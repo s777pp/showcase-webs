@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 256 passed on 2026-09-25 (~39 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 273 passed on 2026-09-26 (~75 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -134,7 +134,7 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
   Only a primary file > 5 MiB turns the headline red. `fix-safe` is lossless (naming/order, HEX 21).
 - **Process quality:** final GIFs are fitted to ≤ 5 MB (`processor.ensure_under_mb`).
   Workshop/Split GIF panels are one synchronized group — never fit/scale panels independently.
-  Workshop inner outline is Workshop-only. Rotation is per file, quarter turns in Process,
+  Frames apply to all three types since 2026-09-26 (see Process layout below). Rotation is per file, quarter turns in Process,
   free angle in Character.
 - **Workshop Studio** (`#tab-workshop`, `static/js/workshop-studio.js`, `smweb/workshop_studio_jobs.py`,
   `POST /api/workshop-studio/start`): two layouts. `rows` = 1–3 full-height files. `squares`
@@ -142,7 +142,56 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
   size, dragged/zoomed under a 5:1 window in the browser; `crop` is sent as source fractions and the
   server cuts it into `part_1..5` 150×150 (PNG, or synchronized GIFs via `process_gif_workshop`),
   HEX 21, plus `preview.png|gif` with gaps. Free watermark goes on the preview only, never on
-  the five Steam files (owner decision 2026-09-25). Counts as one file for quota. Not in the extension yet.
+  the five Steam files (owner decision 2026-09-25). Counts as one file for quota.
+  Frames and effects (squares only, 2026-09-25): `smweb/square_fx.py` renders the final files and
+  `static/js/workshop-squares-fx.js` the live preview with the SAME formulas (keep them in sync).
+  Frames: none/solid/double/corners/neon + animated beta rgb/comet/pulse/dashes (color, color2, width,
+  speed 1–4 loops, per square or whole strip); effects = the Builder's 9 (textures from
+  `static/assets/builder/effects`). Everything is a function of u∈[0,1) with whole cycles per loop, so GIFs
+  loop seamlessly (a test compares u=0 and u=1). Static frame on a still → PNG; any animation → five
+  synchronized GIFs via `process_gif_workshop`; short animated sources are looped to the clip length.
+  The same frames are shared (2026-09-25): **Process** Workshop outline has a style picker
+  (`static/js/process-frame-fx.js`, fields `outline_style/outline_color2/outline_speed` → `opts.outline_fx`;
+  `processor._prepare_workshop_frame_sets(frame_fx=…)` draws it per frame; a still image with an animated
+  outline becomes a 4 s looping clip → GIFs; `solid` keeps the old stroke path). **Builder** frame layers
+  accept rgb/comet/pulse/dashes (+ `color2`, `frameSpeed`, validated in `routers/builder.py`), drawn by
+  `SMSquaresFx.drawFrame` and they make the export animated. `full_with_bars` previews are built from the
+  unframed source (as before), the outline is on the `part_N` files. Not in the extension yet.
+- **My results** (added 2026-09-26, local, not deployed): when a signed-in user's Process or Workshop
+  Studio job finishes, the worker keeps the ZIP (`smweb/saved_results.py`): private R2 `results/<uid>/<id>.zip`
+  when R2 is configured, otherwise `/data/results/<uid>/<id>.zip`; a WebP thumbnail always stays in
+  `/data/results/<uid>/`. Table `saved_results` (both schemas; unique per user+job, so cached re-runs do not
+  duplicate). Env: `RESULTS_KEEP_DAYS` (30), `RESULTS_MAX_PER_USER` (20, oldest pruned), `RESULTS_MAX_ZIP_MB` (80).
+  API `smweb/routers/results.py`: `GET /api/results`, `GET /api/results/{id}/download|thumb`, `DELETE /api/results/{id}`
+  (owner only). Expired rows are removed by the job cleaner every 10 min (first pass waits one interval, which
+  keeps tests race-free). Account deletion removes the `results/<uid>` prefix/folder; the account export lists
+  the rows. UI: a "My results" section in the Jobs panel (`job-center.js`), a saved/guest note in the Process
+  result dialog and in Workshop Studio (`/api/process/status` returns `saved_days`).
+- **Result dialog Steam handoff** (2026-09-26): `process-result.js` shows "Next: upload to Steam" (3 steps for
+  the detected mode, Open Steam page, Copy console code from `STEAM_CODES`, Full guide opens `#tab-steam`
+  with the same mode). Copy lives in `workspace-editor-copy.js` (8 languages, `{name}` placeholders).
+- **Frame quick looks** (2026-09-26): Workshop Studio squares has 7 presets (`PRESETS` in
+  `workshop-squares-fx.js`); they only set existing frame/effect options, so the server needs no change.
+- **Process layout and frames for every type** (2026-09-26, owner request "рамки для остальных типов" +
+  "сделать вкладку обработки проще и понятнее"): cards are 1 file -> 2 showcase type -> 3 Style it
+  (`#processDesignCard`: frame tiles + watermark, always visible) -> Quality and format (collapsed
+  `#processAdvanced`: FPS, width, GIF encoder, all modes, auto-contrast) -> 4 create (`#processSummary` chips
+  above `#btnRun`). `#processRoute` and the "What would you like to do?" chooser are hidden on this tab (still in
+  the DOM for process-guide.js / tool-clarity). Phones get a fixed `#processDock` with the main button while the
+  real one is off screen. Styles: `static/css/process-studio.css` (loaded last, scoped to `#tab-process`); copy
+  and summary: `static/js/process-layout.js` (8 languages inside). Free users see why the watermark is locked
+  (`:has(#wmEnable:disabled)`). All old control ids are unchanged.
+  Frames: `process-frame-fx.js` renders tiles (None = `#workshopOutline` unchecked) and a target switch
+  (`outline_target`: `squares` = each part, `strip` = whole showcase; hidden for Featured). Server:
+  `processor._split_parts` / `_draw_whole_frame` / `_prepare_featured_frame_sets`; Featured/Split still images
+  get the frame in final pixels, GIF/video sources are framed per decoded frame (Featured with a frame goes
+  through `_select_synchronized_frame_group`, so it is still fitted to 5 MB), an animated frame on a still
+  becomes a 4 s loop for every type. Workshop keeps its classic per-panel stroke for the plain "Line" style.
+  Tests: `tests/test_process_frames.py`. Browser pixel check (3 types x 4 styles x PNG/GIF/MP4, downloaded ZIPs)
+  passed on 2026-09-26. After any Python change restart the local server: static JS/CSS is served live, so
+  the preview can show a frame while an old server process still cuts files without it (happened once).
+  `_gifski_from_frames` duplicates a lone frame (gifski rejects one input; Split previews of static-looking
+  videos used to end up as `full_with_bars_ERROR.txt`).
 - **Loop (Pro):** `/api/loop/start` accepts `pingpong` and `blend`; result ≤ 8 s.
 - **Design Selection:** DeviantArt reference queries must keep the exact form
   `Steam showcase <one English keyword>`. Imported profile facts are authoritative over AI guesses.
@@ -299,7 +348,7 @@ The Railway/SQLite/HF-era files (`RAILWAY.md`, `UPSCALER_SETUP.md`, `README_REVE
 
 ## 11. Verification baseline (2026-09-25)
 
-- `pytest`: 256 passed, 12 subtests (~39 s). `node scripts/check_i18n.js`: complete.
+- `pytest`: 273 passed, 12 subtests (~75 s) on 2026-09-26 (264 on 2026-09-25). Playwright `qa_workspace`, `qa_workspace_editor`, `qa_tool_clarity`, `qa_polish`, `qa_accessibility`, `qa_job_center`, `qa_home_layout` passed after the Process redesign. `node scripts/check_i18n.js`: complete.
   `node --check` passes on all `static/js/*.js` except `hero-vrm.js`, which is an ES module
   (loaded with `type="module"`) — that failure is expected, not a bug.
 - Playwright UI suites passed against a local server: `qa_accessibility`, `qa_tool_clarity`,
@@ -360,6 +409,11 @@ screenshots: `static/` is now ~31 MB.
 `UPSCALE_VIDEO_*`, `UPSCALE_JOB_TTL`, `USE_EXTERNAL_WORKER`, `ALLOW_SYNC_PROCESS`,
 `EMAIL_VERIFY_SECRET`. Add `REMOVE_BG_API_KEY` if Builder background removal is wanted.
 Rebuild `app` and `worker` when deploying these changes.
+
+**Translations (2026-09-26):** reviewed strings for the six generated languages live in
+`scripts/locale_reviewed.json` and are merged by `node scripts/build_extra_locales.js --overrides-only`
+(no network). `check_i18n` counts presence only; most "missing" strings reported by a naive diff come from
+files with their own 8-language dictionaries (`ss-shell.js`, `showcase-builder.js`, gallery, workspace copy).
 
 **Next steps, in order**
 1. The tree is ready for the baseline commit.

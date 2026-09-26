@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const t = window.WorkspaceCopy;
-  const editorText = key => window.WorkspaceEditorCopy ? WorkspaceEditorCopy(key) : key;
+  const editorText = (key, vars) => window.WorkspaceEditorCopy ? WorkspaceEditorCopy(key, vars) : key;
   let urls = [], generation = 0, modal = null, previousFocus = null;
   const automaticallyDownloaded = new Set();
 
@@ -56,6 +56,42 @@
     return body;
   }
 
+  /* Short "what now" block: the full guide stays in the Steam tab (app.js). */
+  function steamGuide(initialMode) {
+    const section = node('section', null, 'workspace-result__steam');
+    section.append(node('h3', editorText('steamNextTitle'), 'workspace-result__section-title'));
+    const steps = node('ol', null, 'workspace-result__steam-steps');
+    const filesStep = node('li');
+    steps.append(node('li', editorText('steamStepUnzip')), node('li', editorText('steamStepConsole')), filesStep);
+    const buttons = node('div', null, 'workspace-result__steam-actions');
+    const pageUrl = typeof STEAM_UPLOAD_URL === 'string' ? STEAM_UPLOAD_URL : 'https://steamcommunity.com/sharedfiles/edititem/767/3/';
+    const page = node('a', editorText('steamOpenPage'), 'btn'); page.href = pageUrl; page.target = '_blank'; page.rel = 'noopener';
+    const copyButton = node('button', editorText('steamCopyCode'), 'btn ghost'); copyButton.type = 'button';
+    const guide = node('button', editorText('steamFullGuide'), 'btn ghost'); guide.type = 'button';
+    const status = node('span', '', 'workspace-result__steam-status'); status.setAttribute('role', 'status');
+    buttons.append(page, copyButton, guide, status);
+    section.append(steps, buttons, node('p', editorText('steamExtensionHint'), 'editor-note'));
+    let mode = 'workshop';
+    function setMode(value) {
+      mode = ['workshop', 'featured', 'split'].includes(value) ? value : 'workshop';
+      filesStep.textContent = editorText({workshop:'steamFilesWorkshop', featured:'steamFilesFeatured', split:'steamFilesSplit'}[mode]);
+    }
+    copyButton.onclick = async () => {
+      const code = typeof STEAM_CODES === 'object' && STEAM_CODES ? STEAM_CODES[mode] : '';
+      if (!code) return;
+      try { await navigator.clipboard.writeText(code); status.textContent = editorText('steamCopied'); }
+      catch (_) { status.textContent = code; }
+    };
+    guide.onclick = () => {
+      close();
+      const select = document.getElementById('steamMode');
+      if (select) { select.value = mode; select.dispatchEvent(new Event('change', {bubbles:true})); }
+      document.querySelector('#nav button[data-tab="steam"]')?.click();
+    };
+    setMode(initialMode);
+    return { section, setMode };
+  }
+
   window.ProcessResult = {
     close,
     async open(job, id, originals) {
@@ -96,7 +132,13 @@
         target?.querySelector('button,select,input')?.focus({ preventScroll:true });
       };
       actionButtons.append(downloadButton, publishButton, anotherButton); actions.append(downloadState, actionButtons); panel.append(actions);
+      if (job.saved_days) panel.append(node('p', editorText('savedNote', {days: job.saved_days}), 'workspace-result__saved is-saved'));
+      else Promise.resolve(window.SSShell?.me?.()).then(user => {
+        if (token === generation && user && !user.logged_in) actions.after(node('p', editorText('guestNote'), 'workspace-result__saved'));
+      }).catch(() => {});
       body.append(panel);
+      const steam = steamGuide(window.state?.mode);
+      panel.append(steam.section);
 
       const readiness = node('section', null, 'workspace-result__readiness steam-check');
       readiness.append(node('h3', editorText('readinessTitle'), 'workspace-result__section-title'));
@@ -163,7 +205,10 @@
         data.files.forEach(file => { const key = file.name.split('/').slice(0,-1).join('/'); if (!grouped.has(key)) grouped.set(key,[]); grouped.get(key).push(file); });
         groups = Array.from(grouped, ([name,entries]) => ({name,files:entries.sort((a,b) => a.name.localeCompare(b.name,undefined,{numeric:true}))}));
         groups.forEach((group,index) => { const option = node('option', group.name); option.value = index; select.append(option); });
-        select.onchange = paint; select.hidden = groups.length < 2; toolbar.hidden = false; paint();
+        const firstMode = (groups[0]?.name.match(/_(workshop|featured|split)$/) || [])[1];
+        if (firstMode) steam.setMode(firstMode);
+        select.onchange = () => { paint(); const m = (groups[+select.value || 0]?.name.match(/_(workshop|featured|split)$/) || [])[1]; if (m) steam.setMode(m); };
+        select.hidden = groups.length < 2; toolbar.hidden = false; paint();
       } catch (_) { if (token === generation) viewport.textContent = t('previewError'); }
       return true;
     }

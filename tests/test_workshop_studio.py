@@ -102,6 +102,65 @@ def test_squares_free_watermark_marks_only_the_preview(tmp_path):
     assert marked["preview.png"] != clean["preview.png"]
 
 
+def test_square_fx_are_validated_and_static_frame_stays_png(tmp_path):
+    from smweb import square_fx
+    fx = square_fx.normalize({"frame": {"style": "evil", "width": 99, "color": "red"},
+                              "effect": {"type": "rain", "speed": 9999, "density": -5}})
+    assert fx["frame"]["style"] == "none" and fx["frame"]["width"] == 10 and fx["frame"]["color"] == "#8de9ff"
+    assert fx["effect"]["speed"] == 300 and fx["effect"]["density"] == 25
+    assert square_fx.normalize(None, legacy_outline=True)["frame"]["style"] == "solid"
+    source = tmp_path / "flat.png"
+    Image.new("RGB", (750, 150), "#101820").save(source)
+    crop = studio.normalize_crop({"x": 0, "y": 0, "w": 1, "h": 1})
+    outputs = studio.render_squares_image(source, _settings(), crop, fx={"frame": {"style": "neon", "color": "#ff00aa"}})
+    with Image.open(io.BytesIO(outputs["part_3.png"])) as part:
+        assert part.size == (150, 150)
+        assert part.convert("RGB").getpixel((0, 75))[0] > 150, "the neon frame is drawn on every square"
+
+
+def test_square_fx_loop_is_seamless():
+    from smweb import square_fx
+    base = Image.new("RGBA", (750, 150), (10, 20, 30, 255))
+    for style, effect in (("rgb", "none"), ("comet", "particle"), ("dashes", "petals"), ("pulse", "stars")):
+        fx = square_fx.normalize({"frame": {"style": style, "speed": 2}, "effect": {"type": effect}})
+        assert square_fx.is_animated(fx)
+        start, end = square_fx.apply(base, 0.0, fx), square_fx.apply(base, 1.0, fx)
+        assert start.tobytes() == end.tobytes(), f"{style}/{effect} must loop without a jump"
+        assert square_fx.apply(base, 0.37, fx).tobytes() != start.tobytes()
+
+
+def test_still_image_with_animated_frame_becomes_synchronized_gifs(tmp_path):
+    import processor
+    if not processor.find_ffmpeg():
+        return
+    source = tmp_path / "still.png"
+    Image.new("RGB", (900, 600), "#203050").save(source)
+    crop = studio.normalize_crop({"x": 0, "y": 0.2, "w": 1, "h": 0.25})
+    outputs = studio.render_squares_still_animation(
+        source, tmp_path / "work", _settings(), crop, {"frame": {"style": "rgb", "width": 3}, "effect": {"type": "sparks"}},
+        fps=8, duration=1, free_watermark=True)
+    for index in range(1, 6):
+        payload = outputs[f"part_{index}.gif"].read_bytes()
+        assert payload[-1] == 0x21
+        with Image.open(io.BytesIO(payload[:-1] + b";")) as part:
+            assert part.size == (150, 150) and part.n_frames > 1
+
+
+def test_short_gif_is_looped_to_the_clip_length_when_effects_are_on(tmp_path):
+    import processor
+    if not processor.find_ffmpeg():
+        return
+    source = tmp_path / "short.gif"
+    frames = [Image.new("RGB", (800, 500), color) for color in ("#402060", "#204060", "#206040")]
+    frames[0].save(source, save_all=True, append_images=frames[1:], duration=120, loop=0)  # 0.36 s
+    crop = studio.normalize_crop({"x": 0, "y": 0.3, "w": 1, "h": 0.32})
+    outputs = studio.render_squares_animation(source, tmp_path / "work", _settings(), crop, fps=8, duration=2, start=0,
+                                              fx={"frame": {"style": "dashes"}})
+    payload = outputs["part_1.gif"].read_bytes()
+    with Image.open(io.BytesIO(payload[:-1] + b";")) as part:
+        assert part.n_frames == 16, "2 s at 8 fps, not the 0.36 s of the source"
+
+
 def test_squares_crop_is_clamped_and_kept_at_five_to_one():
     crop = studio.normalize_crop({"x": 0.9, "y": -3, "w": 0.5, "h": 0.2})
     assert crop == {"x": 0.5, "y": 0.0, "w": 0.5, "h": 0.2}

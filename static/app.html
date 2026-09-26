@@ -16,16 +16,16 @@
   <link rel="stylesheet" href="/static/css/steam-check.css?v=20260906e"/>
   <link rel="stylesheet" href="/static/css/profile-insights.css?v=20260906-tags"/>
   <link rel="stylesheet" href="/static/css/seamless-loop.css?v=20260906d"/>
-  <link rel="stylesheet" href="/static/css/job-assets.css?v=20260916a"/>
+  <link rel="stylesheet" href="/static/css/job-assets.css?v=20260926-results1"/>
 <link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260909-german1">
 <script src="/static/js/layout-refinement.js?v=20260921-polish1"></script>
-<script src="/static/js/locales-extra.js?v=20260923-workshop2"></script>
+<script src="/static/js/locales-extra.js?v=20260926-results1"></script>
 <script src="/static/js/i18n.js?v=20260925-ext1"></script>
 <link rel="stylesheet" href="/static/css/support-chat.css?v=20260925-icon1">
 <link rel="stylesheet" href="/static/css/tools-polish.css?v=20260908-controls8">
 <link href="https://fonts.googleapis.com/css2?family=Alumni+Sans:wght@700;800&family=Arsenal:wght@700&family=Bebas+Neue&family=Bungee&family=Caveat:wght@600;700&family=Comfortaa:wght@600;700&family=Cormorant+Garamond:wght@700&family=Exo+2:wght@700;800&family=Jura:wght@700&family=Kelly+Slab&family=Neucha&family=Oswald:wght@600;700&family=Play:wght@700&family=Poiret+One&family=Press+Start+2P&family=Readex+Pro:wght@600;700&family=Rubik+Mono+One&family=Russo+One&family=Sofia+Sans+Extra+Condensed:wght@700;800&family=Tenor+Sans&family=Unbounded:wght@600;700;800&family=Yeseva+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/showcase-builder.css?v=20260923-grade1">
-<link rel="stylesheet" href="/static/css/workshop-studio.css?v=20260925-sq2">
+<link rel="stylesheet" href="/static/css/workshop-studio.css?v=20260926-results1">
 <link rel="stylesheet" href="/static/css/builder-motion.css?v=20260913-motion1">
 <link rel="stylesheet" href="/static/css/steam-dna.css?v=20260912-exp5">
 <script defer src="/static/js/support-chat.js?v=20260925-icon1"></script>
@@ -101,7 +101,8 @@
         <div class="workshop-studio__controls">
           <section class="workshop-studio__card"><h3 data-workshop-i="typeLabel">1 · Choose the showcase type</h3><div class="workshop-studio__modes workshop-studio__types" role="group"><button type="button" data-workshop-layout="rows" aria-pressed="true" data-workshop-i="typeRows">Full-height rows</button><button type="button" data-workshop-layout="squares" aria-pressed="false"><span class="workshop-studio__type-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span data-workshop-i="typeSquares">5 squares · 150×150</span></button></div><div class="workshop-studio__rows-choice"><p class="workshop-studio__label" data-workshop-i="rowsLabel">Number of rows</p><div class="workshop-studio__modes" role="group"><button type="button" data-workshop-rows="1" aria-pressed="true" data-workshop-i="oneRow">1 row</button><button type="button" data-workshop-rows="2" aria-pressed="false" data-workshop-i="twoRows">2 rows</button><button type="button" data-workshop-rows="3" aria-pressed="false" data-workshop-i="threeRows">3 rows</button></div></div></section>
             <section class="workshop-studio__card"><h3 data-workshop-i="sources" data-workshop-sq="squaresSourcesTitle">2 · Add your files</h3><p data-workshop-i="sourcesHint" data-workshop-sq="squaresSources">Add one image, GIF, MP4 or WebM per row. Tall images keep their full height and proportions.</p><div id="workshopSources"></div></section>
-            <section class="workshop-studio__card"><h3 data-workshop-i="finish">3 · Download</h3><div class="workshop-studio__finish"><label><span data-workshop-i="fps">Animation FPS</span><select id="workshopFps"><option value="12">12</option><option value="15">15</option><option value="24">24</option></select></label><label><span data-workshop-i="duration">Clip length</span><select id="workshopDuration"><option value="4">4 s</option><option value="6">6 s</option><option value="8">8 s</option></select></label></div><label class="workshop-studio__outline"><input type="checkbox" id="workshopBorder"><span data-workshop-i="border" data-workshop-sq="squaresBorder">Outline each row</span></label><p id="workshopFreeNote" hidden></p><button type="button" class="btn" id="workshopCreate" disabled data-workshop-i="create">Prepare and download ZIP</button><progress id="workshopProgress" max="100" value="0" hidden></progress><p id="workshopStatus" role="status" aria-live="polite"></p><a id="workshopDownload" hidden download="workshop-rows.zip"></a></section>
+            <section class="workshop-studio__card workshop-studio__fx" id="workshopFxCard" hidden><h3 data-workshop-fx="title">3 · Frame and effects</h3><div id="workshopFx"></div></section>
+            <section class="workshop-studio__card"><h3 data-workshop-i="finish" data-workshop-fx="finish">3 · Download</h3><div class="workshop-studio__finish"><label><span data-workshop-i="fps">Animation FPS</span><select id="workshopFps"><option value="12">12</option><option value="15">15</option><option value="24">24</option></select></label><label><span data-workshop-i="duration">Clip length</span><select id="workshopDuration"><option value="4">4 s</option><option value="6">6 s</option><option value="8">8 s</option></select></label></div><label class="workshop-studio__outline"><input type="checkbox" id="workshopBorder"><span data-workshop-i="border" data-workshop-sq="squaresBorder">Outline each row</span></label><p id="workshopFreeNote" hidden></p><button type="button" class="btn" id="workshopCreate" disabled data-workshop-i="create">Prepare and download ZIP</button><progress id="workshopProgress" max="100" value="0" hidden></progress><p id="workshopStatus" role="status" aria-live="polite"></p><a id="workshopDownload" hidden download="workshop-rows.zip"></a></section>
         </div>
           <div class="workshop-studio__preview"><div class="workshop-studio__preview-head"><strong data-workshop-i="preview" data-workshop-sq="squaresPreview">FULL-HEIGHT PREVIEW</strong><span data-workshop-i="previewHint" data-workshop-sq="squaresPreviewHint">Each row keeps the source proportions</span></div><div id="workshopPreviewRows" class="workshop-studio__preview-rows"></div><div class="workshop-studio__preview-foot"><span data-workshop-i="autoHex">HEX 21 is automatic in the final ZIP</span></div></div>
       </div>
@@ -133,9 +134,56 @@
         <button type="button" class="mode" data-mode="split"><div class="mode-diagram mode-diagram--split" aria-hidden="true"><i></i><i></i></div><strong data-editor-copy="mode_sp">Artwork Split</strong><span data-editor-copy="mode_sp_hint">Center 506 + side 100</span><small>Artwork Split</small></button>
       </div>
     </div>
+    <div class="card process-step-card process-design" id="processDesignCard" data-process-card="design">
+      <h2><span class="editor-step">3</span><span data-pl="designTitle">Style it</span></h2>
+      <p class="editor-note" data-pl="designHint">Optional. Everything you change here appears on the preview right away.</p>
+      <section class="process-design__block" id="processFrameBlock" aria-labelledby="processFrameTitle">
+        <header class="process-design__head"><b id="processFrameTitle" data-pl="frameTitle">Frame</b><small data-pl="frameHint">Drawn inside the final files, sizes stay the same.</small></header>
+        <div class="workshop-outline" id="workshopOutlineSettings">
+          <label class="field process-switch workshop-outline__toggle" hidden><span data-i="workshop_outline">Panel outline</span><input type="checkbox" id="workshopOutline"/></label>
+          <label class="field workshop-outline__color"><span data-i="outline_color">Color</span><input type="color" id="outlineColor" value="#ffffff"/></label>
+          <label class="field workshop-outline__width"><span data-i="outline_width">Thickness</span><input type="range" id="outlineWidth" min="1" max="8" value="2"/></label>
+        </div>
+      </section>
+      <section class="process-design__block" id="processWatermarkBlock" aria-labelledby="processWatermarkTitle">
+        <header class="process-design__head process-design__head--toggle">
+          <span><b id="processWatermarkTitle" data-pl="wmTitle">Watermark</b><small data-pl="wmHint">Drag it on the preview to move it.</small></span>
+          <label class="process-switch process-wm__toggle"><input type="checkbox" id="wmEnable" checked/><span class="ss-sr-only" data-i="lbl_wm">Watermark</span></label>
+        </header>
+        <p class="process-wm__free" data-pl="wmFree">Free plan: the ShowcaseMaker mark is added automatically. With Pro you can use your own text or turn it off.</p>
+        <div class="process-wm__grid">
+          <label class="field process-field--watermark"><span data-pl="wmText">Text</span><input id="wmText" value="n1t1337"/></label>
+          <label class="field process-field--color"><span data-i="lbl_color">WM color</span><input type="color" id="wmColor" value="#ffffff"/></label>
+          <label class="field process-field--corner"><span data-i="lbl_corner">WM corner</span>
+            <select id="wmCorner">
+              <option value="bl">Bottom left</option>
+              <option value="br">Bottom right</option>
+              <option value="tl">Top left</option>
+              <option value="tr">Top right</option>
+            </select>
+          </label>
+        </div>
+        <details class="process-wm__more">
+          <summary data-pl="wmMore">Font, size and opacity</summary>
+          <div class="process-wm__grid">
+            <label class="field process-field--font"><span data-i="lbl_font">Font</span><select id="wmFont">
+                <option value="lap">lap</option>
+                <option value="rob">rob</option>
+                <option value="caratte">caratte</option>
+                <option value="Fineday">Fineday</option>
+                <option value="roboto">roboto</option>
+                <option value="gothic-rus">gothic-rus</option>
+              </select></label>
+            <label class="field process-field--scale"><span data-i="lbl_wm_size">WM size %</span><input type="range" id="wmScale" min="40" max="250" value="100"/></label>
+            <label class="field process-field--opacity"><span data-i="lbl_op">Opacity %</span><input type="range" id="wmOpacity" min="0" max="100" value="22"/></label>
+          </div>
+        </details>
+        <div id="wmTip" style="display:none;margin-top:10px;font-size:12px;color:rgba(0,210,255,.9);padding:8px 12px;border-radius:10px;border:1px solid rgba(0,210,255,.25);background:rgba(0,210,255,.06)"></div>
+      </section>
+    </div>
     <div class="card process-step-card" id="processSettingsCard" data-process-card="settings">
       <details class="process-advanced" id="processAdvanced">
-        <summary><span data-editor-icon="sliders"></span><span><b data-editor-copy="adjustments">Appearance and quality</b><small data-editor-copy="optional">Optional — you can keep the default settings</small></span><i aria-hidden="true"></i></summary>
+        <summary><span data-editor-icon="sliders"></span><span><b data-pl="qualityTitle">Quality and format</b><small data-pl="qualityHint">For experienced users. The defaults already fit Steam.</small></span><i aria-hidden="true"></i></summary>
       <div class="row process-basics">
         <label class="field process-basics__fps" translate="no"><span class="lbl-fps">FPS</span><select id="fps"><option value="12" selected>12 FPS</option><option value="15">15 FPS</option><option value="18">18 FPS</option><option value="20">20 FPS</option><option value="24">24 FPS</option></select></label>
         <label class="field process-basics__size"><span data-i="lbl_size">Width</span>
@@ -145,29 +193,6 @@
             <option value="750" selected>750</option>
             <option value="800">800</option>
           </select>
-        </label>
-        <label class="field process-switch process-basics__watermark"><input type="checkbox" id="wmEnable" checked/> <span data-i="lbl_wm">Watermark</span></label>
-      </div>
-        <div class="row process-advanced__grid">
-        <label class="field process-field--watermark"><span data-i="lbl_wm">Watermark</span><input id="wmText" value="n1t1337"/></label>
-        <label class="field process-field--font"><span data-i="lbl_font">Font</span><select id="wmFont">
-            <option value="lap">lap</option>
-            <option value="rob">rob</option>
-            <option value="caratte">caratte</option>
-            <option value="Fineday">Fineday</option>
-            <option value="roboto">roboto</option>
-            <option value="gothic-rus">gothic-rus</option>
-          </select></label>
-        <label class="field process-field--corner"><span data-i="lbl_corner">WM corner</span>
-          <select id="wmCorner">
-            <option value="bl">Bottom left</option>
-            <option value="br">Bottom right</option>
-            <option value="tl">Top left</option>
-            <option value="tr">Top right</option>
-          </select>
-        </label>
-        <label class="field process-field--color"><span data-i="lbl_color">WM color</span>
-          <input type="color" id="wmColor" value="#ffffff" style="height:36px;padding:2px;cursor:pointer"/>
         </label>
         <label class="field process-field--encoder"><span data-i="lbl_enc">GIF encoder</span>
           <select id="gifEncoder" data-i-title="gif_encoder_title" title="How GIF is encoded">
@@ -180,20 +205,11 @@
           <label class="field process-switch"><span data-i="all_modes">All modes</span><input type="checkbox" id="allModes"/></label>
           <label class="field process-switch"><span data-i="auto_contrast">Auto-contrast</span><input type="checkbox" id="autoContrast"/></label>
         </div>
-        <label class="field process-field--scale"><span data-i="lbl_wm_size">WM size %</span><input type="range" id="wmScale" min="40" max="250" value="100"/></label>
-        <label class="field process-field--opacity"><span data-i="lbl_op">Opacity %</span><input type="range" id="wmOpacity" min="0" max="100" value="22"/></label>
-        </div>
+      </div>
         <div class="steam-opt-row">
         <div class="steam-opt-copy"><strong data-i="smart_compress">Smart compression to 5 MB</strong><span data-i="smart_compress_hint">Always on for final Steam GIFs. The processor keeps the highest quality that fits the limit.</span></div>
         <span class="steam-opt-badge">AUTO · ≤ 5 MB</span>
       </div>
-        <div class="workshop-outline" id="workshopOutlineSettings">
-        <label class="field process-switch workshop-outline__toggle"><span data-i="workshop_outline">Panel outline</span><input type="checkbox" id="workshopOutline"/></label>
-        <label class="field workshop-outline__width"><span data-i="outline_width">Thickness</span><input type="range" id="outlineWidth" min="1" max="8" value="2"/></label>
-        <label class="field workshop-outline__color"><span data-i="outline_color">Color</span><input type="color" id="outlineColor" value="#ffffff"/></label>
-        <span class="workshop-outline__hint" data-i="outline_hint">Adds an inner outline to every final Workshop panel without changing its dimensions.</span>
-        </div>
-        <div id="wmTip" style="display:none;margin-top:10px;font-size:12px;color:rgba(0,210,255,.9);padding:8px 12px;border-radius:10px;border:1px solid rgba(0,210,255,.25);background:rgba(0,210,255,.06)"></div>
       </details>
     </div>
     </div>
@@ -225,7 +241,7 @@
         </div>
       </div>
     </div>
-<div class="card process-submit" id="processSubmit" data-process-card="result"><h2><span class="editor-step">3</span><span data-editor-copy="finish">Prepare the Steam files</span></h2><p class="editor-note" id="processNextHint" aria-live="polite"></p>      <div class="row" style="margin-top:16px">
+<div class="card process-submit" id="processSubmit" data-process-card="result"><h2><span class="editor-step">4</span><span data-editor-copy="finish">Prepare the Steam files</span></h2><ul class="process-summary" id="processSummary" aria-live="polite"></ul><p class="editor-note" id="processNextHint" aria-live="polite"></p>      <div class="row" style="margin-top:16px">
         <button class="btn" id="btnRun" disabled data-editor-copy="run">Create Steam files</button>
         <button class="btn ghost" id="btnCancelProcess" type="button" hidden>Cancel job</button>
         <button class="btn ghost" id="btnClear" type="button" data-i="clear">Clear</button>
@@ -247,6 +263,10 @@
         <button class="btn ghost" type="button" id="processReadinessLogin" data-i="login">Log in</button>
       </div>
     </div>
+    </div>
+    <div class="process-dock" id="processDock" hidden>
+      <span class="process-dock__summary" id="processDockSummary"></span>
+      <button class="btn" type="button" id="processDockRun" data-editor-copy="run">Create Steam files</button>
     </div>
   </section>
 
@@ -950,8 +970,8 @@
             <button type="button" class="btn ghost" id="builderEffectUpload" data-builder-i="upload-effect">Upload overlay</button>
           </div>
           <div class="builder-frame-controls" id="builderFrameControls" hidden>
-            <div class="builder-two"><label><span data-builder-i="frame-style">Frame style</span><select id="builderFrameStyle"><option value="solid" data-builder-i="frame-solid">Solid</option><option value="double" data-builder-i="frame-double">Double</option><option value="corners" data-builder-i="frame-corners">Corners</option><option value="neon" data-builder-i="frame-neon">Neon glow</option></select></label><label><span data-builder-i="frame-target">Frame layout</span><select id="builderFrameTarget"><option value="panels" data-builder-i="frame-panels">Each Steam panel</option><option value="outer" data-builder-i="frame-outer">Whole canvas</option></select></label></div>
-            <div class="builder-two"><label><span data-builder-i="frame-color">Frame color</span><input id="builderFrameColor" type="color" value="#52d5ff"/></label><label><span data-builder-i="thickness">Thickness</span><input id="builderFrameWidth" type="range" min="1" max="30" value="4"/></label></div>
+            <div class="builder-two"><label><span data-builder-i="frame-style">Frame style</span><select id="builderFrameStyle"><option value="solid" data-builder-i="frame-solid">Solid</option><option value="double" data-builder-i="frame-double">Double</option><option value="corners" data-builder-i="frame-corners">Corners</option><option value="neon" data-builder-i="frame-neon">Neon glow</option><option value="rgb" data-fx-i="rgb" data-fx-beta="1">RGB strip</option><option value="comet" data-fx-i="comet" data-fx-beta="1">Comets</option><option value="pulse" data-fx-i="pulse" data-fx-beta="1">Neon pulse</option><option value="dashes" data-fx-i="dashes" data-fx-beta="1">Running dashes</option></select></label><label><span data-builder-i="frame-target">Frame layout</span><select id="builderFrameTarget"><option value="panels" data-builder-i="frame-panels">Each Steam panel</option><option value="outer" data-builder-i="frame-outer">Whole canvas</option></select></label></div>
+            <div class="builder-two"><label><span data-builder-i="frame-color">Frame color</span><input id="builderFrameColor" type="color" value="#52d5ff"/></label><label><span data-builder-i="thickness">Thickness</span><input id="builderFrameWidth" type="range" min="1" max="30" value="4"/></label></div><div class="builder-two" id="builderFrameFxRow"><label id="builderFrameColor2Wrap"><span data-fx-i="color2">Second color</span><input id="builderFrameColor2" type="color" value="#8a62ff"/></label><label id="builderFrameSpeedWrap"><span data-fx-i="speed">Speed</span><input id="builderFrameSpeed" type="range" min="1" max="4" step="1" value="1"/></label></div>
           </div>
           <div class="builder-media-controls" id="builderMediaControls" hidden>
             <label class="builder-toggle"><input id="builderChroma" type="checkbox"/><i></i><span data-builder-i="chroma">Remove chromakey</span></label>
@@ -1099,10 +1119,12 @@
   </div>
 </div>
 
-  <script src="/static/js/tool-loader.js?v=20260923-gallery1"></script>
-<script src="/static/js/app.js?v=20260923-gallery1"></script>
+  <script src="/static/js/tool-loader.js?v=20260926-results1"></script>
+<script src="/static/js/app.js?v=20260926-studio1"></script>
 <script src="/static/js/color-grade.js?v=20260923-grade2"></script>
-<script src="/static/js/workshop-studio.js?v=20260925-sq3"></script>
+<script src="/static/js/workshop-squares-fx.js?v=20260926-results1"></script>
+<script src="/static/js/process-frame-fx.js?v=20260926-studio1"></script>
+<script src="/static/js/workshop-studio.js?v=20260926-results1"></script>
   <script src="/static/js/workspace-copy.js?v=20260910-finish1"></script>
   <script src="/static/js/process-guide.js?v=20260920-editor1"></script>
 
@@ -1165,13 +1187,15 @@
 
 <script src="/static/ss-shell.js?v=20260925-maint1"></script>
 <script src="/static/js/workspace-help.js?v=20260921-polish1"></script>
-<script src="/static/js/process-result.js?v=20260923-gallery1"></script>
+<script src="/static/js/process-result.js?v=20260926-results1"></script>
 <link rel="stylesheet" href="/static/css/workspace-usability.css?v=20260910-process-layout2">
-<link rel="stylesheet" href="/static/css/workspace-editor.css?v=20260921-polish1">
-<script src="/static/js/workspace-editor-copy.js?v=20260921-polish1"></script>
+<link rel="stylesheet" href="/static/css/workspace-editor.css?v=20260926-results1">
+<script src="/static/js/workspace-editor-copy.js?v=20260926-results1"></script>
 <script src="/static/js/workspace-editor.js?v=20260920-editor4"></script>
 <link rel="stylesheet" href="/static/css/tool-clarity.css?v=20260921-ux2">
 <script src="/static/js/tool-clarity-copy.js?v=20260921-ux2"></script>
 <script src="/static/js/tool-clarity.js?v=20260921-ux2"></script>
+<link rel="stylesheet" href="/static/css/process-studio.css?v=20260926-studio1">
+<script src="/static/js/process-layout.js?v=20260926-studio1"></script>
 </body>
 </html>

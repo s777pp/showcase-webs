@@ -167,6 +167,23 @@ CREATE TABLE IF NOT EXISTS builder_projects (
  expires_at DOUBLE PRECISION
 );
 CREATE INDEX IF NOT EXISTS idx_builder_projects_user ON builder_projects(user_id, updated_at DESC);
+CREATE TABLE IF NOT EXISTS saved_results (
+ id TEXT PRIMARY KEY,
+ user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ job_id TEXT NOT NULL,
+ kind TEXT NOT NULL,
+ mode TEXT NOT NULL DEFAULT '',
+ title TEXT NOT NULL DEFAULT '',
+ storage TEXT NOT NULL,
+ zip_ref TEXT NOT NULL,
+ size BIGINT NOT NULL DEFAULT 0,
+ file_count INTEGER NOT NULL DEFAULT 0,
+ created_at DOUBLE PRECISION NOT NULL,
+ expires_at DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_saved_results_user ON saved_results(user_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_results_job ON saved_results(user_id, job_id);
+CREATE INDEX IF NOT EXISTS idx_saved_results_expires ON saved_results(expires_at);
 CREATE TABLE IF NOT EXISTS builder_usage (
  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  day_key TEXT NOT NULL,

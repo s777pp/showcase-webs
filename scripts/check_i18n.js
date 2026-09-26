@@ -173,6 +173,14 @@ for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
     errors.push(`Workshop Studio copy: incomplete ${language}`);
   }
 }
+// Workshop squares frames/effects: reviewed in all eight languages in the source itself.
+const squaresFx = evaluateDictionary('static/js/workshop-squares-fx.js', 'var COPY=');
+const squaresFxKeys = Object.keys(squaresFx.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  const values = squaresFx[language] || {};
+  if (Object.keys(values).sort().join('|') !== squaresFxKeys) errors.push(`Workshop squares effects copy: incomplete ${language}`);
+  if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`Workshop squares effects copy: empty ${language}`);
+}
 // Maintenance notice labels: { key: { language: text } }, reviewed in all eight languages.
 for (const [key, values] of Object.entries(evaluateDictionary('static/ss-shell.js', 'var MAINTENANCE_UI ='))) {
   for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {

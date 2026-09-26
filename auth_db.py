@@ -405,6 +405,26 @@ def _create_schema(c: sqlite3.Connection) -> None:
         """
     )
 
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS saved_results (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            job_id TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            mode TEXT NOT NULL DEFAULT '',
+            title TEXT NOT NULL DEFAULT '',
+            storage TEXT NOT NULL,
+            zip_ref TEXT NOT NULL,
+            size INTEGER NOT NULL DEFAULT 0,
+            file_count INTEGER NOT NULL DEFAULT 0,
+            created_at REAL NOT NULL,
+            expires_at REAL NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
+
     for ddl in (
         # Hot paths that had no index at all.
         "CREATE INDEX IF NOT EXISTS idx_gallery_status_created ON gallery(status, created_at DESC)",
@@ -419,6 +439,9 @@ def _create_schema(c: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_users_telegram ON users(telegram_id)",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_steam ON users(steam_id) WHERE steam_id IS NOT NULL",
         "CREATE INDEX IF NOT EXISTS idx_builder_projects_user ON builder_projects(user_id, updated_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_saved_results_user ON saved_results(user_id, created_at DESC)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_results_job ON saved_results(user_id, job_id)",
+        "CREATE INDEX IF NOT EXISTS idx_saved_results_expires ON saved_results(expires_at)",
         "CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at)",
         "CREATE INDEX IF NOT EXISTS idx_analytics_event_created ON analytics_events(event_name, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_analytics_day ON analytics_events(day_key)",
@@ -730,6 +753,11 @@ def account_export_data(user_id: int, analytics_user_hash: str = "") -> dict:
         ).fetchall()]
         for item in projects:
             item["project"] = _decode_export_json(item.pop("project_json", None))
+        saved = [dict(item) for item in c.execute(
+            """SELECT id,job_id,kind,mode,title,size,file_count,created_at,expires_at
+               FROM saved_results WHERE user_id=? ORDER BY created_at DESC""",
+            (uid,),
+        ).fetchall()]
         usage = [dict(item) for item in c.execute(
             "SELECT day_key,renders FROM builder_usage WHERE user_id=? ORDER BY day_key",
             (uid,),
@@ -761,6 +789,7 @@ def account_export_data(user_id: int, analytics_user_hash: str = "") -> dict:
             "profile_showcases": showcases,
             "builder_projects": projects,
             "builder_usage": usage,
+            "saved_results": saved,
             "sessions": sessions,
             "activated_codes": codes,
             "analytics_events": analytics_rows,
@@ -820,6 +849,7 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
         c.execute("DELETE FROM profile_showcases WHERE user_id=?", (uid,))
         c.execute("DELETE FROM builder_projects WHERE user_id=?", (uid,))
         c.execute("DELETE FROM builder_usage WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM saved_results WHERE user_id=?", (uid,))
         c.execute("DELETE FROM process_jobs WHERE user_id=?", (uid,))
         c.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
         c.execute("UPDATE used_codes SET user_id=NULL WHERE user_id=?", (uid,))
@@ -1079,6 +1109,97 @@ def delete_builder_project(user_id: int, project_id: str) -> bool:
         cur = c.execute("DELETE FROM builder_projects WHERE id=? AND user_id=?", (project_id, int(user_id)))
         c.commit()
         return bool(cur.rowcount)
+    finally:
+        c.close()
+
+
+_SAVED_RESULT_COLUMNS = "id,user_id,job_id,kind,mode,title,storage,zip_ref,size,file_count,created_at,expires_at"
+
+
+def add_saved_result(row: dict, *, max_items: int) -> list[dict]:
+    """Store one finished result; return rows pushed out by the per-user cap.
+
+    The caller owns the stored files, so it deletes the returned rows' storage.
+    A second save of the same job for the same user is ignored.
+    """
+    uid = int(row["user_id"])
+    c = _conn()
+    try:
+        c.execute(
+            f"""INSERT INTO saved_results ({_SAVED_RESULT_COLUMNS})
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(user_id, job_id) DO NOTHING""",
+            (str(row["id"]), uid, str(row["job_id"]), str(row["kind"])[:32], str(row.get("mode") or "")[:32],
+             str(row.get("title") or "")[:120], str(row["storage"])[:16], str(row["zip_ref"])[:400],
+             int(row.get("size") or 0), int(row.get("file_count") or 0),
+             float(row["created_at"]), float(row["expires_at"])),
+        )
+        rows = c.execute(
+            f"SELECT {_SAVED_RESULT_COLUMNS} FROM saved_results WHERE user_id=? ORDER BY created_at DESC, id",
+            (uid,),
+        ).fetchall()
+        pruned = [dict(item) for item in rows[max(1, int(max_items)):]]
+        for item in pruned:
+            c.execute("DELETE FROM saved_results WHERE id=? AND user_id=?", (item["id"], uid))
+        c.commit()
+        return pruned
+    finally:
+        c.close()
+
+
+def saved_results_for_user(user_id: int) -> list[dict]:
+    c = _conn()
+    try:
+        rows = c.execute(
+            f"""SELECT {_SAVED_RESULT_COLUMNS} FROM saved_results
+                WHERE user_id=? AND expires_at>? ORDER BY created_at DESC, id""",
+            (int(user_id), time.time()),
+        ).fetchall()
+        return [dict(item) for item in rows]
+    finally:
+        c.close()
+
+
+def saved_result_get(user_id: int, result_id: str) -> Optional[dict]:
+    c = _conn()
+    try:
+        row = c.execute(
+            f"SELECT {_SAVED_RESULT_COLUMNS} FROM saved_results WHERE id=? AND user_id=? AND expires_at>?",
+            (str(result_id), int(user_id), time.time()),
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        c.close()
+
+
+def delete_saved_result(user_id: int, result_id: str) -> Optional[dict]:
+    c = _conn()
+    try:
+        row = c.execute(
+            f"SELECT {_SAVED_RESULT_COLUMNS} FROM saved_results WHERE id=? AND user_id=?",
+            (str(result_id), int(user_id)),
+        ).fetchone()
+        if not row:
+            return None
+        c.execute("DELETE FROM saved_results WHERE id=? AND user_id=?", (str(result_id), int(user_id)))
+        c.commit()
+        return dict(row)
+    finally:
+        c.close()
+
+
+def pop_expired_saved_results(limit: int = 200) -> list[dict]:
+    """Remove expired rows (oldest first) and return them for storage cleanup."""
+    c = _conn()
+    try:
+        rows = [dict(item) for item in c.execute(
+            f"SELECT {_SAVED_RESULT_COLUMNS} FROM saved_results WHERE expires_at<=? ORDER BY expires_at LIMIT ?",
+            (time.time(), max(1, int(limit))),
+        ).fetchall()]
+        for item in rows:
+            c.execute("DELETE FROM saved_results WHERE id=?", (item["id"],))
+        c.commit()
+        return rows
     finally:
         c.close()
 

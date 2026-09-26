@@ -83,7 +83,7 @@ def _account_media_cleanup(plan: dict) -> None:
                 object_store.delete_prefix(prefix, public=True)
             except Exception:
                 LOGGER.exception("account delete: R2 public prefix cleanup failed prefix=%s", prefix)
-        for prefix in (f"builder/{uid}", f"gallery_releases/u{uid}"):
+        for prefix in (f"builder/{uid}", f"gallery_releases/u{uid}", f"results/{uid}"):
             try:
                 object_store.delete_prefix(prefix, public=False)
             except Exception:
@@ -106,6 +106,7 @@ def _account_media_cleanup(plan: dict) -> None:
         Path("projects") / str(uid),
         Path("gallery") / f"u{uid}",
         Path("gallery_releases") / f"u{uid}",
+        Path("results") / str(uid),
     ):
         target = (Path(DATA) / relative).resolve()
         try:

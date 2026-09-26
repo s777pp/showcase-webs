@@ -4,12 +4,12 @@
   const scripts = new Map();
   const groups = {
     assets: ['/static/js/media-assets.js?v=20260916a'],
-    jobs: ['/static/js/job-center.js?v=20260922-release'],
+    jobs: ['/static/js/job-center.js?v=20260926-results1'],
     builder: [
       '/static/js/builder-history.js?v=20260910-finish1',
       '/static/js/builder-motion-copy.js?v=20260913-motion1',
       '/static/js/builder-motion.js?v=20260913-motion1',
-      '/static/js/showcase-builder.js?v=20260923-gallery1'
+      '/static/js/showcase-builder.js?v=20260925-fx2'
     ],
     dna: ['/static/js/steam-dna.js?v=20260912-exp7'],
     loop: ['/static/js/builder-motion-copy.js?v=20260913-motion1','/static/js/seamless-loop.js?v=20260913-motion1']

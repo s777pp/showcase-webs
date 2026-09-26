@@ -24,6 +24,8 @@ import redis_store as rs
 
 from smweb import analytics
 from smweb import media_assets
+from smweb import saved_results
+from smweb import square_fx
 
 
 from fastapi import APIRouter
@@ -54,6 +56,7 @@ async def api_workshop_studio_start(
     settings: str = Form("[]"),
     layout: str = Form("rows"),
     crop: str = Form(""),
+    fx: str = Form(""),
     files: list[UploadFile] = File(default=[]),
 ):
     """Create Workshop files in a background job.
@@ -69,12 +72,19 @@ async def api_workshop_studio_start(
     if rows not in (1, 2, 3) or len(files) != rows:
         return JSONResponse({"ok": False, "msg": "Select one file for each row"}, status_code=400)
     crop_box = None
+    square_effects = None
     if layout == "squares":
         from smweb.workshop_studio_jobs import normalize_crop
         try:
             crop_box = normalize_crop(json.loads(crop))
         except (TypeError, ValueError, KeyError, OverflowError, json.JSONDecodeError):
             return JSONResponse({"ok": False, "msg": "Invalid crop area"}, status_code=400)
+        try:
+            raw_fx = json.loads(fx) if fx else None
+        except (ValueError, json.JSONDecodeError):
+            return JSONResponse({"ok": False, "msg": "Invalid frame settings"}, status_code=400)
+        # Unknown styles/effects fall back to "none"; numbers are clamped.
+        square_effects = square_fx.normalize(raw_fx, legacy_outline=outline.lower() in ("1", "true", "on"))
     q = quota_state(request)
     if not q["pro"] and q["left"] < rows:
         return JSONResponse({"ok": False, "msg": "Not enough free files left today"}, status_code=403)
@@ -141,7 +151,7 @@ async def api_workshop_studio_start(
         "options": {"rows": normalized, "fps": fps, "duration": duration,
                     "outline": outline.lower() in ("1", "true", "on"),
                     "free_watermark": not q["pro"],
-                    "layout": layout, "crop": crop_box},
+                    "layout": layout, "crop": crop_box, "fx": square_effects},
         "opts": {"modes": ["workshop_studio"]},
     }
     rs.job_create(jid, payload, enqueue=external)
@@ -221,6 +231,10 @@ async def api_process_start(
     workshop_outline: str = Form("0"),
     outline_width: int = Form(2),
     outline_color: str = Form("#ffffff"),
+    outline_style: str = Form("solid"),
+    outline_color2: str = Form("#8a62ff"),
+    outline_speed: int = Form(1),
+    outline_target: str = Form("squares"),
     gif_encoder: str = Form("gifski"),
     all_modes: str = Form("0"),
     rotations: str = Form("[]"),
@@ -294,6 +308,12 @@ async def api_process_start(
         "do_ac": do_ac,
         "outline_width": outline_width_i,
         "outline_color": outline_color_s,
+        # Styled/animated frame for every showcase type; unknown styles fall back to "none".
+        # target "squares" = around each part, "strip" = one frame around the whole showcase.
+        "outline_fx": square_fx.normalize_frame({
+            "style": outline_style, "color": outline_color_s, "color2": outline_color2,
+            "width": outline_width_i, "speed": outline_speed, "target": outline_target,
+        }) if do_outline else None,
         "size_i": size_i,
         "fps": fps,
         "enc": enc,
@@ -464,6 +484,8 @@ def api_process_status(job_id: str, request: Request):
         out["download"] = f"/api/process/download/{job_id}"
         if j.get("readiness"):
             out["readiness"] = j.get("readiness")
+        if j.get("saved_result_id"):
+            out["saved_days"] = saved_results.KEEP_DAYS
     return out
 
 

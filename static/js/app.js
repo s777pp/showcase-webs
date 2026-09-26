@@ -355,8 +355,6 @@ document.querySelectorAll('.mode').forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll('.mode').forEach(b => b.classList.remove('active'));
     btn.classList.add('active'); state.mode = btn.dataset.mode;
-    const outline = document.getElementById('workshopOutlineSettings');
-    if (outline) outline.hidden = state.mode !== 'workshop';
     if (typeof window.__wmRedraw === 'function') window.__wmRedraw();
     try { window.ProcessGuide && window.ProcessGuide.modeChanged(); } catch (e) {}
   };
@@ -565,6 +563,13 @@ document.getElementById('btnRun').onclick = async () => {
   fd.append('workshop_outline', document.getElementById('workshopOutline')?.checked ? '1' : '0');
   fd.append('outline_width', document.getElementById('outlineWidth')?.value || '2');
   fd.append('outline_color', document.getElementById('outlineColor')?.value || '#ffffff');
+  const outlineFx = window.SMProcessFrame ? window.SMProcessFrame.options() : null;
+  if (outlineFx) {
+    fd.append('outline_style', outlineFx.style);
+    fd.append('outline_color2', outlineFx.color2);
+    fd.append('outline_speed', String(outlineFx.speed));
+    fd.append('outline_target', outlineFx.target || 'squares');
+  }
   fd.append('gif_encoder', document.getElementById('gifEncoder')?.value || 'gifski');
   fd.append('wm_scale', sc ? (Number(sc.value) / 100) : 1);
   fd.append('all_modes', (document.getElementById('allModes') || {}).checked ? '1' : '0');
@@ -3204,18 +3209,22 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     ctx.drawImage(img, -sourceW * fit / 2, -sourceH * fit / 2, sourceW * fit, sourceH * fit);
     ctx.restore();
     drawShowcaseGuide(w, h);
-    const outlineOn = state.mode === 'workshop' && document.getElementById('workshopOutline')?.checked;
+    const outlineOn = document.getElementById('workshopOutline')?.checked;
     if (outlineOn) {
-      const sourceWidth = Number(document.getElementById('size')?.value || 750);
+      // Thickness is in final-file pixels: Workshop width setting, Split 606, Featured 630.
+      const sourceWidth = state.mode === 'split' ? 606 : state.mode === 'featured' ? 630 : Number(document.getElementById('size')?.value || 750);
       const stroke = Math.max(1, Number(document.getElementById('outlineWidth')?.value || 2) * w / sourceWidth);
-      ctx.save();
-      ctx.strokeStyle = document.getElementById('outlineColor')?.value || '#ffffff';
-      ctx.lineWidth = stroke;
-      for (let panel = 0; panel < 5; panel++) {
-        const left = panel * w / 5 + stroke / 2;
-        ctx.strokeRect(left, stroke / 2, w / 5 - stroke, h - stroke);
+      // Styled/animated outline (process-frame-fx.js); plain stroke as a fallback.
+      if (!(window.SMProcessFrame && window.SMProcessFrame.draw(ctx, w, h, stroke))) {
+        ctx.save();
+        ctx.strokeStyle = document.getElementById('outlineColor')?.value || '#ffffff';
+        ctx.lineWidth = stroke;
+        for (let panel = 0; panel < 5; panel++) {
+          const left = panel * w / 5 + stroke / 2;
+          ctx.strokeRect(left, stroke / 2, w / 5 - stroke, h - stroke);
+        }
+        ctx.restore();
       }
-      ctx.restore();
     }
     if (!enabled() || !textVal()) return;
     const key = fontKey();

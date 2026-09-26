@@ -56,6 +56,18 @@ class BuilderProjectTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _validated_project({"layers": [{"type": "script"}]})
 
+    def test_animated_frame_styles_are_kept_and_validated(self):
+        project = _validated_project({"layers": [
+            {"type": "frame", "frameStyle": "comet", "color2": "javascript:1", "frameSpeed": 99},
+            {"type": "frame", "frameStyle": "rgb", "color2": "#112233", "frameSpeed": 2},
+            {"type": "text", "color2": "#112233", "frameSpeed": 3},
+        ]})
+        comet, rgb, text = project["layers"]
+        self.assertEqual((comet["frameStyle"], comet["color2"], comet["frameSpeed"]), ("comet", "#8a62ff", 4))
+        self.assertEqual((rgb["frameStyle"], rgb["color2"], rgb["frameSpeed"]), ("rgb", "#112233", 2))
+        self.assertNotIn("color2", text)
+        self.assertNotIn("frameSpeed", text)
+
     def test_builder_layer_controls_are_validated(self):
         project = _validated_project({
             "layers": [{

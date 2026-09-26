@@ -20,7 +20,7 @@ import processor as proc
 import redis_store as rs
 
 from smweb import analytics
-from smweb import job_diagnostics, object_store, process_control
+from smweb import job_diagnostics, object_store, process_control, saved_results, square_fx
 
 
 from smweb.core import JOBS, MAX_UPLOAD_MB
@@ -89,6 +89,10 @@ def _cleanup_loop():
     while True:
         try:
             n = _cleanup_old_jobs()
+            try:
+                saved_results.maybe_cleanup()
+            except Exception:
+                pass
             try:
                 from smweb import media_assets
                 media_assets.maybe_cleanup()
@@ -272,6 +276,13 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
     do_ac = opts["do_ac"]
     outline_width = int(opts.get("outline_width") or 0)
     outline_color = str(opts.get("outline_color") or "#ffffff")
+    # Styled / animated frame (smweb.square_fx frame options) for every showcase type.
+    any_fx = opts.get("outline_fx") if outline_width and isinstance(opts.get("outline_fx"), dict) else None
+    if any_fx and any_fx.get("style", "none") == "none":
+        any_fx = None
+    # Workshop keeps its classic per-panel stroke for a plain line; Featured/Split draw it via square_fx.
+    workshop_fx = None if any_fx and any_fx.get("style") == "solid" else any_fx
+    animated_frame = bool(any_fx and any_fx.get("style") in square_fx.ANIMATED_FRAMES)
     size_i = opts["size_i"]
     fps = opts["fps"]
     enc = opts["enc"]
@@ -312,6 +323,44 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                         pct=min(90, base_pct + int(12 * (mi + 1) / max(1, len(modes)))),
                         stage=f"{stage}:{mode}:{name}",
                     )
+                    frame_fx = workshop_fx if mode == "workshop" else any_fx
+                    if animated_frame and ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp"):
+                        # A still picture with an animated outline becomes a short looping clip.
+                        img = Image.open(io.BytesIO(raw))
+                        img.load()
+                        img = proc.rotate_image(img, rotation)
+                        img.thumbnail((2048, 2048), Image.Resampling.LANCZOS)
+                        if do_ac:
+                            from PIL import ImageOps
+                            img = ImageOps.autocontrast(img.convert("RGB"), cutoff=1)
+                        still = work / "still.png"
+                        img.convert("RGBA").save(still)
+                        clip = work / "still_loop.mkv"
+                        proc._run([proc.find_ffmpeg() or "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                                   "-loop", "1", "-framerate", str(max(5, min(int(fps), 24))), "-t", "4",
+                                   "-i", str(still), "-c:v", "ffv1", "-pix_fmt", "bgra", str(clip)])
+                        still.unlink(missing_ok=True)
+                        clip_kwargs = dict(
+                            wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity,
+                            wm_color=color, wm_corner=corner, wm_scale=scale, wm_x=wm_x_f, wm_y=wm_y_f,
+                            encoder="ffmpeg" if enc == "pillow" else enc, fps=max(5, min(int(fps), 24)),
+                            duration=4.0, frame_fx=frame_fx,
+                        )
+                        if mode == "workshop":
+                            paths = proc.process_gif_workshop(clip, work, width=size_i, **clip_kwargs)
+                        elif mode == "featured":
+                            paths = proc.process_gif_featured(clip, work, **clip_kwargs)
+                        else:
+                            paths = proc.process_gif_split(clip, work, **clip_kwargs)
+                        for pname, pth in paths.items():
+                            pth = Path(pth)
+                            if pth.is_file():
+                                zf.write(pth, f"{folder}/{pname}")
+                                if len(listed) < 20:
+                                    listed.append({"name": f"{folder}/{pname}", "size": pth.stat().st_size})
+                                pth.unlink(missing_ok=True)
+                        clip.unlink(missing_ok=True)
+                        continue
                     if ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp"):
                         img = Image.open(io.BytesIO(raw))
                         img.load()
@@ -328,17 +377,21 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                             nh = max(1, int(img.size[1] * (size_i / max(1, img.size[0]))))
                             img = img.resize((size_i, nh), Image.Resampling.LANCZOS)
                         if mode == "workshop":
+                            if frame_fx:
+                                img = square_fx.draw_frame(img, 0.0, frame_fx)
                             parts = proc.process_image_workshop(
                                 img, text, opts["wm_font"], opacity, color, corner, scale, wm_x_f, wm_y_f,
-                                outline_width=outline_width, outline_color=outline_color,
+                                outline_width=0 if frame_fx else outline_width, outline_color=outline_color,
                             )
                         elif mode == "featured":
                             parts = proc.process_image_featured(
-                                img, text, opts["wm_font"], opacity, color, corner, scale, wm_x_f, wm_y_f
+                                img, text, opts["wm_font"], opacity, color, corner, scale, wm_x_f, wm_y_f,
+                                frame_fx=frame_fx,
                             )
                         else:
                             parts = proc.process_image_split(
-                                img, text, opts["wm_font"], opacity, color, corner, scale, wm_x_f, wm_y_f
+                                img, text, opts["wm_font"], opacity, color, corner, scale, wm_x_f, wm_y_f,
+                                frame_fx=frame_fx,
                             )
                         for pname, data in parts.items():
                             zf.writestr(f"{folder}/{pname}", data)
@@ -363,14 +416,14 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     duration=v_dur, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
                                     outline_width=outline_width, outline_color=outline_color,
-                                    rotation=rotation,
+                                    rotation=rotation, frame_fx=frame_fx,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_video_featured(
                                     src, work, fps=v_fps, duration=v_dur, encoder=encoder,
                                     wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity, wm_color=color,
                                     wm_corner=corner, wm_scale=scale, wm_x=wm_x_f, wm_y=wm_y_f,
-                                    rotation=rotation,
+                                    rotation=rotation, frame_fx=frame_fx,
                                 )
                             else:
                                 paths = proc.process_video_split(
@@ -378,7 +431,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity, wm_color=color,
                                     duration=v_dur, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
-                                    rotation=rotation,
+                                    rotation=rotation, frame_fx=frame_fx,
                                 )
                         else:
                             if mode == "workshop":
@@ -389,7 +442,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder, fps=v_fps,
                                     outline_width=outline_width, outline_color=outline_color,
                                     rotation=rotation,
-                                    width=size_i,
+                                    width=size_i, frame_fx=frame_fx,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_gif_featured(
@@ -397,7 +450,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity,
                                     wm_color=color, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f,
-                                    rotation=rotation,
+                                    rotation=rotation, frame_fx=frame_fx,
                                 )
                             else:
                                 paths = proc.process_gif_split(
@@ -405,7 +458,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity,
                                     wm_color=color, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
-                                    rotation=rotation,
+                                    rotation=rotation, frame_fx=frame_fx,
                                 )
                         for pname, pth in paths.items():
                             pth = Path(pth)
@@ -480,9 +533,17 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
             error_traces=traces,
             finished=time.time(),
         )
-        cache_key = str((_job_get(jid) or {}).get("cache_key") or "")
+        record = _job_get(jid) or {}
+        cache_key = str(record.get("cache_key") or "")
         if cache_key:
             rs.job_cache_put(cache_key, jid)
+        saved_id = saved_results.save_job_result(
+            jid, user_key=str(record.get("user_key") or ""), zip_path=zip_path, kind="process",
+            mode="+".join(str(m) for m in modes), title=Path(str(files_data[0][0])).stem[:80],
+            file_count=processed,
+        )
+        if saved_id:
+            _job_set(jid, saved_result_id=saved_id)
         _record_process_event(jid, "process_success", opts, int((_sm_time.perf_counter()-_sm_job_t0)*1000))
     except process_control.JobCancelled:
         process_control.mark_cancelled(jid)

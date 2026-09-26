@@ -72,6 +72,7 @@ from smweb.routers import (
     analytics as analytics_router,
     assets,
     jobs as jobs_router,
+    results as results_router,
     admin as admin_router,
 )
 
@@ -166,6 +167,7 @@ app.include_router(steam_dna.router)
 app.include_router(analytics_router.router)
 app.include_router(assets.router)
 app.include_router(jobs_router.router)
+app.include_router(results_router.router)
 app.include_router(admin_router.router)
 
 

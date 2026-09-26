@@ -257,6 +257,34 @@ def process_image_workshop(
     return out
 
 
+def _active_frame(frame_fx: dict | None) -> dict | None:
+    """Styled frame options (smweb.square_fx) or None when nothing is drawn."""
+    return frame_fx if frame_fx and frame_fx.get("style", "none") != "none" else None
+
+
+def _draw_whole_frame(image: Image.Image, u: float, frame_fx: dict) -> Image.Image:
+    """One frame around the whole image (Featured, or one Split part)."""
+    from smweb.square_fx import draw_frame
+    return draw_frame(image, u, dict(frame_fx, target="strip"))
+
+
+def _split_parts(frame: Image.Image, u: float = 0.0, frame_fx: dict | None = None) -> tuple[Image.Image, Image.Image]:
+    """Cut a 606 px wide frame into center 506 + side 100, optionally framed.
+
+    ``target == "strip"`` draws one frame around both parts (the gap between
+    them is Steam's); otherwise each part gets its own frame.
+    """
+    frame_fx = _active_frame(frame_fx)
+    if frame_fx and frame_fx.get("target") == "strip":
+        frame = _draw_whole_frame(frame.convert("RGBA"), u, frame_fx)
+    center = frame.crop((0, 0, 506, frame.height))
+    side = frame.crop((506, 0, 606, frame.height))
+    if frame_fx and frame_fx.get("target") != "strip":
+        center = _draw_whole_frame(center, u, frame_fx)
+        side = _draw_whole_frame(side, u, frame_fx)
+    return center, side
+
+
 def process_image_featured(
     img: Image.Image,
     wm_text: str = "",
@@ -267,11 +295,14 @@ def process_image_featured(
     wm_scale: float = 1.0,
     wm_x: float | None = None,
     wm_y: float | None = None,
+    frame_fx: dict | None = None,
 ) -> dict[str, bytes]:
     img = img.convert("RGBA")
     w, h = img.size
     nh = max(1, int(h * (630 / max(1, w))))
     img = img.resize((630, nh), Image.Resampling.LANCZOS)
+    if _active_frame(frame_fx):
+        img = _draw_whole_frame(img, 0.0, frame_fx)
     out = {
         "featured_630.png": apply_hex21(_png_bytes(img)),
         "full_original.png": _png_bytes(img),
@@ -298,14 +329,14 @@ def process_image_split(
     wm_scale: float = 1.0,
     wm_x: float | None = None,
     wm_y: float | None = None,
+    frame_fx: dict | None = None,
 ) -> dict[str, bytes]:
     img = img.convert("RGBA")
     w, h = img.size
     scale = 606 / max(1, w)
     nw, nh = 606, max(1, int(h * scale))
     img = img.resize((nw, nh), Image.Resampling.LANCZOS)
-    center = img.crop((0, 0, 506, nh))
-    side = img.crop((506, 0, 606, nh))
+    center, side = _split_parts(img, 0.0, frame_fx)
     out = {
         "center_506.png": apply_hex21(_png_bytes(center)),
         "side_100.png": apply_hex21(_png_bytes(side)),
@@ -363,6 +394,10 @@ def _gifski_from_frames(frames_dir: Path, dest: Path, fps: int, quality: int = 1
         return False
     fps = max(5, min(30, int(fps)))
     quality = max(1, min(100, int(quality)))
+    if len(files) == 1:
+        # gifski refuses a single input ("not enough to make an animation"); a static-looking
+        # source (e.g. a still with identical frames) then lost its full preview.
+        files = files * 2
     try:
         cmd = [
             gs, "--fps", str(fps), "--quality", str(quality),
@@ -562,6 +597,7 @@ def process_video_workshop(
     outline_width: int = 0,
     outline_color: str = "#ffffff",
     rotation: float = 0,
+    frame_fx: dict | None = None,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -570,7 +606,7 @@ def process_video_workshop(
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
         wm_x=wm_x, wm_y=wm_y, encoder=encoder, fps=fps,
         outline_width=outline_width, outline_color=outline_color,
-        rotation=rotation, width=width, duration=duration,
+        rotation=rotation, width=width, duration=duration, frame_fx=frame_fx,
     )
 
 
@@ -589,9 +625,18 @@ def process_video_featured(
     wm_x: float | None = None,
     wm_y: float | None = None,
     rotation: float = 0,
+    frame_fx: dict | None = None,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    if _active_frame(frame_fx):
+        # Framed output is rebuilt from lossless frames; skip the lossy GIF hop.
+        return process_gif_featured(
+            src, out_dir, fps=fps, encoder=encoder,
+            wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
+            wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
+            wm_x=wm_x, wm_y=wm_y, rotation=rotation, frame_fx=frame_fx, duration=duration,
+        )
     gif_src = out_dir / "source_featured.gif"
     media_to_gif(src, gif_src, fps=fps, width=630, duration=duration, encoder=encoder, rotation=rotation)
     return process_gif_featured(
@@ -617,13 +662,14 @@ def process_video_split(
     wm_y: float | None = None,
     encoder: str = "ffmpeg",
     rotation: float = 0,
+    frame_fx: dict | None = None,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     return process_gif_split(
         src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale, wm_x=wm_x, wm_y=wm_y,
-        encoder=encoder, rotation=rotation, duration=duration,
+        encoder=encoder, rotation=rotation, duration=duration, frame_fx=frame_fx,
     )
 
 
@@ -1369,8 +1415,14 @@ def _prepare_workshop_frame_sets(
     duration: float | None = None,
     outline_width: int = 0,
     outline_color: str = "#ffffff",
+    frame_fx: dict | None = None,
 ) -> tuple[Path, list[Path], int]:
-    """Decode once, then derive five perfectly aligned lossless frame sets."""
+    """Decode once, then derive five perfectly aligned lossless frame sets.
+
+    ``frame_fx`` (smweb.square_fx frame options) replaces the plain outline and
+    is drawn on the full frame at loop position index/count, so animated
+    outlines stay synchronized across the five panels and loop seamlessly.
+    """
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg not found")
@@ -1408,14 +1460,19 @@ def _prepare_workshop_frame_sets(
     for part_dir in part_dirs:
         part_dir.mkdir()
     part_width = width // 5
-    stroke = max(0, min(12, int(outline_width or 0)))
+    stroke = 0 if frame_fx else max(0, min(12, int(outline_width or 0)))
     stroke_color = _parse_rgb(outline_color)
+    draw_frame = None
+    if frame_fx and frame_fx.get("style", "none") != "none":
+        from smweb.square_fx import draw_frame
 
-    for frame_path in frame_files:
+    for frame_index, frame_path in enumerate(frame_files):
         with Image.open(frame_path) as opened:
             frame = opened.convert("RGBA")
         if frame.width != width:
             raise RuntimeError(f"Workshop frame width mismatch: {frame.width} != {width}")
+        if draw_frame:
+            frame = draw_frame(frame, frame_index / len(frame_files), frame_fx)
         for index, part_dir in enumerate(part_dirs):
             left = index * part_width
             part = frame.crop((left, 0, left + part_width, frame.height))
@@ -1449,6 +1506,7 @@ def process_gif_workshop(
     rotation: float = 0,
     width: int = 750,
     duration: float | None = None,
+    frame_fx: dict | None = None,
 ) -> dict[str, Path]:
     """Create five synchronized Workshop GIFs at one common quality."""
     out_dir = Path(out_dir)
@@ -1463,7 +1521,7 @@ def process_gif_workshop(
             return _prepare_workshop_frame_sets(
                 Path(gif_path), candidate_dir, fps=candidate_fps, width=width,
                 rotation=normalize_rotation(rotation), duration=duration,
-                outline_width=outline_width, outline_color=outline_color,
+                outline_width=outline_width, outline_color=outline_color, frame_fx=frame_fx,
             )
 
         full_frames, settings, frame_count = _select_synchronized_frame_group(
@@ -1612,13 +1670,32 @@ def process_gif_featured(
     wm_x: float | None = None,
     wm_y: float | None = None,
     rotation: float = 0,
+    frame_fx: dict | None = None,
+    duration: float | None = 10,
 ) -> dict[str, Path]:
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg не найден")
     out = out_dir / "featured_630.gif"
-    media_to_gif(gif_path, out, fps=fps, width=630, duration=10, encoder=encoder, rotation=rotation)
-    ensure_under_mb(out)
+    if _active_frame(frame_fx):
+        # Styled frame drawn per decoded frame (loop position index/count), then
+        # fitted to the Steam limit by the same encoder as the panel groups.
+        temp = Path(tempfile.mkdtemp(prefix="sm_featured_frames_"))
+        try:
+            def prepare(candidate_dir: Path, candidate_fps: int):
+                return _prepare_featured_frame_sets(
+                    Path(gif_path), candidate_dir, fps=candidate_fps,
+                    rotation=normalize_rotation(rotation), duration=duration, frame_fx=frame_fx,
+                )
+            _select_synchronized_frame_group(
+                temp, [out], requested_fps=max(5, min(24, int(fps))),
+                encoder=encoder, label="Featured", prepare=prepare,
+            )
+        finally:
+            shutil.rmtree(temp, ignore_errors=True)
+    else:
+        media_to_gif(gif_path, out, fps=fps, width=630, duration=10, encoder=encoder, rotation=rotation)
+        ensure_under_mb(out)
     apply_hex21_file(out)
     clean = out_dir / "full_original.gif"
     shutil.copy2(out, clean)
@@ -1660,14 +1737,54 @@ def process_gif_featured(
 
 
 
+def _prepare_featured_frame_sets(
+    source: Path,
+    work_dir: Path,
+    fps: int,
+    rotation: float = 0,
+    duration: float | None = 10,
+    frame_fx: dict | None = None,
+) -> tuple[Path, list[Path], int]:
+    """Decode a Featured source at 630 px and draw the styled frame on every frame."""
+    ff = find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not found")
+    fps = max(5, min(24, int(fps)))
+    frames_dir = work_dir / "featured_frames"
+    frames_dir.mkdir()
+    video_filter = ",".join(part for part in (
+        _ffmpeg_rotation_filter(rotation),
+        f"fps={fps}",
+        "scale=630:-2:flags=lanczos",
+    ) if part)
+    command = [ff, "-y", "-hide_banner", "-loglevel", "error", "-i", str(source)]
+    if duration is not None:
+        command.extend(["-t", str(max(1.0, min(20.0, float(duration))))])
+    command.extend(["-an", "-vf", video_filter, "-compression_level", "0", str(frames_dir / "frame_%04d.png")])
+    _run(command)
+    frame_files = sorted(frames_dir.glob("frame_*.png"))
+    if not frame_files:
+        raise RuntimeError("Featured source produced no frames")
+    for index, frame_path in enumerate(frame_files):
+        with Image.open(frame_path) as opened:
+            frame = opened.convert("RGBA")
+        _draw_whole_frame(frame, index / len(frame_files), frame_fx).save(frame_path, format="PNG", compress_level=0)
+    return frames_dir, [frames_dir], len(frame_files)
+
+
 def _prepare_split_frame_sets(
     source: Path,
     work_dir: Path,
     fps: int,
     rotation: float = 0,
     duration: float | None = 10,
+    frame_fx: dict | None = None,
 ) -> tuple[Path, list[Path], int]:
-    """Decode once and derive aligned 506 px + 100 px lossless frames."""
+    """Decode once and derive aligned 506 px + 100 px lossless frames.
+
+    The optional styled frame is drawn at loop position index/count, so the two
+    parts stay synchronized and loop seamlessly; ``full_frames`` stay unframed.
+    """
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg not found")
@@ -1700,17 +1817,14 @@ def _prepare_split_frame_sets(
     frame_files = sorted(full_frames.glob("frame_*.png"))
     if not frame_files:
         raise RuntimeError("Artwork Split source produced no frames")
-    for frame_path in frame_files:
+    for frame_index, frame_path in enumerate(frame_files):
         with Image.open(frame_path) as opened:
             frame = opened.convert("RGBA")
         if frame.width != 606:
             raise RuntimeError(f"Artwork Split frame width mismatch: {frame.width} != 606")
-        frame.crop((0, 0, 506, frame.height)).save(
-            center_frames / frame_path.name, format="PNG", compress_level=0,
-        )
-        frame.crop((506, 0, 606, frame.height)).save(
-            side_frames / frame_path.name, format="PNG", compress_level=0,
-        )
+        center, side = _split_parts(frame, frame_index / len(frame_files), frame_fx)
+        center.save(center_frames / frame_path.name, format="PNG", compress_level=0)
+        side.save(side_frames / frame_path.name, format="PNG", compress_level=0)
     return full_frames, [center_frames, side_frames], len(frame_files)
 
 
@@ -1730,6 +1844,7 @@ def process_gif_split(
     encoder: str = "ffmpeg",
     rotation: float = 0,
     duration: float | None = 10,
+    frame_fx: dict | None = None,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1744,7 +1859,7 @@ def process_gif_split(
         def prepare(candidate_dir: Path, candidate_fps: int):
             return _prepare_split_frame_sets(
                 Path(gif_path), candidate_dir, fps=candidate_fps,
-                rotation=normalize_rotation(rotation), duration=duration,
+                rotation=normalize_rotation(rotation), duration=duration, frame_fx=frame_fx,
             )
 
         full_frames, settings, frame_count = _select_synchronized_frame_group(

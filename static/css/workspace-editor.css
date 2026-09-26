@@ -325,3 +325,12 @@ body.has-workspace-result{overflow:hidden}
 .workspace-result__readiness-empty p{margin:0;color:#91a8b5;font:500 12px/1.65 Mulish,sans-serif}
 @media(max-width:1100px){.workspace-result-modal__body{grid-template-columns:minmax(0,1fr)}.workspace-result__readiness{padding:20px 0 0;border-left:0;border-top:1px solid #294754}}
 @media(max-width:700px){.workspace-result-modal{padding:0}.workspace-result-modal__dialog{width:100vw;max-height:100dvh;height:100dvh;border:0}.workspace-result-modal__header{padding:14px}.workspace-result-modal__body{padding:12px}.workspace-result-modal .workspace-result__viewport{max-height:48vh}.workspace-result__readiness-empty{grid-template-columns:1fr}.workspace-result__readiness .steam-check__summary{grid-template-columns:1fr}.workspace-result__next{align-items:stretch}.workspace-result__next-actions{display:grid;grid-template-columns:1fr;width:100%}.workspace-result__next-actions>*{justify-content:center;width:100%}}
+/* Result dialog: saved-result note and the short Steam upload handoff */
+.workspace-result__saved{margin:10px 0 0;padding:10px 12px;border:1px solid #294754;background:#08141d;color:#9fb6c3;font:600 12px/1.55 Mulish,sans-serif}
+.workspace-result__saved.is-saved{border-color:#2f6b55;color:#9fe8c4}
+.workspace-result__steam{margin-top:16px;padding:14px;border:1px solid #294754;background:#091721}
+.workspace-result__steam-steps{margin:10px 0 12px;padding-left:20px;color:#c9dbe5;font:500 13px/1.65 Mulish,sans-serif}
+.workspace-result__steam-steps li+li{margin-top:3px}
+.workspace-result__steam-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.workspace-result__steam-status{color:#78ffb4;font:600 12px Mulish,sans-serif;overflow-wrap:anywhere}
+.workspace-result__steam .editor-note{margin:10px 0 0}

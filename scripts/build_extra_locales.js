@@ -87,7 +87,7 @@ for (const file of ['static/index.html', 'static/app.html', 'static/profile.html
 }
 visibleHtmlStrings(fs.readFileSync(path.join(root, 'static/privacy-en.html'), 'utf8'), strings);
 const uiLiteralFiles = [
-  'static/ss-shell.js', 'static/js/home.js',
+  'static/ss-shell.js', 'static/js/home.js', 'static/js/job-center.js',
   'static/js/app.js', 'static/js/app-tail.js', 'static/js/gallery.js',
   'static/js/profile.js', 'static/js/profile-insights.js', 'static/js/support-chat.js',
   'static/js/seamless-loop.js', 'static/js/showcase-builder.js',
@@ -331,6 +331,9 @@ const workshopSupportCopy = {
   pt:['Estúdio Workshop','Prepare um arquivo para cada linha Workshop','Prepare um arquivo de altura completa para cada linha Workshop','Como deseja falar conosco?','Escolha um canal. Este relato usa o mesmo formulário de «Relatar um problema».','Abrir Telegram ↗','Relatar um problema no site','Valor']
 };
 for (const language of targets) workshopSupportKeys.forEach((key,index)=>{taskCopyOverrides[language][key]=workshopSupportCopy[language][index]});
+/* Hand-reviewed strings (landing blocks, job center, My results) kept outside this file. */
+const reviewed = JSON.parse(fs.readFileSync(path.join(root, 'scripts', 'locale_reviewed.json'), 'utf8'));
+for (const language of targets) Object.assign(taskCopyOverrides[language], reviewed[language] || {});
 for (const language of targets) Object.assign(overrides[language], taskCopyOverrides[language]);
 
 function maskProducts(text) {
