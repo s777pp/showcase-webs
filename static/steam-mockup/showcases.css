@@ -251,5 +251,33 @@
 .sm-stage .profile_up_summary { margin-top: 2px; }
 /* Public profile: the "open this user's works" link sits in the free band above the profile,
    right-aligned with it, instead of on top of the name. */
-.public-wrap > .public-works-link { top: 4px !important; left: auto !important; right: max(16px, calc(50% - 474px)) !important; }
-@media (max-width: 700px) { .public-wrap > .public-works-link { right: auto !important; } }
+/* "View creator's works": sits in the profile header next to the name. */
+.sm-stage .profile_up { display: flex; align-items: flex-start; }
+.sm-stage .profile_up_items { flex: 1 1 auto; min-width: 0; }
+.public-works-link { display: none; }
+.public-works-link[hidden] { display: none !important; }
+.sm-stage .profile_up > .public-works-link:not([hidden]) {
+  position: static; flex: 0 0 auto; align-self: center; margin: 0 4px 0 auto;
+  display: inline-flex; align-items: center; gap: 9px; min-height: 40px; padding: 0 16px 0 13px;
+  border: 1px solid rgba(85, 217, 255, .45); border-radius: 12px;
+  background: linear-gradient(135deg, rgba(85, 217, 255, .2), rgba(9, 18, 32, .82) 60%);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .35), inset 0 1px rgba(255, 255, 255, .08);
+  color: #eafbff; text-decoration: none; white-space: nowrap;
+  font: 700 13px/1 Montserrat, "Segoe UI", Arial, sans-serif;
+  transition: border-color .18s, background .18s, transform .18s, box-shadow .18s;
+}
+.sm-stage .profile_up > .public-works-link::before {
+  content: ""; width: 16px; height: 16px; flex: none; background: #55d9ff;
+  filter: drop-shadow(0 0 6px rgba(85, 217, 255, .6));
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='7' height='7' rx='1.5'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1.5'/%3E%3Crect x='3' y='14' width='7' height='7' rx='1.5'/%3E%3Crect x='14' y='14' width='7' height='7' rx='1.5'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='7' height='7' rx='1.5'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1.5'/%3E%3Crect x='3' y='14' width='7' height='7' rx='1.5'/%3E%3Crect x='14' y='14' width='7' height='7' rx='1.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.sm-stage .profile_up > .public-works-link:hover {
+  border-color: #55d9ff; background: linear-gradient(135deg, rgba(85, 217, 255, .32), rgba(9, 18, 32, .86) 60%);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .4), 0 0 18px rgba(85, 217, 255, .25); transform: translateY(-1px);
+}
+@media (max-width: 700px) {
+  .sm-stage .profile_up { flex-wrap: wrap; }
+  .sm-stage .profile_up > .public-works-link:not([hidden]) { order: 3; margin: 12px 0 0; width: 100%; justify-content: center; }
+}
