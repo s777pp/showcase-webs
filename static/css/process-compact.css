@@ -1,0 +1,167 @@
+/* Lighter Process tab: folded steps and a compact workspace switch next to the
+   title (script: js/process-compact.js). Loaded after the other tools styles. */
+
+/* ---- workspace switch on the right of the page title (wide screens) ---- */
+@media (min-width: 1400px) {
+  body.page-tools.is-showcase-workspace .workspace-heading {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "title switch" "sub switch";
+    align-items: center;
+    column-gap: 32px;
+    row-gap: 6px;
+  }
+  body.page-tools.is-showcase-workspace .workspace-heading .h-title { grid-area: title; }
+  body.page-tools.is-showcase-workspace .workspace-heading .h-sub { grid-area: sub; margin: 0 !important; }
+  body.page-tools.is-showcase-workspace .workspace-switch {
+    grid-area: switch;
+    justify-self: stretch;
+    width: 100% !important;
+    max-width: none !important;
+    flex-wrap: nowrap !important;
+    margin: 0 !important;
+  }
+  /* Owner reference IMAGE/2.png: the mode pair fills the space between the title and the links. */
+  body.page-tools.is-showcase-workspace .workspace-switch__modes { flex: 1 1 auto; min-width: 0; }
+  body.page-tools.is-showcase-workspace .workspace-switch__modes > button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 64px;
+    padding: 10px 18px;
+    gap: 12px;
+  }
+  body.page-tools.is-showcase-workspace .workspace-switch__modes > button b { font-size: 15px; line-height: 1.25; }
+  body.page-tools.is-showcase-workspace .workspace-switch__modes > button small { font-size: 12px; opacity: .8; }
+  body.page-tools.is-showcase-workspace .workspace-switch__modes > button [data-editor-icon] svg { width: 22px; height: 22px; }
+}
+
+/* ---- step headers are the fold control (chevron left, hint right) ---- */
+.page-tools .is-foldable > .process-fold__head { cursor: pointer; border-radius: 8px; transition: background .18s; margin-left: -8px !important; margin-right: -8px !important; padding: 6px 8px !important; }
+.page-tools .is-foldable > .process-fold__head:hover { background: rgba(31, 201, 241, .07); }
+.page-tools .is-foldable > .process-fold__head:focus-visible { outline: 2px solid #1fc9f1; outline-offset: 2px; }
+.page-tools .process-fold__chevron { display: none; flex: none; place-items: center; width: 26px; height: 26px; border: 1px solid rgba(110, 170, 255, .3); border-radius: 7px; background: rgba(8, 16, 36, .85); color: #1fc9f1; transition: transform .2s ease, border-color .18s; }
+.page-tools .is-foldable > .process-fold__head .process-fold__chevron { display: grid; }
+.page-tools .is-foldable:not(.is-folded) > .process-fold__head .process-fold__chevron { transform: rotate(90deg); }
+.page-tools .is-foldable > .process-fold__head:hover .process-fold__chevron { border-color: #1fc9f1; }
+.page-tools .process-fold__hint { margin-left: auto; color: rgba(200, 214, 238, .55); font: 600 12px/1 Montserrat, "Segoe UI", Arial, sans-serif; letter-spacing: 0; text-transform: none; }
+.page-tools .process-fold__hint:empty { display: none; }
+.page-tools .is-foldable > .process-fold__head:hover .process-fold__hint { color: #6fe3ff; }
+.page-tools #processDesignCard.is-folded { cursor: pointer; }
+
+/* ---- step 1 folded: only the chosen files and the source check stay ---- */
+.page-tools #processFilesCard.is-folded .drop,
+.page-tools #processFilesCard.is-folded .process-link,
+.page-tools #processFilesCard.is-folded .process-paste-hint,
+.page-tools #processFilesCard.is-folded .process-sample,
+.page-tools #processFilesCard.is-folded .asset-library-open { display: none !important; }
+.page-tools #processFilesCard.is-folded #fileList { margin-top: 4px; }
+
+/* ---- step 3 folded: header + one-line summary ---- */
+.page-tools #processDesignCard > .process-fold__summary { display: none; }
+.page-tools #processDesignCard.is-folded > :not(h2):not(.process-fold__summary) { display: none !important; }
+.page-tools #processDesignCard.is-folded > h2 { cursor: pointer; margin-bottom: 10px !important; }
+.page-tools #processDesignCard.is-folded > .process-fold__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+}
+.page-tools .process-fold__chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgba(110, 170, 255, .2);
+  border-radius: 8px;
+  background: rgba(8, 16, 36, .7);
+  font-size: 12px;
+  line-height: 1.2;
+}
+.page-tools .process-fold__chip small { color: rgba(200, 214, 238, .6); font-size: 11px; }
+.page-tools .process-fold__chip b { color: #e9f3ff; font-weight: 700; }
+.page-tools #processDesignCard.is-folded:hover .process-fold__chip { border-color: rgba(31, 201, 241, .4); }
+
+/* ---- pinned title + preview (owner reference IMAGE/3.png) ----
+   The page scrolls normally (wheel anywhere). The title row sticks under the
+   tools header and the right column (preview + step 4) sticks under the title,
+   so only the left column moves. When the left column ends, the grid ends and
+   the page scrolls on to the footer. --pc-chrome / --pc-top / --pc-h are set by
+   process-compact.js from the real header and title heights. */
+@media (min-width: 1051px) {
+  body.page-tools.pc-split.pc-process .main > .topbar {
+    position: sticky;
+    top: var(--pc-chrome, 109px);
+    z-index: 20;
+    background: transparent;
+    padding-top: 12px !important;
+    padding-bottom: 14px !important;
+    margin-bottom: 0 !important;
+  }
+  /* Backdrop only while the title is pinned: same glass as the tools header,
+     full window width, so it reads as part of the header (no black band). */
+  body.page-tools.pc-split.pc-process .main > .topbar::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 100vw;
+    transform: translateX(-50%);
+    z-index: -1;
+    pointer-events: none;
+    background: rgba(4, 9, 24, .9);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(90, 150, 255, .12);
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  body.page-tools.pc-split.pc-process .main > .topbar.is-stuck::before { opacity: 1; }
+  body.page-tools.pc-split #tab-process.active > .process-preview-column {
+    position: sticky !important;
+    top: var(--pc-top, 250px) !important;
+    align-self: start;
+    max-height: var(--pc-h);
+    overflow: hidden;
+    grid-template-rows: none !important;
+    grid-auto-rows: max-content !important;
+    align-content: start !important;
+  }
+  /* Page end: the footer scrolls in normally. The right column is released by its
+     grid row as the footer arrives; process-compact.js moves the pinned title up by
+     the same amount, so the whole top part leaves together and nothing overlaps. */
+  body.page-tools.pc-split.pc-process .main { padding-bottom: 0 !important; }
+  body.page-tools.pc-split.pc-process #tab-process.active > .process-controls { padding-bottom: 24px !important; }
+
+  /* The preview gets exactly the height left over in the column (--pc-canvas,
+     measured by process-compact.js), so the whole right block fits the window. */
+  body.page-tools.pc-split #tab-process #wmCanvasWrap {
+    min-height: 0 !important;
+    height: var(--pc-canvas, 360px);
+  }
+  body.page-tools.pc-split #tab-process #wmCanvasEmpty { min-height: 0; height: 100%; box-sizing: border-box; overflow: hidden; }
+  body.page-tools.pc-split #tab-process #wmCanvas {
+    max-height: 100%;
+    width: auto !important;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  /* Room for the preview: the header already has "Home", step 4 chips already say the state. */
+  body.page-tools.pc-split.pc-process .main > .back { display: none !important; }
+  body.page-tools.pc-split #processNextHint { display: none !important; }
+  body.page-tools.pc-split #processReadinessHint { padding: 10px 14px !important; margin-top: 10px !important; }
+  body.page-tools.pc-split #processReadinessHint .btn { min-height: 34px !important; padding: 6px 14px !important; }
+  /* Rotation: file name and buttons on one line. */
+  body.page-tools.pc-split #processRotationPanel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; }
+}
+
+/* 1400-1599 px: the title row is tight, so the one-line hints move into tooltips and the links never wrap. */
+@media (min-width: 1400px) and (max-width: 1599px) {
+  body.page-tools.is-showcase-workspace .workspace-switch__modes > button small { display: none !important; }
+  body.page-tools.is-showcase-workspace .workspace-switch__modes > button { min-height: 52px; }
+}
+@media (min-width: 1400px) {
+  body.page-tools.is-showcase-workspace .workspace-switch > button,
+  body.page-tools.is-showcase-workspace .workspace-switch > details summary { white-space: nowrap !important; }
+}

@@ -295,25 +295,39 @@
     '</div></div>';
   }
 
+  /* One footer for the whole site: the landing footer (brand, links, socials,
+     copyright + trademark note). Styles: css/home-overlays.css (.home-footer). */
+  var FOOTER_SOCIALS = [
+    ['https://steamcommunity.com/id/n1t1337/', 'Steam', '/static/steam.png'],
+    ['https://discord.com/invite/me48dhgcw4', 'Discord', '/static/discord.png'],
+    ['https://www.youtube.com/@n1t1337/videos', 'YouTube', '/static/youtube.png'],
+    ['https://www.tiktok.com/@n1t1337', 'TikTok', '/static/tiktok.png']
+  ];
   function footerHTML() {
     var ru = lang() === 'ru';
     var links = [
       ['/app', ru ? 'Инструменты' : 'Tools'],
       ['/gallery', ru ? 'Галерея' : 'Gallery'],
+      ['/#pricing', ru ? 'Цены' : 'Pricing'],
       ['/profile', ru ? 'Профиль' : 'Profile'],
-      ['/#pricing', ru ? 'Тарифы' : 'Pricing'],
-      ['/#faq', 'FAQ'],
+      ['/extension', ru ? 'Расширение' : 'Extension'],
       ['/guides', ru ? 'Инструкции' : 'Guides'],
       ['/privacy', ru ? 'Политика конфиденциальности' : 'Privacy policy']
     ];
-    return '<footer class="ss-foot"><div class="ss-wrap ss-foot__in">' +
-      '<nav class="ss-foot__nav">' + links.map(function (l) {
-        return '<a href="' + siteUrl(l[0]) + '"' + (l[2] ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + esc(l[1]) + '</a>';
+    return '<footer class="home-footer">' +
+      '<a class="home-footer__brand" href="' + siteUrl('/') + '" aria-label="Showcase Maker"><img src="/static/icon-256.png" alt="" width="32" height="32">' +
+      '<span><b>Showcase Maker</b><small>' + (ru ? 'Инструменты для Steam-витрин от n1t1337' : 'Steam showcase tools by n1t1337') + '</small></span></a>' +
+      '<nav class="home-footer__nav" aria-label="Footer navigation">' + links.map(function (l) {
+        return '<a href="' + siteUrl(l[0]) + '">' + esc(l[1]) + '</a>';
       }).join('') + '</nav>' +
-      '<a class="ss-foot__telegram" href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer" aria-label="Telegram channel" title="Telegram">' + OAUTH_ICONS.telegram + '</a>' +
-      '<p class="ss-foot__note">' +
+      '<div class="home-footer__socials" aria-label="Social links">' + FOOTER_SOCIALS.map(function (s) {
+        return '<a href="' + s[0] + '" target="_blank" rel="noopener noreferrer" aria-label="' + s[1] + '"><img src="' + s[2] + '" alt="" width="20" height="20"></a>';
+      }).join('') +
+      '<a href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer" aria-label="Showcase Maker Telegram channel">' + OAUTH_ICONS.telegram + '</a></div>' +
+      // Separate text nodes: the language packs translate whole strings only.
+      '<div class="home-footer__bottom"><small class="home-footer__copy"><span data-no-translate>© 2026 n1t1337 · Showcase Maker · </span><span>' +
       (ru ? 'Steam и Valve — товарные знаки Valve Corporation. Проект неофициальный и не связан с Valve.' : 'Steam and Valve are trademarks of Valve Corporation. This project is unofficial and not affiliated with Valve.') +
-      '</p></div></footer>';
+      '</span></small><span class="home-footer__extra"></span></div></footer>';
   }
 
   /* auth pill — one request, cached on window so a page can reuse it */
@@ -878,7 +892,15 @@
       // inside a lower stacking context (for example the landing .shell).
       document.body.appendChild(document.getElementById('ssAuth'));
     }
-    if (foot) foot.innerHTML = footerHTML();
+    if (foot) {
+      // Page-specific bits (the tools page's daily quota) are kept as the same
+      // DOM nodes and moved into the shared footer, so their scripts still work.
+      var keep = Array.prototype.slice.call(foot.querySelectorAll('[data-foot-keep]'));
+      keep.forEach(function (node) { node.remove(); });
+      foot.innerHTML = footerHTML();
+      var extra = foot.querySelector('.home-footer__extra');
+      keep.forEach(function (node) { extra.appendChild(node); });
+    }
     document.querySelectorAll('[data-privacy-link]').forEach(function (link) {
       link.href = siteUrl('/privacy');
       link.textContent = lang() === 'ru' ? 'Политика конфиденциальности' : 'Privacy policy';

@@ -448,6 +448,34 @@ Only the hero exists for now; content blocks will be added below it later.
   `/api/profile/extension-import` when an `ImportTicket` header is present (ticket is the auth); 1.0.6 also
   sends `credentials: 'omit'` and refocuses the site tab after the import (Steam tab stays for the catalog).
 
+- One site footer (2026-09-27): `ss-shell.js footerHTML()` renders the landing footer (`.home-footer`: brand,
+  links, socials, copyright + Valve trademark note) into `#ssFootHost` on every shell page, including the
+  landing (its static footer stays inside the host as the no-JS/SEO fallback) and the tools page (its old
+  `.app-footer` is gone; `#quota` is marked `data-foot-keep` and moved into `.home-footer__extra`).
+  Styles: `css/home-overlays.css`. Script-free privacy pages carry a static copy (`footer.sm-foot`,
+  `css/privacy.css`). Landing footer "Extension" now links to /extension (was #features).
+  Reviewed locale fix: the footer tagline "Steam showcase tools by n1t1337" in 6 languages.
+
+- Lighter Process tab (2026-09-27, owner reference `IMAGE/1.png`): `js/process-compact.js` + `css/process-compact.css`.
+  Nothing removed, only folded: step 1 folds to the chosen files after a file is added ("Change"/"Collapse";
+  unfolds again when the list is empty); step 3 "Style it" starts folded with summary chips (frame name from
+  `.sqfx__style[aria-checked]`, `#wmEnable`, `SMProcessGrade.get()`), open state in localStorage
+  `smProcessDesignOpen`. On >=1100px the workspace switch (Prepare a file / Create a design / Projects / Jobs /
+  More) sits right of the page title with bigger "Prepare a file"/"Create a design" buttons (owner request).
+  Folding is done by clicking the whole step header (chevron on the left, quiet hint on the right; a folded
+  "Style it" card opens on a click anywhere), no separate buttons. Pinned layout (owner `IMAGE/2.png`, `3.png`):
+  on >=1051 px wide and >=760 px tall windows (`body.pc-split`) the page scrolls normally, the title row sticks
+  under the tools header and the right column (preview + step 4) sticks under the title; the preview height is
+  measured to fit (`--pc-canvas`, min 150 px), so only the left column moves. Page end (owner: the footer must
+  not overlap, just arrive): the right column is released by its grid row as the footer comes in, and
+  `syncPin()` in process-compact.js translates the pinned title up by the same distance, so title + preview leave
+  together (title-to-preview gap stays 8 px) and the footer follows the content with no overlap. The pinned title
+  has no own background at the top of the page (owner `IMAGE/4.png`: a black band looked bad); while pinned
+  (`.topbar.is-stuck`) a full-width glass backdrop like `.top-chrome` fades in via `::before`. Mode pair sits in the
+  title row from 1400 px (hints become tooltips below 1600 px). Laptops <=1400 px: header/tools-menu icons are
+  hidden (`home-overlays.css`) so Russian labels fit without horizontal scroll. Page height with a file:
+  2640 -> 1570 px at 1600 px width.
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or
