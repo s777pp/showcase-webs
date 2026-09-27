@@ -28,33 +28,45 @@ def _steam_web_api_data(steam_id: str) -> dict:
     if not key or not str(steam_id).isdigit():
         return {}
     import requests as _req
+    from concurrent.futures import ThreadPoolExecutor
     base = "https://api.steampowered.com"
     def get(path: str, **params):
         params.update({"key": key, "steamid": str(steam_id)})
-        r = _req.get(base + path, params=params, timeout=15)
+        # Short timeout: this runs inside the extension import request, which
+        # the site waits for; the four calls go out in parallel.
+        r = _req.get(base + path, params=params, timeout=8)
         r.raise_for_status()
         return r.json().get("response") or {}
+    calls = {
+        "player": ("/ISteamUser/GetPlayerSummaries/v2/", {"steamids": str(steam_id)}),
+        "owned": ("/IPlayerService/GetOwnedGames/v1/", {"include_appinfo": 1, "include_played_free_games": 1}),
+        "recent": ("/IPlayerService/GetRecentlyPlayedGames/v1/", {}),
+        "level": ("/IPlayerService/GetSteamLevel/v1/", {}),
+    }
+    results: dict = {}
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {name: pool.submit(get, path, **params) for name, (path, params) in calls.items()}
+        for name, future in futures.items():
+            try:
+                results[name] = future.result()
+            except Exception:
+                if name == "player":
+                    LOGGER.warning("Steam GetPlayerSummaries unavailable")
     out: dict = {}
-    try:
-        players = get("/ISteamUser/GetPlayerSummaries/v2/", steamids=str(steam_id)).get("players") or []
-        if players:
-            out["player"] = players[0]
-    except Exception:
-        LOGGER.warning("Steam GetPlayerSummaries unavailable")
-    try:
-        owned = get("/IPlayerService/GetOwnedGames/v1/", include_appinfo=1, include_played_free_games=1)
+    players = (results.get("player") or {}).get("players") or []
+    if players:
+        out["player"] = players[0]
+    if "owned" in results:
+        owned = results["owned"]
         out["games"] = (owned.get("games") or [])[:500]
         out["game_count"] = int(owned.get("game_count") or len(out["games"]))
-    except Exception:
-        pass
-    try:
-        out["recent_games"] = (get("/IPlayerService/GetRecentlyPlayedGames/v1/").get("games") or [])[:20]
-    except Exception:
-        pass
-    try:
-        out["level"] = int(get("/IPlayerService/GetSteamLevel/v1/").get("player_level") or 0)
-    except Exception:
-        pass
+    if "recent" in results:
+        out["recent_games"] = (results["recent"].get("games") or [])[:20]
+    if "level" in results:
+        try:
+            out["level"] = int(results["level"].get("player_level") or 0)
+        except (TypeError, ValueError):
+            pass
     return out
 
 

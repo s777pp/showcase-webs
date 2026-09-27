@@ -61,7 +61,8 @@
     "View": "Anzeigen",
     "View all {n} comments": "Alle {n} Kommentare anzeigen",
     "Get 2 hours of Pro free": "2 Stunden Pro kostenlos",
-    "NEW": "NEU"
+    "NEW": "NEU",
+    "Steam did not finish loading in 3 minutes. Close the Steam tab and try again.": "Steam wurde in 3 Minuten nicht fertig geladen. Schließe den Steam-Tab und versuche es erneut."
   },
   "tr": {
     "3 Steam formats": "3 Steam formatı",
@@ -124,7 +125,8 @@
     "View": "Görüntüle",
     "View all {n} comments": "{n} yorumun tümünü gör",
     "Get 2 hours of Pro free": "2 saat ücretsiz Pro al",
-    "NEW": "YENİ"
+    "NEW": "YENİ",
+    "Steam did not finish loading in 3 minutes. Close the Steam tab and try again.": "Steam 3 dakika içinde yüklenmedi. Steam sekmesini kapatıp tekrar dene."
   },
   "fr": {
     "3 Steam formats": "3 formats Steam",
@@ -188,7 +190,8 @@
     "View all {n} comments": "Voir les {n} commentaires",
     "Get 2 hours of Pro free": "2 heures de Pro offertes",
     "Extension": "Extension",
-    "NEW": "NOUVEAU"
+    "NEW": "NOUVEAU",
+    "Steam did not finish loading in 3 minutes. Close the Steam tab and try again.": "Steam ne s’est pas chargé en 3 minutes. Ferme l’onglet Steam et réessaie."
   },
   "uk": {
     "3 Steam formats": "3 формати Steam",
@@ -253,7 +256,8 @@
     "Get 2 hours of Pro free": "Отримай 2 години Pro безкоштовно",
     "Home": "Головна",
     "Activate": "Активувати",
-    "NEW": "НОВЕ"
+    "NEW": "НОВЕ",
+    "Steam did not finish loading in 3 minutes. Close the Steam tab and try again.": "Steam не завантажився за 3 хвилини. Закрий вкладку Steam і спробуй ще раз."
   },
   "es": {
     "3 Steam formats": "3 formatos de Steam",
@@ -316,7 +320,8 @@
     "View": "Ver",
     "View all {n} comments": "Ver los {n} comentarios",
     "Get 2 hours of Pro free": "Consigue 2 horas de Pro gratis",
-    "NEW": "NUEVO"
+    "NEW": "NUEVO",
+    "Steam did not finish loading in 3 minutes. Close the Steam tab and try again.": "Steam no terminó de cargar en 3 minutos. Cierra la pestaña de Steam e inténtalo de nuevo."
   },
   "pt": {
     "3 Steam formats": "3 formatos da Steam",
@@ -379,6 +384,7 @@
     "View": "Ver",
     "View all {n} comments": "Ver todos os {n} comentários",
     "Get 2 hours of Pro free": "Ganhe 2 horas de Pro grátis",
-    "NEW": "NOVO"
+    "NEW": "NOVO",
+    "Steam did not finish loading in 3 minutes. Close the Steam tab and try again.": "A Steam não terminou de carregar em 3 minutos. Feche a aba da Steam e tente novamente."
   }
 }

@@ -41,15 +41,16 @@
       button.removeAttribute('data-href');
       var frame = document.createElement('iframe');
       // Extensions commonly inject their site bridge into the top frame only.
-      // Relay catalog reads only, from this exact same-origin editor frame.
+      // Relay the editor's extension calls (ping, catalog, profile import) from
+      // this exact same-origin frame; the import itself is ticket-bound.
       var catalogRequests = new Map();
       window.addEventListener('message', function (event) {
         if (event.origin !== location.origin) return;
         var data = event.data || {};
         if (event.source === frame.contentWindow && data.source === 'SSH_SITE' && data.type === 'REQUEST') {
-          if (!data.payload || !['PING', 'GET_CUSTOMIZATION_CATALOG'].includes(data.payload.type) || typeof data.requestId !== 'string') return;
+          if (!data.payload || !['PING', 'GET_CUSTOMIZATION_CATALOG', 'IMPORT_STEAM_PROFILE'].includes(data.payload.type) || typeof data.requestId !== 'string') return;
           if (catalogRequests.has(data.requestId)) return;
-          catalogRequests.set(data.requestId, setTimeout(function () { catalogRequests.delete(data.requestId); }, 95000));
+          catalogRequests.set(data.requestId, setTimeout(function () { catalogRequests.delete(data.requestId); }, 200000));
           window.postMessage(data, location.origin);
         } else if (event.source === window && data.source === 'SSH_EXTENSION' && data.type === 'RESPONSE' && catalogRequests.has(data.requestId)) {
           clearTimeout(catalogRequests.get(data.requestId));

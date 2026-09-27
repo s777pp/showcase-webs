@@ -436,6 +436,14 @@ Only the hero exists for now; content blocks will be added below it later.
   Landing Telegram offer is now "2 hours of Pro" (trial codes: `scripts/gen_access_codes.py --type trial --hours 2`).
   Reviewed locale fixes: fr "Extension", uk "Головна"/"Активувати", "NEW" tag in 6 languages.
 
+- Extension import hang (2026-09-27): the tools "Profile" tab embeds `/profile?embed=tools`; the extension
+  bridge lives in the top frame only and `layout-refinement.js` relayed PING/catalog but NOT
+  `IMPORT_STEAM_PROFILE`, so imports from the tools tab waited 90 s, then `extMessage` replayed the
+  ticket-bound import via `chrome.runtime.sendMessage` (second Steam tab, "ticket already used").
+  Now: the relay also forwards the import (same-origin frame, 200 s), the import waits up to 180 s, and a
+  bridge that answered PING is never bypassed. Server: Steam Web API calls run in parallel with 8 s timeouts.
+  Extension 1.0.6 waits for the profile DOM instead of tab status "complete" (GIF-heavy pages took > 30 s).
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or

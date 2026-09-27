@@ -697,7 +697,7 @@ async def api_profile_extension_import(request: Request):
         if avatar_url:
             try:
                 import requests as _rq
-                avatar_response = _rq.get(avatar_url, timeout=12, headers={"User-Agent": "Mozilla/5.0 ShowcaseMaker"})
+                avatar_response = _rq.get(avatar_url, timeout=8, headers={"User-Agent": "Mozilla/5.0 ShowcaseMaker"})
                 if avatar_response.ok and avatar_response.content and len(avatar_response.content) <= 8_000_000:
                     content_type = (avatar_response.headers.get("content-type") or "").lower()
                     ext = ".png" if "png" in content_type else (".webp" if "webp" in content_type else ".jpg")
