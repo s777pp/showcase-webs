@@ -666,8 +666,16 @@ def _profile_customizations(page_html: str) -> dict:
         parser.feed(page_html or "")
     except Exception as exc:
         LOGGER.debug("profile showcase parse degraded: %s", exc)
+    # Structured, family-based showcase data (see smweb/steam_showcases.py);
+    # the legacy title-based list is only a fallback if that parser finds nothing.
+    try:
+        from smweb.steam_showcases import parse_showcases
+        structured = parse_showcases(page_html or "")
+    except Exception as exc:
+        LOGGER.debug("structured showcase parse failed: %s", exc)
+        structured = []
     return {
-        "showcases": parser.showcases[:20],
+        "showcases": structured or parser.showcases[:20],
         "badges": parser.badges[:16],
         "awards": parser.awards[:12],
         "background_item": parser.background,
@@ -678,6 +686,9 @@ def _profile_customizations(page_html: str) -> dict:
 def _normalise_showcase(item: dict) -> dict:
     """Reduce Steam's noisy block media to the slots visible in the showcase."""
     result = dict(item)
+    if "stats" in item:
+        # Already shaped by smweb.steam_showcases: slot order is Steam's own.
+        return result
     images = []
     for raw in item.get("images") or []:
         url = unescape(str(raw or "")).strip()
@@ -854,6 +865,12 @@ def _load_profile(canonical, progress=None):
         summary = re.sub(r"<br\s*/?>", "\n", summary, flags=re.I)
         summary = _clean(summary)
         custom = _profile_customizations(page_html)
+        try:
+            from smweb.steam_showcases import parse_profile_page
+            extras = parse_profile_page(page_html)
+        except Exception as exc:
+            LOGGER.debug("profile extras parse failed: %s", exc)
+            extras = {}
         showcase_instances = [_normalise_showcase(s) for s in custom["showcases"]]
         background_item = custom.get("background_item") or {}
         avatar_frame = custom.get("avatar_frame") or {}
@@ -870,7 +887,10 @@ def _load_profile(canonical, progress=None):
                 "realname": txt("realname"),
                 "status": txt("onlineState"),
                 "member_since": txt("memberSince"),
-                "groups": groups,
+                "groups": groups or [
+                    {"name": g.get("name", ""), "avatar": g.get("avatar", ""), "members": g.get("members", "")}
+                    for g in ((extras.get("sidebar") or {}).get("groups") or {}).get("items", [])
+                ],
                 "level": int(level_match.group(1)) if level_match else None,
                 "background": (background_item.get("poster") or
                                (unescape(bg_match.group(1)) if bg_match else "")),
@@ -890,6 +910,9 @@ def _load_profile(canonical, progress=None):
                 ],
                 "badge_items": custom.get("badges") or [],
                 "awards": custom["awards"],
+                "sidebar": extras.get("sidebar") or {},
+                "comments": extras.get("comments") or {},
+                "favorite_badge": extras.get("favorite_badge") or {},
                 "sync_mode": "browser_plus_api" if root is None else "api_plus_html",
                 "steam_api_available": False,
             },

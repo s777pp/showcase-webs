@@ -129,6 +129,24 @@ def _clean_extension_profile(raw: dict, steam_id: str) -> dict:
             "width": max(0, min(int(sc.get("width") or 0), 3000)),
             "height": max(0, min(int(sc.get("height") or 0), 10000)),
         })
+    # Extension 1.0.6+ also sends the raw showcase area; parse it exactly like
+    # the server import so both paths give the same Steam layout.
+    # page_html (whole profile) also carries the right column and comments.
+    extras = {}
+    page_html = p.get("page_html") if isinstance(p.get("page_html"), str) else ""
+    showcase_html = p.get("showcase_html") if isinstance(p.get("showcase_html"), str) else ""
+    source = page_html if 0 < len(page_html) <= 2_500_000 else (showcase_html if 0 < len(showcase_html) <= 1_200_000 else "")
+    if source:
+        try:
+            from smweb.steam_showcases import parse_profile_page, sanitize, sanitize_extras
+            parsed = parse_profile_page(source)
+            structured = sanitize(parsed["showcases"], url)
+            if structured:
+                showcases = structured
+            if page_html:
+                extras = sanitize_extras(parsed, url)
+        except Exception:
+            pass
     def cards(name, limit=100):
         out = []
         for item in (p.get(name) if isinstance(p.get(name), list) else [])[:limit]:
@@ -152,9 +170,10 @@ def _clean_extension_profile(raw: dict, steam_id: str) -> dict:
         "background_item": {"poster": url(bg.get("poster")), "webm": url(bg.get("webm")), "mp4": url(bg.get("mp4"))},
         "frame": url(frame.get("animated") or frame.get("static")),
         "avatar_frame": {"animated": url(frame.get("animated")), "static": url(frame.get("static"))},
-        "favorite_badge": {"image": url(fav.get("image")), "title": txt(fav.get("title"), 120), "xp": txt(fav.get("xp"), 40)},
+        "favorite_badge": extras.get("favorite_badge") or {"image": url(fav.get("image")), "title": txt(fav.get("title"), 120), "xp": txt(fav.get("xp"), 40)},
         "badges": cards("badges"), "awards": cards("awards"), "groups": cards("groups", 30),
         "stats_map": stats, "showcase_instances": showcases,
+        "sidebar": extras.get("sidebar") or {}, "comments": extras.get("comments") or {},
         "sync_mode": "steam_api_plus_extension", "captured_at": txt(p.get("captured_at"), 80),
     }
 

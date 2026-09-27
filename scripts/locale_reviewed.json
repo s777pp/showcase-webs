@@ -53,7 +53,15 @@
     "Nothing yet. Finished results from processing, Character, Loop and Upscale appear here automatically.": "Noch nichts da. Fertige Ergebnisse aus Verarbeitung, Charakter, Loop und Hochskalierung erscheinen hier automatisch.",
     "Finished results are kept for 30 days when you are signed in.": "Angemeldet bleiben fertige Ergebnisse 30 Tage gespeichert.",
     "Download": "Herunterladen",
-    "Guides": "Anleitungen"
+    "Guides": "Anleitungen",
+    "Achievement Progress": "Erfolgsfortschritt",
+    "Comments": "Kommentare",
+    "Friends": "Freunde",
+    "Recent Activity": "Letzte Aktivität",
+    "View": "Anzeigen",
+    "View all {n} comments": "Alle {n} Kommentare anzeigen",
+    "Get 2 hours of Pro free": "2 Stunden Pro kostenlos",
+    "NEW": "NEU"
   },
   "tr": {
     "3 Steam formats": "3 Steam formatı",
@@ -108,7 +116,15 @@
     "Nothing yet. Finished results from processing, Character, Loop and Upscale appear here automatically.": "Henüz bir şey yok. İşleme, Karakter, Döngü ve Büyütme sonuçları burada otomatik görünür.",
     "Finished results are kept for 30 days when you are signed in.": "Giriş yaptığında hazır sonuçlar 30 gün saklanır.",
     "Download": "İndir",
-    "Guides": "Rehberler"
+    "Guides": "Rehberler",
+    "Achievement Progress": "Başarım İlerlemesi",
+    "Comments": "Yorumlar",
+    "Friends": "Arkadaşlar",
+    "Recent Activity": "Son Etkinlik",
+    "View": "Görüntüle",
+    "View all {n} comments": "{n} yorumun tümünü gör",
+    "Get 2 hours of Pro free": "2 saat ücretsiz Pro al",
+    "NEW": "YENİ"
   },
   "fr": {
     "3 Steam formats": "3 formats Steam",
@@ -163,7 +179,16 @@
     "Nothing yet. Finished results from processing, Character, Loop and Upscale appear here automatically.": "Rien pour l’instant. Les résultats du traitement, du Personnage, de la Boucle et de l’Agrandissement apparaissent ici automatiquement.",
     "Finished results are kept for 30 days when you are signed in.": "Connecté, vos résultats sont conservés 30 jours.",
     "Download": "Télécharger",
-    "Guides": "Guides"
+    "Guides": "Guides",
+    "Achievement Progress": "Progression des succès",
+    "Comments": "Commentaires",
+    "Friends": "Amis",
+    "Recent Activity": "Activité récente",
+    "View": "Voir",
+    "View all {n} comments": "Voir les {n} commentaires",
+    "Get 2 hours of Pro free": "2 heures de Pro offertes",
+    "Extension": "Extension",
+    "NEW": "NOUVEAU"
   },
   "uk": {
     "3 Steam formats": "3 формати Steam",
@@ -218,7 +243,17 @@
     "Nothing yet. Finished results from processing, Character, Loop and Upscale appear here automatically.": "Поки порожньо. Готові результати обробки, «Персонажа», циклу та збільшення з’являться тут автоматично.",
     "Finished results are kept for 30 days when you are signed in.": "Для користувачів з акаунтом готові результати зберігаються 30 днів.",
     "Download": "Завантажити",
-    "Guides": "Інструкції"
+    "Guides": "Інструкції",
+    "Achievement Progress": "Прогрес досягнень",
+    "Comments": "Коментарі",
+    "Friends": "Друзі",
+    "Recent Activity": "Нещодавня активність",
+    "View": "Переглянути",
+    "View all {n} comments": "Усі коментарі ({n})",
+    "Get 2 hours of Pro free": "Отримай 2 години Pro безкоштовно",
+    "Home": "Головна",
+    "Activate": "Активувати",
+    "NEW": "НОВЕ"
   },
   "es": {
     "3 Steam formats": "3 formatos de Steam",
@@ -273,7 +308,15 @@
     "Nothing yet. Finished results from processing, Character, Loop and Upscale appear here automatically.": "Aún no hay nada. Los resultados del procesamiento, Personaje, Bucle y Ampliación aparecen aquí automáticamente.",
     "Finished results are kept for 30 days when you are signed in.": "Con la sesión iniciada, los resultados se guardan 30 días.",
     "Download": "Descargar",
-    "Guides": "Guías"
+    "Guides": "Guías",
+    "Achievement Progress": "Progreso de logros",
+    "Comments": "Comentarios",
+    "Friends": "Amigos",
+    "Recent Activity": "Actividad reciente",
+    "View": "Ver",
+    "View all {n} comments": "Ver los {n} comentarios",
+    "Get 2 hours of Pro free": "Consigue 2 horas de Pro gratis",
+    "NEW": "NUEVO"
   },
   "pt": {
     "3 Steam formats": "3 formatos da Steam",
@@ -328,6 +371,14 @@
     "Nothing yet. Finished results from processing, Character, Loop and Upscale appear here automatically.": "Nada por aqui ainda. Resultados do processamento, Personagem, Loop e Ampliação aparecem aqui automaticamente.",
     "Finished results are kept for 30 days when you are signed in.": "Com login, os resultados ficam guardados por 30 dias.",
     "Download": "Baixar",
-    "Guides": "Guias"
+    "Guides": "Guias",
+    "Achievement Progress": "Progresso de conquistas",
+    "Comments": "Comentários",
+    "Friends": "Amigos",
+    "Recent Activity": "Atividade recente",
+    "View": "Ver",
+    "View all {n} comments": "Ver todos os {n} comentários",
+    "Get 2 hours of Pro free": "Ganhe 2 horas de Pro grátis",
+    "NEW": "NOVO"
   }
 }

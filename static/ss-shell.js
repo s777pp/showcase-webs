@@ -903,6 +903,9 @@
     var authQuery = new URLSearchParams(location.search).get('auth');
     loadMe().then(function (user) {
       if (!user.logged_in && (authQuery === '1' || authQuery === 'register')) openAuth('register');
+      // Links from script-free pages (privacy policy): ?auth=login and ?activate=1.
+      else if (!user.logged_in && authQuery === 'login') openAuth('login');
+      if (new URLSearchParams(location.search).get('activate') === '1') openActivation();
     });
   }
 

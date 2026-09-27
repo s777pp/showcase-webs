@@ -195,6 +195,17 @@ def gallery_page(request: Request):
     return _legacy_redirect(request, "/gallery")
 
 
+@router.get("/guides", include_in_schema=False)
+@router.get("/guides/", include_in_schema=False)
+def guides_page(request: Request):
+    return _legacy_redirect(request, "/guides")
+
+
+@router.get("/guides/{slug}", include_in_schema=False)
+def guide_page(slug: str, request: Request):
+    return _legacy_redirect(request, "/guides/" + quote(slug, safe=""))
+
+
 def _landing(language: str):
     return _localized_html("index.html", language, "/")
 

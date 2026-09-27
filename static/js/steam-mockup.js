@@ -4,8 +4,8 @@
  */
 (function (global) {
   var UI = {
-    en: {steam_user:'Steam User',replace_media:'Replace media',replace:'Replace',upload:'＋ Upload',featured:'Featured Artwork Showcase',artwork:'Artwork Showcase',workshop:'Workshop Showcase',guide:'Favorite Guide',info:'Info',favorite_art:'Favorite Artwork',showcase:'Showcase',submissions:'Submissions',followers:'Followers',created_by:'Created by — ',ratings:' ratings',level:'Level',favorite_badge:'Favorite Badge',offline:'Currently Offline',online:'Currently Online',ingame:'Currently In-Game',awards:'Profile Awards',badges:'Badges',groups:'Groups',no_groups:'No groups',games:'Games',inventory:'Inventory',screenshots:'Screenshots',videos:'Videos',workshop_items:'Workshop Items',reviews:'Reviews',guides:'Guides',artwork_stat:'Artwork'},
-    ru: {steam_user:'Пользователь Steam',replace_media:'Заменить медиа',replace:'Заменить',upload:'＋ Загрузить',featured:'Избранная иллюстрация',artwork:'Витрина иллюстраций',workshop:'Витрина Workshop',guide:'Избранное руководство',info:'Информация',favorite_art:'Избранная иллюстрация',showcase:'Витрина',submissions:'Работы',followers:'Подписчики',created_by:'Автор — ',ratings:' оценок',level:'Уровень',favorite_badge:'Избранный значок',offline:'Не в сети',online:'В сети',ingame:'В игре',awards:'Награды профиля',badges:'Значки',groups:'Группы',no_groups:'Нет групп',games:'Игры',inventory:'Инвентарь',screenshots:'Скриншоты',videos:'Видео',workshop_items:'Работы Workshop',reviews:'Обзоры',guides:'Руководства',artwork_stat:'Иллюстрации'}
+    en: {steam_user:'Steam User',replace_media:'Replace media',replace:'Replace',upload:'＋ Upload',featured:'Featured Artwork Showcase',artwork:'Artwork Showcase',workshop:'Workshop Showcase',guide:'Favorite Guide',info:'Info',favorite_art:'Favorite Artwork',showcase:'Showcase',submissions:'Submissions',followers:'Followers',created_by:'Created by — ',ratings:' ratings',level:'Level',favorite_badge:'Favorite Badge',offline:'Currently Offline',online:'Currently Online',ingame:'Currently In-Game',awards:'Profile Awards',badges:'Badges',groups:'Groups',no_groups:'No groups',games:'Games',inventory:'Inventory',screenshots:'Screenshots',videos:'Videos',workshop_items:'Workshop Items',reviews:'Reviews',guides:'Guides',artwork_stat:'Artwork',friends:'Friends',comments:'Comments',view_all:'View all {n} comments',ach_progress:'Achievement Progress',view:'View'},
+    ru: {steam_user:'Пользователь Steam',replace_media:'Заменить медиа',replace:'Заменить',upload:'＋ Загрузить',featured:'Избранная иллюстрация',artwork:'Витрина иллюстраций',workshop:'Витрина Workshop',guide:'Избранное руководство',info:'Информация',favorite_art:'Избранная иллюстрация',showcase:'Витрина',submissions:'Работы',followers:'Подписчики',created_by:'Автор — ',ratings:' оценок',level:'Уровень',favorite_badge:'Избранный значок',offline:'Не в сети',online:'В сети',ingame:'В игре',awards:'Награды профиля',badges:'Значки',groups:'Группы',no_groups:'Нет групп',games:'Игры',inventory:'Инвентарь',screenshots:'Скриншоты',videos:'Видео',workshop_items:'Работы Workshop',reviews:'Обзоры',guides:'Руководства',artwork_stat:'Иллюстрации',friends:'Друзья',comments:'Комментарии',view_all:'Все комментарии ({n})',ach_progress:'Прогресс достижений',view:'Смотреть'}
   };
   if (global.SMLang && SMLang.extend) SMLang.extend(UI);
   function tr(k) { var l='en'; try{l=global.SMLang&&SMLang.get?SMLang.get():'en'}catch(e){} return (UI[l]||UI.en)[k] || UI.en[k] || k; }
@@ -106,7 +106,219 @@
     };
   }
 
+  /* ---- Steam-faithful showcases (imports parsed by smweb/steam_showcases.py) ----
+     Markup follows Steam's own profile_customization structure; styles live in
+     /static/steam-mockup/showcases.css under the .smsc namespace. */
+  function safeHref(url) {
+    return /^https:\/\/([a-z0-9-]+\.)*(steamcommunity\.com|steampowered\.com)\//i.test(String(url || "")) ? String(url) : "";
+  }
+  function richHtml(segments) {
+    return (segments || []).map(function (seg) {
+      if (!seg) return "";
+      if (seg.t === "br") return "<br>";
+      if (seg.t === "hr") return "<hr>";
+      if (seg.t === "emoticon") return '<img class="smsc-emoticon" src="' + esc(px(seg.src)) + '" alt="' + esc(seg.alt || "") + '" title="' + esc(seg.alt || "") + '" loading="lazy">';
+      if (seg.t === "image") return '<img class="smsc-inline-img" src="' + esc(px(seg.src)) + '" alt="" loading="lazy">';
+      if (seg.t === "link") {
+        var href = safeHref(seg.href);
+        return href ? '<a class="smsc-bb-link" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">' + esc(seg.v) + "</a>" : esc(seg.v);
+      }
+      var cls = seg.s ? ' class="smsc-bb-' + esc(seg.s) + '"' : "";
+      return cls ? "<span" + cls + ">" + esc(seg.v) + "</span>" : esc(seg.v);
+    }).join("");
+  }
+  function statsRow(stats, extraCls) {
+    if (!stats || !stats.length) return "";
+    return '<div class="smsc-stats' + (extraCls ? " " + extraCls : "") + '">' + stats.map(function (s) {
+      return '<div class="' + ["smsc-stat", s.tone ? "smsc-stat--" + esc(s.tone) : ""].join(" ") + '"><div class="smsc-stat__value">' + esc(s.value) + '</div><div class="smsc-stat__label">' + esc(s.label) + "</div></div>";
+    }).join("") + "</div>";
+  }
+  function shell(sc, idx, body, opts) {
+    opts = opts || {};
+    var cls = ["smsc", "smsc--" + sc.type, opts.art ? "smsc--art" : ""].join(" ");
+    return '<div class="' + esc(cls) + '" data-sc="' + idx + '">' +
+      (opts.art ? "" : '<div class="smsc-header">' + esc(localizedKnown(sc.title || tr("showcase"))) + "</div>") +
+      (opts.before || "") + '<div class="smsc-block">' + body + "</div></div>";
+  }
+  function screenshotShowcase(sc, idx) {
+    var imgs = sc.images || [];
+    var single = sc.type === "featured";
+    var main = '<div class="smsc-shot-primary' + (single ? " is-single" : "") + '">' +
+      '<div class="smsc-shot">' + slotTag(imgs[0] || "", "smsc-shot__img", "showcase", "showcase", idx + ":0") + "</div>" +
+      (sc.caption && sc.caption.replace(/[\s᠌⠀]+/g, "") ? '<div class="smsc-shot-name">' + esc(sc.caption) + "</div>" : "") +
+      (sc.shot_stats && sc.shot_stats.length
+        ? '<div class="smsc-shot-stats">' + sc.shot_stats.map(function (st) {
+            return '<span class="smsc-shot-stat" title="' + esc(st.title) + '">' + (st.icon ? '<img src="' + esc(px(st.icon)) + '" alt="">' : "") + " " + esc(st.value) + "</span>";
+          }).join("") + "</div>"
+        : sc.favorites ? '<div class="smsc-shot-stats"><span class="smsc-fav" aria-hidden="true">★</span> ' + esc(sc.favorites) + "</div>" : "") +
+      "</div>";
+    if (single) return shell(sc, idx, main, { art: sc.type !== "screenshots" });
+    var side = "";
+    var smallCount = sc.type === "screenshots" ? 4 : 1;
+    for (var i = 1; i <= smallCount; i++) {
+      if (i > 1 && !imgs[i]) break;
+      side += '<div class="smsc-shot smsc-shot--small">' + slotTag(imgs[i] || "", "smsc-shot__img", "showcase", "showcase", idx + ":" + i) + "</div>";
+    }
+    if (sc.more) side += '<div class="smsc-shot-count">' + esc(sc.more) + "</div>";
+    return shell(sc, idx, main + '<div class="smsc-shot-rightcol">' + side + "</div>", { art: sc.type !== "screenshots" });
+  }
+  function iconImg(item, cls) {
+    return item && item.image ? '<img class="' + cls + '" src="' + esc(px(item.image)) + '" alt="" title="' + esc(item.title || "") + '" loading="lazy">' : "";
+  }
+  /* Recent activity / favourite game card: capsule, name, hours, achievement progress. */
+  function gameInfoHtml(g, opts) {
+    g = g || {};
+    opts = opts || {};
+    var ach = "";
+    if (g.progress || (g.achievements && g.achievements.length)) {
+      ach = '<div class="smsc-gi-ach">' +
+        (g.progress ? '<div class="smsc-gi-summary"><span class="smsc-gi-summary__label">' + tr("ach_progress") + '</span> <span>' + esc(g.progress.text) + '</span>' +
+          '<span class="smsc-gi-bar"><span style="width:' + esc(Math.max(0, Math.min(100, +g.progress.pct || 0))) + '%"></span></span></div>' : "") +
+        '<div class="smsc-gi-icons">' + (g.achievements || []).map(function (a) { return iconImg(a, "smsc-gi-icon"); }).join("") +
+        (g.more ? '<span class="smsc-gi-more">' + esc(g.more) + "</span>" : "") + "</div></div>";
+    }
+    var files = (g.files || []).length ? (ach ? '<div class="smsc-gi-rule"></div>' : "") + '<div class="smsc-gi-files">' + g.files.map(function (f) { return "<span>" + esc(f) + "</span>"; }).join("") + "</div>" : "";
+    var head = opts.favorite
+      ? '<div class="smsc-fg"><div class="smsc-fg__cap">' + (g.image ? '<img src="' + esc(px(g.image)) + '" alt="">' : "") + '</div><div class="smsc-guide__title">' + esc(g.name) + "</div></div>"
+      : '<div class="smsc-gi"><div class="smsc-gi__cap">' + (g.image ? '<img src="' + esc(px(g.image)) + '" alt="">' : "") + '</div>' +
+        '<div class="smsc-gi__name">' + esc(g.name) + '</div><div class="smsc-gi__details">' + (g.details || []).map(esc).join("<br>") + "</div></div>";
+    return { head: head, stats: ach || files ? '<div class="smsc-gi-stats">' + ach + files + "</div>" : "" };
+  }
+  function hasSidebar(state) {
+    var s = state.sidebar;
+    return !!(s && ((s.counts && s.counts.length) || s.badges || s.friends || s.groups));
+  }
+  function sidebarHtml(state) {
+    var s = state.sidebar || {};
+    var status = s.status || state.status || "Currently Offline";
+    var tone = /in-game|в игре/i.test(status) ? "ingame" : /online|в сети/i.test(status) ? "online" : "offline";
+    function count(label, value) {
+      return '<div class="smsb-count"><span class="smsb-count__label">' + esc(label) + '</span> <span class="smsb-count__total">' + esc(value) + "</span></div>";
+    }
+    function iconRow(box, cls) {
+      return box && box.items && box.items.length ? '<div class="smsb-icons">' + box.items.slice(0, 4).map(function (i) { return iconImg(i, cls); }).join("") + "</div>" : "";
+    }
+    var html = '<div class="smsb">' +
+      '<div class="smsb-status smsb-status--' + tone + '">' + esc(localizedKnown(status)) + (s.status_game ? '<div class="smsb-status__game">' + esc(s.status_game) + "</div>" : "") + "</div>";
+    if (s.awards) html += '<div class="smsb-section">' + count(tr("awards"), s.awards.count) + iconRow(s.awards, "smsb-award") + "</div>";
+    if (s.badges) html += '<div class="smsb-section">' + count(tr("badges"), s.badges.count) + iconRow(s.badges, "smsb-badge") + "</div>";
+    if (s.counts && s.counts.length) html += '<div class="smsb-section">' + s.counts.map(function (c) { return count(c.label, c.value); }).join("") + "</div>";
+    if (s.groups) {
+      html += '<div class="smsb-section">' + count(tr("groups"), s.groups.count) + (s.groups.items || []).map(function (g, n) {
+        return '<div class="smsb-group' + (n === 0 ? " is-primary" : "") + '">' + (g.avatar ? '<img src="' + esc(px(g.avatar)) + '" alt="">' : "<span></span>") +
+          '<div class="smsb-group__text"><span class="smsb-group__name">' + esc(g.name) + "</span>" + (g.members ? '<span class="smsb-group__members">' + esc(g.members) + "</span>" : "") + "</div></div>";
+      }).join("") + "</div>";
+    }
+    if (s.friends) {
+      html += '<div class="smsb-section">' + count(tr("friends"), s.friends.count) + (s.friends.items || []).map(function (f) {
+        return '<div class="smsb-friend smsb-friend--' + esc(f.persona || "offline") + '">' + (f.avatar ? '<img src="' + esc(px(f.avatar)) + '" alt="">' : "<span></span>") +
+          '<div class="smsb-friend__text"><span class="smsb-friend__name">' + esc(f.name) + '</span><span class="smsb-friend__status">' + esc(f.status) + "</span></div>" +
+          (f.level ? '<span class="smsb-level">' + esc(f.level) + "</span>" : "") + "</div>";
+      }).join("") + "</div>";
+    }
+    return html + "</div>";
+  }
+  function commentsHtml(c) {
+    if (!c || !(c.items && c.items.length)) return "";
+    return '<div class="smcm"><div class="smcm-header"><span>' + tr("comments") + "</span>" +
+      (c.total > c.items.length ? '<span class="smcm-all">' + esc(tr("view_all").replace("{n}", c.total)) + "</span>" : "") + "</div>" +
+      '<div class="smcm-list">' + c.items.map(function (m) {
+        return '<div class="smcm-comment"><span class="smcm-avatar smcm-avatar--' + esc(m.persona || "offline") + '">' +
+          (m.avatar ? '<img src="' + esc(px(m.avatar)) + '" alt="">' : "") + '</span><div class="smcm-body"><div class="smcm-name">' + esc(m.author) + "</div>" +
+          '<div class="smcm-time">' + esc(m.time) + '</div><div class="smcm-text">' + richHtml(m.rich) + "</div></div></div>";
+      }).join("") + "</div></div>";
+  }
+  function renderStructured(sc, idx) {
+    var t = sc.type;
+    var imgs = sc.images || [];
+    if (t === "achievements" || t === "badges") {
+      var icons = sc.icons && sc.icons.length ? sc.icons : imgs.map(function (u) { return { image: u }; });
+      var achCells = icons.map(function (ic, n) {
+        return '<div class="' + ["smsc-ach", t === "badges" ? "smsc-ach--badge" : ""].join(" ") + '" title="' + esc(ic.title || "") + '">' + slotTag(imgs[n] || ic.image, "smsc-ach__img", ic.title || "", "showcase", idx + ":" + n) + "</div>";
+      }).join("") + (sc.more ? '<div class="smsc-ach smsc-ach--more"><span>' + esc(sc.more) + "</span></div>" : "");
+      return shell(sc, idx, '<div class="' + (t === "badges" ? "smsc-badges" : ["smsc-content", "smsc-achs"].join(" ")) + '">' + achCells + "</div>" +
+        (sc.stats && sc.stats.length ? '<div class="smsc-content">' + statsRow(sc.stats) + "</div>" : ""));
+    }
+    if (t === "favoritegame") {
+      var fg = gameInfoHtml(sc.game, { favorite: true });
+      return shell(sc, idx, '<div class="smsc-content">' + fg.head + statsRow(sc.stats) + "</div>" + fg.stats);
+    }
+    if (t === "activity") {
+      var recent = (sc.games || []).map(function (g) {
+        var gi = gameInfoHtml(g);
+        return '<div class="smsc-recent">' + gi.head + gi.stats + "</div>";
+      }).join("");
+      return '<div class="smsc smsc--activity" data-sc="' + idx + '"><div class="smsc-header smsc-header--split"><span>' + esc(sc.title || "Recent Activity") + "</span>" +
+        (sc.playtime ? '<span class="smsc-header__aside">' + esc(sc.playtime) + "</span>" : "") + '</div><div class="smsc-block smsc-block--activity">' + recent +
+        (sc.quicklinks && sc.quicklinks.length ? '<div class="smsc-quicklinks">' + tr("view") + " " + sc.quicklinks.map(function (q) { return "<span>" + esc(q) + "</span>"; }).join('<i>|</i>') + "</div>" : "") + "</div></div>";
+    }
+    if (t === "group") {
+      var gr = sc.group || {};
+      return shell(sc, idx, '<div class="smsc-content"><div class="smsc-group">' +
+        '<div class="smsc-group__avatar">' + (gr.avatar ? '<img src="' + esc(px(gr.avatar)) + '" alt="">' : "") + "</div>" +
+        '<div class="smsc-group__content"><div class="smsc-group__namerow"><span class="smsc-group__name">' + esc(gr.name) + "</span>" + (gr.kind ? " - " + esc(gr.kind) : "") + "</div>" +
+        '<div class="smsc-group__desc">' + esc(gr.description) + "</div>" + statsRow(sc.stats, "smsc-stats--group") + "</div></div></div>");
+    }
+    if (t === "featured" || t === "artwork" || t === "screenshots") return screenshotShowcase(sc, idx);
+    if (t === "info") {
+      var body = sc.rich && sc.rich.length ? richHtml(sc.rich) : esc(sc.text || "").replace(/\n/g, "<br>");
+      return shell(sc, idx, '<div class="smsc-content smsc-notes">' + body + "</div>");
+    }
+    if (t === "trade" || t === "items") {
+      var slots = sc.slots || [];
+      var cells = slots.map(function (s, n) {
+        var style = (s.border ? "border-color" + ":" + s.border + ";" : "") + (s.bg ? "background-color" + ":" + s.bg + ";" : "");
+        return '<div class="smsc-item"' + (style ? ' style="' + esc(style) + '"' : "") + (s.name ? ' title="' + esc(s.name) + '"' : "") + ">" +
+          slotTag(imgs[n] || s.image || "", "smsc-item__img", s.name || "item", "showcase", idx + ":" + n) + "</div>";
+      }).join("");
+      var notes = sc.rich && sc.rich.length ? '<div class="smsc-notes">' + richHtml(sc.rich) + "</div>" : "";
+      var statsBox = (sc.stats && sc.stats.length) || notes ? '<div class="smsc-content">' + statsRow(sc.stats, "smsc-stats--trading") + notes + "</div>" : "";
+      if (t === "items") {
+        var countStat = sc.stats && sc.stats.length ? '<div class="smsc-item-count">' + statsRow(sc.stats.slice(0, 1)) + "</div>" : "";
+        return shell(sc, idx, '<div class="smsc-items">' + cells + countStat + "</div>" + (notes ? '<div class="smsc-content">' + notes + "</div>" : ""));
+      }
+      return shell(sc, idx, '<div class="smsc-items">' + cells + "</div>" + statsBox);
+    }
+    if (t === "gamecollector") {
+      var games = imgs.map(function (u, n) {
+        return '<div class="smsc-game">' + slotTag(u, "smsc-game__img", "game", "showcase", idx + ":" + n) + "</div>";
+      }).join("");
+      return shell(sc, idx, (sc.stats && sc.stats.length ? '<div class="smsc-content">' + statsRow(sc.stats) + "</div>" : "") +
+        (sc.label ? '<div class="smsc-bodylabel">' + esc(sc.label) + "</div>" : "") + '<div class="smsc-games">' + games + "</div>");
+    }
+    if (t === "workshop") {
+      var tiles = "";
+      var count = Math.max(5, imgs.length);
+      if (count % 5) count += 5 - (count % 5);
+      for (var w = 0; w < count; w++) tiles += '<div class="smsc-ws-tile">' + slotTag(imgs[w] || "", "smsc-ws-tile__img", "workshop", "showcase", idx + ":" + w) + "</div>";
+      var head = sc.workshopName ? '<div class="smsc-ws-head">' + (sc.avatar ? '<img src="' + esc(px(sc.avatar)) + '" alt="">' : "") + "<span>" + esc(sc.workshopName) + "</span></div>" : "";
+      return shell(sc, idx, '<div class="smsc-ws-grid">' + tiles + "</div>" + (sc.stats && sc.stats.length ? '<div class="smsc-content smsc-ws-stats">' + statsRow(sc.stats) + "</div>" : ""), { before: head });
+    }
+    if (t === "guide" || t === "workshop_item") {
+      var g = sc.guide || {};
+      return shell(sc, idx, '<div class="smsc-content smsc-guide">' +
+        '<div class="smsc-guide__img">' + slotTag(imgs[0] || "", "smsc-guide__image", "guide", "showcase", idx + ":0") + "</div>" +
+        '<div class="smsc-guide__details">' +
+        (g.title ? '<div class="smsc-guide__title">' + esc(g.title) + "</div>" : "") +
+        (g.author ? '<div class="smsc-guide__author">' + esc(g.author) + "</div>" : "") +
+        '<div class="smsc-guide__app">' + (g.stars || g.ratings ? '<span class="smsc-guide__stars">' + (g.stars ? '<img src="' + esc(px(g.stars)) + '" alt="">' : "") + (g.ratings ? " " + esc(g.ratings) : "") + "</span>" : "") +
+        (g.app_icon ? '<img class="smsc-guide__appicon" src="' + esc(px(g.app_icon)) + '" alt="">' : "") + (g.app ? "<span>" + esc(g.app) + "</span>" : "") + "</div>" +
+        (g.description ? '<div class="smsc-guide__desc">' + esc(g.description) + "</div>" : "") +
+        "</div></div>");
+    }
+    // Achievements, badges, favourite game/group, reviews, completionist, awards…
+    var grid = imgs.length ? '<div class="smsc-grid smsc-grid--' + esc(t) + '">' + imgs.map(function (u, n) {
+      return '<div class="smsc-grid__cell">' + slotTag(u, "smsc-grid__img", "showcase item", "showcase", idx + ":" + n) + "</div>";
+    }).join("") + "</div>" : "";
+    var caption = sc.caption ? '<div class="smsc-guide__title">' + esc(sc.caption) + "</div>" : "";
+    var notesHtml = sc.rich && sc.rich.length ? '<div class="smsc-notes">' + richHtml(sc.rich) + "</div>" : "";
+    return shell(sc, idx, (sc.stats && sc.stats.length ? '<div class="smsc-content">' + statsRow(sc.stats) + "</div>" : "") +
+      (sc.label ? '<div class="smsc-bodylabel">' + esc(sc.label) + "</div>" : "") + caption + grid +
+      (notesHtml ? '<div class="smsc-content">' + notesHtml + "</div>" : ""));
+  }
+
   function renderShowcase(sc, idx) {
+    if (sc && sc.v === 2) return renderStructured(sc, idx);
     var t = (sc.type || "").toLowerCase();
     if (t === "featured") {
       return (
@@ -355,6 +567,7 @@
       "</div></div>" +
       '<div class="profile_main_content">' +
       showHtml +
+      commentsHtml(state.comments) +
       "</div></div>" +
       '<div class="profile_section_right">' +
       '<div class="profile_right_level"><em>' + tr('level') + '</em><span>' +
@@ -370,6 +583,7 @@
       '<div class="profile_right_achievement_exp">' +
       esc((state.favBadge && state.favBadge.xp) || "") +
       "</div></div></div></div>" +
+      (hasSidebar(state) ? sidebarHtml(state) :
       '<div class="profile_right_menu">' +
       '<div class="profile_right_menu_content">' +
       '<div class="profile_right_menu_status">' +
@@ -387,7 +601,7 @@
       '<div class="profile_groups"><div class="profile_right_block_title">' + tr('groups') + ' <span>' + esc((state.groups || []).length) + '</span></div>' +
       (groups || '<div class="profile_groups_empty">' + tr('no_groups') + '</div>') +
       "</div>" +
-      "</div></div>" +
+      "</div></div>") +
       "</div></div></div></div>";
   }
 
@@ -404,6 +618,14 @@
     state.frame = "";
     state.showcases = defaultState().showcases;
     state.stats = defaultState().stats;
+    state.sidebar = p.sidebar && typeof p.sidebar === "object" ? p.sidebar : null;
+    state.comments = p.comments && p.comments.items && p.comments.items.length ? p.comments : null;
+    if (state.sidebar) {
+      if (state.sidebar.status) p.status = p.status || state.sidebar.status;
+      if (state.sidebar.groups && !(p.groups && p.groups.length)) {
+        state.groups = state.sidebar.groups.items.map(function (g) { return { name: g.name, avatar: g.avatar, members: g.members }; });
+      }
+    }
     if (p.name) state.name = p.name;
     if (p.realname) state.realname = p.realname;
     if (p.level != null) state.level = p.level;
@@ -460,6 +682,16 @@
           return url && !/^(?:https?:)?\/\/avatars\./i.test(url) && !/\/avatars\//i.test(url);
         });
         var typ = (sc.type || "other").toLowerCase();
+        if (Array.isArray(sc.stats)) {
+          // Structured import: keep Steam's own fields and layout.
+          var item = { v: 2, type: typ, title: sc.title || "", images: images.slice(0, 40) };
+          ["stats", "rich", "slots", "guide", "caption", "favorites", "more", "label", "workshopName", "avatar", "text", "icons", "game", "games", "group", "playtime", "shot_stats", "quicklinks"].forEach(function (key) {
+            if (sc[key] != null && sc[key] !== "") item[key] = sc[key];
+          });
+          if (item.slots) item.images = item.slots.map(function (s) { return s.image || ""; });
+          list.push(item);
+          return;
+        }
         if (typ.indexOf("workshop") >= 0) {
           list.push({
             type: "workshop",

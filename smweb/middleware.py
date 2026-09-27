@@ -253,6 +253,9 @@ class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
                 except ValueError:
                     return JSONResponse({"ok": False, "msg": "Invalid Content-Length"}, status_code=400)
                 limit = max(1, int(os.environ.get("MAX_REQUEST_MB", "100"))) * 1024 * 1024
+                if request.method == "POST" and request.url.path == "/api/gallery/works":
+                    # Gallery release: 200 MB ZIP + preview; the route checks each part.
+                    limit = max(limit, 240 * 1024 * 1024)
                 if size < 0 or size > limit:
                     return JSONResponse({"ok": False, "msg": "Request body is too large"}, status_code=413)
         return await call_next(request)

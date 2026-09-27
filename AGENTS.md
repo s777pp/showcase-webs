@@ -276,6 +276,11 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
   `Steam showcase <one English keyword>`. Imported profile facts are authoritative over AI guesses.
 - **Removed on purpose:** Builder AI animation (Modal/Wan). Do not reintroduce without a new
   explicit request. Anime-studio redesign was rejected; the original visual design stays.
+- **Browser extension source** (checked 2026-09-27): the latest code is 1.0.5 in `Desktop\Projects\расширение\my`
+  (same as `Documents\ex`); `Downloads\расширение` is an OLD 0.9.2 copy (railway host, no site bridge). The site-v2
+  redesign is 1.0.6 in `Desktop\Projects\расширение\my-v2` (+ `showcase-helper-1.0.6.zip`): `showcase-theme.css` rewritten
+  (bundled Montserrat in `fonts/` + OFL), auto uploader got file-count chips and drag & drop into slots, the Steam-page
+  helper panel (`content-upload-flow.js`) restyled. Behaviour, messages and permissions unchanged.
 - **Browser extension** (SteamShowcase Helper 0.9.8/0.9.9, owner-provided, NOT in this repo):
   site talks to it via an allow-listed bridge; a website deploy does not publish the extension.
   Do not claim it is entirely local or never handles auth data. `/privacy` (8 languages) is
@@ -383,6 +388,53 @@ Only the hero exists for now; content blocks will be added below it later.
   Panels are fully opaque navy (`#0e1a3c` -> `#050a1c`) with a cyan-to-violet top line.
 - QA: `scripts/qa_home_layout.py`, `qa_home_loader_performance.py`, `tests/test_hero_vrm.py`,
   `tests/test_home_loader.py`. Visual check: 1672×941 screenshot vs `IMAGE/gg.png`.
+
+## 6.2 Steam showcase import (2026-09-27, local, not deployed)
+
+- `smweb/steam_showcases.py` parses `div.profile_customization` blocks by their inner family class
+  (`customtext_showcase`, `trade_showcase`, `item_showcase`, `screenshot_showcase` + `myart`/`single`,
+  `gamecollector_showcase`, `favoriteguide_showcase`, `myworkshop_showcase`, …), never by the header —
+  headers are user text. Output keeps Steam's fields: `stats`, `rich` (BBCode segments: text/br/emoticon/link),
+  `slots` (item rarity colours), `guide`, `caption`, `favorites`, `more`, `label`, `workshopName`.
+- Server import (`steam_catalog._profile_customizations`) and the extension import (extension 1.0.6 sends
+  `profile.showcase_html`; `smweb/steam._clean_extension_profile` parses it and runs `sanitize()` with the
+  Steam host allowlist) use the same parser. Older extensions still send `showcase_instances` (legacy path).
+- `static/js/steam-mockup.js` renders these (`v: 2`) with Steam's structure; styles in
+  `static/steam-mockup/showcases.css` (`.smsc*`, values from Steam's profilev2.css DefaultTheme).
+  Artwork/Featured hide their header like Steam (`.myart`). Tests: `tests/test_steam_showcases.py`.
+- Whole profile: `parse_profile_page()` also returns `sidebar` (status, awards/badges counts + 4 icons,
+  item counts, groups, friends with level/persona), `favorite_badge` and `comments` (first page, total).
+  Extension 1.0.6 sends `profile.page_html` (whole `.profile_page`, scripts stripped, ≤2.4 MB; import route
+  accepts 4 MB). Also parsed: achievements/rarest, badge collector, item showcase count, favourite game
+  (achievement progress), favourite group, screenshot stats, Recent Activity (type `activity`).
+  Renderer: `sidebarHtml()` replaces the old right column when `state.sidebar` exists; `commentsHtml()`
+  after the showcases. Compared visually with /id/xipeta, /id/h34p, /profiles/76561199493963167.
+- Gallery release ZIP: 200 MB, no per-file cap inside (unpacked total 400 MB as a zip-bomb guard);
+  `RequestBodyLimitMiddleware` allows 240 MB for `POST /api/gallery/works`, nginx `client_max_body_size 250m`.
+
+## 6.3 Static JS regression fix and flash-of-old-design (2026-09-27, local)
+
+- Found: 19 files under `static/js` + `static/ss-shell.js` + `scripts/{build_extra_locales,check_i18n}.js`
+  had been overwritten by a 2026-09-23 copy, and 12 files were deleted (`nav-groups.js`, `process-layout.js`,
+  `process-frame-fx.js`, `workshop-squares-fx.js`, `job-notify.js`, `home-stars.js`, `locales/extra-*.js`).
+  The same happened in `Desktop/showcase-webs`. Restored from `Desktop/showcase-webs` git commit `421437f`
+  (2026-09-27 01:29); pre-restore copies kept outside the repo. Check after any bulk copy:
+  every `/static/...` reference in HTML/JS/CSS must exist (one-liner in §11 style: grep + test -f).
+- Flash of old design: `app.html` loaded 8 stylesheets (incl. `site-theme.css`) at the end of `<body>`;
+  all moved into `<head>` in the same order (also `analytics-consent.css` on other pages). The tools page also
+  painted raw markup (English, flat old nav) before its end-of-body scripts; `html.sm-booting` hides
+  `body.page-tools` until DOMContentLoaded + 1 frame (CSS fallback reveal after 3 s).
+- Guides (`guide.html`, `css/guides.css`) moved to the v2 theme (`site-v2`, Montserrat, navy panels).
+- Phones: `body.sm-consent-open .studio-support` is lifted above the consent banner.
+- The server caches page templates in memory: restart it after editing HTML.
+
+- Later 2026-09-27: `/guides` and `/guides/{slug}` without a language now 307 to the localized URL, and
+  `i18n.js` `url()` localizes `/guides` links (they used to 404). Support chat (`support-chat.js`) is loaded on
+  every page with the shell, so "Техподдержка" opens the choice dialog everywhere. Privacy pages stay
+  script-free but got a static copy of the site header (`privacy-*.html` + `css/privacy.css .sm-head`);
+  its Activate / Log in links use `/{lang}/?activate=1` and `/{lang}/?auth=login` (handled in `ss-shell.js`).
+  Landing Telegram offer is now "2 hours of Pro" (trial codes: `scripts/gen_access_codes.py --type trial --hours 2`).
+  Reviewed locale fixes: fr "Extension", uk "Головна"/"Активувати", "NEW" tag in 6 languages.
 
 ## 7. Rules for agents
 

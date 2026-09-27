@@ -669,13 +669,13 @@ def api_profile_import_ticket(request: Request):
 @router.post("/api/profile/extension-import")
 async def api_profile_extension_import(request: Request):
     length = int(request.headers.get("content-length") or 0)
-    if length > 1_500_000:
+    if length > 4_000_000:
         return JSONResponse({"ok": False, "msg": "Profile snapshot is too large"}, status_code=413)
     auth = (request.headers.get("authorization") or "").strip()
     ticket = auth[13:].strip() if auth.lower().startswith("importticket ") else ""
     try:
         raw = await request.body()
-        if len(raw) > 1_500_000: raise ValueError("Profile snapshot is too large")
+        if len(raw) > 4_000_000: raise ValueError("Profile snapshot is too large")
         body = json.loads(raw or b"{}")
     except Exception as exc:
         return JSONResponse({"ok": False, "msg": str(exc) or "Invalid JSON"}, status_code=400)

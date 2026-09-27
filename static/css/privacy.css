@@ -38,3 +38,33 @@ footer span{margin-right:auto}
 @media(max-width:760px){.layout{grid-template-columns:1fr;gap:20px}aside{position:static}aside nav{grid-template-columns:1fr 1fr;gap:14px}.intro{padding-top:32px}article{padding:0 22px}}
 @media(max-width:420px){.top,main,footer{width:calc(100% - 28px)}.brand{font-size:12px;gap:7px}.brand img{width:32px;height:32px}.top nav a{padding:8px}aside nav{grid-template-columns:1fr}article{padding:0 16px}h2{font-size:21px}.lead{font-size:17px}}
 @media print{body{background:white;color:black}.top,aside,footer,.skip{display:none}.layout{display:block}article{border:0;padding:0;background:white}main{width:100%}a,.date,.lead,.eyebrow,dt,h2 span{color:black}section{break-inside:avoid}}
+
+/* Static copy of the site header (ss-head) for the script-free policy pages. */
+.top.sm-head{position:sticky;top:0;z-index:20;width:100%;max-width:none;box-sizing:border-box;min-height:60px;margin:0;padding:0 max(24px,calc((100% - 1400px)/2));display:flex;align-items:center;gap:24px;border-bottom:1px solid rgba(90,150,255,.14);background:linear-gradient(90deg,rgba(3,8,22,.97),rgba(6,14,34,.95) 50%,rgba(3,8,22,.97));font-family:Montserrat,"Segoe UI",Arial,sans-serif}
+.sm-head .brand{flex:none;font-size:13px;letter-spacing:.02em}
+.sm-head .brand img{width:34px;height:34px;padding:3px;border:1px solid rgba(110,170,255,.3);border-radius:9px;background:#0b1530}
+.sm-head__nav{display:flex;align-items:stretch;gap:4px;margin:0 auto;min-width:0}
+.sm-head__nav a{position:relative;display:inline-flex;align-items:center;gap:8px;padding:0 14px;min-height:60px;color:rgba(214,229,250,.72);text-decoration:none;font:600 14px/1 Montserrat,"Segoe UI",Arial,sans-serif;white-space:nowrap;transition:color .18s}
+.sm-head__nav a svg{flex:none;opacity:.85}
+.sm-head__nav a:hover{color:#fff}
+.sm-head__nav a::after{content:"";position:absolute;left:14px;right:14px;bottom:0;height:2px;background:#1fc9f1;transform:scaleX(0);transition:transform .18s}
+.sm-head__nav a:hover::after{transform:scaleX(1)}
+.sm-head__nav em{padding:3px 6px;border:1px solid rgba(31,201,241,.6);border-radius:5px;background:rgba(31,201,241,.12);color:#6fe3ff;font:800 9px/1 Consolas,monospace;letter-spacing:.1em;font-style:normal}
+.sm-head__lang{position:relative;flex:none}
+.sm-head__lang summary{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:1px solid rgba(110,160,230,.3);border-radius:10px;background:rgba(8,16,36,.85);color:#e6f0ff;font:700 13px/1 Montserrat,"Segoe UI",Arial,sans-serif;cursor:pointer;list-style:none}
+.sm-head__lang summary::-webkit-details-marker{display:none}
+.sm-head__lang summary i{font-style:normal;color:#1fc9f1}
+.sm-head__lang[open] summary{border-color:#1fc9f1}
+.sm-head__langs{position:absolute;right:0;top:calc(100% + 8px);width:max-content;min-width:150px;display:grid;grid-template-columns:repeat(2,1fr);gap:4px;padding:8px;border:1px solid rgba(110,170,255,.24);border-radius:12px;background:linear-gradient(160deg,#0e1a3c,#050a1c);box-shadow:0 22px 60px rgba(0,0,0,.5)}
+.sm-head__langs a{white-space:nowrap;padding:7px 12px;border:1px solid transparent;border-radius:8px;color:#c9d8ee;text-decoration:none;font:700 12px/1.3 Consolas,monospace;text-align:center}
+.sm-head__langs a:hover{border-color:rgba(31,201,241,.5);color:#fff}
+.sm-head__langs a[aria-current]{background:#1fc9f1;color:#03131a}
+@media(max-width:1100px){.sm-head__nav a{padding:0 10px}.sm-head__nav a span{display:none}.sm-head__nav a em{display:none}}
+@media(max-width:560px){.top.sm-head{gap:8px;padding:0 12px}.sm-head .brand span{display:none}.sm-head__nav{gap:0}.sm-head__nav a{padding:0 8px}}
+@media print{.top.sm-head{display:none}}
+.sm-head__right{flex:none;display:flex;align-items:center;gap:10px}
+.sm-head__btn{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 14px;border:1px solid rgba(110,160,230,.3);border-radius:10px;background:rgba(8,16,36,.85);color:#e6f0ff;text-decoration:none;font:700 13px/1 Montserrat,"Segoe UI",Arial,sans-serif;white-space:nowrap}
+.sm-head__btn:hover{border-color:#1fc9f1;color:#fff}
+.sm-head__btn--login{background:rgba(31,201,241,.14);border-color:rgba(31,201,241,.45)}
+.sm-head__nav a{font-size:13px}
+@media(max-width:1100px){.sm-head__btn span{display:none}.sm-head__btn{padding:0 10px}}

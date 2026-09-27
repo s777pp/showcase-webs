@@ -24,7 +24,10 @@ from smweb.core import DATA, LOGGER, _auth_user, _safe_data_path
 router = APIRouter()
 MODES = {"workshop", "split", "featured"}
 PREVIEW_LIMIT = 24 * 1024 * 1024
-ARCHIVE_LIMIT = 80 * 1024 * 1024
+ARCHIVE_LIMIT = 200 * 1024 * 1024
+# No per-file cap inside the ZIP (large GIFs are fine). The unpacked total is
+# only a zip-bomb guard; the ratio check below stops highly compressed junk.
+UNPACKED_LIMIT = 2 * ARCHIVE_LIMIT
 FREE_STORAGE_LIMIT = 1024 * 1024 * 1024
 PRO_STORAGE_LIMIT = 5 * FREE_STORAGE_LIMIT
 SOCIALS = ("steam", "discord", "telegram", "website", "deviantart", "boosty")
@@ -138,12 +141,12 @@ def _check_archive(data: bytes) -> None:
                 if entry.flag_bits & 1:
                     raise ValueError("Password-protected ZIPs are not supported")
                 total += entry.file_size
-                if entry.file_size > 25 * 1024 * 1024 or total > 160 * 1024 * 1024:
+                if total > UNPACKED_LIMIT:
                     raise ValueError("Unpacked files are too large")
                 if entry.compress_size and entry.file_size / entry.compress_size > 250:
                     raise ValueError("ZIP compression ratio is too high")
                 with archive.open(entry) as member:
-                    raw = member.read(25 * 1024 * 1024 + 1)
+                    raw = member.read(entry.file_size + 1)
                 if len(raw) != entry.file_size:
                     raise ValueError("ZIP file size does not match its contents")
                 info = inspect_file(Candidate(entry.filename, raw))

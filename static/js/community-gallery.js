@@ -15,8 +15,8 @@
   dict.ru.note = 'Выбери тип витрины, чтобы отфильтровать работы.';
   dict.en.archive = 'Work archive (ZIP)';
   dict.ru.archive = 'Архив работы (ZIP)';
-  dict.en.archiveHint = 'ZIP up to 80 MB; each PNG, JPG or GIF inside up to 25 MB. Steam’s 5 MB-per-file limit does not block gallery publication.';
-  dict.ru.archiveHint = 'ZIP до 80 МБ; каждый PNG, JPG или GIF внутри — до 25 МБ. Лимит Steam 5 МБ на файл не мешает публикации в галерее.';
+  dict.en.archiveHint = 'ZIP up to 200 MB, no limit per file inside. Steam’s 5 MB-per-file limit does not block gallery publication.';
+  dict.ru.archiveHint = 'ZIP до 200 МБ, без лимита на отдельные файлы внутри. Лимит Steam 5 МБ на файл не мешает публикации в галерее.';
   dict.en.archiveNeeded = 'Add a ZIP with the work files.';
   dict.ru.archiveNeeded = 'Добавь ZIP с файлами работы.';
   const lang = () => window.SMLang?.get?.() === 'ru' ? 'ru' : 'en';
@@ -32,7 +32,7 @@
       'ZIP image dimensions are too large': 'У одного из изображений в архиве слишком большие размеры.',
       'GIF has too many frames': 'В одном из GIF слишком много кадров.',
       'ZIP may contain only PNG, JPG or GIF files': 'В ZIP можно добавлять только PNG, JPG и GIF.',
-      'Unpacked files are too large': 'Файлы внутри ZIP превышают лимит галереи: 25 МБ на файл или 160 МБ суммарно.',
+      'Unpacked files are too large': 'Файлы внутри ZIP слишком большие после распаковки (больше 400 МБ суммарно).',
       'Add a ZIP with the work files': 'Добавь ZIP с файлами работы.',
       'Upload a ZIP with PNG, JPG or GIF files': 'Загрузи ZIP с файлами PNG, JPG или GIF.',
       'Add a preview image, GIF or video': 'Добавь изображение, GIF или видео для превью.',
