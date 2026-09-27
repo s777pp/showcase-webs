@@ -76,7 +76,7 @@
       </section>
 
       <section class="admin-view" data-page="codes">
-        <div class="split-grid"><form class="panel form-panel" id="codeForm"><p class="overline">НОВАЯ ПАРТИЯ</p><h2>Создать ключи</h2><label>Количество<input id="codeCount" type="number" min="1" max="100" value="1"></label><label>Срок Pro<select id="codeDuration"><option value="7">7 дней</option><option value="30">30 дней</option><option value="365">1 год</option><option value="0">Навсегда</option></select></label><label>Название<input id="codeLabel" value="Pro"></label><label>Кампания<input id="codeCampaign" maxlength="80" placeholder="Например: Telegram сентябрь"></label><label>Сам ключ истекает через<input id="codeExpires" type="number" min="0" max="3650" value="0"><small>0 — не истекает до активации</small></label><button class="button" type="submit">Создать ключи</button><div class="generated-codes" id="generatedCodes" hidden></div></form><article class="panel"><p class="overline">КАК ЭТО РАБОТАЕТ</p><h2>Статус ключа</h2><p class="muted">Новый ключ сразу записывается в приватное хранилище VPS. После активации он привязывается к одному аккаунту и повторно не применяется.</p><button class="button button--ghost" id="exportCodes">Скачать CSV</button></article></div>
+        <div class="split-grid"><form class="panel form-panel" id="codeForm"><p class="overline">НОВАЯ ПАРТИЯ</p><h2>Создать ключи</h2><label>Количество<input id="codeCount" type="number" min="1" max="100" value="1"></label><label>Срок Pro<select id="codeDuration"><option value="2">2 часа</option><option value="168">7 дней</option><option value="720">30 дней</option><option value="8760">1 год</option><option value="0">Навсегда</option></select></label><label>Название<input id="codeLabel" value="Pro"></label><label>Кампания<input id="codeCampaign" maxlength="80" placeholder="Например: Telegram сентябрь"></label><label>Сам ключ истекает через<input id="codeExpires" type="number" min="0" max="3650" value="0"><small>0 — не истекает до активации</small></label><button class="button" type="submit">Создать ключи</button><div class="generated-codes" id="generatedCodes" hidden></div></form><article class="panel"><p class="overline">КАК ЭТО РАБОТАЕТ</p><h2>Статус ключа</h2><p class="muted">Новый ключ сразу записывается в приватное хранилище VPS. После активации он привязывается к одному аккаунту и повторно не применяется.</p><button class="button button--ghost" id="exportCodes">Скачать CSV</button></article></div>
         <div class="table-wrap"><table><thead><tr><th>Ключ</th><th>Тип</th><th>Кампания</th><th>Статус</th><th>Аккаунт</th><th></th></tr></thead><tbody id="codesBody"></tbody></table></div>
       </section>
 
@@ -132,6 +132,6 @@
   </div>
   <dialog class="user-detail-dialog" id="userDetailDialog"><form method="dialog"><button class="dialog-close" aria-label="Закрыть">×</button></form><div id="userDetailContent"></div></dialog>
   <dialog class="user-detail-dialog job-dialog" id="jobDetailDialog"><form method="dialog"><button class="dialog-close" aria-label="Закрыть">×</button></form><div id="jobDetailContent"></div></dialog>
-  <script src="/static/js/analytics-dashboard.js?v=20260926-funnel1"></script>
+  <script src="/static/js/analytics-dashboard.js?v=20260927-trial2h"></script>
 </body>
 </html>

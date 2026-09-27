@@ -123,7 +123,8 @@ async def generate_codes(request: Request):
     _require(request, mutation=True)
     body = await _json_object(request)
     return admin_control.generate_codes(body.get("count", 1), body.get("duration_days", 7), body.get("label", "Pro"),
-                                        body.get("campaign", ""), body.get("expires_days", 0))
+                                        body.get("campaign", ""), body.get("expires_days", 0),
+                                        body.get("duration_hours", 0))
 
 
 @router.delete("/codes/{code}")

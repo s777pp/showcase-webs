@@ -283,3 +283,16 @@ def test_access_codes_can_expire_before_activation(monkeypatch, tmp_path):
     assert created["codes"] == [item["code"]]
     assert item["campaign"] == "Launch"
     assert item["expires_at"] > time.time()
+
+
+def test_admin_can_generate_two_hour_trial_codes(monkeypatch, tmp_path):
+    _isolate(monkeypatch, tmp_path)
+    created = admin_control.generate_codes(2, 0, "Trial", "Telegram", 0, duration_hours=2)
+    items = {item["code"]: item for item in admin_control.codes()["items"]}
+    assert len(created["codes"]) == 2
+    for code in created["codes"]:
+        assert code.startswith("SM-TRIAL-")
+        assert items[code]["type"] == "trial" and items[code]["hours"] == 2
+    # Days still work for older admin pages; 0 hours and 0 days means permanent.
+    assert admin_control.codes()["items"] and admin_control.generate_codes(1, 7)["codes"][0].startswith("SM-TRIAL-")
+    assert admin_control.generate_codes(1, 0, duration_hours=0)["codes"][0].startswith("SM-WEB-")

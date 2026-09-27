@@ -492,23 +492,30 @@ def codes() -> dict:
     return {"ok": True, "items": items}
 
 
-def generate_codes(count: int, duration_days: int, label: str = "Pro", campaign: str = "", expires_days: int = 0) -> dict:
+def generate_codes(count: int, duration_days: int, label: str = "Pro", campaign: str = "", expires_days: int = 0,
+                   duration_hours: float = 0) -> dict:
     count = max(1, min(100, int(count or 1)))
     duration_days = max(0, min(3650, int(duration_days or 0)))
+    # Hours win when given (short trials such as the 2-hour Telegram key).
+    try:
+        duration_hours = max(0.0, min(3650 * 24.0, float(duration_hours or 0)))
+    except (TypeError, ValueError):
+        duration_hours = 0.0
+    hours = duration_hours or duration_days * 24
     source = _read_codes()
     created = []
     expires_days = max(0, min(3650, int(expires_days or 0)))
     expires_at = time.time() + expires_days * 86400 if expires_days else None
     while len(created) < count:
-        code = f"SM-{'TRIAL' if duration_days else 'WEB'}-{secrets.token_hex(3).upper()}-{secrets.token_hex(2).upper()}"
+        code = f"SM-{'TRIAL' if hours else 'WEB'}-{secrets.token_hex(3).upper()}-{secrets.token_hex(2).upper()}"
         if code in source:
             continue
-        meta = {"type": "trial", "label": str(label or "Pro")[:50], "hours": duration_days * 24} if duration_days else {"type": "unlimited", "label": str(label or "Pro")[:50]}
+        meta = {"type": "trial", "label": str(label or "Pro")[:50], "hours": hours} if hours else {"type": "unlimited", "label": str(label or "Pro")[:50]}
         meta.update({"campaign": str(campaign or "")[:80], "created_at": time.time(), "expires_at": expires_at})
         source[code] = meta
         created.append(code)
     _write_codes(source)
-    audit("codes.generate", "access_codes", {"count": count, "duration_days": duration_days,
+    audit("codes.generate", "access_codes", {"count": count, "duration_hours": hours,
                                                 "campaign": str(campaign or "")[:80], "expires_days": expires_days})
     return {"ok": True, "codes": created}
 

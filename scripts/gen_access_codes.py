@@ -11,6 +11,12 @@ With --out the merged list is written straight to a file and nothing is printed,
 so a large batch never passes through the terminal or shell history:
 
     python scripts/gen_access_codes.py 500 --out /data/access_codes.json --merge
+
+2-hour trial keys for the Telegram bot (bottg reads trial_2h.txt, one key per
+line): register them on the site AND get a plain list for the bot in one go:
+
+    python scripts/gen_access_codes.py 200 --type trial --hours 2 --prefix SM-TRIAL --label Trial \
+        --out /data/access_codes.json --merge --plain-out trial_2h.txt
 """
 from __future__ import annotations
 
@@ -36,6 +42,9 @@ def main() -> None:
                          "without hours would grant permanent Pro")
     ap.add_argument("--prefix", default="SM-WEB", help="code prefix (default SM-WEB)")
     ap.add_argument("--out", type=Path, help="write the JSON list to this file instead of printing")
+    ap.add_argument("--plain-out", type=Path,
+                    help="also append the new codes to this text file, one per line "
+                         "(the Telegram bot's key pool)")
     ap.add_argument("--merge", action="store_true",
                     help="with --out: keep the codes already in the file (needed to preserve "
                          "codes buyers have not redeemed yet)")
@@ -53,6 +62,11 @@ def main() -> None:
             raise SystemExit("--type trial requires --hours (e.g. --hours 2)")
         meta["hours"] = args.hours
     payload = {c: dict(meta) for c in codes}
+
+    if args.plain_out:
+        args.plain_out.parent.mkdir(parents=True, exist_ok=True)
+        with args.plain_out.open("a", encoding="utf-8") as fh:
+            fh.write("".join(c + "\n" for c in codes))
 
     if args.out:
         merged = {}
