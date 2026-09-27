@@ -73,6 +73,29 @@ def test_cookie_authenticated_writes_require_same_origin(monkeypatch):
     assert client.post("/change").status_code == 403
 
 
+def test_ticket_import_is_not_blocked_by_the_extension_origin(monkeypatch):
+    monkeypatch.setenv("APP_URL", "https://showcasemaker.com")
+    app = FastAPI()
+    app.add_middleware(OriginGuardMiddleware)
+
+    @app.post("/api/profile/extension-import")
+    def extension_import():
+        return {"ok": True}
+
+    @app.post("/change")
+    def change():
+        return {"ok": True}
+
+    client = TestClient(app, base_url="https://showcasemaker.com")
+    client.cookies.set("sm_session", "secret")
+    extension = {"Origin": "chrome-extension://abcdefghijklmnop"}
+    ticket = dict(extension, Authorization="ImportTicket " + "t" * 40)
+    assert client.post("/api/profile/extension-import", headers=ticket).status_code == 200
+    # Without the ticket header, or on any other route, the origin check still applies.
+    assert client.post("/api/profile/extension-import", headers=extension).status_code == 403
+    assert client.post("/change", headers=ticket).status_code == 403
+
+
 def test_free_quota_uses_shared_counter_without_forgetting_legacy_usage(monkeypatch):
     request = SimpleNamespace()
     monkeypatch.setattr(core, "_auth_user", lambda _request: None)

@@ -127,6 +127,13 @@ class OriginGuardMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         if request.method not in self.UNSAFE or not request.cookies.get("sm_session"):
             return await call_next(request)
+        # The extension posts its capture from chrome-extension://<id>; browsers
+        # may attach the site cookie to it. That route is authenticated by the
+        # one-time ImportTicket header, never by the cookie, so the Origin check
+        # adds nothing there and only broke imports.
+        if (request.url.path == "/api/profile/extension-import"
+                and (request.headers.get("authorization") or "").lower().startswith("importticket ")):
+            return await call_next(request)
         origin = (request.headers.get("origin") or "").rstrip("/")
         if not origin:
             referer = request.headers.get("referer") or ""

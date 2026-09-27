@@ -443,6 +443,10 @@ Only the hero exists for now; content blocks will be added below it later.
   Now: the relay also forwards the import (same-origin frame, 200 s), the import waits up to 180 s, and a
   bridge that answered PING is never bypassed. Server: Steam Web API calls run in parallel with 8 s timeouts.
   Extension 1.0.6 waits for the profile DOM instead of tab status "complete" (GIF-heavy pages took > 30 s).
+  "Invalid request origin" on import: the extension's POST comes from chrome-extension://<id> and browsers
+  attached `sm_session`, so `OriginGuardMiddleware` rejected it. The guard now skips
+  `/api/profile/extension-import` when an `ImportTicket` header is present (ticket is the auth); 1.0.6 also
+  sends `credentials: 'omit'` and refocuses the site tab after the import (Steam tab stays for the catalog).
 
 ## 7. Rules for agents
 
