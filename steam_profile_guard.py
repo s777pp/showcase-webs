@@ -18,7 +18,7 @@ class RateLimited(Exception):
         self.delay = max(60, delay)
 
 
-def run(path, key, fetch, use_global_gate=True):
+def run(path, key, fetch, use_global_gate=True, fresh=False):
     path.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(str(path), timeout=5)
     try:
@@ -28,7 +28,7 @@ def run(path, key, fetch, use_global_gate=True):
         db.execute('BEGIN IMMEDIATE')
         now = time.time()
         cached = db.execute('SELECT stamp,payload FROM profiles WHERE key=?', (key,)).fetchone()
-        if cached and now - cached[0] < 900:
+        if cached and not fresh and now - cached[0] < 900:
             db.commit()
             return json.loads(cached[1])
         gate = db.execute('SELECT until FROM gate WHERE id=1').fetchone() if use_global_gate else None
@@ -70,3 +70,32 @@ def _fallback(cached, now, delay):
         return result
     return {'ok': False, 'code': 'steam_profile_cooldown', 'retry_after': delay,
             'msg': 'Steam profile requests are temporarily paused. Try later or use the extension.'}
+
+
+# Each way of reaching Steam (this server, the Oracle relay, Browser API) has
+# its own IP and therefore its own Steam rate limit.  A 429 pauses only the
+# route that received it, so the next import goes straight to another route.
+def _route_db(path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    db = sqlite3.connect(str(path), timeout=5)
+    db.execute('CREATE TABLE IF NOT EXISTS route_gate (name TEXT PRIMARY KEY, until REAL)')
+    return db
+
+
+def route_wait(path, name):
+    """Seconds until ``name`` may be used again (0 when it is open)."""
+    db = _route_db(path)
+    try:
+        row = db.execute('SELECT until FROM route_gate WHERE name=?', (name,)).fetchone()
+        return max(0, int(row[0] - time.time())) if row else 0
+    finally:
+        db.close()
+
+
+def route_pause(path, name, seconds):
+    db = _route_db(path)
+    try:
+        db.execute('INSERT OR REPLACE INTO route_gate VALUES (?,?)', (name, time.time() + max(0, seconds)))
+        db.commit()
+    finally:
+        db.close()

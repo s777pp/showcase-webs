@@ -12,10 +12,14 @@ def run(job_id: str, job: dict) -> None:
     url = str(job.get("url") or "").strip()
 
     def progress(stage: str, pct: int) -> None:
-        rs.job_update(job_id, status="running", stage=stage, pct=pct)
+        fields = {"status": "running", "stage": stage, "pct": pct}
+        if stage.startswith("via_"):
+            # The page shows which way of reaching Steam is in use right now.
+            fields["route"] = stage[4:]
+        rs.job_update(job_id, **fields)
 
-    progress("browser_connect", 8)
-    result = steam_catalog.profile(url, progress=progress)
+    progress("queued", 4)
+    result = steam_catalog.profile(url, progress=progress, fresh=bool(job.get("fresh")))
     if not result.get("ok"):
         rs.job_update(
             job_id, status="error", pct=100, stage="error",

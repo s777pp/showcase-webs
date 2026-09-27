@@ -718,7 +718,7 @@ def _normalise_showcase(item: dict) -> dict:
     return result
 
 
-def profile(url: str, progress=None) -> dict:
+def profile(url: str, progress=None, fresh: bool = False) -> dict:
     """Load the public part of a Steam profile without a Web API key.
 
     Accepts full URL, /id/vanity, /profiles/steamid64, bare vanity or SteamID64.
@@ -738,11 +738,12 @@ def profile(url: str, progress=None) -> dict:
         canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
 
     cache_dir = _CACHE_PATH.parent if _CACHE_PATH else Path(os.environ.get('DATA_DIR', 'data'))
-    browser_configured = steam_browser_import.configured()
+    gate_path = cache_dir / 'steam_profiles.sqlite3'
+    # Rate limits are tracked per route inside _load_profile, not globally.
     return steam_profile_guard.run(
-        cache_dir / 'steam_profiles.sqlite3', canonical.lower(),
-        lambda: _load_profile(canonical, progress=progress),
-        use_global_gate=not browser_configured,
+        gate_path, canonical.lower(),
+        lambda: _load_profile(canonical, progress=progress, gate_path=gate_path),
+        use_global_gate=False, fresh=fresh,
     )
 
 
@@ -796,26 +797,111 @@ def _html_profile_fields(page_html: str) -> dict:
     }
 
 
-def _load_profile(canonical, progress=None):
-    page_html = ""
-    root = None
-    r = None
-    browser_error = None
-    if steam_browser_import.configured():
-        try:
-            page_html = steam_browser_import.fetch_html(canonical, progress=progress)
-        except steam_browser_import.BrowserImportError as exc:
-            browser_error = exc
+_BROWSER_HEADERS = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Upgrade-Insecure-Requests": "1",
+}
 
-    if not page_html:
-        r = _profile_fetch(canonical + "/?xml=1")
-        if r is None:
-            if browser_error:
-                return {"ok": False, "code": browser_error.code, "msg": str(browser_error)}
-            return {"ok": False, "msg": "Steam profile is unavailable or private"}
+
+def _full_profile_html(html: str) -> bool:
+    # Steam's 429 page and its bare mobile shell both carry a "profile_page"
+    # wrapper, so only the inline profile data proves a real profile page.
+    return bool(html) and ("g_rgProfileData" in html or "profile_private_info" in html)
+
+
+def _direct_page(canonical: str) -> str:
+    """One plain request from this server's own IP."""
+    response = requests.get(canonical + "/?l=english", timeout=TIMEOUT,
+                            headers=_BROWSER_HEADERS, cookies={"Steam_Language": "english"})
+    if response.status_code == 429:
+        raise steam_profile_guard.RateLimited(response.headers.get("Retry-After") or 300)
+    if response.status_code != 200:
+        return ""
+    return response.text
+
+
+def _relay_configured() -> bool:
+    return bool((os.environ.get("STEAM_RELAY_URL") or "").strip() and
+                (os.environ.get("STEAM_RELAY_TOKEN") or "").strip())
+
+
+def _relay_page(canonical: str) -> str:
+    """The same request made from the relay server (a second IP, e.g. Oracle)."""
+    base = (os.environ.get("STEAM_RELAY_URL") or "").strip().rstrip("/")
+    token = (os.environ.get("STEAM_RELAY_TOKEN") or "").strip()
+    response = requests.get(base + "/profile", params={"url": canonical}, timeout=TIMEOUT + 5,
+                            headers={"Authorization": "Bearer " + token})
+    if response.status_code == 429:
+        raise steam_profile_guard.RateLimited(response.headers.get("Retry-After") or 300)
+    if response.status_code != 200:
+        return ""
+    return response.text
+
+
+def _profile_routes(progress):
+    routes = [("server", _direct_page)]
+    if _relay_configured():
+        routes.append(("relay", _relay_page))
+    if steam_browser_import.configured():
+        routes.append(("browser", lambda c: steam_browser_import.fetch_html(c, progress=progress)))
+    return routes
+
+
+def _page_via_routes(canonical, progress, gate_path):
+    """Try every configured way of reaching Steam, cheapest first.
+
+    Returns (html, route, error).  Raises RateLimited when every route is
+    paused, so the caller can fall back to a cached copy of the profile.
+    """
+    waits, error = [], None
+    for step, (name, fetch) in enumerate(_profile_routes(progress)):
+        wait = steam_profile_guard.route_wait(gate_path, name)
+        if wait:
+            waits.append(wait)
+            continue
+        if progress:
+            progress("via_" + name, 6 + step * 4)
+        try:
+            html = fetch(canonical)
+        except steam_profile_guard.RateLimited as exc:
+            steam_profile_guard.route_pause(gate_path, name, exc.delay)
+            waits.append(int(exc.delay))
+            continue
+        except steam_browser_import.BrowserImportError as exc:
+            error = {"ok": False, "code": exc.code, "msg": str(exc)}
+            continue
+        except Exception as exc:
+            LOGGER.info("Steam profile route %s failed: %s", name, type(exc).__name__)
+            continue
+        if name == "browser" and html:
+            return html, name, None
+        if _full_profile_html(html):
+            return html, name, None
+        if html and "error_ctn" in html and "profile_page" not in html:
+            return "", name, {"ok": False, "code": "steam_profile_missing",
+                              "msg": "Steam profile was not found"}
+        # A stripped page usually means Steam is throttling this IP quietly.
+        steam_profile_guard.route_pause(gate_path, name, 120)
+    if error:
+        return "", None, error
+    if waits:
+        raise steam_profile_guard.RateLimited(min(waits))
+    return "", None, {"ok": False, "code": "steam_profile_unavailable",
+                      "msg": "Steam profile is unavailable or private"}
+
+
+def _load_profile(canonical, progress=None, gate_path=None):
+    gate_path = gate_path or Path(os.environ.get("DATA_DIR", "data")) / "steam_profiles.sqlite3"
+    page_html, route, error = _page_via_routes(canonical, progress, gate_path)
+    if error:
+        return error
+    if "profile_private_info" in page_html and "profile_customization" not in page_html:
+        return {"ok": False, "code": "steam_profile_private", "msg": "Steam profile is private"}
+    root = None
     try:
-        if r is not None and not page_html:
-            root = ET.fromstring(r.content)
         html_fields = _html_profile_fields(page_html) if page_html else {}
         def txt(name: str) -> str:
             if root is None:
@@ -831,9 +917,6 @@ def _load_profile(canonical, progress=None):
                     "name": (group.findtext("groupName") or "").strip(),
                     "avatar": (group.findtext("avatarMedium") or "").strip(),
                 })
-        if not page_html:
-            page = _profile_fetch(canonical + '/?l=english')
-            page_html = page.text if page is not None else ""
         if not page_html or not re.search(r'class=[\"\'][^\"\']*\bprofile_page\b', page_html, re.I):
             return {'ok': False, 'code': 'steam_profile_incomplete',
                     'msg': 'Steam did not return the full public profile. Try later or use the extension.'}
@@ -913,7 +996,8 @@ def _load_profile(canonical, progress=None):
                 "sidebar": extras.get("sidebar") or {},
                 "comments": extras.get("comments") or {},
                 "favorite_badge": extras.get("favorite_badge") or {},
-                "sync_mode": "browser_plus_api" if root is None else "api_plus_html",
+                "sync_mode": "browser_plus_api" if route == "browser" else "api_plus_html",
+                "import_via": route,
                 "steam_api_available": False,
             },
         }

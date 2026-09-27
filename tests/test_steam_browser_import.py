@@ -46,11 +46,20 @@ class BrowserImportTests(unittest.TestCase):
             endpoint = steam_browser_import._endpoint()
         self.assertEqual(endpoint, "wss://zone%3Auser:p%40ss%2Fword@brd.superproxy.io:9222")
 
+    def _load_via_browser_only(self):
+        # The direct route comes first; make it unavailable so the Browser API
+        # result is what gets parsed, and keep route pauses out of data/.
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with mock.patch.object(steam_catalog, "_direct_page", return_value=""),              mock.patch.object(steam_catalog, "_relay_configured", return_value=False):
+            return steam_catalog._load_profile("https://steamcommunity.com/id/n1t1337",
+                                               gate_path=Path(tmp.name) / "g.sqlite3")
+
     def test_rendered_html_reuses_existing_profile_parser(self):
         with mock.patch.object(steam_catalog.steam_browser_import, "configured", return_value=True), \
              mock.patch.object(steam_catalog.steam_browser_import, "fetch_html", return_value=PROFILE_HTML), \
              mock.patch.object(steam_catalog, "_profile_fetch") as direct:
-            result = steam_catalog._load_profile("https://steamcommunity.com/id/n1t1337")
+            result = self._load_via_browser_only()
         self.assertTrue(result["ok"])
         self.assertEqual(result["profile"]["steamid"], "76561199542622738")
         self.assertEqual(result["profile"]["name"], "Browser User")
@@ -76,7 +85,7 @@ class BrowserImportTests(unittest.TestCase):
              mock.patch.object(steam_catalog.steam_browser_import, "fetch_html", return_value=PROFILE_HTML), \
              mock.patch.object(steam_catalog.requests, "get", side_effect=api_response), \
              mock.patch.object(steam_catalog, "_profile_fetch") as direct:
-            result = steam_catalog._load_profile("https://steamcommunity.com/id/n1t1337")
+            result = self._load_via_browser_only()
 
         self.assertTrue(result["ok"])
         self.assertEqual(result["profile"]["name"], "API User")

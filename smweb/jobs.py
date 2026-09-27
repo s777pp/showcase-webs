@@ -30,6 +30,45 @@ from smweb.steam_readiness import Candidate, analyze_groups
 JOB_RESULT_TTL_SECONDS = max(120, int(os.environ.get("JOB_RESULT_TTL_SECONDS") or 86400))
 
 
+
+_KNOWN_SOURCE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".mp4", ".mov", ".webm", ".avi", ".mkv",
+                      ".ico", ".cur", ".tif", ".tiff", ".avif", ".tga", ".psd", ".qoi", ".jp2", ".j2k", ".jfif",
+                      ".dds", ".icns", ".pcx", ".apng", ".m4v")
+
+
+def _sniff_extension(raw: bytes) -> str:
+    """Container type from the first bytes, for files whose name lost its extension."""
+    head = bytes(raw[:32])
+    if head.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if head.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if head.startswith((b"GIF87a", b"GIF89a")):
+        return ".gif"
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return ".webp"
+    if head[:4] == b"RIFF" and head[8:12] == b"AVI ":
+        return ".avi"
+    if head.startswith(b"\x1a\x45\xdf\xa3"):
+        return ".webm"
+    if head[4:8] == b"ftyp":
+        return ".mov" if head[8:10] == b"qt" else ".mp4"
+    if head.startswith(b"BM"):
+        return ".bmp"
+    return ""
+
+
+def _name_with_real_extension(name: str, raw: bytes) -> str:
+    """Keep the name, but trust the bytes when the name has no usable extension.
+
+    Downloaders such as Klickpin produce names like "From Klickpin.com- Long title"
+    (the ".mp4" cut off by length limits); the suffix ".com- Long title" used to
+    fail the job as "unsupported format" although the file was a normal video."""
+    if Path(name).suffix.lower() in _KNOWN_SOURCE_EXTS:
+        return name
+    ext = _sniff_extension(raw)
+    return (Path(name).name.replace(".", "_")[:60] or "source") + ext if ext else name
+
 def _record_process_event(jid: str, event_name: str, opts: dict, elapsed_ms: int = 0, reason: str = "") -> None:
     context = opts.get("_analytics") if isinstance(opts.get("_analytics"), dict) else {}
     modes = list(opts.get("modes") or [])
@@ -305,6 +344,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                 if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
                     errors.append(f"{name}: >{MAX_UPLOAD_MB}MB")
                     continue
+                name = _name_with_real_extension(name, raw)
                 name, raw = proc.normalize_upload(name, raw)  # ICO, TIFF, AVIF, TGA, PSD... -> PNG
                 name, raw = proc.graded_source(name, raw, opts.get("grade"), job_dir / f"grade_{fi}")
                 ext = Path(name).suffix.lower()

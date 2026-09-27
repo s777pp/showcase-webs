@@ -32,7 +32,7 @@ from smweb import object_store
 from fastapi import APIRouter
 
 
-from smweb.core import DATA, LOGGER, MAX_UPLOAD_MB, PROFILE_EDITABLE_FIELDS, _auth_user, _safe_data_path
+from smweb.core import DATA, LOGGER, MAX_UPLOAD_MB, PROFILE_EDITABLE_FIELDS, _auth_user, _is_limit_exempt, _safe_data_path
 from smweb.steam import _clean_extension_profile, _merge_nonempty_profile, _merge_steam_api
 
 
@@ -768,40 +768,28 @@ async def api_profile_steam_import(request: Request):
     if not url:
         return JSONResponse({"ok": False, "msg": "No Steam URL"}, status_code=400)
     try:
-        import steam_catalog
-        import steam_browser_import
-
-        # Browser imports can take up to a minute.  When Browser API is active,
-        # return immediately and let the shared worker queue do the expensive
-        # rendered-page collection.  The extension route above is untouched.
-        if steam_browser_import.configured():
-            uid = int(user["id"])
-            user_key = f"steam:{uid}"
-            source_key = hashlib.sha256(url.lower().encode("utf-8")).hexdigest()[:24]
-            existing = rs.job_find_active(user_key, "steam_profile_import", source_key)
-            if existing:
-                return {"ok": True, "queued": True, "job_id": existing[0]}
-            jid = secrets.token_hex(12)
-            external = ((os.environ.get("WORKER_MODE") or "embedded").strip().lower() == "external" and
-                        rs.redis_ok() and rs.worker_alive())
-            payload = {
-                "kind": "steam_profile_import", "status": "queued", "pct": 1,
-                "stage": "queued", "user_key": user_key, "user_id": uid,
-                "source_key": source_key, "url": url, "created": time.time(),
-            }
-            rs.job_create(jid, payload, enqueue=external)
-            if not external:
-                from smweb.profile_import_jobs import run as run_profile_import
-                _profile_import_pool.submit(run_profile_import, jid, payload)
-            return {"ok": True, "queued": True, "job_id": jid}
-
-        pr = steam_catalog.profile(url)
-        if not pr.get("ok"):
-            return JSONResponse(pr, status_code=400)
-        profile = _merge_steam_api(pr["profile"])
-        auth_db.save_steam_profile_snapshot(int(user["id"]), profile)
-        return {"ok": True, "profile": profile,
-                **{k: pr[k] for k in ('cached', 'stale', 'warning_code', 'retry_after') if k in pr}}
+        # Imports run as jobs so the page can show which route (this server,
+        # the relay, or Browser API) is reaching Steam at the moment.
+        uid = int(user["id"])
+        user_key = f"steam:{uid}"
+        source_key = hashlib.sha256(url.lower().encode("utf-8")).hexdigest()[:24]
+        existing = rs.job_find_active(user_key, "steam_profile_import", source_key)
+        if existing:
+            return {"ok": True, "queued": True, "job_id": existing[0]}
+        jid = secrets.token_hex(12)
+        external = ((os.environ.get("WORKER_MODE") or "embedded").strip().lower() == "external" and
+                    rs.redis_ok() and rs.worker_alive())
+        payload = {
+            "kind": "steam_profile_import", "status": "queued", "pct": 1,
+            "stage": "queued", "user_key": user_key, "user_id": uid,
+            "source_key": source_key, "url": url, "created": time.time(),
+            "fresh": _is_limit_exempt(user),
+        }
+        rs.job_create(jid, payload, enqueue=external)
+        if not external:
+            from smweb.profile_import_jobs import run as run_profile_import
+            _profile_import_pool.submit(run_profile_import, jid, payload)
+        return {"ok": True, "queued": True, "job_id": jid}
     except Exception:
         LOGGER.exception("Steam profile import start failed")
         return JSONResponse({"ok": False, "msg": "Steam profile import failed"}, status_code=500)
@@ -820,6 +808,7 @@ def api_profile_steam_import_status(job_id: str, request: Request):
     response = {
         "ok": True, "status": job.get("status") or "queued",
         "pct": int(job.get("pct") or 0), "stage": job.get("stage") or "queued",
+        "route": job.get("route") or "",
     }
     if job.get("status") == "done":
         response["result"] = job.get("result") or {}

@@ -56,21 +56,27 @@ class ProfileGuardTests(unittest.TestCase):
             self.assertEqual(guard.RateLimited('Thu, 01 Jan 1970 00:20:00 GMT').delay, 1200)
         self.assertEqual(guard.RateLimited('invalid').delay, 900)
 
+    @patch.object(steam_catalog, '_relay_configured', return_value=False)
+    @patch.object(steam_catalog.steam_browser_import, 'configured', return_value=False)
     @patch.object(steam_catalog.requests, 'get')
-    def test_429_does_not_retry_or_try_alternate_url(self, get):
+    def test_429_does_not_retry_the_same_route(self, get, *_):
         get.return_value = Mock(status_code=429, headers={'Retry-After': '600'})
         with self.assertRaises(guard.RateLimited):
-            steam_catalog._load_profile('https://steamcommunity.com/id/test')
+            steam_catalog._load_profile('https://steamcommunity.com/id/test', gate_path=self.path)
+        self.assertEqual(get.call_count, 1)
+        # The paused route is not asked again on the next import.
+        with self.assertRaises(guard.RateLimited):
+            steam_catalog._load_profile('https://steamcommunity.com/id/test', gate_path=self.path)
         self.assertEqual(get.call_count, 1)
 
+    @patch.object(steam_catalog, '_relay_configured', return_value=False)
+    @patch.object(steam_catalog.steam_browser_import, 'configured', return_value=False)
     @patch.object(steam_catalog.requests, 'get')
-    def test_xml_success_html_failure_is_not_success(self, get):
-        xml = Mock(status_code=200, content=b'<profile><steamID64>76561198000000000</steamID64></profile>')
-        get.side_effect = [xml, Mock(status_code=503)]
-        result = steam_catalog._load_profile('https://steamcommunity.com/id/test')
+    def test_html_failure_is_not_success(self, get, *_):
+        get.return_value = Mock(status_code=503)
+        result = steam_catalog._load_profile('https://steamcommunity.com/id/test', gate_path=self.path)
         self.assertFalse(result['ok'])
-        self.assertEqual(result['code'], 'steam_profile_incomplete')
-
+        self.assertEqual(result['code'], 'steam_profile_unavailable')
 
 if __name__ == '__main__':
     unittest.main()

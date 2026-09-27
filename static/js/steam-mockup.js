@@ -24,6 +24,10 @@
     if (/^(blob:|data:|\/)/i.test(url)) return url;
     return "/api/steam/proxy-image?url=" + encodeURIComponent(url);
   }
+  function directMedia(url) {
+    /* Video needs no canvas access, so Steam CDN files can load directly. */
+    return /^https:\/\/[a-z0-9.-]*steamstatic\.com\//i.test(String(url || "")) ? url : px(url);
+  }
   function isVideoUrl(url) {
     return /\.(webm|mp4)(\?|$)/i.test(String(url || ""));
   }
@@ -55,7 +59,8 @@
       esc(src) +
       '" alt="' +
       esc(alt || "") +
-      '" loading="lazy"/>'
+      // The avatar and favourite badge are at the very top: load them right away.
+      (/profile_up_avatar|profile_right_achievement_icon/.test(cls) ? '" loading="eager" fetchpriority="high"/>' : '" loading="lazy"/>')
     );
   }
   function imgTag(url, cls, alt) {
@@ -474,11 +479,15 @@
     var bgMovie = state.backgroundMovie || (isVideoUrl(state.background) ? state.background : "");
     var bgStill = state.background && !isVideoUrl(state.background) ? fullBackgroundUrl(state.background) : "";
     if (bgMovie) {
+      /* The still is painted first so the page is never black while the
+         animated background is still downloading. The video itself plays
+         straight from Steam's CDN; our proxy is only the fallback. */
       bg =
-        '<video class="profile_animated_background" autoplay muted loop playsinline preload="auto" src="' +
-        esc(px(bgMovie)) +
-        '"></video>';
-    } else if (bgStill) {
+        '<video class="profile_animated_background" autoplay muted loop playsinline preload="auto"' +
+        (bgStill ? ' poster="' + esc(px(bgStill)) + '"' : "") +
+        ' src="' + esc(directMedia(bgMovie)) + '" data-proxy-src="' + esc(px(bgMovie)) + '"></video>';
+    }
+    if (bgStill) {
       pageStyle = ' style="background-image:url(&quot;' + esc(px(bgStill)) + '&quot;)"';
     }
 
@@ -603,6 +612,12 @@
       "</div>" +
       "</div></div>") +
       "</div></div></div></div>";
+    var movie = root.querySelector("video.profile_animated_background[data-proxy-src]");
+    if (movie && movie.getAttribute("src") !== movie.getAttribute("data-proxy-src")) {
+      movie.addEventListener("error", function () {
+        movie.src = movie.getAttribute("data-proxy-src");
+      }, { once: true });
+    }
   }
 
   function applySteamProfile(apiProfile, state) {

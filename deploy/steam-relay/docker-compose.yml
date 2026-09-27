@@ -1,0 +1,13 @@
+services:
+  steam-relay:
+    image: python:3.12-alpine
+    restart: unless-stopped
+    command: ["python", "-u", "/app/relay.py"]
+    volumes:
+      - ./relay.py:/app/relay.py:ro
+    environment:
+      STEAM_RELAY_TOKEN: ${STEAM_RELAY_TOKEN}
+      PORT: "8787"
+    ports:
+      - "8787:8787"
+    mem_limit: 96m

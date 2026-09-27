@@ -154,6 +154,16 @@ class OriginGuardMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+def _limit_exempt(request) -> bool:
+    if not (os.environ.get("RATE_LIMIT_EXEMPT_EMAILS") or "").strip():
+        return False
+    try:
+        from smweb.core import _auth_user, _is_limit_exempt
+        return _is_limit_exempt(_auth_user(request))
+    except Exception:
+        return False
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Light Redis/local rate limits on sensitive paths."""
     RULES = (
@@ -208,6 +218,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         client = _ip(request)
         for prefix, limit, window in self.RULES:
             if path.startswith(prefix) and request.method in ("POST", "PUT", "DELETE", "PATCH"):
+                if _limit_exempt(request):
+                    break
                 ok, _left = rs.rate_limit(f"{prefix}:{client}", limit, window)
                 if not ok:
                     from fastapi.responses import JSONResponse

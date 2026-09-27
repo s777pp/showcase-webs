@@ -245,3 +245,11 @@
 .smsc-quicklinks { margin-top: 12px; color: #8f98a0; font-size: 11px; text-align: right; }
 .smsc-quicklinks span { color: #fff; }
 .smsc-quicklinks i { margin: 0 6px; color: #8f98a0; font-style: normal; }
+
+/* Profile header: name on top, the summary under it (an older rule laid them out in one row). */
+.sm-stage .profile_up_items { display: flex !important; flex-direction: column; align-items: flex-start; gap: 4px; }
+.sm-stage .profile_up_summary { margin-top: 2px; }
+/* Public profile: the "open this user's works" link sits in the free band above the profile,
+   right-aligned with it, instead of on top of the name. */
+.public-wrap > .public-works-link { top: 4px !important; left: auto !important; right: max(16px, calc(50% - 474px)) !important; }
+@media (max-width: 700px) { .public-wrap > .public-works-link { right: auto !important; } }

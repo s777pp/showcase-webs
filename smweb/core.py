@@ -278,6 +278,18 @@ def _auth_user(req: Request) -> dict | None:
     return auth_db.user_by_token(tok)
 
 
+def _is_limit_exempt(user: dict | None) -> bool:
+    """Accounts listed in RATE_LIMIT_EXEMPT_EMAILS skip request rate limits.
+
+    Env-only for the same reason as the moderator list below.
+    """
+    if not user:
+        return False
+    emails = {e.strip() for e in (os.environ.get("RATE_LIMIT_EXEMPT_EMAILS") or "").lower().split(",") if e.strip()}
+    email = (user.get("email") or "").strip().lower()
+    return bool(email) and email in emails
+
+
 # Moderator list, env-only. There is deliberately no fallback address: this file
 # lives in a public repository, so a default here would both publish a personal
 # address and grant moderation to whoever ends up holding it.
@@ -311,7 +323,33 @@ def _esc_html(s) -> str:
     return html.escape(str(s), quote=True)
 
 
-def _check_public_url(url: str) -> tuple[bool, str]:
+# Sites /api/download-url accepts as a page link.  Direct image/video file
+# links are accepted from any public host (see smweb.routers.media).
+SUPPORTED_MEDIA_SITES = (
+    # video and social
+    "youtube.com", "youtu.be", "tiktok.com", "twitter.com", "x.com", "reddit.com", "redd.it",
+    "pinterest.com", "pin.it", "instagram.com", "facebook.com", "fb.watch", "threads.net",
+    "threads.com", "bsky.app", "tumblr.com", "vk.com", "vk.ru", "vkvideo.ru", "ok.ru",
+    "rutube.ru", "dzen.ru", "twitch.tv", "kick.com", "vimeo.com", "dailymotion.com", "dai.ly",
+    "bilibili.com", "b23.tv", "nicovideo.jp", "douyin.com", "weibo.com", "streamable.com",
+    "9gag.com", "coub.com", "imgur.com", "t.me", "snapchat.com", "likee.video",
+    # GIFs
+    "giphy.com", "gph.is", "tenor.com", "gifer.com",
+    # art and wallpapers
+    "artstation.com", "deviantart.com", "pixiv.net", "behance.net", "dribbble.com",
+    "wallhaven.cc", "zerochan.net", "donmai.us", "safebooru.org", "gelbooru.com",
+    "konachan.com", "konachan.net", "yande.re", "klickpin.com",
+    # image CDNs people copy links from
+    "pinimg.com", "twimg.com", "discordapp.com", "discordapp.net", "ibb.co", "imgbb.com",
+    "postimg.cc", "postimages.org", "telegra.ph", "graph.org",
+    "steamcommunity.com", "steamstatic.com", "steamusercontent.com",
+)
+
+
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+
+
+def _check_public_url(url: str, any_host: bool = False) -> tuple[bool, str]:
     """Allow only http(s) URLs that resolve to a public address.
 
     /api/download-url hands whatever the caller sends to yt-dlp and requests.
@@ -333,12 +371,12 @@ def _check_public_url(url: str) -> tuple[bool, str]:
     host = parsed.hostname or ""
     if not host:
         return False, "Bad URL: no host"
-    supported = (
-        "youtube.com", "youtu.be", "tiktok.com", "twitter.com", "x.com",
-        "reddit.com", "redd.it", "pinterest.com", "pin.it",
-    )
     host = host.rstrip(".").lower()
-    if not any(host == domain or host.endswith("." + domain) for domain in supported):
+    # any_host is for media URLs found on an already-allowed page (CDNs such as
+    # pinimg.com or media.tenor.com) and for direct image/video file links;
+    # the public-address check below still applies to them.
+    if not any_host and not any(host == domain or host.endswith("." + domain)
+                                for domain in SUPPORTED_MEDIA_SITES):
         return False, "Unsupported source"
     try:
         infos = socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80),
@@ -353,6 +391,9 @@ def _check_public_url(url: str) -> tuple[bool, str]:
             ip = ipaddress.ip_address(addr)
         except ValueError:
             return False, "Bad address"
+        if ip.version == 6 and ip in _NAT64:
+            # DNS64 networks answer with 64:ff9b::a.b.c.d; judge the IPv4 inside.
+            ip = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
         if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
                 or ip.is_multicast or ip.is_unspecified):
             return False, "This address is not allowed"

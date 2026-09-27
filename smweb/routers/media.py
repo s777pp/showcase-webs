@@ -50,6 +50,7 @@ from smweb.core import (
 )
 from smweb.job_access import bind_job
 from smweb.downloads import _download_pinterest
+from smweb.page_media import GIF_FIRST_HOSTS, PAGE_FIRST_HOSTS, download_page_media, host_in, looks_like_media_file
 from smweb.jobs import _job_pool, _worker_mode
 from smweb import modal_upscale_client, object_store
 
@@ -217,7 +218,7 @@ async def api_hex21(
 
 @router.post("/api/download-url")
 def download_url(request: Request, body: dict = Body(...)):
-    """Скачать с YouTube / TikTok / X / Reddit / Pinterest / прямая ссылка."""
+    """Download from a supported site (see SUPPORTED_MEDIA_SITES) or a direct file link."""
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
         return JSONResponse({"ok": False, "msg": "Лимит исчерпан"}, status_code=403)
@@ -232,6 +233,11 @@ def download_url(request: Request, body: dict = Body(...)):
     if not url.startswith("http"):
         return JSONResponse({"ok": False, "msg": "Нужна ссылка http(s)"}, status_code=400)
     url_ok, url_err = _check_public_url(url)
+    direct_file = False
+    if not url_ok and url_err == "Unsupported source" and looks_like_media_file(url):
+        # A plain link to an image/video file works from any public host.
+        url_ok, url_err = _check_public_url(url, any_host=True)
+        direct_file = url_ok
     if not url_ok:
         LOGGER.warning("download-url rejected %s: %s", url[:200], url_err)
         return JSONResponse({"ok": False, "msg": url_err}, status_code=400)
@@ -243,8 +249,29 @@ def download_url(request: Request, body: dict = Body(...)):
     out_dir.mkdir(parents=True, exist_ok=True)
     bind_job(out_dir, request)
 
-    # --- Pinterest (video first, then image) ---
     hostname = (urlparse(url).hostname or "").lower().rstrip(".")
+
+    def _reply(files):
+        _charge(request)
+        if len(files) == 1:
+            return {"ok": True, "name": files[0].name,
+                    "download": f"/api/job-file/{job_id}/{files[0].name}", **quota_state(request)}
+        with zipfile.ZipFile(out_dir / "download.zip", "w") as zf:
+            for f in files:
+                zf.write(f, f.name)
+        return {"ok": True, "name": "download.zip",
+                "download": f"/api/job-file/{job_id}/download.zip", **quota_state(request)}
+
+    # --- direct files, GIF sites and art sites yt-dlp does not know ---
+    if direct_file or looks_like_media_file(url) or host_in(hostname, PAGE_FIRST_HOSTS):
+        try:
+            return _reply(download_page_media(url, out_dir, prefer_gif=host_in(hostname, GIF_FIRST_HOSTS)))
+        except Exception as e:
+            if direct_file:
+                return _download_failure("Direct media", e, out_dir)
+            LOGGER.info("page media fallback to yt-dlp (%s)", type(e).__name__)
+
+    # --- Pinterest (video first, then image) ---
     is_pinterest = hostname == "pin.it" or hostname.endswith(".pin.it") or hostname in {
         "pinterest.com",
         "www.pinterest.com",
@@ -313,7 +340,7 @@ def download_url(request: Request, body: dict = Body(...)):
                     try:
                         # Candidates are scraped out of a remote page, so they
                         # are attacker-influenced just like the original input.
-                        cand_ok, _cand_err = _check_public_url(vu)
+                        cand_ok, _cand_err = _check_public_url(vu, any_host=True)
                         if not cand_ok:
                             continue
                         rr = _req.get(
@@ -411,7 +438,14 @@ def download_url(request: Request, body: dict = Body(...)):
             **quota_state(request),
         }
     except Exception as e:
-        return _download_failure("Remote media", e, out_dir)
+        # Image-only posts (Reddit, X), Imgur albums and similar pages that
+        # yt-dlp rejects still show their media in the page itself.
+        try:
+            for leftover in _job_output_files(out_dir):
+                leftover.unlink(missing_ok=True)
+            return _reply(download_page_media(url, out_dir))
+        except Exception:
+            return _download_failure("Remote media", e, out_dir)
 
 
 # ====================== Watermark live preview ======================

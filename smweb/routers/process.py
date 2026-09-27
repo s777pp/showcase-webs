@@ -33,6 +33,7 @@ from fastapi import APIRouter
 
 from smweb.core import JOBS, MAX_UPLOAD_MB, _auth_user, max_jobs_for_user, owner_key, quota_inc, quota_state
 from smweb.job_access import browser_owns_job
+from smweb.jobs import _sniff_extension
 from smweb.jobs import (
     _job_cleanup_old,
     _job_get,
@@ -136,6 +137,14 @@ async def api_workshop_studio_start(
                     output.write(chunk)
             if not written:
                 raise ValueError("One source file is empty")
+            if suffix not in allowed:
+                # Names like "From Klickpin.com- Long title" lost their extension: trust the bytes.
+                with path.open("rb") as head_file:
+                    sniffed = _sniff_extension(head_file.read(32))
+                if sniffed in allowed:
+                    real = job_dir / f"upload_{index}{sniffed}"
+                    path.replace(real)
+                    path, suffix = real, sniffed
             if suffix not in allowed:
                 png = proc.still_image_to_png(path.read_bytes())
                 path.unlink(missing_ok=True)
