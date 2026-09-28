@@ -286,6 +286,17 @@ def backup_snapshot() -> dict:
                     files.append({"name": path.name[:180], "size": stat.st_size, "updated_at": stat.st_mtime})
     except OSError:
         files = []
+    # Nightly dumps from the db-backup service live in the private R2 bucket.
+    try:
+        from smweb import object_store
+        if object_store.configured():
+            bucket = (os.environ.get("R2_PRIVATE_BUCKET") or "showcasemaker-private").strip()
+            listing = object_store.client().list_objects_v2(Bucket=bucket, Prefix="backups/db/").get("Contents") or []
+            files += [{"name": "R2: " + o["Key"].rsplit("/", 1)[-1], "size": o["Size"],
+                       "updated_at": o["LastModified"].timestamp()} for o in listing]
+            configured = Path(f"R2/{bucket}/backups/db")
+    except Exception:
+        pass
     files.sort(key=lambda item: item["updated_at"], reverse=True)
     latest = files[0] if files else None
     age_hours = (time.time() - latest["updated_at"]) / 3600 if latest else None
@@ -293,4 +304,4 @@ def backup_snapshot() -> dict:
     return {"state": state, "directory": str(configured), "latest": latest,
             "age_hours": round(age_hours, 1) if age_hours is not None else None,
             "files": files[:20], "restore_verified": False,
-            "note": "Факт восстановления нужно проверять отдельно на тестовой базе."}
+            "note": "Копии делает сервис db-backup каждую ночь (03:30 UTC). Как восстановить — deploy/backup/README.md."}

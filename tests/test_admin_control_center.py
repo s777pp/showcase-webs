@@ -146,6 +146,8 @@ def test_system_status_explains_impact_in_plain_language(monkeypatch, tmp_path):
     monkeypatch.setenv("MODAL_UPSCALE_URL", "https://example.test")
     monkeypatch.setenv("MODAL_PROXY_TOKEN_ID", "id")
     monkeypatch.setenv("MODAL_PROXY_TOKEN_SECRET", "secret")
+    from smweb import health_checks
+    monkeypatch.setattr(health_checks, "components", lambda make: [])  # network probes: tests/test_health_checks.py
 
     snapshot = admin_control.system_snapshot()
     assert snapshot["overall"] == "ok"

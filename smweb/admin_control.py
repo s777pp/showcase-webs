@@ -195,14 +195,9 @@ def system_snapshot() -> dict:
         "Проверь R2-переменные в .env." if r2_configured and not r2_ok else "",
         "R2",
     ))
-    modal_ready = all((os.environ.get(name) or "").strip() for name in ("MODAL_UPSCALE_URL", "MODAL_PROXY_TOKEN_ID", "MODAL_PROXY_TOKEN_SECRET"))
-    components.append(_component(
-        "upscale", "AI-апскейл", "ok" if modal_ready else "warn",
-        "Modal подключён" if modal_ready else "Modal не настроен",
-        "Апскейл доступен Pro-пользователям." if modal_ready else "Обычная обработка работает, но апскейл недоступен.",
-        "Добавь MODAL_UPSCALE_URL и токены в .env." if not modal_ready else "",
-        "Modal",
-    ))
+    # Mirror, relay, Modal, RIFE, Telegram, bot API and R2 backups (smweb/health_checks.py).
+    from smweb import health_checks
+    components.extend(health_checks.components(_component))
     severity = {"ok": 0, "warn": 1, "down": 2}
     worst = max((severity[item["state"]] for item in components), default=0)
     overall = "ok" if worst == 0 else ("warn" if worst == 1 else "down")
