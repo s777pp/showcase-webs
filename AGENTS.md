@@ -507,6 +507,11 @@ Only the hero exists for now; content blocks will be added below it later.
   `render_sequence`) in ~4-6 s; button `#loopPreview`. Script versions live in `static/js/tool-loader.js`.
 - Upscale preset `anime_soft` = realesr-animevideov3 (SRVGGNetCompact) on Modal: closest to source on anime
   samples, ~10x faster than anime 6B. APISR was tested and rejected (over-stylized, GPL-3.0).
+- Owner bot integration: `smweb/admin_notify.py` sends Telegram messages through the shop bot
+  (`ADMIN_BOT_TOKEN`, `ADMIN_BOT_CHAT_ID`): new support ticket (with reply/close buttons), any job error
+  (hook in `rs.job_update`, throttled 10 min), disk low, Bright Data used. `smweb/routers/bot_admin.py` =
+  `/api/bot-admin/*` guarded by `BOT_ADMIN_SECRET` (404 when unset): status, maintenance, codes, tickets reply
+  (emails the user via mailer) / close. The bot side lives in showcase_pro_bot/bottg (`bot/admin_panel.py`).
 - Downloads: `smweb/page_media.py` + `SUPPORTED_MEDIA_SITES` (50+ sites, direct file links).
 - Local Pro account: `python scripts/dev_account.py email password [days]` (SQLite only).
 
