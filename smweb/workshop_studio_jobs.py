@@ -103,7 +103,7 @@ def render_animation(path: Path, output: Path, settings: dict, fps: int, duratio
     saturation = settings["saturation"] / 100
     filters = (
         f"eq=brightness={brightness:.3f}:contrast={contrast:.3f}:saturation={saturation:.3f},"
-        f"hue=h={settings['hue']},scale=750:-2:flags=lanczos"
+        f"hue=h={settings['hue']},scale=750:-2:flags=lanczos+accurate_rnd+full_chroma_int"
     )
     if outline:
         filters += ",drawbox=x=0:y=0:w=iw:h=ih:color=0x8de9ff:t=2"
@@ -292,7 +292,7 @@ def render_squares_animation(path: Path, work_dir: Path, settings: dict, crop: d
     filters = (
         f"crop=w='iw*{crop['w']:.6f}':h='ih*{crop['h']:.6f}'"
         f":x='min(iw*{crop['x']:.6f},iw-ow)':y='min(ih*{crop['y']:.6f},ih-oh)',"
-        f"scale={STRIP_SIZE[0]}:{STRIP_SIZE[1]}:flags=lanczos,setsar=1,"
+        f"scale={STRIP_SIZE[0]}:{STRIP_SIZE[1]}:flags=lanczos+accurate_rnd+full_chroma_int,setsar=1,"
         f"eq=brightness={brightness:.3f}:contrast={contrast:.3f}:saturation={saturation:.3f},"
         f"hue=h={settings['hue']}"
     )

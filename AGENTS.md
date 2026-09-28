@@ -476,6 +476,24 @@ Only the hero exists for now; content blocks will be added below it later.
   hidden (`home-overlays.css`) so Russian labels fit without horizontal scroll. Page height with a file:
   2640 -> 1570 px at 1600 px width.
 
+## 6.4 Import routes, mirror, true loop, GIF quality (2026-09-28, local)
+- Steam link import: `steam_catalog._page_via_routes` tries this server -> relay (`deploy/steam-relay`,
+  `STEAM_RELAY_URL/TOKEN`) -> Bright Data; a 429 pauses only that route (`steam_profile_guard.route_*`).
+  Imports always run as jobs; the page shows the active route (`imp_via_*`). `RATE_LIMIT_EXEMPT_EMAILS`
+  skips rate limits and the 15 min profile cache for listed accounts.
+- Mirror `ru.showcasemaker.com` (Russia without Cloudflare): `smweb/mirror.py` + `deploy/mirror` (Caddy).
+  `MIRROR_HOSTS` rewrites R2 URLs to `/r2m`, `/r2s` and login return URLs to the mirror origin; Telegram
+  login is hidden there. Extension 1.0.7 allows the mirror origin.
+- Seamless loop "True loop": loop-point search inside the selection (+-15 % length, 3-frame match), hard-cut
+  guard, join drawn with RIFE v4.25 on CPU (`rife_net.py`, weights baked into the image), fallback OpenCV
+  flow morph, then crossfade.
+- GIF size fit: `processor.fit_frames_to_gif` (binary search on gifski quality from the full-colour frames,
+  final `--extra`, lossless `gifsicle -O3`) replaces re-quantizing finished GIFs. Video frames are read with
+  `SCALE_FLAGS` (full chroma) and `source_matrix()` (BT.709 for untagged HD). Measured on `IMAGE/45.mp4`
+  (630 px, 15 fps, 5 s): 4.37 MB / 31.6 dB -> 4.85 MB / 33.2 dB.
+- Downloads: `smweb/page_media.py` + `SUPPORTED_MEDIA_SITES` (50+ sites, direct file links).
+- Local Pro account: `python scripts/dev_account.py email password [days]` (SQLite only).
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or

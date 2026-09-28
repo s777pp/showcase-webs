@@ -260,7 +260,7 @@ def run(jid: str, job: dict) -> None:
         process_control.checkpoint(jid)
         _run_cmd([
             ffmpeg, "-y", "-ss", f"{start:.4f}", "-t", f"{segment:.4f}", "-i", str(source),
-            "-an", "-vf", f"fps={fps},scale='trunc(min(1280,iw)/2)*2':-2:flags=lanczos",
+            "-an", "-vf", f"fps={fps},scale='trunc(min(1280,iw)/2)*2':-2:flags={proc.SCALE_FLAGS}{proc.source_matrix(source)}",
             str(raw_dir / "source_%05d.png"),
         ], jid)
         frames = sorted(raw_dir.glob("source_*.png"))
@@ -282,7 +282,9 @@ def run(jid: str, job: dict) -> None:
             media_type = "video/mp4"
         else:
             result = root / "seamless-loop.gif"
-            proc.encode_gif_from_png_sequence(sequence_dir, result, fps=fps, encoder="gifski")
+            # Fit the Steam limit from the full-colour frames, not by re-quantizing the GIF.
+            if not proc.fit_frames_to_gif(sequence_dir, result, fps=fps):
+                proc.encode_gif_from_png_sequence(sequence_dir, result, fps=fps, encoder="gifski")
             proc.ensure_under_mb(result)
             media_type = "image/gif"
         result_key = ""

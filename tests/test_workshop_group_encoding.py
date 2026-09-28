@@ -73,7 +73,7 @@ class WorkshopGroupEncodingTests(unittest.TestCase):
             destinations = [tmp / f"part_{index}.gif" for index in range(5)]
             attempts = []
 
-            def fake_encode(frame_dir, destination, fps, quality=100):
+            def fake_encode(frame_dir, destination, fps, quality=100, extra=False):
                 panel = int(frame_dir.name.rsplit("_", 1)[1])
                 attempts.append((panel, fps, quality))
                 size = 900 if quality <= 80 or panel < 4 else 1200
@@ -88,7 +88,7 @@ class WorkshopGroupEncodingTests(unittest.TestCase):
                     label="Workshop", max_mb=0.001,
                 )
 
-            self.assertEqual(selected, {"encoder": "gifski", "quality": 80, "fps": 18})
+            self.assertEqual(selected, {"encoder": "gifski", "quality": 80, "fps": 18, "extra": 1})
             self.assertEqual({path.read_bytes()[:6] for path in destinations}, {b"q=080;"})
             for quality in {quality for _, _, quality in attempts}:
                 used_panels = {panel for panel, _, q in attempts if q == quality}
@@ -233,7 +233,7 @@ class SplitGroupEncodingTests(unittest.TestCase):
             side_frames.mkdir()
             destinations = [tmp / "center.gif", tmp / "side.gif"]
 
-            def fake_encode(frame_dir, destination, fps, quality=100):
+            def fake_encode(frame_dir, destination, fps, quality=100, extra=False):
                 is_center = frame_dir.name == "center"
                 size = 1200 if is_center and quality > 82 else (850 if is_center else 180)
                 destination.write_bytes(f"q={quality:03d};".encode("ascii") + b"x" * size)
@@ -247,7 +247,7 @@ class SplitGroupEncodingTests(unittest.TestCase):
                     fps=20, encoder="gifski", label="Split", max_mb=0.001,
                 )
 
-            self.assertEqual(settings, {"encoder": "gifski", "quality": 82, "fps": 20})
+            self.assertEqual(settings, {"encoder": "gifski", "quality": 82, "fps": 20, "extra": 1})
             self.assertEqual({path.read_bytes()[:6] for path in destinations}, {b"q=082;"})
             self.assertLess(destinations[1].stat().st_size, destinations[0].stat().st_size)
 

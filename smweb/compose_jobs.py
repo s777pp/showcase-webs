@@ -145,7 +145,9 @@ def _run(jid: str, job: dict) -> None:
 
             t_encode = time.monotonic()
             try:
-                proc.encode_gif_from_png_sequence(frame_dir, result, fps=fps, encoder=encoder)
+                # gifski fits the Steam limit from the full-colour frames directly.
+                if not (encoder == "gifski" and proc.fit_frames_to_gif(frame_dir, result, fps=fps)):
+                    proc.encode_gif_from_png_sequence(frame_dir, result, fps=fps, encoder=encoder)
             except Exception:
                 proc._save_animated_gif([proc._quantize_rgba_for_gif(f) for f in frames], durations, result)
 

@@ -12,6 +12,7 @@ FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    gifsicle \
     curl \
     ca-certificates \
     gosu \
@@ -36,6 +37,7 @@ RUN rm -f /app/bin/ffmpeg /app/bin/ffmpeg.exe /app/bin/ffprobe /app/bin/ffprobe.
 
 RUN which ffmpeg && ffmpeg -version | head -1
 RUN which gifski && gifski --version
+RUN gifsicle --version | head -1
 
 ENV HOST=0.0.0.0
 ENV PORT=8080

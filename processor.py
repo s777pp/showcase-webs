@@ -485,8 +485,43 @@ def _ffmpeg_palette_vf(fps: int, width: Optional[int] = None, scale_pct: Optiona
     return ",".join(parts)
 
 
-def _gifski_from_frames(frames_dir: Path, dest: Path, fps: int, quality: int = 100) -> bool:
-    """Encode PNG sequence with gifski. Returns True on success."""
+# Exact chroma upsampling and rounding when frames are read from video: the
+# default blurs coloured edges, which is very visible on anime line art.
+SCALE_FLAGS = "lanczos+accurate_rnd+full_chroma_int"
+
+
+def source_matrix(src: Path) -> str:
+    """``:in_color_matrix=bt709`` for HD video that carries no colour tag.
+
+    FFmpeg falls back to BT.601 for untagged video, which shifts reds and
+    greens in HD sources (they are almost always BT.709).  Tagged video is
+    already converted correctly and gets nothing.
+    """
+    probe = find_ffprobe()
+    if not probe:
+        return ""
+    try:
+        raw = subprocess.check_output(
+            [probe, "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=color_space,height,codec_name", "-of", "json", str(src)],
+            text=True, timeout=20,
+        )
+        import json
+        stream = (json.loads(raw).get("streams") or [{}])[0]
+    except Exception:
+        return ""
+    space = str(stream.get("color_space") or "unknown").lower()
+    if stream.get("codec_name") in ("gif", "png", "apng", "mjpeg", "webp") or space not in ("", "unknown"):
+        return ""
+    return ":in_color_matrix=bt709" if int(stream.get("height") or 0) >= 720 else ""
+
+
+def _gifski_from_frames(frames_dir: Path, dest: Path, fps: int, quality: int = 100, extra: bool = False) -> bool:
+    """Encode PNG sequence with gifski. Returns True on success.
+
+    ``extra`` is gifski's slower, more careful quantization (about twice the
+    time for visibly smoother gradients); used for the final encode only.
+    """
     gs = find_gifski()
     if not gs:
         return False
@@ -501,13 +536,87 @@ def _gifski_from_frames(frames_dir: Path, dest: Path, fps: int, quality: int = 1
         files = files * 2
     try:
         cmd = [
-            gs, "--fps", str(fps), "--quality", str(quality),
+            gs, "--fps", str(fps), "--quality", str(quality), *(["--extra"] if extra else []),
             "-o", str(dest), *[str(f) for f in files],
         ]
         subprocess.run(cmd, check=True, capture_output=True)
-        return dest.is_file() and dest.stat().st_size > 50
+        if not (dest.is_file() and dest.stat().st_size > 50):
+            return False
+        _gifsicle_optimize(dest)
+        return True
     except Exception:
         return False
+
+
+def find_gifsicle() -> Optional[str]:
+    return shutil.which("gifsicle")
+
+
+def _gifsicle_optimize(path: Path) -> None:
+    """Lossless re-pack of a finished GIF; keeps the result only if it is smaller.
+
+    Every byte saved here lets the size fit choose a higher gifski quality.
+    """
+    tool = find_gifsicle()
+    if not tool:
+        return
+    out = path.with_name(path.stem + ".opt.gif")
+    try:
+        subprocess.run([tool, "-O3", "--no-warnings", "-o", str(out), str(path)],
+                       check=True, capture_output=True, timeout=120)
+        if out.is_file() and 50 < out.stat().st_size < path.stat().st_size:
+            os.replace(out, path)
+    except Exception:
+        pass
+    finally:
+        out.unlink(missing_ok=True)
+
+
+def fit_frames_to_gif(frames_dir: Path, dest: Path, fps: int, max_mb: float = MAX_STEAM_MB,
+                      min_quality: int = 1) -> Optional[dict]:
+    """Best-looking gifski GIF from full-colour frames that fits ``max_mb``.
+
+    Always works from the original frames: re-quantizing an already
+    dithered GIF adds a second layer of noise.  The highest fitting quality
+    is found by binary search with fast encodes, then the final file is made
+    with ``--extra``.  Returns the chosen settings, or None when gifski is
+    missing or even ``min_quality`` does not fit (the caller falls back).
+    """
+    if not find_gifski():
+        return None
+    limit = int(max_mb * 1024 * 1024)
+    work = Path(tempfile.mkdtemp(prefix="sm_fit_"))
+    try:
+        def encode(quality: int, extra: bool = False) -> Optional[Path]:
+            out = work / f"q{quality}{'x' if extra else ''}.gif"
+            return out if _gifski_from_frames(frames_dir, out, fps=fps, quality=quality, extra=extra) else None
+
+        def fits(path: Optional[Path]) -> bool:
+            return bool(path) and 50 < path.stat().st_size <= limit
+
+        top = encode(100, extra=True)
+        if fits(top):
+            _safe_replace(top, dest)
+            return {"quality": 100, "extra": True}
+        low, high, best = max(1, min_quality), 99, 0
+        while low <= high:
+            quality = (low + high) // 2
+            if fits(encode(quality)):
+                best, low = quality, quality + 1
+            else:
+                high = quality - 1
+        if not best:
+            return None
+        # --extra can add a few KB; step down a little if it no longer fits.
+        for quality in range(best, max(min_quality, best - 4) - 1, -1):
+            candidate = encode(quality, extra=True)
+            if fits(candidate):
+                _safe_replace(candidate, dest)
+                return {"quality": quality, "extra": True}
+        _safe_replace(work / f"q{best}.gif", dest)
+        return {"quality": best, "extra": False}
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def normalize_rotation(value: float | int | str | None) -> float:
@@ -590,7 +699,7 @@ def media_to_gif(
         video_filter = ",".join(part for part in (
             rotation_filter,
             f"fps={fps}",
-            f"scale={width}:-2:flags=lanczos",
+            f"scale={width}:-2:flags={SCALE_FLAGS}{source_matrix(src)}",
         ) if part)
         try:
             _run([
@@ -628,9 +737,10 @@ def media_to_gif(
         if encoder == "gifski":
             if not find_gifski():
                 raise RuntimeError("gifski selected but binary not found")
-            ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
-            if not ok:
-                raise RuntimeError("gifski encode failed (no fallback to ffmpeg when gifski is selected)")
+            if not fit_frames_to_gif(frames, dest, fps=fps):
+                ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
+                if not ok:
+                    raise RuntimeError("gifski encode failed (no fallback to ffmpeg when gifski is selected)")
         else:
             # ffmpeg palette from PNG sequence
             vf = _ffmpeg_palette_vf(fps=fps, max_colors=256)
@@ -944,41 +1054,11 @@ def _ensure_under_mb_impl(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
         except Exception:
             pass
 
-        # ── 1) gifski quality binary search ─────────────────────────
+        # ── 1) gifski: highest quality that fits (binary search + --extra) ──
         if gs and extracted:
-            lo, hi = 40, 100
-            best = None  # (quality, path)
-            # try high quality first
-            for q in (92, 85, 78, 70, 60, 50):
-                out = tmp_dir / f"gs_{q}.gif"
-                try:
-                    files = sorted(frames_dir.glob("frame_*.png"))
-                    cmd = [gs, "--fps", str(src_fps), "--quality", str(q), "-o", str(out),
-                           *[str(f) for f in files]]
-                    subprocess.run(cmd, check=True, capture_output=True)
-                    if out.is_file() and out.stat().st_size > 50:
-                        mb = _gif_mb(out)
-                        if mb <= max_mb:
-                            best = (q, out)
-                            break
-                except Exception:
-                    continue
-            if best is None:
-                # finer binary search between last fail and 40
-                for q in range(95, 39, -5):
-                    out = tmp_dir / f"gs_b_{q}.gif"
-                    try:
-                        files = sorted(frames_dir.glob("frame_*.png"))
-                        cmd = [gs, "--fps", str(src_fps), "--quality", str(q), "-o", str(out),
-                               *[str(f) for f in files]]
-                        subprocess.run(cmd, check=True, capture_output=True)
-                        if out.is_file() and 50 < out.stat().st_size and _gif_mb(out) <= max_mb:
-                            best = (q, out)
-                            break
-                    except Exception:
-                        continue
-            if best is not None:
-                _safe_replace(best[1], path)
+            fitted = tmp_dir / "fitted.gif"
+            if fit_frames_to_gif(frames_dir, fitted, fps=src_fps, max_mb=max_mb):
+                _safe_replace(fitted, path)
                 return
 
         # ── 2) ffmpeg gentle ladder (keep res/fps as long as possible) ──
@@ -1265,7 +1345,7 @@ def _gif_full_with_bar_split(
         else:
             fps = 12
 
-        ok = _gifski_from_frames(
+        ok = bool(fit_frames_to_gif(frames_dir, out_path, fps=fps)) or _gifski_from_frames(
             frames_dir,
             out_path,
             fps=fps,
@@ -1309,7 +1389,7 @@ def _reencode_crop_hq(
         if encoder == "gifski":
             if not find_gifski():
                 raise RuntimeError("gifski selected but binary not found")
-            ok = _gifski_from_frames(frames, dest, fps=fps, quality=100)
+            ok = bool(fit_frames_to_gif(frames, dest, fps=fps)) or _gifski_from_frames(frames, dest, fps=fps, quality=100)
             if not ok:
                 raise RuntimeError("gifski crop-encode failed (no ffmpeg fallback)")
         else:
@@ -1367,13 +1447,13 @@ def _encode_synchronized_frame_group(
             if not find_gifski():
                 raise RuntimeError("gifski selected but binary not found")
 
-            def encode_quality(quality: int) -> list[Path]:
-                attempt_dir = attempts_root / f"q_{quality}"
+            def encode_quality(quality: int, extra: bool = False) -> list[Path]:
+                attempt_dir = attempts_root / f"q_{quality}{'x' if extra else ''}"
                 attempt_dir.mkdir()
                 outputs: list[Path] = []
                 for index, frames_dir in enumerate(frame_dirs, start=1):
                     output = attempt_dir / f"part_{index}.gif"
-                    if not _gifski_from_frames(frames_dir, output, fps=fps, quality=quality):
+                    if not _gifski_from_frames(frames_dir, output, fps=fps, quality=quality, extra=extra):
                         raise RuntimeError(f"gifski failed for Workshop part {index}")
                     outputs.append(output)
                 print(
@@ -1383,10 +1463,20 @@ def _encode_synchronized_frame_group(
                 )
                 return outputs
 
+            def install_best(quality: int, fast_paths: list[Path]) -> dict[str, int | str]:
+                # Final encode with gifski --extra (smoother gradients); it can
+                # grow a few KB, so step down a little when it stops fitting.
+                for candidate in range(quality, max(1, quality - 4) - 1, -1):
+                    refined = encode_quality(candidate, extra=True)
+                    if fits(refined):
+                        install(refined)
+                        return {"encoder": "gifski", "quality": candidate, "fps": fps, "extra": 1}
+                install(fast_paths)
+                return {"encoder": "gifski", "quality": quality, "fps": fps}
+
             highest = encode_quality(100)
             if fits(highest):
-                install(highest)
-                return {"encoder": "gifski", "quality": 100, "fps": fps}
+                return install_best(100, highest)
 
             low, high = 1, 99
             best_quality = 0
@@ -1405,8 +1495,7 @@ def _encode_synchronized_frame_group(
                     f"{label} cannot fit all synchronized panels under 5 MB "
                     "without changing their shared FPS or dimensions"
                 )
-            install(best_paths)
-            return {"encoder": "gifski", "quality": best_quality, "fps": fps}
+            return install_best(best_quality, best_paths)
 
         ff = find_ffmpeg()
         if not ff:
@@ -1529,7 +1618,7 @@ def _prepare_workshop_frame_sets(
     video_filter = ",".join(part for part in (
         rotation_filter,
         f"fps={fps}",
-        f"scale={width}:-2:flags=lanczos",
+        f"scale={width}:-2:flags={SCALE_FLAGS}{source_matrix(source)}",
     ) if part)
     command = [
         ff, "-y", "-hide_banner", "-loglevel", "error",
@@ -1846,7 +1935,7 @@ def _prepare_featured_frame_sets(
     video_filter = ",".join(part for part in (
         _ffmpeg_rotation_filter(rotation),
         f"fps={fps}",
-        "scale=630:-2:flags=lanczos",
+        f"scale=630:-2:flags={SCALE_FLAGS}{source_matrix(source)}",
     ) if part)
     command = [ff, "-y", "-hide_banner", "-loglevel", "error", "-i", str(source)]
     if duration is not None:
@@ -1891,7 +1980,7 @@ def _prepare_split_frame_sets(
     video_filter = ",".join(part for part in (
         rotation_filter,
         f"fps={fps}",
-        "scale=606:-2:flags=lanczos",
+        f"scale=606:-2:flags={SCALE_FLAGS}{source_matrix(source)}",
     ) if part)
     command = [
         ff, "-y", "-hide_banner", "-loglevel", "error",
