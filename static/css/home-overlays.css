@@ -236,3 +236,57 @@ html body:is(.page-home,.site-v2) .home-footer__extra .quota{margin:0;padding:6p
 /* Laptops (<=1400px): Russian labels are long, so the header and the tools menu drop their icons and tighten padding instead of overflowing. */
 @media (max-width:1400px){html body:is(.page-home,.site-v2) .ss-nav__i svg{display:none!important}html body:is(.page-home,.site-v2) .ss-nav__i{padding:0 9px!important}html body:is(.page-home,.site-v2) #nav>button,html body:is(.page-home,.site-v2) #nav>a{padding:0 8px!important}}
 @media (max-width:1340px){html body:is(.page-home,.site-v2) #nav>button::before,html body:is(.page-home,.site-v2) #nav>a::before{display:none!important}}
+
+/* ---- Header: one breakpoint for every page (2026-09-28) ----
+   home.css (1020), site-theme.css (1100) and ss.css (1180) switched to the
+   burger at different widths, so a 1080-wide portrait monitor showed the full
+   desktop menu on the home page and it did not fit.  Everything under 1180 px
+   now uses the burger; the account pill stays visible. */
+@media (max-width:1180px){
+  html body:is(.page-home,.site-v2) .ss-nav,
+  html body:is(.page-home,.site-v2) .ss-head__sp{display:none!important}
+  html body:is(.page-home,.site-v2) .ss-head__right>*:not(.ss-burger):not(.ss-lang){display:none!important}
+  html body:is(.page-home,.site-v2) .ss-burger{display:grid!important;place-items:center!important;flex:none}
+  html body:is(.page-home,.site-v2) .ss-account-primary{margin-left:auto!important}
+  html body:is(.page-home,.site-v2) .ss-head__right{margin-left:10px!important;gap:8px!important}
+}
+/* Wide screens: the signed-in right side (timer, language, log out, account)
+   gets compact before it can push past the edge. */
+@media (min-width:1181px) and (max-width:1500px){
+  html body:is(.page-home,.site-v2) .ss-pill>span:not(.ss-pill__av){max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+@media (min-width:1181px) and (max-width:1320px){
+  html body:is(.page-home,.site-v2) .ss-pill>span:not(.ss-pill__av){display:none!important}
+  html body:is(.page-home,.site-v2) .ss-nav__i{padding:0 7px!important}
+}
+/* Phones: avatar + plan only. */
+@media (max-width:480px){
+  html body:is(.page-home,.site-v2) .ss-pill>span:not(.ss-pill__av){display:none!important}
+  html body:is(.page-home,.site-v2) .ss-pill{gap:6px!important;padding:4px 8px 4px 4px!important}
+  html body:is(.page-home,.site-v2) .ss-logo__txt{font-size:12px!important}
+}
+@media (max-width:350px){
+  html body:is(.page-home,.site-v2) .ss-logo__txt{display:none!important}
+}
+/* Letter avatar for accounts without a picture (was an empty dark square). */
+html body:is(.page-home,.site-v2) .ss-pill__av--letter{display:inline-grid!important;place-items:center;width:28px;height:28px;border-radius:8px;
+  background:linear-gradient(135deg,#1fc9f1,#8a7dff)!important;color:#fff!important;font:800 13px/1 var(--home-display,'Montserrat',sans-serif)!important}
+/* Signed-in header at 1401-1460 px: menu icons go a little earlier so the account pill fits. */
+@media (max-width:1460px){html body:is(.page-home,.site-v2) .ss-nav__i svg{display:none!important}html body:is(.page-home,.site-v2) .ss-nav__i{padding:0 9px!important}}
+@media (min-width:1181px) and (max-width:1260px){html body:is(.page-home,.site-v2) .ss-nav__i{padding:0 6px!important;font-size:13px!important}html body:is(.page-home,.site-v2) .ss-head__right{gap:6px!important}}
+
+/* Portrait and square-ish monitors (1080x1920, 1440x2560, 1280x1024 ...).
+   The 16:9 composition shrank to the width and the headline sat on the
+   character's face in tiny type.  Same idea as on phones: the art on top,
+   the text below it, but scaled for a monitor. */
+@media (min-width:821px) and (max-aspect-ratio:5/4){
+  html body:is(.page-home,.site-v2){--rp:clamp(.9px,min(100vw / 1000,100svh / 1250),1.7px)}
+  html body:is(.page-home,.site-v2) .home-hero{height:auto;min-height:100svh;padding:0 max(40px,7vw) 48px;display:flex;flex-direction:column}
+  html body:is(.page-home,.site-v2) .home-art{width:max(100%,calc(100svh * .64 * 1672 / 941));height:64svh;left:60%;top:0;transform:translateX(-50%)}
+  html body:is(.page-home,.site-v2) .home-hero__shade{background:linear-gradient(180deg,rgba(3,7,10,.08) 24%,rgba(3,7,10,.7) 52%,var(--home-bg) 64%)}
+  html body:is(.page-home,.site-v2) .home-stars{height:64svh}
+  html body:is(.page-home,.site-v2) .home-hero__content{position:relative;left:auto;top:auto;width:calc(700 * var(--rp));max-width:100%;margin-top:50svh;pointer-events:auto}
+  html body:is(.page-home,.site-v2) .home-hero__content>:not(.home-features){max-width:calc(620 * var(--rp))}
+  html body:is(.page-home,.site-v2) .home-scroll{display:none}
+  html body:is(.page-home,.site-v2) .home-credit{position:relative;right:auto;bottom:auto;align-self:flex-end;margin-top:18px}
+}

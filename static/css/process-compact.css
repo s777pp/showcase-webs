@@ -165,3 +165,34 @@
   body.page-tools.is-showcase-workspace .workspace-switch > button,
   body.page-tools.is-showcase-workspace .workspace-switch > details summary { white-space: nowrap !important; }
 }
+
+/* Mode cards stay three in a row here (creator-os.css), so the horizontal
+   85px+text layout from workspace-editor.css left 8-28 px for the text and
+   titles broke letter by letter (e.g. 1080-wide portrait monitors). */
+@media (min-width:801px) and (max-width:1300px){
+  body.page-tools #processModeCard .mode{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:6px!important;min-height:0!important}
+  body.page-tools #processModeCard .mode-diagram{align-self:stretch!important;width:auto!important;margin:0 0 6px!important;grid-row:auto!important}
+  body.page-tools #processModeCard .mode > *{min-width:0;overflow-wrap:break-word}
+}
+
+/* "Quality and format" (2026-09-28): several older sheets fought over this grid,
+   so on tablets the switch labels ended up one letter per line.  One layout for
+   every width: FPS | width, then the encoder, then the switches in a row. */
+body.page-tools #processSettingsCard #processAdvanced>.process-basics{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:none!important;align-items:end!important;gap:12px!important}
+body.page-tools #processSettingsCard #processAdvanced>.process-basics>.field{grid-column:auto!important;grid-area:auto!important;min-width:0!important}
+body.page-tools #processSettingsCard #processAdvanced>.process-basics>.process-field--encoder,
+body.page-tools #processSettingsCard #processAdvanced>.process-basics>.process-advanced__toggles,
+body.page-tools #processSettingsCard #processAdvanced>.process-basics>.steam-opt-row{grid-column:1/-1!important}
+body.page-tools #processSettingsCard #processAdvanced .process-advanced__toggles{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:10px 24px!important;width:auto!important;min-width:0!important}
+body.page-tools #processSettingsCard #processAdvanced .process-advanced__toggles .process-switch{display:inline-flex!important;flex-direction:row!important;align-items:center!important;gap:10px!important;width:auto!important;min-height:30px;margin:0!important}
+body.page-tools #processSettingsCard #processAdvanced .process-advanced__toggles .process-switch>span{display:inline!important;width:auto!important;white-space:nowrap!important;writing-mode:horizontal-tb!important;font-size:13px!important;line-height:1.2!important;overflow-wrap:normal!important}
+@media (max-width:430px){
+  body.page-tools #processSettingsCard #processAdvanced .process-advanced__toggles{flex-direction:column!important;align-items:flex-start!important;gap:8px!important}
+}
+body.page-tools #processSettingsCard #processAdvanced .process-advanced__toggles{justify-self:stretch!important;justify-content:flex-start!important;align-content:flex-start!important;margin:0!important}
+/* Collapsed "Design" card: its heading and chips were min-content wide and got
+   cut off at the card edge on 320-360 px phones. */
+body.page-tools .process-design{grid-template-columns:minmax(0,1fr)!important}
+body.page-tools .process-design>*{min-width:0!important;max-width:100%}
+body.page-tools .process-fold__head{flex-wrap:wrap!important;row-gap:6px}
+body.page-tools .process-fold__chip{max-width:100%;min-width:0}

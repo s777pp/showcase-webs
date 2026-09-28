@@ -450,7 +450,7 @@
     var av = me.avatar_url || '';
     pill.innerHTML =
       (av ? '<img class="ss-pill__av" src="' + esc(av) + '" alt="">'
-          : '<span class="ss-pill__av"></span>') +
+          : '<span class="ss-pill__av ss-pill__av--letter">' + esc((name.charAt(0) || '?').toUpperCase()) + '</span>') +
       '<span>' + esc(name) + '</span>' +
       '<i class="ss-pill__plan ' + (me.is_pro ? 'is-pro">PRO' : 'is-free">FREE') + '</i>';
   }

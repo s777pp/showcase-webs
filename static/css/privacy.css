@@ -87,3 +87,10 @@ footer.sm-foot{box-sizing:border-box;width:100%;max-width:none;margin:48px 0 0;d
 .sm-foot__copy{flex-basis:100%;font-size:12px;color:rgba(214,229,250,.45)}
 @media(max-width:760px){.sm-foot__nav{margin-left:0}}
 @media print{footer.sm-foot{display:none}}
+/* Header fits every width: icons go first, then labels (2026-09-28). */
+@media(max-width:1400px){.top.sm-head{gap:14px}.sm-head__nav a{padding:0 9px}.sm-head__nav a svg{display:none}}
+@media(max-width:1240px){.sm-head__nav a svg{display:inline}.sm-head__nav a span,.sm-head__nav a em{display:none}.sm-head__btn span{display:none}.sm-head__btn{padding:0 10px}}
+@media(max-width:420px){.sm-head__right{gap:6px}.sm-head__nav a{padding:0 6px}}
+/* Long words (e.g. "конфиденциальности") shrink instead of breaking mid-word on small phones. */
+h1{overflow-wrap:normal;hyphens:auto}
+@media(max-width:420px){h1{font-size:clamp(24px,7.4vw,32px)}}
