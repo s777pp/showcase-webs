@@ -71,8 +71,8 @@ def open_tickets(request: Request):
     if (denied := _denied(request)):
         return denied
     items = admin_content.tickets(status="open", limit=10)
-    return {"ok": True, "items": [{k: t.get(k) for k in ("id", "email", "message", "page", "status", "created_at")}
-                                  for t in items]}
+    return {"ok": True, "items": [{**{k: t.get(k) for k in ("id", "email", "message", "page", "status", "created_at")},
+                                   "telegram": (t.get("context") or {}).get("telegram") or ""} for t in items]}
 
 
 @router.post("/tickets/{ticket_id}/reply")

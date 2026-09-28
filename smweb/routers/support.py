@@ -2,6 +2,7 @@
 from __future__ import annotations
 import hashlib
 import json
+import re
 import os
 
 from fastapi import APIRouter, Request
@@ -90,17 +91,43 @@ async def create_ticket(request: Request):
             user = _auth_user(request)
         except Exception:
             user = None
+        email, telegram = _contact(body, user)
+        if not email and not telegram:
+            return reply({"ok": False, "code": "contact"}, 400)
+        context = dict(body.get("context") or {}) if isinstance(body.get("context"), dict) else {}
+        context["telegram"] = telegram
         result = admin_content.create_ticket(
-            user_id=int(user["id"]) if user else None,
-            email=str(user.get("email") or "") if user else str(body.get("email") or "")[:254],
-            message=body.get("message", ""), page=body.get("page", "/"), context=body.get("context"),
+            user_id=int(user["id"]) if user else None, email=email,
+            message=body.get("message", ""), page=body.get("page", "/"), context=context,
         )
     except (ValueError, TypeError, json.JSONDecodeError):
         return reply({"ok": False, "code": "invalid"}, 400)
     from smweb import admin_notify
-    admin_notify.ticket_created(result.get("ticket_id", ""), str(user.get("email") or "") if user else
-                                str(body.get("email") or "")[:254], str(body.get("message", "")), str(body.get("page", "/")))
+    admin_notify.ticket_created(result.get("ticket_id", ""), email, str(body.get("message", "")),
+                                str(body.get("page", "/")), telegram=telegram)
     return reply(result, 201)
+
+
+_EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+_TELEGRAM = re.compile(r"^(?:https?://)?(?:t\.me/|telegram\.me/)?@?([A-Za-z][A-Za-z0-9_]{4,31})/?$")
+
+
+def _contact(body: dict, user: dict | None) -> tuple[str, str]:
+    """(email, telegram username) the user wants the answer at.
+
+    ``contact`` comes from the support window and may be an e-mail or a
+    Telegram username / t.me link; ``email`` is the older chat form.  A
+    logged-in user who gives nothing is answered at the account e-mail.
+    """
+    raw = str(body.get("contact") or body.get("email") or "").strip()[:254]
+    if _EMAIL.match(raw):
+        return raw, ""
+    match = _TELEGRAM.match(raw)
+    if match:
+        return "", match.group(1)
+    if not raw and user and user.get("email"):
+        return str(user["email"])[:254], ""
+    return "", ""
 
 
 @router.get("/api/announcements")

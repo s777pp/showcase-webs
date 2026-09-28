@@ -46,6 +46,8 @@ def create_ticket(*, user_id: int | None, email: str, message: str, page: str, c
         "viewport": str(source.get("viewport") or "")[:32],
         "browser": str(source.get("browser") or "")[:120],
         "job_id": str(source.get("job_id") or "")[:64],
+        # Telegram username the user asked to be contacted at (instead of e-mail).
+        "telegram": str(source.get("telegram") or "")[:32],
     }
     ticket_id = secrets.token_hex(8)
     now = time.time()

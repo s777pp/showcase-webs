@@ -60,12 +60,17 @@ def _throttled(key: str, window: int) -> tuple[bool, int]:
         return True, 0
 
 
-def ticket_created(ticket_id: str, email: str, message: str, page: str) -> None:
+def ticket_created(ticket_id: str, email: str, message: str, page: str, telegram: str = "") -> None:
+    contact = f"Telegram @{telegram}" if telegram else (email or "без контакта")
     text = (f"📩 <b>Новое обращение</b>\n"
-            f"От: {html.escape(email or 'без почты')}\nСтраница: {html.escape(page or '/')}\n\n"
+            f"От: {html.escape(contact)}\nСтраница: {html.escape(page or '/')}\n\n"
             f"{html.escape(message)[:3000]}")
-    send(text, [[{"text": "✍️ Ответить", "callback_data": f"tk:{ticket_id}"},
-                 {"text": "✅ Закрыть", "callback_data": f"tkc:{ticket_id}"}]])
+    close = {"text": "✅ Закрыть", "callback_data": f"tkc:{ticket_id}"}
+    if telegram:
+        # The answer happens in Telegram itself: open the user's chat.
+        send(text, [[{"text": f"💬 Написать @{telegram}", "url": f"https://t.me/{telegram}"}, close]])
+    else:
+        send(text, [[{"text": "✍️ Ответить на почту", "callback_data": f"tk:{ticket_id}"}, close]])
 
 
 def job_failed(job_id: str, fields: dict) -> None:
