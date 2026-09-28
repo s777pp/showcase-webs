@@ -528,7 +528,8 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
             <span data-i="up_model">Content</span>
             <select id="upscaleModel" style="min-width:240px">
               <option value="general" data-i="up_general">Photo / general</option>
-              <option value="anime" data-i="up_anime">Anime / artwork</option>
+              <option value="anime" data-i="up_anime">Anime / artwork — sharp</option>
+              <option value="anime_soft" data-i="up_anime_soft">Anime / video — natural</option>
             </select>
           </label>
           <label style="display:flex;flex-direction:column;gap:6px;font-size:13px">
@@ -583,6 +584,7 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
           <label class="field"><span data-loop="formatLabel">Result format</span><select id="loopFormat"><option value="gif">GIF · Steam</option><option value="mp4">MP4 · preview</option></select></label>
           <label class="field"><span data-loop="fpsLabel">Frame rate</span><select id="loopFps"><option value="12" selected>12 FPS</option><option value="15">15 FPS</option><option value="18">18 FPS</option><option value="20">20 FPS</option><option value="24">24 FPS</option></select></label>
           <button class="btn" id="loopRun" type="button" disabled data-loop="run">Create loop</button>
+          <button class="btn ghost" id="loopPreview" type="button" disabled data-loop="previewBtn">Preview the loop</button>
           <div class="loop-progress" id="loopProgress"><i></i></div>
           <div class="status" id="loopStatus" aria-live="polite"></div>
         </div>
@@ -1156,8 +1158,8 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
   </div>
 </div>
 
-  <script src="/static/js/tool-loader.js?v=20260926-ux1"></script>
-<script src="/static/js/app.js?v=20260927-src1"></script>
+  <script src="/static/js/tool-loader.js?v=20260928-prev2"></script>
+<script src="/static/js/app.js?v=20260928-up1"></script>
 <script src="/static/js/color-grade.js?v=20260923-grade2"></script>
 <script src="/static/js/workshop-squares-fx.js?v=20260926-studio2"></script>
 <script src="/static/js/process-frame-fx.js?v=20260926-gaps1"></script>

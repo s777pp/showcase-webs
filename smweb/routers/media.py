@@ -604,7 +604,7 @@ async def api_upscale_start(
         return JSONResponse({"ok": False, "msg": "PNG/JPG/WEBP/GIF/MP4/WEBM/AVI only"}, status_code=400)
     media_kind, source_ext, result_type = media
     preset = (preset or "general").strip().lower()
-    if preset not in ("general", "anime"):
+    if preset not in ("general", "anime", "anime_soft"):
         return JSONResponse({"ok": False, "msg": "Unknown upscale preset"}, status_code=400)
     if scale not in (2, 4):
         return JSONResponse({"ok": False, "msg": "Scale must be 2 or 4"}, status_code=400)

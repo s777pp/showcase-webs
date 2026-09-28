@@ -578,6 +578,8 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
             error_traces=traces,
             finished=time.time(),
         )
+        # Typical duration drives the "about N seconds left" estimate on the page.
+        rs.eta_record("process", _sm_time.perf_counter() - _sm_job_t0)
         record = _job_get(jid) or {}
         cache_key = str(record.get("cache_key") or "")
         if cache_key:

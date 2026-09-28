@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import subprocess
+import tempfile
 import traceback
 from pathlib import Path
 
@@ -232,6 +233,69 @@ def _build_sequence(raw_frames: list[Path], output: Path, mode: str, blend_frame
     return index, seam
 
 
+def render_sequence(source: Path, root: Path, *, mode: str, fps: int, start: float, duration: float,
+                    transition: float, max_width: int = 1280, progress=None, jid: str = "") -> tuple[int, str, Path]:
+    """Decode the selected fragment and build the loop's PNG sequence.
+
+    Shared by the full job and the quick preview, so both find the same join.
+    Returns (frame count, seam kind, sequence directory).
+    """
+    ffmpeg = proc.find_ffmpeg()
+    if not ffmpeg:
+        raise RuntimeError("FFmpeg is unavailable")
+    source_duration, _width = _metadata(source)
+    requested = max(0.5, min(8.0, float(duration or 8)))
+    start = max(0.0, min(float(start or 0), max(0.0, source_duration - 0.5)))
+    if mode == "pingpong":
+        requested = max(1.0, requested)
+    fade = min(max(.25, min(.75, float(transition or .5))), requested * .35)
+    preroll = 0.0
+    if mode == "pingpong":
+        segment = min(source_duration - start, requested / 2)
+    else:
+        # Decode a little before the selection (frames to fade into) and past
+        # its end, so the loop point can be searched for.
+        preroll = min(start, max(fade, requested * .3))
+        start -= preroll
+        segment = min(source_duration - start, preroll + min(8.0, requested * 1.15) + requested * .2)
+    raw_dir, sequence_dir = root / "decoded", root / "sequence"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    if progress:
+        progress("decode", 16, source_duration=round(source_duration, 3))
+    _run_cmd([
+        ffmpeg, "-y", "-ss", f"{start:.4f}", "-t", f"{segment:.4f}", "-i", str(source),
+        "-an", "-vf", f"fps={fps},scale='trunc(min({max_width},iw)/2)*2':-2:flags={proc.SCALE_FLAGS}{proc.source_matrix(source)}",
+        str(raw_dir / "source_%05d.png"),
+    ], jid)
+    frames = sorted(raw_dir.glob("source_*.png"))
+    if len(frames) < 4:
+        raise ValueError("Selected fragment contains too few frames")
+    if progress:
+        progress("join", 48)
+    frame_count, seam = _build_sequence(frames, sequence_dir, mode, round(fade * fps),
+                                        want=round(min(8.0, requested) * fps), preroll=round(preroll * fps),
+                                        max_frames=8 * fps)
+    return frame_count, seam, sequence_dir
+
+
+def preview(source: Path, *, mode: str, start: float, duration: float, transition: float) -> bytes:
+    """Small MP4 of the finished loop (360 px, 12 fps) to check the join first."""
+    root = Path(tempfile.mkdtemp(prefix="sm_loop_preview_"))
+    try:
+        fps = 12
+        count, _seam, sequence_dir = render_sequence(source, root, mode=mode, fps=fps, start=start,
+                                                     duration=duration, transition=transition, max_width=360)
+        out = root / "preview.mp4"
+        _run_cmd([
+            proc.find_ffmpeg(), "-y", "-framerate", str(fps), "-i", str(sequence_dir / "frame_%05d.png"),
+            "-an", "-vf", "scale='trunc(iw/2)*2':'trunc(ih/2)*2'", "-c:v", "libx264", "-preset", "veryfast",
+            "-crf", "24", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out),
+        ])
+        return out.read_bytes()
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 def run(jid: str, job: dict) -> None:
     root = Path(str(job["job_dir"])); source = Path(str(job["source_path"]))
     try:
@@ -239,38 +303,21 @@ def run(jid: str, job: dict) -> None:
         if not ffmpeg:
             raise RuntimeError("FFmpeg is unavailable")
         fps = max(8, min(24, int(job.get("fps") or 12)))
-        source_duration, source_width = _metadata(source)
-        requested = max(0.5, min(8.0, float(job.get("duration") or 8)))
-        start = max(0.0, min(float(job.get("start") or 0), max(0.0, source_duration - 0.5)))
+
+        def progress(stage: str, pct: int, **extra) -> None:
+            if stage == "decode":
+                rs.job_update(jid, status="running", pct=pct, stage=stage, **extra)
+            else:
+                rs.job_update(jid, pct=pct, stage=stage)
+            process_control.checkpoint(jid)
+
+        frame_count, seam, sequence_dir = render_sequence(
+            source, root, mode=str(job.get("mode") or "blend"), fps=fps,
+            start=float(job.get("start") or 0), duration=float(job.get("duration") or 8),
+            transition=float(job.get("transition") or .5), progress=progress, jid=jid,
+        )
         mode = str(job.get("mode") or "blend")
-        if mode == "pingpong":
-            requested = max(1.0, requested)
-        fade = min(max(.25, min(.75, float(job.get("transition") or .5))), requested * .35)
-        preroll = 0.0
-        if mode == "pingpong":
-            segment = min(source_duration - start, requested / 2)
-        else:
-            # Decode a little before the selection (frames to fade into) and past
-            # its end, so the loop point can be searched for.
-            preroll = min(start, max(fade, requested * .3))
-            start -= preroll
-            segment = min(source_duration - start, preroll + min(8.0, requested * 1.15) + requested * .2)
-        raw_dir, sequence_dir = root / "decoded", root / "sequence"
-        raw_dir.mkdir(parents=True, exist_ok=True)
-        rs.job_update(jid, status="running", pct=16, stage="decode", source_duration=round(source_duration, 3))
-        process_control.checkpoint(jid)
-        _run_cmd([
-            ffmpeg, "-y", "-ss", f"{start:.4f}", "-t", f"{segment:.4f}", "-i", str(source),
-            "-an", "-vf", f"fps={fps},scale='trunc(min(1280,iw)/2)*2':-2:flags={proc.SCALE_FLAGS}{proc.source_matrix(source)}",
-            str(raw_dir / "source_%05d.png"),
-        ], jid)
-        frames = sorted(raw_dir.glob("source_*.png"))
-        if len(frames) < 4:
-            raise ValueError("Selected fragment contains too few frames")
-        rs.job_update(jid, pct=48, stage="join")
-        frame_count, seam = _build_sequence(frames, sequence_dir, mode, round(fade * fps),
-                                            want=round(min(8.0, requested) * fps), preroll=round(preroll * fps),
-                                            max_frames=8 * fps)
+        raw_dir = root / "decoded"
         output_format = str(job.get("output_format") or "gif")
         rs.job_update(jid, pct=70, stage="encode")
         if output_format == "mp4":

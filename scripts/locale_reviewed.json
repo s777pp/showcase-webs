@@ -73,7 +73,18 @@
     "This Steam profile is private. Make it public or import via the extension.": "Dieses Steam-Profil ist privat. Stelle es auf öffentlich oder importiere es über die Erweiterung.",
     "Steam profile not found. Check the link.": "Steam-Profil nicht gefunden. Prüfe den Link.",
     "Images, GIFs and videos from YouTube, TikTok, Instagram, Pinterest, Giphy and 50+ sites": "Bilder, GIFs und Videos von YouTube, TikTok, Instagram, Pinterest, Giphy und 50+ Seiten",
-    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven und mehr, oder ein direkter Dateilink"
+    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven und mehr, oder ein direkter Dateilink",
+    " left": " verbleibend",
+    " min ": " Min. ",
+    "Job queued…": "Auftrag in der Warteschlange…",
+    "Processing": "Verarbeitung",
+    "Queued, jobs ahead: ": "In der Warteschlange, davor: ",
+    "Preview the loop": "Schleife vorab ansehen",
+    "Building a quick preview…": "Schnelle Vorschau wird erstellt…",
+    "Preview · 360 px": "Vorschau · 360 px",
+    "Preview ready: this is how the join will look (small size). Press “Create Steam loop” for the full-quality file.": "Vorschau fertig: So sieht der Übergang aus (verkleinert). Für die Datei in voller Qualität „Steam-Schleife erstellen“ drücken.",
+    "Anime / artwork — sharp": "Anime / Artwork — scharf",
+    "Anime / video — natural": "Anime / Video — natürlich"
   },
   "tr": {
     "3 Steam formats": "3 Steam formatı",
@@ -148,7 +159,18 @@
     "This Steam profile is private. Make it public or import via the extension.": "Bu Steam profili gizli. Herkese açık yapın veya uzantı ile içe aktarın.",
     "Steam profile not found. Check the link.": "Steam profili bulunamadı. Bağlantıyı kontrol edin.",
     "Images, GIFs and videos from YouTube, TikTok, Instagram, Pinterest, Giphy and 50+ sites": "YouTube, TikTok, Instagram, Pinterest, Giphy ve 50+ siteden görsel, GIF ve video",
-    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven ve daha fazlası ya da doğrudan dosya bağlantısı"
+    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven ve daha fazlası ya da doğrudan dosya bağlantısı",
+    " left": " kaldı",
+    " min ": " dk ",
+    "Job queued…": "İş sırada…",
+    "Processing": "İşleniyor",
+    "Queued, jobs ahead: ": "Sırada, önünüzde: ",
+    "Preview the loop": "Döngüyü önizle",
+    "Building a quick preview…": "Hızlı önizleme hazırlanıyor…",
+    "Preview · 360 px": "Önizleme · 360 px",
+    "Preview ready: this is how the join will look (small size). Press “Create Steam loop” for the full-quality file.": "Önizleme hazır: birleşim böyle görünecek (küçük boyutta). Tam kaliteli dosya için “Steam döngüsü oluştur”a bas.",
+    "Anime / artwork — sharp": "Anime / çizim — keskin",
+    "Anime / video — natural": "Anime / video — doğal"
   },
   "fr": {
     "3 Steam formats": "3 formats Steam",
@@ -224,7 +246,18 @@
     "This Steam profile is private. Make it public or import via the extension.": "Ce profil Steam est privé. Rendez-le public ou importez-le via l’extension.",
     "Steam profile not found. Check the link.": "Profil Steam introuvable. Vérifiez le lien.",
     "Images, GIFs and videos from YouTube, TikTok, Instagram, Pinterest, Giphy and 50+ sites": "Images, GIF et vidéos depuis YouTube, TikTok, Instagram, Pinterest, Giphy et 50+ sites",
-    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven et plus, ou un lien direct vers un fichier"
+    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven et plus, ou un lien direct vers un fichier",
+    " left": " restantes",
+    " min ": " min ",
+    "Job queued…": "Tâche en file d’attente…",
+    "Processing": "Traitement",
+    "Queued, jobs ahead: ": "En file d’attente, avant vous : ",
+    "Preview the loop": "Aperçu de la boucle",
+    "Building a quick preview…": "Création d’un aperçu rapide…",
+    "Preview · 360 px": "Aperçu · 360 px",
+    "Preview ready: this is how the join will look (small size). Press “Create Steam loop” for the full-quality file.": "Aperçu prêt : voici à quoi ressemblera le raccord (taille réduite). Appuyez sur « Créer la boucle Steam » pour le fichier en pleine qualité.",
+    "Anime / artwork — sharp": "Anime / illustration — net",
+    "Anime / video — natural": "Anime / vidéo — naturel"
   },
   "uk": {
     "3 Steam formats": "3 формати Steam",
@@ -301,7 +334,18 @@
     "This Steam profile is private. Make it public or import via the extension.": "Цей профіль Steam закритий. Відкрийте його або імпортуйте через розширення.",
     "Steam profile not found. Check the link.": "Профіль Steam не знайдено. Перевірте посилання.",
     "Images, GIFs and videos from YouTube, TikTok, Instagram, Pinterest, Giphy and 50+ sites": "Зображення, GIF і відео з YouTube, TikTok, Instagram, Pinterest, Giphy та ще 50+ сайтів",
-    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven та інші, або пряме посилання на файл"
+    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven та інші, або пряме посилання на файл",
+    " left": " залишилось",
+    " min ": " хв ",
+    "Job queued…": "Завдання в черзі…",
+    "Processing": "Обробка",
+    "Queued, jobs ahead: ": "У черзі, перед вами: ",
+    "Preview the loop": "Попередній перегляд циклу",
+    "Building a quick preview…": "Збираємо швидкий попередній перегляд…",
+    "Preview · 360 px": "Перегляд · 360 px",
+    "Preview ready: this is how the join will look (small size). Press “Create Steam loop” for the full-quality file.": "Перегляд готовий: так виглядатиме стик (у зменшеному розмірі). Для файлу в повній якості натисни «Створити цикл для Steam».",
+    "Anime / artwork — sharp": "Аніме / ілюстрація — різко",
+    "Anime / video — natural": "Аніме / відео — природно"
   },
   "es": {
     "3 Steam formats": "3 formatos de Steam",
@@ -376,7 +420,18 @@
     "This Steam profile is private. Make it public or import via the extension.": "Este perfil de Steam es privado. Hazlo público o impórtalo con la extensión.",
     "Steam profile not found. Check the link.": "No se encontró el perfil de Steam. Revisa el enlace.",
     "Images, GIFs and videos from YouTube, TikTok, Instagram, Pinterest, Giphy and 50+ sites": "Imágenes, GIF y vídeos de YouTube, TikTok, Instagram, Pinterest, Giphy y más de 50 sitios",
-    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven y más, o un enlace directo al archivo"
+    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven y más, o un enlace directo al archivo",
+    " left": " restantes",
+    " min ": " min ",
+    "Job queued…": "Tarea en cola…",
+    "Processing": "Procesando",
+    "Queued, jobs ahead: ": "En cola, antes que tú: ",
+    "Preview the loop": "Vista previa del bucle",
+    "Building a quick preview…": "Creando una vista previa rápida…",
+    "Preview · 360 px": "Vista previa · 360 px",
+    "Preview ready: this is how the join will look (small size). Press “Create Steam loop” for the full-quality file.": "Vista previa lista: así se verá la unión (tamaño reducido). Pulsa «Crear bucle de Steam» para el archivo a calidad completa.",
+    "Anime / artwork — sharp": "Anime / ilustración — nítido",
+    "Anime / video — natural": "Anime / vídeo — natural"
   },
   "pt": {
     "3 Steam formats": "3 formatos da Steam",
@@ -451,6 +506,17 @@
     "This Steam profile is private. Make it public or import via the extension.": "Este perfil Steam é privado. Deixe-o público ou importe pela extensão.",
     "Steam profile not found. Check the link.": "Perfil Steam não encontrado. Verifique o link.",
     "Images, GIFs and videos from YouTube, TikTok, Instagram, Pinterest, Giphy and 50+ sites": "Imagens, GIFs e vídeos do YouTube, TikTok, Instagram, Pinterest, Giphy e mais de 50 sites",
-    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven e mais, ou um link direto para o arquivo"
+    "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven and more, or a direct file link": "YouTube · TikTok · Instagram · X · Reddit · Pinterest · VK · Twitch · Giphy · Tenor · Pixiv · ArtStation · Wallhaven e mais, ou um link direto para o arquivo",
+    " left": " restantes",
+    " min ": " min ",
+    "Job queued…": "Tarefa na fila…",
+    "Processing": "Processando",
+    "Queued, jobs ahead: ": "Na fila, antes de você: ",
+    "Preview the loop": "Pré-visualizar o loop",
+    "Building a quick preview…": "Criando uma prévia rápida…",
+    "Preview · 360 px": "Prévia · 360 px",
+    "Preview ready: this is how the join will look (small size). Press “Create Steam loop” for the full-quality file.": "Prévia pronta: é assim que a junção vai ficar (tamanho reduzido). Toque em “Criar loop Steam” para o arquivo em qualidade total.",
+    "Anime / artwork — sharp": "Anime / ilustração — nítido",
+    "Anime / video — natural": "Anime / vídeo — natural"
   }
 }

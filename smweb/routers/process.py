@@ -497,6 +497,26 @@ def _process_job_for(request: Request, job_id: str) -> dict | None:
     return job
 
 
+def _process_eta(job_id: str, job: dict) -> dict:
+    """Queue position and a rough "seconds left" from recent job durations."""
+    status = job.get("status")
+    if status not in ("queued", "running"):
+        return {}
+    typical = rs.eta_typical("process")
+    out: dict = {}
+    if status == "queued":
+        ahead = rs.queue_ahead(job_id)
+        if ahead is not None:
+            out["queue_ahead"] = ahead
+            if typical:
+                workers = max(1, int(os.environ.get("MAX_JOB_WORKERS") or 1))
+                out["eta_seconds"] = int(typical * (1 + ahead // workers))
+    elif typical:
+        elapsed = time.time() - float(job.get("started") or time.time())
+        out["eta_seconds"] = int(max(5, typical - elapsed))
+    return out
+
+
 @router.get("/api/process/status/{job_id}")
 def api_process_status(job_id: str, request: Request):
     j = _process_job_for(request, job_id)
@@ -511,6 +531,7 @@ def api_process_status(job_id: str, request: Request):
         "processed": j.get("processed"),
         "errors": j.get("errors") or [],
     }
+    out.update(_process_eta(job_id, j))
     if j.get("status") == "done":
         out["download"] = f"/api/process/download/{job_id}"
         if j.get("readiness"):

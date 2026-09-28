@@ -645,8 +645,15 @@ document.getElementById('btnRun').onclick = async () => {
             if (job.status === 'error' || job.status === 'cancelled') throw new Error(job.status === 'cancelled' ? smT('Обработка отменена', 'Processing cancelled') : (job.error || (job.errors || []).join(' · ') || smT('Ошибка обработки', 'Processing failed')));
             if (job.status === 'done') break;
             const realPct = Math.max(0, Math.min(99, Number(job.pct) || 0));
-            setProg(40 + realPct * .58,
-              ru ? 'Обработка в очереди…' : 'Processing in queue…',
+            // Queue position and a rough time left, estimated by the server from recent jobs.
+            const secs = Number(job.eta_seconds) || 0;
+            const left = secs ? (secs < 60 ? secs + (ru ? ' сек' : ' s') : Math.floor(secs / 60) + (ru ? ' мин ' : ' min ') + (secs % 60) + (ru ? ' сек' : ' s')) : '';
+            const ahead = Number(job.queue_ahead) || 0;
+            let title = job.status === 'queued'
+              ? (ahead > 0 ? (ru ? 'В очереди, перед вами: ' : 'Queued, jobs ahead: ') + ahead : (ru ? 'Задание в очереди…' : 'Job queued…'))
+              : (ru ? 'Обработка' : 'Processing');
+            if (left) title += (ru ? ' · осталось ≈ ' : ' · ≈ ') + left + (ru ? '' : ' left');
+            setProg(40 + realPct * .58, title,
               ru ? 'сайт остаётся доступным во время обработки' : 'the site stays responsive while this runs');
             await new Promise(function (done) { setTimeout(done, 850); });
           }
@@ -2074,7 +2081,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       up_pro_h: "Pro only",
       up_pro_body: "Upscale is available to Pro subscribers. Subscribe or activate an access key.",
       up_drop: "Drop an image, GIF or video here — or click to browse",
-      up_model: "Content", up_scale: "Scale", up_general: "Photo / general", up_anime: "Anime / artwork",
+      up_model: "Content", up_scale: "Scale", up_general: "Photo / general", up_anime: "Anime / artwork — sharp", up_anime_soft: "Anime / video — natural",
       up_btn: "Upscale", up_prog: "Processing on GPU…",
       up_before: "Before", up_after: "After", up_dl: "Download result",
       up_pick: "Choose an image, GIF or video", up_wait: "Queued for GPU processing…",
@@ -2234,7 +2241,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       up_pro_h: "Только для Pro",
       up_pro_body: "Апскейл доступен подписчикам Pro. Оформи подписку или активируй ключ доступа.",
       up_drop: "Перетащи изображение, GIF или видео сюда — либо нажми для выбора",
-      up_model: "Контент", up_scale: "Масштаб", up_general: "Фото / универсальная", up_anime: "Аниме / иллюстрация",
+      up_model: "Контент", up_scale: "Масштаб", up_general: "Фото / универсальная", up_anime: "Аниме / иллюстрация — резко", up_anime_soft: "Аниме / видео — естественно",
       up_btn: "Увеличить", up_prog: "Обработка на GPU…",
       up_before: "До", up_after: "После", up_dl: "Скачать результат",
       up_pick: "Выбери изображение, GIF или видео", up_wait: "Задача поставлена в очередь GPU…",

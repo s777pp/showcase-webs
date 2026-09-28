@@ -93,6 +93,45 @@ async def start(request: Request, file: UploadFile | None = File(None), asset_id
     return JSONResponse({"ok": True, "job_id": jid}, status_code=202)
 
 
+@router.post("/api/loop/preview")
+async def preview(request: Request, file: UploadFile | None = File(None), asset_id: str = Form(""),
+                  mode: str = Form("blend"), start: float = Form(0), duration: float = Form(4),
+                  transition: float = Form(.5)):
+    """Quick low-resolution render of the loop, to check the join before the full job."""
+    user, owner = _owner(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
+    if not auth_db.effective_pro(user):
+        return JSONResponse({"ok": False, "msg": "Seamless Loop is available for Pro subscribers", "code": "pro"}, status_code=403)
+    allowed, _ = rs.rate_limit(f"loop-preview:{owner}", 30, 3600)
+    if not allowed:
+        return JSONResponse({"ok": False, "msg": "Too many previews. Try again later."}, status_code=429)
+    asset = media_assets.resolve(asset_id, media_assets.owner_key(request)) if asset_id else None
+    if asset_id and not asset:
+        return JSONResponse({"ok": False, "msg": "Source asset is unavailable"}, status_code=410)
+    raw = asset[1].read_bytes() if asset else (await file.read() if file else b"")
+    if not raw or len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+        return JSONResponse({"ok": False, "msg": f"File missing or larger than {MAX_UPLOAD_MB} MB"}, status_code=400)
+    media = _media(raw)
+    if not media or mode not in {"blend", "pingpong"} or not all(math.isfinite(v) for v in (start, duration, transition)):
+        return JSONResponse({"ok": False, "msg": "Unsupported loop settings"}, status_code=400)
+    from starlette.concurrency import run_in_threadpool
+    from smweb.loop_jobs import preview as render_preview
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="sm_loop_src_") as folder:
+        source = Path(folder) / f"source{media[0]}"
+        source.write_bytes(raw)
+        try:
+            video = await run_in_threadpool(
+                render_preview, source, mode=mode, start=max(0, min(29.5, start)),
+                duration=max(0.5, min(8, duration)), transition=max(.25, min(.75, transition)),
+            )
+        except Exception:
+            LOGGER.warning("loop preview failed", exc_info=True)
+            return JSONResponse({"ok": False, "msg": "Preview failed"}, status_code=500)
+    return Response(video, media_type="video/mp4", headers={"Cache-Control": "private, no-store"})
+
+
 def _job(request: Request, job_id: str):
     if not re.fullmatch(r"[a-f0-9]{32}", job_id or ""):
         return None
