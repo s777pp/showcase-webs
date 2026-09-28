@@ -344,7 +344,7 @@ def process_image_workshop(
 
     out["full_original.png"] = _png_bytes(img)
 
-    bar = 6
+    bar = steam_bar_width(w, "workshop")
     full_w = w + bar * 4
     full = Image.new("RGBA", (full_w, h), (0, 0, 0, 255))
     x = 0
@@ -443,7 +443,7 @@ def process_image_split(
         "side_100.png": apply_hex21(_png_bytes(side)),
         "full_original.png": _png_bytes(img),
     }
-    bar = 6
+    bar = steam_bar_width(center.width + side.width, "split")
     full = Image.new("RGBA", (center.width + bar + side.width, nh), (0, 0, 0, 255))
     full.paste(center, (0, 0))
     full.paste(side, (center.width + bar, 0))
@@ -540,36 +540,69 @@ def _gifski_from_frames(frames_dir: Path, dest: Path, fps: int, quality: int = 1
             "-o", str(dest), *[str(f) for f in files],
         ]
         subprocess.run(cmd, check=True, capture_output=True)
-        if not (dest.is_file() and dest.stat().st_size > 50):
-            return False
-        _gifsicle_optimize(dest)
-        return True
+        return dest.is_file() and dest.stat().st_size > 50
     except Exception:
         return False
 
 
-def find_gifsicle() -> Optional[str]:
-    return shutil.which("gifsicle")
+def _best_quality(size_at, limit: int, min_quality: int = 1) -> int:
+    """Highest gifski quality whose output fits ``limit`` bytes, in few encodes.
 
-
-def _gifsicle_optimize(path: Path) -> None:
-    """Lossless re-pack of a finished GIF; keeps the result only if it is smaller.
-
-    Every byte saved here lets the size fit choose a higher gifski quality.
+    Output size grows roughly exponentially with quality, so each probe aims
+    just under the limit using ln(size) fitted between the closest fitting and
+    failing probes.  The search stops once a fitting result is within 6 % of
+    the limit or the fit/fail bracket is one step wide; a prediction outside
+    the bracket falls back to bisection.  Typically 3-4 encodes
+    instead of the 8 a plain binary search needs.  Returns 0 if nothing fits.
     """
-    tool = find_gifsicle()
-    if not tool:
-        return
-    out = path.with_name(path.stem + ".opt.gif")
-    try:
-        subprocess.run([tool, "-O3", "--no-warnings", "-o", str(out), str(path)],
-                       check=True, capture_output=True, timeout=120)
-        if out.is_file() and 50 < out.stat().st_size < path.stat().st_size:
-            os.replace(out, path)
-    except Exception:
-        pass
-    finally:
-        out.unlink(missing_ok=True)
+    import math
+
+    sizes: dict[int, int] = {}
+
+    def probe(quality: int) -> int:
+        if quality not in sizes:
+            sizes[quality] = int(size_at(quality))
+        return sizes[quality]
+
+    if probe(100) <= limit:
+        return 100
+    target = 0.97 * limit
+    fit_q, fail_q = 0, 100
+    slope = 0.0375  # typical d ln(size) / d quality for gifski
+    guess = 100 - math.log(sizes[100] / target) / slope
+    jump = 2
+    for _ in range(14):
+        low = fit_q + 1 if fit_q else max(1, min_quality)
+        high = fail_q - 1
+        if low > high:
+            break
+        quality = max(low, min(high, int(round(guess))))
+        if not fit_q:
+            # Nothing fits yet: move down at least `jump`, doubling each time,
+            # so flat stretches of the size curve cannot stall the search.
+            quality = max(low, min(quality, fail_q - jump))
+            jump *= 2
+        elif high - low > 4 and quality in (low, high):
+            quality = (low + high) // 2
+        if probe(quality) <= limit:
+            fit_q = quality
+            if sizes[quality] >= 0.94 * limit:
+                break
+        else:
+            fail_q = quality
+        # Refit the slope on the two probes closest to the target size.
+        near = sorted(sizes, key=lambda q: abs(math.log(max(1, sizes[q]) / target)))[:2]
+        if len(near) == 2 and near[0] != near[1] and sizes[near[0]] != sizes[near[1]]:
+            fitted = math.log(max(1, sizes[near[0]]) / max(1, sizes[near[1]])) / (near[0] - near[1])
+            if fitted > 0:
+                slope = max(0.004, fitted)
+        base = near[0]
+        guess = base + math.log(target / max(1, sizes[base])) / slope
+        if fit_q and not (fit_q < guess < fail_q):
+            guess = (fit_q + fail_q) / 2  # prediction left the bracket: bisect
+    if not fit_q and min_quality > 1 and min_quality < fail_q and probe(min_quality) <= limit:
+        fit_q = min_quality
+    return fit_q
 
 
 def fit_frames_to_gif(frames_dir: Path, dest: Path, fps: int, max_mb: float = MAX_STEAM_MB,
@@ -578,7 +611,7 @@ def fit_frames_to_gif(frames_dir: Path, dest: Path, fps: int, max_mb: float = MA
 
     Always works from the original frames: re-quantizing an already
     dithered GIF adds a second layer of noise.  The highest fitting quality
-    is found by binary search with fast encodes, then the final file is made
+    is found by `_best_quality` with fast encodes, then the final file is made
     with ``--extra``.  Returns the chosen settings, or None when gifski is
     missing or even ``min_quality`` does not fit (the caller falls back).
     """
@@ -594,17 +627,13 @@ def fit_frames_to_gif(frames_dir: Path, dest: Path, fps: int, max_mb: float = MA
         def fits(path: Optional[Path]) -> bool:
             return bool(path) and 50 < path.stat().st_size <= limit
 
-        top = encode(100, extra=True)
-        if fits(top):
-            _safe_replace(top, dest)
-            return {"quality": 100, "extra": True}
-        low, high, best = max(1, min_quality), 99, 0
-        while low <= high:
-            quality = (low + high) // 2
-            if fits(encode(quality)):
-                best, low = quality, quality + 1
-            else:
-                high = quality - 1
+        paths: dict[int, Optional[Path]] = {}
+
+        def size_at(quality: int) -> int:
+            paths[quality] = encode(quality)
+            return paths[quality].stat().st_size if paths[quality] else limit * 100
+
+        best = _best_quality(size_at, limit, min_quality=max(1, min_quality))
         if not best:
             return None
         # --extra can add a few KB; step down a little if it no longer fits.
@@ -613,7 +642,7 @@ def fit_frames_to_gif(frames_dir: Path, dest: Path, fps: int, max_mb: float = MA
             if fits(candidate):
                 _safe_replace(candidate, dest)
                 return {"quality": quality, "extra": True}
-        _safe_replace(work / f"q{best}.gif", dest)
+        _safe_replace(paths[best], dest)
         return {"quality": best, "extra": False}
     finally:
         shutil.rmtree(work, ignore_errors=True)
@@ -1174,6 +1203,65 @@ def _save_animated_gif(frames_p: list, durations: list, out_path: Path) -> None:
         raise RuntimeError("GIF write failed (empty output)")
 
 
+# Steam shows the panels of a Workshop row inside a 630 px column and an
+# Artwork Split as 506 + 100 px; the gap between them looks about 3 px there.
+# Previews scale the gap with their own width so every file looks the same
+# once it is shown at one size (DeviantArt, the gallery, Steam itself).
+_STEAM_ROW_WIDTH = {"workshop": 630, "split": 606}
+
+
+def steam_bar_width(total_width: int, layout: str) -> int:
+    return max(2, round(3 * int(total_width) / _STEAM_ROW_WIDTH[layout]))
+
+
+def _compose_bars(frame: Image.Image, layout: str) -> Image.Image:
+    """Full preview frame: the panels separated by black Steam-like gaps."""
+    frame = frame.convert("RGBA")
+    fw, fh = frame.size
+    bar = steam_bar_width(fw, layout)
+    if layout == "split":
+        cut = min(506, max(1, fw - 1))
+        parts = [frame.crop((0, 0, cut, fh)), frame.crop((cut, 0, fw, fh))]
+    else:
+        pw = max(1, fw // 5)
+        parts = [frame.crop((i * pw, 0, (i + 1) * pw if i < 4 else fw, fh)) for i in range(5)]
+    full = Image.new("RGBA", (sum(p.width for p in parts) + bar * (len(parts) - 1), fh), (0, 0, 0, 255))
+    x = 0
+    for part in parts:
+        full.paste(part, (x, 0), part)
+        x += part.width + bar
+    return full
+
+
+def _bars_gif_from_frames(frames_dir: Path, out_path: Path, layout: str, fps: int, wm_text: str,
+                          wm_font: str, wm_opacity: float, wm_corner: str = "bl", wm_scale: float = 1.0,
+                          wm_color: str = "#ffffff", wm_x: float | None = None,
+                          wm_y: float | None = None) -> bool:
+    """full_with_bars.gif straight from the full-colour frames, at gifski's best quality.
+
+    Not fitted to the Steam limit on purpose: it is the owner's full-quality
+    upload (DeviantArt).  Building it from the original frames avoids the
+    second quantization the old path did on an already finished GIF.
+    """
+    files = sorted(frames_dir.glob("frame_*.png"))
+    if not files or not find_gifski():
+        return False
+    tmp = Path(tempfile.mkdtemp(prefix="sm_bars_"))
+    try:
+        for index, path in enumerate(files, start=1):
+            with Image.open(path) as opened:
+                full = _compose_bars(opened, layout)
+            if wm_text and float(wm_opacity or 0) > 0:
+                full = apply_watermark(full, str(wm_text), wm_font, float(wm_opacity), corner=wm_corner,
+                                       scale=float(wm_scale or 1.0), color=wm_color or "#ffffff",
+                                       wx=wm_x, wy=wm_y)
+            flat = Image.alpha_composite(Image.new("RGBA", full.size, (0, 0, 0, 255)), full).convert("RGB")
+            flat.save(tmp / f"frame_{index:04d}.png", format="PNG", compress_level=0)
+        return _gifski_from_frames(tmp, out_path, fps=fps, quality=100, extra=True)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def _gif_full_with_bars_workshop(
     gif_path: Path,
     out_path: Path,
@@ -1200,22 +1288,7 @@ def _gif_full_with_bars_workshop(
         for idx in range(0, n, step):
             im.seek(idx)
             frame = im.convert("RGBA")
-            fw, fh = frame.size
-            pw = max(1, fw // 5)
-            full_w = fw + bar_width * 4
-            full = Image.new("RGBA", (full_w, fh), (0, 0, 0, 255))
-            x = 0
-            for i in range(5):
-                left = i * pw
-                right = (i + 1) * pw if i < 4 else fw
-                part = frame.crop((left, 0, right, fh))
-                if part.mode == "RGBA":
-                    full.paste(part, (x, 0), part)
-                else:
-                    full.paste(part, (x, 0))
-                x += part.width
-                if i < 4:
-                    x += bar_width
+            full = _compose_bars(frame, "workshop")
             if wm_text and float(wm_opacity or 0) > 0:
                 full = apply_watermark(
                     full,
@@ -1275,29 +1348,7 @@ def _gif_full_with_bar_split(
             for idx in range(0, n, step):
                 im.seek(idx)
                 frame = im.convert("RGBA")
-                fw, fh = frame.size
-
-                cut = min(506, max(1, fw - 1))
-                center = frame.crop((0, 0, cut, fh))
-                side = frame.crop((cut, 0, fw, fh))
-
-                if side.width <= 0:
-                    side = Image.new(
-                        "RGBA", (100, fh), (0, 0, 0, 255)
-                    )
-
-                full_w = center.width + bar_width + side.width
-                full = Image.new(
-                    "RGBA", (full_w, fh), (0, 0, 0, 255)
-                )
-
-                full.paste(center, (0, 0), center)
-
-                full.paste(
-                    side,
-                    (center.width + bar_width, 0),
-                    side,
-                )
+                full = _compose_bars(frame, "split")
 
                 if wm_text and float(wm_opacity or 0) > 0:
                     full = apply_watermark(
@@ -1450,12 +1501,18 @@ def _encode_synchronized_frame_group(
             def encode_quality(quality: int, extra: bool = False) -> list[Path]:
                 attempt_dir = attempts_root / f"q_{quality}{'x' if extra else ''}"
                 attempt_dir.mkdir()
-                outputs: list[Path] = []
-                for index, frames_dir in enumerate(frame_dirs, start=1):
-                    output = attempt_dir / f"part_{index}.gif"
-                    if not _gifski_from_frames(frames_dir, output, fps=fps, quality=quality, extra=extra):
+                outputs = [attempt_dir / f"part_{index}.gif" for index in range(1, len(frame_dirs) + 1)]
+                # Panels are narrow, so one gifski cannot keep every core busy;
+                # encoding them side by side is several times faster.
+                from concurrent.futures import ThreadPoolExecutor
+                with ThreadPoolExecutor(max_workers=min(len(frame_dirs), os.cpu_count() or 2)) as pool:
+                    done = list(pool.map(
+                        lambda pair: _gifski_from_frames(pair[0], pair[1], fps=fps, quality=quality, extra=extra),
+                        zip(frame_dirs, outputs),
+                    ))
+                for index, ok in enumerate(done, start=1):
+                    if not ok:
                         raise RuntimeError(f"gifski failed for Workshop part {index}")
-                    outputs.append(output)
                 print(
                     f"[{label.upper()} GROUP] gifski q={quality} fps={fps} sizes="
                     + ",".join(f"{_gif_mb(path):.2f}" for path in outputs),
@@ -1474,22 +1531,15 @@ def _encode_synchronized_frame_group(
                 install(fast_paths)
                 return {"encoder": "gifski", "quality": quality, "fps": fps}
 
-            highest = encode_quality(100)
-            if fits(highest):
-                return install_best(100, highest)
+            attempts: dict[int, list[Path]] = {}
 
-            low, high = 1, 99
-            best_quality = 0
-            best_paths: list[Path] | None = None
-            while low <= high:
-                quality = (low + high) // 2
-                outputs = encode_quality(quality)
-                if fits(outputs):
-                    best_quality = quality
-                    best_paths = outputs
-                    low = quality + 1
-                else:
-                    high = quality - 1
+            def group_size(quality: int) -> int:
+                # The group fits only when its largest panel fits.
+                attempts[quality] = encode_quality(quality)
+                return max(path.stat().st_size for path in attempts[quality])
+
+            best_quality = _best_quality(group_size, int(max_mb * 1024 * 1024))
+            best_paths = attempts.get(best_quality) if best_quality else None
             if best_paths is None:
                 raise _SynchronizedGroupFitError(
                     f"{label} cannot fit all synchronized panels under 5 MB "
@@ -1724,11 +1774,20 @@ def process_gif_workshop(
         else:
             encode_gif_from_png_sequence(full_frames, clean, fps=int(settings["fps"]), encoder="ffmpeg")
         result[clean.name] = clean
+        bars = out_dir / "full_with_bars.gif"
+        bars_done = False
+        try:
+            bars_done = _bars_gif_from_frames(full_frames, bars, "workshop", int(settings["fps"]), wm_text, wm_font, wm_opacity, wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color, wm_x=wm_x, wm_y=wm_y)
+        except Exception:
+            import traceback
+            traceback.print_exc()
     finally:
         shutil.rmtree(temp, ignore_errors=True)
 
-    bars = out_dir / "full_with_bars.gif"
     try:
+        if bars_done:
+            result[bars.name] = bars
+            return result
         _gif_full_with_bars_workshop(
             clean, bars, wm_text, wm_font, wm_opacity,
             wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color,
@@ -2062,11 +2121,20 @@ def process_gif_split(
         else:
             encode_gif_from_png_sequence(full_frames, clean, fps=int(settings["fps"]), encoder="ffmpeg")
         result[clean.name] = clean
+        bars = out_dir / "full_with_bars.gif"
+        bars_done = False
+        try:
+            bars_done = _bars_gif_from_frames(full_frames, bars, "split", int(settings["fps"]), wm_text, wm_font, wm_opacity, wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color, wm_x=wm_x, wm_y=wm_y)
+        except Exception:
+            import traceback
+            traceback.print_exc()
     finally:
         shutil.rmtree(temp, ignore_errors=True)
 
-    bars = out_dir / "full_with_bars.gif"
     try:
+        if bars_done:
+            result[bars.name] = bars
+            return result
         _gif_full_with_bar_split(
             clean, bars, wm_text, wm_font, wm_opacity,
             wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color, wm_x=wm_x, wm_y=wm_y,

@@ -488,9 +488,17 @@ Only the hero exists for now; content blocks will be added below it later.
   guard, join drawn with RIFE v4.25 on CPU (`rife_net.py`, weights baked into the image), fallback OpenCV
   flow morph, then crossfade.
 - GIF size fit: `processor.fit_frames_to_gif` (binary search on gifski quality from the full-colour frames,
-  final `--extra`, lossless `gifsicle -O3`) replaces re-quantizing finished GIFs. Video frames are read with
+  final `--extra`) replaces re-quantizing finished GIFs. gifsicle -O3 was tried and removed: on gifski
+  output it made files larger and cost ~3 s per call on the VPS. Video frames are read with
   `SCALE_FLAGS` (full chroma) and `source_matrix()` (BT.709 for untagged HD). Measured on `IMAGE/45.mp4`
   (630 px, 15 fps, 5 s): 4.37 MB / 31.6 dB -> 4.85 MB / 33.2 dB.
+- Speed (measured on the OVH VPS, 6 vCPU Haswell, 44.mp4 8 s @15 fps): `_best_quality` predicts the gifski
+  quality from ln(size) (3-4 encodes instead of ~8), Workshop/Split panels encode in parallel, RIFE uses
+  cpu_count-1 threads. Workshop 64 -> 39 s, Featured 85 -> 41 s, loop 2.5 s 28 -> 21 s, same output sizes.
+- `full_with_bars` (owner's DeviantArt upload, intentionally NOT fitted to 5 MB): built by
+  `_bars_gif_from_frames` from the full-colour frames with gifski q100 --extra (was Pillow re-quantizing
+  the finished GIF; 34.4 -> 36.7 dB, 15.1 -> 13.5 MB on 44.mp4). Gap width `steam_bar_width`: 3 px at
+  Steam's 630 (Workshop) / 606 (Split) px, scaled with the file width so every preview looks alike.
 - Downloads: `smweb/page_media.py` + `SUPPORTED_MEDIA_SITES` (50+ sites, direct file links).
 - Local Pro account: `python scripts/dev_account.py email password [days]` (SQLite only).
 

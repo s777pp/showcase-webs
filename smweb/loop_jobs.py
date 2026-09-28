@@ -112,8 +112,9 @@ def _rife():
             import rife_net
             if not weights.is_file():
                 raise FileNotFoundError(weights)
-            # Keep the web process and other jobs responsive while a loop renders.
-            torch.set_num_threads(max(1, int(os.environ.get("RIFE_THREADS") or 2)))
+            # All cores but one: the join is the slowest step of a loop, and one
+            # core stays free for the web process and a parallel job.
+            torch.set_num_threads(max(1, int(os.environ.get("RIFE_THREADS") or (os.cpu_count() or 2) - 1)))
             _RIFE = rife_net.Interpolator(str(weights))
         except Exception as exc:
             print(f"[loop] RIFE unavailable, using optical-flow morph ({type(exc).__name__})", flush=True)
