@@ -91,6 +91,8 @@ _allowed_hosts = {"localhost", "127.0.0.1", "app", "testserver"}
 if _app_host:
     _allowed_hosts.update({_app_host, f"www.{_app_host}" if not _app_host.startswith("www.") else _app_host[4:]})
 _allowed_hosts.update(x.strip() for x in (os.environ.get("ALLOWED_HOSTS") or "").split(",") if x.strip())
+from smweb.mirror import MIRROR_HOSTS, MirrorMiddleware
+_allowed_hosts.update(MIRROR_HOSTS)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=sorted(_allowed_hosts))
 
 
@@ -113,6 +115,10 @@ app.add_middleware(RequestIdMiddleware)
 
 
 app.add_middleware(GuestCookieMiddleware)
+
+
+# Mirror host rewrites R2 links in finished (still uncompressed) responses.
+app.add_middleware(MirrorMiddleware)
 
 
 # Outermost, so it sees the finished response: add_middleware inserts at the

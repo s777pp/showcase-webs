@@ -24,6 +24,10 @@ RUN gifski --version
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# RIFE draws the join of seamless loops. The CPU build of PyTorch is enough
+# (a 2-3 s loop join takes seconds) and is far smaller than the CUDA one.
+RUN pip install --no-cache-dir torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+RUN mkdir -p /app/models && curl -fL --retry 4 --retry-delay 2 -o /app/models/flownet_v4.25.pkl       https://github.com/HolyWu/vs-rife/releases/download/model/flownet_v4.25.pkl
 COPY . .
 
 # Drop Windows-only binaries from image

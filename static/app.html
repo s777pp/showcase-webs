@@ -578,8 +578,8 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
           <input id="loopFile" type="file" hidden accept="image/gif,video/mp4,video/webm,video/x-msvideo,.gif,.mp4,.webm,.avi"/>
           <button type="button" class="btn ghost asset-library-open" data-asset-library data-asset-target="loopFile">My media</button>
           <div class="loop-file" id="loopFileName"></div>
-          <label class="field"><span data-loop-motion="cycle">Loop</span><select id="loopMode"><option value="pingpong" data-loop-motion="pingpong">Forward and backward</option><option value="blend" data-loop-motion="blend">Smooth crossfade</option></select></label>
-          <label class="field" id="loopTransitionRow" hidden><span data-loop-motion="fade">Transition length</span><select id="loopTransition"><option value="0.25">0.25 s</option><option value="0.5" selected>0.5 s</option><option value="0.75">0.75 s</option></select></label>
+          <label class="field"><span data-loop-motion="cycle">Loop</span><select id="loopMode"><option value="blend" data-loop-motion="blend" selected>True loop</option><option value="pingpong" data-loop-motion="pingpong">Forward and backward</option></select></label>
+          <label class="field" id="loopTransitionRow"><span data-loop-motion="fade">Transition if no match</span><select id="loopTransition"><option value="0.25">0.25 s</option><option value="0.5" selected>0.5 s</option><option value="0.75">0.75 s</option></select></label>
           <label class="field"><span data-loop="formatLabel">Result format</span><select id="loopFormat"><option value="gif">GIF · Steam</option><option value="mp4">MP4 · preview</option></select></label>
           <label class="field"><span data-loop="fpsLabel">Frame rate</span><select id="loopFps"><option value="12" selected>12 FPS</option><option value="15">15 FPS</option><option value="18">18 FPS</option><option value="20">20 FPS</option><option value="24">24 FPS</option></select></label>
           <button class="btn" id="loopRun" type="button" disabled data-loop="run">Create loop</button>
@@ -1221,7 +1221,7 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
 <script src="/static/js/steam-extension-status.js?v=20260927-fmt1"></script>
 
 
-<script src="/static/ss-shell.js?v=20260927-foot2"></script>
+<script src="/static/ss-shell.js?v=20260928-mirror1"></script>
 <script src="/static/js/workspace-help.js?v=20260921-polish1"></script>
 <script src="/static/js/process-result.js?v=20260927-fmt1"></script>
 <script src="/static/js/workspace-editor-copy.js?v=20260927-fmt1"></script>

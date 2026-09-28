@@ -17,14 +17,16 @@ from urllib.parse import urlparse
 
 from fastapi import Request
 
+from smweb.mirror import current_origin
+
 
 # ====================== Discord OAuth login ======================
 
 def _discord_redirect_uri() -> str:
     """Build redirect URI; collapse accidental double slashes in path."""
-    redirect = (os.environ.get("DISCORD_REDIRECT_URI") or "").strip()
+    redirect = "" if current_origin() else (os.environ.get("DISCORD_REDIRECT_URI") or "").strip()
     if not redirect:
-        base = (os.environ.get("APP_URL") or "").strip().rstrip("/")
+        base = current_origin() or (os.environ.get("APP_URL") or "").strip().rstrip("/")
         redirect = base + "/api/auth/discord/callback"
     if "://" in redirect:
         scheme, rest = redirect.split("://", 1)
@@ -37,9 +39,9 @@ def _discord_redirect_uri() -> str:
 # ====================== Google OAuth login ======================
 
 def _google_redirect_uri() -> str:
-    redirect = (os.environ.get("GOOGLE_REDIRECT_URI") or "").strip()
+    redirect = "" if current_origin() else (os.environ.get("GOOGLE_REDIRECT_URI") or "").strip()
     if not redirect:
-        base = (os.environ.get("APP_URL") or "").strip().rstrip("/")
+        base = current_origin() or (os.environ.get("APP_URL") or "").strip().rstrip("/")
         redirect = base + "/api/auth/google/callback"
     if "://" in redirect:
         scheme, rest = redirect.split("://", 1)
@@ -147,7 +149,7 @@ def _clear_oauth_browser(response, provider: str):
 
 
 def _app_origin() -> str:
-    value = (os.environ.get("APP_URL") or "").strip().rstrip("/")
+    value = current_origin() or (os.environ.get("APP_URL") or "").strip().rstrip("/")
     parsed = urlparse(value)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise RuntimeError("APP_URL must be an absolute http(s) URL")

@@ -64,7 +64,7 @@ async def start(request: Request, file: UploadFile | None = File(None), asset_id
     if output_format not in {"gif", "mp4"} or mode not in {"blend", "pingpong"} or not all(math.isfinite(v) for v in (start, duration, transition)):
         return JSONResponse({"ok": False, "msg": "Unsupported loop settings"}, status_code=400)
     cache_key = hashlib.sha256(
-        (f"loop:2:{owner}:{mode}:{output_format}:{fps}:{start:.3f}:{duration:.3f}:{transition:.3f}:").encode("utf-8") + raw
+        (f"loop:3:{owner}:{mode}:{output_format}:{fps}:{start:.3f}:{duration:.3f}:{transition:.3f}:").encode("utf-8") + raw
     ).hexdigest()
     cached_id = rs.job_cache_get(cache_key)
     cached = rs.job_get(cached_id) if cached_id else None

@@ -50,3 +50,6 @@ scripts/.locale-cache.json
 
 # Owner design references and source masters (not part of the site)
 IMAGE/
+
+# RIFE weights for local runs (downloaded in the Docker build).
+models/

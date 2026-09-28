@@ -58,14 +58,28 @@ class BuilderMotionTests(unittest.TestCase):
             root=Path(folder);frames=[]
             for i in range(12):
                 frame=root/f'raw_{i}.png';Image.new('RGB',(8,8),(i*20,0,0)).save(frame);frames.append(frame)
-            count=loop_jobs._build_sequence(frames,root/'back','pingpong',2)
+            count,_seam=loop_jobs._build_sequence(frames,root/'back','pingpong',2)
             values=[Image.open(p).getpixel((0,0))[0] for p in sorted((root/'back').glob('*.png'))]
             self.assertEqual(count,22)
             self.assertEqual(values,[i*20 for i in range(12)]+[i*20 for i in range(10,0,-1)])
-            loop_jobs._build_sequence(frames,root/'fade','blend',3)
+            _count,seam=loop_jobs._build_sequence(frames,root/'fade','blend',3,want=8,preroll=3)
             values=[Image.open(p).getpixel((0,0))[0] for p in sorted((root/'fade').glob('*.png'))]
-            self.assertEqual(values[:6],[60,80,100,120,140,160])
-            self.assertEqual(values[-1],40)  # The following first frame is 60, not a jump to zero.
+            # A ramp never repeats, so the end fades into the frames just before
+            # the loop start and the jump back is no bigger than one normal step.
+            self.assertEqual(seam,'crossfade')
+            self.assertLessEqual(abs(values[0]-values[-1]),25)
+
+    def test_true_loop_finds_the_natural_period_without_blending(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);frames=[]
+            shades=[round(120+80*math.sin(2*math.pi*k/10)) for k in range(10)]
+            for i in range(30):  # a smooth scene that repeats every 10 frames
+                frame=root/f'raw_{i}.png';Image.new('RGB',(32,32),(shades[i%10],0,0)).save(frame);frames.append(frame)
+            count,seam=loop_jobs._build_sequence(frames,root/'loop','blend',3,want=9,preroll=2)
+            values=[Image.open(p).getpixel((0,0))[0] for p in sorted((root/'loop').glob('*.png'))]
+            self.assertEqual(seam,'exact')
+            self.assertEqual(count,10)
+            self.assertEqual(sorted(values),sorted(shades))
 
 
 class LoopEncoderSmokeTests(unittest.TestCase):

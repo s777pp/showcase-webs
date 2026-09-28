@@ -596,7 +596,10 @@
   function resetTelegramWidget() {
     var button = document.getElementById('ssAuthTelegram');
     var host = document.getElementById('ssTgHost');
-    if (button) button.style.display = 'flex';
+    // The Telegram widget only works on the domain bound to the bot, so it is
+    // hidden on the direct-access mirror (e.g. ru.showcasemaker.com).
+    var h = location.hostname, mirror = !/^(www\.)?showcasemaker\.com$|^(localhost|127\.0\.0\.1)$/.test(h);
+    if (button) button.style.display = mirror ? 'none' : 'flex';
     if (host) { host.style.display = 'none'; host.innerHTML = ''; }
   }
   function openAuth(mode) {

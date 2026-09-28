@@ -149,6 +149,8 @@ class OriginGuardMiddleware(BaseHTTPMiddleware):
         if app_url:
             allowed.add(app_url)
         allowed.update(x.strip().rstrip("/") for x in (os.environ.get("TRUSTED_ORIGINS") or "").split(",") if x.strip())
+        from smweb.mirror import MIRROR_HOSTS
+        allowed.update(f"https://{host}" for host in MIRROR_HOSTS)
         if not origin or origin not in allowed:
             return JSONResponse({"ok": False, "msg": "Invalid request origin"}, status_code=403)
         return await call_next(request)

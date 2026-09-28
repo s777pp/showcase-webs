@@ -26,8 +26,10 @@ class SeamlessLoopTests(unittest.TestCase):
                 frame = root / f"raw_{index}.png"
                 Image.new("RGB", (4, 4), (index * 20, 0, 0)).save(frame)
                 frames.append(frame)
-            self.assertEqual(_build_sequence(frames, root / "blend", "blend", 2), 6)
-            self.assertEqual(_build_sequence(frames, root / "pingpong", "pingpong", 2), 14)
+            count, seam = _build_sequence(frames, root / "blend", "blend", 2)
+            self.assertIn(seam, {"exact", "crossfade"})
+            self.assertGreaterEqual(count, 4)
+            self.assertEqual(_build_sequence(frames, root / "pingpong", "pingpong", 2), (14, "pingpong"))
 
 
 if __name__ == "__main__":

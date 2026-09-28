@@ -14,3 +14,5 @@ boto3>=1.35.0
 cryptography>=50.0.1,<51
 defusedxml>=0.7.1,<1
 numpy>=2.0,<3.0
+# Optical-flow morph for the seamless-loop transition (no GUI libraries needed).
+opencv-python-headless>=4.10

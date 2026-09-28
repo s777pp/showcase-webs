@@ -1,0 +1,21 @@
+# Direct-access mirror: TLS from Let's Encrypt, no Cloudflare in the path.
+{$MIRROR_HOST} {
+	# Public R2 files (media.showcasemaker.com) fetched by this server.
+	handle_path /r2m/* {
+		reverse_proxy https://{$R2_MEDIA_HOST} {
+			header_up Host {$R2_MEDIA_HOST}
+		}
+	}
+	# Presigned private R2 links; the signature covers the Host header.
+	handle_path /r2s/* {
+		reverse_proxy https://{$R2_S3_HOST} {
+			header_up Host {$R2_S3_HOST}
+		}
+	}
+	handle {
+		encode zstd gzip
+		reverse_proxy nginx:80 {
+			header_up X-Forwarded-Proto https
+		}
+	}
+}

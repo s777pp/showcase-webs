@@ -1,0 +1,24 @@
+# Adds the direct-access mirror on top of the main stack:
+#   docker compose -f docker-compose.yml -f deploy/mirror/docker-compose.mirror.yml up -d
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      MIRROR_HOST: ${MIRROR_HOSTS:?Set MIRROR_HOSTS in .env}
+      R2_MEDIA_HOST: ${R2_MEDIA_HOST:?Set R2_MEDIA_HOST in .env}
+      R2_S3_HOST: ${R2_S3_HOST:?Set R2_S3_HOST in .env}
+    volumes:
+      - ./deploy/mirror/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - nginx
+    networks: [internal]
+
+volumes:
+  caddy_data:
+  caddy_config:

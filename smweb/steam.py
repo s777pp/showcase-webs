@@ -16,7 +16,8 @@ from smweb.core import HOST, LOGGER, PORT
 
 # ====================== Steam OpenID login ======================
 def _steam_realm() -> str:
-    base = (os.environ.get("APP_URL") or "").strip().rstrip("/")
+    from smweb.mirror import current_origin
+    base = current_origin() or (os.environ.get("APP_URL") or "").strip().rstrip("/")
     if not base:
         base = f"http://{HOST}:{PORT}"
     return base
