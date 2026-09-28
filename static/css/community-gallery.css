@@ -116,3 +116,119 @@ body.page-community .community-filters button:hover{color:#fff;border-color:rgba
 body.page-community .community-filters button.is-active{color:#fff;font-weight:800;border-color:rgba(111,227,255,.6);background:linear-gradient(90deg,rgba(31,201,241,.22),rgba(31,201,241,.08));box-shadow:0 0 18px rgba(31,201,241,.14)}
 body.page-community .community-sidebar select{border-radius:12px;border:1px solid rgba(139,233,255,.2);background:rgba(3,8,24,.55)}
 @media(max-width:900px){body.page-community .community-filters button{border-radius:999px;padding:9px 14px}}
+
+/* ===== Previous / next work (2026-09-28) =====
+   Glass "peek" tabs hug the stage edges: a slim glowing sliver with a blurred
+   glimpse of the neighbouring work.  On hover the tab opens up into a sharp
+   thumbnail with its title, and the stage slides + blurs the way you go. */
+body.page-community .community-detail__preview>img,body.page-community .community-detail__preview>video{transition:transform .2s ease-out,opacity .19s ease,filter .19s ease}
+body.page-community .community-detail__preview.is-leaving>img,body.page-community .community-detail__preview.is-leaving>video{
+  opacity:0;filter:blur(10px) saturate(1.3);transform:translateX(calc(var(--swap,1) * 70px)) scale(.96)!important}
+body.page-community .community-detail__preview.is-entering>img,body.page-community .community-detail__preview.is-entering>video{animation:gallery-swap-in .42s cubic-bezier(.2,.8,.2,1) backwards}
+@keyframes gallery-swap-in{from{opacity:0;filter:blur(12px) saturate(1.4);transform:translateX(calc(var(--swap,1) * 90px)) scale(.97)}to{opacity:1;filter:none;transform:none}}
+
+body.page-community .gallery-peek{position:absolute;top:50%;z-index:3;display:flex;align-items:center;width:46px;height:150px;padding:0;overflow:hidden;
+  transform:translateY(-50%);border:1px solid rgba(139,233,255,.22);border-radius:16px;cursor:pointer;color:#e9f3ff;
+  background:rgba(4,10,26,.5);backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);
+  box-shadow:0 14px 34px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.06);
+  transition:width .34s cubic-bezier(.2,.8,.2,1),height .34s cubic-bezier(.2,.8,.2,1),border-color .2s,box-shadow .2s,background .2s}
+body.page-community .gallery-peek--prev{left:12px;flex-direction:row-reverse}
+body.page-community .gallery-peek--next{right:12px}
+/* the glowing edge line on the side facing the work */
+body.page-community .gallery-peek::before{content:"";position:absolute;top:18%;bottom:18%;width:2px;border-radius:2px;z-index:2;
+  background:linear-gradient(transparent,#6fe3ff 30%,#8a7dff 70%,transparent);box-shadow:0 0 12px rgba(111,227,255,.8);opacity:.8;transition:opacity .2s,top .34s,bottom .34s}
+body.page-community .gallery-peek--prev::before{right:5px}
+body.page-community .gallery-peek--next::before{left:5px}
+body.page-community .gallery-peek__shot{position:absolute;inset:0;z-index:0;background:var(--peek) center/cover no-repeat;opacity:.34;filter:blur(6px) saturate(1.2);transform:scale(1.15);
+  transition:opacity .34s,filter .34s,transform .5s cubic-bezier(.2,.8,.2,1)}
+body.page-community .gallery-peek.is-adult .gallery-peek__shot{filter:blur(18px)!important}
+body.page-community .gallery-peek__shot::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,10,26,.15) 30%,rgba(4,10,26,.88))}
+body.page-community .gallery-peek__arrow{position:relative;z-index:2;display:grid;place-items:center;flex:none;width:44px;height:100%;color:#6fe3ff;filter:drop-shadow(0 0 8px rgba(111,227,255,.7))}
+body.page-community .gallery-peek__arrow svg{width:22px;height:22px;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+body.page-community .gallery-peek--prev .gallery-peek__arrow svg{transform:scaleX(-1)}
+body.page-community .gallery-peek__label{position:relative;z-index:2;display:grid;gap:4px;flex:1;min-width:0;align-self:flex-end;padding:0 4px 14px 14px;text-align:left;
+  opacity:0;transform:translateY(8px);transition:opacity .2s,transform .3s cubic-bezier(.2,.8,.2,1)}
+body.page-community .gallery-peek--prev .gallery-peek__label{padding:0 14px 14px 4px;text-align:right}
+body.page-community .gallery-peek__label small{font:700 9.5px/1 var(--home-display,'Montserrat',sans-serif);letter-spacing:.14em;text-transform:uppercase;color:#6fe3ff}
+body.page-community .gallery-peek__label b{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font:800 14px/1.2 var(--home-display,'Montserrat',sans-serif);color:#fff;white-space:normal}
+@media (hover:hover) and (pointer:fine){
+  body.page-community .gallery-peek:hover,body.page-community .gallery-peek:focus-visible{width:188px;height:236px;outline:none;border-color:rgba(111,227,255,.6);background:rgba(4,10,26,.3);
+    box-shadow:0 22px 50px rgba(0,0,0,.5),0 0 0 1px rgba(111,227,255,.2),0 0 38px rgba(31,201,241,.22)}
+  body.page-community .gallery-peek:hover .gallery-peek__shot,body.page-community .gallery-peek:focus-visible .gallery-peek__shot{opacity:1;filter:none;transform:scale(1)}
+  body.page-community .gallery-peek:hover .gallery-peek__label,body.page-community .gallery-peek:focus-visible .gallery-peek__label{opacity:1;transform:none;transition-delay:.1s}
+  body.page-community .gallery-peek:hover::before{opacity:0}
+  body.page-community .gallery-peek--next:hover .gallery-peek__arrow svg{transform:translateX(3px)}
+  body.page-community .gallery-peek--prev:hover .gallery-peek__arrow svg{transform:scaleX(-1) translateX(3px)}
+  body.page-community .gallery-peek:hover .gallery-peek__arrow{align-self:flex-end;height:60px}
+}
+body.page-community .gallery-peek:active{transform:translateY(-50%) scale(.97)}
+body.page-community .gallery-peek--next:not(:hover) .gallery-peek__arrow svg{animation:gallery-nudge 2.6s ease-in-out infinite}
+@keyframes gallery-nudge{0%,70%,100%{transform:none}80%{transform:translateX(4px)}90%{transform:translateX(0)}}
+
+/* position counter with a thin progress line */
+body.page-community .gallery-count{position:absolute;left:50%;bottom:14px;z-index:3;display:flex;align-items:baseline;gap:6px;padding:8px 14px 10px;transform:translateX(-50%);
+  border:1px solid rgba(139,233,255,.2);border-radius:999px;background:rgba(4,10,26,.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  font:800 13px/1 var(--home-display,'Montserrat',sans-serif);color:#fff;letter-spacing:.06em;pointer-events:none;overflow:hidden}
+body.page-community .gallery-count span{font-weight:600;font-size:11px;color:rgba(214,229,250,.6)}
+body.page-community .gallery-count i{position:absolute;left:14px;right:14px;bottom:4px;height:2px;border-radius:2px;background:rgba(139,233,255,.14)}
+body.page-community .gallery-count i::after{content:"";position:absolute;inset:0 auto 0 0;width:calc(var(--progress,0) * 100%);border-radius:inherit;background:linear-gradient(90deg,#1fc9f1,#8a7dff);box-shadow:0 0 8px rgba(111,227,255,.7);transition:width .4s cubic-bezier(.2,.8,.2,1)}
+
+@media (max-width:900px){
+  body.page-community .gallery-peek{width:38px;height:96px;border-radius:13px}
+  body.page-community .gallery-peek--prev{left:8px}body.page-community .gallery-peek--next{right:8px}
+  body.page-community .gallery-peek__arrow{width:36px}
+  body.page-community .gallery-count{bottom:10px;padding:7px 12px 9px;font-size:12px}
+}
+@media (prefers-reduced-motion:reduce){
+  body.page-community .gallery-peek,body.page-community .gallery-peek *{transition:none!important;animation:none!important}
+  body.page-community .community-detail__preview>img,body.page-community .community-detail__preview>video{transition:none;animation:none!important}
+}
+/* the label floats over the thumbnail so the collapsed tab keeps its arrow centred */
+body.page-community .gallery-peek__label{position:absolute;bottom:0;left:0;right:40px;padding:0 4px 14px 14px}
+body.page-community .gallery-peek--prev .gallery-peek__label{left:40px;right:0;padding:0 14px 14px 4px}
+body.page-community .gallery-peek__arrow{width:100%;margin:0}
+@media (hover:hover) and (pointer:fine){
+  body.page-community .gallery-peek:hover .gallery-peek__arrow,body.page-community .gallery-peek:focus-visible .gallery-peek__arrow{position:absolute;bottom:0;width:40px;height:52px}
+  body.page-community .gallery-peek--next:hover .gallery-peek__arrow,body.page-community .gallery-peek--next:focus-visible .gallery-peek__arrow{right:0}
+  body.page-community .gallery-peek--prev:hover .gallery-peek__arrow,body.page-community .gallery-peek--prev:focus-visible .gallery-peek__arrow{left:0}
+}
+/* Until fitPreview() has measured the file (a heavy GIF can take a moment),
+   the media is simply kept inside the stage instead of spilling out cropped. */
+body.page-community .community-detail__preview{container-type:size}
+body.page-community .community-detail__preview>img,body.page-community .community-detail__preview>video{max-width:calc(100cqw - 48px)!important;max-height:calc(100cqh - 48px)!important}
+
+/* Tabs live outside the window, in the gutters left and right of it
+   (owner: keep them off the showcase itself). */
+@media (min-width:901px){
+  body.page-community #workOverlay{padding:22px 86px}
+  body.page-community #workOverlay>.gallery-peek--prev{left:22px}
+  body.page-community #workOverlay>.gallery-peek--next{right:22px}
+}
+body.page-community #workOverlay>.gallery-peek{position:absolute;z-index:5}
+body.page-community .community-detail__preview>img,body.page-community .community-detail__preview>video{transition:transform .28s cubic-bezier(.2,.8,.2,1),opacity .19s ease,filter .19s ease}
+@media (max-width:900px){
+  /* the window is full screen here: tabs sit on the screen edges beside the preview */
+  body.page-community #workOverlay>.gallery-peek{position:fixed;top:calc(78px + 26vh)}
+  body.page-community #workOverlay>.gallery-peek--prev{left:4px}
+  body.page-community #workOverlay>.gallery-peek--next{right:4px}
+}
+/* Opened tab stays inside the free gutter so it never covers the window's buttons.
+   Gutter = (viewport - window width) / 2; the window is min(1240px, 100vw - 172px). */
+@media (min-width:901px) and (hover:hover) and (pointer:fine){
+  body.page-community #workOverlay>.gallery-peek{container-type:inline-size}
+  body.page-community #workOverlay>.gallery-peek:hover,body.page-community #workOverlay>.gallery-peek:focus-visible{
+    width:clamp(52px,calc((100vw - min(1240px,100vw - 172px)) / 2 - 34px),200px);height:260px}
+}
+@container (max-width:110px){
+  body.page-community .gallery-peek__label{display:none}
+  body.page-community .gallery-peek:hover .gallery-peek__arrow{position:absolute;left:0!important;right:0!important;width:100%!important}
+}
+/* Tabs hug the window from outside (W = window width) and open outwards. */
+@media (min-width:901px){
+  body.page-community #workOverlay>.gallery-peek--prev{left:auto;right:calc(50% + min(1240px,100% - 172px) / 2 + 14px)}
+  body.page-community #workOverlay>.gallery-peek--next{right:auto;left:calc(50% + min(1240px,100% - 172px) / 2 + 14px)}
+}
+@media (min-width:901px) and (hover:hover) and (pointer:fine){
+  body.page-community #workOverlay>.gallery-peek:hover,body.page-community #workOverlay>.gallery-peek:focus-visible{
+    width:clamp(52px,calc((100% - min(1240px,100% - 172px)) / 2 - 30px),200px)}
+}
