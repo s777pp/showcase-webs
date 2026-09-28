@@ -877,6 +877,8 @@ def _page_via_routes(canonical, progress, gate_path):
             LOGGER.info("Steam profile route %s failed: %s", name, type(exc).__name__)
             continue
         if name == "browser" and html:
+            from smweb import admin_notify
+            admin_notify.paid_import_used(canonical)
             return html, name, None
         if _full_profile_html(html):
             return html, name, None

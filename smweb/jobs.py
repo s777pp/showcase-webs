@@ -142,6 +142,11 @@ def _cleanup_loop():
                 pass
             if n:
                 print(f"cleanup: removed {n} old job(s)")
+            try:
+                from smweb import admin_notify
+                admin_notify.check_disk(str(JOBS))
+            except Exception:
+                pass
         except Exception as e:
             print("cleanup loop:", e)
         _time.sleep(30)

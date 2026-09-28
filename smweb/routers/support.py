@@ -97,6 +97,9 @@ async def create_ticket(request: Request):
         )
     except (ValueError, TypeError, json.JSONDecodeError):
         return reply({"ok": False, "code": "invalid"}, 400)
+    from smweb import admin_notify
+    admin_notify.ticket_created(result.get("ticket_id", ""), str(user.get("email") or "") if user else
+                                str(body.get("email") or "")[:254], str(body.get("message", "")), str(body.get("page", "/")))
     return reply(result, 201)
 
 

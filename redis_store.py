@@ -169,6 +169,13 @@ def job_create(jid: str, data: dict, enqueue: bool = True) -> None:
 def job_update(jid: str, **kw) -> None:
     """Upsert. The old version returned early when the key was missing, silently
     dropping progress written before job_create or after the TTL expired."""
+    if kw.get("status") == "error":
+        # Every job kind ends up here on failure, so this one hook covers them all.
+        try:
+            from smweb import admin_notify
+            admin_notify.job_failed(jid, kw)
+        except Exception:
+            pass
     r = _r()
     if r:
         try:

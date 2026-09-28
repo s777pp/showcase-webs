@@ -75,6 +75,7 @@ from smweb.routers import (
     jobs as jobs_router,
     results as results_router,
     admin as admin_router,
+    bot_admin as bot_admin_router,
 )
 
 
@@ -179,6 +180,7 @@ app.include_router(assets.router)
 app.include_router(jobs_router.router)
 app.include_router(results_router.router)
 app.include_router(admin_router.router)
+app.include_router(bot_admin_router.router)
 
 
 # ====================== Profile builder API (Steam catalogs, projects) ======================
