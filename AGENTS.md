@@ -499,6 +499,14 @@ Only the hero exists for now; content blocks will be added below it later.
   `_bars_gif_from_frames` from the full-colour frames with gifski q100 (was Pillow re-quantizing
   the finished GIF; 34.4 -> 36.7 dB, 15.1 -> 13.5 MB on 44.mp4). Gap width `steam_bar_width`: 3 px at
   Steam's 630 (Workshop) / 606 (Split) px, scaled with the file width so every preview looks alike.
+- Nightly DB backup: compose service `db-backup` (deploy/backup, postgres:16-alpine + boto3) -> private R2
+  `backups/db/`, 14 kept; restore steps in deploy/backup/README.md. `media-assets` is 7-day scratch, not backed up.
+- Process page shows queue position and "~N s left": `rs.queue_ahead`, `rs.eta_record/eta_typical`
+  (median of the last 30 process jobs), `_process_eta` in routers/process.py.
+- Loop preview: `POST /api/loop/preview` renders the same loop at 360 px/12 fps (`loop_jobs.preview`, shared
+  `render_sequence`) in ~4-6 s; button `#loopPreview`. Script versions live in `static/js/tool-loader.js`.
+- Upscale preset `anime_soft` = realesr-animevideov3 (SRVGGNetCompact) on Modal: closest to source on anime
+  samples, ~10x faster than anime 6B. APISR was tested and rejected (over-stylized, GPL-3.0).
 - Downloads: `smweb/page_media.py` + `SUPPORTED_MEDIA_SITES` (50+ sites, direct file links).
 - Local Pro account: `python scripts/dev_account.py email password [days]` (SQLite only).
 

@@ -19,6 +19,21 @@ services:
       retries: 10
     networks: [internal]
 
+  db-backup:
+    # Nightly pg_dump to the private R2 bucket (deploy/backup/backup.py).
+    build: ./deploy/backup
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-showcase}
+      POSTGRES_DB: ${POSTGRES_DB:-showcase}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped

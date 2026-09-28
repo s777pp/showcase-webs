@@ -306,6 +306,47 @@ def job_find_active(user_key: str, kind: str, source_key: str = "") -> Optional[
     return None
 
 
+def queue_ahead(jid: str, queue: str = JOB_QUEUE) -> Optional[int]:
+    """Jobs that will be picked before ``jid`` (LPUSH in, BRPOP out), or None."""
+    r = _r()
+    if not r:
+        return None
+    try:
+        items = r.lrange(queue, 0, -1)
+    except Exception as e:
+        _note(e)
+        return None
+    if jid not in items:
+        return None
+    return len(items) - 1 - items.index(jid)
+
+
+def eta_record(kind: str, seconds: float) -> None:
+    """Remember how long a finished job took; the last 30 are kept."""
+    r = _r()
+    if not r or seconds <= 0:
+        return
+    try:
+        key = f"sm:eta:{kind}"
+        r.lpush(key, f"{seconds:.1f}")
+        r.ltrim(key, 0, 29)
+    except Exception as e:
+        _note(e)
+
+
+def eta_typical(kind: str) -> Optional[float]:
+    """Median duration of recent jobs of this kind (needs at least three)."""
+    r = _r()
+    if not r:
+        return None
+    try:
+        values = sorted(float(v) for v in r.lrange(f"sm:eta:{kind}", 0, -1))
+    except Exception as e:
+        _note(e)
+        return None
+    return values[len(values) // 2] if len(values) >= 3 else None
+
+
 def queue_depth() -> int:
     r = _r()
     if not r:
