@@ -1237,7 +1237,7 @@ def _bars_gif_from_frames(frames_dir: Path, out_path: Path, layout: str, fps: in
                           wm_font: str, wm_opacity: float, wm_corner: str = "bl", wm_scale: float = 1.0,
                           wm_color: str = "#ffffff", wm_x: float | None = None,
                           wm_y: float | None = None) -> bool:
-    """full_with_bars.gif straight from the full-colour frames, at gifski's best quality.
+    """full_with_bars.gif straight from the full-colour frames, at gifski quality 100.
 
     Not fitted to the Steam limit on purpose: it is the owner's full-quality
     upload (DeviantArt).  Building it from the original frames avoids the
@@ -1257,7 +1257,9 @@ def _bars_gif_from_frames(frames_dir: Path, out_path: Path, layout: str, fps: in
                                        wx=wm_x, wy=wm_y)
             flat = Image.alpha_composite(Image.new("RGBA", full.size, (0, 0, 0, 255)), full).convert("RGB")
             flat.save(tmp / f"frame_{index:04d}.png", format="PNG", compress_level=0)
-        return _gifski_from_frames(tmp, out_path, fps=fps, quality=100, extra=True)
+        # --extra is skipped here: at quality 100 it gave the same file size and
+        # no visible gain on the VPS, for twice the encode time (6.9 -> 12.3 s).
+        return _gifski_from_frames(tmp, out_path, fps=fps, quality=100)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

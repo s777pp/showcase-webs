@@ -496,7 +496,7 @@ Only the hero exists for now; content blocks will be added below it later.
   quality from ln(size) (3-4 encodes instead of ~8), Workshop/Split panels encode in parallel, RIFE uses
   cpu_count-1 threads. Workshop 64 -> 39 s, Featured 85 -> 41 s, loop 2.5 s 28 -> 21 s, same output sizes.
 - `full_with_bars` (owner's DeviantArt upload, intentionally NOT fitted to 5 MB): built by
-  `_bars_gif_from_frames` from the full-colour frames with gifski q100 --extra (was Pillow re-quantizing
+  `_bars_gif_from_frames` from the full-colour frames with gifski q100 (was Pillow re-quantizing
   the finished GIF; 34.4 -> 36.7 dB, 15.1 -> 13.5 MB on 44.mp4). Gap width `steam_bar_width`: 3 px at
   Steam's 630 (Workshop) / 606 (Split) px, scaled with the file width so every preview looks alike.
 - Downloads: `smweb/page_media.py` + `SUPPORTED_MEDIA_SITES` (50+ sites, direct file links).
