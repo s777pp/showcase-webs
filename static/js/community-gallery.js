@@ -96,6 +96,23 @@
     else { media.src = full ? item.preview_url : (item.thumb_url || item.preview_url); media.alt = item.title; media.loading = full ? 'eager' : 'lazy'; media.decoding='async'; }
     return media;
   }
+  const ICONS = {
+    download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>',
+    heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 22l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg>'
+  };
+  function icon(kind) { const el=document.createElement('i'); el.className='community-card__icon'; el.setAttribute('aria-hidden','true'); el.innerHTML=ICONS[kind]; return el; }
+  // Detail preview: every work gets the same stage; the media is scaled to fit it
+  // whole (tall works fill the height, small ones grow up to 1.35x, never more).
+  function fitPreview() {
+    const stage=$('detailPreview'), media=stage.firstElementChild;
+    if (!media) return;
+    const natW=media.naturalWidth||media.videoWidth, natH=media.naturalHeight||media.videoHeight;
+    if (!natW||!natH) return;
+    const box=stage.getBoundingClientRect(), pad=24;
+    const scale=Math.min((box.width-pad*2)/natW,(box.height-pad*2)/natH,1.35);
+    media.style.width=Math.max(1,Math.round(natW*scale))+'px';media.style.height=Math.max(1,Math.round(natH*scale))+'px';
+  }
+  window.addEventListener('resize',()=>{ if (!$('workOverlay').hidden) fitPreview(); });
   function card(item) {
     const button = document.createElement('button'); button.type='button'; button.className='community-card'; button.dataset.workId=String(item.id);
     const visual = document.createElement('span'); visual.className='community-card__visual'; visual.appendChild(mediaFor(item,false));
@@ -107,7 +124,16 @@
     if (item.adult && sessionStorage.getItem('sm_gallery_adult_ok')!=='1') { button.classList.add('is-adult'); visual.appendChild(textNode('span',t('ageBadge'),'community-card__adult')); }
     const content = document.createElement('span'); content.className='community-card__content';
     content.appendChild(textNode('strong',item.title));
-    const sub = textNode('span',item.author+'  ·  ↓ '+item.downloads+'  ·  ♥ '+item.likes); content.appendChild(sub);
+    const meta = document.createElement('span'); meta.className='community-card__meta';
+    const stats = document.createElement('span'); stats.className='community-card__stats';
+    stats.append(icon('download'),textNode('b',String(Number(item.downloads)||0)),icon('heart'),textNode('b',String(Number(item.likes)||0)));
+    meta.append(textNode('span',item.author,'community-card__author'),stats); content.appendChild(meta);
+    // Wide previews (e.g. a 750x400 Workshop strip) are shown whole on a blurred
+    // copy of themselves instead of being cropped to their middle.
+    const thumb = visual.querySelector('img');
+    if (thumb) { visual.style.setProperty('--thumb','url('+JSON.stringify(thumb.src)+')');
+      const markWide=()=>{ if (thumb.naturalWidth>thumb.naturalHeight*1.05) button.classList.add('is-wide'); };
+      if (thumb.complete) markWide(); else thumb.addEventListener('load',markWide,{once:true}); }
     button.append(visual,content);
     button.addEventListener('click', () => openWork(item.id));
     if (!reduced.matches) button.addEventListener('pointermove',(event)=>{
@@ -168,7 +194,9 @@
     const creator=$('detailAuthor');creator.href=item.author_url||'#';creator.replaceChildren();
     const avatar=document.createElement('img');avatar.src=item.avatar_url||'/static/icon-256.png';avatar.alt='';creator.append(avatar,textNode('span',item.author));
     $('detailBackground').hidden=!item.background_url;if(item.background_url)$('detailBackground').href=item.background_url;
-    const visual=$('detailPreview');visual.replaceChildren(mediaFor(item,true));
+    const visual=$('detailPreview');const media=mediaFor(item,true);visual.replaceChildren(media);
+    visual.style.setProperty('--stage-bg','url('+JSON.stringify(item.thumb_url||item.preview_url)+')');
+    media.addEventListener(media.tagName==='VIDEO'?'loadedmetadata':'load',fitPreview,{once:true});requestAnimationFrame(fitPreview);
     $('detailDownload').hidden=!item.download_url;$('detailDownload').href=item.download_url||'#';
     $('detailBuy').hidden=!item.paid;$('detailBuy').href=item.sale_url||'#';
     $('detailLike').classList.toggle('is-liked',!!item.liked);
@@ -247,9 +275,9 @@
   $('detailPreview').addEventListener('pointermove',(event)=>{
     if (reduced.matches || event.pointerType==='touch') return;
     const box=event.currentTarget.getBoundingClientRect();
-    const x=((event.clientX-box.left)/box.width-.5)*8;
-    const y=((event.clientY-box.top)/box.height-.5)*8;
-    event.currentTarget.firstElementChild?.style.setProperty('transform',`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) scale(1.012)`);
+    const x=((event.clientX-box.left)/box.width-.5)*10;
+    const y=((event.clientY-box.top)/box.height-.5)*10;
+    event.currentTarget.firstElementChild?.style.setProperty('transform',`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) rotateY(${(x/5).toFixed(2)}deg) rotateX(${(-y/5).toFixed(2)}deg)`);
   });
   $('detailPreview').addEventListener('pointerleave',(event)=>event.currentTarget.firstElementChild?.style.removeProperty('transform'));
   $('detailLike').addEventListener('click',async()=>{
