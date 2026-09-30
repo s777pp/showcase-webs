@@ -12,6 +12,8 @@ from pathlib import Path
 from PIL import Image
 
 import processor as proc
+import logging
+_LOG = logging.getLogger(__name__)
 
 
 # === Profile preview (desktop 1:1 coordinates, template 1983×9978) ===
@@ -132,7 +134,7 @@ def _pv_scaled_defs(mode: str, tw: int, th: int) -> list:
             if sb:
                 boxes.append(sb)
         if not boxes:
-            print(f"[pv] slot {d['id']} all boxes out of bounds")
+            _LOG.warning(f"[pv] slot {d['id']} all boxes out of bounds")
             continue
         nd = dict(d)
         nd["boxes"] = boxes
@@ -164,7 +166,7 @@ def _pv_place(canvas: Image.Image, box, img: Image.Image) -> None:
     try:
         canvas.paste(crop.convert("RGB"), (bx, by))
     except Exception as e:
-        print("pv paste:", e, box)
+        _LOG.warning('%s %s %s', "pv paste:", e, box)
 
 
 def _pv_place_slot_abs(canvas, slot_def, img) -> bool:
@@ -234,7 +236,7 @@ def _pv_slice_media(src: Path, dest: Path, x0: float, x1: float) -> bool:
                         pass
                 return dest.is_file() or dst.is_file()
         except Exception as e:
-            print("pv slice video:", e)
+            _LOG.warning('%s %s', "pv slice video:", e)
         return False
 
     # image / gif / webp
@@ -268,5 +270,5 @@ def _pv_slice_media(src: Path, dest: Path, x0: float, x1: float) -> bool:
             )
             return out.is_file()
     except Exception as e:
-        print("pv slice img:", e)
+        _LOG.warning('%s %s', "pv slice img:", e)
         return False

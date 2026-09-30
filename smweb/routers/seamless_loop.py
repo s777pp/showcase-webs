@@ -4,7 +4,9 @@ from __future__ import annotations
 import hashlib
 import math
 import re
+import os
 import secrets
+import threading
 import time
 from pathlib import Path
 
@@ -17,6 +19,21 @@ from smweb import object_store
 from smweb import media_assets
 from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, LOGGER, max_jobs_for_user
 from smweb.jobs import _job_pool, _worker_mode
+
+# The quick preview renders inside the API process (it answers in seconds and the
+# worker queue would add its own latency). A small semaphore keeps a few Pro users
+# from occupying every Uvicorn thread with FFmpeg/RIFE at once.
+_PREVIEW_SLOTS = threading.BoundedSemaphore(max(1, int(os.environ.get("LOOP_PREVIEW_CONCURRENCY", "1") or 1)))
+_PREVIEW_WAIT_SECONDS = 20
+
+
+def _render_preview_guarded(render, *args, **kwargs):
+    if not _PREVIEW_SLOTS.acquire(timeout=_PREVIEW_WAIT_SECONDS):
+        return None
+    try:
+        return render(*args, **kwargs)
+    finally:
+        _PREVIEW_SLOTS.release()
 
 router = APIRouter()
 
@@ -123,12 +140,15 @@ async def preview(request: Request, file: UploadFile | None = File(None), asset_
         source.write_bytes(raw)
         try:
             video = await run_in_threadpool(
-                render_preview, source, mode=mode, start=max(0, min(29.5, start)),
+                _render_preview_guarded, render_preview, source, mode=mode, start=max(0, min(29.5, start)),
                 duration=max(0.5, min(8, duration)), transition=max(.25, min(.75, transition)),
             )
         except Exception:
             LOGGER.warning("loop preview failed", exc_info=True)
             return JSONResponse({"ok": False, "msg": "Preview failed"}, status_code=500)
+    if video is None:
+        return JSONResponse({"ok": False, "msg": "Previews are busy right now. Try again in a few seconds.",
+                             "code": "busy"}, status_code=503, headers={"Retry-After": "5"})
     return Response(video, media_type="video/mp4", headers={"Cache-Control": "private, no-store"})
 
 

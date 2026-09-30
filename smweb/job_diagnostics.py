@@ -71,7 +71,7 @@ _RULES: list[tuple[str, str, dict]] = [
     ("format", r"unsupported format|Unsupported (source|file) format|unsupported target",
      {"title": "Формат файла не поддерживается",
       "meaning": "Расширение файла не входит в список поддерживаемых.",
-      "cause": "Например HEIC с iPhone, AVIF, PSD или архив.",
+      "cause": "Например архив, документ или редкий формат, который не открывается как картинка или видео.",
       "fault": "user",
       "user_fix": "Сохранить как PNG, JPG, GIF, MP4 или WebM.",
       "admin_fix": "Если формат популярный, его можно добавить в список."}),

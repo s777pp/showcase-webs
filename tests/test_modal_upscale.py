@@ -57,3 +57,41 @@ class ModalUpscaleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_cancelled_upscale_stops_the_gpu_call(monkeypatch):
+    import redis_store as rs
+    from smweb import upscale_jobs
+    from smweb import modal_upscale_client as client
+    monkeypatch.setattr(rs, "_r", lambda: None)
+    monkeypatch.setattr(client, "configured", lambda: True)
+    monkeypatch.setattr(upscale_jobs.object_store, "presigned_get_url", lambda key, expires: "https://r2/get")
+    monkeypatch.setattr(upscale_jobs.object_store, "presigned_put_url", lambda key, expires: "https://r2/put")
+    monkeypatch.setattr(upscale_jobs, "POLL_SECONDS", 0)
+    jid = "c" * 32
+    rs.job_create(jid, {"status": "queued", "kind": "upscale"}, enqueue=False)
+    cancelled_calls = []
+    monkeypatch.setattr(client, "submit", lambda payload: "fc-test")
+    monkeypatch.setattr(client, "cancel", lambda call_id: cancelled_calls.append(call_id) or True)
+
+    def result(call_id):
+        rs.job_cancel(jid)  # the user presses "Cancel" while the GPU is working
+        return False, {}
+    monkeypatch.setattr(client, "result", result)
+    upscale_jobs.run(jid, {"source_key": "uploads/a.png", "result_key": "results/a.png", "kind": "upscale"})
+    assert cancelled_calls == ["fc-test"]
+    assert rs.job_get(jid)["status"] == "cancelled"
+
+
+def test_upscale_cancelled_in_the_queue_never_reaches_modal(monkeypatch):
+    import redis_store as rs
+    from smweb import upscale_jobs
+    from smweb import modal_upscale_client as client
+    monkeypatch.setattr(rs, "_r", lambda: None)
+    monkeypatch.setattr(client, "configured", lambda: True)
+    jid = "d" * 32
+    rs.job_create(jid, {"status": "queued", "kind": "upscale"}, enqueue=False)
+    rs.job_cancel(jid)
+    monkeypatch.setattr(client, "submit", lambda payload: (_ for _ in ()).throw(AssertionError("submitted")))
+    upscale_jobs.run(jid, {"source_key": "uploads/a.png", "result_key": "results/a.png"})
+    assert rs.job_get(jid)["status"] == "cancelled"

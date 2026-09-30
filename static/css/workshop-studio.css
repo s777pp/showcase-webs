@@ -45,6 +45,15 @@
 .sqfx__style[data-style=comet] .sqfx__swatch i{border:2px solid #2b5a6c;box-shadow:inset 3px 3px 0 -1px #fff,0 0 5px #5cdeff}
 .sqfx__style[data-style=pulse] .sqfx__swatch i{border:2px solid #c9f6ff;animation:sqfx-pulse 1.4s ease-in-out infinite alternate}
 .sqfx__style[data-style=dashes] .sqfx__swatch i{border:2px dashed #8de9ff}
+.sqfx__style[data-style=shimmer] .sqfx__swatch i{border:2px solid transparent;background:linear-gradient(#132b38,#132b38) padding-box,linear-gradient(90deg,#3f7d93 0 35%,#fff 50%,#3f7d93 65% 100%) border-box;background-size:auto,300% 100%;animation:sqfx-rgb 1.8s linear infinite}
+.sqfx__style[data-style=grain] .sqfx__swatch i{border:2px dotted #b9f2ff;box-shadow:0 0 4px #5cdeff;animation:sqfx-grain .5s steps(2) infinite}
+@keyframes sqfx-grain{50%{border-color:#4f8ea3}}
+.sqfx__shapes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.sqfx__shape{display:grid;justify-items:center;gap:4px;padding:7px 3px 6px;border:1px solid #2a4757;background:#0a1721;color:#bcd0da;cursor:pointer;text-align:center;min-width:0}
+.sqfx__shape canvas{width:30px;height:39px;display:block}
+.sqfx__shape b{font-size:10px;line-height:1.15;overflow-wrap:break-word;hyphens:auto}
+.sqfx__shape[aria-checked=true]{border-color:#5cdeff;background:#123f50;color:#f1fcff}
+@media (prefers-reduced-motion:reduce){.sqfx__style .sqfx__swatch i{animation:none!important}}
 @keyframes sqfx-rgb{to{background-position:0 0,300% 0}}@keyframes sqfx-pulse{from{box-shadow:0 0 1px #5cdeff}to{box-shadow:0 0 9px #5cdeff,inset 0 0 5px #5cdeff}}
 .sqfx__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;margin-top:12px}
 .sqfx__range{display:grid;grid-template-columns:1fr auto;gap:3px;font-size:10px;color:#abc3cf}.sqfx__range output{color:#69dcff}.sqfx__range input{grid-column:1/-1;width:100%;accent-color:#5cdeff}
@@ -65,3 +74,26 @@
 .sqfx__presets{display:flex;flex-wrap:wrap;gap:6px}
 .sqfx__preset{padding:7px 11px;border:1px solid #2a4757;background:#0a1721;color:#cfe3ec;font-size:11px;font-weight:700;cursor:pointer}
 .sqfx__preset:hover,.sqfx__preset:focus-visible{border-color:#5cdeff;color:#f1fcff}
+
+/* Picture pickers for frames and their animations (2026-09-29), shared by Process,
+   Workshop Studio and the Builder. Tiles draw the real frame / play the real animation. */
+.sqfx-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px}
+.sqfx-pick--styles{grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}
+.sqfx-pick__tile{display:grid;justify-items:center;align-content:start;gap:5px;min-width:0;padding:6px 4px 7px;border:1px solid rgba(110,170,255,.2);border-radius:10px;background:rgba(5,10,28,.72);color:#c9d8e6;cursor:pointer;text-align:center;transition:border-color .15s,background .15s,transform .15s}
+.sqfx-pick__tile:hover{border-color:rgba(95,228,255,.55);transform:translateY(-1px)}
+.sqfx-pick__tile:focus-visible{outline:2px solid #5fe4ff;outline-offset:2px}
+.sqfx-pick__tile[aria-checked=true]{border-color:#5fe4ff;background:rgba(31,201,241,.14);box-shadow:0 0 0 1px rgba(95,228,255,.35),0 0 14px rgba(95,228,255,.18);color:#f1fcff}
+.sqfx-pick__tile canvas{display:block;border-radius:6px;max-width:100%;height:auto}
+.sqfx-pick__tile span{font-size:11px;font-weight:700;line-height:1.15;overflow-wrap:break-word;hyphens:auto}
+.sqfx-pick__tile small{font-size:9px;color:#d59bff;letter-spacing:.03em;line-height:1}
+.sqfx-swatches{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sqfx-swatches__dot{width:24px;height:24px;border-radius:7px;border:2px solid rgba(255,255,255,.12);cursor:pointer;padding:0}
+.sqfx-swatches__dot[aria-pressed=true]{border-color:#fff;box-shadow:0 0 0 2px rgba(95,228,255,.6)}
+.sqfx-swatches__custom{position:relative;width:24px;height:24px;border-radius:7px;overflow:hidden;background:conic-gradient(#ff2d2d,#ffe600,#1fff8f,#1a9bff,#c13bff,#ff2d2d);border:2px solid rgba(255,255,255,.2)}
+.sqfx-swatches__custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.process-frame__block{display:grid;gap:6px;grid-column:1/-1}
+.process-frame__block .sqfx__label{margin:0}
+.builder-frame-picker{display:grid;gap:8px;margin-bottom:10px}
+.builder-frame-picker__label{margin:4px 0 0;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#9fb6c9}
+@media (max-width:520px){.sqfx-pick{grid-template-columns:repeat(4,minmax(0,1fr))}.sqfx-pick--styles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){.sqfx-pick__tile{transition:none}}

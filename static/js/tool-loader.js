@@ -9,7 +9,11 @@
       '/static/js/builder-history.js?v=20260910-finish1',
       '/static/js/builder-motion-copy.js?v=20260928-loop3',
       '/static/js/builder-motion.js?v=20260913-motion1',
-      '/static/js/showcase-builder.js?v=20260925-fx2'
+      '/static/js/builder-effects.js?v=20260930-r5',
+      '/static/js/builder-text-fx.js?v=20260930-t6',
+      '/static/js/showcase-builder.js?v=20260930-r6',
+      '/static/js/builder-layout.js?v=20260930-bx21',
+      '/static/js/builder-fonts.js?v=20260930-bx9'
     ],
     dna: ['/static/js/steam-dna.js?v=20260912-exp7'],
     loop: ['/static/js/builder-motion-copy.js?v=20260928-loop3','/static/js/seamless-loop.js?v=20260928-prev2']

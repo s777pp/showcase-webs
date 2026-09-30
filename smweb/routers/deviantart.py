@@ -36,6 +36,8 @@ from smweb.oauth_util import (
     _oauth_payload_create,
     _oauth_payload_verify,
 )
+import logging
+_LOG = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -177,7 +179,7 @@ async def da_upload(request: Request):
     if not token:
         return JSONResponse({"ok": False, "msg": "Connect DeviantArt first"}, status_code=401)
     # debug length only (never log full token)
-    print(f"da_upload: user={user.get('id')} token_len={len(token)} files incoming")
+    _LOG.info(f"da_upload: user={user.get('id')} token_len={len(token)} files incoming")
 
     try:
         form = await request.form(

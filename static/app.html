@@ -31,18 +31,19 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
 <link rel="stylesheet" href="/static/css/tools-polish.css?v=20260908-controls8">
 <link href="https://fonts.googleapis.com/css2?family=Alumni+Sans:wght@700;800&family=Arsenal:wght@700&family=Bebas+Neue&family=Bungee&family=Caveat:wght@600;700&family=Comfortaa:wght@600;700&family=Cormorant+Garamond:wght@700&family=Exo+2:wght@700;800&family=Jura:wght@700&family=Kelly+Slab&family=Neucha&family=Oswald:wght@600;700&family=Play:wght@700&family=Poiret+One&family=Press+Start+2P&family=Readex+Pro:wght@600;700&family=Rubik+Mono+One&family=Russo+One&family=Sofia+Sans+Extra+Condensed:wght@700;800&family=Tenor+Sans&family=Unbounded:wght@600;700;800&family=Yeseva+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/showcase-builder.css?v=20260923-grade1">
-<link rel="stylesheet" href="/static/css/workshop-studio.css?v=20260926-results1">
+<link rel="stylesheet" href="/static/css/workshop-studio.css?v=20260929-hud1">
 <link rel="stylesheet" href="/static/css/builder-motion.css?v=20260913-motion1">
 <link rel="stylesheet" href="/static/css/steam-dna.css?v=20260912-exp5">
 <script defer src="/static/js/support-chat.js?v=20260928-ticket3"></script>
 <link rel="stylesheet" href="/static/css/analytics-consent.css?v=20260927-lift1">
 <link rel="stylesheet" href="/static/css/workspace-usability.css?v=20260910-process-layout2">
-<link rel="stylesheet" href="/static/css/workspace-editor.css?v=20260927-fmt1">
+<link rel="stylesheet" href="/static/css/workspace-editor.css?v=20260929-shapes1">
 <link rel="stylesheet" href="/static/css/tool-clarity.css?v=20260921-ux2">
-<link rel="stylesheet" href="/static/css/process-studio.css?v=20260927-fmt1">
+<link rel="stylesheet" href="/static/css/process-studio.css?v=20260929-shapes1">
 <link rel="stylesheet" href="/static/css/nav-groups.css?v=20260926-ux1">
-<link rel="stylesheet" href="/static/css/process-compact.css?v=20260928-rwd5">
-<link rel="stylesheet" href="/static/css/site-theme.css?v=20260926-v2j">
+<link rel="stylesheet" href="/static/css/process-compact.css?v=20260930-lock1">
+<link rel="stylesheet" href="/static/css/site-theme.css?v=20260929-shapes1">
+<link rel="stylesheet" href="/static/css/builder-studio.css?v=20260930-r8">
 <link rel="stylesheet" href="/static/css/home-overlays.css?v=20260928-rwd5">
 </head>
 <body class="page-tools site-v2">
@@ -137,7 +138,7 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
       <h2><span class="editor-step">1</span><span data-editor-copy="addFile">Add your image or video</span></h2>
       <div class="drop" id="drop" role="button" tabindex="0" aria-labelledby="uploadTitle" data-sm-enhanced="1"><span class="editor-upload-icon" data-editor-icon="upload"></span><strong id="uploadTitle" data-editor-copy="chooseFile">Choose a file</strong><span data-editor-copy="dropHint">or drag it here</span><small>PNG · JPG · GIF · WebP · ICO · TIFF · AVIF · MP4 · WebM</small></div>
       <button type="button" class="btn ghost asset-library-open" data-asset-library>My media · upload once</button>
-      <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif,.avi,.mp4,.mov,.webm,.ico,.cur,.bmp,.tif,.tiff,.avif,.tga,.psd,.qoi,.jp2,.j2k,.jfif,.dds,.icns,.pcx,.apng"/>
+      <input type="file" id="fileInput" multiple hidden accept="image/*,video/*,.gif,.avi,.mp4,.mov,.webm,.ico,.cur,.bmp,.tif,.tiff,.avif,.tga,.psd,.qoi,.jp2,.j2k,.jfif,.dds,.icns,.pcx,.apng,.heic,.heif"/>
       <div class="files" id="fileList"></div>
       <section class="process-preflight" id="processPreflight" aria-live="polite">
         <div class="process-preflight__empty"><span>✓</span><p><b data-workspace-copy="preflightTitle">Source check</b><small data-workspace-copy="preflightEmpty">Add files to check format, size, duration and resolution before processing.</small></p></div>
@@ -324,7 +325,7 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
               <span id="composeBgName" data-i-empty="compose_nofile" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)">no file selected</span>
               <button type="button" class="btn ghost" id="btnComposeBg" data-i="compose_pick" style="padding:6px 14px;flex-shrink:0">Choose</button>
               <button type="button" class="btn ghost" data-asset-library data-asset-target="composeBg" style="padding:6px 10px;flex-shrink:0">Library</button>
-              <input type="file" id="composeBg" accept="image/*,video/*,.ico,.cur,.bmp,.tif,.tiff,.avif,.tga,.psd,.qoi,.jp2,.j2k,.jfif,.dds,.icns,.pcx,.apng" style="display:none"/>
+              <input type="file" id="composeBg" accept="image/*,video/*,.ico,.cur,.bmp,.tif,.tiff,.avif,.tga,.psd,.qoi,.jp2,.j2k,.jfif,.dds,.icns,.pcx,.apng,.heic,.heif" style="display:none"/>
             </div>
           </div>
           <div class="field" style="flex:1;min-width:160px;max-width:100%">
@@ -333,7 +334,7 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
               <span id="composeCharName" data-i-empty="compose_nofile" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--muted)">no file selected</span>
               <button type="button" class="btn ghost" id="btnComposeChar" data-i="compose_pick" style="padding:6px 14px;flex-shrink:0">Choose</button>
               <button type="button" class="btn ghost" data-asset-library data-asset-target="composeChar" style="padding:6px 10px;flex-shrink:0">Library</button>
-              <input type="file" id="composeChar" accept="image/*,video/*,.ico,.cur,.bmp,.tif,.tiff,.avif,.tga,.psd,.qoi,.jp2,.j2k,.jfif,.dds,.icns,.pcx,.apng" style="display:none"/>
+              <input type="file" id="composeChar" accept="image/*,video/*,.ico,.cur,.bmp,.tif,.tiff,.avif,.tga,.psd,.qoi,.jp2,.j2k,.jfif,.dds,.icns,.pcx,.apng,.heic,.heif" style="display:none"/>
             </div>
           </div>
         </div>
@@ -909,7 +910,9 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
       <button type="button" data-editor-jump="canvas"><span data-editor-icon="background"></span><span data-editor-copy="canvas">Canvas</span></button>
       <button type="button" data-editor-jump="edit" disabled><span data-editor-icon="sliders"></span><span data-editor-copy="edit">Edit</span></button>
     </nav>
-    <div class="builder-shell" id="showcaseBuilder">
+    <div class="builder-shell bx" id="showcaseBuilder">
+      <nav class="bx-rail" id="bxRail" aria-label="Builder tools"></nav>
+      <aside class="bx-panel card" id="bxPanel" aria-label="Tool settings"></aside>
       <aside class="builder-tools card">
         <div class="builder-panel-title"><strong data-editor-copy="addElement">Add to your design</strong></div>
         <div class="builder-add-grid">
@@ -1002,15 +1005,15 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
             <label><span data-builder-i="font-size">Font size</span><input id="builderFontSize" type="range" min="14" max="180" value="64"/></label>
           </div>
           <div class="builder-effect-controls" id="builderEffectControls" hidden>
-            <label><span data-builder-i="effect-type">Effect type</span><select id="builderEffectType"><optgroup label="Nature"><option value="petals" data-builder-i="effect-petals">Sakura petals</option><option value="snow" data-builder-i="effect-snow">Real snow</option><option value="rain" data-builder-i="effect-rain">Rain</option><option value="lightning" data-builder-i="effect-lightning">Lightning</option></optgroup><optgroup label="Digital"><option value="particle" data-builder-i="effect-particle">Particle Flow</option><option value="stars" data-builder-i="effect-stars">Starfield Drift</option><option value="matrix" data-builder-i="effect-matrix">Digital Matrix</option><option value="streaks" data-builder-i="effect-streaks">Light Streaks</option><option value="sparks" data-builder-i="effect-sparks">Obsidian Sparks</option></optgroup><option value="custom" data-builder-i="effect-custom">Custom overlay</option></select></label>
+            <label><span data-builder-i="effect-type">Effect type</span><select id="builderEffectType"><optgroup label="Nature"><option value="petals" data-builder-i="effect-petals">Sakura petals</option><option value="snow" data-builder-i="effect-snow">Real snow</option><option value="rain" data-builder-i="effect-rain">Rain</option><option value="lightning" data-builder-i="effect-lightning">Lightning</option></optgroup><optgroup label="Digital"><option value="particle" data-builder-i="effect-particle">Particle Flow</option><option value="stars" data-builder-i="effect-stars">Starfield Drift</option><option value="matrix" data-builder-i="effect-matrix">Digital Matrix</option><option value="streaks" data-builder-i="effect-streaks">Comets</option><option value="sparks" data-builder-i="effect-sparks">Obsidian Sparks</option></optgroup><option value="custom" data-builder-i="effect-custom">Custom overlay</option></select></label>
             <div class="builder-effect-swatch" id="builderEffectSwatch" data-effect="petals" aria-hidden="true"></div>
             <label id="builderEffectColorRow"><span data-builder-i="effect-color">Effect color</span><input id="builderEffectColor" type="color" value="#52d5ff"/></label>
             <div class="builder-two"><label><span data-builder-i="effect-speed">Speed</span><input id="builderEffectSpeed" type="range" min="25" max="250" value="100"/></label><label><span data-builder-i="effect-density">Density</span><input id="builderEffectDensity" type="range" min="25" max="200" value="100"/></label></div>
             <button type="button" class="btn ghost" id="builderEffectUpload" data-builder-i="upload-effect">Upload overlay</button>
           </div>
           <div class="builder-frame-controls" id="builderFrameControls" hidden>
-            <div class="builder-two"><label><span data-builder-i="frame-style">Frame style</span><select id="builderFrameStyle"><option value="solid" data-builder-i="frame-solid">Solid</option><option value="double" data-builder-i="frame-double">Double</option><option value="corners" data-builder-i="frame-corners">Corners</option><option value="neon" data-builder-i="frame-neon">Neon glow</option><option value="rgb" data-fx-i="rgb" data-fx-beta="1">RGB strip</option><option value="comet" data-fx-i="comet" data-fx-beta="1">Comets</option><option value="pulse" data-fx-i="pulse" data-fx-beta="1">Neon pulse</option><option value="dashes" data-fx-i="dashes" data-fx-beta="1">Running dashes</option></select></label><label><span data-builder-i="frame-target">Frame layout</span><select id="builderFrameTarget"><option value="panels" data-builder-i="frame-panels">Each Steam panel</option><option value="outer" data-builder-i="frame-outer">Whole canvas</option></select></label></div>
-            <div class="builder-two"><label><span data-builder-i="frame-color">Frame color</span><input id="builderFrameColor" type="color" value="#52d5ff"/></label><label><span data-builder-i="thickness">Thickness</span><input id="builderFrameWidth" type="range" min="1" max="30" value="4"/></label></div><div class="builder-two" id="builderFrameFxRow"><label id="builderFrameColor2Wrap"><span data-fx-i="color2">Second color</span><input id="builderFrameColor2" type="color" value="#8a62ff"/></label><label id="builderFrameSpeedWrap"><span data-fx-i="speed">Speed</span><input id="builderFrameSpeed" type="range" min="1" max="4" step="1" value="1"/></label></div>
+            <div class="builder-frame-picker" id="builderFramePicker"></div><div class="builder-two"><label class="builder-frame-legacy" hidden><span data-builder-i="frame-style">Frame style</span><select id="builderFrameStyle"><option value="solid" data-builder-i="frame-solid">Solid</option><option value="double" data-builder-i="frame-double">Double</option><option value="corners" data-builder-i="frame-corners">Corners</option><option value="neon" data-builder-i="frame-neon">Neon glow</option><option value="rgb" data-fx-i="rgb" data-fx-beta="1">RGB strip</option><option value="comet" data-fx-i="comet" data-fx-beta="1">Comets</option><option value="pulse" data-fx-i="pulse" data-fx-beta="1">Neon pulse</option><option value="dashes" data-fx-i="dashes" data-fx-beta="1">Running dashes</option><option value="shimmer" data-fx-i="shimmer" data-fx-beta="1">Shimmer</option><option value="grain" data-fx-i="grain" data-fx-beta="1">Grain flow</option></select></label><label><span data-builder-i="frame-target">Frame layout</span><select id="builderFrameTarget"><option value="panels" data-builder-i="frame-panels">Each Steam panel</option><option value="outer" data-builder-i="frame-outer">Whole canvas</option></select></label></div>
+            <div class="builder-two"><label class="builder-frame-legacy" hidden><span data-builder-i="frame-color">Frame color</span><input id="builderFrameColor" type="color" value="#52d5ff"/></label><label><span data-builder-i="thickness">Thickness</span><input id="builderFrameWidth" type="range" min="1" max="30" value="4"/></label></div><div class="builder-two"><label class="builder-frame-legacy" hidden><span data-fx-i="shape">Shape</span><select id="builderFrameShape"><option value="rect" data-fx-i="shape_rect">Classic</option></select></label><label id="builderFramePlateWrap" hidden><span data-fx-i="plate">Dark plate</span><input id="builderFramePlate" type="range" min="0" max="100" step="5" value="0"/></label></div><div class="builder-two" id="builderFrameFxRow"><label id="builderFrameColor2Wrap"><span data-fx-i="color2">Second color</span><input id="builderFrameColor2" type="color" value="#8a62ff"/></label><label id="builderFrameSpeedWrap"><span data-fx-i="speed">Speed</span><input id="builderFrameSpeed" type="range" min="1" max="4" step="1" value="1"/></label></div>
           </div>
           <div class="builder-media-controls" id="builderMediaControls" hidden>
             <label class="builder-toggle"><input id="builderChroma" type="checkbox"/><i></i><span data-builder-i="chroma">Remove chromakey</span></label>
@@ -1158,14 +1161,14 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
   </div>
 </div>
 
-  <script src="/static/js/tool-loader.js?v=20260928-prev2"></script>
-<script src="/static/js/app.js?v=20260928-up1"></script>
+  <script src="/static/js/tool-loader.js?v=20260930-r14"></script>
+<script src="/static/js/app.js?v=20260929-shapes1"></script>
 <script src="/static/js/color-grade.js?v=20260923-grade2"></script>
-<script src="/static/js/workshop-squares-fx.js?v=20260926-studio2"></script>
-<script src="/static/js/process-frame-fx.js?v=20260926-gaps1"></script>
-<script src="/static/js/workshop-studio.js?v=20260927-fmt1"></script>
+<script src="/static/js/workshop-squares-fx.js?v=20260930-r4"></script>
+<script src="/static/js/process-frame-fx.js?v=20260930-lock2"></script>
+<script src="/static/js/workshop-studio.js?v=20260929-shapes1"></script>
   <script src="/static/js/workspace-copy.js?v=20260927-fmt1"></script>
-  <script src="/static/js/process-guide.js?v=20260927-fmt1"></script>
+  <script src="/static/js/process-guide.js?v=20260929-shapes1"></script>
 
 
 
@@ -1230,8 +1233,8 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
 <script src="/static/js/workspace-editor.js?v=20260920-editor4"></script>
 <script src="/static/js/tool-clarity-copy.js?v=20260921-ux2"></script>
 <script src="/static/js/tool-clarity.js?v=20260921-ux2"></script>
-<script src="/static/js/process-layout.js?v=20260927-src1"></script>
-<script src="/static/js/process-compact.js?v=20260927-glass1"></script>
+<script src="/static/js/process-layout.js?v=20260929-shapes1"></script>
+<script src="/static/js/process-compact.js?v=20260930-lock1"></script>
 <script src="/static/js/nav-groups.js?v=20260926-ux2"></script>
 <script src="/static/js/job-notify.js?v=20260926-perf1"></script>
 <script>/* Reveal after i18n, nav grouping and the shell header ran (listeners registered earlier fire first). */

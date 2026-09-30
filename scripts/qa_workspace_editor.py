@@ -184,22 +184,31 @@ def run():
 
         page.locator('[data-open-tool=builder]').first.click()
         expect(page.locator('#builderStart')).to_be_visible()
-        motion = page.locator('.builder-stage > .builder-motion-panel')
+        page.locator('[data-bx-tool=scene]').click()
+        motion = page.locator('#bxPanel .bx-section--scene .builder-motion-panel')
         expect(motion).to_have_count(1)
-        motion.locator('summary').click()
-        assert motion.bounding_box()['width'] > 500
+        expect(motion.locator('#bmLoop')).to_be_visible()
+        assert motion.bounding_box()['width'] > 250
         assert motion.locator('[data-motion-i="seams"]').evaluate('node => node.getBoundingClientRect().height < 80')
         motion.screenshot(path=str(output / 'showcase-editor-motion-panel.png'))
         expect(page.locator('#builderExport')).to_be_disabled()
+        page.locator('[data-bx-tool=text]').click()
         page.locator('[data-add-layer=text]').click()
         expect(page.locator('#builderStart')).to_be_hidden()
         expect(page.locator('#builderInspector')).to_be_visible()
-        expect(page.locator('.builder-layers #builderText')).to_be_visible()
+        expect(page.locator('#bxPanel #builderText')).to_be_visible()
         page.locator('#builderText').fill('TEST SHOWCASE')
+        # Text animation tiles exist; a static export keeps the text still.
+        expect(page.locator('.bx-textfx__tile')).to_have_count(17)
         page.locator('[data-builder-mode=split]').click()
+        # A frame chosen earlier in Process must not be added on top of the design.
+        page.evaluate("window.SMProcessFrame.set({style: 'neon', shape: 'rect'})")
         page.locator('#builderExport').click()
         expect(page.locator('#tab-process')).to_have_class(re.compile(r'\bactive\b'), timeout=15000)
         expect(page.locator('#fileList .process-file')).to_have_count(1)
+        assert page.evaluate('SMProcessFrame.locked()') is True
+        assert page.evaluate('SMProcessFrame.state().style') == 'none'
+        assert page.evaluate("document.getElementById('workshopOutline').checked") is False
         assert page.evaluate('state.mode') == 'split'
         assert page.evaluate('state.files[0].type') == 'image/png'
         expect(page.locator('#wmCanvas')).to_be_visible()
@@ -220,17 +229,21 @@ def run():
                 page.set_viewport_size({'width': width, 'height': 1000})
                 page.wait_for_timeout(100)
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (language, width, 'builder')
+            page.locator('[data-bx-tool=effect]').click()
             page.locator('[data-add-layer=effect]').click()
             expect(page.locator('#builderEffectControls')).to_be_visible()
-            expect(page.locator('.editor-effect-options')).not_to_have_attribute('open', '')
             page.locator('#builderEffectColor').fill('#25ddbb')
-            page.locator('.editor-effect-options summary').click()
+            # Groups remember their state per browser: open it only when it is closed.
+            effect_more = page.locator('.bx-group[data-bx-group=effectMore]')
+            if effect_more.get_attribute('open') is None:
+                effect_more.locator('> summary').click()
             expect(page.locator('#bmDepth')).to_be_visible()
             page.set_viewport_size({'width': 360, 'height': 1000})
-            page.locator('[data-editor-jump=edit]').click()
+            page.locator('#builderInspector').evaluate('n => n.scrollIntoView({block: "start"})')
+            page.wait_for_timeout(150)
             assert page.locator('#builderInspector').bounding_box()['y'] >= 0
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (language, 'inspector')
-        # The catalogue fills the canvas column, with readable thumbnails at every width.
+        # The catalogue opens in the Background tool, two readable columns at every width.
         page.goto(base + '/ru/app')
         page.locator('[data-open-tool=builder]').first.click()
         page.locator('#builderSteamBackgrounds').click()
@@ -242,7 +255,8 @@ def run():
         for width in [360, 768, 1440, 1920, 2328]:
             page.set_viewport_size({'width': width, 'height': 1000})
             page.wait_for_timeout(100)
-            assert page.locator('#builderCatalogGrid button').first.bounding_box()['width'] >= 200, width
+            page.locator('#builderCatalogGrid button').first.scroll_into_view_if_needed()
+            assert page.locator('#builderCatalogGrid button').first.bounding_box()['width'] >= 100, width
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (width, 'catalogue')
             if width == 2328:
                 assert page.locator('.main').bounding_box()['width'] > 1900
@@ -274,16 +288,17 @@ def run():
         page.screenshot(path=str(output / 'showcase-editor-builder.png'), full_page=True)
         # Inspect a populated editor too, with an existing local site asset.
         sample = Path(__file__).resolve().parents[1] / 'static/img/hero-creator-cyberpunk.png'
-        page.locator('[data-add-layer=background]').click()
+        page.locator('[data-bx-tool=background]').click()
         page.locator('#builderMediaInput').set_input_files(str(sample))
         expect(page.locator('#builderElementCount')).to_have_text('1')
+        page.locator('[data-bx-tool=text]').click()
         page.locator('[data-add-layer=text]').click()
         page.locator('#builderText').fill('МОЯ ВИТРИНА')
         expect(page.locator('#builderElementCount')).to_have_text('2')
         page.wait_for_timeout(400)
         page.screenshot(path=str(output / 'showcase-editor-builder-filled.png'), full_page=True)
         page.set_viewport_size({'width': 390, 'height': 844})
-        page.locator('[data-editor-jump=canvas]').click()
+        page.locator('#builderCanvas').scroll_into_view_if_needed()
         page.screenshot(path=str(output / 'showcase-editor-builder-mobile.png'), full_page=True)
         page.locator('[data-open-tool=process]').first.click()
         page.locator('#fileInput').set_input_files(str(sample))

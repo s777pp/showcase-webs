@@ -27,6 +27,7 @@ import redis_store as rs
 
 import auth_db
 from smweb import runtime_settings, user_limits
+_LOG = logging.getLogger(__name__)
 
 
 logging.basicConfig(
@@ -80,7 +81,7 @@ for d in (DATA, JOBS, STATIC):
     try:
         d.mkdir(parents=True, exist_ok=True)
     except Exception as e:
-        print("mkdir failed", d, e)
+        _LOG.warning('%s %s %s', "mkdir failed", d, e)
 
 
 FREE_LIMIT = int(os.environ.get("FREE_LIMIT", "5"))
@@ -162,14 +163,14 @@ def _load_codes() -> dict:
             if isinstance(data, dict):
                 codes.update({str(k).upper(): v for k, v in data.items()})
         except Exception as e:
-            print("load ACCESS_CODES_JSON:", e)
+            _LOG.warning('%s %s', "load ACCESS_CODES_JSON:", e)
     if ACCESS_FILE.is_file():
         try:
             data = json.loads(ACCESS_FILE.read_text(encoding="utf-8"))
             if isinstance(data, dict):
                 codes.update({str(k).upper(): v for k, v in data.items()})
         except Exception as e:
-            print("load codes", ACCESS_FILE, e)
+            _LOG.warning('%s %s %s', "load codes", ACCESS_FILE, e)
     return codes
 
 

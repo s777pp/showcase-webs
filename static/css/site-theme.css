@@ -215,8 +215,8 @@ body.site-v2 .editor-upload-icon{background:rgba(31,201,241,.12)!important;borde
 body.site-v2 .page-tools #processModeCard .mode,body.site-v2 #processModeCard .mode{border-radius:10px!important;border-color:rgba(110,170,255,.22)!important;background:rgba(5,10,28,.7)!important}
 body.site-v2 #processModeCard .mode.active{border-color:var(--v2-cyan)!important;background:linear-gradient(160deg,rgba(31,201,241,.14),rgba(61,123,255,.08))!important;box-shadow:inset 0 -3px var(--v2-cyan)!important}
 body.site-v2 #processModeCard .mode>small{font-family:var(--v2-mono)!important}
-body.site-v2 :is(.sqfx__style,.sqfx__preset,.process-frame__target button,.process-summary li){border-radius:8px!important;border-color:rgba(110,170,255,.22)!important;background:rgba(5,10,28,.72)!important;font-family:var(--v2-font)!important}
-body.site-v2 .sqfx__style[aria-checked=true],body.site-v2 .process-frame__target button[aria-pressed=true]{border-color:var(--v2-cyan)!important;background:rgba(31,201,241,.14)!important}
+body.site-v2 :is(.sqfx__style,.sqfx__shape,.sqfx__preset,.process-frame__target button,.process-summary li){border-radius:8px!important;border-color:rgba(110,170,255,.22)!important;background:rgba(5,10,28,.72)!important;font-family:var(--v2-font)!important}
+body.site-v2 .sqfx__style[aria-checked=true],body.site-v2 .sqfx__shape[aria-checked=true],body.site-v2 .process-frame__target button[aria-pressed=true]{border-color:var(--v2-cyan)!important;background:rgba(31,201,241,.14)!important}
 body.site-v2 .workspace-switch__modes{border-radius:12px!important;border-color:var(--v2-line)!important;background:rgba(5,10,28,.72)!important}
 body.site-v2 .workspace-switch__modes>button{border-radius:9px!important}
 body.site-v2 .workspace-switch__modes>button.active{background:linear-gradient(160deg,rgba(31,201,241,.16),rgba(61,123,255,.1))!important;box-shadow:inset 0 0 0 1px var(--v2-cyan)!important}

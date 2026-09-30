@@ -22,6 +22,14 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import logging
+
+# Same format as smweb/core.py; basicConfig is a no-op if that ran first.
+logging.basicConfig(
+    level=getattr(logging, (os.environ.get("LOG_LEVEL") or "INFO").upper(), logging.INFO),
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+_LOG = logging.getLogger("sm.worker")
 
 # ensure app root on path
 ROOT = Path(__file__).resolve().parent
@@ -39,7 +47,7 @@ def _process_one(jid: str) -> None:
 
     job = rs.job_get(jid)
     if not job:
-        print(f"[worker] {jid} vanished before pickup", flush=True)
+        _LOG.warning(f"[worker] {jid} vanished before pickup")
         return
     if job.get("status") not in ("queued", "running"):
         return
@@ -97,16 +105,14 @@ def main() -> None:
     os.environ["SM_PROCESS_ROLE"] = "worker"
 
     if not rs.configured():
-        print("[worker] REDIS_URL is not set — nothing to consume. Exiting.", flush=True)
+        _LOG.warning("[worker] REDIS_URL is not set — nothing to consume. Exiting.")
         return
     if not rs.redis_ok():
-        print(f"[worker] Redis unreachable at {rs.redis_host()}: {rs.last_error()}", flush=True)
-        print("[worker] retrying...", flush=True)
+        _LOG.warning(f"[worker] Redis unreachable at {rs.redis_host()}: {rs.last_error()}")
+        _LOG.warning("[worker] retrying...")
 
-    print(
-        f"[worker] starting media={MAX_WORKERS} profile={MAX_PROFILE_WORKERS} "
-        f"upscale={MAX_UPSCALE_WORKERS} redis={rs.redis_host()}", flush=True,
-    )
+    _LOG.info(f"[worker] starting media={MAX_WORKERS} profile={MAX_PROFILE_WORKERS} "
+        f"upscale={MAX_UPSCALE_WORKERS} redis={rs.redis_host()}")
     last_beat = 0.0
     with (ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="media") as media_pool,
           ThreadPoolExecutor(max_workers=MAX_PROFILE_WORKERS, thread_name_prefix="profile") as profile_pool,
@@ -149,7 +155,7 @@ def main() -> None:
             if not picked:
                 continue
             queue, jid = picked
-            print(f"[worker] {queue} pick {jid}", flush=True)
+            _LOG.info(f"[worker] {queue} pick {jid}")
             if queue == "profile":
                 profile_inflight.add(profile_pool.submit(_process_one, jid))
             elif queue == "media":
@@ -162,4 +168,4 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("[worker] stopped", flush=True)
+        _LOG.info("[worker] stopped")

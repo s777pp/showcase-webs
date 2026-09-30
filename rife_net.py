@@ -123,7 +123,8 @@ class Interpolator:
     def __init__(self, weights_path: str, device: str | None = None):
         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
         self.dtype = torch.float16 if self.device.type == "cuda" else torch.float32
-        state = torch.load(weights_path, map_location="cpu")
+        # weights_only: the .pkl is a plain state dict; never unpickle arbitrary objects.
+        state = torch.load(weights_path, map_location="cpu", weights_only=True)
         state = {k.replace("module.", ""): v for k, v in state.items() if "module." in k}
         self.net = IFNet()
         self.net.load_state_dict(state, strict=False)

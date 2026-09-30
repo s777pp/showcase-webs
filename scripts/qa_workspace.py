@@ -61,6 +61,7 @@ def run():
         page.keyboard.press('Escape')
         assert page.locator('.sm-help__popup:not([hidden])').count() == 0
         page.locator('[data-open-tool=builder]').first.click()
+        page.locator('[data-bx-tool=text]').click()
         page.locator('[data-add-layer=text]').click()
         page.locator('#builderText').fill('History sample')
         page.wait_for_timeout(500)
@@ -87,7 +88,7 @@ def run():
         page.locator('#builderLayerList [data-action=lock]').first.click()
         page.locator('#builderLayerList [data-action=duplicate]').first.click()
         assert page.locator('#builderLayerList .builder-layer').count()==3
-        page.locator('#builderTemplates summary').click()
+        page.locator('[data-bx-tool=templates]').click()
         page.locator('[data-builder-template=minimal]').click()
         assert page.locator('#builderLayerList .builder-layer').count()==5
         page.locator('.editor-canvas-options summary').click()
@@ -137,7 +138,7 @@ def run():
             page.wait_for_timeout(200)
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), language
             assert page.locator('.builder-history button').first.inner_text()
-            actual_template=page.locator('#builderTemplates summary').inner_text().strip()
+            actual_template=page.locator('#builderTemplates summary').text_content().strip()
             assert actual_template.casefold()==expected_templates[language].casefold(), (language,actual_template,expected_templates[language])
         assert not errors, errors
         print('Workspace QA passed: guided process, preflight, help, history, media draft restore, layer tools, templates, actual result comparison, mobile layout.')

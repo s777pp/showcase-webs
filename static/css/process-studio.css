@@ -66,7 +66,6 @@ body.page-tools.is-showcase-workspace #toolTaskChooser,body.page-tools:has(#tab-
 
 /* ---- Quality (collapsed) ---- */
 .page-tools #processAdvanced>.process-basics {grid-template-columns:repeat(2,minmax(0,1fr))!important}
-.page-tools #processAdvanced .process-advanced__toggles {grid-column:1/-1;display:flex!important;flex-wrap:wrap;gap:10px 22px}
 
 /* ---- 4 · Create: summary above the main button ---- */
 .process-summary {display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 12px;padding:0;list-style:none}
@@ -183,3 +182,10 @@ body.has-process-dock .studio-support {bottom:max(80px,var(--support-lift,0px))!
 .process-grade__reset:disabled {opacity:.45;cursor:default}
 .process-grade__reset:not(:disabled):hover {border-color:rgba(111,227,255,.6)}
 @media (max-width:760px){.process-grade__grid{grid-template-columns:1fr}}
+
+/* Frame shape picker (2026-09-29): full-width row, plate slider under it. */
+.page-tools #tab-process .process-frame__shape,.page-tools #tab-process .workshop-outline__plate{grid-column:1/-1}
+.page-tools #tab-process .process-frame__shape .sqfx__label{display:block;margin:0 0 6px}
+.page-tools #tab-process .process-frame__shapes .sqfx__shapes{grid-template-columns:repeat(8,minmax(0,1fr))}
+@media (max-width:900px){.page-tools #tab-process .process-frame__shapes .sqfx__shapes{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.page-tools #tab-process .workshop-outline__plate>span{display:flex;gap:6px;align-items:baseline}

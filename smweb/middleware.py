@@ -186,8 +186,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/admin/control", 60, 60),
         # Legacy destructive admin routes stay deliberately tight.
         ("/api/admin/", 5, 60),
-        ("/api/process", 8, 60),
+        # First matching prefix wins: specific paths go before their parents.
+        # "/api/process" used to come first, so /start never had its own rule and
+        # every other /api/process/* POST shared the start budget.
         ("/api/process/start", 8, 60),
+        ("/api/process/profile-preview/", 10, 60),
+        ("/api/process", 8, 60),
+        ("/api/workshop-studio/start", 8, 60),
+        # Modal GPU time costs money; the router also caps jobs per account.
+        ("/api/upscale/start", 6, 60),
+        ("/api/upscale", 6, 60),
+        ("/api/loop/preview", 12, 60),
+        ("/api/preview/", 20, 60),
         ("/api/convert", 12, 60),
         ("/api/hex21", 12, 60),
         ("/api/preview-build", 6, 60),

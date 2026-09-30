@@ -76,6 +76,17 @@ def submit(payload: dict) -> str:
     return call_id
 
 
+def cancel(call_id: str) -> bool:
+    """Best effort: stop the GPU call. Older Modal deployments answer 404 (no /cancel)."""
+    if not call_id.startswith("fc-") or len(call_id) > 100:
+        return False
+    try:
+        response = requests.post(f"{BASE_URL}/cancel/{call_id}", headers=_headers(), timeout=(10, 20))
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
 def result(call_id: str) -> tuple[bool, dict]:
     response = requests.get(
         f"{BASE_URL}/result/{call_id}",

@@ -183,16 +183,24 @@ body.page-tools #processSettingsCard #processAdvanced>.process-basics>.field{gri
 body.page-tools #processSettingsCard #processAdvanced>.process-basics>.process-field--encoder,
 body.page-tools #processSettingsCard #processAdvanced>.process-basics>.process-advanced__toggles,
 body.page-tools #processSettingsCard #processAdvanced>.process-basics>.steam-opt-row{grid-column:1/-1!important}
-body.page-tools #processSettingsCard #processAdvanced .process-advanced__toggles{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:10px 24px!important;width:auto!important;min-width:0!important}
+/* The only rules for these switches (older duplicates in process-studio.css and workspace-editor.css were removed 2026-09-29). */
+body.page-tools #processSettingsCard #processAdvanced .process-advanced__toggles{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:10px 24px!important;width:auto!important;min-width:0!important;justify-self:stretch!important;justify-content:flex-start!important;align-content:flex-start!important;margin:0!important}
 body.page-tools #processSettingsCard #processAdvanced .process-advanced__toggles .process-switch{display:inline-flex!important;flex-direction:row!important;align-items:center!important;gap:10px!important;width:auto!important;min-height:30px;margin:0!important}
 body.page-tools #processSettingsCard #processAdvanced .process-advanced__toggles .process-switch>span{display:inline!important;width:auto!important;white-space:nowrap!important;writing-mode:horizontal-tb!important;font-size:13px!important;line-height:1.2!important;overflow-wrap:normal!important}
 @media (max-width:430px){
   body.page-tools #processSettingsCard #processAdvanced .process-advanced__toggles{flex-direction:column!important;align-items:flex-start!important;gap:8px!important}
 }
-body.page-tools #processSettingsCard #processAdvanced .process-advanced__toggles{justify-self:stretch!important;justify-content:flex-start!important;align-content:flex-start!important;margin:0!important}
 /* Collapsed "Design" card: its heading and chips were min-content wide and got
    cut off at the card edge on 320-360 px phones. */
 body.page-tools .process-design{grid-template-columns:minmax(0,1fr)!important}
 body.page-tools .process-design>*{min-width:0!important;max-width:100%}
 body.page-tools .process-fold__head{flex-wrap:wrap!important;row-gap:6px}
 body.page-tools .process-fold__chip{max-width:100%;min-width:0}
+
+/* Design from "Create a design": its own frame/colours, Process frame + grade are locked. */
+body.page-tools .process-builder-lock{display:grid;gap:6px;margin:0 0 12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(82,213,255,.35);background:linear-gradient(135deg,rgba(82,213,255,.1),rgba(138,98,255,.08))}
+body.page-tools .process-builder-lock[hidden]{display:none!important}
+body.page-tools .process-builder-lock b{font-size:14px;color:#e8f6ff}
+body.page-tools .process-builder-lock span{font-size:13px;line-height:1.45;color:rgba(220,232,245,.78)}
+body.page-tools .process-builder-lock button{justify-self:start;min-height:34px;padding:6px 12px;font-size:13px}
+body.page-tools .is-builder-locked{opacity:.38;filter:grayscale(.6);pointer-events:none;user-select:none}

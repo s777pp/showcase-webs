@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 289 passed on 2026-09-27 (~80 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 386 passed on 2026-09-30 (~130 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -80,7 +80,9 @@ Modal GPU (Real-ESRGAN upscale). Compose services: `postgres redis app worker ng
 - **Steam import:** queue `profile` → Bright Data browser over CDP (Playwright) → parsers →
   snapshot in DB. Direct Steam requests from the VPS get HTTP 429; keep the browser path.
 - **Cancel:** API sets `cancel_requested` in Redis; `process_control.run()` polls it and
-  terminates FFmpeg/gifski. Modal upscale cannot be cancelled.
+  terminates FFmpeg/gifski. Upscale is cancellable since 2026-09-29: the worker stops polling and calls
+  `POST /cancel/{call_id}` on the Modal service (needs `modal deploy modal_upscale.py`; older deployments 404 and
+  only the VPS side stops). A job cancelled while queued never reaches Modal.
 - **Health:** `/api/ready` (compose healthcheck), `/api/health` (DB, Redis, R2 cached, worker,
   ffmpeg, gifski). Expected on prod: `database_backend=postgresql`, `worker.external_alive=true`.
 
@@ -135,7 +137,8 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
 - **Input formats (2026-09-27):** every still Pillow can decode (ICO/CUR, ICNS, TIFF, AVIF, TGA, PSD, QOI,
   JPEG 2000, DDS, PCX, APNG...) is accepted by Process, Workshop Studio and Character. `processor.normalize_upload`
   turns anything outside `NATIVE_STILL_EXTENSIONS`/`MOTION_EXTENSIONS` into PNG (ICO/ICNS: largest size) before
-  the pipelines. No HEIC (pillow-heif is not installed). Browsers cannot preview TIFF/TGA/PSD/QOI/JP2/DDS/ICNS/PCX,
+  the pipelines. HEIC/HEIF (iPhone) since 2026-09-29 via `pillow-heif` (registered in processor.py, `HEIF_SUPPORTED`;
+  `jobs._sniff_extension` tells HEIC/AVIF from MP4 by the ftyp brand). Browsers cannot preview TIFF/TGA/PSD/QOI/JP2/DDS/ICNS/PCX/HEIC,
   so `process-guide.js` shows `fileServerConvert` instead of probing them. Test: `tests/test_image_formats.py`.
 - **Process colour correction (2026-09-27):** `#processGradeBlock` in the Design card, state in
   `process-layout.js` (`window.SMProcessGrade.get/filter/set`, saved in the settings snapshot, summary chip).
@@ -515,6 +518,105 @@ Only the hero exists for now; content blocks will be added below it later.
 - Downloads: `smweb/page_media.py` + `SUPPORTED_MEDIA_SITES` (50+ sites, direct file links).
 - Local Pro account: `python scripts/dev_account.py email password [days]` (SQLite only).
 
+## 6.5 Frame shapes, fixes after the full audit (2026-09-29, local)
+- HUD frames (owner request, reference steamprofile.io/ru/builder "Рамка": 19 black line-art plates with a
+  metallic outline, animation 1 = slow light patches, animation 2 = flickering grain; their assets were studied,
+  NOT copied). Ours: 12 procedural designs in `static/assets/frames/designs.json` (hud pillars crown bastion twin
+  slash wing bend arcs tech circuit blade) + simple `rect bevel notch`. One JSON for both renderers:
+  `smweb/frame_designs.py` and `panelGeometry` in `static/js/workshop-squares-fx.js` (a node test compares points).
+  A design = even-odd polys (plate with holes) + bars/arcs (unioned); the outline traces every edge except the
+  panel border and is cut by the eroded plate interior (overlapping bars). Panel **roles**: `full` (ornament
+  columns on both sides), `left`/`right` = Artwork Split 506 / 100 parts (`processor._split_parts`, Builder,
+  Process preview), so the two files read as one symmetric frame; the 100 part uses unit width 118.
+  Styles = the old ones + `shimmer` (animation 1) / `grain` (animation 2): value noise in IMAGE space and loop
+  time (`OUTLINE_TEXTURES`, measured on the reference: 2 s loop, patches ~80-160 px / grain ~10-15 px), periodic
+  in time, identical math in JS (node test). Split parts pass `surface`/`origin` so textures continue across files.
+  `frame.plate` 0-100 ("Тёмная подложка"). UI: picture pickers (`shapePicker` draws each design on a sample art
+  for the current showcase type, Split as 506+100; `stylePicker` plays each animation live; `colorSwatches`)
+  in Process, Workshop Studio and Builder (Builder selects are hidden, `#builderFramePicker`). Tests:
+  `tests/test_frame_shapes.py`. Shell note: never put backticks inside `py -c "..."` in Git Bash (they run as
+  commands); write the script to a file instead.
+- "Create a design" studio (2026-09-30, owner: "as clear as steamprofile.io, in our design"): tool rail
+  (Background, Character, Text, Frame, Effects | Templates, Scene) -> context panel with the chosen tool's add button
+  and settings -> stage (modes, undo/redo, canvas options in one top bar; canvas; name/save/continue) -> layers.
+  `static/js/builder-layout.js` (loaded after showcase-builder.js in the tool-loader "builder" group) MOVES the
+  existing controls (all ids kept) and adds inline layer rename (double-click, F2 or the pencil; the Name field is
+  hidden). Styles: `static/css/builder-studio.css` (after site-theme.css, scoped to `#showcaseBuilder.bx`; panels scroll
+  on their own). showcase-builder.js exposes `window.SMBuilder` (layers/select/rename/current) and fires
+  `sm:builder-select`; the root carries `data-bx-active` (NOT data-bx-tool, that is the rail buttons). A layer is
+  added by picking its tool first: QA scripts click `[data-bx-tool=X]` then `[data-add-layer=X]`.
+  Shell note: in Git Bash never use sed with `#` as the delimiter on CSS/HTML that contains `#` (it corrupted a file once).
+- Studio round 2 (2026-09-30): Split HUD frames: the 100 px file is ONLY the ornament column (the 506 file's
+  100 px column, mirrored pixel for pixel: `square_fx._panel_masks` flips the left mask for role right); both parts
+  share one scale (`frame_designs.unit`, `SPLIT_SIDE`), column points are clamped to the column, and Split HUD
+  frames are always per part (the "whole showcase" switch is hidden for them). Builder render loop redraws only
+  when dirty (input/pointer/media load/fonts) and animated scenes at <=30 fps (`markDirty` in showcase-builder.js);
+  shimmer/grain outline textures are cached per loop step (`paintTexture` in workshop-squares-fx.js): HUD+shimmer
+  went from 71 ms to ~4 ms per frame. New: `static/js/builder-effects.js` (15 procedural effects, sprites instead
+  of shadowBlur, names in `routers/builder.py _EFFECTS`), effect picker tiles with live previews
+  (`SMBuilder.previewEffect`), Steam catalogue over the canvas, "Scene" renamed "Scene length", collapsible
+  setting groups (`.bx-group`, state in localStorage `sm_bx_group_*`), on-canvas resize/rotate handles
+  (`SMBuilder.box`), font library dialog `static/js/builder-fonts.js` (Google Fonts catalogue
+  `static/assets/fonts/catalog.json` from `scripts/build_font_catalog.py`, tiles load only "ShowcaseMaker" glyphs,
+  favourites in localStorage, own fonts via FontFace + IndexedDB `sm-user-fonts`, `layer.fontWeight`, canvas
+  fallback Mulish for missing glyphs). Own fonts live only in that browser.
+- Studio round 3 (2026-09-30): the Builder draw loop schedules the next frame BEFORE rendering and catches
+  render errors (one bad layer used to stop the editor until reload - a Split frame bug did exactly that).
+  Steam catalogue cards keep their size (`grid-auto-rows:max-content`, 16:9 picture). particle / stars / streaks
+  are redrawn by builder-effects.js (the old particle and stars were the same code). Stage toolbar `.bx-toolbar`:
+  undo/redo + draft status | canvas options | "Selected background: <name>" + buy button (the buy button is
+  moved in by builder-layout.js; observe only the button, never the block you write into - that looped once).
+- Studio round 4 (2026-09-30, owner): Split HUD frames are ONE frame around the 606 px pair (Featured
+  thickness, target "strip") then cut: left column in the 506 file, the mirrored column inside the 100 file.
+  Full-role design masks copy their left half onto the right (`_mirror_left_half`) so both columns match to the
+  pixel. The older per-part roles (left/right, SPLIT_SIDE) are kept in the code but no longer used for Split.
+  Shimmer/grain previews blend two cached steps (48 per loop) by the exact position: the Builder loop is 8 s, so
+  plain steps looked like 6 fps. Panels use `overscroll-behavior:contain`. Rain is procedural (builder-effects.js,
+  3 depth layers + splashes + mist); "Light streaks" is called "Comets" in every language.
+- Studio round 5 (2026-09-30, owner): text animations `static/js/builder-text-fx.js` (`SMTextFx`: typewriter,
+  fadeup, decode, wave, bounce, saber, neon, glitch, rainbow, shine; a function of u in the scene loop, glow passes
+  stroke whole lines because per-letter shadowBlur was the cost). Text layers store `textFx` + `fxColor`
+  (whitelisted in `routers/builder.py`, removed from other layer types). Layers reorder by drag (mouse: whole row,
+  touch: the grip, Alt+Up/Down on the keyboard) through `SMBuilder.move(id, index)`. Character layers have
+  "Match the scene" (builder-layout.js): 64 px samples of the background below and of the character (alpha > 140),
+  damped log-ratio of brightness/luminance spread/saturation plus a small hue lean, written into `layer.grade`.
+  Builder export fires `sm:builder-sent`; `process-frame-fx.js` then switches the Process frame off, resets the
+  Process grade, locks both (`inert`, note with "Add a frame anyway") and restores the old choice when the file
+  leaves the list (`SMProcessFrame.locked()/lockLabel()`, chips show "from your design").
+- Studio round 6 (2026-09-30, owner): text direction `layer.textDir` (horizontal|vertical: upright letters top to
+  bottom, columns left to right; vertical text always draws through `SMTextFx` with the `plain` renderer,
+  `SMTextFx.measure` sizes the handles), `layer.textFxSpeed` 1-4 (whole repeats per scene loop, so loops stay
+  seamless), hollow-outline animations fire / lightning / runner / plasma + sparkle (outline points sampled once
+  per layout, glow sprites instead of shadowBlur). Steam media in the Builder load straight from Steam's CDN
+  (`safeSource`: CORS *, byte ranges; `shared.cloudflare.steamstatic.com` is rewritten to `shared.steamstatic.com`
+  because its redirect has no CORS header) with `/api/steam/proxy-image` as the fallback on error. The proxy used
+  to download the whole file before answering (15 s for 275 KB locally); it now keeps files in
+  `DATA/cache/steam-media` (7 days, 600 files) and serves them with FileResponse (ranges). The stage shows a
+  loading notice (`sm:builder-media` events from `watchLoading`).
+- Text outline effects (2026-09-30, owner references `IMAGE/electric.jpg`, `fire.webp`, `neon.jpg`): `contours()` in
+  builder-text-fx.js traces glyph outlines once per layout (marching squares over a filled-text mask, smoothed,
+  resampled, normals flipped to point out of the ink) so effects follow real letter edges and fonts with overlapping
+  contours show no inner lines. `neon` = hollow tube on the traced contour, `fire` = flame sprites (taller on
+  up-facing edges, width tied to height or they band), rising puffs, jagged edge, embers, `electric` = 3 noisy strands
+  re-shaped 18 times a second + sparks; `lightning` (bolts between edges) stays as the second electric look. Time noise
+  is periodic (`tnoise`), a test render showed the loop seam ~100x below one frame step.
+- Release workflow (until this folder becomes a repo): `scripts/release_sync.py` copies new/changed files into the
+  git checkout `Desktop/showcase-webs` (dry run by default, never deletes); `CHANGELOG.md` holds the release notes
+  and the VPS steps. `nginx.conf` is bind-mounted as a single file: restart nginx after `git pull`.
+- Rate limits: first matching prefix wins; `/api/process/start` used to be shadowed by `/api/process`. Added
+  workshop-studio, upscale, loop preview, preview share. `tests/test_rate_limit_rules.py` fails on shadowed rules.
+- `/api/ready` returns `reason` (a local import had made JSONResponse unbound). Loop preview renders under a
+  semaphore (`LOOP_PREVIEW_CONCURRENCY`, default 1, 503 `busy` after 20 s). RIFE weights: sha256 pinned in the
+  Dockerfile, `torch.load(weights_only=True)`. Compose: `mem_limit` app 3g / worker 6g (`APP_MEM_LIMIT`, `WORKER_MEM_LIMIT`).
+- Featured `full_with_watermark.gif` is encoded by gifski (`_gif_watermark_gifski`): 29 MB -> 6 MB on 45.mp4.
+  A `full_original.*` byte-identical to another file is not written to the ZIP twice (`jobs._duplicate_original`).
+- Landing model: `static/models/saba-0.1-web.vrm` (textures re-encoded by `scripts/optimize_vrm.py`, 21.1 -> 12.2 MB,
+  ~4.7 MB with nginx gzip for `/static/models/`); the R2 original is the fallback. Licence allows alterations
+  (see `SABA_LICENSE.md`). Upload the web copy to R2 only if the owner wants it off the VPS.
+- `print()` in server code is now module logging; swallowed exceptions in job code log at DEBUG
+  (`LOG_LEVEL=DEBUG` shows them). worker.py configures logging itself.
+- `.gitignore` ignores the whole `/data/` (it holds a 2.2 GB server archive and user results) and `/output/`.
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or
@@ -535,7 +637,7 @@ Only the hero exists for now; content blocks will be added below it later.
   quota admission across different start routes is not atomic. Fine at current load.
 - Anonymous job ownership is the client IP (NAT neighbours share jobs).
 - `steam_profile_guard.py` keeps a separate SQLite file under `/data`.
-- Upscale results and the SSE job stream are not cancellable/revocable beyond their TTLs.
+- Upscale results and the SSE job stream are not revocable beyond their TTLs.
 - `/api/download-url` runs yt-dlp on user-chosen URLs of allow-listed hosts; egress filtering
   on the VPS is recommended by `docs/THREAT_MODEL.md`.
 - `auth_db.py` (~2.6k lines), `processor.py` (~2.4k), `static/js/app.js` (~4.2k) are large
@@ -555,7 +657,7 @@ A local change is not deployed until the owner does it on the VPS.
 
 ## 10. Documentation status
 
-Current: `AGENTS.md`, `README.md`, `DEPLOY.md`, `.env.example`, `docs/THREAT_MODEL.md`,
+Current: `AGENTS.md`, `CHANGELOG.md`, `README.md`, `DEPLOY.md`, `.env.example`, `docs/THREAT_MODEL.md`,
 `docs/RELEASE_AUDIT_2026-09-22.md`, `docs/POLISH_AUDIT_2026-09-21.md`, `docs/ANALYTICS.md`,
 `docs/STEAM_EXTENSION_IMPORT.md`, `docs/WORKSPACE_USABILITY.md`, `docs/workspace-editor.md`,
 `PRIVACY_RELEASE.md`, `SUPPORT_CHAT_SETUP.md`, `BUILDER_MOTION.md`.
@@ -565,7 +667,7 @@ The Railway/SQLite/HF-era files (`RAILWAY.md`, `UPSCALER_SETUP.md`, `README_REVE
 
 ## 11. Verification baseline (2026-09-25)
 
-- `pytest`: 289 passed, 12 subtests (~80 s) on 2026-09-27 (282 on 2026-09-26, 264 on 2026-09-25). Playwright `qa_workspace`, `qa_workspace_editor`, `qa_tool_clarity`, `qa_polish`, `qa_accessibility`, `qa_job_center`, `qa_home_layout` passed after the Process redesign. `node scripts/check_i18n.js`: complete.
+- `pytest`: 383 passed, 12 subtests (~100 s) on 2026-09-29; all 11 `scripts/qa_*.py` passed the same day (289 on 2026-09-27, 282 on 2026-09-26, 264 on 2026-09-25). Playwright `qa_workspace`, `qa_workspace_editor`, `qa_tool_clarity`, `qa_polish`, `qa_accessibility`, `qa_job_center`, `qa_home_layout` passed after the Process redesign. `node scripts/check_i18n.js`: complete.
   `node --check` passes on all `static/js/*.js` except `hero-vrm.js`, which is an ES module
   (loaded with `type="module"`) — that failure is expected, not a bug.
 - Playwright UI suites passed against a local server: `qa_accessibility`, `qa_tool_clarity`,

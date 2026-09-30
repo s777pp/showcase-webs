@@ -31,7 +31,7 @@ def test_job_actions_reject_active_retry_and_unsupported_cancellation(monkeypatc
     monkeypatch.setattr(rs, "job_cancel", unexpected)
     jid = "a" * 24
     assert client.post(f"/api/jobs/{jid}/retry").status_code == 409
-    for kind, status in [("upscale", "running"), ("process", "done"), ("process", "cancelled")]:
+    for kind, status in [("profile_import", "running"), ("process", "done"), ("process", "cancelled")]:
         job.update(kind=kind, status=status)
         assert client.post(f"/api/jobs/{jid}/cancel").status_code == 409
 

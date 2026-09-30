@@ -152,7 +152,7 @@
   }
 
   function addFiles(files) {
-    files = Array.prototype.filter.call(files || [], function (file) { return /^(image|video)\//.test(file.type) || /\.(gif|mp4|webm|mov|avi|mkv|png|jpe?g|webp|ico|cur|bmp|tiff?|avif|tga|psd|qoi|jp2|j2k|jfif|dds|icns|pcx|apng)$/i.test(file.name || ''); });
+    files = Array.prototype.filter.call(files || [], function (file) { return /^(image|video)\//.test(file.type) || /\.(gif|mp4|webm|mov|avi|mkv|png|jpe?g|webp|ico|cur|bmp|tiff?|avif|tga|psd|qoi|jp2|j2k|jfif|dds|icns|pcx|apng|heic|heif)$/i.test(file.name || ''); });
     if (!files.length) return false;
     document.dispatchEvent(new CustomEvent('sm:assets-selected', { detail: { target: 'process', files: files } }));
     return true;

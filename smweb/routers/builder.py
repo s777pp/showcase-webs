@@ -23,7 +23,7 @@ from PIL import Image, UnidentifiedImageError
 
 import auth_db
 import redis_store as rs
-from smweb import object_store
+from smweb import frame_designs, object_store
 from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user
 from smweb.remove_bg_client import configured as remove_bg_configured
 
@@ -35,10 +35,17 @@ _LAYER_TYPES = {"background", "character", "text", "frame", "effect", "dna"}
 _EFFECTS = {
     "petals", "snow", "rain", "lightning",
     "particle", "stars", "matrix", "streaks", "sparks", "custom",
+    # static/js/builder-effects.js
+    "aura", "fireflies", "bokeh", "hyperspace", "network", "rings", "scan", "arcane",
+    "hex", "glitch", "dotwave", "smoke", "embers", "shards", "crosses",
 }
 _ANIMATIONS = {"none", "breathing", "wave"}
+# static/js/builder-text-fx.js
+_TEXT_FX = {"none", "typewriter", "fadeup", "decode", "wave", "bounce", "saber", "neon", "glitch", "rainbow", "shine",
+            "fire", "electric", "lightning", "runner", "plasma", "sparkle"}
 # Animated styles are drawn by the shared static/js/workshop-squares-fx.js renderer.
-_FRAME_STYLES = {"solid", "double", "corners", "neon", "rgb", "comet", "pulse", "dashes"}
+_FRAME_STYLES = {"solid", "double", "corners", "neon", "rgb", "comet", "pulse", "dashes", "shimmer", "grain"}
+_FRAME_SHAPES = {"rect", "bevel", "notch", *frame_designs.design_ids()}
 _FRAME_TARGETS = {"panels", "outer"}
 _SAFE_MEDIA = {
     ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
@@ -139,8 +146,10 @@ def _validated_project(raw) -> dict:
             item["font"] = str(item["font"])[:80]
         numeric_fields = {
             "fontSize": (14, 180, 64),
+            "fontWeight": (100, 900, 800),
             "frameWidth": (1, 30, 4),
             "frameSpeed": (1, 4, 1),
+            "framePlate": (0, 100, 0),
             "effectSpeed": (25, 250, 100),
             "effectDensity": (25, 200, 100),
             "chromaTolerance": (10, 120, 45),
@@ -191,15 +200,28 @@ def _validated_project(raw) -> dict:
         else:
             item.pop("animatedSource", None)
             item.pop("localMotion", None)
+        if item["type"] == "text":
+            item["textFx"] = item.get("textFx") if item.get("textFx") in _TEXT_FX else "none"
+            item["textDir"] = "vertical" if item.get("textDir") == "vertical" else "horizontal"
+            item["textFxSpeed"] = int(_bounded_number(item.get("textFxSpeed"), 1, 4, 1))
+            fx_color = str(item.get("fxColor") or "")
+            if fx_color and not re.fullmatch(r"#[0-9a-fA-F]{6}", fx_color):
+                item.pop("fxColor", None)
+        else:
+            for key in ("textFx", "fxColor", "textDir", "textFxSpeed"):
+                item.pop(key, None)
         if item["type"] == "frame":
             item["frameStyle"] = item.get("frameStyle") if item.get("frameStyle") in _FRAME_STYLES else "solid"
             item["frameTarget"] = item.get("frameTarget") if item.get("frameTarget") in _FRAME_TARGETS else "panels"
+            item["frameShape"] = item.get("frameShape") if item.get("frameShape") in _FRAME_SHAPES else "rect"
             if "color2" in item:
                 color2 = str(item["color2"])
                 item["color2"] = color2 if re.fullmatch(r"#[0-9a-fA-F]{6}", color2) else "#8a62ff"
         else:
             item.pop("color2", None)
             item.pop("frameSpeed", None)
+            item.pop("frameShape", None)
+            item.pop("framePlate", None)
         if item["type"] == "dna":
             raw_signals = item.get("signals") if isinstance(item.get("signals"), dict) else {}
             item["signals"] = {}

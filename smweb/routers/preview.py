@@ -31,6 +31,8 @@ from smweb.preview_layout import (
     _pv_slot_defs,
     _pv_template_name,
 )
+import logging
+_LOG = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -209,7 +211,7 @@ async def preview_build(request: Request):
                     ax, ay, aw, ah = box
                     layers.append(slot_box(ax, ay, aw, ah, f"/api/job-file/{job_id}/av_avatar.png", "image"))
         except Exception as e:
-            print("[pv] avatar", e)
+            _LOG.warning('%s %s', "[pv] avatar", e)
 
     # collect slot files to disk first
     slot_files: dict[str, Path] = {}
@@ -311,7 +313,7 @@ async def preview_build(request: Request):
             applied.append(sid)
         except Exception as e:
             errors.append(f"{sid}: {e}")
-            print("[pv] place", sid, e)
+            _LOG.warning('%s %s %s', "[pv] place", sid, e)
 
     html = _preview_html(job_id, mode, tw, layers, applied)
     (job_dir / "preview.html").write_text(html, encoding="utf-8")

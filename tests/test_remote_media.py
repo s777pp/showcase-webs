@@ -85,11 +85,12 @@ def test_redirect_cycle_is_bounded():
     assert all(r.closed for r in responses)
 
 
-def test_proxy_preserves_bytes_and_hides_network_error_details():
+def test_proxy_preserves_bytes_and_hides_network_error_details(monkeypatch, tmp_path):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     import tools_api
 
+    monkeypatch.setitem(tools_api._D, "DATA", str(tmp_path))
     app = FastAPI()
     app.include_router(tools_api.router)
     client = TestClient(app)
@@ -98,9 +99,27 @@ def test_proxy_preserves_bytes_and_hides_network_error_details():
         response = client.get(url)
         assert response.status_code == 200 and response.content == b"original"
     with patch("tools_api.fetch_media", side_effect=RuntimeError("private_network_detail")):
-        response = client.get(url)
+        response = client.get("/api/steam/proxy-image?url=https://cdn.steamstatic.com/b")
         assert response.status_code == 502
         assert "private_network_detail" not in response.text
+
+
+def test_proxy_serves_repeat_requests_from_disk_with_ranges(monkeypatch, tmp_path):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    import tools_api
+
+    monkeypatch.setitem(tools_api._D, "DATA", str(tmp_path))
+    app = FastAPI()
+    app.include_router(tools_api.router)
+    client = TestClient(app)
+    url = "/api/steam/proxy-image?url=https://shared.cloudflare.steamstatic.com/v.webm"
+    with patch("tools_api.fetch_media", return_value=(b"0123456789", "video/webm")) as fetch:
+        assert client.get(url).content == b"0123456789"
+        again = client.get(url, headers={"Range": "bytes=2-5"})
+        assert again.status_code == 206 and again.content == b"2345"
+        assert fetch.call_count == 1
+    assert len(list((tmp_path / "cache" / "steam-media").glob("*.webm"))) == 1
 
 
 def test_builder_rejects_lookalike_host_before_fetch(monkeypatch):

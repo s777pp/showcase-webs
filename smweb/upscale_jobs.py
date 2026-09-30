@@ -9,6 +9,8 @@ from smweb import object_store
 from smweb import modal_upscale_client as modal_client
 from smweb import process_control
 from smweb import saved_results
+import logging
+_LOG = logging.getLogger(__name__)
 
 
 POLL_SECONDS = max(1.0, float(os.environ.get("MODAL_UPSCALE_POLL_SECONDS", "3")))
@@ -23,7 +25,10 @@ def run(jid: str, job: dict) -> None:
     if not modal_client.configured():
         raise RuntimeError("Modal upscale service is not configured")
 
+    call_id = ""
     try:
+        # Cancelled while still queued: never start the (paid) GPU call.
+        process_control.checkpoint(jid)
         # URLs expire independently and authorize exactly one object each.
         source_url = object_store.presigned_get_url(source_key, expires=TIMEOUT_SECONDS + 900)
         result_url = object_store.presigned_put_url(result_key, expires=TIMEOUT_SECONDS + 900)
@@ -75,6 +80,8 @@ def run(jid: str, job: dict) -> None:
             rs.job_update(jid, pct=pct, stage="gpu-processing")
             time.sleep(POLL_SECONDS)
     except process_control.JobCancelled:
+        if call_id:
+            modal_client.cancel(call_id)
         process_control.mark_cancelled(jid)
         return
     except TimeoutError:
@@ -83,7 +90,7 @@ def run(jid: str, job: dict) -> None:
     except modal_client.ModalUpscaleHTTPError as exc:
         # This exception is deliberately sanitized by modal_upscale_client:
         # it contains only the HTTP status and safe validation metadata.
-        print(f"[upscale] {jid} {exc}", flush=True)
+        _LOG.warning(f"[upscale] {jid} {exc}")
         rs.job_update(jid, status="error", pct=100, stage="error", error=str(exc)[:500])
         return
     except Exception as exc:

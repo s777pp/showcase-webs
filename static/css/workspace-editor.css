@@ -96,9 +96,6 @@ body.is-showcase-workspace {
 .page-tools #processAdvanced .process-basics__watermark {grid-column:1/-1;flex-direction:row;min-height:42px}
 .page-tools #processAdvanced>.process-advanced__grid {display:grid!important;grid-template-columns:1fr 1fr!important;grid-template-areas:'watermark font' 'corner color' 'scale opacity' 'encoder toggles';gap:16px!important;padding:0 16px;margin:0!important}
 .page-tools #processAdvanced .field>span {font:600 12px/1.5 Mulish,sans-serif!important;text-transform:none;letter-spacing:0;color:var(--editor-muted)}
-.page-tools #processAdvanced .process-advanced__toggles {grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;align-content:center;gap:12px}
-.page-tools #processAdvanced .process-advanced__toggles .process-switch {display:flex!important;flex-direction:row!important;align-items:center;justify-content:flex-start;gap:8px;min-width:0;margin:0}
-.page-tools #processAdvanced .process-advanced__toggles .process-switch>span {min-width:0;overflow-wrap:anywhere}
 .page-tools #processAdvanced .process-advanced__toggles input {flex-shrink:0}
 @media(max-width:1500px){.page-tools #processAdvanced>.process-advanced__grid {grid-template-areas:'watermark font' 'corner color' 'scale opacity' 'encoder encoder' 'toggles toggles'}}
 .page-tools #processAdvanced select,.page-tools #processAdvanced input:not([type=range]):not([type=checkbox]) {min-height:42px;width:100%;font-size:13px}

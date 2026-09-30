@@ -8,6 +8,7 @@ Kept out of main.py (already ~5k lines) but wired the same way. main.py calls
 from __future__ import annotations
 
 import io
+import hashlib
 import json
 import logging
 import re
@@ -19,7 +20,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from PIL import Image, ImageDraw, ImageFilter, ImageSequence
 
 import processor as proc
@@ -238,13 +239,56 @@ def steam_proxy_image(url: str):
         validate_media_url(url)
     except ValueError:
         return _err("Only Steam CDN images are allowed")
+    # Steam files never change under the same URL: keep them on disk so a repeat request
+    # (another user, a reload, a video seek) is served locally with byte ranges instead of
+    # downloading the whole file from Steam again before the first byte goes out.
+    cache_dir = Path(_D["DATA"]) / "cache" / "steam-media"
+    key = hashlib.sha256(url.encode("utf-8")).hexdigest()[:40]
+    headers = {"Cache-Control": "public, max-age=604800, immutable"}
+    for hit in cache_dir.glob(key + ".*"):
+        if time.time() - hit.stat().st_mtime < STEAM_MEDIA_CACHE_SECONDS:
+            return FileResponse(hit, media_type=_STEAM_MEDIA_TYPES.get(hit.suffix, "application/octet-stream"), headers=headers)
     try:
         body, ctype = fetch_media(url, max_bytes=25 * 1024 * 1024, user_agent=steam_catalog.UA)
-        return Response(content=body, media_type=ctype,
-                        headers={"Cache-Control": "public, max-age=86400"})
     except Exception as exc:
         LOGGER.warning("Steam media proxy failed (%s)", type(exc).__name__)
         return _err("Steam media is temporarily unavailable", 502)
+    suffix = next((ext for ext, kind in _STEAM_MEDIA_TYPES.items() if kind == ctype), "")
+    if not suffix:
+        return Response(content=body, media_type=ctype, headers=headers)
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        target = cache_dir / (key + suffix)
+        tmp = target.with_name(target.name + "." + uuid.uuid4().hex[:8] + ".tmp")
+        tmp.write_bytes(body)
+        tmp.replace(target)
+        _prune_steam_media_cache(cache_dir)
+        return FileResponse(target, media_type=ctype, headers=headers)
+    except OSError:
+        return Response(content=body, media_type=ctype, headers=headers)
+
+
+STEAM_MEDIA_CACHE_SECONDS = 7 * 86400
+STEAM_MEDIA_CACHE_FILES = 600
+_STEAM_MEDIA_TYPES = {".webm": "video/webm", ".mp4": "video/mp4", ".jpg": "image/jpeg",
+                      ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp"}
+
+
+def _prune_steam_media_cache(cache_dir: Path) -> None:
+    """Keep the newest files only (the cache is a convenience, not storage)."""
+    try:
+        files = sorted((f for f in cache_dir.iterdir() if f.is_file()), key=lambda f: f.stat().st_mtime)
+    except OSError:
+        return
+    now = time.time()
+    extra = len(files) - STEAM_MEDIA_CACHE_FILES
+    for index, item in enumerate(files):
+        try:
+            stale = now - item.stat().st_mtime > STEAM_MEDIA_CACHE_SECONDS or item.suffix == ".tmp" and now - item.stat().st_mtime > 600
+            if index < extra or stale:
+                item.unlink()
+        except OSError:
+            pass
 
 
 # ==========================================================================

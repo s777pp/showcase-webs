@@ -18,6 +18,8 @@ from smweb import job_diagnostics
 from smweb import object_store
 from smweb import process_control
 from smweb import saved_results
+import logging
+_LOG = logging.getLogger(__name__)
 
 
 def _run_cmd(command: list[str], jid: str = "") -> None:
@@ -27,7 +29,7 @@ def _run_cmd(command: list[str], jid: str = "") -> None:
     completed = process_control.run(command, job_id=jid, **options)
     if completed.returncode:
         # Full encoder detail stays in worker logs; the Redis/client error is generic.
-        print("[loop ffmpeg] " + (completed.stderr or completed.stdout or "FFmpeg failed")[-3000:], flush=True)
+        _LOG.warning("[loop ffmpeg] " + (completed.stderr or completed.stdout or "FFmpeg failed")[-3000:])
         raise RuntimeError("FFmpeg command failed")
 
 
@@ -118,7 +120,7 @@ def _rife():
             torch.set_num_threads(max(1, int(os.environ.get("RIFE_THREADS") or (os.cpu_count() or 2) - 1)))
             _RIFE = rife_net.Interpolator(str(weights))
         except Exception as exc:
-            print(f"[loop] RIFE unavailable, using optical-flow morph ({type(exc).__name__})", flush=True)
+            _LOG.warning(f"[loop] RIFE unavailable, using optical-flow morph ({type(exc).__name__})")
             _RIFE = False
     return _RIFE or None
 
@@ -140,7 +142,7 @@ def _morph(tail: Path, head: Path, t: float) -> Image.Image:
         try:
             return rife.at(a_rgba, b_rgba, t).convert("RGBA")
         except Exception as exc:
-            print(f"[loop] RIFE frame failed, using morph ({type(exc).__name__})", flush=True)
+            _LOG.warning(f"[loop] RIFE frame failed, using morph ({type(exc).__name__})")
     try:
         import cv2
     except ImportError:

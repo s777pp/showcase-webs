@@ -19,3 +19,11 @@ Conditions shown on VRoid Hub when the model was selected:
 - Attribution: required
 
 Required public credit used by the site: `3D model: SABA_0.1`, linked to the source page above.
+
+## Web copy (2026-09-29)
+
+`saba-0.1-web.vrm` is the same model with re-encoded textures only (alterations are allowed):
+the meta thumbnail is 256x256 and opaque colour textures are JPEG q90; geometry, bones,
+blend shapes and the VRM meta (author, licence, credit) are unchanged. Made with
+`scripts/optimize_vrm.py`. 21.1 MB -> 12.2 MB (about 4.7 MB gzipped).
+SHA-256: `ADB3BA6DCD22BA949A300A47843ADA002D79D247CAE10D7BC8CE04768839C81E`

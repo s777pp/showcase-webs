@@ -385,6 +385,14 @@ def api():
     submit.__annotations__["payload"] = Submit
     web.post("/submit")(submit)
 
+    @web.post("/cancel/{call_id}")
+    async def cancel(call_id: str):
+        # The VPS worker calls this when the user cancels, so GPU time stops too.
+        if not call_id.startswith("fc-") or len(call_id) > 100:
+            raise HTTPException(status_code=400, detail="Invalid call id")
+        await modal.FunctionCall.from_id(call_id).cancel.aio()
+        return {"ok": True}
+
     @web.get("/result/{call_id}")
     async def result(call_id: str):
         if not call_id.startswith("fc-") or len(call_id) > 100:

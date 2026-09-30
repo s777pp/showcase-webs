@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Optional
 
 from PIL import Image, ImageDraw, ImageFont
+import logging
+_LOG = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent
 FONTS = ROOT / "fonts"
@@ -113,7 +115,7 @@ def load_font(key: str, size: int, text: str = "") -> ImageFont.FreeTypeFont | I
             try:
                 return ImageFont.truetype(str(c), size)
             except Exception:
-                pass
+                _LOG.debug("ignored error", exc_info=True)
     return ImageFont.load_default()
 
 
@@ -139,7 +141,7 @@ def _parse_rgb(color: str) -> tuple[int, int, int]:
         try:
             return int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16)
         except Exception:
-            pass
+            _LOG.debug("ignored error", exc_info=True)
     return 255, 255, 255
 
 def apply_watermark(
@@ -201,7 +203,7 @@ def apply_hex21_file(path: Path) -> None:
         if data:
             path.write_bytes(apply_hex21(data))
     except Exception:
-        pass
+        _LOG.debug("ignored error", exc_info=True)
 
 
 
@@ -209,6 +211,14 @@ def apply_hex21_file(path: Path) -> None:
 # still picture (ICO/CUR, TIFF, AVIF, TGA, PSD, QOI, JPEG 2000, DDS, ICNS, PCX, ...)
 # is converted to PNG first, so every tool accepts "any image".
 NATIVE_STILL_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+
+# iPhone photos (HEIC/HEIF). Optional: without pillow-heif these stay unsupported.
+try:
+    from pillow_heif import register_heif_opener as _register_heif_opener
+    _register_heif_opener()
+    HEIF_SUPPORTED = True
+except Exception:
+    HEIF_SUPPORTED = False
 MOTION_EXTENSIONS = {".gif", ".mp4", ".mov", ".webm", ".avi", ".mkv"}
 
 
@@ -363,10 +373,11 @@ def _active_frame(frame_fx: dict | None) -> dict | None:
     return frame_fx if frame_fx and frame_fx.get("style", "none") != "none" else None
 
 
-def _draw_whole_frame(image: Image.Image, u: float, frame_fx: dict) -> Image.Image:
-    """One frame around the whole image (Featured, or one Split part)."""
+def _draw_whole_frame(image: Image.Image, u: float, frame_fx: dict, role: str | None = None,
+                      surface: float | None = None, origin=(0, 0)) -> Image.Image:
+    """One frame around the whole image (Featured, or one Split part: role left/right)."""
     from smweb.square_fx import draw_frame
-    return draw_frame(image, u, dict(frame_fx, target="strip"))
+    return draw_frame(image, u, dict(frame_fx, target="strip"), role=role, surface=surface, origin=origin)
 
 
 def _split_parts(frame: Image.Image, u: float = 0.0, frame_fx: dict | None = None) -> tuple[Image.Image, Image.Image]:
@@ -376,13 +387,23 @@ def _split_parts(frame: Image.Image, u: float = 0.0, frame_fx: dict | None = Non
     them is Steam's); otherwise each part gets its own frame.
     """
     frame_fx = _active_frame(frame_fx)
+    if frame_fx:
+        from smweb.frame_designs import design_ids
+        # HUD designs are drawn once around the whole 606 px showcase (same thickness
+        # as on Featured), then cut: the left column sits in the 506 file, the mirrored
+        # right column fits inside the 100 px file.
+        if frame_fx.get("shape") in design_ids():
+            frame_fx = dict(frame_fx, target="strip")
     if frame_fx and frame_fx.get("target") == "strip":
         frame = _draw_whole_frame(frame.convert("RGBA"), u, frame_fx)
     center = frame.crop((0, 0, 506, frame.height))
     side = frame.crop((506, 0, 606, frame.height))
     if frame_fx and frame_fx.get("target") != "strip":
-        center = _draw_whole_frame(center, u, frame_fx)
-        side = _draw_whole_frame(side, u, frame_fx)
+        # HUD designs put their ornaments on the outer side of each part, so the
+        # two files still read as one symmetric frame on the profile.
+        surface = max(606, frame.height)
+        center = _draw_whole_frame(center, u, frame_fx, role="left", surface=surface)
+        side = _draw_whole_frame(side, u, frame_fx, role="right", surface=surface, origin=(506, 0))
     return center, side
 
 
@@ -799,7 +820,7 @@ def _probe_wh(path: Path) -> tuple[int, int]:
         with Image.open(path) as im:
             return int(im.size[0]), int(im.size[1])
     except Exception:
-        pass
+        _LOG.debug("ignored error", exc_info=True)
     if not probe:
         raise RuntimeError("cannot probe dimensions (no ffprobe / unreadable image)")
     kw = {}
@@ -1021,7 +1042,7 @@ def _try_replace(src_tmp: Path, dest: Path) -> bool:
         try:
             src_tmp.unlink(missing_ok=True)
         except Exception:
-            pass
+            _LOG.debug("ignored error", exc_info=True)
         return False
     if src_tmp.stat().st_size < dest.stat().st_size:
         _safe_replace(src_tmp, dest)
@@ -1029,7 +1050,7 @@ def _try_replace(src_tmp: Path, dest: Path) -> bool:
     try:
         src_tmp.unlink(missing_ok=True)
     except Exception:
-        pass
+        _LOG.debug("ignored error", exc_info=True)
     return False
 
 
@@ -1081,7 +1102,7 @@ def _ensure_under_mb_impl(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                 if dur > 0 and n > 1:
                     src_fps = max(5, min(24, round(n * 1000 / dur)))
         except Exception:
-            pass
+            _LOG.debug("ignored error", exc_info=True)
 
         # ── 1) gifski: highest quality that fits (binary search + --extra) ──
         if gs and extracted:
@@ -1148,7 +1169,7 @@ def _ensure_under_mb_impl(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                 try:
                     tmp.unlink(missing_ok=True)
                 except Exception:
-                    pass
+                    _LOG.debug("ignored error", exc_info=True)
 
         # last resort: very aggressive
         if _gif_mb(path) > max_mb and ff:
@@ -1160,7 +1181,7 @@ def _ensure_under_mb_impl(path: Path, max_mb: float = MAX_STEAM_MB) -> None:
                 if tmp.is_file() and tmp.stat().st_size > 50:
                     _safe_replace(tmp, path)
             except Exception:
-                pass
+                _LOG.debug("ignored error", exc_info=True)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -1515,11 +1536,8 @@ def _encode_synchronized_frame_group(
                 for index, ok in enumerate(done, start=1):
                     if not ok:
                         raise RuntimeError(f"gifski failed for Workshop part {index}")
-                print(
-                    f"[{label.upper()} GROUP] gifski q={quality} fps={fps} sizes="
-                    + ",".join(f"{_gif_mb(path):.2f}" for path in outputs),
-                    flush=True,
-                )
+                _LOG.info(f"[{label.upper()} GROUP] gifski q={quality} fps={fps} sizes="
+                    + ",".join(f"{_gif_mb(path):.2f}" for path in outputs))
                 return outputs
 
             def install_best(quality: int, fast_paths: list[Path]) -> dict[str, int | str]:
@@ -1567,11 +1585,8 @@ def _encode_synchronized_frame_group(
                     "-loop", "0", str(output),
                 ])
                 outputs.append(output)
-            print(
-                f"[{label.upper()} GROUP] ffmpeg colors={colors} fps={fps} sizes="
-                + ",".join(f"{_gif_mb(path):.2f}" for path in outputs),
-                flush=True,
-            )
+            _LOG.info(f"[{label.upper()} GROUP] ffmpeg colors={colors} fps={fps} sizes="
+                + ",".join(f"{_gif_mb(path):.2f}" for path in outputs))
             return outputs
 
         highest = encode_colors(256)
@@ -1760,11 +1775,8 @@ def process_gif_workshop(
             temp, destinations, requested_fps=requested_fps,
             encoder=encoder, label="Workshop", prepare=prepare,
         )
-        print(
-            f"[WORKSHOP GROUP] selected encoder={settings['encoder']} "
-            f"quality={settings['quality']} fps={settings['fps']} frames={frame_count}",
-            flush=True,
-        )
+        _LOG.info(f"[WORKSHOP GROUP] selected encoder={settings['encoder']} "
+            f"quality={settings['quality']} fps={settings['fps']} frames={frame_count}")
         for output in destinations:
             apply_hex21_file(output)
             result[output.name] = output
@@ -1858,6 +1870,29 @@ def _iter_gif_frames(im: Image.Image, max_frames: int = 180):
     return frames
 
 
+def _gif_watermark_gifski(gif_path: Path, out_path: Path, wm_text: str, wm_font: str, wm_opacity: float,
+                          wm_corner: str, wm_scale: float, wm_color: str, wm_x, wm_y) -> bool:
+    if not find_gifski():
+        return False
+    tmp = Path(tempfile.mkdtemp(prefix="sm_wm_"))
+    try:
+        with Image.open(gif_path) as im:
+            raw_frames = _iter_gif_frames(im, max_frames=180)
+        if not raw_frames:
+            return False
+        durations = sorted(max(20, int(d or 100)) for _frame, d in raw_frames)
+        fps = max(5, min(30, round(1000 / durations[len(durations) // 2])))
+        for index, (frame, _d) in enumerate(raw_frames, start=1):
+            if wm_text and float(wm_opacity or 0) > 0:
+                frame = apply_watermark(frame, str(wm_text), wm_font, float(wm_opacity), corner=wm_corner,
+                                        scale=float(wm_scale or 1.0), color=wm_color or "#ffffff", wx=wm_x, wy=wm_y)
+            flat = Image.alpha_composite(Image.new("RGBA", frame.size, (0, 0, 0, 255)), frame.convert("RGBA"))
+            flat.convert("RGB").save(tmp / f"frame_{index:04d}.png", format="PNG", compress_level=0)
+        return _gifski_from_frames(tmp, out_path, fps=fps, quality=90)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def _gif_apply_watermark(
     gif_path: Path,
     out_path: Path,
@@ -1872,7 +1907,15 @@ def _gif_apply_watermark(
     encoder: str = "ffmpeg",
     fps: int = 12,
 ) -> None:
-    """Apply watermark on every frame of a GIF and re-encode."""
+    """Apply watermark on every frame of a GIF and re-encode.
+
+    gifski keeps the copy close to the source size (it reuses unchanged pixels
+    between frames); the Pillow fallback quantized every frame on its own and
+    made a 4.8 MB Featured GIF into a 29 MB one.
+    """
+    if _gif_watermark_gifski(gif_path, out_path, wm_text, wm_font, wm_opacity, wm_corner,
+                             wm_scale, wm_color, wm_x, wm_y):
+        return
     frames_p: list[Image.Image] = []
     durations: list[int] = []
     with Image.open(gif_path) as im:
@@ -2107,11 +2150,8 @@ def process_gif_split(
             temp, destinations, requested_fps=requested_fps,
             encoder=encoder, label="Split", prepare=prepare,
         )
-        print(
-            f"[SPLIT GROUP] selected encoder={settings['encoder']} "
-            f"quality={settings['quality']} fps={settings['fps']} frames={frame_count}",
-            flush=True,
-        )
+        _LOG.info(f"[SPLIT GROUP] selected encoder={settings['encoder']} "
+            f"quality={settings['quality']} fps={settings['fps']} frames={frame_count}")
         for output in destinations:
             apply_hex21_file(output)
             result[output.name] = output
@@ -2721,7 +2761,7 @@ def compose_animated_layers(
                 try:
                     im.seek(0)
                 except Exception:
-                    pass
+                    _LOG.debug("ignored error", exc_info=True)
             for index in range(count):
                 try:
                     im.seek(index)
@@ -2796,13 +2836,10 @@ def compose_animated_layers(
         )
         t_place += time.monotonic() - t0
 
-    print(
-        f"[compose-detail] frames={count} "
+    _LOG.info(f"[compose-detail] frames={count} "
         f"chromakey={t_key:.1f}s "
         f"feather={t_feather:.1f}s "
         f"crop={t_crop:.1f}s "
-        f"place={t_place:.1f}s",
-        flush=True,
-    )
+        f"place={t_place:.1f}s")
 
     return output, [frame_ms] * len(output)

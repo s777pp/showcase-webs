@@ -100,17 +100,18 @@
   });
 
   function frameName() {
+    if (window.SMProcessFrame && SMProcessFrame.locked && SMProcessFrame.locked()) return SMProcessFrame.lockLabel();
     var outline = document.getElementById('workshopOutline');
-    var active = designCard.querySelector('.sqfx__style[aria-checked="true"]');
     if (outline && !outline.checked) return w('none');
-    return active ? active.textContent.replace(/\s+/g, ' ').trim() : w('none');
+    var summary = window.SMProcessFrame && SMProcessFrame.summary && SMProcessFrame.summary();
+    return summary || w('none');
   }
   function paintSummary() {
     var wm = document.getElementById('wmEnable');
     var grade = window.SMProcessGrade && SMProcessGrade.get();
     summary.innerHTML = '';
     [[w('frame'), frameName()], [w('watermark'), wm && wm.checked ? w('on') : w('off')],
-     [w('color'), grade ? w('colorChanged') : w('colorSame')]].forEach(function (pair) {
+     [w('color'), window.SMProcessFrame && SMProcessFrame.locked && SMProcessFrame.locked() ? SMProcessFrame.lockLabel() : grade ? w('colorChanged') : w('colorSame')]].forEach(function (pair) {
       var chip = document.createElement('span');
       chip.className = 'process-fold__chip';
       chip.innerHTML = '<small></small><b></b>';
@@ -126,6 +127,7 @@
   ['input', 'change', 'click'].forEach(function (type) {
     designCard.addEventListener(type, function () { requestAnimationFrame(paintSummary); });
   });
+  document.addEventListener('sm:process-frame-change', function () { requestAnimationFrame(paintSummary); });
 
   /* ---- pinned title + preview: measure the sticky header and title ---- */
   var tab = document.getElementById('tab-process');

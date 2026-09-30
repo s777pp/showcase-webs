@@ -34,6 +34,8 @@ from fastapi import APIRouter
 
 from smweb.core import DATA, LOGGER, MAX_UPLOAD_MB, PROFILE_EDITABLE_FIELDS, _auth_user, _is_limit_exempt, _safe_data_path
 from smweb.steam import _clean_extension_profile, _merge_nonempty_profile, _merge_steam_api
+import logging
+_LOG = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -356,7 +358,7 @@ async def api_profile_showcase_add(request: Request):
                             return _blob
                     uploads.append(_F())
         except Exception as e:
-            print("gallery pull", e)
+            _LOG.warning('%s %s', "gallery pull", e)
 
     if not uploads:
         return JSONResponse({"ok": False, "msg": "Upload a file or pick from library"}, status_code=400)

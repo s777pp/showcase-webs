@@ -11,6 +11,8 @@ from pathlib import Path
 
 
 import auth_db
+import logging
+_LOG = logging.getLogger(__name__)
 
 
 def _da_guess_mime(name: str) -> str:
@@ -48,7 +50,7 @@ def _da_refresh_token(user: dict) -> str | None:
             timeout=30,
         )
         if r.status_code != 200:
-            print("da refresh fail", r.status_code, r.text[:200])
+            _LOG.warning('%s %s %s', "da refresh fail", r.status_code, r.text[:200])
             return None
         data = r.json()
         access = data.get("access_token")
@@ -57,7 +59,7 @@ def _da_refresh_token(user: dict) -> str | None:
             auth_db.set_da_tokens(int(user["id"]), access, new_refresh)
             return access
     except Exception as e:
-        print("da refresh error", e)
+        _LOG.warning('%s %s', "da refresh error", e)
     return None
 
 

@@ -68,8 +68,7 @@ def api_ready():
             return JSONResponse({"ok": False, "reason": "redis"}, status_code=503)
         return {"ok": True}
     except Exception:
-        from fastapi.responses import JSONResponse
-        return JSONResponse({"ok": False}, status_code=503)
+        return JSONResponse({"ok": False, "reason": "database"}, status_code=503)
 
 
 @router.get("/api/health")

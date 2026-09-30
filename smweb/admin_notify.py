@@ -14,6 +14,8 @@ import shutil
 import threading
 import time
 import urllib.request
+import logging
+_LOG = logging.getLogger(__name__)
 
 _last_disk_check = 0.0
 
@@ -36,7 +38,7 @@ def _post(text: str, buttons: list[list[dict]] | None) -> None:
     try:
         urllib.request.urlopen(request, timeout=8).read()
     except Exception as exc:  # the owner simply misses one message
-        print(f"[notify] telegram send failed: {type(exc).__name__}", flush=True)
+        _LOG.warning(f"[notify] telegram send failed: {type(exc).__name__}")
 
 
 def send(text: str, buttons: list[list[dict]] | None = None) -> None:

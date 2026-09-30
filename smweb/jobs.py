@@ -25,6 +25,8 @@ from smweb import job_diagnostics, object_store, process_control, saved_results,
 
 from smweb.core import JOBS, MAX_UPLOAD_MB
 from smweb.steam_readiness import Candidate, analyze_groups
+import logging
+_LOG = logging.getLogger(__name__)
 
 
 JOB_RESULT_TTL_SECONDS = max(120, int(os.environ.get("JOB_RESULT_TTL_SECONDS") or 86400))
@@ -33,7 +35,7 @@ JOB_RESULT_TTL_SECONDS = max(120, int(os.environ.get("JOB_RESULT_TTL_SECONDS") o
 
 _KNOWN_SOURCE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".mp4", ".mov", ".webm", ".avi", ".mkv",
                       ".ico", ".cur", ".tif", ".tiff", ".avif", ".tga", ".psd", ".qoi", ".jp2", ".j2k", ".jfif",
-                      ".dds", ".icns", ".pcx", ".apng", ".m4v")
+                      ".dds", ".icns", ".pcx", ".apng", ".m4v", ".heic", ".heif")
 
 
 def _sniff_extension(raw: bytes) -> str:
@@ -52,6 +54,12 @@ def _sniff_extension(raw: bytes) -> str:
     if head.startswith(b"\x1a\x45\xdf\xa3"):
         return ".webm"
     if head[4:8] == b"ftyp":
+        brand = head[8:12]
+        # ISO-BMFF also carries still images: HEIC/HEIF photos and AVIF.
+        if brand in (b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"mif1", b"msf1"):
+            return ".heic"
+        if brand in (b"avif", b"avis"):
+            return ".avif"
         return ".mov" if head[8:10] == b"qt" else ".mp4"
     if head.startswith(b"BM"):
         return ".bmp"
@@ -122,7 +130,7 @@ def _cleanup_old_jobs(max_age_sec: float | None = None) -> int:
             except Exception:
                 continue
     except Exception as e:
-        print("cleanup jobs:", e)
+        _LOG.warning('%s %s', "cleanup jobs:", e)
     return removed
 
 
@@ -134,21 +142,21 @@ def _cleanup_loop():
             try:
                 saved_results.maybe_cleanup()
             except Exception:
-                pass
+                _LOG.debug("ignored error", exc_info=True)
             try:
                 from smweb import media_assets
                 media_assets.maybe_cleanup()
             except Exception:
-                pass
+                _LOG.debug("ignored error", exc_info=True)
             if n:
-                print(f"cleanup: removed {n} old job(s)")
+                _LOG.info(f"cleanup: removed {n} old job(s)")
             try:
                 from smweb import admin_notify
                 admin_notify.check_disk(str(JOBS))
             except Exception:
-                pass
+                _LOG.debug("ignored error", exc_info=True)
         except Exception as e:
-            print("cleanup loop:", e)
+            _LOG.warning('%s %s', "cleanup loop:", e)
         _time.sleep(30)
 
 
@@ -157,7 +165,7 @@ try:
     import threading
     threading.Thread(target=_cleanup_loop, daemon=True, name="job-cleaner").start()
 except Exception as e:
-    print("cleanup thread:", e)
+    _LOG.warning('%s %s', "cleanup thread:", e)
 
 
 # ====================== Async process jobs (real progress) ======================
@@ -197,7 +205,7 @@ def _job_set(jid: str, **kw) -> None:
     try:
         rs.job_update(jid, **kw)  # upsert; shared source of truth
     except Exception:
-        pass
+        _LOG.debug("ignored error", exc_info=True)
 
 
 def _job_get(jid: str) -> dict | None:
@@ -260,12 +268,12 @@ def _job_cleanup_old(max_age: float = 600.0) -> None:
                 try:
                     Path(j["zip_path"]).unlink(missing_ok=True)
                 except Exception:
-                    pass
+                    _LOG.debug("ignored error", exc_info=True)
             if j and j.get("job_dir"):
                 try:
                     shutil.rmtree(j["job_dir"], ignore_errors=True)
                 except Exception:
-                    pass
+                    _LOG.debug("ignored error", exc_info=True)
 
 
 def _run_process_job_from_payload(jid: str, job: dict) -> None:
@@ -294,6 +302,20 @@ def _run_process_job_from_payload(jid: str, job: dict) -> None:
 
     # No explicit sync needed: _run_process_job writes through _job_set, which
     # upserts into Redis on every progress step.
+
+
+def _duplicate_original(name: str, path: Path, written: dict[str, str]) -> bool:
+    """True when ``full_original.*`` is byte-identical to a file already in the ZIP.
+
+    Featured copies its finished GIF to ``full_original.gif``; shipping both only
+    doubled the download. The copy stays in the job result for other consumers.
+    """
+    import hashlib
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    duplicate = name.startswith("full_original.") and digest in written.values()
+    if not duplicate:
+        written[name] = digest
+    return duplicate
 
 
 def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
@@ -328,7 +350,8 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
     if any_fx and any_fx.get("style", "none") == "none":
         any_fx = None
     # Workshop keeps its classic per-panel stroke for a plain line; Featured/Split draw it via square_fx.
-    workshop_fx = None if any_fx and any_fx.get("style") == "solid" else any_fx
+    classic_line = bool(any_fx and any_fx.get("style") == "solid" and any_fx.get("shape", "rect") == "rect")
+    workshop_fx = None if classic_line else any_fx
     animated_frame = bool(any_fx and any_fx.get("style") in square_fx.ANIMATED_FRAMES)
     size_i = opts["size_i"]
     fps = opts["fps"]
@@ -402,9 +425,10 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                             paths = proc.process_gif_featured(clip, work, **clip_kwargs)
                         else:
                             paths = proc.process_gif_split(clip, work, **clip_kwargs)
+                        written: dict[str, str] = {}
                         for pname, pth in paths.items():
                             pth = Path(pth)
-                            if pth.is_file():
+                            if pth.is_file() and not _duplicate_original(pname, pth, written):
                                 zf.write(pth, f"{folder}/{pname}")
                                 if len(listed) < 20:
                                     listed.append({"name": f"{folder}/{pname}", "size": pth.stat().st_size})
@@ -510,9 +534,13 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
                                     rotation=rotation, frame_fx=frame_fx,
                                 )
+                        written: dict[str, str] = {}
                         for pname, pth in paths.items():
                             pth = Path(pth)
                             if not pth.is_file():
+                                continue
+                            if _duplicate_original(pname, pth, written):
+                                pth.unlink(missing_ok=True)
                                 continue
                             size_bytes = pth.stat().st_size
                             zf.write(pth, f"{folder}/{pname}")
@@ -521,11 +549,11 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                             try:
                                 pth.unlink(missing_ok=True)
                             except Exception:
-                                pass
+                                _LOG.debug("ignored error", exc_info=True)
                         try:
                             src.unlink(missing_ok=True)
                         except Exception:
-                            pass
+                            _LOG.debug("ignored error", exc_info=True)
                 processed += 1
             except process_control.JobCancelled:
                 raise
@@ -536,7 +564,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
         try:
             zf.close()
         except Exception:
-            pass
+            _LOG.debug("ignored error", exc_info=True)
         if processed == 0:
             detail = "; ".join(errors) if errors else "unknown error"
             _job_set(jid, status="error", pct=100, stage="error", error=f"Failed: {detail}", errors=errors,
@@ -551,7 +579,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                 _job_set(jid, pct=96, stage="upload")
                 result_key = object_store.upload_file(zip_path, f"jobs/{jid}/result.zip", public=False)
             except Exception as upload_error:
-                print(f"[job {jid[:8]}] durable result upload skipped: {type(upload_error).__name__}", flush=True)
+                _LOG.warning(f"[job {jid[:8]}] durable result upload skipped: {type(upload_error).__name__}")
         readiness = None
         if opts.get("steam_check"):
             try:
@@ -566,7 +594,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                         )
                 readiness = analyze_groups(groups, "auto") if groups else None
             except Exception as check_error:
-                print(f"[job {jid[:8]}] readiness check failed: {type(check_error).__name__}", flush=True)
+                _LOG.warning(f"[job {jid[:8]}] readiness check failed: {type(check_error).__name__}")
         # quota already counted on start
         process_control.checkpoint(jid)
         _job_set(

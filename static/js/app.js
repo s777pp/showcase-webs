@@ -569,6 +569,8 @@ document.getElementById('btnRun').onclick = async () => {
     fd.append('outline_color2', outlineFx.color2);
     fd.append('outline_speed', String(outlineFx.speed));
     fd.append('outline_target', outlineFx.target || 'squares');
+    fd.append('outline_shape', outlineFx.shape || 'rect');
+    fd.append('outline_plate', String(outlineFx.plate || 0));
   }
   const processGrade = window.SMProcessGrade ? window.SMProcessGrade.get() : null;
   if (processGrade) fd.append('grade', JSON.stringify(processGrade));

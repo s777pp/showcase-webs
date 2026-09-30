@@ -68,6 +68,32 @@ class BuilderProjectTests(unittest.TestCase):
         self.assertNotIn("color2", text)
         self.assertNotIn("frameSpeed", text)
 
+    def test_text_animations_are_whitelisted(self):
+        project = _validated_project({"layers": [
+            {"type": "text", "textFx": "saber", "fxColor": "#ff00aa"},
+            {"type": "text", "textFx": "<script>", "fxColor": "red"},
+            {"type": "frame", "textFx": "saber", "fxColor": "#ff00aa"},
+        ]})
+        saber, bad, frame = project["layers"]
+        self.assertEqual((saber["textDir"], saber["textFxSpeed"]), ("horizontal", 1))
+        self.assertEqual((saber["textFx"], saber["fxColor"]), ("saber", "#ff00aa"))
+        self.assertEqual(bad["textFx"], "none")
+        self.assertNotIn("fxColor", bad)
+        self.assertNotIn("textFx", frame)
+        self.assertNotIn("fxColor", frame)
+
+    def test_vertical_text_and_speed_are_validated(self):
+        project = _validated_project({"layers": [
+            {"type": "text", "textFx": "fire", "textDir": "vertical", "textFxSpeed": 9},
+            {"type": "text", "textFx": "lightning", "textDir": "diagonal", "textFxSpeed": "x"},
+            {"type": "character", "textDir": "vertical", "textFxSpeed": 2},
+        ]})
+        fire, bad, character = project["layers"]
+        self.assertEqual((fire["textFx"], fire["textDir"], fire["textFxSpeed"]), ("fire", "vertical", 4))
+        self.assertEqual((bad["textFx"], bad["textDir"], bad["textFxSpeed"]), ("lightning", "horizontal", 1))
+        self.assertNotIn("textDir", character)
+        self.assertNotIn("textFxSpeed", character)
+
     def test_builder_layer_controls_are_validated(self):
         project = _validated_project({
             "layers": [{

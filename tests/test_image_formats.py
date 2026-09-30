@@ -82,3 +82,35 @@ def test_graded_gif_job_still_produces_gifs(tmp_path, monkeypatch):
     _, archive = _run(tmp_path, monkeypatch, "clip.gif", buffer.getvalue(), opts)
     parts = sorted(n.rsplit("/", 1)[1] for n in archive.namelist() if "/part_" in n)
     assert parts == [f"part_{i}.gif" for i in range(1, 6)]
+
+
+def _heic() -> bytes:
+    import pytest
+    if not processor.HEIF_SUPPORTED:
+        pytest.skip("pillow-heif is not installed")
+    buffer = io.BytesIO()
+    Image.new("RGB", (320, 160), (200, 80, 40)).save(buffer, "HEIF")
+    return buffer.getvalue()
+
+
+def test_heic_photo_becomes_png():
+    name, png = processor.normalize_upload("IMG_0001.HEIC", _heic())
+    assert name == "IMG_0001.png"
+    with Image.open(io.BytesIO(png)) as image:
+        assert image.format == "PNG" and image.size == (320, 160)
+
+
+def test_heic_without_extension_is_not_mistaken_for_video():
+    from smweb.jobs import _name_with_real_extension, _sniff_extension
+    data = _heic()
+    assert _sniff_extension(data) == ".heic"
+    assert _name_with_real_extension("photo from chat", data).endswith(".heic")
+
+
+def test_process_job_accepts_heic(tmp_path, monkeypatch):
+    opts = _opts("solid")
+    opts["outline_width"] = 0
+    opts["outline_fx"] = None
+    _, archive = _run(tmp_path, monkeypatch, "IMG_0002.heic", _heic(), opts)
+    parts = sorted(n for n in archive.namelist() if "/part_" in n)
+    assert len(parts) == 5

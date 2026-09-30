@@ -87,7 +87,7 @@ def _public(jid: str, job: dict) -> dict:
     # Local encoders can be terminated for real. Modal exposes no cancellation
     # endpoint in the current proxy, so the UI must not promise that GPU billing
     # stops when an upscale result is no longer needed.
-    cancellable = {"process", "compose", "seamless_loop"}
+    cancellable = {"process", "compose", "seamless_loop", "upscale"}
     process_sources = [Path(str(item.get("path") or "")) for item in job.get("files") or []]
     return {
         "id": jid,

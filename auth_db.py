@@ -13,6 +13,8 @@ import threading
 import time
 from pathlib import Path
 from typing import Optional
+import logging
+_LOG = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent
 
@@ -58,13 +60,10 @@ DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip()
 USING_POSTGRES = DATABASE_URL.startswith(("postgresql://", "postgres://"))
 
 if not DATA_WRITABLE:
-    print(
-        f"[storage] FATAL: {DATA} is not writable ({DATA_ERROR}). "
+    _LOG.warning(f"[storage] FATAL: {DATA} is not writable ({DATA_ERROR}). "
         f"Uploads and DB writes will fail with 'readonly database'. "
         f"On Railway this means the volume is owned by root while the app runs as a "
-        f"non-root user.",
-        flush=True,
-    )
+        f"non-root user.")
 
 
 # --- schema bootstrap ------------------------------------------------------

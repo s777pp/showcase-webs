@@ -54,8 +54,12 @@ def run():
             page.wait_for_timeout(250)
             first = page.locator('#allModes').bounding_box()
             second = page.locator('#autoContrast').bounding_box()
-            assert abs(first['y'] - second['y']) <= 2, (width, first, second)
-            assert second['x'] > first['x'], (width, first, second)
+            if width <= 430:
+                # Phones stack the two switches (process-compact.css, max-width:430px).
+                assert second['y'] > first['y'], (width, first, second)
+            else:
+                assert abs(first['y'] - second['y']) <= 2, (width, first, second)
+                assert second['x'] > first['x'], (width, first, second)
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         page.locator('#processSettingsCard').screenshot(path=str(output / 'showcase-horizontal-switches.png'))
         browser.close()

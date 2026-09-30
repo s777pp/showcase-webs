@@ -42,6 +42,8 @@ from smweb.jobs import (
     _run_process_job_from_payload,
     _worker_mode,
 )
+import logging
+_LOG = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -259,6 +261,8 @@ async def api_process_start(
     outline_color2: str = Form("#8a62ff"),
     outline_speed: int = Form(1),
     outline_target: str = Form("squares"),
+    outline_shape: str = Form("rect"),
+    outline_plate: int = Form(0),
     grade: str = Form(""),
     gif_encoder: str = Form("gifski"),
     all_modes: str = Form("0"),
@@ -338,6 +342,7 @@ async def api_process_start(
         "outline_fx": square_fx.normalize_frame({
             "style": outline_style, "color": outline_color_s, "color2": outline_color2,
             "width": outline_width_i, "speed": outline_speed, "target": outline_target,
+            "shape": outline_shape, "plate": outline_plate,
         }) if do_outline else None,
         "size_i": size_i,
         # Colour correction (brightness/contrast/saturation/hue); None when neutral.
@@ -454,11 +459,8 @@ async def api_process_start(
     mode = _worker_mode()
     external = mode == "external" and rs.redis_ok() and rs.worker_alive()
     if mode == "external" and not external:
-        print(
-            f"[job {jid[:8]}] WORKER_MODE=external but no live worker "
-            f"(redis={rs.redis_ok()} beat={rs.worker_alive()}) — running embedded",
-            flush=True,
-        )
+        _LOG.info(f"[job {jid[:8]}] WORKER_MODE=external but no live worker "
+            f"(redis={rs.redis_ok()} beat={rs.worker_alive()}) — running embedded")
 
     payload = {
         "kind": "process", "queue": "media",

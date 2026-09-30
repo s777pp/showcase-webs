@@ -302,7 +302,7 @@ def _probe(path: Path) -> dict:
         info["problem"] = f"Содержимое не похоже на картинку или видео (расширение: .{suffix})"
         head = path.read_bytes()[:12]
         if head[4:12] in (b"ftypheic", b"ftypheix", b"ftypmif1", b"ftypavif"):
-            info["problem"] = "Это HEIC/AVIF, такой формат сайт не принимает"
+            info["problem"] = "Это HEIC/AVIF: сайт переводит его в PNG перед обработкой (нужен pillow-heif для HEIC)"
         return info
     if info["format"] in {"png", "gif", "jpeg", "webp"}:
         try:

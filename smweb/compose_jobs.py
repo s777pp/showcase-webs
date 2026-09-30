@@ -14,6 +14,8 @@ from smweb import job_diagnostics
 from smweb import object_store
 from smweb import process_control
 from smweb import saved_results
+import logging
+_LOG = logging.getLogger(__name__)
 
 
 VIDEO_EXTS = (".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v")
@@ -48,7 +50,7 @@ def _sweep_old_jobs(jobs_root: Path, max_age: float = 3600.0) -> None:
             except Exception:
                 continue
     except Exception:
-        pass
+        _LOG.debug("ignored error", exc_info=True)
 
 
 def run(jid: str, job: dict) -> None:
@@ -110,7 +112,7 @@ def _run(jid: str, job: dict) -> None:
             rs.job_update(jid, pct=30, stage="character")
             ch = root / "character.gif"
             proc.media_to_gif(character, ch, fps=fps, width=min(width, 800), duration=8)
-            print(f"[compose {jid}] character media_to_gif: {time.monotonic()-t:.1f}s", flush=True)
+            _LOG.info(f"[compose {jid}] character media_to_gif: {time.monotonic()-t:.1f}s")
         t = time.monotonic()
         rs.job_update(jid, pct=45, stage="chromakey")
         frames, durations = proc.compose_animated_layers(
@@ -120,7 +122,7 @@ def _run(jid: str, job: dict) -> None:
             rotation=rotation,
         )
         process_control.checkpoint(jid)
-        print(f"[compose {jid}] chromakey/compose: {time.monotonic()-t:.1f}s, frames={len(frames)}", flush=True)
+        _LOG.info(f"[compose {jid}] chromakey/compose: {time.monotonic()-t:.1f}s, frames={len(frames)}")
         t = time.monotonic()
         rs.job_update(jid, pct=72, stage="encode")
         result = root / "composed.gif"
@@ -138,10 +140,7 @@ def _run(jid: str, job: dict) -> None:
                     frame_dir / f"frame_{i:04d}.png",
                     compress_level=0,
                 )
-            print(
-                f"[compose {jid}] PNG save: {time.monotonic()-t_png:.1f}s",
-                flush=True,
-            )
+            _LOG.info(f"[compose {jid}] PNG save: {time.monotonic()-t_png:.1f}s")
 
             t_encode = time.monotonic()
             try:
@@ -151,15 +150,12 @@ def _run(jid: str, job: dict) -> None:
             except Exception:
                 proc._save_animated_gif([proc._quantize_rgba_for_gif(f) for f in frames], durations, result)
 
-            print(
-                f"[compose {jid}] GIF encode: {time.monotonic()-t_encode:.1f}s",
-                flush=True,
-            )
-        print(f"[compose {jid}] frame PNG + GIF encode: {time.monotonic()-t:.1f}s", flush=True)
+            _LOG.info(f"[compose {jid}] GIF encode: {time.monotonic()-t_encode:.1f}s")
+        _LOG.info(f"[compose {jid}] frame PNG + GIF encode: {time.monotonic()-t:.1f}s")
         t = time.monotonic()
         proc.ensure_under_mb(result)
-        print(f"[compose {jid}] ensure_under_mb: {time.monotonic()-t:.1f}s", flush=True)
-        print(f"[compose {jid}] TOTAL: {time.monotonic()-t_total:.1f}s", flush=True)
+        _LOG.info(f"[compose {jid}] ensure_under_mb: {time.monotonic()-t:.1f}s")
+        _LOG.info(f"[compose {jid}] TOTAL: {time.monotonic()-t_total:.1f}s")
         media_type = "image/gif"
     else:
         rs.job_update(jid, pct=45, stage="chromakey")
@@ -204,11 +200,11 @@ def _run(jid: str, job: dict) -> None:
                 if leftover.is_file() and leftover != result:
                     leftover.unlink()
             except Exception:
-                pass
+                _LOG.debug("ignored error", exc_info=True)
         for stale in (root / "background.gif", root / "character.gif"):
             try:
                 if stale.is_file() and stale != result:
                     stale.unlink()
             except Exception:
-                pass
+                _LOG.debug("ignored error", exc_info=True)
     _sweep_old_jobs(root.parent)

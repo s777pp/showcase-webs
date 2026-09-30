@@ -27,7 +27,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # RIFE draws the join of seamless loops. The CPU build of PyTorch is enough
 # (a 2-3 s loop join takes seconds) and is far smaller than the CUDA one.
 RUN pip install --no-cache-dir torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
-RUN mkdir -p /app/models && curl -fL --retry 4 --retry-delay 2 -o /app/models/flownet_v4.25.pkl       https://github.com/HolyWu/vs-rife/releases/download/model/flownet_v4.25.pkl
+# Pinned checksum: the build fails if the release file is ever replaced.
+ARG RIFE_SHA256=6615790efd627772917205db291f51cd392528a157ecbb2ecaeec3bff8eb6de2
+RUN mkdir -p /app/models && curl -fL --retry 4 --retry-delay 2 -o /app/models/flownet_v4.25.pkl       https://github.com/HolyWu/vs-rife/releases/download/model/flownet_v4.25.pkl     && echo "${RIFE_SHA256}  /app/models/flownet_v4.25.pkl" | sha256sum -c -
 COPY . .
 
 # Drop Windows-only binaries from image

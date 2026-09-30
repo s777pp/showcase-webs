@@ -6,9 +6,9 @@
   var panel = document.getElementById('processPreflight');
   if (!root || !panel) return;
 
-  var allowed = /\.(png|jpe?g|gif|webp|mp4|mov|webm|avi|mkv|ico|cur|bmp|tiff?|avif|tga|psd|qoi|jp2|j2k|jfif|dds|icns|pcx|apng)$/i;
+  var allowed = /\.(png|jpe?g|gif|webp|mp4|mov|webm|avi|mkv|ico|cur|bmp|tiff?|avif|tga|psd|qoi|jp2|j2k|jfif|dds|icns|pcx|apng|heic|heif)$/i;
   // The server converts these to PNG; browsers cannot decode them for a local check or preview.
-  var serverOnly = /\.(tiff?|tga|psd|qoi|jp2|j2k|dds|icns|pcx)$/i;
+  var serverOnly = /\.(tiff?|tga|psd|qoi|jp2|j2k|dds|icns|pcx|heic|heif)$/i;
   var generation = 0;
   var latest = { blocked:false, pending:false, items:[] };
   var processStartedAt = 0;

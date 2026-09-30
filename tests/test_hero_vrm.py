@@ -9,6 +9,7 @@ INDEX = ROOT / "static" / "index.html"
 MODULE = ROOT / "static" / "js" / "home-vrm.js"
 CSS = ROOT / "static" / "css" / "home.css"
 MODEL = ROOT / "static" / "models" / "saba-0.1.vrm"
+WEB_MODEL = ROOT / "static" / "models" / "saba-0.1-web.vrm"
 AUDIO = ROOT / "static" / "audio" / "hero-cute-reaction.mp3"
 
 
@@ -21,10 +22,22 @@ class HeroVrmTests(unittest.TestCase):
             "E130883AD1C3A24382EC750F8934EA4859101F4EB1B225869B1A900AB53C0E07",
         )
 
+    def test_web_copy_keeps_meta_and_is_small(self):
+        import json
+        import struct
+        data = WEB_MODEL.read_bytes()
+        self.assertEqual(hashlib.sha256(data).hexdigest().upper(), "ADB3BA6DCD22BA949A300A47843ADA002D79D247CAE10D7BC8CE04768839C81E")
+        self.assertLess(len(data), 13_000_000)
+        length = struct.unpack_from("<I", data, 12)[0]
+        meta = json.loads(data[20:20 + length])["extensions"]["VRM"]["meta"]
+        self.assertEqual((meta["title"], meta["author"]), ("SABA_0.1", "0caxapok"))
+        self.assertIn("modification=allow", meta["otherPermissionUrl"])
+
     def test_landing_loads_runtime_model_and_attribution(self):
         html = INDEX.read_text(encoding="utf-8")
-        self.assertIn('data-model="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1"', html)
-        self.assertIn('data-model-fallback="/static/models/saba-0.1.vrm?v=20260915-saba1"', html)
+        self.assertIn('data-model="/static/models/saba-0.1-web.vrm?v=20260929-web1"', html)
+        self.assertIn('href="/static/models/saba-0.1-web.vrm?v=20260929-web1" as="fetch"', html)
+        self.assertIn('data-model-fallback="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1"', html)
         self.assertIn('<script type="module" src="/static/js/home-vrm.js?v=', html)
         self.assertIn('rel="modulepreload" href="/static/vendor/vrm-runtime.module.js?v=20260915-saba2"', html)
         self.assertIn('3D model:</span> SABA_0.1', html)
