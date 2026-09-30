@@ -430,3 +430,10 @@ html.bx-fonts-open{overflow:hidden}
   #showcaseBuilder.bx .builder-actions{grid-template-columns:1fr!important}
   #showcaseBuilder.bx .builder-actions>*{width:100%}
 }
+/* "Can take up to 2 minutes" note while Download for Steam runs. */
+#showcaseBuilder.bx .bx-wait{display:flex;align-items:flex-start;gap:12px;margin-top:10px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,196,80,.6);background:linear-gradient(135deg,rgba(255,180,40,.16),rgba(255,120,40,.08));box-shadow:0 0 0 1px rgba(255,196,80,.12),0 8px 24px rgba(0,0,0,.25)}
+#showcaseBuilder.bx .bx-wait[hidden]{display:none!important}
+#showcaseBuilder.bx .bx-wait b{display:block;font:800 14px var(--v2-font);color:#ffd27a}
+#showcaseBuilder.bx .bx-wait span{display:block;margin-top:3px;font-size:12.5px;line-height:1.45;color:rgba(255,236,200,.85)}
+#showcaseBuilder.bx .bx-wait i{flex:none;width:22px;height:22px;margin-top:1px;border-radius:50%;border:3px solid rgba(255,196,80,.25);border-top-color:#ffc450;animation:smWaitSpin .9s linear infinite}
+@keyframes smWaitSpin{to{transform:rotate(360deg)}}

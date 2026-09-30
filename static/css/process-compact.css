@@ -204,3 +204,12 @@ body.page-tools .process-builder-lock b{font-size:14px;color:#e8f6ff}
 body.page-tools .process-builder-lock span{font-size:13px;line-height:1.45;color:rgba(220,232,245,.78)}
 body.page-tools .process-builder-lock button{justify-self:start;min-height:34px;padding:6px 12px;font-size:13px}
 body.page-tools .is-builder-locked{opacity:.38;filter:grayscale(.6);pointer-events:none;user-select:none}
+
+/* "Can take up to 2 minutes" note while a job runs (process-layout.js). */
+.sm-progress .sm-wait-note{display:flex;align-items:flex-start;gap:12px;margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,196,80,.6);background:linear-gradient(135deg,rgba(255,180,40,.16),rgba(255,120,40,.08));box-shadow:0 0 0 1px rgba(255,196,80,.12),0 8px 24px rgba(0,0,0,.25)}
+.sm-progress .sm-wait-note b{display:block;font-size:14px;color:#ffd27a}
+.sm-progress .sm-wait-note span{display:block;margin-top:3px;font-size:12.5px;line-height:1.45;color:rgba(255,236,200,.85)}
+.sm-progress .sm-wait-note i{flex:none;width:22px;height:22px;margin-top:1px;border-radius:50%;border:3px solid rgba(255,196,80,.25);border-top-color:#ffc450;animation:smWaitSpin .9s linear infinite}
+.sm-progress.is-done .sm-wait-note{display:none}
+@keyframes smWaitSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.sm-progress .sm-wait-note i{animation-duration:3s}}

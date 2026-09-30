@@ -45,6 +45,8 @@
     media_loading: ['Loading the animated background{pct}…', 'Загружаем анимированный фон{pct}…', 'Animierter Hintergrund lädt{pct}…', 'Hareketli arka plan yükleniyor{pct}…', 'Chargement du fond animé{pct}…', 'Завантажуємо анімоване тло{pct}…', 'Cargando el fondo animado{pct}…', 'Carregando o fundo animado{pct}…'],
     media_slow: ['Animated backgrounds are video files of several MB, so the time depends on your connection. The editor keeps working meanwhile.', 'Анимированные фоны — это видео на несколько МБ, поэтому время зависит от скорости интернета. Редактор при этом работает.', 'Animierte Hintergründe sind Videos mit mehreren MB, die Dauer hängt von deiner Verbindung ab. Der Editor funktioniert weiter.', 'Hareketli arka planlar birkaç MB’lık videolardır; süre bağlantına bağlı. Bu sırada editör çalışır.', 'Les fonds animés sont des vidéos de plusieurs Mo : la durée dépend de votre connexion. L’éditeur reste utilisable.', 'Анімовані тла — це відео на кілька МБ, тож час залежить від швидкості інтернету. Редактор тим часом працює.', 'Los fondos animados son vídeos de varios MB: el tiempo depende de tu conexión. El editor sigue funcionando.', 'Fundos animados são vídeos de vários MB, então o tempo depende da sua conexão. O editor continua funcionando.'],
     media_error: ['The background could not be loaded. Check the connection or pick it again.', 'Не удалось загрузить фон. Проверь интернет или выбери его ещё раз.', 'Der Hintergrund konnte nicht geladen werden. Prüfe die Verbindung oder wähle ihn erneut.', 'Arka plan yüklenemedi. Bağlantını kontrol et ya da yeniden seç.', 'Impossible de charger le fond. Vérifiez la connexion ou choisissez-le à nouveau.', 'Не вдалося завантажити тло. Перевір інтернет або обери його ще раз.', 'No se pudo cargar el fondo. Revisa la conexión o elígelo de nuevo.', 'Não foi possível carregar o fundo. Verifique a conexão ou escolha de novo.'],
+    wait_title: ['This can take up to 2 minutes', 'Это может занять до 2 минут', 'Das kann bis zu 2 Minuten dauern', 'Bu işlem 2 dakikaya kadar sürebilir', 'Cela peut prendre jusqu’à 2 minutes', 'Це може тривати до 2 хвилин', 'Esto puede tardar hasta 2 minutos', 'Isso pode levar até 2 minutos'],
+    wait_body: ['The site has not frozen: we are assembling the frames and preparing your Steam files. Please do not close or reload the tab.', 'Сайт не завис: мы собираем кадры и готовим файлы для Steam. Не закрывай и не обновляй вкладку.', 'Die Seite hängt nicht: Wir setzen die Bilder zusammen und bereiten deine Steam-Dateien vor. Bitte den Tab nicht schließen oder neu laden.', 'Site donmadı: kareleri birleştirip Steam dosyalarını hazırlıyoruz. Lütfen sekmeyi kapatma veya yenileme.', 'Le site n’est pas bloqué : nous assemblons les images et préparons vos fichiers Steam. Ne fermez pas et ne rechargez pas l’onglet.', 'Сайт не завис: ми збираємо кадри й готуємо файли для Steam. Не закривай і не оновлюй вкладку.', 'El sitio no se ha colgado: estamos montando los fotogramas y preparando tus archivos de Steam. No cierres ni recargues la pestaña.', 'O site não travou: estamos montando os quadros e preparando seus arquivos da Steam. Não feche nem recarregue a aba.'],
     dl_steam: ['Download for Steam', 'Скачать для Steam', 'Für Steam herunterladen', 'Steam için indir', 'Télécharger pour Steam', 'Завантажити для Steam', 'Descargar para Steam', 'Baixar para a Steam'],
     dl_hint: ['Cuts the design into Steam files, fits GIFs under 5 MB and downloads one ZIP. No need to open Prepare.', 'Нарежет дизайн на файлы Steam, ужмёт GIF до 5 МБ и скачает один ZIP. Открывать «Обработку» не нужно.', 'Schneidet das Design in Steam-Dateien, passt GIFs unter 5 MB an und lädt ein ZIP herunter.', 'Tasarımı Steam dosyalarına böler, GIF’leri 5 MB altına sığdırır ve tek ZIP indirir.', 'Découpe le design en fichiers Steam, ajuste les GIF sous 5 Mo et télécharge un ZIP.', 'Наріже дизайн на файли Steam, стисне GIF до 5 МБ і завантажить один ZIP.', 'Corta el diseño en archivos de Steam, ajusta los GIF a menos de 5 MB y descarga un ZIP.', 'Corta o design em arquivos da Steam, ajusta os GIFs abaixo de 5 MB e baixa um ZIP.'],
     dl_fps: ['Frames per second of the GIF', 'Кадров в секунду в GIF', 'Bilder pro Sekunde im GIF', 'GIF saniye başına kare', 'Images par seconde du GIF', 'Кадрів на секунду в GIF', 'Fotogramas por segundo del GIF', 'Quadros por segundo do GIF'],
@@ -713,11 +715,14 @@
     var dlWrap = node('div', 'bx-download');
     dlWrap.innerHTML = '<label class="bx-download__fps"><span></span><select id="builderDownloadFps"><option value="12">12</option><option value="15" selected>15</option><option value="20">20</option><option value="24">24</option></select></label><button type="button" class="btn" id="builderDownloadSteam"></button>';
     exportButton.before(dlWrap);
+    var waitNote = node('div', 'bx-wait', '<i aria-hidden="true"></i><div><b></b><span></span></div>'); waitNote.hidden = true; waitNote.setAttribute('role', 'note');
+    var actionsRow = exportButton.closest('.builder-actions'); if (actionsRow) actionsRow.after(waitNote);
     exportButton.classList.add('ghost');
     var dlButton = dlWrap.querySelector('#builderDownloadSteam');
     dlButton.addEventListener('click', async function () {
       if (dlButton.disabled) return;
-      dlButton.disabled = true; exportButton.disabled = true;
+      dlButton.disabled = true; exportButton.disabled = true; waitNote.hidden = false; paintDownload();
+      try { waitNote.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
       var say = function (key, pct) { SMBuilder.status(t(key).replace('{pct}', pct == null ? '' : Math.round(pct)), 'wait'); };
       try {
         var file = await SMBuilder.prepare(function (done, total) { say('st_render', done / total * 100); });
@@ -736,12 +741,13 @@
         }
       } catch (error) {
         SMBuilder.status(String(error && error.message || error), 'bad');
-      } finally { dlButton.disabled = false; exportButton.disabled = false; }
+      } finally { dlButton.disabled = false; exportButton.disabled = false; waitNote.hidden = true; }
     });
   }
   function paintDownload() {
     var b = $('builderDownloadSteam'); if (!b) return;
     b.textContent = t('dl_steam'); b.title = t('dl_hint');
+    var note = root.querySelector('.bx-wait'); if (note) { note.querySelector('b').textContent = t('wait_title'); note.querySelector('span').textContent = t('wait_body'); }
     var fps = root.querySelector('.bx-download__fps span'); if (fps) fps.textContent = 'FPS'; var sel = $('builderDownloadFps'); if (sel) sel.title = t('dl_fps');
   }
 

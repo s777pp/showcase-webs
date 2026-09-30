@@ -13,7 +13,7 @@
       '/static/js/builder-text-fx.js?v=20260930-t7',
       '/static/js/builder-export.js?v=20260930-x1',
       '/static/js/showcase-builder.js?v=20260930-r9',
-      '/static/js/builder-layout.js?v=20260930-bx24',
+      '/static/js/builder-layout.js?v=20260930-bx25',
       '/static/js/builder-fonts.js?v=20260930-bx9'
     ],
     dna: ['/static/js/steam-dna.js?v=20260912-exp7'],

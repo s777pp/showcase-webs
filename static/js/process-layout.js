@@ -7,6 +7,8 @@
   if (!root) return;
   var LANGS = ['en', 'ru', 'de', 'tr', 'fr', 'uk', 'es', 'pt'];
   var WORDS = {
+    waitTitle: ['This can take up to 2 minutes', 'Это может занять до 2 минут', 'Das kann bis zu 2 Minuten dauern', 'Bu işlem 2 dakikaya kadar sürebilir', 'Cela peut prendre jusqu’à 2 minutes', 'Це може тривати до 2 хвилин', 'Esto puede tardar hasta 2 minutos', 'Isso pode levar até 2 minutos'],
+    waitBody: ['The site has not frozen: we are assembling the frames and preparing your Steam files. Please do not close or reload the tab.', 'Сайт не завис: мы собираем кадры и готовим файлы для Steam. Не закрывай и не обновляй вкладку.', 'Die Seite hängt nicht: Wir setzen die Bilder zusammen und bereiten deine Steam-Dateien vor. Bitte den Tab nicht schließen oder neu laden.', 'Site donmadı: kareleri birleştirip Steam dosyalarını hazırlıyoruz. Lütfen sekmeyi kapatma veya yenileme.', 'Le site n’est pas bloqué : nous assemblons les images et préparons vos fichiers Steam. Ne fermez pas et ne rechargez pas l’onglet.', 'Сайт не завис: ми збираємо кадри й готуємо файли для Steam. Не закривай і не оновлюй вкладку.', 'El sitio no se ha colgado: estamos montando los fotogramas y preparando tus archivos de Steam. No cierres ni recargues la pestaña.', 'O site não travou: estamos montando os quadros e preparando seus arquivos da Steam. Não feche nem recarregue a aba.'],
     designTitle: ['Style it', 'Оформление', 'Gestaltung', 'Görünüm', 'Style', 'Оформлення', 'Estilo', 'Estilo'],
     designHint: ['Optional. Everything you change here appears on the preview right away.', 'Необязательно. Всё, что меняешь здесь, сразу видно на предпросмотре.', 'Optional. Jede Änderung siehst du sofort in der Vorschau.', 'İsteğe bağlı. Burada değiştirdiğin her şey önizlemede hemen görünür.', 'Facultatif. Chaque modification apparaît aussitôt dans l’aperçu.', 'Необов’язково. Усе, що змінюєш тут, одразу видно на попередньому перегляді.', 'Opcional. Todo lo que cambies aquí se ve al instante en la vista previa.', 'Opcional. Tudo o que você mudar aqui aparece na hora na prévia.'],
     frameTitle: ['Frame', 'Рамка', 'Rahmen', 'Çerçeve', 'Cadre', 'Рамка', 'Marco', 'Moldura'],
@@ -352,6 +354,23 @@
   ['wmEnable', 'allModes'].forEach(function (id) { var node = document.getElementById(id); if (node) node.addEventListener('change', refresh); });
   document.addEventListener('sm:process-frame-change', refresh);
   window.addEventListener('resize', syncDock);
+  /* "Up to 2 minutes" note inside the progress block: visible while a job runs, hidden at 100 %. */
+  var progress = document.getElementById('procProgress'), waitNote = null;
+  if (progress) {
+    waitNote = document.createElement('div');
+    waitNote.className = 'sm-wait-note'; waitNote.setAttribute('role', 'note');
+    waitNote.innerHTML = '<i aria-hidden="true"></i><div><b></b><span></span></div>';
+    progress.append(waitNote);
+    var pct = document.getElementById('procProgPct');
+    var paintWait = function () {
+      waitNote.querySelector('b').textContent = word('waitTitle');
+      waitNote.querySelector('span').textContent = word('waitBody');
+      progress.classList.toggle('is-done', !!pct && /^100\s*%$/.test(pct.textContent.trim()));
+    };
+    paintWait();
+    if (pct) new MutationObserver(paintWait).observe(pct, { childList: true, characterData: true, subtree: true });
+    window.addEventListener('sm:langchange', paintWait);
+  }
   window.addEventListener('sm:langchange', localize);
   localize();
   restore();
