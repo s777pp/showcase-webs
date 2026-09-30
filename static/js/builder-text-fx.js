@@ -2,7 +2,9 @@
    wave, bounce, Saber (glowing energy outline), neon flicker, glitch, rainbow, shine and the
    hollow outline family (fire, lightning, running outline, plasma) plus sparkles.
    Every animation is a function of u in [0, 1) = position in the scene loop, so exported
-   loops have no jump; `speed` (1-4) repeats the animation that many times per loop.
+   loops have no jump. `speed` (0.25-4): continuous effects scale their cycle counts (always
+   whole numbers per loop, so the loop stays seamless); one-shot reveals repeat round(speed)
+   times when faster and stretch over more of the loop when slower.
    Vertical text stacks upright letters top to bottom, columns go left to right.
    showcase-builder.js has already moved / rotated / scaled the context to the text centre
    and set ctx.font; this module only draws the letters. */
@@ -11,6 +13,7 @@
   var TAU = Math.PI * 2;
   var NAMES = ['typewriter', 'fadeup', 'decode', 'wave', 'bounce', 'saber', 'neon', 'glitch', 'rainbow', 'shine',
     'fire', 'electric', 'lightning', 'runner', 'plasma', 'sparkle'];
+  var ONE_SHOT = ['typewriter', 'fadeup', 'decode', 'bounce'];
   var GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#$%&@*+=?<>/';
   var layoutCache = new Map(), scratch = null, sprites = {};
   // A web font that finishes loading changes glyph widths: measure again.
@@ -172,28 +175,35 @@
       }
     });
   }
-  var flameSprite = null;
-  function flame() {
-    if (flameSprite) return flameSprite;
-    var c = document.createElement('canvas'); c.width = 48; c.height = 128;
-    var g = c.getContext('2d'); g.translate(24, 112); g.scale(1, 3.4);
-    var grad = g.createRadialGradient(0, 0, 0, 0, 0, 22);
-    grad.addColorStop(0, 'rgba(255,248,210,1)'); grad.addColorStop(.22, 'rgba(255,214,110,.95)'); grad.addColorStop(.5, 'rgba(255,120,24,.6)');
-    grad.addColorStop(.8, 'rgba(210,40,0,.22)'); grad.addColorStop(1, 'rgba(160,20,0,0)');
+  /* Flame tongue sprite for a base colour: white-hot core -> light tint -> colour -> dark edge.
+     The default orange keeps the classic fire palette. */
+  var flameSprites = {};
+  function flame(c) {
+    var key = c.join(','); if (flameSprites[key]) return flameSprites[key];
+    var cv = document.createElement('canvas'); cv.width = 48; cv.height = 128;
+    var g = cv.getContext('2d'); g.translate(24, 112); g.scale(1, 3.4);
+    var grad = g.createRadialGradient(0, 0, 0, 0, 0, 22), dark = mix(c, [0, 0, 0], .3), deep = mix(c, [0, 0, 0], .45);
+    grad.addColorStop(0, rgba(mix(c, [255, 255, 255], .88), 1)); grad.addColorStop(.22, rgba(mix(c, [255, 255, 255], .5), .95));
+    grad.addColorStop(.5, rgba(c, .6)); grad.addColorStop(.8, rgba(dark, .22)); grad.addColorStop(1, rgba(deep, 0));
     g.fillStyle = grad; g.beginPath(); g.arc(0, 0, 22, 0, TAU); g.fill();
-    return (flameSprite = c);
+    return (flameSprites[key] = cv);
   }
 
   /* Fade the whole text out during the last 8 % of the loop and back in at the start. */
-  function loopFade(u) { return u > .92 ? clamp((1 - u) / .08, 0, 1) : 1; }
+  /* Whole cycles per loop for a rate given in cycles per second (o.period already includes the speed). */
+  function cyc(o, perSecond) { return Math.max(1, Math.round(o.period * perSecond)); }
+  /* Default glow colour of each effect (used for tiles and when the user has not picked one). */
+  var DEFAULT_COLORS = { fire: '#ff6a00', neon: '#ff2d8a', electric: '#2a8cff', lightning: '#52d5ff', saber: '#52d5ff', runner: '#52d5ff', sparkle: '#ffd66e' };
+  function mix(c, t, k) { return [Math.round(c[0] + (t[0] - c[0]) * k), Math.round(c[1] + (t[1] - c[1]) * k), Math.round(c[2] + (t[2] - c[2]) * k)]; }
+  function loopFade(u) { return u > .92 ? clamp((1 - u) / .08, 0, 1) : clamp(u / .03, 0, 1); }
 
   var FX = {
     plain: function (ctx, L) { L.letters.forEach(function (l) { letter(ctx, l); }); },
     typewriter: function (ctx, L, o) {
-      var n = L.letters.length, shown = Math.floor(clamp(o.u / .55, 0, 1) * n), fade = loopFade(o.u);
+      var n = L.letters.length, shown = Math.floor(clamp(o.u / o.span, 0, 1) * n), fade = loopFade(o.u);
       ctx.globalAlpha *= fade;
       for (var i = 0; i < shown; i++) letter(ctx, L.letters[i]);
-      if (Math.floor(o.u * o.period * 2.2) % 2 !== 0) return;
+      if (Math.floor(o.u * cyc(o, 1.1) * 2) % 2 !== 0) return;
       var last = L.letters[Math.max(0, shown - 1)] || { x: 0, y: 0, w: 0 };
       if (L.vertical) {
         var first = L.letters[0] || { x: 0, y: 0 }, cy = shown ? last.y + o.size * .58 : first.y - o.size * .4;
@@ -207,41 +217,41 @@
     fadeup: function (ctx, L, o) {
       var n = L.letters.length, base = ctx.globalAlpha, fade = loopFade(o.u);
       L.letters.forEach(function (l, i) {
-        var p = ease((o.u - i / Math.max(1, n) * .45) / .14);
+        var k = o.span / .55, p = ease((o.u - i / Math.max(1, n) * .45 * k) / (.14 * k));
         ctx.globalAlpha = base * p * fade; letter(ctx, l, 0, (1 - p) * o.size * .5);
       });
     },
     decode: function (ctx, L, o) {
-      var n = L.letters.length, tick = Math.floor(o.u * o.period * 18), fade = loopFade(o.u);
+      var n = L.letters.length, tick = Math.floor(o.u * cyc(o, 18)), fade = loopFade(o.u);
       ctx.globalAlpha *= fade;
       L.letters.forEach(function (l, i) {
-        var done = o.u > .08 + i / Math.max(1, n) * .5;
+        var done = o.u > (.08 + i / Math.max(1, n) * .5) * o.span / .55;
         if (done || l.ch === ' ') { letter(ctx, l); return; }
         ctx.save(); ctx.globalAlpha *= .75; letter(ctx, l, 0, 0, GLYPHS[Math.floor(hash(i, tick) * GLYPHS.length)]); ctx.restore();
       });
     },
     wave: function (ctx, L, o) {
       L.letters.forEach(function (l, i) {
-        var d = Math.sin(o.u * TAU * 2 - i * .55) * o.size * .14;
+        var d = Math.sin(o.u * TAU * cyc(o, .25) - i * .55) * o.size * .14;
         if (L.vertical) letter(ctx, l, d, 0); else letter(ctx, l, 0, d);
       });
     },
     bounce: function (ctx, L, o) {
       var n = L.letters.length;
       L.letters.forEach(function (l, i) {
-        var p = clamp((o.u - i / Math.max(1, n) * .4) / .16, 0, 1), s = p < 1 ? (p < .6 ? p / .6 * 1.25 : 1.25 - (p - .6) / .4 * .25) : 1 + .04 * Math.sin(o.u * TAU * 3 + i);
+        var k = o.span / .55, p = clamp((o.u - i / Math.max(1, n) * .4 * k) / (.16 * k), 0, 1), s = p < 1 ? (p < .6 ? p / .6 * 1.25 : 1.25 - (p - .6) / .4 * .25) : 1 + .04 * Math.sin(o.u * TAU * 3 + i);
         if (p <= 0) return;
-        ctx.save(); ctx.translate(l.x, l.y); ctx.scale(s, s); ctx.fillText(l.ch, 0, 0); ctx.restore();
+        ctx.save(); ctx.globalAlpha *= loopFade(o.u); ctx.translate(l.x, l.y); ctx.scale(s, s); ctx.fillText(l.ch, 0, 0); ctx.restore();
       });
     },
     /* Saber: hot white core, several glowing colour passes and crawling energy dashes. */
     saber: function (ctx, L, o) {
-      var c = rgb(o.color), flick = .82 + .18 * Math.sin(o.u * TAU * 7) * Math.sin(o.u * TAU * 3 + 1), jitter = o.size * .012;
-      var tick = Math.floor(o.u * o.period * 24);
+      var c = rgb(o.color), flick = .82 + .18 * Math.sin(o.u * TAU * cyc(o, .875)) * Math.sin(o.u * TAU * cyc(o, .375) + 1), jitter = o.size * .012;
+      var tick = Math.floor(o.u * cyc(o, 24));
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
       [[.2, .14, .5], [.11, .26, .32], [.055, .5, .18]].forEach(function (pass, k) {
         ctx.lineWidth = o.size * pass[0]; ctx.strokeStyle = rgba(c, pass[1] * flick); ctx.shadowColor = rgba(c, .9); ctx.shadowBlur = o.size * pass[2];
-        if (k === 1) { ctx.setLineDash([o.size * .35, o.size * .12]); ctx.lineDashOffset = -o.u * o.size * 6; } else ctx.setLineDash([]);
+        if (k === 1) { ctx.setLineDash([o.size * .35, o.size * .12]); ctx.lineDashOffset = -o.u * cyc(o, 1.6) * o.size * .47; } else ctx.setLineDash([]);
         var j = (hash(k * 7, tick) - .5) * jitter; strokeAll(ctx, L, j, -j);
       });
       ctx.setLineDash([]); ctx.shadowBlur = o.size * .15; ctx.shadowColor = rgba(c, 1);
@@ -271,7 +281,7 @@
       ctx.restore();
     },
     glitch: function (ctx, L, o) {
-      var tick = Math.floor(o.u * o.period * 12), burst = hash(tick >> 2, 5) > .55, d = o.size * (burst ? .07 : .03);
+      var tick = Math.floor(o.u * cyc(o, 12)), burst = hash(tick >> 2, 5) > .55, d = o.size * (burst ? .07 : .03);
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = 'rgba(255,40,90,.85)'; L.letters.forEach(function (l) { letter(ctx, l, -d, 0); });
       ctx.fillStyle = 'rgba(40,230,255,.85)'; L.letters.forEach(function (l) { letter(ctx, l, d, 0); });
@@ -280,7 +290,7 @@
     },
     rainbow: function (ctx, L, o) {
       var g = L.vertical ? ctx.createLinearGradient(0, -L.height / 2, 0, L.height / 2) : ctx.createLinearGradient(-L.width / 2, 0, L.width / 2, 0);
-      for (var k = 0; k <= 6; k++) g.addColorStop(k / 6, 'hsl(' + Math.round(frac(k / 6 + o.u) * 360) + ',95%,62%)');
+      for (var k = 0; k <= 6; k++) g.addColorStop(k / 6, 'hsl(' + Math.round(frac(k / 6 + o.u * cyc(o, .125)) * 360) + ',95%,62%)');
       ctx.save(); ctx.fillStyle = g; ctx.shadowColor = 'rgba(255,255,255,.35)'; ctx.shadowBlur = o.size * .12;
       fillAll(ctx, L); ctx.restore();
     },
@@ -292,7 +302,7 @@
       var s = scratch.getContext('2d'); s.setTransform(1, 0, 0, 1, 0, 0); s.clearRect(0, 0, scratch.width, scratch.height);
       s.font = ctx.font; s.textAlign = 'center'; s.textBaseline = 'middle'; s.fillStyle = ctx.fillStyle;
       s.translate(w / 2, h / 2); L.letters.forEach(function (l) { s.fillText(l.ch, l.x, l.y); });
-      var p = frac(o.u * 2), len = L.vertical ? h : w, b = -len / 2 + p * (len * 1.6) - len * .3;
+      var p = frac(o.u * cyc(o, .25)), len = L.vertical ? h : w, b = -len / 2 + p * (len * 1.6) - len * .3;
       var g = L.vertical ? s.createLinearGradient(0, b - o.size * .6, 0, b + o.size * .6) : s.createLinearGradient(b - o.size * .6, 0, b + o.size * .6, 0);
       g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,.95)'); g.addColorStop(1, 'rgba(255,255,255,0)');
       s.globalCompositeOperation = 'source-atop'; s.fillStyle = g; s.fillRect(-w / 2, -h / 2, w, h); s.globalCompositeOperation = 'source-over';
@@ -303,7 +313,8 @@
        periodic noise in loop time, so the loop is seamless. */
     fire: function (ctx, L, o) {
       var list = contours(ctx, L, o.size), cyc = Math.max(2, Math.round(o.period * 3.5)), t = o.u * cyc, sz = o.size;
-      var glow = sprite([255, 70, 0]), tongue = flame(), puffCyc = Math.max(1, Math.round(o.period * 1.6));
+      var c = rgb(o.color), hot = mix(c, [255, 255, 255], .45), core = mix(c, [255, 255, 255], .85), dark = mix(c, [0, 0, 0], .45);
+      var glow = sprite(dark), tongue = flame(c), puffCyc = Math.max(1, Math.round(o.period * 1.6));
       ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.globalCompositeOperation = 'lighter';
       list.forEach(function (f, ci) {
         var n = f.length / 5, i, k, r;
@@ -345,11 +356,11 @@
       ctx.globalAlpha = 1;
       var cyc2 = cyc * 3, t2 = o.u * cyc2;
       contourPath(ctx, list, function (i, ci, arc) { return (tnoise(arc / sz * 7 + ci * 5, t2, cyc2, 31) - .5) * sz * .045; });
-      ctx.lineWidth = sz * .06; ctx.strokeStyle = 'rgba(255,90,10,.5)'; ctx.stroke();
-      ctx.lineWidth = sz * .028; ctx.strokeStyle = 'rgba(255,170,60,.8)'; ctx.stroke();
-      ctx.lineWidth = Math.max(1, sz * .011); ctx.strokeStyle = 'rgba(255,248,215,.95)'; ctx.stroke();
+      ctx.lineWidth = sz * .06; ctx.strokeStyle = rgba(c, .5); ctx.stroke();
+      ctx.lineWidth = sz * .028; ctx.strokeStyle = rgba(hot, .8); ctx.stroke();
+      ctx.lineWidth = Math.max(1, sz * .011); ctx.strokeStyle = rgba(core, .95); ctx.stroke();
       var pts = points(ctx, L, sz), cycE = Math.max(1, Math.round(o.period / 1.2));
-      ctx.fillStyle = 'rgba(255,200,90,1)';
+      ctx.fillStyle = rgba(hot, 1);
       for (var e = 0; e < Math.min(pts.length, 26); e++) {
         var p = pts[e], life = frac(o.u * cycE + hash(e, 41)), rise = life * sz * (.8 + .7 * hash(e, 43)), rr = sz * .022 * (1 - life);
         if (rr <= .2) continue;
@@ -361,7 +372,7 @@
     /* Electric outline: several jagged arcs crackle along every letter edge (they jump to a new
        shape ~18 times a second), a soft blue halo, bright sparks. */
     electric: function (ctx, L, o) {
-      var c = rgb(o.color), list = contours(ctx, L, o.size), sz = o.size, tick = Math.floor(o.u * o.period * 18);
+      var c = rgb(o.color), list = contours(ctx, L, o.size), sz = o.size, tick = Math.floor(o.u * cyc(o, 18));
       var hi = [Math.min(255, c[0] + 150), Math.min(255, c[1] + 150), Math.min(255, c[2] + 150)];
       ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.globalCompositeOperation = 'lighter';
       contourPath(ctx, list, function () { return 0; });
@@ -393,7 +404,7 @@
     },
     /* Hollow letters with an electric outline and short bolts jumping between edges. */
     lightning: function (ctx, L, o) {
-      var c = rgb(o.color), pts = points(ctx, L, o.size), n = pts.length, tick = Math.floor(o.u * o.period * 14);
+      var c = rgb(o.color), pts = points(ctx, L, o.size), n = pts.length, tick = Math.floor(o.u * cyc(o, 14));
       var strike = hash(tick, 11) > .72, flash = strike ? 1 : .75 + .1 * Math.sin(o.u * TAU * o.period * 3);
       ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
       ctx.shadowColor = rgba(c, 1); ctx.shadowBlur = o.size * (strike ? .4 : .22);
@@ -439,8 +450,8 @@
     /* Hollow letters with a thick glowing outline whose colours flow along the text. */
     plasma: function (ctx, L, o) {
       var g = L.vertical ? ctx.createLinearGradient(0, -L.height / 2, 0, L.height / 2) : ctx.createLinearGradient(-L.width / 2, 0, L.width / 2, 0);
-      for (var k = 0; k <= 8; k++) g.addColorStop(k / 8, 'hsl(' + Math.round(frac(k / 8 * .6 - o.u) * 360) + ',100%,62%)');
-      var pulse = 1 + .25 * Math.sin(o.u * TAU * 2), base = ctx.globalAlpha;
+      for (var k = 0; k <= 8; k++) g.addColorStop(k / 8, 'hsl(' + Math.round(frac(k / 8 * .6 - o.u * cyc(o, .125)) * 360) + ',100%,62%)');
+      var pulse = 1 + .25 * Math.sin(o.u * TAU * cyc(o, .25)), base = ctx.globalAlpha;
       ctx.save(); ctx.lineJoin = 'round'; ctx.strokeStyle = g; ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = base * .25; ctx.lineWidth = o.size * .14 * pulse; strokeAll(ctx, L);
       ctx.globalAlpha = base * .5; ctx.lineWidth = o.size * .07; strokeAll(ctx, L);
@@ -470,7 +481,10 @@
   window.SMTextFx = {
     names: NAMES.slice(),
     /* Animations that use the glow colour. */
-    colored: ['saber', 'neon', 'electric', 'lightning', 'runner', 'sparkle'],
+    colored: ['saber', 'neon', 'fire', 'electric', 'lightning', 'runner', 'sparkle'],
+    defaultColor: function (name) { return DEFAULT_COLORS[name] || '#52d5ff'; },
+    /* Speed steps of the slider (the middle one is x1). */
+    speeds: [.25, .35, .5, .7, 1, 1.4, 2, 3, 4],
     has: function (name) { return NAMES.indexOf(name) >= 0; },
     /* Size of the text block in context units (for the on-canvas handles). */
     measure: function (ctx, lines, size, vertical) { var L = layout(ctx, lines, size, vertical); return { width: L.width, height: L.height }; },
@@ -478,9 +492,14 @@
        name 'plain' draws still letters (used for vertical text without animation). */
     draw: function (ctx, name, lines, o) {
       var fn = FX[name]; if (!fn) return false;
-      var L = layout(ctx, lines, o.size, o.vertical), speed = clamp(Math.round(Number(o.speed) || 1), 1, 4);
+      var L = layout(ctx, lines, o.size, o.vertical), speed = clamp(Number(o.speed) || 1, .25, 4), period = o.period || 8, u = frac(o.u), opts;
+      if (ONE_SHOT.indexOf(name) >= 0) {
+        var repeats = speed >= 1 ? Math.max(1, Math.round(speed)) : 1;
+        opts = { u: frac(u * repeats), period: period / repeats, span: speed < 1 ? Math.min(.9, .55 / speed) : .55 };
+      } else opts = { u: u, period: period * speed, span: .55 };
+      opts.size = o.size; opts.color = o.color || DEFAULT_COLORS[name] || '#52d5ff';
       ctx.save();
-      try { fn(ctx, L, { u: frac(frac(o.u) * speed), period: (o.period || 8) / speed, size: o.size, color: o.color || '#52d5ff' }); } finally { ctx.restore(); }
+      try { fn(ctx, L, opts); } finally { ctx.restore(); }
       return true;
     }
   };

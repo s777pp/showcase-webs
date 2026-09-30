@@ -203,12 +203,13 @@ def _validated_project(raw) -> dict:
         if item["type"] == "text":
             item["textFx"] = item.get("textFx") if item.get("textFx") in _TEXT_FX else "none"
             item["textDir"] = "vertical" if item.get("textDir") == "vertical" else "horizontal"
-            item["textFxSpeed"] = int(_bounded_number(item.get("textFxSpeed"), 1, 4, 1))
+            item["textFxSpeed"] = round(_bounded_number(item.get("textFxSpeed"), .25, 4, 1), 2)
+            item["fxColorCustom"] = item.get("fxColorCustom") is True
             fx_color = str(item.get("fxColor") or "")
             if fx_color and not re.fullmatch(r"#[0-9a-fA-F]{6}", fx_color):
                 item.pop("fxColor", None)
         else:
-            for key in ("textFx", "fxColor", "textDir", "textFxSpeed"):
+            for key in ("textFx", "fxColor", "fxColorCustom", "textDir", "textFxSpeed"):
                 item.pop(key, None)
         if item["type"] == "frame":
             item["frameStyle"] = item.get("frameStyle") if item.get("frameStyle") in _FRAME_STYLES else "solid"
@@ -247,6 +248,10 @@ def _validated_project(raw) -> dict:
                     src.startswith("https://cdn.cloudflare.steamstatic.com/")):
                 src = ""
             item["src"] = src
+        if item["type"] == "background":
+            item["steamAlign"] = item.get("steamAlign") is True
+        else:
+            item.pop("steamAlign", None)
         if item["type"] == "background" and item.get("buyUrl"):
             item["buyUrl"] = _steam_purchase_url(item["buyUrl"])
         else:
@@ -259,6 +264,8 @@ def _validated_project(raw) -> dict:
         "width": max(506, min(1200, int(raw.get("width") or 750))),
         "height": max(280, min(1800, int(raw.get("height") or 1000))),
         "background": str(raw.get("background") or "#07131c")[:32],
+        # Showcase lower on the Steam profile than the first slot (Builder "Like on the Steam profile").
+        "steamOffsetY": int(_bounded_number(raw.get("steamOffsetY"), 0, 600, 0)),
         "layers": clean_layers,
         "motion": {"intensity": _bounded_number(motion.get("intensity"), 0, 100, 50),
                    "loop": motion.get("loop") if motion.get("loop") in {"none", "blend", "pingpong"} else "none",

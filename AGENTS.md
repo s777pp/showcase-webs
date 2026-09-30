@@ -600,6 +600,32 @@ Only the hero exists for now; content blocks will be added below it later.
   up-facing edges, width tied to height or they band), rising puffs, jagged edge, embers, `electric` = 3 noisy strands
   re-shaped 18 times a second + sparks; `lightning` (bolts between edges) stays as the second electric look. Time noise
   is periodic (`tnoise`), a test render showed the loop seam ~100x below one frame step.
+- Text effect colour and speed (2026-09-30 evening): every coloured effect incl. fire takes `layer.fxColor`
+  (`SMTextFx.defaultColor(name)` when not customised, `layer.fxColorCustom` marks a user choice). Speed is
+  `layer.textFxSpeed` 0.25-4 (slider steps `SMTextFx.speeds`, x1 in the middle): continuous effects get
+  `o.period = scene * speed` and derive whole cycles per loop with `cyc(o, perSecond)`, one-shot reveals
+  (typewriter, fadeup, decode, bounce) repeat round(speed) times or stretch (`o.span`). Tick effects use whole ticks.
+- Builder Steam fit + export (2026-09-30 night): `layer.steamAlign` backgrounds are drawn by `drawSteamAligned`
+  (showcase-builder.js): background at its own size, profile column 976 px centred, per-part crops from
+  `STEAM_LAYOUT` (featured x23 w630 y256; split x23 w506 + x538 w100 y256; workshop x24+126i w122 y380; x from the
+  column's left edge, y for the first showcase) + `project.steamOffsetY` (0-600, server-validated). Measured on
+  steamcommunity.com and identical in steam.design / steamprofile.io. Animated Steam backgrounds are scaled to the
+  window width by Steam, so they match exactly only at 1920 px. Canvas height is live (`SMBuilder.setHeight`,
+  handle `.bx-height`, 280-1800, even). Animated export = `static/js/builder-export.js`: frames rendered at exact
+  times (`renderExact`: videos seeked, GIFs via ImageDecoder, `manualClock` stops the preview loop), WebCodecs VP9
+  ~20 Mbit/s, own minimal WebM muxer, 30 fps, scene length; non-periodic scenes get a crossfade of min(600 ms, 10 %)
+  from the loop end into its start. Fallback `legacyBlob` (MediaRecorder). "Download for Steam"
+  (`#builderDownloadSteam`) posts the file to /api/process/start (`SMBuilderExport.processForSteam`) and opens
+  `ProcessResult`.
+- VPS incident 2026-09-30: 91 files in /opt/showcasemaker were owned by root, `git pull` stopped halfway, the
+  build ran anyway and the app crashed on a missing designs.json. Fixed (chown, fast-forward to bc4f8ae, rebuild);
+  VPS stashes `before-update-2026-09-30`, `partial-checkout-2026-09-30`, `mixed-tree-2026-09-30` and
+  `~/pre-merge-2026-09-30/` hold the pre-fix state. Updates now go through `deploy/update.sh` (see DEPLOY.md).
+  `.gitignore` `models/` became `/models/` (it hid static/models/saba-0.1-web.vrm).
+- SECURITY (owner decision pending): the GitHub repo s777pp/showcase-webs is public and tracks `data/`
+  (access_codes.json with 700 codes of an old batch not present in the live file, used_codes.json,
+  steam_cache.json, user media-assets and gallery release zips). Recommended: make the repo private,
+  `git rm -r --cached data`, commit; history still contains the files.
 - Release workflow (until this folder becomes a repo): `scripts/release_sync.py` copies new/changed files into the
   git checkout `Desktop/showcase-webs` (dry run by default, never deletes); `CHANGELOG.md` holds the release notes
   and the VPS steps. `nginx.conf` is bind-mounted as a single file: restart nginx after `git pull`.

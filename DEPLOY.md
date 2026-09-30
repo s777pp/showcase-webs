@@ -110,12 +110,16 @@ No rebuild or restart is required after changing the notice.
 
 ```bash
 cd /opt/showcasemaker
-git pull --ff-only
-docker compose build --pull app worker
-docker compose up -d
-docker compose ps
-python scripts/smoke_test.py https://showcasemaker.com
+bash deploy/update.sh              # add --rebuild to rebuild when the code is already current
 ```
+
+`deploy/update.sh` checks everything BEFORE building and stops with a clear message otherwise:
+all files owned by the deploy user (files copied with `sudo` once made `git pull` stop halfway and the
+half-updated tree was built), no local edits to tracked files, no untracked files in the way of new ones.
+Then it dumps PostgreSQL to `~/backups/`, fast-forwards to `origin/main`, builds `app` + `worker`,
+restarts nginx (its config is a single-file bind mount), waits for `/api/ready` and runs the smoke test.
+Never copy files into `/opt/showcasemaker` by hand or with `sudo`: everything comes through git.
+Use `docker compose build --pull app worker` by hand only when you want fresh base images.
 
 ## Rollback
 

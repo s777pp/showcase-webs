@@ -22,8 +22,9 @@ from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parents[1]
 DEFAULT_TARGET = SOURCE.parent / "showcase-webs"
-SKIP_DIRS = {"data", "output", "IMAGE", "__pycache__", ".pytest_cache", "models", ".git", "node_modules",
-             ".venv", "venv", ".playwright-cli", ".tmpvol", ".tmpro", "railway-backup", ".claude",
+# Skipped only at the top level (static/models is part of the site).
+ROOT_SKIP = {"data", "output", "IMAGE", "models", "railway-backup", ".claude", ".tmpvol", ".tmpro"}
+SKIP_DIRS = {"__pycache__", ".pytest_cache", ".git", "node_modules", ".venv", "venv", ".playwright-cli",
              ".tmp_pytest_env", ".tmp_u2net_test"}
 SKIP_FILES = {".env", "ENV.txt", "tail.txt", "PROMT.txt", ".locale-cache.json"}
 SKIP_SUFFIXES = (".pyc", ".pyo", ".tmp", ".log")
@@ -32,7 +33,8 @@ SKIP_SUFFIXES = (".pyc", ".pyo", ".tmp", ".log")
 def tree(root: Path) -> dict:
     found = {}
     for folder, dirs, names in os.walk(root):
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        top = Path(folder) == root
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not (top and d in ROOT_SKIP)]
         for name in names:
             if name in SKIP_FILES or name.endswith(SKIP_SUFFIXES):
                 continue

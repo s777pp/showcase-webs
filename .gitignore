@@ -53,8 +53,9 @@ scripts/.locale-cache.json
 # Owner design references and source masters (not part of the site)
 IMAGE/
 
-# RIFE weights for local runs (downloaded in the Docker build).
-models/
+# RIFE weights for local runs (downloaded in the Docker build). Root only:
+# a bare `models/` also hid static/models/saba-0.1-web.vrm from git.
+/models/
 
 # Local Claude Code settings (per machine)
 .claude/

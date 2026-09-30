@@ -41,12 +41,28 @@
     textdir_h: ['Horizontal', 'Горизонтально', 'Waagerecht', 'Yatay', 'Horizontal', 'Горизонтально', 'Horizontal', 'Horizontal'],
     textdir_v: ['Vertical', 'Вертикально', 'Senkrecht', 'Dikey', 'Vertical', 'Вертикально', 'Vertical', 'Vertical'],
     textfx_speed: ['Speed', 'Скорость', 'Tempo', 'Hız', 'Vitesse', 'Швидкість', 'Velocidad', 'Velocidade'],
-    textfx_speed_hint: ['Repeats per scene loop. For a slower animation make the scene longer.', 'Сколько раз анимация проходит за цикл сцены. Чтобы медленнее — увеличь длину сцены.', 'Wiederholungen pro Szenen-Schleife. Langsamer: Szene verlängern.', 'Sahne döngüsü başına tekrar. Daha yavaş için sahneyi uzat.', 'Répétitions par boucle de scène. Plus lent : allongez la scène.', 'Скільки разів анімація проходить за цикл сцени. Щоб повільніше — збільш довжину сцени.', 'Repeticiones por ciclo de escena. Más lento: alarga la escena.', 'Repetições por ciclo da cena. Mais lento: aumente a cena.'],
+    textfx_speed_hint: ['Left is slower, right is faster. The animation always loops with the scene length.', 'Левее — медленнее, правее — быстрее. Анимация всегда зациклена под длину сцены.', 'Links langsamer, rechts schneller. Die Animation läuft immer passend zur Szenenlänge in Schleife.', 'Sol daha yavaş, sağ daha hızlı. Animasyon her zaman sahne süresine göre döngü yapar.', 'À gauche plus lent, à droite plus rapide. L’animation boucle toujours sur la durée de la scène.', 'Лівіше — повільніше, правіше — швидше. Анімація завжди зациклена під довжину сцени.', 'Izquierda más lento, derecha más rápido. La animación siempre se repite según la duración de la escena.', 'Esquerda mais lento, direita mais rápido. A animação sempre repete conforme a duração da cena.'],
     media_loading: ['Loading the animated background{pct}…', 'Загружаем анимированный фон{pct}…', 'Animierter Hintergrund lädt{pct}…', 'Hareketli arka plan yükleniyor{pct}…', 'Chargement du fond animé{pct}…', 'Завантажуємо анімоване тло{pct}…', 'Cargando el fondo animado{pct}…', 'Carregando o fundo animado{pct}…'],
     media_slow: ['Animated backgrounds are video files of several MB, so the time depends on your connection. The editor keeps working meanwhile.', 'Анимированные фоны — это видео на несколько МБ, поэтому время зависит от скорости интернета. Редактор при этом работает.', 'Animierte Hintergründe sind Videos mit mehreren MB, die Dauer hängt von deiner Verbindung ab. Der Editor funktioniert weiter.', 'Hareketli arka planlar birkaç MB’lık videolardır; süre bağlantına bağlı. Bu sırada editör çalışır.', 'Les fonds animés sont des vidéos de plusieurs Mo : la durée dépend de votre connexion. L’éditeur reste utilisable.', 'Анімовані тла — це відео на кілька МБ, тож час залежить від швидкості інтернету. Редактор тим часом працює.', 'Los fondos animados son vídeos de varios MB: el tiempo depende de tu conexión. El editor sigue funcionando.', 'Fundos animados são vídeos de vários MB, então o tempo depende da sua conexão. O editor continua funcionando.'],
     media_error: ['The background could not be loaded. Check the connection or pick it again.', 'Не удалось загрузить фон. Проверь интернет или выбери его ещё раз.', 'Der Hintergrund konnte nicht geladen werden. Prüfe die Verbindung oder wähle ihn erneut.', 'Arka plan yüklenemedi. Bağlantını kontrol et ya da yeniden seç.', 'Impossible de charger le fond. Vérifiez la connexion ou choisissez-le à nouveau.', 'Не вдалося завантажити тло. Перевір інтернет або обери його ще раз.', 'No se pudo cargar el fondo. Revisa la conexión o elígelo de nuevo.', 'Não foi possível carregar o fundo. Verifique a conexão ou escolha de novo.'],
+    dl_steam: ['Download for Steam', 'Скачать для Steam', 'Für Steam herunterladen', 'Steam için indir', 'Télécharger pour Steam', 'Завантажити для Steam', 'Descargar para Steam', 'Baixar para a Steam'],
+    dl_hint: ['Cuts the design into Steam files, fits GIFs under 5 MB and downloads one ZIP. No need to open Prepare.', 'Нарежет дизайн на файлы Steam, ужмёт GIF до 5 МБ и скачает один ZIP. Открывать «Обработку» не нужно.', 'Schneidet das Design in Steam-Dateien, passt GIFs unter 5 MB an und lädt ein ZIP herunter.', 'Tasarımı Steam dosyalarına böler, GIF’leri 5 MB altına sığdırır ve tek ZIP indirir.', 'Découpe le design en fichiers Steam, ajuste les GIF sous 5 Mo et télécharge un ZIP.', 'Наріже дизайн на файли Steam, стисне GIF до 5 МБ і завантажить один ZIP.', 'Corta el diseño en archivos de Steam, ajusta los GIF a menos de 5 MB y descarga un ZIP.', 'Corta o design em arquivos da Steam, ajusta os GIFs abaixo de 5 MB e baixa um ZIP.'],
+    dl_fps: ['Frames per second of the GIF', 'Кадров в секунду в GIF', 'Bilder pro Sekunde im GIF', 'GIF saniye başına kare', 'Images par seconde du GIF', 'Кадрів на секунду в GIF', 'Fotogramas por segundo del GIF', 'Quadros por segundo do GIF'],
+    st_render: ['Rendering frames… {pct}%', 'Рендерим кадры… {pct}%', 'Bilder werden gerendert… {pct}%', 'Kareler oluşturuluyor… {pct}%', 'Rendu des images… {pct}%', 'Рендеримо кадри… {pct}%', 'Renderizando fotogramas… {pct}%', 'Renderizando quadros… {pct}%'],
+    st_upload: ['Uploading… {pct}%', 'Отправляем… {pct}%', 'Hochladen… {pct}%', 'Yükleniyor… {pct}%', 'Envoi… {pct}%', 'Надсилаємо… {pct}%', 'Subiendo… {pct}%', 'Enviando… {pct}%'],
+    st_queued: ['In the queue…', 'В очереди…', 'In der Warteschlange…', 'Sırada…', 'En file d’attente…', 'У черзі…', 'En cola…', 'Na fila…'],
+    st_process: ['Making Steam files… {pct}%', 'Готовим файлы для Steam… {pct}%', 'Steam-Dateien werden erstellt… {pct}%', 'Steam dosyaları hazırlanıyor… {pct}%', 'Création des fichiers Steam… {pct}%', 'Готуємо файли для Steam… {pct}%', 'Creando archivos de Steam… {pct}%', 'Criando arquivos da Steam… {pct}%'],
+    st_done: ['Done: the ZIP with Steam files is ready.', 'Готово: ZIP с файлами для Steam готов.', 'Fertig: das ZIP mit den Steam-Dateien ist bereit.', 'Tamam: Steam dosyalarının ZIP’i hazır.', 'Terminé : le ZIP des fichiers Steam est prêt.', 'Готово: ZIP з файлами для Steam готовий.', 'Listo: el ZIP con los archivos de Steam está listo.', 'Pronto: o ZIP com os arquivos da Steam está pronto.'],
+    h_label: ['Showcase height', 'Высота витрины', 'Höhe der Vitrine', 'Vitrin yüksekliği', 'Hauteur de la vitrine', 'Висота вітрини', 'Altura del expositor', 'Altura da vitrine'],
+    h_drag: ['Drag to change the height', 'Потяни, чтобы изменить высоту', 'Ziehen, um die Höhe zu ändern', 'Yüksekliği değiştirmek için sürükle', 'Faites glisser pour changer la hauteur', 'Потягни, щоб змінити висоту', 'Arrastra para cambiar la altura', 'Arraste para mudar a altura'],
+    h_fit: ['To the end of the background', 'До конца фона', 'Bis zum Ende des Hintergrunds', 'Arka planın sonuna kadar', 'Jusqu’à la fin du fond', 'До кінця тла', 'Hasta el final del fondo', 'Até o fim do fundo'],
+    bg_end: ['Steam background ends here', 'Здесь кончается фон Steam', 'Hier endet der Steam-Hintergrund', 'Steam arka planı burada biter', 'Le fond Steam s’arrête ici', 'Тут закінчується тло Steam', 'Aquí termina el fondo de Steam', 'Aqui termina o fundo da Steam'],
+    steam_align: ['Match the profile background', 'Совместить с фоном профиля', 'An den Profilhintergrund anpassen', 'Profil arka planıyla eşleştir', 'Aligner sur le fond du profil', 'Поєднати з тлом профілю', 'Alinear con el fondo del perfil', 'Alinhar ao fundo do perfil'],
+    steam_offset: ['Showcase lower on the profile', 'Витрина ниже на профиле', 'Vitrine weiter unten im Profil', 'Vitrin profilde daha aşağıda', 'Vitrine plus bas sur le profil', 'Вітрина нижче на профілі', 'Expositor más abajo en el perfil', 'Vitrine mais abaixo no perfil'],
+    steam_hint: ['The picture continues the profile background exactly behind the showcase, the way Steam draws it (exact on 1920 px wide screens). It assumes the showcase is the first one on the profile; if yours is lower, move it with the slider.', 'Картинка продолжает фон профиля ровно там, где стоит витрина, так же, как его рисует Steam (точно на экранах шириной 1920 px). Считается, что витрина первая на профиле; если твоя ниже — сдвинь ползунком.', 'Das Bild setzt den Profilhintergrund genau hinter der Vitrine fort, wie Steam ihn zeichnet (exakt bei 1920 px breiten Bildschirmen). Angenommen wird die erste Vitrine im Profil; liegt deine tiefer, verschiebe sie mit dem Regler.', 'Görsel, profil arka planını vitrinin tam arkasında Steam’in çizdiği gibi sürdürür (1920 px genişlikte tam). Vitrinin profildeki ilk vitrin olduğu varsayılır; seninki aşağıdaysa kaydırıcıyla kaydır.', 'L’image prolonge le fond du profil juste derrière la vitrine, comme Steam le dessine (exact sur écrans de 1920 px). On suppose que la vitrine est la première du profil ; si la vôtre est plus bas, décalez-la avec le curseur.', 'Картинка продовжує тло профілю саме там, де стоїть вітрина, так само, як його малює Steam (точно на екранах 1920 px). Вважається, що вітрина перша на профілі; якщо твоя нижче — зсунь повзунком.', 'La imagen continúa el fondo del perfil justo detrás del expositor, como lo dibuja Steam (exacto en pantallas de 1920 px). Se asume que es el primer expositor del perfil; si el tuyo está más abajo, muévelo con el control.', 'A imagem continua o fundo do perfil exatamente atrás da vitrine, como a Steam desenha (exato em telas de 1920 px). Supõe-se que a vitrine é a primeira do perfil; se a sua estiver mais abaixo, mova com o controle.'],
     textfx_none: ['No animation', 'Без анимации', 'Keine Animation', 'Animasyon yok', 'Sans animation', 'Без анімації', 'Sin animación', 'Sem animação'],
-    textfx_color: ['Glow colour', 'Цвет свечения', 'Leuchtfarbe', 'Parıltı rengi', 'Couleur de lueur', 'Колір світіння', 'Color del brillo', 'Cor do brilho'],
+    textfx_color: ['Effect colour', 'Цвет эффекта', 'Effektfarbe', 'Efekt rengi', 'Couleur de l’effet', 'Колір ефекту', 'Color del efecto', 'Cor do efeito'],
+    textfx_color_reset: ['Default', 'По умолчанию', 'Standard', 'Varsayılan', 'Par défaut', 'За замовчуванням', 'Predeterminado', 'Padrão'],
     textfx_hint: ['The animation repeats with the scene length and plays in the exported GIF or video.', 'Анимация повторяется по длине сцены и сохраняется в экспорте GIF или видео.', 'Die Animation wiederholt sich mit der Szenenlänge und landet im exportierten GIF oder Video.', 'Animasyon sahne süresiyle tekrarlanır ve dışa aktarılan GIF ya da videoda oynar.', 'L’animation se répète selon la durée de scène et figure dans le GIF ou la vidéo exportés.', 'Анімація повторюється з довжиною сцени й зберігається в експорті GIF або відео.', 'La animación se repite con la duración de la escena y se incluye en el GIF o vídeo exportado.', 'A animação se repete com a duração da cena e aparece no GIF ou vídeo exportado.'],
     scene_hint: ['Looks at the background under the character and tunes brightness, contrast, saturation and tint so the character sits in the same light.', 'Смотрит на фон под персонажем и подбирает яркость, контраст, насыщенность и оттенок, чтобы персонаж был в том же свете, что и сцена.', 'Analysiert den Hintergrund hinter der Figur und passt Helligkeit, Kontrast, Sättigung und Farbton an, damit die Figur im selben Licht steht.', 'Karakterin arkasındaki arka plana bakar ve karakter aynı ışıkta dursun diye parlaklık, kontrast, doygunluk ve tonu ayarlar.', 'Analyse le fond derrière le personnage et règle luminosité, contraste, saturation et teinte pour qu’il soit dans la même lumière.', 'Дивиться на тло під персонажем і підбирає яскравість, контраст, насиченість і відтінок, щоб персонаж був у тому ж світлі, що й сцена.', 'Mira el fondo detrás del personaje y ajusta brillo, contraste, saturación y tono para que quede con la misma luz.', 'Analisa o fundo atrás do personagem e ajusta brilho, contraste, saturação e tom para que ele fique na mesma luz.'],
     scene_apply: ['Match the scene', 'Подстроить под сцену', 'An Szene anpassen', 'Sahneye uydur', 'Accorder à la scène', 'Підлаштувати під сцену', 'Ajustar a la escena', 'Ajustar à cena'],
@@ -253,7 +269,8 @@
     effectMore: ['Depth and light', 'Глубина и свет', 'Tiefe und Licht', 'Derinlik ve ışık', 'Profondeur et lumière', 'Глибина і світло', 'Profundidad y luz', 'Profundidade e luz'],
     transform: COPY.transform,
     textfx: ['Text animation', 'Анимация текста', 'Textanimation', 'Metin animasyonu', 'Animation du texte', 'Анімація тексту', 'Animación de texto', 'Animação de texto'],
-    scene: ['Match the scene', 'Под сцену', 'An Szene anpassen', 'Sahneye uydur', 'Accorder à la scène', 'Під сцену', 'Ajustar a la escena', 'Ajustar à cena']
+    scene: ['Match the scene', 'Под сцену', 'An Szene anpassen', 'Sahneye uydur', 'Accorder à la scène', 'Під сцену', 'Ajustar a la escena', 'Ajustar à cena'],
+    steamfit: ['Like on the Steam profile', 'Как на профиле Steam', 'Wie im Steam-Profil', 'Steam profilindeki gibi', 'Comme sur le profil Steam', 'Як на профілі Steam', 'Como en el perfil de Steam', 'Como no perfil da Steam']
   };
   function remembered(name, fallback) { try { var v = localStorage.getItem('sm_bx_group_' + name); return v == null ? fallback : v === '1'; } catch (e) { return fallback; } }
   function makeGroup(name, nodes, host, before, openByDefault) {
@@ -276,6 +293,10 @@
     sceneBox.innerHTML = '<p class="bx-scene__hint"></p><div class="bx-scene__row"><button type="button" class="btn bx-scene__apply"></button><button type="button" class="btn ghost bx-scene__undo"></button></div>' +
       '<label class="bx-scene__strength"><span><b></b><output>60%</output></span><input type="range" min="20" max="100" step="5" value="60"/></label><p class="bx-scene__status" role="status" hidden></p>';
     var sceneGroup = makeGroup('scene', [sceneBox], mediaBox, null, true);
+    var steamBox = node('div', 'bx-steamfit');
+    steamBox.innerHTML = '<label class="builder-toggle"><input type="checkbox" id="builderSteamAlign"/><i></i><span></span></label>' +
+      '<label class="bx-steamfit__offset"><span><b></b><output>0 px</output></span><input type="range" id="builderSteamOffset" min="0" max="600" step="2" value="0"/></label><p class="bx-steamfit__hint"></p>';
+    var steamGroup = makeGroup('steamfit', [steamBox], mediaBox, mediaBox.firstChild, true);
     var gradeBox = $('builderGrade');
     if (gradeBox) { makeGroup('grade', [gradeBox], mediaBox); var gradeHead = gradeBox.querySelector('.builder-grade__head strong'); if (gradeHead) gradeHead.classList.add('bx-hidden'); }
   }
@@ -385,17 +406,20 @@
   };
   var TEXT_FX_COLOR = (window.SMTextFx && SMTextFx.colored) || ['saber', 'neon'];
   function tr(row) { var i = Math.max(0, LANGS.indexOf(language())); return row[i] || row[0]; }
+  var SPEEDS = (window.SMTextFx && SMTextFx.speeds) || [1];
+  function speedIndex(value) { var best = 0; SPEEDS.forEach(function (v, i) { if (Math.abs(v - value) < Math.abs(SPEEDS[best] - value)) best = i; }); return best; }
+  function speedText(value) { return '×' + value; }
   var textBox = $('builderTextControls'), textFxTiles = [], textFxBox = null;
   if (textBox && window.SMTextFx) {
     textFxBox = node('div', 'bx-textfx');
     var textFxGrid = node('div', 'bx-effects bx-textfx__grid'); textFxGrid.setAttribute('role', 'radiogroup');
-    var fxColorLabel = node('label', 'bx-textfx__color', '<span></span><input type="color" id="builderTextFxColor" value="#52d5ff"/>');
+    var fxColorLabel = node('div', 'bx-textfx__color', '<label for="builderTextFxColor"></label><div><button type="button" class="bx-textfx__reset"></button><input type="color" id="builderTextFxColor" value="#52d5ff"/></div>');
     var textFxHint = node('p', 'bx-textfx__hint');
-    var speedLabel = node('label', 'bx-textfx__speed', '<span><b></b><output>×1</output></span><input type="range" id="builderTextFxSpeed" min="1" max="4" step="1" value="1"/><small></small>');
+    var speedLabel = node('label', 'bx-textfx__speed', '<span><b></b><output>×1</output></span><input type="range" id="builderTextFxSpeed" min="0" max="' + (SPEEDS.length - 1) + '" step="1" value="' + speedIndex(1) + '"/><div class="bx-textfx__ticks" aria-hidden="true"><i></i><i></i><i></i></div><small></small>');
     textFxBox.append(textFxGrid, fxColorLabel, speedLabel, textFxHint);
     speedLabel.querySelector('input').addEventListener('input', function (event) {
       var layer = SMBuilder.current(); if (!layer || layer.type !== 'text' || layer.locked) return;
-      layer.textFxSpeed = Number(event.target.value) || 1; speedLabel.querySelector('output').textContent = '×' + layer.textFxSpeed; SMBuilder.redraw();
+      layer.textFxSpeed = SPEEDS[Number(event.target.value)] || 1; speedLabel.querySelector('output').textContent = speedText(layer.textFxSpeed); SMBuilder.redraw();
     });
     speedLabel.querySelector('input').addEventListener('change', function () { SMBuilder.commit(); });
     var dirRow = node('div', 'bx-textdir', '<span></span><div role="group"><button type="button" data-dir="horizontal"><b>A→</b><i></i></button><button type="button" data-dir="vertical"><b>A↓</b><i></i></button></div>');
@@ -411,16 +435,21 @@
       b.addEventListener('click', function () {
         var layer = SMBuilder.current(); if (!layer || layer.type !== 'text' || layer.locked) return;
         layer.textFx = name === 'none' ? 'none' : name;
-        if (TEXT_FX_COLOR.indexOf(name) >= 0 && !layer.fxColor) layer.fxColor = (layer.color && layer.color.toLowerCase() !== '#ffffff') ? layer.color : '#52d5ff';
+        if (TEXT_FX_COLOR.indexOf(name) >= 0 && (!layer.fxColor || !layer.fxColorCustom)) layer.fxColor = SMTextFx.defaultColor(name);
         SMBuilder.redraw(); SMBuilder.commit(); paintTextFx();
       });
       textFxTiles.push({ button: b, canvas: c, name: name });
     });
     fxColorLabel.querySelector('input').addEventListener('input', function (event) {
       var layer = SMBuilder.current(); if (!layer || layer.type !== 'text' || layer.locked) return;
-      layer.fxColor = event.target.value; SMBuilder.redraw();
+      layer.fxColor = event.target.value; layer.fxColorCustom = true; SMBuilder.redraw();
     });
     fxColorLabel.querySelector('input').addEventListener('change', function () { SMBuilder.commit(); });
+    fxColorLabel.querySelector('.bx-textfx__reset').addEventListener('click', function () {
+      var layer = SMBuilder.current(); if (!layer || layer.type !== 'text' || layer.locked || !layer.textFx) return;
+      layer.fxColor = SMTextFx.defaultColor(layer.textFx); layer.fxColorCustom = false;
+      SMBuilder.redraw(); SMBuilder.commit(); paintTextFx();
+    });
     makeGroup('textfx', [textFxBox], textBox, null, true);
   }
   function paintTextFx() {
@@ -432,13 +461,15 @@
     });
     var colorRow = textFxBox.querySelector('.bx-textfx__color');
     colorRow.hidden = TEXT_FX_COLOR.indexOf(active) < 0;
-    colorRow.querySelector('span').textContent = t('textfx_color');
-    if (layer && layer.type === 'text') colorRow.querySelector('input').value = layer.fxColor || '#52d5ff';
+    colorRow.querySelector('label').textContent = t('textfx_color');
+    var reset = colorRow.querySelector('.bx-textfx__reset'); reset.textContent = t('textfx_color_reset');
+    reset.hidden = !(layer && layer.type === 'text' && layer.fxColorCustom);
+    if (layer && layer.type === 'text') colorRow.querySelector('input').value = layer.fxColor || SMTextFx.defaultColor(active);
     textFxBox.querySelector('.bx-textfx__hint').textContent = t('textfx_hint');
     var speed = textFxBox.querySelector('.bx-textfx__speed'), speedValue = layer && layer.type === 'text' ? (layer.textFxSpeed || 1) : 1;
     speed.hidden = active === 'none';
     speed.querySelector('b').textContent = t('textfx_speed'); speed.querySelector('small').textContent = t('textfx_speed_hint');
-    speed.querySelector('input').value = speedValue; speed.querySelector('output').textContent = '×' + speedValue;
+    speed.querySelector('input').value = speedIndex(speedValue); speed.querySelector('output').textContent = speedText(SPEEDS[speedIndex(speedValue)]);
     var dir = textBox.querySelector('.bx-textdir'), current = layer && layer.type === 'text' && layer.textDir === 'vertical' ? 'vertical' : 'horizontal';
     dir.querySelector('span').textContent = t('textdir');
     dir.querySelectorAll('[data-dir]').forEach(function (b) {
@@ -452,7 +483,6 @@
     if (!textFxBox || tool !== 'text' || inspectorSection.hidden || document.hidden || now - lastTextPreview < 50) return;
     lastTextPreview = now;
     var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var layer = SMBuilder.current(), glow = layer && layer.type === 'text' && layer.fxColor || '#52d5ff';
     var view = scroll.getBoundingClientRect();
     textFxTiles.forEach(function (tile) {
       var r = tile.canvas.getBoundingClientRect();
@@ -463,7 +493,7 @@
       g.fillStyle = '#0b1328'; g.fillRect(0, 0, c.width, c.height);
       g.save(); g.translate(c.width / 2, c.height / 2); g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '800 30px Mulish,sans-serif';
       if (tile.name === 'none') g.fillText('Steam', 0, 0);
-      else SMTextFx.draw(g, tile.name, ['Steam'], { u: still ? .5 : (now / 1000 % 3) / 3, period: 3, size: 30, color: glow });
+      else SMTextFx.draw(g, tile.name, ['Steam'], { u: still ? .5 : (now / 1000 % 3) / 3, period: 3, size: 30, color: SMTextFx.defaultColor(tile.name) });
       g.restore(); tile.drawn = true;
     });
   }
@@ -596,6 +626,124 @@
   });
   var stageWrap = root.querySelector('.builder-canvas-wrap'); if (stageWrap) stageWrap.append(mediaNote);
   window.addEventListener('sm:langchange', paintMediaNote);
+
+  // ------------------------------------------- like on the Steam profile
+  function paintSteam() {
+    if (!steamGroup) return;
+    var layer = SMBuilder.current(), isBg = !!layer && layer.type === 'background';
+    steamGroup.hidden = !isBg;
+    if (!isBg) return;
+    var align = steamBox.querySelector('#builderSteamAlign'), offset = steamBox.querySelector('#builderSteamOffset');
+    align.checked = !!layer.steamAlign;
+    steamBox.querySelector('.builder-toggle span').textContent = t('steam_align');
+    steamBox.querySelector('.bx-steamfit__offset b').textContent = t('steam_offset');
+    var value = Number(SMBuilder.project().steamOffsetY) || 0;
+    offset.value = value; steamBox.querySelector('.bx-steamfit__offset output').textContent = value + ' px';
+    steamBox.querySelector('.bx-steamfit__offset').hidden = !layer.steamAlign;
+    steamBox.querySelector('.bx-steamfit__hint').textContent = t('steam_hint');
+  }
+  if (steamGroup) {
+    steamBox.querySelector('#builderSteamAlign').addEventListener('change', function (event) { SMBuilder.setSteamAlign(event.target.checked); paintSteam(); paintHeight(); });
+    var steamOffset = steamBox.querySelector('#builderSteamOffset');
+    steamOffset.addEventListener('input', function () { var v = SMBuilder.setSteamOffset(steamOffset.value); steamBox.querySelector('.bx-steamfit__offset output').textContent = v + ' px'; paintHeight(); });
+    steamOffset.addEventListener('change', function () { SMBuilder.commitHeight(); });
+  }
+
+  // ---------------------------------------------- showcase height (live)
+  /* A handle on the bottom edge of the canvas changes the showcase height while dragging,
+     like steamprofiletools' crop tool; "To the end of the background" fits it exactly. */
+  var stage = root.querySelector('.builder-canvas-wrap'), canvasEl = $('builderCanvas');
+  var heightBar = node('div', 'bx-height');
+  heightBar.innerHTML = '<button type="button" class="bx-height__grip"><i aria-hidden="true"></i><span></span></button><output></output><button type="button" class="bx-height__fit"></button>';
+  var bgEnd = node('div', 'bx-bgend', '<span></span>'); bgEnd.hidden = true;
+  if (stage) stage.append(heightBar, bgEnd);
+  var heightDrag = null;
+  function fitHeight() {
+    var info = SMBuilder.steamInfo(); if (!info) return null;
+    var part = info.parts[0], scale = part.sw / part.dw;
+    return Math.round((info.height - part.y) / scale);
+  }
+  function paintHeight() {
+    if (!stage || !canvasEl) return;
+    var box = canvasEl.getBoundingClientRect(), wrap = stage.getBoundingClientRect();
+    heightBar.hidden = !box.width || !SMBuilder.layers().length;
+    heightBar.style.left = Math.round(box.left - wrap.left + box.width / 2) + 'px';
+    heightBar.style.top = Math.round(box.bottom - wrap.top) + 'px';
+    heightBar.querySelector('output').textContent = SMBuilder.height() + ' px';
+    heightBar.querySelector('.bx-height__grip').title = t('h_drag');
+    heightBar.querySelector('.bx-height__grip').setAttribute('aria-label', t('h_label'));
+    heightBar.querySelector('.bx-height__grip span').textContent = t('h_label');
+    var fit = fitHeight(), fitButton = heightBar.querySelector('.bx-height__fit');
+    fitButton.hidden = !fit; fitButton.textContent = t('h_fit');
+    // Line where the Steam background image ends (below it Steam shows the page colour).
+    var info = SMBuilder.steamInfo();
+    if (info && fit && fit < SMBuilder.height() - 6) {
+      bgEnd.hidden = false;
+      bgEnd.style.left = Math.round(box.left - wrap.left) + 'px'; bgEnd.style.width = Math.round(box.width) + 'px';
+      bgEnd.style.top = Math.round(box.top - wrap.top + box.height * fit / SMBuilder.height()) + 'px';
+      bgEnd.querySelector('span').textContent = t('bg_end');
+    } else bgEnd.hidden = true;
+  }
+  if (stage) {
+    var grip = heightBar.querySelector('.bx-height__grip');
+    grip.addEventListener('pointerdown', function (event) {
+      var box = canvasEl.getBoundingClientRect();
+      heightDrag = { y: event.clientY, h: SMBuilder.height(), display: box.height, pointer: event.pointerId };
+      grip.setPointerCapture(event.pointerId); event.preventDefault(); heightBar.classList.add('is-dragging');
+    });
+    grip.addEventListener('pointermove', function (event) {
+      if (!heightDrag || event.pointerId !== heightDrag.pointer) return;
+      var h = heightDrag.h * (heightDrag.display + event.clientY - heightDrag.y) / heightDrag.display;
+      SMBuilder.setHeight(h); paintHeight();
+    });
+    var endHeight = function () { if (!heightDrag) return; heightDrag = null; heightBar.classList.remove('is-dragging'); SMBuilder.commitHeight(); paintHeight(); };
+    grip.addEventListener('pointerup', endHeight); grip.addEventListener('pointercancel', endHeight);
+    grip.addEventListener('keydown', function (event) {
+      var step = event.shiftKey ? 50 : 10;
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); SMBuilder.setHeight(SMBuilder.height() + (event.key === 'ArrowDown' ? step : -step)); SMBuilder.commitHeight(); paintHeight(); }
+    });
+    heightBar.querySelector('.bx-height__fit').addEventListener('click', function () { var fit = fitHeight(); if (fit) { SMBuilder.setHeight(fit); SMBuilder.commitHeight(); paintHeight(); } });
+    new ResizeObserver(function () { paintHeight(); }).observe(stage);
+    setInterval(function () { if (!document.hidden && root.offsetParent) paintHeight(); }, 700);
+  }
+
+  // ------------------------------------------------- download for Steam
+  var exportButton = $('builderExport');
+  if (exportButton) {
+    var dlWrap = node('div', 'bx-download');
+    dlWrap.innerHTML = '<label class="bx-download__fps"><span></span><select id="builderDownloadFps"><option value="12">12</option><option value="15" selected>15</option><option value="20">20</option><option value="24">24</option></select></label><button type="button" class="btn" id="builderDownloadSteam"></button>';
+    exportButton.before(dlWrap);
+    exportButton.classList.add('ghost');
+    var dlButton = dlWrap.querySelector('#builderDownloadSteam');
+    dlButton.addEventListener('click', async function () {
+      if (dlButton.disabled) return;
+      dlButton.disabled = true; exportButton.disabled = true;
+      var say = function (key, pct) { SMBuilder.status(t(key).replace('{pct}', pct == null ? '' : Math.round(pct)), 'wait'); };
+      try {
+        var file = await SMBuilder.prepare(function (done, total) { say('st_render', done / total * 100); });
+        var q = function (id, fallback) { var n = $(id); return n ? (n.type === 'checkbox' ? (n.checked ? '1' : '0') : n.value) : fallback; };
+        var watermark = { wm_text: q('wmText', 'n1t1337'), wm_font: q('wmFont', 'lap'), wm_opacity: q('wmOpacity', '22'), wm_enable: q('wmEnable', '1'),
+          wm_corner: q('wmCorner', 'bl'), wm_color: q('wmColor', '#ffffff'), wm_scale: String((Number(q('wmScale', '100')) || 100) / 100) };
+        var result = await SMBuilderExport.processForSteam(file, {
+          mode: SMBuilder.project().mode, fps: Number($('builderDownloadFps').value) || 15, size: 750, watermark: watermark,
+          onProgress: function (stage, fraction) { say(stage === 'upload' ? 'st_upload' : stage === 'queued' ? 'st_queued' : 'st_process', fraction * 100); }
+        });
+        SMBuilder.status(t('st_done'), 'ok');
+        window.__lastGalleryJobId = result.id;
+        if (!(window.ProcessResult && await window.ProcessResult.open(result.job, result.id, [file]))) {
+          var a = document.createElement('a'); a.href = result.job.download || ('/api/process/download/' + encodeURIComponent(result.id)); a.download = 'showcase_' + SMBuilder.project().mode + '.zip';
+          document.body.appendChild(a); a.click(); a.remove();
+        }
+      } catch (error) {
+        SMBuilder.status(String(error && error.message || error), 'bad');
+      } finally { dlButton.disabled = false; exportButton.disabled = false; }
+    });
+  }
+  function paintDownload() {
+    var b = $('builderDownloadSteam'); if (!b) return;
+    b.textContent = t('dl_steam'); b.title = t('dl_hint');
+    var fps = root.querySelector('.bx-download__fps span'); if (fps) fps.textContent = 'FPS'; var sel = $('builderDownloadFps'); if (sel) sel.title = t('dl_fps');
+  }
 
   // ------------------------------------------------------ drag to reorder
   /* Rows can be dragged with the mouse anywhere on the row, and on touch screens by
@@ -778,6 +926,9 @@
     paintEffects();
     paintTextFx();
     paintScene();
+    paintSteam();
+    paintHeight();
+    paintDownload();
   }
   var groupNode = inspector && inspector.querySelector('.bx-transform');
   if (groupNode) groupNode.querySelector('summary').addEventListener('click', function () { groupNode.dataset.bxTouched = '1'; });

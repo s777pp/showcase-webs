@@ -385,3 +385,48 @@ html.bx-fonts-open{overflow:hidden}
 @media (max-width:520px){#showcaseBuilder.bx .bx-textfx__grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 #showcaseBuilder.bx .bx-textdir button i{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.15;text-align:left}
 @media (max-width:420px){#showcaseBuilder.bx .bx-textdir button{gap:4px;font-size:11px}#showcaseBuilder.bx .bx-textdir button b{font-size:11px}}
+
+/* Effect colour (with reset) and speed slider with a centre mark (2026-09-30). */
+#showcaseBuilder.bx .bx-textfx__color>div{display:flex;align-items:center;gap:8px}
+#showcaseBuilder.bx .bx-textfx__color label{font-size:12px;color:var(--bx-muted)}
+#showcaseBuilder.bx .bx-textfx__reset{min-height:28px;padding:3px 9px;border:1px solid var(--bx-line);border-radius:8px;background:transparent;color:var(--bx-muted);font:700 11px var(--v2-font);cursor:pointer}
+#showcaseBuilder.bx .bx-textfx__reset:hover{color:#fff;border-color:rgba(111,227,255,.45)}
+#showcaseBuilder.bx .bx-textfx__reset[hidden]{display:none!important}
+#showcaseBuilder.bx .bx-textfx__ticks{display:flex;justify-content:space-between;margin:-2px 8px 0;pointer-events:none}
+#showcaseBuilder.bx .bx-textfx__ticks i{width:1px;height:6px;background:rgba(160,190,215,.35)}
+#showcaseBuilder.bx .bx-textfx__ticks i:nth-child(2){height:8px;background:var(--bx-cyan)}
+#showcaseBuilder.bx .bx-textfx__color input[type=color]{flex:none;width:56px;height:32px;padding:2px;border:1px solid var(--bx-line);border-radius:8px;background:var(--bx-inset);cursor:pointer}
+
+/* Showcase height handle, background end line, Steam fit group, direct download (2026-09-30). */
+#showcaseBuilder.bx .bx-height{position:absolute;z-index:5;display:flex;align-items:center;gap:8px;transform:translate(-50%,-50%);pointer-events:none}
+#showcaseBuilder.bx .bx-height[hidden]{display:none!important}
+#showcaseBuilder.bx .bx-height>*{pointer-events:auto}
+#showcaseBuilder.bx .bx-height__grip{display:inline-flex;align-items:center;gap:8px;min-height:30px;padding:4px 12px;border:1px solid rgba(82,213,255,.55);border-radius:999px;background:rgba(5,10,28,.92);color:#dff6ff;font:700 11.5px var(--v2-font);cursor:ns-resize;touch-action:none;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+#showcaseBuilder.bx .bx-height__grip i{width:18px;height:6px;border-top:2px solid var(--bx-cyan);border-bottom:2px solid var(--bx-cyan)}
+#showcaseBuilder.bx .bx-height.is-dragging .bx-height__grip{background:rgba(31,201,241,.25);border-color:var(--bx-cyan)}
+#showcaseBuilder.bx .bx-height output{padding:3px 8px;border-radius:8px;background:rgba(5,10,28,.85);color:#fff;font:800 11.5px var(--v2-font)}
+#showcaseBuilder.bx .bx-height__fit{min-height:28px;padding:3px 10px;border:1px solid var(--bx-line);border-radius:999px;background:rgba(5,10,28,.9);color:var(--bx-muted);font:700 11px var(--v2-font);cursor:pointer}
+#showcaseBuilder.bx .bx-height__fit:hover{color:#fff;border-color:rgba(111,227,255,.5)}
+#showcaseBuilder.bx .bx-height__fit[hidden]{display:none!important}
+#showcaseBuilder.bx .bx-bgend{position:absolute;z-index:4;height:0;border-top:2px dashed rgba(255,196,80,.85);pointer-events:none}
+#showcaseBuilder.bx .bx-bgend[hidden]{display:none!important}
+#showcaseBuilder.bx .bx-bgend span{position:absolute;right:6px;top:-22px;padding:2px 8px;border-radius:6px;background:rgba(40,26,0,.85);color:#ffd27a;font:700 10.5px var(--v2-font)}
+#showcaseBuilder.bx .bx-steamfit{display:grid;gap:10px}
+#showcaseBuilder.bx .bx-steamfit__offset{display:grid;gap:4px}
+#showcaseBuilder.bx .bx-steamfit__offset[hidden]{display:none!important}
+#showcaseBuilder.bx .bx-steamfit__offset span{display:flex;justify-content:space-between}
+#showcaseBuilder.bx .bx-steamfit__hint{margin:0;font-size:11.5px;line-height:1.45;color:var(--bx-muted)}
+#showcaseBuilder.bx .bx-download{display:inline-flex;align-items:center;gap:8px}
+#showcaseBuilder.bx .bx-download__fps{display:inline-flex;align-items:center;gap:6px;font:700 11px var(--v2-font);color:var(--bx-muted)}
+#showcaseBuilder.bx .bx-download__fps select{min-height:34px;padding:2px 6px;border-radius:8px}
+#showcaseBuilder.bx #builderDownloadSteam{background:linear-gradient(135deg,#1fc9f1,#8a62ff)!important;color:#fff!important;border:0!important}
+#showcaseBuilder.bx .builder-canvas-wrap{padding-bottom:22px}
+/* Actions: name + save on the first row, "Download for Steam" (main) + hand-off to Prepare on the second. */
+#showcaseBuilder.bx .builder-actions{grid-template-columns:minmax(0,1fr) auto!important}
+#showcaseBuilder.bx .bx-download{display:flex;min-width:0;gap:8px}
+#showcaseBuilder.bx .bx-download #builderDownloadSteam{flex:1;min-width:0;white-space:normal;line-height:1.2}
+#showcaseBuilder.bx #builderExport{white-space:normal;line-height:1.2}
+@media (max-width:520px){
+  #showcaseBuilder.bx .builder-actions{grid-template-columns:1fr!important}
+  #showcaseBuilder.bx .builder-actions>*{width:100%}
+}

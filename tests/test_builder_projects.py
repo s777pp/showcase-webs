@@ -87,8 +87,12 @@ class BuilderProjectTests(unittest.TestCase):
             {"type": "text", "textFx": "fire", "textDir": "vertical", "textFxSpeed": 9},
             {"type": "text", "textFx": "lightning", "textDir": "diagonal", "textFxSpeed": "x"},
             {"type": "character", "textDir": "vertical", "textFxSpeed": 2},
+            {"type": "text", "textFx": "neon", "textFxSpeed": 0.5, "fxColorCustom": "yes"},
+            {"type": "text", "textFx": "neon", "textFxSpeed": 0.01, "fxColorCustom": True},
         ]})
-        fire, bad, character = project["layers"]
+        fire, bad, character, slow, slowest = project["layers"]
+        self.assertEqual((slow["textFxSpeed"], slow["fxColorCustom"]), (0.5, False))
+        self.assertEqual((slowest["textFxSpeed"], slowest["fxColorCustom"]), (0.25, True))
         self.assertEqual((fire["textFx"], fire["textDir"], fire["textFxSpeed"]), ("fire", "vertical", 4))
         self.assertEqual((bad["textFx"], bad["textDir"], bad["textFxSpeed"]), ("lightning", "horizontal", 1))
         self.assertNotIn("textDir", character)
