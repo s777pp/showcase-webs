@@ -22,6 +22,9 @@ import auth_db
 CATEGORIES = ("news", "update", "feature", "announcement", "event", "maintenance", "promo")
 STATUSES = ("draft", "published")
 BELL_DAYS = 7
+# A date set more than this far in the past makes an archive post (old changelogs):
+# it takes its place in the feed but never reaches the bell or the nav dot.
+BACKDATE_GRACE = 3600
 MEDIA_DIR = Path(auth_db.DATA) / "news-media"
 MEDIA_PREFIX = "/api/news/media/"
 FIELDS = ("id", "slug", "category", "title_ru", "title_en", "summary_ru", "summary_en", "body_ru", "body_en",
@@ -188,6 +191,9 @@ def save(payload: dict) -> dict:
             values["published_at"] = publish_at or (current["published_at"] if current and current["published_at"] else now)
         else:
             values["published_at"] = publish_at
+        old_at = float(current["published_at"]) if current and current["published_at"] else None
+        if publish_at is not None and publish_at < now - BACKDATE_GRACE and (old_at is None or abs(old_at - publish_at) > 1):
+            values["notify"] = 0  # backdated: archive post, no bell and no dot
         if values["pinned"]:
             c.execute("UPDATE news_posts SET pinned=0 WHERE pinned=1")
         if current:
@@ -293,7 +299,8 @@ def latest_unread_at(user: dict | None) -> float:
         return 0.0
     c = auth_db._conn()
     try:
-        row = c.execute("SELECT MAX(published_at) AS t FROM news_posts WHERE status='published' AND published_at>? AND published_at<=?",
+        row = c.execute("SELECT MAX(published_at) AS t FROM news_posts WHERE status='published' AND notify=1 "
+                        "AND published_at>? AND published_at<=?",
                         (_seen_since(user), time.time())).fetchone()
         return float(row["t"] or 0)
     finally:

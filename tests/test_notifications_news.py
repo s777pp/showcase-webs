@@ -126,3 +126,27 @@ def test_bell_api_merges_news_and_marks_everything_read(monkeypatch):
     after = client.post("/api/notifications/read", json={"all": True}).json()
     assert after["unread"] == 0 and after["news_dot"] is False
     news.delete(saved["id"])
+
+
+def test_backdated_post_goes_to_the_feed_without_bell_or_dot():
+    uid, _ = _user()
+    user = {"id": uid}
+    c = auth_db._conn()
+    try:
+        c.execute("UPDATE users SET created_at=?, news_seen_at=NULL WHERE id=?", (time.time() - 30 * 86400, uid))
+        c.commit()
+    finally:
+        c.close()
+    two_days_ago = time.time() - 2 * 86400
+    saved = news.save({"title_ru": "Старый список изменений", "title_en": "Old changelog", "status": "published",
+                       "notify": True, "published_at": two_days_ago})
+    post = news.by_slug(saved["slug"])
+    assert post and not post["notify"] and abs(post["published_at"] - two_days_ago) < 1
+    assert news.unread_count(user) == 0 and news.latest_unread_at(user) == 0
+    assert all(i["id"] != "news:" + saved["id"] for i in news.bell_items(user, "ru"))
+    assert any(p["id"] == saved["id"] for p in news.published())
+    # Re-saving with the same date keeps the owner's explicit choice.
+    news.save({"id": saved["id"], "title_en": "Old changelog", "status": "published", "notify": True,
+               "published_at": two_days_ago})
+    assert news.by_slug(saved["slug"])["notify"]
+    news.delete(saved["id"])

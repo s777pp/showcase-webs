@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 409 passed on 2026-10-01 (~125 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 410 passed on 2026-10-01 (~125 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -719,6 +719,9 @@ Only the hero exists for now; content blocks will be added below it later.
 - News (`smweb/news.py`, `routers/news.py`, `static/news.html`, `css/news.css`, `js/news.js`): table `news_posts`
   (RU + EN written by hand, other languages get EN), categories news/update/feature/announcement/event/maintenance/promo,
   draft / published / scheduled (`published_at` in the future), pinned post, `notify` flag (bell + nav dot).
+  Backdated posts (date set or moved more than `BACKDATE_GRACE` = 1 h into the past) are saved with `notify=0`, so old
+  changelogs fill the feed without bell or dot; the dot (`latest_unread_at`) counts only `notify=1` posts. The admin
+  editor unchecks/locks "Уведомить" for a past date and tags such rows "ЗАДНИМ ЧИСЛОМ" (published_at < created_at - 1 h).
   Unread is computed from `users.news_seen_at` (no per-user rows); `POST /api/news/seen` on the news page.
   Pages `/{lang}/news` (filters `?category=`) and `/{lang}/news/{slug}` (NewsArticle JSON-LD), in the sitemap.
   HTML body is cleaned server-side (`clean_html`: images only from `/api/news/media/` or R2 `news/`); images are
