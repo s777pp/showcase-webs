@@ -128,7 +128,7 @@ def clean_description(raw: str, placeholders: bool = False) -> str:
 # Block HTML (p, h4, lists) without new lines made DeviantArt drop every tag and glue the
 # text into one line (owner report 2026-10-01), so the editor's HTML is converted here.
 INLINE_RENAME = {"strong": "b", "em": "i", "strike": "s"}
-INLINE_KEEP = {"b", "i", "u", "s", "a", "sub", "sup", "small", "code"}
+INLINE_KEEP = {"b", "i", "u", "s", "sub", "sup", "small", "code"}
 BLOCKS = {"p", "h1", "h2", "h3", "h4", "li", "blockquote", "ul", "ol"}
 
 
@@ -138,6 +138,7 @@ class _Markup(HTMLParser):
         self.out: list[str] = []
         self.open: list[str] = []
         self.block_text = False
+        self.links: list[tuple[str, int]] = []  # (href, position of the link text)
 
     def _newline(self):
         self.out.append("\n")
@@ -157,16 +158,15 @@ class _Markup(HTMLParser):
                 self.out.append("<b>")
                 self.open.append("b")
             return
+        if tag == "a":
+            # DeviantArt drops <a> from artist comments sent through the API (owner check
+            # 2026-10-01), so the address goes right after the link text, where DeviantArt
+            # turns it into a clickable link itself.
+            self.links.append((safe_href(dict(attrs).get("href") or ""), len(self.out)))
+            return
         if tag not in INLINE_KEEP:
             return
-        if tag == "a":
-            href = safe_href(dict(attrs).get("href") or "")
-            if not href:
-                self.open.append("")
-                return
-            self.out.append(f'<a href="{html.escape(href, quote=True)}">')
-        else:
-            self.out.append(f"<{tag}>")
+        self.out.append(f"<{tag}>")
         self.open.append(tag)
 
     def handle_endtag(self, tag):
@@ -177,13 +177,19 @@ class _Markup(HTMLParser):
             if self.block_text or tag in ("p", "li", "h1", "h2", "h3", "h4", "blockquote"):
                 self._newline()
             return
+        if tag == "a":
+            if self.links:
+                href, start = self.links.pop()
+                label = re.sub(r"<[^>]+>", "", "".join(self.out[start:])).strip()
+                if href and html.unescape(label) != href:
+                    self.out.append(" " + html.escape(href, quote=False))
+                elif href and not label:
+                    self.out.append(html.escape(href, quote=False))
+            return
         if tag in INLINE_KEEP:
             self._close(tag)
 
     def _close(self, tag):
-        if tag == "a" and "a" not in self.open and "" in self.open:
-            self.open.remove("")
-            return
         if tag in self.open:
             while self.open:
                 top = self.open.pop()

@@ -29,7 +29,7 @@ body.site-v2 :is(#tab-loop,#tab-doctor,#tab-design-ai,#tab-steam,#tab-compose) :
 body.site-v2 :is(#tab-download,#tab-convert,#tab-hex)>.tu-layout>.card::after{display:none!important}
 
 /* ------------------------------------------------------------------ simple tools: card + guide */
-body.site-v2 .tu-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,340px);gap:16px;align-items:start;max-width:1240px;margin:0 auto}
+body.site-v2 .tu-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);gap:16px;align-items:start;max-width:none;margin:0 auto}
 body.site-v2 .tu-layout>.card.tu-main{max-width:none!important;width:auto!important;margin:0!important;min-height:0!important;padding:24px!important}
 body.site-v2 .tu-guide{position:sticky;top:124px;display:grid;gap:14px;padding:20px;border:1px solid var(--tu-line);border-radius:var(--tu-radius);background:var(--tu-panel);box-shadow:0 18px 50px rgba(0,0,0,.28);font-family:var(--tu-font);color:var(--tu-ink)}
 body.site-v2 .tu-guide__title{margin:0;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--tu-cyan)}
@@ -51,7 +51,7 @@ body.site-v2 :is(#tab-download,#tab-convert,#tab-upscale,#tab-hex,#tab-da,#tab-s
 body.site-v2 :is(#tab-download,#tab-convert,#tab-upscale,#tab-hex,#tab-da) .pill{border-radius:999px!important;padding:7px 12px!important;font:700 12px var(--tu-font)!important}
 
 /* ------------------------------------------------------------------ Steam tab */
-body.site-v2 #tab-steam>.card{max-width:1240px!important;margin:0 auto!important;padding:0!important;border:0!important;background:none!important;box-shadow:none!important}
+body.site-v2 #tab-steam>.card{max-width:none!important;margin:0 auto!important;padding:0!important;border:0!important;background:none!important;box-shadow:none!important}
 body.site-v2 #tab-steam .steam-layout{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:16px!important}
 body.site-v2 #tab-steam .steam-extension-card{position:relative;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:32px;align-items:start;
   padding:28px!important;border:1px solid var(--tu-line)!important;border-radius:var(--tu-radius)!important;background:var(--tu-panel)!important;box-shadow:0 18px 50px rgba(0,0,0,.28)!important;font-family:var(--tu-font)}
@@ -106,7 +106,7 @@ body.site-v2 .top-chrome .nav .nav-group__menu>button[data-tab]::before{backgrou
 
 /* ------------------------------------------------------------------ About */
 body.site-v2 #tab-about [hidden]{display:none!important}
-body.site-v2 #tab-about .tu-about{display:grid;gap:16px;max-width:1240px;margin:0 auto;font-family:var(--tu-font);color:var(--tu-ink)}
+body.site-v2 #tab-about .tu-about{display:grid;gap:16px;max-width:none;margin:0 auto;font-family:var(--tu-font);color:var(--tu-ink)}
 body.site-v2 #tab-about .card{margin:0!important;max-width:none!important;min-height:0!important;padding:24px!important;text-align:left!important;display:block!important}
 body.site-v2 #tab-about h3{margin:0 0 14px;font-size:17px;font-weight:800;color:#fff;letter-spacing:-.01em}
 body.site-v2 #tab-about .tu-kicker{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--tu-cyan)}

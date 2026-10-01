@@ -105,3 +105,7 @@
   .dp-classes,.dp-folders{grid-template-columns:1fr}
   .dp .dp-go{width:100%;min-width:0}
 }
+
+.dp-copy{display:grid;gap:6px;padding:10px 12px;border:1px solid rgba(138,125,255,.35);border-radius:12px;background:rgba(138,125,255,.08)}
+.dp-copy__btn{justify-self:start}
+.dp-link{padding:0;border:0;background:none;color:var(--dp-cyan);font:700 12px var(--dp-font);cursor:pointer;text-decoration:underline}

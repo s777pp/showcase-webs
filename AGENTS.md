@@ -220,7 +220,9 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
   behaviour. `artist_comments` is sent as DeviantArt's classic markup (`to_da_markup`: one line per block, `
 ` for
   breaks, headings -> <b>, lists -> "• ", only inline b/i/u/s/a/sub/sup/small/code): block HTML made DeviantArt drop
-  every tag and glue the text into one line (owner screenshot IMAGE/dev.png). Tests: `tests/test_da_publish.py`.
+  every tag and glue the text into one line (owner screenshot IMAGE/dev.png). DeviantArt also drops `<a>` sent
+  through the API, so links go out as "text URL"; the "Copy the description for DeviantArt" button puts rich HTML
+  (links on text) on the clipboard for pasting into DeviantArt's own editor. Tests: `tests/test_da_publish.py`.
 - **My results** (added 2026-09-26, local, not deployed): when a signed-in user's Process or Workshop
   Studio job finishes, the worker keeps the ZIP (`smweb/saved_results.py`): private R2 `results/<uid>/<id>.zip`
   when R2 is configured, otherwise `/data/results/<uid>/<id>.zip`; a WebP thumbnail always stays in
