@@ -194,6 +194,7 @@ def _create_schema(c: sqlite3.Connection) -> None:
         ("is_suspended", "INTEGER DEFAULT 0"),
         ("suspended_reason", "TEXT"),
         ("suspended_until", "REAL"),
+        ("news_seen_at", "REAL"),
     ):
         if col not in cols:
             try:
@@ -266,6 +267,46 @@ def _create_schema(c: sqlite3.Connection) -> None:
     c.execute("CREATE INDEX IF NOT EXISTS idx_likes_item ON gallery_likes(item_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_comments_item ON gallery_comments(item_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read)")
+    # Site-wide notifications (2026-10-01): a title, a link, parameters for the
+    # browser's localized text, and a group key so repeated events update one row.
+    notif_cols = {r[1] for r in c.execute("PRAGMA table_info(notifications)").fetchall()}
+    for col, typ in (("title", "TEXT"), ("link", "TEXT"), ("meta_json", "TEXT"), ("group_key", "TEXT")):
+        if col not in notif_cols:
+            c.execute(f"ALTER TABLE notifications ADD COLUMN {col} {typ}")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_notif_group ON notifications(user_id, group_key)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(created_at)")
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS news_posts (
+            id TEXT PRIMARY KEY,
+            slug TEXT NOT NULL UNIQUE,
+            category TEXT NOT NULL DEFAULT 'news',
+            title_ru TEXT, title_en TEXT,
+            summary_ru TEXT, summary_en TEXT,
+            body_ru TEXT, body_en TEXT,
+            cover_url TEXT,
+            pinned INTEGER DEFAULT 0,
+            notify INTEGER DEFAULT 1,
+            status TEXT NOT NULL DEFAULT 'draft',
+            published_at REAL,
+            created_at REAL NOT NULL,
+            updated_at REAL NOT NULL
+        )
+        """
+    )
+    c.execute("CREATE INDEX IF NOT EXISTS idx_news_published ON news_posts(status, published_at)")
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS support_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticket_id TEXT NOT NULL,
+            author TEXT NOT NULL,
+            body TEXT NOT NULL,
+            created_at REAL NOT NULL
+        )
+        """
+    )
+    c.execute("CREATE INDEX IF NOT EXISTS idx_support_messages_ticket ON support_messages(ticket_id, created_at)")
     c.execute(
         """
         CREATE TABLE IF NOT EXISTS profile_showcases (
@@ -2266,7 +2307,7 @@ def notifications_list(user_id: int, limit: int = 40) -> list[dict]:
     rows = c.execute(
         """
         SELECT n.id, n.kind, n.actor_id, n.item_id, n.comment_id, n.body, n.is_read, n.created_at,
-               u.display_name, u.email, u.discord_username
+               n.title, n.link, n.meta_json, u.display_name, u.email, u.discord_username
         FROM notifications n
         LEFT JOIN users u ON u.id = n.actor_id
         WHERE n.user_id=?

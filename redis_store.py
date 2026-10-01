@@ -166,7 +166,7 @@ def job_create(jid: str, data: dict, enqueue: bool = True) -> None:
         _local_jobs[jid] = data
 
 
-def job_update(jid: str, **kw) -> None:
+def _job_update(jid: str, **kw) -> None:
     """Upsert. The old version returned early when the key was missing, silently
     dropping progress written before job_create or after the TTL expired."""
     if kw.get("status") == "error":
@@ -213,6 +213,17 @@ def job_update(jid: str, **kw) -> None:
         j.update(kw)
         j["updated"] = time.time()
         _local_jobs[jid] = j
+
+
+def job_update(jid: str, **kw) -> None:
+    _job_update(jid, **kw)
+    if kw.get("status") in ("done", "error"):
+        # Site notifications for the job's owner (signed-in users only).
+        try:
+            from smweb import notify
+            notify.job_finished(jid, kw)
+        except Exception:
+            pass
 
 
 def job_get(jid: str) -> Optional[dict]:

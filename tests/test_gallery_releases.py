@@ -149,6 +149,25 @@ def test_gallery_accepts_gif_archive_above_steam_file_limit(gallery_site):
         assert saved.read("featured.gif") == large_gif
 
 
+def test_steam_patched_gif_preview_is_accepted_and_broken_gif_is_a_400(gallery_site):
+    # A part from a Steam-ready ZIP has its GIF trailer replaced by 0x21 (HEX 21);
+    # Pillow raised IndexError on it and users saw "Could not prepare the work".
+    client, data_dir = gallery_site
+    patched = _gif()[:-1] + b"\x21"
+    response = client.post("/api/gallery/works", data={"title": "Patched", "mode": "featured",
+        "rights_confirmed": "true"}, files={"preview": ("part.gif", patched, "image/gif"),
+        "archive": ("work.zip", _zip(patched, name="featured.gif"), "application/zip")},
+        headers={"X-Session-Token": "owner"})
+    assert response.status_code == 200, response.text
+    row = auth_db.gallery_get(response.json()["id"])
+    assert row["is_animated"] and (data_dir / row["image_path"]).read_bytes().endswith(b";")
+    broken = client.post("/api/gallery/works", data={"title": "Broken", "mode": "featured",
+        "rights_confirmed": "true"}, files={"preview": ("part.gif", _gif()[:40], "image/gif"),
+        "archive": ("work.zip", _zip(mode="featured"), "application/zip")},
+        headers={"X-Session-Token": "owner"})
+    assert broken.status_code == 400, broken.text
+
+
 def test_paid_release_uses_external_sale_link_without_private_archive(gallery_site):
     client, _ = gallery_site
     response = _publish(client, paid=True, mode="featured",

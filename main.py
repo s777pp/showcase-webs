@@ -51,6 +51,7 @@ from smweb.middleware import (
 from smweb import jobs  # noqa: F401  (starts the temp-file cleaner)
 
 
+from smweb.routers import news as news_router  # noqa: E402
 from smweb.routers import (
     pages,
     system,
@@ -158,6 +159,7 @@ async def _unhandled(request: Request, exc: Exception):
 
 # ---- routes -------------------------------------------------------------
 app.include_router(pages.router)
+app.include_router(news_router.router)
 app.include_router(system.router)
 app.include_router(auth.router)
 app.include_router(oauth.router)

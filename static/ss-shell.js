@@ -7,6 +7,7 @@
 
   var NAV = [
     { href: '/',        key: 'home',    label: { ru: 'Главная',    en: 'Home' },     icon: 'home' },
+    { href: '/news',    key: 'news',    label: null /* SHELL_COPY.news, set below */, icon: 'news' },
     { href: '/app',     key: 'tools',   label: { ru: 'Инструменты',en: 'Tools' },    icon: 'tools' },
     { href: '/profile', key: 'builder', label: { ru: 'Профиль',    en: 'Profile' },  icon: 'user' },
     { href: '/gallery', key: 'gallery', label: { ru: 'Галерея',    en: 'Gallery' },  icon: 'grid' },
@@ -15,13 +16,18 @@
   ];
 
   var GROUPS = [
-    { title: { ru: 'Сайт',        en: 'Site' },    items: ['home', 'gallery', 'extension'] },
+    { title: { ru: 'Сайт',        en: 'Site' },    items: ['home', 'news', 'gallery', 'extension'] },
     { title: { ru: 'Инструменты', en: 'Tools' },   items: ['tools', 'builder', 'support'] },
     { title: { ru: 'Аккаунт',     en: 'Account' }, items: ['account'] }
   ];
 
   var ICONS = {
     home: '<path d="M3 10.5 12 3l9 7.5V21H3z"/>',
+    news: '<path d="M5 4h11a2 2 0 0 1 2 2v13a1 1 0 0 0 2 0V9"/><path d="M5 4a1 1 0 0 0-1 1v13a2 2 0 0 0 2 2h13"/><path d="M8 8h6M8 12h6M8 16h4"/>',
+    bell: '<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+    chevron: '<path d="m7 10 5 5 5-5"/>',
+    logout: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 16l-4-4 4-4M6 12h10"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
     tools: '<path d="M4 7h16M4 12h10M4 17h7"/>',
     extension: '<path d="M8 4h4v3a2 2 0 1 0 4 0V4h4v6h-3a2 2 0 1 0 0 4h3v6h-6v-3a2 2 0 1 0-4 0v3H4v-6h3a2 2 0 1 0 0-4H4V4h4z"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>',
@@ -100,7 +106,8 @@
       return '<a class="ss-nav__i' + (active(n.href) ? ' is-on' : '') + '" href="' + siteUrl(n.href) + '"' + (n.key === 'support' ? ' data-support-choice' : '') +
         (n.external ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
         svg(n.icon) + '<span>' + esc(t(n.label)) + '</span>' +
-        (n.tag ? '<i class="ss-nav__tag">' + esc(lang() === 'ru' ? 'новое' : n.tag) + '</i>' : '') + '</a>';
+        (n.tag ? '<i class="ss-nav__tag">' + esc(lang() === 'ru' ? 'новое' : n.tag) + '</i>' : '') +
+        (n.key === 'news' ? '<i class="ss-nav__dot" data-news-dot hidden aria-hidden="true"></i>' : '') + '</a>';
     }).join('');
   }
 
@@ -141,7 +148,14 @@
       '<a class="ss-logo" href="' + siteUrl('/') + '"><span class="ss-logo__mark"><img src="/static/icon-256.png" alt=""></span>' +
       '<span class="ss-logo__txt"><b>Showcase</b><span>Maker</span></span></a>' +
       '<div class="ss-account-primary">' +
-        '<a class="ss-pill" id="ssUser" href="' + siteUrl('/profile') + '" hidden></a>' +
+        '<div class="ss-account" id="ssAccount">' +
+          '<button class="ss-pill" id="ssUser" type="button" hidden aria-haspopup="menu" aria-expanded="false" aria-controls="ssAccountMenu" aria-label="' + esc(t(SHELL_COPY.account)) + '"></button>' +
+          '<div class="ss-account__menu" id="ssAccountMenu" role="menu" hidden>' +
+            '<a role="menuitem" id="ssMenuProfile" href="' + siteUrl('/profile') + '">' + svg('user') + '<span>' + esc(t(SHELL_COPY.profile)) + '</span></a>' +
+            '<a role="menuitem" id="ssMenuSettings" href="' + siteUrl('/profile') + '#account">' + svg('settings') + '<span>' + esc(t(SHELL_COPY.settings)) + '</span></a>' +
+            '<button role="menuitem" type="button" id="ssMenuLogout">' + svg('logout') + '<span>' + esc(t(SHELL_COPY.logout)) + '</span></button>' +
+          '</div>' +
+        '</div>' +
         '<button class="ss-btn ss-btn--sm ss-login-primary" id="ssLogin" type="button">' + svg('user') + '<span>' +
           (lang() === 'ru' ? 'Войти' : 'Log in') + '</span></button>' +
       '</div>' +
@@ -149,12 +163,27 @@
       '<span class="ss-head__sp"></span>' +
       '<div class="ss-head__right"><button class="ss-activate" id="ssActivate" type="button">' + svg('key') + '<span>' +
         (lang() === 'ru' ? 'Активация' : 'Activate') + '</span></button>' + langHTML() +
-        '<button class="ss-btn ss-btn--sm ss-btn--logout" id="ssLogout" type="button" hidden style="background:#c0392b;color:#fff;border-color:#c0392b">' +
-          (lang() === 'ru' ? 'Выйти' : 'Log out') + '</button>' +
+        '<div class="ss-bell" id="ssBell" hidden>' +
+          '<button class="ss-bell__btn" id="ssBellBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="ssBellPanel" aria-label="' + esc(t(SHELL_COPY.bell)) + '">' +
+            svg('bell') + '<b class="ss-bell__count" id="ssBellCount" hidden></b></button>' +
+          '<div class="ss-bell__panel" id="ssBellPanel" role="dialog" aria-label="' + esc(t(SHELL_COPY.bell)) + '" hidden></div>' +
+        '</div>' +
         '<button class="ss-burger" id="ssBurger" type="button" aria-label="Menu"><span></span></button>' +
       '</div></div></header>' +
       '<div class="ss-drawer" id="ssDrawer">' + drawerHTML() + '</div>';
   }
+
+
+  var SHELL_COPY = {
+    news: { en:'News', ru:'Новости', de:'Neuigkeiten', tr:'Haberler', fr:'Actualités', uk:'Новини', es:'Noticias', pt:'Novidades' },
+    profile: { en:'Profile', ru:'Профиль', de:'Profil', tr:'Profil', fr:'Profil', uk:'Профіль', es:'Perfil', pt:'Perfil' },
+    settings: { en:'Account settings', ru:'Настройки аккаунта', de:'Kontoeinstellungen', tr:'Hesap ayarları', fr:'Paramètres du compte', uk:'Налаштування акаунта', es:'Ajustes de la cuenta', pt:'Configurações da conta' },
+    logout: { en:'Log out', ru:'Выйти', de:'Abmelden', tr:'Çıkış yap', fr:'Se déconnecter', uk:'Вийти', es:'Cerrar sesión', pt:'Sair' },
+    account: { en:'Account menu', ru:'Меню аккаунта', de:'Kontomenü', tr:'Hesap menüsü', fr:'Menu du compte', uk:'Меню акаунта', es:'Menú de la cuenta', pt:'Menu da conta' },
+    bell: { en:'Notifications', ru:'Уведомления', de:'Benachrichtigungen', tr:'Bildirimler', fr:'Notifications', uk:'Сповіщення', es:'Notificaciones', pt:'Notificações' }
+  };
+  var BELL_SCRIPT = '/static/js/site-bell.js?v=20261001-bell1';
+  NAV.forEach(function (n) { if (n.key === 'news') n.label = SHELL_COPY.news; });
 
   var MAINTENANCE_UI = {
     label: { en:'Maintenance', ru:'Техработы', de:'Wartung', tr:'Bakım', fr:'Maintenance', uk:'Техроботи', es:'Mantenimiento', pt:'Manutenção' },
@@ -353,29 +382,20 @@
           publicUsername = String(me.email).split('@')[0].toLowerCase().replace(/[^a-z0-9_-]+/g, '').slice(0, 24);
         }
       }
-      if (logged && publicUsername) {
-        pill.href = siteUrl('/profile/' + encodeURIComponent(publicUsername));
-        pill.title = (lang() === 'ru' ? 'Публичный профиль' : 'Public profile');
-      } else if (logged) {
-        // last resort: still avoid editor — API will ensure username on next load
-        pill.href = siteUrl('/profile');
-        pill.title = (lang() === 'ru' ? 'Профиль' : 'Profile');
-      } else {
-        /* Never send a user-pill click to the editor. Bootstrap normally
-           supplies profile_username; keep the fallback on the public route. */
-        var fallbackName = me && ((me.email || '').split('@')[0] || me.display_name);
-        pill.href = siteUrl('/profile/' + encodeURIComponent(fallbackName || 'profile'));
-      }
+      // The pill opens the account menu; "Profile" there is the PUBLIC profile
+      // (/profile/{username}: showcases and the works link), owner request 2026-10-01.
+      var profileLink = document.getElementById('ssMenuProfile');
+      if (profileLink) profileLink.href = siteUrl(publicUsername ? '/profile/' + encodeURIComponent(publicUsername) : '/profile');
     }
     if (login) {
       login.hidden = logged;
       login.style.setProperty('display', logged ? 'none' : 'inline-flex', 'important');
     }
-    if (logout) {
-      logout.hidden = !logged;
-      /* The mobile stylesheet must be able to hide this desktop-only action. */
-      logout.style.display = logged ? 'inline-flex' : 'none';
-    }
+    if (logout) logout.remove();
+    var bell = document.getElementById('ssBell');
+    if (bell) bell.hidden = !logged;
+    paintCounters(me);
+    if (logged) loadBell();
     var drawerAuth = document.getElementById('ssDrawerAuth');
     if (drawerAuth) {
       drawerAuth.dataset.authAction = logged ? 'logout' : 'login';
@@ -452,7 +472,25 @@
       (av ? '<img class="ss-pill__av" src="' + esc(av) + '" alt="">'
           : '<span class="ss-pill__av ss-pill__av--letter">' + esc((name.charAt(0) || '?').toUpperCase()) + '</span>') +
       '<span>' + esc(name) + '</span>' +
-      '<i class="ss-pill__plan ' + (me.is_pro ? 'is-pro">PRO' : 'is-free">FREE') + '</i>';
+      '<i class="ss-pill__plan ' + (me.is_pro ? 'is-pro">PRO' : 'is-free">FREE') + '</i>' +
+      '<i class="ss-pill__chev" aria-hidden="true">' + svg('chevron') + '</i>';
+  }
+
+  /* Bell badge + the dot on the News link; site-bell.js (loaded for signed-in users) keeps them fresh. */
+  function paintCounters(me) {
+    var logged = !!(me && me.logged_in);
+    var count = document.getElementById('ssBellCount');
+    var unread = logged ? Number(me.unread || 0) : 0;
+    if (count) { count.hidden = !unread; count.textContent = unread > 99 ? '99+' : String(unread); }
+    var btn = document.getElementById('ssBellBtn');
+    if (btn) btn.classList.toggle('has-unread', !!unread);
+    document.querySelectorAll('[data-news-dot]').forEach(function (dot) { dot.hidden = !(logged && me.news_dot); });
+  }
+  function loadBell() {
+    if (window.SMBell || document.querySelector('script[data-site-bell]')) return;
+    var script = document.createElement('script');
+    script.src = BELL_SCRIPT; script.defer = true; script.dataset.siteBell = '1';
+    document.head.appendChild(script);
   }
 
   // One request for the whole shell. /api/bootstrap returns everything
@@ -512,6 +550,19 @@
     if (drawerLanguage) drawerLanguage.addEventListener('change', function () {
       if (window.SMLang && SMLang.switchTo) SMLang.switchTo(drawerLanguage.value);
     });
+    var account = document.getElementById('ssAccount'), pillButton = document.getElementById('ssUser'), menu = document.getElementById('ssAccountMenu');
+    if (account && pillButton && menu) {
+      var setMenu = function (open) {
+        menu.hidden = !open; pillButton.setAttribute('aria-expanded', String(open)); account.classList.toggle('is-open', open);
+        if (open) document.dispatchEvent(new CustomEvent('ss:menu-open', { detail: 'account' }));
+      };
+      pillButton.addEventListener('click', function (event) { event.stopPropagation(); setMenu(menu.hidden); });
+      document.addEventListener('click', function (event) { if (!menu.hidden && !account.contains(event.target)) setMenu(false); });
+      document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !menu.hidden) { setMenu(false); pillButton.focus(); } });
+      document.addEventListener('ss:menu-open', function (event) { if (event.detail !== 'account') setMenu(false); });
+      var menuLogout = document.getElementById('ssMenuLogout');
+      if (menuLogout) menuLogout.addEventListener('click', performLogout);
+    }
     wireAuth();
     wireActivation();
   }
@@ -918,7 +969,7 @@
     loadAnnouncements();
   }
 
-  window.SSShell = { mount: mount, loadMe: loadMe, me: me, lang: lang, t: t, esc: esc, openAuth: openAuth, closeAuth: closeAuth, openActivation: openActivation, closeActivation: closeActivation };
+  window.SSShell = { mount: mount, loadMe: loadMe, me: me, lang: lang, t: t, esc: esc, svg: svg, siteUrl: siteUrl, paintCounters: paintCounters, openAuth: openAuth, closeAuth: closeAuth, openActivation: openActivation, closeActivation: closeActivation };
 
   function initialize() {
     mount();

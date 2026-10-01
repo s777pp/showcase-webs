@@ -10,6 +10,8 @@ from smweb import guides
 
 app = FastAPI()
 app.include_router(router)
+from smweb.routers import news as news_router  # noqa: E402
+app.include_router(news_router.router)
 client = TestClient(app)
 
 
@@ -19,7 +21,8 @@ def test_sitemap_only_contains_public_pages_that_exist():
     root = ElementTree.fromstring(response.content)
     urls = [n.text for n in root.findall('{*}url/{*}loc')]
     guide_pages = len(guides.GUIDE_LANGUAGES) * (1 + len(guides.GUIDES))
-    assert len(urls) == len(SUPPORTED_LANGUAGES) * 4 + 2 + guide_pages
+    # News hub (en, ru) and every published post (en, ru) are listed too (2026-10-01).
+    assert len(urls) == len(SUPPORTED_LANGUAGES) * 4 + 2 + guide_pages + len(news_router.sitemap_urls())
     assert len(urls) == len(set(urls))
     for url in urls:
         assert '/profile' not in url and '/api/' not in url

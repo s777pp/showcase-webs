@@ -90,6 +90,37 @@ CREATE INDEX IF NOT EXISTS idx_comments_item ON gallery_comments(item_id);
 CREATE TABLE IF NOT EXISTS notifications (id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind TEXT NOT NULL, actor_id BIGINT, item_id BIGINT, comment_id BIGINT, body TEXT, is_read INTEGER DEFAULT 0, created_at DOUBLE PRECISION);
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS comment_id BIGINT;
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id,is_read);
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS meta_json TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS group_key TEXT;
+CREATE INDEX IF NOT EXISTS idx_notif_group ON notifications(user_id,group_key);
+CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(created_at);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS news_seen_at DOUBLE PRECISION;
+CREATE TABLE IF NOT EXISTS news_posts (
+ id TEXT PRIMARY KEY,
+ slug TEXT NOT NULL UNIQUE,
+ category TEXT NOT NULL DEFAULT 'news',
+ title_ru TEXT, title_en TEXT,
+ summary_ru TEXT, summary_en TEXT,
+ body_ru TEXT, body_en TEXT,
+ cover_url TEXT,
+ pinned INTEGER DEFAULT 0,
+ notify INTEGER DEFAULT 1,
+ status TEXT NOT NULL DEFAULT 'draft',
+ published_at DOUBLE PRECISION,
+ created_at DOUBLE PRECISION NOT NULL,
+ updated_at DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_news_published ON news_posts(status,published_at);
+CREATE TABLE IF NOT EXISTS support_messages (
+ id BIGSERIAL PRIMARY KEY,
+ ticket_id TEXT NOT NULL,
+ author TEXT NOT NULL,
+ body TEXT NOT NULL,
+ created_at DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_support_messages_ticket ON support_messages(ticket_id,created_at);
 CREATE TABLE IF NOT EXISTS profile_showcases (id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, sc_type TEXT NOT NULL, title TEXT, sort_order INTEGER DEFAULT 0, data_json TEXT, created_at DOUBLE PRECISION);
 ALTER TABLE profile_showcases ADD COLUMN IF NOT EXISTS sc_type TEXT;
 ALTER TABLE profile_showcases ADD COLUMN IF NOT EXISTS data_json TEXT;

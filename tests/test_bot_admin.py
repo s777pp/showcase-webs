@@ -30,7 +30,7 @@ def test_maintenance_codes_and_ticket_reply(monkeypatch):
                                          page="/ru/app", context={})["ticket_id"]
     with patch("mailer.send_email", return_value=(True, "")) as mail:
         res = client.post(f"/api/bot-admin/tickets/{ticket}/reply", headers=H, json={"text": "Исправили, попробуйте ещё раз"}).json()
-    assert res == {"ok": True, "emailed": True, "has_email": True}
+    assert res == {"ok": True, "emailed": True, "has_email": True, "notified": False}
     assert mail.call_args[0][0] == "user@example.com"
     assert not any(t["id"] == ticket for t in client.get("/api/bot-admin/tickets", headers=H).json()["items"])
 

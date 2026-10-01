@@ -278,3 +278,14 @@ $('saveBtn').onclick=function(){setStatus('saveState',pT('save_wait'),'wait');fe
  window.addEventListener('sm:langchange',function(){if(window.SS_ME&&window.SS_ME.logged_in)load();else paint(null)});
  paint(null);
 })();
+
+/* Header menu "Account settings" opens /profile#account: bring the account panel into view. */
+(function () {
+  function showAccount() {
+    if (location.hash !== '#account') return;
+    var dock = document.getElementById('accountDock');
+    if (dock) { dock.scrollIntoView({ behavior: 'smooth', block: 'start' }); var first = dock.querySelector('input,button'); if (first) setTimeout(function () { first.focus({ preventScroll: true }); }, 400); }
+  }
+  window.addEventListener('hashchange', showAccount);
+  if (document.readyState === 'complete') setTimeout(showAccount, 300); else window.addEventListener('load', function () { setTimeout(showAccount, 300); });
+})();

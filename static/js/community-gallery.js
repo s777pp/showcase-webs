@@ -45,6 +45,11 @@
       'Link is too long': 'Ссылка слишком длинная.',
       'File is too large': 'Файл слишком большой.',
       'Preview dimensions are too large': 'Превью слишком большое по размеру изображения.',
+      'Could not read the preview': 'Не удалось прочитать превью. Выбери другую картинку или GIF.',
+      'Could not read the video preview': 'Не удалось прочитать видео для превью. Выбери другой файл.',
+      'ZIP is damaged': 'Архив повреждён. Собери ZIP заново.',
+      'Could not prepare the work': 'Не удалось подготовить работу. Попробуй ещё раз или напиши в поддержку.',
+      'Could not publish the work': 'Не удалось опубликовать работу. Попробуй ещё раз.',
       'This work has no ZIP. Publish a new free release with files': 'Для бесплатной работы нужен ZIP. Опубликуй новую работу с файлами.',
     };
     return known[message] || message;

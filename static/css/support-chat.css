@@ -101,3 +101,7 @@ html body .studio-support-choice .studio-support-choice__card.sw-card .sw-alt__b
 .sw-card .sw-alt__btn{gap:9px}
 .sw-card .sw-alt__icon{flex:none;width:20px;height:20px}
 .sw-card .studio-support-choice__report .sw-alt__icon{color:#6fe3ff}
+
+/* Link to the user's support threads (2026-10-01) */
+.studio-support-choice .sw-mine{display:inline-block;margin-top:6px;color:#5fe4ff;font-weight:800;font-size:13px;text-decoration:none}
+.studio-support-choice .sw-mine:hover{text-decoration:underline}

@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 401 passed on 2026-10-01 (~125 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 409 passed on 2026-10-01 (~125 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -691,6 +691,53 @@ Only the hero exists for now; content blocks will be added below it later.
 - `print()` in server code is now module logging; swallowed exceptions in job code log at DEBUG
   (`LOG_LEVEL=DEBUG` shows them). worker.py configures logging itself.
 - `.gitignore` ignores the whole `/data/` (it holds a 2.2 GB server archive and user results) and `/output/`.
+
+## 6.6 Shared header grid, account menu, bell, news, support threads (2026-10-01, local)
+
+- One grid for the shell: `static/css/site-shell.css` (loaded on every shell page and the 8 script-free privacy
+  pages) defines `--site-gutter: min(7.75vw, max(40px, calc(14.4vw - 170px)))` (16 px at <= 820 px). Header inner,
+  footer and page content (`.page-tools .main`, gallery, extension guide, news, support, privacy, landing copy column)
+  use it. The header itself uses `--head-inset` = gutter + clamp(0, 3vw - 34px, 30px) (owner: "a bit tighter"; 0 at
+  <= 1180 px), so logo and right edge are symmetric at 130 px on 1920 (gutter 106). `qa_home_layout.py` checks the hero
+  copy against the gutter formula and the logo within gutter..gutter+32. Header rules use the
+  `#ssHeadHost` prefix to beat the gallery's own header CSS. Right group order: Activate, language, bell, account.
+- Account pill (`ss-shell.js`) is a button with a menu: Profile (`/profile/{username}`), Account settings
+  (`/profile#account`, profile.js scrolls to `#accountDock`), Log out. The separate log-out button is gone.
+  New labels live in `SHELL_COPY` (8 languages; `check_i18n.js` skips it by marker).
+- Nav: "News" sits between Home and Tools with a dot when a published news post is unread (`news_dot`).
+- Bell (`static/js/site-bell.js`, loaded by ss-shell for signed-in users only): panel with personal notifications +
+  recent news, "Mark all read", unread poll every 60 s only while the tab is visible. Texts are rendered in the
+  browser from `kind` + `meta_json` (8 languages: CATEGORY/TOOL/TEXT/REASON tables), the server stores no language.
+  API in `routers/gallery.py`: `GET /api/notifications?lang=`, `POST /api/notifications/read` (`ids`, `news:*`, `all`),
+  `GET /api/notifications/unread`; bootstrap (`routers/auth.py`) returns `bell_counts`.
+- Producers (`smweb/notify.py`, rows kept 7 days, `group_key` updates one row instead of adding many):
+  job end via `redis_store.job_update` -> `notify.job_finished` (success only for long kinds: upscale, loop,
+  workshop_studio, Steam import, profile insight, Steam DNA; every error; only numeric user keys, guests never),
+  error codes `steam_private/steam_busy/steam_not_found/steam_unavailable/server` + `job_diagnostics` categories;
+  gallery likes/comments (existing), downloads summed per 4 h window (`gallery_releases._notify_download`);
+  Pro reminders 3 d / 1 d / end, trial Pro 15 min (`_pro_reminders`, run from the job cleaner every 10 min).
+- News (`smweb/news.py`, `routers/news.py`, `static/news.html`, `css/news.css`, `js/news.js`): table `news_posts`
+  (RU + EN written by hand, other languages get EN), categories news/update/feature/announcement/event/maintenance/promo,
+  draft / published / scheduled (`published_at` in the future), pinned post, `notify` flag (bell + nav dot).
+  Unread is computed from `users.news_seen_at` (no per-user rows); `POST /api/news/seen` on the news page.
+  Pages `/{lang}/news` (filters `?category=`) and `/{lang}/news/{slug}` (NewsArticle JSON-LD), in the sitemap.
+  HTML body is cleaned server-side (`clean_html`: images only from `/api/news/media/` or R2 `news/`); images are
+  stored as WebP <= 2000 px in R2 or `DATA/news-media`.
+- Admin (`analytics.html` "Новости" = `static/js/admin-news.js`, `SMAdminNews.load(api, toast)`): list, editor
+  with RU/EN tabs, contenteditable toolbar, cover and inline images (`POST /api/admin/control/news/image`).
+  The admin `api()` sends JSON Content-Type only for string bodies (FormData uploads).
+- Support threads (`smweb/support_threads.py`, table `support_messages`): the admin "Обращения" card shows the thread
+  and a reply form (`POST /api/admin/control/support/{id}/reply`, status after reply); a reply is stored, appears in
+  the user's bell (`support_reply`) and is e-mailed with a `/support?t=` link. Bot replies (`bot_admin.py`) use the same
+  path. Users read and answer at `/{lang}/support` (`static/support.html`, `js/support-page.js`, noindex,
+  `/api/support/my*`, private API); a user answer sets the ticket back to `new` and pings the owner bot.
+  Guests with only Telegram must still be answered manually. The support launcher links "My requests →".
+- Gallery publish 500 "Could not prepare the work" (seen in prod logs 2026-10-01): users picked a Steam-patched GIF
+  (HEX 21 trailer) as the preview and Pillow raised IndexError in `n_frames`. `gallery_releases._restore_gif_trailer`
+  now fixes uploaded and ZIP-derived previews; any decoder error in `_preview_type/_preview_thumb` is a 400
+  (`Could not read the preview`, translated in `community-gallery.js serverError`).
+- Tests: `tests/test_notifications_news.py`. Load: one indexed query per bell poll (60 s, visible tabs only),
+  news unread is a single count against `news_posts`.
 
 ## 7. Rules for agents
 
