@@ -147,6 +147,7 @@ async def api_workshop_studio_start(
                     output.write(chunk)
             if not written:
                 raise ValueError("One source file is empty")
+            proc.restore_gif_trailer_file(path)  # a part of a Steam-ready ZIP (HEX 21) used as a source
             if suffix not in allowed:
                 # Names like "From Klickpin.com- Long title" lost their extension: trust the bytes.
                 with path.open("rb") as head_file:

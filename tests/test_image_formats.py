@@ -114,3 +114,18 @@ def test_process_job_accepts_heic(tmp_path, monkeypatch):
     _, archive = _run(tmp_path, monkeypatch, "IMG_0002.heic", _heic(), opts)
     parts = sorted(n for n in archive.namelist() if "/part_" in n)
     assert len(parts) == 5
+
+
+def test_steam_patched_gif_upload_gets_its_trailer_back(tmp_path):
+    frames = [Image.new("RGB", (20, 20), color) for color in ("red", "blue")]
+    buffer = io.BytesIO()
+    frames[0].save(buffer, format="GIF", save_all=True, append_images=frames[1:], duration=80, loop=0)
+    patched = buffer.getvalue()[:-1] + b"!"
+    name, fixed = processor.normalize_upload("featured_630.gif", patched)
+    assert name == "featured_630.gif" and fixed.endswith(b";")
+    with Image.open(io.BytesIO(fixed)) as image:
+        assert image.n_frames == 2
+    path = tmp_path / "upload_1.gif"
+    path.write_bytes(patched)
+    processor.restore_gif_trailer_file(path)
+    assert path.read_bytes() == fixed

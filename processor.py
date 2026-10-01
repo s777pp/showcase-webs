@@ -237,8 +237,29 @@ def still_image_to_png(raw: bytes) -> bytes | None:
     return out.getvalue()
 
 
+def restore_gif_trailer(raw: bytes) -> bytes:
+    """Undo the HEX 21 patch on a GIF (users re-upload files this site prepared for Steam).
+
+    Pillow raises IndexError in ``n_frames`` when the trailer byte is 0x21."""
+    if raw[:6] in (b"GIF87a", b"GIF89a") and raw.endswith(b"!"):
+        return raw[:-1] + b";"
+    return raw
+
+
+def restore_gif_trailer_file(path: Path) -> None:
+    with path.open("rb") as handle:
+        head = handle.read(6)
+        handle.seek(-1, 2)
+        last = handle.read(1)
+    if head in (b"GIF87a", b"GIF89a") and last == b"!":
+        with path.open("r+b") as handle:
+            handle.seek(-1, 2)
+            handle.write(b";")
+
+
 def normalize_upload(name: str, raw: bytes) -> tuple[str, bytes]:
     """Return (name, bytes) the pipelines understand; unknown still images become PNG."""
+    raw = restore_gif_trailer(raw)
     ext = Path(name).suffix.lower()
     if ext in NATIVE_STILL_EXTENSIONS or ext in MOTION_EXTENSIONS:
         return name, raw

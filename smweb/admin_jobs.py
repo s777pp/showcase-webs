@@ -307,7 +307,18 @@ def _probe(path: Path) -> dict:
     if info["format"] in {"png", "gif", "jpeg", "webp"}:
         try:
             from PIL import Image
-            with Image.open(path) as image:
+            source = path
+            if info["format"] == "gif":
+                with path.open("rb") as handle:
+                    handle.seek(-1, 2)
+                    patched = handle.read(1) == b"!"
+                if patched:
+                    # Steam's HEX 21 patch (a file this site already prepared): Pillow
+                    # cannot count its frames until the GIF trailer is restored.
+                    import io
+                    source = io.BytesIO(path.read_bytes()[:-1] + b";")
+                    info["note"] = "GIF уже подготовлен для Steam (HEX 21): это готовый файл с сайта"
+            with Image.open(source) as image:
                 info.update(width=image.width, height=image.height, mode=image.mode,
                             frames=int(getattr(image, "n_frames", 1) or 1))
                 if info["frames"] > 1:

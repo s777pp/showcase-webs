@@ -76,3 +76,4 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
 .ticket-reply .actions select{flex:1 1 200px;width:auto}
 .ticket form.ticket-reply button{grid-column:auto}
 @media (max-width:760px){.an-cover{grid-template-columns:1fr}}
+.job-file__note{display:block;margin-top:4px;color:#7fe9ff;font-size:12px;line-height:1.4}

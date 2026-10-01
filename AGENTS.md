@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 410 passed on 2026-10-01 (~125 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 412 passed on 2026-10-01 (~125 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -738,7 +738,9 @@ Only the hero exists for now; content blocks will be added below it later.
 - Gallery publish 500 "Could not prepare the work" (seen in prod logs 2026-10-01): users picked a Steam-patched GIF
   (HEX 21 trailer) as the preview and Pillow raised IndexError in `n_frames`. `gallery_releases._restore_gif_trailer`
   now fixes uploaded and ZIP-derived previews; any decoder error in `_preview_type/_preview_thumb` is a 400
-  (`Could not read the preview`, translated in `community-gallery.js serverError`).
+  (`Could not read the preview`, translated in `community-gallery.js serverError`). Same root cause elsewhere:
+  `processor.restore_gif_trailer` runs in `normalize_upload` (Process, Character) and `restore_gif_trailer_file` on
+  Workshop Studio uploads; the admin job card probe (`admin_jobs._probe`) reads such GIFs and adds a `note`.
 - Tests: `tests/test_notifications_news.py`. Load: one indexed query per bell poll (60 s, visible tabs only),
   news unread is a single count against `news_posts`.
 

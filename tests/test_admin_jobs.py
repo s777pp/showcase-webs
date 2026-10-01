@@ -133,3 +133,16 @@ def test_admin_retry_copies_sources_into_a_new_job(monkeypatch, tmp_path):
     copied = new_job["files"][0]["path"]
     assert copied != str(source) and open(copied, "rb").read() == source.read_bytes()
     assert submitted and submitted[0][0] == new_id
+
+
+def test_probe_reads_a_steam_patched_gif(tmp_path):
+    # Users re-upload files the site already prepared (HEX 21 trailer); the admin
+    # card used to say "Pillow не открыл файл: IndexError" for a job that was fine.
+    frames = [Image.new("RGB", (40, 30), color) for color in ("red", "blue", "green")]
+    buffer = io.BytesIO()
+    frames[0].save(buffer, format="GIF", save_all=True, append_images=frames[1:], duration=80, loop=0)
+    path = tmp_path / "featured_630.gif"
+    path.write_bytes(buffer.getvalue()[:-1] + b"!")
+    info = admin_jobs._probe(path)
+    assert "problem" not in info and info["frames"] == 3 and info["width"] == 40
+    assert "HEX 21" in info["note"]
