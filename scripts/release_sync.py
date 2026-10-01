@@ -23,7 +23,8 @@ from pathlib import Path
 SOURCE = Path(__file__).resolve().parents[1]
 DEFAULT_TARGET = SOURCE.parent / "showcase-webs"
 # Skipped only at the top level (static/models is part of the site).
-ROOT_SKIP = {"data", "output", "IMAGE", "models", "railway-backup", ".claude", ".tmpvol", ".tmpro"}
+ROOT_SKIP = {"data", "output", "IMAGE", "models", "railway-backup", ".claude", ".tmpvol", ".tmpro",
+             "extensions"}  # extensions/: local prototypes (Ko-fi uploader test), not part of the site
 SKIP_DIRS = {"__pycache__", ".pytest_cache", ".git", "node_modules", ".venv", "venv", ".playwright-cli",
              ".tmp_pytest_env", ".tmp_u2net_test"}
 SKIP_FILES = {".env", "ENV.txt", "tail.txt", "PROMT.txt", ".locale-cache.json"}

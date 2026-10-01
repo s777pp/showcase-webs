@@ -21,6 +21,16 @@ from smweb.steam_readiness import Candidate, SUPPORTED_FORMATS, inspect_file
 import redis_store as rs
 from smweb.core import DATA, LOGGER, _auth_user, _safe_data_path
 
+
+def _notify_download(item_id: int) -> None:
+    """Owner's "downloaded N times" digest; never breaks the download itself."""
+    try:
+        from smweb import notify
+        notify.gallery_downloaded(item_id)
+    except Exception:
+        LOGGER.debug("download notification failed", exc_info=True)
+
+
 router = APIRouter()
 MODES = {"workshop", "split", "featured"}
 PREVIEW_LIMIT = 24 * 1024 * 1024
@@ -56,23 +66,33 @@ def _https(value: str) -> str:
     return value
 
 
+def _restore_gif_trailer(data: bytes) -> bytes:
+    """Undo Steam's HEX 21 patch (GIF trailer ';' replaced by '!').
+
+    Users often pick a part from their Steam-ready ZIP as the preview; Pillow
+    cannot read such a GIF (IndexError while counting frames)."""
+    if data.startswith((b"GIF87a", b"GIF89a")) and data.endswith(b"!"):
+        return data[:-1] + b";"
+    return data
+
+
+def _frame_count(data: bytes) -> int:
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            return int(getattr(image, "n_frames", 1))
+    except Exception as exc:  # Pillow raises IndexError/EOFError/SyntaxError on broken files
+        raise ValueError("Could not read the preview") from exc
+
+
 def _preview_type(data: bytes) -> tuple[str, bool]:
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return ".png", False
     if data.startswith(b"\xff\xd8\xff"):
         return ".jpg", False
     if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        try:
-            with Image.open(io.BytesIO(data)) as image:
-                return ".webp", getattr(image, "n_frames", 1) > 1
-        except (UnidentifiedImageError, OSError) as exc:
-            raise ValueError("Could not read the preview") from exc
+        return ".webp", _frame_count(data) > 1
     if data[:6] in (b"GIF87a", b"GIF89a"):
-        try:
-            with Image.open(io.BytesIO(data)) as image:
-                return ".gif", getattr(image, "n_frames", 1) > 1
-        except (UnidentifiedImageError, OSError) as exc:
-            raise ValueError("Could not read the preview") from exc
+        return ".gif", _frame_count(data) > 1
     if data[4:8] == b"ftyp":
         return ".mp4", True
     if data.startswith(b"\x1a\x45\xdf\xa3"):
@@ -106,7 +126,7 @@ def _preview_thumb(data: bytes, suffix: str) -> bytes:
             out = io.BytesIO()
             image.convert("RGB").save(out, "JPEG", quality=82, optimize=True)
             return out.getvalue()
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
+    except Exception as exc:  # any decoder failure means a bad preview, not a server error
         raise ValueError("Could not read the preview") from exc
 
 
@@ -194,12 +214,8 @@ def _preview_from_archive(data: bytes) -> bytes:
         for entry in files:
             if entry.file_size <= PREVIEW_LIMIT:
                 with archive.open(entry) as member:
-                    preview = member.read(PREVIEW_LIMIT + 1)
-                    # Steam's HEX 21 patch replaces the GIF trailer. Restore it
-                    # for the public browser preview without touching the ZIP.
-                    if preview.startswith((b"GIF87a", b"GIF89a")) and preview.endswith(b"\x21"):
-                        preview = preview[:-1] + b";"
-                    return preview
+                    # Restore the HEX 21 trailer for the public preview; the ZIP is untouched.
+                    return _restore_gif_trailer(member.read(PREVIEW_LIMIT + 1))
     raise ValueError("Add a preview image or GIF")
 
 
@@ -294,6 +310,7 @@ def work_download(item_id: int, request: Request):
     path = _safe_data_path(stored)
     if path and path.is_file():
         auth_db.gallery_release_downloaded(item_id)
+        _notify_download(item_id)
         return FileResponse(path, filename=f"showcase-{item_id}.zip", media_type="application/zip",
                             headers={"Cache-Control": "private, no-store"})
     if object_store.configured():
@@ -301,6 +318,7 @@ def work_download(item_id: int, request: Request):
             url = object_store.presigned_get_url(object_store.key_from_stored(stored), public=False,
                 expires=120, download_name=f"showcase-{item_id}.zip", media_type="application/zip")
             auth_db.gallery_release_downloaded(item_id)
+            _notify_download(item_id)
             return RedirectResponse(url, status_code=307, headers={"Cache-Control": "private, no-store"})
         except Exception:
             LOGGER.exception("gallery ZIP unavailable for %s", item_id)
@@ -337,7 +355,7 @@ async def work_publish(request: Request, title: str = Form(""), description: str
             raise ValueError("Add a ZIP with the work files")
         if zip_data:
             await run_in_threadpool(_check_archive, zip_data)
-        preview_data = await _read_bounded(preview, PREVIEW_LIMIT)
+        preview_data = _restore_gif_trailer(await _read_bounded(preview, PREVIEW_LIMIT))
         if not preview_data and zip_data:
             preview_data = await run_in_threadpool(_preview_from_archive, zip_data)
         if not preview_data:

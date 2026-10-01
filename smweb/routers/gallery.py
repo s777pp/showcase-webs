@@ -484,23 +484,55 @@ def gallery_am_admin(request: Request):
     return {"ok": True, "admin": _is_gallery_admin(user), "email": (user or {}).get("email")}
 
 
+def _bell_language(request: Request, lang: str = "") -> str:
+    from smweb.locales import SUPPORTED_LANGUAGES
+    value = (lang or request.cookies.get("sm_lang") or "en").lower()[:5]
+    return value if value in SUPPORTED_LANGUAGES else "en"
+
+
+def bell_counts(user: dict | None) -> dict:
+    """Unread personal notifications + unread news (shared by /api/bootstrap)."""
+    if not user:
+        return {"unread": 0, "news_unread": 0, "news_dot": False}
+    from smweb import news
+    personal = auth_db.notifications_unread_count(int(user["id"]))
+    try:
+        news_unread = news.unread_count(user)
+        news_dot = news.latest_unread_at(user) > 0
+    except Exception:
+        news_unread, news_dot = 0, False
+    return {"unread": personal + news_unread, "news_unread": news_unread, "news_dot": news_dot}
+
+
 @router.get("/api/notifications")
-def api_notifications(request: Request, limit: int = 40):
+def api_notifications(request: Request, limit: int = 40, lang: str = ""):
+    """The bell: personal notifications and the last week's news, newest first."""
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in"}, status_code=401)
+    import json as _json
+    from smweb import news
     rows = auth_db.notifications_list(int(user["id"]), limit=min(int(limit), 80))
-    unread = auth_db.notifications_unread_count(int(user["id"]))
     out = []
     for r in rows:
         actor = r.get("display_name") or r.get("discord_username") or (r.get("email") or "")
         if isinstance(actor, str) and "@" in actor:
             actor = actor.split("@")[0]
         aid = r.get("actor_id")
+        try:
+            meta = _json.loads(r.get("meta_json") or "{}")
+        except (TypeError, ValueError):
+            meta = {}
+        link = r.get("link") or ""
+        if not link and r.get("kind") in ("like", "comment", "reply") and r.get("item_id"):
+            link = f"/gallery?item={int(r['item_id'])}"
         out.append({
             "id": r["id"],
             "kind": r.get("kind"),
+            "title": r.get("title") or "",
             "body": r.get("body") or "",
+            "link": link,
+            "meta": meta if isinstance(meta, dict) else {},
             "item_id": r.get("item_id"),
             "comment_id": r.get("comment_id"),
             "is_read": bool(r.get("is_read")),
@@ -508,11 +540,17 @@ def api_notifications(request: Request, limit: int = 40):
             "actor": str(actor)[:40],
             "actor_avatar": f"/api/auth/avatar/{aid}" if aid else "",
         })
-    return {"ok": True, "items": out, "unread": unread}
+    try:
+        out += news.bell_items(user, _bell_language(request, lang))
+    except Exception:
+        LOGGER.debug("bell news failed", exc_info=True)
+    out.sort(key=lambda item: float(item.get("created_at") or 0), reverse=True)
+    return {"ok": True, "items": out[:max(1, min(int(limit), 80))], **bell_counts(user)}
 
 
 @router.post("/api/notifications/read")
 async def api_notifications_read(request: Request):
+    """Mark items read: ``ids`` (numbers, or "news:<id>" for news) or everything with ``all``."""
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in"}, status_code=401)
@@ -520,30 +558,40 @@ async def api_notifications_read(request: Request):
         body = await request.json()
     except Exception:
         body = {}
+    from smweb import news
     ids = body.get("ids")
-    clean_ids = None
+    mark_all = body.get("all") is True or ids is None
+    clean_ids, touches_news = [], False
     if isinstance(ids, list):
-        clean_ids = []
         for value in ids[:80]:
+            if isinstance(value, str) and value.startswith("news:"):
+                touches_news = True
+                continue
             try:
                 item_id = int(value)
             except (TypeError, ValueError):
                 continue
             if item_id > 0:
                 clean_ids.append(item_id)
-    if isinstance(ids, list) and not clean_ids:
-        n = 0
+    n = 0
+    if mark_all:
+        n = auth_db.notifications_mark_read(int(user["id"]), None)
+        news.mark_seen(int(user["id"]))
     else:
-        n = auth_db.notifications_mark_read(int(user["id"]), clean_ids)
-    return {"ok": True, "marked": n, "unread": auth_db.notifications_unread_count(int(user["id"]))}
+        if clean_ids:
+            n = auth_db.notifications_mark_read(int(user["id"]), clean_ids)
+        if touches_news:
+            news.mark_seen(int(user["id"]))
+    fresh = _auth_user(request) or user
+    return {"ok": True, "marked": n, **bell_counts(fresh)}
 
 
 @router.get("/api/notifications/unread")
 def api_notifications_unread(request: Request):
     user = _auth_user(request)
     if not user:
-        return {"ok": True, "unread": 0, "logged_in": False}
-    return {"ok": True, "unread": auth_db.notifications_unread_count(int(user["id"])), "logged_in": True}
+        return {"ok": True, "unread": 0, "news_unread": 0, "news_dot": False, "logged_in": False}
+    return {"ok": True, "logged_in": True, **bell_counts(user)}
 
 
 @router.post("/api/gallery/mod/{item_id}")

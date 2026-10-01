@@ -130,6 +130,61 @@ def _contact(body: dict, user: dict | None) -> tuple[str, str]:
     return "", ""
 
 
+@router.get("/api/support/my")
+def my_tickets(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return reply({"ok": False, "code": "login"}, 401)
+    from smweb import support_threads
+    return reply({"ok": True, "items": support_threads.user_tickets(int(user["id"]))})
+
+
+@router.get("/api/support/my/{ticket_id}")
+def my_ticket(ticket_id: str, request: Request):
+    user = _auth_user(request)
+    if not user:
+        return reply({"ok": False, "code": "login"}, 401)
+    from smweb import support_threads
+    thread = support_threads.user_thread(ticket_id, int(user["id"]))
+    if not thread:
+        return reply({"ok": False, "code": "not_found"}, 404)
+    try:
+        connection = auth_db._conn()
+        try:
+            connection.execute("UPDATE notifications SET is_read=1 WHERE user_id=? AND group_key=?",
+                               (int(user["id"]), f"support:{ticket_id}"))
+            connection.commit()
+        finally:
+            connection.close()
+    except Exception:
+        pass
+    return reply({"ok": True, "ticket": thread})
+
+
+@router.post("/api/support/my/{ticket_id}")
+async def my_ticket_reply(ticket_id: str, request: Request):
+    if not _same_origin(request):
+        return reply({"ok": False, "code": "origin"}, 403)
+    user = _auth_user(request)
+    if not user:
+        return reply({"ok": False, "code": "login"}, 401)
+    allowed_call, _ = rs.rate_limit(f"support-reply:{int(user['id'])}", 20, 3600)
+    if not allowed_call:
+        return reply({"ok": False, "code": "limit"}, 429)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    from smweb import support_threads
+    try:
+        support_threads.reply_from_user(ticket_id, int(user["id"]), str((body or {}).get("text") or ""))
+    except LookupError:
+        return reply({"ok": False, "code": "not_found"}, 404)
+    except ValueError as exc:
+        return reply({"ok": False, "code": "invalid", "msg": str(exc)}, 400)
+    return reply({"ok": True})
+
+
 @router.get("/api/announcements")
 def public_announcements(request: Request):
     try:
@@ -139,3 +194,29 @@ def public_announcements(request: Request):
     audience = "pro" if user and auth_db.effective_pro(user) else ("users" if user else "guests")
     items = admin_content.announcements(active_only=True, audience=audience)
     return JSONResponse({"ok": True, "items": items[:3]}, headers={"Cache-Control": "private, max-age=60"})
+
+
+# ---------------------------------------------------------------- "My requests" page (2026-10-01)
+from fastapi.responses import HTMLResponse  # noqa: E402
+
+from smweb.locales import SUPPORTED_LANGUAGES  # noqa: E402
+
+
+@router.get("/support", include_in_schema=False)
+def support_redirect(request: Request):
+    from smweb.routers import pages
+    return pages._legacy_redirect(request, "/support")
+
+
+def _support_page(language: str):
+    def serve():
+        from smweb.routers import pages
+        response = pages._localized_html("support.html", language, "/support")
+        response.headers["X-Robots-Tag"] = "noindex, follow"
+        return response
+    return serve
+
+
+for _language in SUPPORTED_LANGUAGES:
+    router.add_api_route(f"/{_language}/support", _support_page(_language), methods=["GET"],
+                         response_class=HTMLResponse, include_in_schema=False)

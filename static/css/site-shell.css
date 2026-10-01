@@ -1,0 +1,104 @@
+/* One header, one footer, one grid for every page (2026-10-01).
+   Loaded last on every page. --site-gutter is the side margin of the whole site: about
+   40 px on laptops, 60 px at 1600 px and 7.75vw (the landing hero's text edge) on wide
+   screens. The header (logo on the left edge, last control on the right edge), the
+   footer and the main content of the tools, gallery and extension pages share it. */
+:root{--site-gutter:min(7.75vw,max(40px,calc(14.4vw - 170px)));
+  /* The header sits a little tighter than the page grid (owner 2026-10-01): logo and the right-hand
+     controls move toward the nav by 0 px at ~1130 px, ~14 px at 1600, ~24 px at 1920, max 30 px. */
+  --head-inset:calc(var(--site-gutter) + clamp(0px,calc(3vw - 34px),30px))}
+@media (max-width:1180px){:root{--head-inset:var(--site-gutter)}}
+@media (max-width:820px){:root{--site-gutter:16px}}
+
+/* ------------------------------------------------------------------ header grid */
+#ssHeadHost .ss-head .ss-wrap.ss-head__in{width:100%!important;max-width:none!important;margin:0!important;
+  padding:0 var(--head-inset)!important;box-sizing:border-box!important}
+html body .top.sm-head{padding-left:var(--head-inset)!important;padding-right:var(--head-inset)!important}
+/* Same order of the right-hand controls on every page: Activate/timer, language, bell, account. */
+#ssHeadHost .ss-head .ss-head__right{display:flex!important;align-items:center!important;gap:8px!important}
+#ssHeadHost .ss-head .ss-head__right>.ss-activate{order:1}
+#ssHeadHost .ss-head .ss-head__right>.ss-lang{order:2}
+#ssHeadHost .ss-head .ss-head__right>.ss-bell{order:3}
+#ssHeadHost .ss-head .ss-head__right>.ss-burger{order:9}
+html body .ss-head .ss-nav{min-width:0}
+html body .ss-head .ss-head__right{margin-left:0!important}
+html body .ss-head .ss-account-primary{margin:0 0 0 8px!important}
+@media (max-width:1500px){
+  html body .ss-head .ss-nav__i{padding:0 9px!important}
+  html body .ss-head .ss-nav__i svg{display:none!important}
+}
+@media (max-width:1300px){html body .ss-head .ss-nav__i{padding:0 7px!important;font-size:12.5px!important}html body .ss-head .ss-activate span{display:none!important}}
+
+/* News link: a small dot while there is an unread post */
+html body .ss-nav__i{position:relative}
+html body .ss-nav__dot{position:absolute;top:calc(50% - 12px);right:2px;width:7px;height:7px;border-radius:50%;background:#ff5d8f;box-shadow:0 0 0 2px rgba(3,8,22,.95),0 0 10px rgba(255,93,143,.6)}
+html body .ss-nav__dot[hidden]{display:none!important}
+html body .ss-drawer a .ss-nav__dot{position:static;display:inline-block;margin-left:6px}
+
+/* ------------------------------------------------------------------ account menu */
+html body .ss-account{position:relative;display:flex}
+html body .ss-account .ss-pill{cursor:pointer;font-family:inherit}
+html body .ss-pill__chev{display:inline-grid;place-items:center;width:14px;height:14px;margin-left:2px;font-style:normal;opacity:.75;transition:transform .15s}
+html body .ss-pill__chev svg{width:14px!important;height:14px!important}
+html body .ss-account.is-open .ss-pill__chev{transform:rotate(180deg)}
+html body .ss-account__menu{position:absolute;top:calc(100% + 10px);right:0;z-index:1500;display:grid;gap:2px;min-width:230px;padding:8px;
+  border:1px solid rgba(110,170,255,.24);border-radius:14px;background:linear-gradient(180deg,#0e1a3c,#050a1c);box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden}
+html body .ss-account__menu::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,#1fc9f1,#8a7dff)}
+html body .ss-account__menu[hidden]{display:none!important}
+html body .ss-account__menu>a,html body .ss-account__menu>button{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0;border-radius:10px;
+  background:transparent;color:#e9f3ff;font:700 13.5px Montserrat,system-ui,sans-serif;text-align:left;text-decoration:none;cursor:pointer}
+html body .ss-account__menu>a:hover,html body .ss-account__menu>button:hover,html body .ss-account__menu>:focus-visible{background:rgba(31,201,241,.12);outline:none}
+html body .ss-account__menu svg{width:17px!important;height:17px!important;color:#5fe4ff}
+html body .ss-account__menu #ssMenuLogout{margin-top:4px;border-top:1px solid rgba(110,170,255,.14);border-radius:0 0 10px 10px;color:#ffb3c1}
+html body .ss-account__menu #ssMenuLogout svg{color:#ff8fa5}
+
+/* ------------------------------------------------------------------ bell */
+html body .ss-bell{position:relative;display:flex}
+html body .ss-bell[hidden]{display:none!important}
+html body .ss-bell__btn{position:relative;display:grid;place-items:center;width:40px;height:38px;padding:0;border:1px solid rgba(110,170,255,.28);border-radius:10px;
+  background:rgba(5,10,28,.75);color:#dff6ff;cursor:pointer;transition:border-color .15s,background .15s}
+html body .ss-bell__btn:hover,html body .ss-bell.is-open .ss-bell__btn{border-color:#1fc9f1;background:rgba(31,201,241,.14)}
+html body .ss-bell__btn svg{width:19px!important;height:19px!important}
+html body .ss-bell__btn.has-unread svg{animation:ss-bell-ring 2.6s ease-in-out 1}
+@keyframes ss-bell-ring{0%,100%{transform:rotate(0)}10%{transform:rotate(14deg)}20%{transform:rotate(-12deg)}30%{transform:rotate(8deg)}40%{transform:rotate(-4deg)}50%{transform:rotate(0)}}
+html body .ss-bell__count{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ff5d8f;color:#fff;
+  font:800 10.5px/18px Montserrat,system-ui,sans-serif;text-align:center;box-shadow:0 0 0 2px rgba(3,8,22,.95)}
+html body .ss-bell__count[hidden]{display:none!important}
+html body .ss-bell__panel{position:absolute;top:calc(100% + 10px);right:-60px;z-index:1500;display:flex;flex-direction:column;width:min(400px,calc(100vw - 24px));max-height:min(560px,calc(100vh - 90px));
+  border:1px solid rgba(110,170,255,.24);border-radius:16px;background:linear-gradient(180deg,#0e1a3c,#050a1c);box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden;
+  color:#e9f3ff;font-family:Montserrat,system-ui,sans-serif}
+html body .ss-bell__panel::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,#1fc9f1,#8a7dff)}
+html body .ss-bell__panel[hidden]{display:none!important}
+html body .ss-bell__head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 10px;border-bottom:1px solid rgba(110,170,255,.14)}
+html body .ss-bell__head b{font-size:15px;font-weight:800}
+html body .ss-bell__all{padding:4px 8px;border:0;border-radius:8px;background:transparent;color:#5fe4ff;font:700 12px Montserrat,system-ui,sans-serif;cursor:pointer}
+html body .ss-bell__all:hover{background:rgba(31,201,241,.12)}
+html body .ss-bell__list{margin:0;padding:6px;list-style:none;overflow:auto;overscroll-behavior:contain}
+html body .ss-bell__item{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;padding:10px;border-radius:12px;color:inherit;text-decoration:none;position:relative}
+html body .ss-bell__item:hover{background:rgba(31,201,241,.08)}
+html body .ss-bell__item.is-unread{background:rgba(31,201,241,.06)}
+html body .ss-bell__item.is-unread::after{content:"";position:absolute;top:16px;right:10px;width:8px;height:8px;border-radius:50%;background:#1fc9f1}
+html body .ss-bell__icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:rgba(31,201,241,.1);font-size:16px}
+html body .ss-bell__text{display:grid;gap:3px;min-width:0;padding-right:14px}
+html body .ss-bell__label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#5fe4ff}
+html body .ss-bell__text b{font-size:13px;font-weight:700;line-height:1.35}
+html body .ss-bell__text span{font-size:12px;line-height:1.45;color:rgba(214,229,250,.72);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+html body .ss-bell__text time{font-size:11px;color:rgba(214,229,250,.45)}
+html body .ss-bell__state{margin:0;padding:28px 18px;text-align:center;color:rgba(214,229,250,.7);font-size:13px;line-height:1.5}
+html body .ss-bell__foot{padding:10px 16px;border-top:1px solid rgba(110,170,255,.14)}
+html body .ss-bell__foot a{color:#5fe4ff;font-weight:800;font-size:13px;text-decoration:none}
+
+/* Mobile header: burger + bell + account stay visible */
+@media (max-width:1180px){
+  html body:is(.page-home,.site-v2) .ss-head__right>.ss-bell:not([hidden]){display:flex!important}
+  #ssHeadHost .ss-head .ss-account-primary{order:2!important;margin-left:auto!important}
+  #ssHeadHost .ss-head .ss-head__right{order:3!important;margin-left:8px!important}
+  html body .ss-bell__panel{position:fixed;top:64px;right:12px;left:12px;width:auto}
+}
+
+/* ------------------------------------------------------------------ footer + page content on the grid */
+html body:is(.page-home,.site-v2) .home-footer{padding-left:var(--site-gutter)!important;padding-right:var(--site-gutter)!important}
+html body.page-home .home-hero__content{left:var(--site-gutter)!important}
+body.page-tools .main{width:auto!important;max-width:none!important;margin-left:var(--site-gutter)!important;margin-right:var(--site-gutter)!important}
+body.page-gallery main.community,html body main#communityRoot{width:auto!important;max-width:none!important;margin-left:var(--site-gutter)!important;margin-right:var(--site-gutter)!important}
+html body main#extensionGuide.eg{width:auto!important;max-width:none!important;margin-left:var(--site-gutter)!important;margin-right:var(--site-gutter)!important}

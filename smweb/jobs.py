@@ -151,6 +151,11 @@ def _cleanup_loop():
             if n:
                 _LOG.info(f"cleanup: removed {n} old job(s)")
             try:
+                from smweb import notify
+                notify.maybe_periodic()
+            except Exception:
+                _LOG.debug("ignored error", exc_info=True)
+            try:
                 from smweb import admin_notify
                 admin_notify.check_disk(str(JOBS))
             except Exception:

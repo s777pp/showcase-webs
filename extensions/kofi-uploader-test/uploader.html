@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ko-fi Shop Uploader (test)</title>
+<link rel="stylesheet" href="uploader.css">
+</head>
+<body>
+<main class="app">
+  <header>
+    <small>KO-FI · ТЕСТОВАЯ ВЕРСИЯ</small>
+    <h1>Загрузка товаров в магазин Ko-fi</h1>
+    <p>Расширение создаёт товары по очереди в твоём аккаунте Ko-fi: открывает форму, заполняет поля, прикрепляет
+      файлы и сохраняет. Сначала войди на ko-fi.com в этом браузере. Не закрывай эту вкладку, пока идёт загрузка.</p>
+  </header>
+
+  <section class="card">
+    <h2>1 · Файлы для продажи</h2>
+    <p class="hint">Каждый файл (ZIP, RAR, PNG…) — отдельный товар. Название берётся из имени файла, его можно поменять.
+      Превью — картинка, которую видят покупатели: выбери её для каждой строки или подбери сразу все по имени.</p>
+    <div class="row">
+      <label class="btn">Добавить файлы для продажи<input type="file" id="assets" multiple hidden></label>
+      <label class="btn ghost">Подобрать превью по имени<input type="file" id="previews" multiple accept=".png,.jpg,.jpeg,.gif" hidden></label>
+      <button class="btn ghost" id="clear" type="button">Очистить</button>
+    </div>
+    <div id="items" class="items"></div>
+  </section>
+
+  <section class="card">
+    <h2>2 · Одинаково для всех товаров</h2>
+    <div class="grid">
+      <label>Описание <small>{name} — название товара</small><textarea id="description" rows="6" placeholder="Описание товара"></textarea></label>
+      <label>Краткое описание (Product summary)<input id="summary" value="{name}"></label>
+      <label>Цена, $<input id="price" type="number" min="0" step="0.5" value="2"></label>
+      <label class="check"><input id="pwyw" type="checkbox" checked> Разрешить «Pay what you want»</label>
+      <label class="check"><input id="published" type="checkbox"> Сразу опубликовать (иначе товары создадутся скрытыми)</label>
+      <label>Пауза между товарами, с<input id="pause" type="number" min="3" max="120" value="8"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>3 · Загрузка</h2>
+    <div class="row">
+      <button class="btn primary" id="start" type="button">Загрузить в Ko-fi</button>
+      <button class="btn ghost" id="stop" type="button" disabled>Остановить после текущего</button>
+    </div>
+    <ol id="log" class="log"></ol>
+    <div id="result" class="result" hidden>
+      <h3>Ссылки</h3>
+      <textarea id="links" rows="6" readonly></textarea>
+      <button class="btn" id="copy" type="button">Скопировать все ссылки</button>
+    </div>
+  </section>
+</main>
+<script src="uploader.js"></script>
+</body>
+</html>

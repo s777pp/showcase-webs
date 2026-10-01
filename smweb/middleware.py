@@ -92,6 +92,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         "/api/quota",
         "/api/bootstrap",
         "/api/notifications",
+        "/api/support/my",
         "/api/da/",
         "/api/admin/",
     )

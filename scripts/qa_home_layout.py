@@ -32,7 +32,7 @@ def run():
                         .map(s => box(s).left);
                     return {headBottom: head.bottom, titleTop: title.top, actionsBottom: actions.bottom,
                             cardsTop: cards.top, cardsBottom: cards.bottom, height: innerHeight,
-                            leftSpread: Math.max(...lefts) - Math.min(...lefts), titleLeft: title.left,
+                            leftSpread: Math.max(...lefts) - Math.min(...lefts), titleLeft: title.left, logoLeft: box('.ss-logo').left,
                             rightSpread: (() => { const rs = [box('.home-actions').right, box('.home-telegram').right,
                                 box('.home-features li:last-child').right]; return Math.max(...rs) - Math.min(...rs); })()};
                 }''')
@@ -40,9 +40,12 @@ def run():
                 assert geometry['cardsTop'] >= geometry['actionsBottom'], (language, width, geometry)
                 if width > 820:
                     assert geometry['cardsBottom'] <= geometry['height'], (language, width, geometry)
-                    # One left edge for the whole copy column, on the owner's 7.75vw line.
+                    # One left edge for the whole copy column on the site grid (--site-gutter, 2026-10-01).
+                    # The header logo sits a little further in (--head-inset), never outside the grid.
+                    gutter = min(0.0775 * width, max(40, 0.144 * width - 170))
                     assert geometry['leftSpread'] <= 1.5, (language, width, geometry)
-                    assert abs(geometry['titleLeft'] - max(24, width * .0775)) <= 1.5, (language, width, geometry)
+                    assert abs(geometry['titleLeft'] - gutter) <= 1.5, (language, width, geometry)
+                    assert gutter - 0.5 <= geometry['logoLeft'] <= gutter + 32, (language, width, geometry)
                     # Buttons, Telegram offer and cards end on one right edge too.
                     assert geometry['rightSpread'] <= 2, (language, width, geometry)
             if language == 'de':

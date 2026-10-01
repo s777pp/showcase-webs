@@ -82,18 +82,15 @@ def reply_ticket(ticket_id: str, request: Request, body: dict = Body(...)):
     text = str(body.get("text") or "").strip()
     if not 2 <= len(text) <= 2000:
         return JSONResponse({"ok": False, "msg": "Reply must be 2-2000 characters"}, status_code=400)
-    ticket = next((t for t in admin_content.tickets(status="all", limit=500) if t.get("id") == ticket_id), None)
-    if not ticket:
+    # Same path as the admin console: thread on the site, bell notification, e-mail.
+    from smweb import support_threads
+    try:
+        result = support_threads.reply_from_support(ticket_id, text, "resolved")
+    except LookupError:
         return JSONResponse({"ok": False, "msg": "Ticket not found"}, status_code=404)
-    emailed = False
-    email = str(ticket.get("email") or "").strip()
-    if email:
-        import mailer
-        body_html = (f"<p>{html.escape(text).replace(chr(10), '<br>')}</p><hr>"
-                     f"<p style='color:#888'>Ваше обращение:<br>{html.escape(str(ticket.get('message') or ''))}</p>")
-        emailed, _msg = mailer.send_email(email, "Ответ поддержки Showcase Maker", text, body_html)
-    admin_content.update_ticket(ticket_id, "resolved", note=text)
-    return {"ok": True, "emailed": bool(emailed), "has_email": bool(email)}
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
+    return {"ok": True, "emailed": result["emailed"], "has_email": result["has_email"], "notified": result["notified"]}
 
 
 @router.post("/tickets/{ticket_id}/close")

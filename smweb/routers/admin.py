@@ -231,7 +231,78 @@ def retry_job(job_id: str, request: Request):
 @router.get("/support")
 def support_tickets(request: Request, status: str = "open"):
     _require(request)
-    return {"ok": True, "items": admin_content.tickets(status)}
+    from smweb import support_threads
+    items = admin_content.tickets(status)
+    threads = support_threads.admin_threads([t["id"] for t in items])
+    for item in items:
+        item["thread"] = threads.get(item["id"], [])
+    return {"ok": True, "items": items}
+
+
+@router.post("/support/{ticket_id}/reply")
+async def reply_support_ticket(ticket_id: str, request: Request):
+    """Answer a ticket: stored in the thread, shown in the user's bell, e-mailed when possible."""
+    _require(request, mutation=True)
+    body = await _json_object(request)
+    from smweb import support_threads
+    try:
+        result = support_threads.reply_from_support(ticket_id, str(body.get("text") or ""), str(body.get("status") or "resolved"))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    admin_control.audit("support.reply", f"ticket:{ticket_id}", {"emailed": result.get("emailed")})
+    return result
+
+
+# ---------------------------------------------------------------- news (2026-10-01)
+@router.get("/news")
+def news_list(request: Request):
+    _require(request)
+    from smweb import news
+    return {"ok": True, "items": news.admin_list(), "categories": list(news.CATEGORIES)}
+
+
+@router.post("/news")
+async def news_save(request: Request):
+    _require(request, mutation=True)
+    body = await _json_object(request)
+    from smweb import news
+    try:
+        result = news.save(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    admin_control.audit("news.save", f"news:{result['id']}", {"status": body.get("status")})
+    return result
+
+
+@router.delete("/news/{post_id}")
+def news_delete(post_id: str, request: Request):
+    _require(request, mutation=True)
+    from smweb import news
+    if not news.delete(post_id):
+        raise HTTPException(status_code=404, detail="Новость не найдена")
+    admin_control.audit("news.delete", f"news:{post_id}")
+    return {"ok": True}
+
+
+@router.post("/news/image")
+async def news_image(request: Request):
+    """One picture for a post (cover or inline); returns its public URL."""
+    _require(request, mutation=True)
+    form = await request.form(max_files=1, max_fields=4, max_part_size=15 * 1024 * 1024)
+    upload = form.get("file")
+    if upload is None or not hasattr(upload, "read"):
+        raise HTTPException(status_code=400, detail="Нет файла")
+    data = await upload.read()
+    if not data or len(data) > 15 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Картинка до 15 МБ")
+    from smweb import news
+    try:
+        url = news.store_image(data)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Это не картинка (PNG, JPG, WebP или GIF)") from exc
+    return {"ok": True, "url": url}
 
 
 @router.post("/support/{ticket_id}")

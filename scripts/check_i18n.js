@@ -80,7 +80,7 @@ function jsUiStrings(file, output) {
     if (source.includes('var DESIGN_COPY=')) source = source.replace(objectLiteral(source, 'var DESIGN_COPY='), '{}');
   }
   if (file === 'static/ss-shell.js') {
-    for (const marker of ['var ACCOUNT_COPY =', 'var RESET_ERROR_COPY =', 'var MAINTENANCE_UI =']) {
+    for (const marker of ['var ACCOUNT_COPY =', 'var RESET_ERROR_COPY =', 'var MAINTENANCE_UI =', 'var SHELL_COPY =']) {
       if (source.includes(marker)) source = source.replace(objectLiteral(source, marker), '{}');
     }
   }

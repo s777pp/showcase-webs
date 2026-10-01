@@ -130,7 +130,12 @@ def sitemap_xml():
     urls += ["https://showcasemaker.com" + localized_path(language, path)
              for language in guides.GUIDE_LANGUAGES
              for path in ["/guides", *(f"/guides/{slug}" for slug in guides.GUIDES)]]
-    body = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    try:
+        from smweb.routers.news import sitemap_urls
+        urls += sitemap_urls()
+    except Exception:
+        pass
+    body ='<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
     body += "".join(f"<url><loc>{html.escape(url)}</loc></url>" for url in urls) + "</urlset>"
     return Response(body, media_type="application/xml", headers={"Cache-Control": "public, max-age=3600"})
 

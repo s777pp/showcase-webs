@@ -563,12 +563,12 @@ def api_bootstrap(request: Request):
     """
     user = _auth_user(request)
     me = _me_payload(user)
-    unread = 0
+    me.update({"unread": 0, "news_unread": 0, "news_dot": False})
     if user:
         try:
-            unread = auth_db.notifications_unread_count(int(user["id"]))
+            from smweb.routers.gallery import bell_counts
+            me.update(bell_counts(user))
         except Exception:
             # A missing notifications table must not take down the whole shell.
             LOGGER.exception("bootstrap: unread count failed")
-    me["unread"] = unread
     return me

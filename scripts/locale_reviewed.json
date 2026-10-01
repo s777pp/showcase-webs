@@ -100,7 +100,10 @@
     "Could not send. Please try again.": "Senden fehlgeschlagen. Bitte versuche es erneut.",
     "Send request": "Anfrage senden",
     "✉️ The reply will come to this e-mail": "✉️ Die Antwort kommt an diese E-Mail",
-    "💬 We will message you on Telegram @": "💬 Wir schreiben dir auf Telegram @"
+    "💬 We will message you on Telegram @": "💬 Wir schreiben dir auf Telegram @",
+    "My requests →": "Meine Anfragen →",
+    "My requests": "Meine Anfragen",
+    "The answer will also appear here in notifications → My requests": "Die Antwort erscheint auch hier in den Benachrichtigungen → Meine Anfragen"
   },
   "tr": {
     "3 Steam formats": "3 Steam formatı",
@@ -202,7 +205,10 @@
     "Could not send. Please try again.": "Gönderilemedi. Lütfen tekrar dene.",
     "Send request": "Talebi gönder",
     "✉️ The reply will come to this e-mail": "✉️ Yanıt bu e-postaya gelecek",
-    "💬 We will message you on Telegram @": "💬 Sana Telegram'dan yazacağız @"
+    "💬 We will message you on Telegram @": "💬 Sana Telegram'dan yazacağız @",
+    "My requests →": "Taleplerim →",
+    "My requests": "Taleplerim",
+    "The answer will also appear here in notifications → My requests": "Yanıt burada da bildirimlerde görünecek → Taleplerim"
   },
   "fr": {
     "3 Steam formats": "3 formats Steam",
@@ -305,7 +311,10 @@
     "Could not send. Please try again.": "Échec de l’envoi. Réessaie.",
     "Send request": "Envoyer la demande",
     "✉️ The reply will come to this e-mail": "✉️ La réponse arrivera à cet e-mail",
-    "💬 We will message you on Telegram @": "💬 Nous t’écrirons sur Telegram @"
+    "💬 We will message you on Telegram @": "💬 Nous t’écrirons sur Telegram @",
+    "My requests →": "Mes demandes →",
+    "My requests": "Mes demandes",
+    "The answer will also appear here in notifications → My requests": "La réponse apparaîtra aussi ici dans les notifications → Mes demandes"
   },
   "uk": {
     "3 Steam formats": "3 формати Steam",
@@ -410,7 +419,10 @@
     "Send request": "Надіслати звернення",
     "✉️ The reply will come to this e-mail": "✉️ Відповідь прийде на цю пошту",
     "💬 We will message you on Telegram @": "💬 Напишемо тобі в Telegram @",
-    "Converter": "Конвертер"
+    "Converter": "Конвертер",
+    "My requests →": "Мої звернення →",
+    "My requests": "Мої звернення",
+    "The answer will also appear here in notifications → My requests": "Відповідь також з’явиться тут у сповіщеннях → Мої звернення"
   },
   "es": {
     "3 Steam formats": "3 formatos de Steam",
@@ -512,7 +524,10 @@
     "Could not send. Please try again.": "No se pudo enviar. Inténtalo de nuevo.",
     "Send request": "Enviar solicitud",
     "✉️ The reply will come to this e-mail": "✉️ La respuesta llegará a este correo",
-    "💬 We will message you on Telegram @": "💬 Te escribiremos por Telegram @"
+    "💬 We will message you on Telegram @": "💬 Te escribiremos por Telegram @",
+    "My requests →": "Mis solicitudes →",
+    "My requests": "Mis solicitudes",
+    "The answer will also appear here in notifications → My requests": "La respuesta también aparecerá aquí en las notificaciones → Mis solicitudes"
   },
   "pt": {
     "3 Steam formats": "3 formatos da Steam",
@@ -614,6 +629,9 @@
     "Could not send. Please try again.": "Não foi possível enviar. Tente novamente.",
     "Send request": "Enviar pedido",
     "✉️ The reply will come to this e-mail": "✉️ A resposta chegará a este e-mail",
-    "💬 We will message you on Telegram @": "💬 Vamos te chamar no Telegram @"
+    "💬 We will message you on Telegram @": "💬 Vamos te chamar no Telegram @",
+    "My requests →": "Minhas solicitações →",
+    "My requests": "Minhas solicitações",
+    "The answer will also appear here in notifications → My requests": "A resposta também aparecerá aqui nas notificações → Minhas solicitações"
   }
 }
