@@ -52,7 +52,8 @@ def test_split_pair_has_equal_columns_and_the_right_one_fits_in_100px(shape):
     left, right = mask[:, :100], mask[:, 506:]
     best = min(np.abs(np.roll(left[:, ::-1], shift, axis=1) - right)[:, 1:-1].mean() for shift in (-1, 0, 1))
     assert best < 0.01, (shape, best)
-    col = frame_designs._catalog()[shape]["col"] * frame_designs.unit("full", 606, 824)
+    design = frame_designs._catalog()[shape]
+    col = design["col"] * frame_designs.unit("full", 606, 824, design["col"], design.get("refh"))
     assert col <= 100, (shape, col)
 
 

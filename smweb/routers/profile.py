@@ -769,6 +769,12 @@ async def api_profile_steam_import(request: Request):
             url = snap["url"]
     if not url:
         return JSONResponse({"ok": False, "msg": "No Steam URL"}, status_code=400)
+    import steam_catalog
+    if not steam_catalog.canonical_profile_url(url):
+        # Say it right away instead of queueing a job that can only fail (2026-10-01: users
+        # pasted other links and got "could not open the Steam profile" a minute later).
+        return JSONResponse({"ok": False, "code": "steam_profile_url",
+                             "msg": "Enter a public steamcommunity.com profile URL"}, status_code=400)
     try:
         # Imports run as jobs so the page can show which route (this server,
         # the relay, or Browser API) is reaching Steam at the moment.

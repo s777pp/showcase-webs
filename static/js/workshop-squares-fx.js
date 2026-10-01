@@ -38,7 +38,7 @@
     fx.frame=Object.assign(base.frame,{target:fx.frame.target||'squares'},preset[1]);
     fx.effect=Object.assign(base.effect,preset[2]);
   }
-  function t(key,language){return (COPY[language]||COPY.en)[key]||COPY.en[key]||key}
+  function t(key,language){var pro=/^shape_pro(\d+)$/.exec(key);if(pro)return t('frame',language)+' '+pro[1];return (COPY[language]||COPY.en)[key]||COPY.en[key]||key}
 
   function defaults(){return {frame:{style:'none',shape:'rect',plate:0,color:'#8de9ff',color2:'#8a62ff',width:3,speed:1,target:'squares'},effect:{type:'none',color:'#ff9fc8',speed:100,density:100,opacity:90}}}
   function isEmpty(fx){return fx.frame.style==='none'&&fx.effect.type==='none'}
@@ -101,7 +101,7 @@
      rect/bevel/notch are simple windows; the HUD designs come from
      /static/assets/frames/designs.json. Panel roles: full (ornaments both sides),
      left / right (the two Artwork Split files). */
-  var DESIGNS_URL='/static/assets/frames/designs.json?v=20260929-hud1',SPLIT_SIDE=100,REF_HEIGHT=260;
+  var DESIGNS_URL='/static/assets/frames/designs.json?v=20261001-pro1',SPLIT_SIDE=100,REF_HEIGHT=260;
   var designs=null,designList=[],designWaiters=[];
   function loadDesigns(){
     if(designs||loadDesigns.busy||typeof fetch!=='function')return;loadDesigns.busy=true;
@@ -125,7 +125,7 @@
     }
     return [[[x0,y0],[x1,y0],[x1,y1],[x0,y1]]];
   }
-  function designUnit(role,w,h,col){col=col||70;if(role==='left')return (w/506)*SPLIT_SIDE/col;if(role==='right')return w/col;return Math.min(w/606,h/REF_HEIGHT)}
+  function designUnit(role,w,h,col,refh){col=col||70;if(role==='left')return (w/506)*SPLIT_SIDE/col;if(role==='right')return w/col;return Math.min(w/606,h/(refh||REF_HEIGHT))}
   function coord(spec,origin,span,u){return Array.isArray(spec)?origin+spec[0]*span+spec[1]*u:origin+spec*u}
   function strokePolygon(points,thickness){
     var half=thickness/2,normals=[],left=[],right=[];
@@ -164,7 +164,7 @@
       var windows=windowShapes(['rect','bevel','notch'].indexOf(shape)>=0?shape:'rect',r,width);
       return {evenOdd:[[[r[0],r[1]],[r[0]+r[2],r[1]],[r[0]+r[2],r[1]+r[3]],[r[0],r[1]+r[3]]]].concat(windows),bars:[],paths:windows.map(function(w){return [w,true]})};
     }
-    var x=r[0],y=r[1],w=r[2],h=r[3],u=designUnit(role,w,h,design.col),col=design.col*u,lc=(role==='full'||role==='left')?col:0,rc=(role==='full'||role==='right')?col:0;
+    var x=r[0],y=r[1],w=r[2],h=r[3],u=designUnit(role,w,h,design.col,design.refh),col=design.col*u,lc=(role==='full'||role==='left')?col:0,rc=(role==='full'||role==='right')?col:0;
     var edge=(design.edge==null?6:design.edge)*u,gap=(design.gap||0)*u,wx0=x+(lc||edge)+gap,wx1=x+w-(rc||edge)-gap;
     var boxes={P:[x,w],W:[wx0,Math.max(1,wx1-wx0)],L:[x,col]},evenOdd=[],bars=[],all=[];
     function pt(spec,box){var b=boxes[box],px=coord(spec[0],b[0],b[1],u);if(box==='W'||(box==='L'&&role!=='full'))px=clamp(px,b[0],b[0]+b[1]);return [px,coord(spec[1],y,h,u)]}
@@ -389,17 +389,17 @@
       var keys=(opts.includeNone?['none']:[]).concat(FRAME_SHAPES);
       keys.forEach(function(key){
         var b=el('button','sqfx-pick__tile');b.type='button';b.dataset.shape=key;b.setAttribute('role','radio');b.setAttribute('aria-checked',String(opts.value===key));
-        var label=key==='none'?t('none',language):t('shape_'+key,language);b.title=label;
+        var label=key==='none'?t('none',language):t('shape_'+key,language);b.title=label;b.setAttribute('aria-label',label);
         var cw=opts.mode==='split'?64:(opts.mode==='workshop'?66:58),ch=74,canvas=tileCanvas(cw,ch);
         registerTile(canvas,function(){
           var ctx=canvas.getContext('2d'),W2=canvas.width,H2=canvas.height;ctx.clearRect(0,0,W2,H2);paintBackdrop(ctx,W2,H2);
-          if(key==='none')return;
+          if(key==='none'){var r=Math.min(W2,H2)*.22;ctx.strokeStyle='rgba(160,190,220,.7)';ctx.lineWidth=Math.max(2,W2/40);ctx.beginPath();ctx.arc(W2/2,H2/2,r,0,Math.PI*2);ctx.moveTo(W2/2-r*.7,H2/2+r*.7);ctx.lineTo(W2/2+r*.7,H2/2-r*.7);ctx.stroke();return}
           var panels=thumbPanels(opts.mode,W2,H2);
           if(opts.mode==='split'){ctx.fillStyle='#070b14';ctx.fillRect(panels[0][2],0,panels[1][0]-panels[0][2],H2)}
           if(opts.mode==='workshop'){ctx.fillStyle='#070b14';panels.slice(1).forEach(function(p){ctx.fillRect(p[0]-2,0,2,H2)})}
           drawShaped(ctx,.2,{style:'solid',shape:key,plate:key==='rect'?0:100,color:opts.color||'#5fe4ff',color2:'#8a62ff',width:2,speed:1,target:'strip'},panels,600);
         });
-        b.append(canvas,el('span',null,label));b.onclick=function(){opts.onPick(key)};box.append(b);
+        b.append(canvas);b.onclick=function(){opts.onPick(key)};box.append(b);
       });
       requestTick();
     }

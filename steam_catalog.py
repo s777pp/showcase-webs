@@ -718,24 +718,30 @@ def _normalise_showcase(item: dict) -> dict:
     return result
 
 
+def canonical_profile_url(url: str) -> str | None:
+    """steamcommunity.com profile URL for a full URL, /id/vanity, /profiles/steamid64,
+    a bare vanity name or a SteamID64; None for anything else (checked before queueing)."""
+    raw = (url or "").strip()
+    if not raw:
+        return None
+    if re.fullmatch(r"\d{17}", raw):
+        return f"https://steamcommunity.com/profiles/{raw}"
+    if re.fullmatch(r"[A-Za-z0-9_-]{2,64}", raw):
+        return f"https://steamcommunity.com/id/{raw}"
+    m = re.search(r"steamcommunity\.com/(id|profiles)/([^/?#]+)", raw.rstrip("/"), re.I)
+    if not m:
+        return None
+    return f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
+
+
 def profile(url: str, progress=None, fresh: bool = False) -> dict:
     """Load the public part of a Steam profile without a Web API key.
 
     Accepts full URL, /id/vanity, /profiles/steamid64, bare vanity or SteamID64.
     """
-    raw = (url or "").strip()
-    if not raw:
-        return {"ok": False, "msg": "Enter a public steamcommunity.com profile URL"}
-    if re.fullmatch(r"\d{17}", raw):
-        canonical = f"https://steamcommunity.com/profiles/{raw}"
-    elif re.fullmatch(r"[A-Za-z0-9_-]{2,64}", raw):
-        canonical = f"https://steamcommunity.com/id/{raw}"
-    else:
-        raw = raw.rstrip("/")
-        m = re.search(r"steamcommunity\.com/(id|profiles)/([^/?#]+)", raw, re.I)
-        if not m:
-            return {"ok": False, "msg": "Enter a public steamcommunity.com profile URL"}
-        canonical = f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
+    canonical = canonical_profile_url(url)
+    if not canonical:
+        return {"ok": False, "code": "steam_profile_url", "msg": "Enter a public steamcommunity.com profile URL"}
 
     cache_dir = _CACHE_PATH.parent if _CACHE_PATH else Path(os.environ.get('DATA_DIR', 'data'))
     gate_path = cache_dir / 'steam_profiles.sqlite3'

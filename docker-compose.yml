@@ -1,10 +1,19 @@
 # Production-oriented stack for SteamShowcase
 # Usage: cp .env.example .env && docker compose up -d --build
 
+# Docker logs are capped (they used to grow without limit). They are still lost when a
+# container is recreated; server errors are kept in the database instead (smweb/error_log.py).
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-showcase}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
@@ -23,6 +32,7 @@ services:
     # Nightly pg_dump to the private R2 bucket (deploy/backup/backup.py).
     build: ./deploy/backup
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env
     environment:
@@ -37,6 +47,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *default-logging
     command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
     volumes:
       - redisdata:/data
@@ -50,6 +61,7 @@ services:
   app:
     build: .
     restart: unless-stopped
+    logging: *default-logging
     # Memory caps (VPS has 11 GB): a runaway FFmpeg/RIFE job must hit its own
     # container limit instead of pushing PostgreSQL or Redis into the OOM killer.
     mem_limit: ${APP_MEM_LIMIT:-3g}
@@ -117,6 +129,7 @@ services:
   worker:
     build: .
     restart: unless-stopped
+    logging: *default-logging
     mem_limit: ${WORKER_MEM_LIMIT:-6g}
     env_file:
       - .env
@@ -154,6 +167,7 @@ services:
     # nginx >=1.27.3 is required for upstream DNS re-resolution (resolve).
     image: nginx:1.30.5-alpine
     restart: unless-stopped
+    logging: *default-logging
     ports:
       # Loopback only: traffic arrives through the Cloudflare tunnel, which reaches
       # nginx over the internal network. Publishing on 0.0.0.0 would let anyone who
@@ -172,6 +186,7 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:2026.9.1
     restart: unless-stopped
+    logging: *default-logging
     command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN in .env}"]
     depends_on:
       - nginx

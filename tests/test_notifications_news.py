@@ -150,3 +150,28 @@ def test_backdated_post_goes_to_the_feed_without_bell_or_dot():
                "published_at": two_days_ago})
     assert news.by_slug(saved["slug"])["notify"]
     news.delete(saved["id"])
+
+
+def test_prefixed_job_keys_still_notify_their_owner(monkeypatch):
+    # Steam import / insight / Steam DNA keep "steam:<id>" in user_key and the id in user_id.
+    uid, _ = _user()
+    jobs = {"s1": {"kind": "steam_profile_import", "user_key": f"steam:{uid}", "user_id": uid, "status": "done"},
+            "s2": {"kind": "steam_profile_import", "user_key": f"steam:{uid}", "user_id": uid, "status": "error",
+                   "error": "Enter a public steamcommunity.com profile URL"}}
+    import redis_store
+    monkeypatch.setattr(redis_store, "job_get", lambda jid: jobs.get(jid))
+    for jid, job in jobs.items():
+        notify.job_finished(jid, {"status": job["status"]})
+    rows = {r["kind"]: r for r in auth_db.notifications_list(uid)}
+    assert set(rows) == {"job_done", "job_error"}
+    assert json.loads(rows["job_error"]["meta_json"])["code"] == "steam_not_found"
+
+
+def test_steam_profile_links_are_checked_before_queueing():
+    import steam_catalog
+    good = ["https://steamcommunity.com/id/gabelogannewell/", "steamcommunity.com/profiles/76561197960287930",
+            "76561197960287930", "gabelogannewell"]
+    for value in good:
+        assert steam_catalog.canonical_profile_url(value), value
+    for value in ["https://store.steampowered.com/app/570", "https://youtube.com/watch?v=x", "", "a b c"]:
+        assert steam_catalog.canonical_profile_url(value) is None, value

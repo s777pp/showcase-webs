@@ -307,6 +307,22 @@ def _create_schema(c: sqlite3.Connection) -> None:
         """
     )
     c.execute("CREATE INDEX IF NOT EXISTS idx_support_messages_ticket ON support_messages(ticket_id, created_at)")
+    # Server errors grouped by fingerprint (smweb/error_log.py, 2026-10-01).
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS server_errors (
+            id TEXT PRIMARY KEY,
+            source TEXT, kind TEXT, title TEXT, location TEXT, logger TEXT,
+            method TEXT, path TEXT, status INTEGER,
+            message TEXT, trace TEXT, request_id TEXT,
+            count INTEGER NOT NULL DEFAULT 1,
+            first_seen REAL NOT NULL,
+            last_seen REAL NOT NULL,
+            resolved_at REAL
+        )
+        """
+    )
+    c.execute("CREATE INDEX IF NOT EXISTS idx_server_errors_seen ON server_errors(resolved_at, last_seen)")
     c.execute(
         """
         CREATE TABLE IF NOT EXISTS profile_showcases (

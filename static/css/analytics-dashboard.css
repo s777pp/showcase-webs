@@ -77,3 +77,12 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var
 .ticket form.ticket-reply button{grid-column:auto}
 @media (max-width:760px){.an-cover{grid-template-columns:1fr}}
 .job-file__note{display:block;margin-top:4px;color:#7fe9ff;font-size:12px;line-height:1.4}
+/* Server errors (admin-errors.js) */
+.err-stats{display:flex;gap:10px}.err-stats div{display:grid;min-width:110px;padding:10px 14px;border:1px solid var(--line)}.err-stats strong{font-size:22px}.err-stats span{font-size:12px;color:var(--muted,#8aa)}
+.err-toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin:14px 0}
+.err-toolbar .actions{display:flex;gap:8px;flex-wrap:wrap}
+.err-row{cursor:pointer}.err-row:hover td{background:rgba(110,170,255,.05)}.err-row.is-open td{background:rgba(31,201,241,.07)}
+.err-table .table-primary{max-width:560px;overflow-wrap:anywhere}
+.err-detail td{background:rgba(5,12,22,.6)}.err-detail dl{display:grid;grid-template-columns:140px 1fr;gap:4px 12px;margin:0 0 10px;font-size:13px}.err-detail dt{color:var(--muted,#8aa)}.err-detail dd{margin:0;overflow-wrap:anywhere}
+.err-trace{max-height:360px;overflow:auto;margin:0 0 10px;padding:12px;border:1px solid var(--line);background:#03070d;font:12px/1.5 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.err-detail .actions{display:flex;gap:8px}

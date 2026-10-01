@@ -35,6 +35,10 @@ _LOG = logging.getLogger("sm.worker")
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+# Errors survive container rebuilds: stored in server_errors, shown in the admin console.
+from smweb import error_log  # noqa: E402
+error_log.install("worker")
+
 MAX_WORKERS = int(os.environ.get("MAX_JOB_WORKERS", "1"))
 MAX_PROFILE_WORKERS = max(1, int(os.environ.get("MAX_PROFILE_WORKERS", "1")))
 MAX_UPSCALE_WORKERS = max(1, int(os.environ.get("MAX_UPSCALE_WORKERS", "4")))

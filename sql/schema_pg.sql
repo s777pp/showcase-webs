@@ -121,6 +121,18 @@ CREATE TABLE IF NOT EXISTS support_messages (
  created_at DOUBLE PRECISION NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_support_messages_ticket ON support_messages(ticket_id,created_at);
+-- Server errors grouped by fingerprint (smweb/error_log.py, 2026-10-01).
+CREATE TABLE IF NOT EXISTS server_errors (
+ id TEXT PRIMARY KEY,
+ source TEXT, kind TEXT, title TEXT, location TEXT, logger TEXT,
+ method TEXT, path TEXT, status INTEGER,
+ message TEXT, trace TEXT, request_id TEXT,
+ count INTEGER NOT NULL DEFAULT 1,
+ first_seen DOUBLE PRECISION NOT NULL,
+ last_seen DOUBLE PRECISION NOT NULL,
+ resolved_at DOUBLE PRECISION
+);
+CREATE INDEX IF NOT EXISTS idx_server_errors_seen ON server_errors(resolved_at,last_seen);
 CREATE TABLE IF NOT EXISTS profile_showcases (id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, sc_type TEXT NOT NULL, title TEXT, sort_order INTEGER DEFAULT 0, data_json TEXT, created_at DOUBLE PRECISION);
 ALTER TABLE profile_showcases ADD COLUMN IF NOT EXISTS sc_type TEXT;
 ALTER TABLE profile_showcases ADD COLUMN IF NOT EXISTS data_json TEXT;

@@ -83,6 +83,8 @@ def error_code(job: dict) -> str:
         return "server"
     if code == "steam_profile":
         return "steam_unavailable"
+    if code == "steam_profile_url":
+        return "steam_not_found"  # its bell text explains which link to paste
     return code
 
 
@@ -97,7 +99,9 @@ def job_finished(job_id: str, fields: dict) -> None:
     except Exception:
         return
     job = {**job, **fields}
-    user_id = _user_id(job.get("user_key"))
+    # Process jobs keep the account id in user_key; Steam import, insight, Steam DNA and
+    # background removal use prefixed keys ("steam:12") and carry the id in user_id.
+    user_id = _user_id(job.get("user_id")) or _user_id(job.get("user_key"))
     kind = str(job.get("kind") or "process")
     if not user_id:
         return

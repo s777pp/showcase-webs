@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 412 passed on 2026-10-01 (~125 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 452 passed on 2026-10-01 (~145 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -594,6 +594,14 @@ Only the hero exists for now; content blocks will be added below it later.
   `sm:builder-select`; the root carries `data-bx-active` (NOT data-bx-tool, that is the rail buttons). A layer is
   added by picking its tool first: QA scripts click `[data-bx-tool=X]` then `[data-add-layer=X]`.
   Shell note: in Git Bash never use sed with `#` as the delimiter on CSS/HTML that contains `#` (it corrupted a file once).
+- Owner frame set pro1..pro11 (2026-10-01, owner: "такие рамки 1в1", screenshots `IMAGE/1.png`..`11.png`, made by
+  the owner's friend): extracted from the screenshots (all share one background, so window pixels = the value most
+  screenshots agree on; exact black = plate), traced, simplified and made symmetric (window: left half mirrored;
+  column holes: left side mirrored by the engine), hand fixes where dark trees hid the plate (pro6, pro10). Labels are
+  generated: `t('shape_proN')` = `t('frame') + ' N'`. New optional design field `refh` (reference height in U,
+  927 for these): `unit = min(w/606, h/refh)` in both `frame_designs.unit` and `designUnit` (JS), so tall designs
+  shrink on low panels instead of squashing; their y values are U from the top (upper 30 %), `[1,-U]` from the bottom
+  (lower 30 %) or a height fraction (middle). The scratch extraction scripts were not kept; re-trace only on request.
 - Studio round 2 (2026-09-30): Split HUD frames: the 100 px file is ONLY the ornament column (the 506 file's
   100 px column, mirrored pixel for pixel: `square_fx._panel_masks` flips the left mask for role right); both parts
   share one scale (`frame_designs.unit`, `SPLIT_SIDE`), column points are clamped to the column, and Split HUD
@@ -741,6 +749,22 @@ Only the hero exists for now; content blocks will be added below it later.
   (`Could not read the preview`, translated in `community-gallery.js serverError`). Same root cause elsewhere:
   `processor.restore_gif_trailer` runs in `normalize_upload` (Process, Character) and `restore_gif_trailer_file` on
   Workshop Studio uploads; the admin job card probe (`admin_jobs._probe`) reads such GIFs and adds a `note`.
+- Evening fixes 2026-10-01: `notify.job_finished` takes the owner from `user_id` first (Steam import, insight,
+  Steam DNA and bg-remove jobs use prefixed `user_key`s like `steam:12` and were never notified);
+  `steam_catalog.canonical_profile_url` validates the link in `POST /api/profile/steam-import` (400
+  `steam_profile_url`, text in profile.js PDICT) before a job is queued; the Steam media proxy cache only serves
+  finished `<key>.<ext>` files (a parallel byte-range request used to grab the `.tmp` being renamed -> 500).
+- Server errors (2026-10-01, owner: logs vanished on every deploy): `smweb/error_log.py`. `install("app"|"worker")`
+  (main.py, worker.py; skipped under pytest or with `ERROR_LOG=0`) adds an ERROR-level handler on the root logger;
+  `ErrorCaptureMiddleware` (outermost user middleware) gives records the request (method, path, request id; for
+  unhandled exceptions via `exc._sm_request`, because Starlette's global handler runs outside it) and records a 5xx
+  that no ERROR log explained (502/503 are deliberate and ignored). Entries are scrubbed (`job_diagnostics.scrub`),
+  grouped by fingerprint (exception type + innermost own frame, or logger + message with numbers/ids masked) in table
+  `server_errors` (both schemas), written by a background thread; a new or reopened group goes to the owner bot
+  (1 h throttle per group). Admin: "Ошибки сайта" (`static/js/admin-errors.js`, `/api/admin/control/errors*`:
+  list/resolve/resolve-all/delete resolved), nav badge from `SMAdminErrors.badge` on the overview, deep link
+  `#errors`. Kept 14 days / 500 groups (`error_log.cleanup` in the job cleaner). Docker logs: `x-logging` anchor
+  in docker-compose.yml (json-file 20m x 5), also in the mirror and relay compose files. Tests: `tests/test_error_log.py`.
 - Tests: `tests/test_notifications_news.py`. Load: one indexed query per bell poll (60 s, visible tabs only),
   news unread is a single count against `news_posts`.
 

@@ -255,6 +255,42 @@ async def reply_support_ticket(ticket_id: str, request: Request):
     return result
 
 
+# ---------------------------------------------------------------- server errors (2026-10-01)
+@router.get("/errors")
+def errors_list(request: Request, status: str = "open"):
+    _require(request)
+    from smweb import error_log
+    return {"ok": True, **error_log.listing(status if status in ("open", "resolved", "all") else "open")}
+
+
+@router.post("/errors/resolve-all")
+def errors_resolve_all(request: Request):
+    _require(request, mutation=True)
+    from smweb import error_log
+    count = error_log.resolve(None)
+    admin_control.audit("errors.resolve_all", "server_errors", {"count": count})
+    return {"ok": True, "count": count}
+
+
+@router.post("/errors/{error_id}/resolve")
+def errors_resolve(error_id: str, request: Request):
+    _require(request, mutation=True)
+    from smweb import error_log
+    if not error_log.resolve(error_id):
+        raise HTTPException(status_code=404, detail="Ошибка не найдена или уже решена")
+    admin_control.audit("errors.resolve", f"error:{error_id}")
+    return {"ok": True}
+
+
+@router.delete("/errors/resolved")
+def errors_delete_resolved(request: Request):
+    _require(request, mutation=True)
+    from smweb import error_log
+    count = error_log.delete_resolved()
+    admin_control.audit("errors.delete_resolved", "server_errors", {"count": count})
+    return {"ok": True, "count": count}
+
+
 # ---------------------------------------------------------------- news (2026-10-01)
 @router.get("/news")
 def news_list(request: Request):

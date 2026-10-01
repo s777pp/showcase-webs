@@ -2,6 +2,11 @@ services:
   steam-relay:
     image: python:3.12-alpine
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
     command: ["python", "-u", "/app/relay.py"]
     volumes:
       - ./relay.py:/app/relay.py:ro

@@ -122,6 +122,27 @@ def test_proxy_serves_repeat_requests_from_disk_with_ranges(monkeypatch, tmp_pat
     assert len(list((tmp_path / "cache" / "steam-media").glob("*.webm"))) == 1
 
 
+def test_proxy_never_serves_a_half_written_temp_file(monkeypatch, tmp_path):
+    # A parallel range request used to pick up "<key>.webm.<rand>.tmp" while it was being
+    # renamed and answered HTTP 500.
+    import hashlib
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    import tools_api
+
+    monkeypatch.setitem(tools_api._D, "DATA", str(tmp_path))
+    source = "https://shared.cloudflare.steamstatic.com/t.webm"
+    cache = tmp_path / "cache" / "steam-media"
+    cache.mkdir(parents=True)
+    key = hashlib.sha256(source.encode("utf-8")).hexdigest()[:40]
+    (cache / (key + ".webm.abcd1234.tmp")).write_bytes(b"half")
+    app = FastAPI()
+    app.include_router(tools_api.router)
+    with patch("tools_api.fetch_media", return_value=(b"whole-file", "video/webm")) as fetch:
+        response = TestClient(app).get("/api/steam/proxy-image?url=" + source)
+    assert response.status_code == 200 and response.content == b"whole-file" and fetch.call_count == 1
+
+
 def test_builder_rejects_lookalike_host_before_fetch(monkeypatch):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient

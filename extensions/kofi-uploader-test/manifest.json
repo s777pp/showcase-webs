@@ -1,13 +1,20 @@
 {
   "manifest_version": 3,
   "name": "Ko-fi Shop Uploader (test)",
-  "version": "0.1.0",
-  "description": "Prototype: creates Ko-fi shop items from a queue of files (name, description, price, preview, file for buyers).",
+  "version": "0.2.2",
+  "description": "Creates Ko-fi shop products from a queue of files: title, description, summary, price, categories, preview and the file buyers get.",
+  "minimum_chrome_version": "111",
   "permissions": ["tabs", "storage"],
   "host_permissions": ["https://ko-fi.com/*"],
   "background": { "service_worker": "background.js" },
   "action": { "default_title": "Ko-fi Shop Uploader" },
   "content_scripts": [
+    {
+      "matches": ["https://ko-fi.com/shop/*"],
+      "js": ["kofi-page.js"],
+      "world": "MAIN",
+      "run_at": "document_idle"
+    },
     {
       "matches": ["https://ko-fi.com/shop/*"],
       "js": ["kofi.js"],

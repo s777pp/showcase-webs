@@ -245,9 +245,16 @@ def steam_proxy_image(url: str):
     cache_dir = Path(_D["DATA"]) / "cache" / "steam-media"
     key = hashlib.sha256(url.encode("utf-8")).hexdigest()[:40]
     headers = {"Cache-Control": "public, max-age=604800, immutable"}
-    for hit in cache_dir.glob(key + ".*"):
-        if time.time() - hit.stat().st_mtime < STEAM_MEDIA_CACHE_SECONDS:
-            return FileResponse(hit, media_type=_STEAM_MEDIA_TYPES.get(hit.suffix, "application/octet-stream"), headers=headers)
+    # Only finished files: a parallel request (browsers fetch videos in byte ranges) may be
+    # writing "<key>.webm.<rand>.tmp" right now; serving it raced with the rename -> HTTP 500.
+    for suffix, media_type in _STEAM_MEDIA_TYPES.items():
+        hit = cache_dir / (key + suffix)
+        try:
+            fresh = time.time() - hit.stat().st_mtime < STEAM_MEDIA_CACHE_SECONDS
+        except OSError:
+            continue
+        if fresh:
+            return FileResponse(hit, media_type=media_type, headers=headers)
     try:
         body, ctype = fetch_media(url, max_bytes=25 * 1024 * 1024, user_agent=steam_catalog.UA)
     except Exception as exc:

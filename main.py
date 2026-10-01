@@ -128,6 +128,13 @@ app.add_middleware(MirrorMiddleware)
 app.add_middleware(GZipMiddleware)
 
 
+# Server errors survive container rebuilds: ERROR logs and unexplained 5xx go to
+# the database ("Ошибки сайта" in the admin console) and new ones to the owner's bot.
+from smweb import error_log
+error_log.install("app")
+app.add_middleware(error_log.ErrorCaptureMiddleware)
+
+
 app.mount("/static", CachedStaticFiles(directory=str(STATIC)), name="static")
 
 

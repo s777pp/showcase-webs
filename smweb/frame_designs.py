@@ -37,13 +37,18 @@ def design_ids() -> tuple[str, ...]:
     return tuple(_catalog())
 
 
-def unit(role: str, w: float, h: float, col: float = 70.0) -> float:
-    """Design units per pixel. Split parts share one scale: the column is 100 Steam px."""
+def unit(role: str, w: float, h: float, col: float = 70.0, refh: float | None = None) -> float:
+    """Design units per pixel. Split parts share one scale: the column is 100 Steam px.
+
+    ``refh`` is the design's own reference height in U (tall designs whose ornaments
+    fill the whole height): a panel lower than that shrinks the whole design instead of
+    squashing its ornaments.
+    """
     if role == "left":
         return (w / 506.0) * SPLIT_SIDE / col
     if role == "right":
         return w / col
-    return min(w / _FULL_WIDTH, h / _REF_HEIGHT)
+    return min(w / _FULL_WIDTH, h / (refh or _REF_HEIGHT))
 
 
 def _coord(spec, origin: float, span: float, u: float) -> float:
@@ -90,7 +95,7 @@ def geometry(design_id: str, rect, role: str = "full"):
     """[(kind, polygon)] of one panel: kind "poly" (even-odd) or "bar"/"arc" (union)."""
     design = _catalog()[design_id]
     x, y, w, h = rect
-    u = unit(role, w, h, design["col"])
+    u = unit(role, w, h, design["col"], design.get("refh"))
     col = design["col"] * u
     left_col = col if role in ("full", "left") else 0.0
     right_col = col if role in ("full", "right") else 0.0
