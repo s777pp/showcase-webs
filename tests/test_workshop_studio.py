@@ -232,3 +232,121 @@ def test_gif_row_stays_animated_and_hex_patched(tmp_path):
     with Image.open(io.BytesIO(target.read_bytes()[:-1] + b";")) as result:
         assert result.size == (750, 1500)
         assert result.n_frames > 1
+
+
+def test_three_rows_of_squares_go_into_row_folders(tmp_path, monkeypatch):
+    monkeypatch.setattr(studio, "JOBS", tmp_path)
+    states = []
+    monkeypatch.setattr(studio, "_job_set", lambda jid, **fields: states.append(fields))
+    uploads, crops = [], []
+    for index, color in enumerate(("#c01818", "#18c018", "#1818c0")):
+        path = tmp_path / f"row_source_{index}.png"
+        Image.new("RGB", (900, 400), color).save(path)
+        uploads.append({"path": str(path), "name": path.name})
+        crops.append({"x": 0, "y": 0.1, "w": 1, "h": 0.45})
+    options = {"layout": "squares", "crops": crops, "rows": [_settings()] * 3, "fps": 12, "duration": 4,
+               "fx": {"frame": {"style": "solid", "color": "#ffffff", "width": 3}}}
+    studio.run("c" * 24, {"files": uploads, "options": options})
+    assert states[-1]["status"] == "done", states[-1]
+    with zipfile.ZipFile(tmp_path / ("c" * 24) / "result.zip") as archive:
+        names = sorted(archive.namelist())
+        expected = sorted([f"row_{row}/part_{part}.png" for row in (1, 2, 3) for part in range(1, 6)]
+                          + [f"row_{row}/preview.png" for row in (1, 2, 3)])
+        assert names == expected
+        for row, channel in ((1, 0), (2, 1), (3, 2)):
+            with Image.open(io.BytesIO(archive.read(f"row_{row}/part_3.png"))) as part:
+                pixel = part.convert("RGB")
+                assert pixel.getpixel((75, 75))[channel] > 150, "each row keeps its own source"
+                assert pixel.getpixel((1, 75)) == (255, 255, 255), "the shared frame is drawn on every row"
+
+
+def test_api_squares_accepts_one_crop_per_row(tmp_path, monkeypatch):
+    captured = {}
+    monkeypatch.setattr(process, "JOBS", tmp_path)
+    monkeypatch.setattr(process, "quota_state", lambda request: {"pro": True, "left": -1})
+    monkeypatch.setattr(process, "_auth_user", lambda request: None)
+    monkeypatch.setattr(process, "owner_key", lambda request, user=None: "test-client")
+    monkeypatch.setattr(process.rs, "job_count_user", lambda user: 0)
+    monkeypatch.setattr(process.rs, "job_create", lambda jid, payload, enqueue=False: captured.update(payload))
+    monkeypatch.setattr(process, "_worker_mode", lambda: "embedded")
+    monkeypatch.setattr(process, "quota_inc", lambda request, count: None)
+    monkeypatch.setattr(process._job_pool, "submit", lambda func, *args: None)
+    monkeypatch.setattr(process, "_job_set", lambda jid, **fields: None)
+    buffer = io.BytesIO()
+    Image.new("RGB", (300, 300), "#235070").save(buffer, format="PNG")
+    app = FastAPI()
+    app.include_router(process.router)
+    crop = {"x": 0, "y": 0, "w": 1, "h": 0.2}
+    with TestClient(app) as client:
+        bad = client.post("/api/workshop-studio/start", data={"rows": "2", "layout": "squares",
+            "crops": json.dumps([crop]), "settings": json.dumps([_settings()] * 2)},
+            files=[("files", ("a.png", buffer.getvalue(), "image/png")), ("files", ("b.png", buffer.getvalue(), "image/png"))])
+        assert bad.status_code == 400
+        good = client.post("/api/workshop-studio/start", data={"rows": "2", "layout": "squares",
+            "crops": json.dumps([crop, crop]), "settings": json.dumps([_settings()] * 2)},
+            files=[("files", ("a.png", buffer.getvalue(), "image/png")), ("files", ("b.png", buffer.getvalue(), "image/png"))])
+        assert good.status_code == 200
+        assert len(captured["options"]["crops"]) == 2
+        rows = client.post("/api/workshop-studio/start", data={"rows": "1", "layout": "rows",
+            "fx": json.dumps({"frame": {"style": "neon", "target": "squares"}, "effect": {"type": "snow"}}),
+            "settings": json.dumps([_settings()])},
+            files=[("files", ("a.png", buffer.getvalue(), "image/png"))])
+        assert rows.status_code == 200
+        fx = captured["options"]["fx"]
+        assert fx["frame"]["style"] == "neon" and fx["frame"]["target"] == "strip"
+        assert fx["effect"]["type"] == "none", "effects are a squares feature"
+
+
+def test_full_height_row_gets_the_frame_around_the_whole_file(tmp_path):
+    from smweb import square_fx
+    source = tmp_path / "tall.png"
+    Image.new("RGB", (300, 900), "#101820").save(source)
+    frame = studio.row_frame(square_fx.normalize({"frame": {"style": "solid", "color": "#ff0000", "width": 4}}))
+    with Image.open(io.BytesIO(studio.render_image(source, _settings(), frame=frame))) as image:
+        rgb = image.convert("RGB")
+        assert image.size == (750, 2250)
+        assert rgb.getpixel((1, 1200))[0] > 200 and rgb.getpixel((748, 1200))[0] > 200
+        assert rgb.getpixel((150, 1200))[0] < 60, "one frame around the row, not five panels"
+
+
+def test_still_row_with_animated_frame_becomes_a_gif(tmp_path):
+    import processor
+    from smweb import square_fx
+    if not processor.find_ffmpeg():
+        return
+    source = tmp_path / "still.png"
+    Image.new("RGB", (300, 200), "#203050").save(source)
+    frame = studio.row_frame(square_fx.normalize({"frame": {"style": "rgb", "width": 3}}))
+    target = tmp_path / "row_1.gif"
+    studio.render_image_animation(source, target, _settings(), frame, fps=8, duration=1)
+    assert target.read_bytes()[-1] == 0x21
+    with Image.open(io.BytesIO(target.read_bytes()[:-1] + b";")) as result:
+        assert result.size == (750, 500) and result.n_frames > 1
+
+
+def test_gif_row_with_frame_stays_animated(tmp_path):
+    import processor
+    from smweb import square_fx
+    if not processor.find_ffmpeg():
+        return
+    source = tmp_path / "source.gif"
+    frames = [Image.new("RGB", (150, 300), color) for color in ("red", "blue")]
+    frames[0].save(source, save_all=True, append_images=frames[1:], duration=200, loop=0)
+    frame = studio.row_frame(square_fx.normalize({"frame": {"style": "comet", "width": 3}}))
+    target = tmp_path / "row_1.gif"
+    studio.render_animation(source, target, _settings(), fps=5, duration=1, start=0, frame=frame)
+    with Image.open(io.BytesIO(target.read_bytes()[:-1] + b";")) as result:
+        assert result.size == (750, 1500) and result.n_frames > 1
+
+
+def test_free_watermark_stays_on_top_of_a_hud_frame(tmp_path):
+    from smweb import square_fx
+    source = tmp_path / "flat.png"
+    Image.new("RGB", (750, 300), "#000000").save(source)
+    frame = studio.row_frame(square_fx.normalize({"frame": {"style": "solid", "shape": "hud", "plate": 100}}))
+    clean = studio.render_image(source, _settings(), frame=frame)
+    marked = studio.render_image(source, _settings(), frame=frame, free_watermark=True)
+    with Image.open(io.BytesIO(clean)) as a, Image.open(io.BytesIO(marked)) as b:
+        box = (60, 300 - 90, 240, 300 - 50)
+        diff = sum(1 for x, y in zip(a.convert("L").crop(box).tobytes(), b.convert("L").crop(box).tobytes()) if y > x + 40)
+        assert diff > 30, "the watermark is visible inside the frame"

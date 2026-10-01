@@ -163,15 +163,21 @@ for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
   if (Object.keys(values).sort().join('|') !== dnaDesignManualKeys) errors.push(`Steam DNA design copy: incomplete ${language}`);
   if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`Steam DNA design copy: empty ${language}`);
 }
-const workshopSource = fs.readFileSync(path.join(root, 'static/js/workshop-studio.js'), 'utf8');
-const workshopKeySource = workshopSource.match(/var keys=(\[[^;]+\]);/);
-const workshopKeys = workshopKeySource ? Function(`return ${workshopKeySource[1]}`)() : [];
-const workshopManual = evaluateDictionary('static/js/workshop-studio.js', 'var translations=');
+// Workshop Studio ("Rows and squares"): { language: { key: text } }, reviewed in all eight languages.
+const workshopManual = evaluateDictionary('static/js/workshop-studio.js', 'var COPY=');
+const workshopKeys = Object.keys(workshopManual.en || {}).sort().join('|');
 for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
-  const values = workshopManual[language];
-  if (!values || values.length !== workshopKeys.length || values.some(value => typeof value !== 'string' || !value.trim())) {
-    errors.push(`Workshop Studio copy: incomplete ${language}`);
-  }
+  const values = workshopManual[language] || {};
+  if (Object.keys(values).sort().join('|') !== workshopKeys) errors.push(`Workshop Studio copy: incomplete ${language}`);
+  if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`Workshop Studio copy: empty ${language}`);
+}
+// Tools look (guides on simple tools + About): { language: { key: text } }, reviewed in all eight languages.
+const toolsUnified = evaluateDictionary('static/js/tools-unified.js', 'var COPY=');
+const toolsUnifiedKeys = Object.keys(toolsUnified.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  const values = toolsUnified[language] || {};
+  if (Object.keys(values).sort().join('|') !== toolsUnifiedKeys) errors.push(`Tools unified copy: incomplete ${language}`);
+  if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`Tools unified copy: empty ${language}`);
 }
 // Workshop squares frames/effects: reviewed in all eight languages in the source itself.
 const squaresFx = evaluateDictionary('static/js/workshop-squares-fx.js', 'var COPY=');

@@ -59,35 +59,43 @@ async def api_workshop_studio_start(
     settings: str = Form("[]"),
     layout: str = Form("rows"),
     crop: str = Form(""),
+    crops: str = Form(""),
     fx: str = Form(""),
     files: list[UploadFile] = File(default=[]),
 ):
     """Create Workshop files in a background job.
 
-    ``rows``: one full-height output per row. ``squares``: one source, the
-    chosen 5:1 area (``crop`` as source fractions) cut into five 150x150 files.
+    ``rows``: one full-height output per row (optional frame around each file).
+    ``squares``: one source per row; the chosen 5:1 area of each (``crops``, a
+    list of source fractions; ``crop`` for a single row) becomes five 150x150 files.
     """
     layout = (layout or "rows").strip().lower()
     if layout not in ("rows", "squares"):
         return JSONResponse({"ok": False, "msg": "Unknown layout"}, status_code=400)
-    if layout == "squares" and rows != 1:
-        return JSONResponse({"ok": False, "msg": "Select one file for the squares layout"}, status_code=400)
     if rows not in (1, 2, 3) or len(files) != rows:
         return JSONResponse({"ok": False, "msg": "Select one file for each row"}, status_code=400)
-    crop_box = None
-    square_effects = None
+    crop_boxes = None
+    try:
+        raw_fx = json.loads(fx) if fx else None
+    except (ValueError, json.JSONDecodeError):
+        return JSONResponse({"ok": False, "msg": "Invalid frame settings"}, status_code=400)
+    # Unknown styles/effects fall back to "none"; numbers are clamped.
+    effects = square_fx.normalize(raw_fx, legacy_outline=outline.lower() in ("1", "true", "on")) if raw_fx else None
     if layout == "squares":
         from smweb.workshop_studio_jobs import normalize_crop
         try:
-            crop_box = normalize_crop(json.loads(crop))
+            raw_crops = json.loads(crops) if crops else [json.loads(crop)]
+            if not isinstance(raw_crops, list) or len(raw_crops) != rows:
+                raise ValueError
+            crop_boxes = [normalize_crop(item) for item in raw_crops]
         except (TypeError, ValueError, KeyError, OverflowError, json.JSONDecodeError):
             return JSONResponse({"ok": False, "msg": "Invalid crop area"}, status_code=400)
-        try:
-            raw_fx = json.loads(fx) if fx else None
-        except (ValueError, json.JSONDecodeError):
-            return JSONResponse({"ok": False, "msg": "Invalid frame settings"}, status_code=400)
-        # Unknown styles/effects fall back to "none"; numbers are clamped.
-        square_effects = square_fx.normalize(raw_fx, legacy_outline=outline.lower() in ("1", "true", "on"))
+        if effects is None:
+            effects = square_fx.normalize(None, legacy_outline=outline.lower() in ("1", "true", "on"))
+    elif effects is not None:
+        # Full-height rows take a frame only; effects are a squares feature.
+        effects["effect"]["type"] = "none"
+        effects["frame"]["target"] = "strip"
     q = quota_state(request)
     if not q["pro"] and q["left"] < rows:
         return JSONResponse({"ok": False, "msg": "Not enough free files left today"}, status_code=403)
@@ -169,7 +177,7 @@ async def api_workshop_studio_start(
         "options": {"rows": normalized, "fps": fps, "duration": duration,
                     "outline": outline.lower() in ("1", "true", "on"),
                     "free_watermark": not q["pro"],
-                    "layout": layout, "crop": crop_box, "fx": square_effects},
+                    "layout": layout, "crops": crop_boxes, "fx": effects},
         "opts": {"modes": ["workshop_studio"]},
     }
     rs.job_create(jid, payload, enqueue=external)

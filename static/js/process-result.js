@@ -93,39 +93,36 @@
   }
 
   /* Second popup over the result: only when SteamShowcase Helper answers. */
-  async function offerExtension(token, overlay, currentMode) {
-    if (!window.SMExtension) return;
+  // The result dialog already has the extension's automatic / manual upload buttons
+  // (readiness report). This pop-up only invites people WITHOUT the extension, on a
+  // computer; closing it hides it for a week.
+  const EXTENSION_URL = 'https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=showcasemaker-result';
+  const EXT_DISMISS = 'sm_ext_offer_dismissed';
+  function extOfferDismissed() {
+    try { return Date.now() - Number(localStorage.getItem(EXT_DISMISS) || 0) < 7 * 86400000; } catch (_) { return false; }
+  }
+  async function offerExtension(token, overlay) {
+    if (!window.SMExtension || extOfferDismissed()) return;
+    if (window.matchMedia && matchMedia('(max-width: 820px), (pointer: coarse)').matches) return;
     let status;
-    try { status = await window.SMExtension.status(); } catch (_) { return; }
-    if (token !== generation || !overlay.isConnected || !status || !status.installed) return;
-    const card = node('aside', null, 'workspace-result-ext');
+    try { status = await window.SMExtension.status(); } catch (_) { status = null; }
+    if (token !== generation || !overlay.isConnected || (status && status.installed)) return;
+    const card = node('aside', null, 'workspace-result-ext is-install');
     card.setAttribute('role', 'dialog'); card.setAttribute('aria-labelledby', 'workspaceResultExtTitle');
     const close = node('button', '×', 'workspace-result-ext__close'); close.type = 'button';
-    close.setAttribute('aria-label', editorText('closeResult')); close.onclick = () => card.remove();
-    const title = node('h3', editorText('extOfferTitle')); title.id = 'workspaceResultExtTitle';
+    close.setAttribute('aria-label', editorText('closeResult'));
+    close.onclick = () => { try { localStorage.setItem(EXT_DISMISS, String(Date.now())); } catch (_) {} card.remove(); };
+    const title = node('h3', editorText('extInstallTitle')); title.id = 'workspaceResultExtTitle';
+    const points = node('ul', null, 'workspace-result-ext__points');
+    ['extInstallPoint1', 'extInstallPoint2', 'extInstallPoint3'].forEach(key => points.append(node('li', editorText(key))));
     const actions = node('div', null, 'workspace-result-ext__actions');
-    const state = node('p', '', 'workspace-result-ext__state'); state.setAttribute('role', 'status');
-    function action(labelKey, hintKey, primary, run, enabled) {
-      const button = node('button', null, 'btn' + (primary ? '' : ' ghost'));
-      button.type = 'button'; button.disabled = !enabled;
-      if (!enabled) button.dataset.off = '1';
-      button.append(node('b', editorText(labelKey)), node('small', editorText(hintKey)));
-      button.onclick = async () => {
-        actions.querySelectorAll('button').forEach(item => { item.disabled = true; });
-        const ok = await run(currentMode()).catch(() => false);
-        state.textContent = editorText(ok ? 'extOfferOpened' : 'extOfferFailed');
-        state.classList.toggle('is-error', !ok);
-        actions.querySelectorAll('button').forEach(item => { item.disabled = item.dataset.off === '1'; });
-      };
-      return button;
-    }
-    actions.append(
-      action('extOfferAuto', 'extOfferAutoHint', true, mode => window.SMExtension.openAuto(mode), status.auto),
-      action('extOfferManual', 'extOfferManualHint', false, mode => window.SMExtension.openManual(mode), status.manual)
-    );
+    const install = node('a', editorText('extInstallButton'), 'btn workspace-result-ext__install');
+    install.href = EXTENSION_URL; install.target = '_blank'; install.rel = 'noopener';
+    const more = node('a', editorText('extInstallMore'), 'btn ghost workspace-result-ext__more');
+    more.href = window.SMLang?.url ? window.SMLang.url('/extension') : '/extension'; more.target = '_blank'; more.rel = 'noopener';
+    actions.append(install, more);
     card.append(close, node('span', 'STEAMSHOWCASE HELPER', 'workspace-result-ext__kicker'), title,
-      node('p', editorText('extOfferBody'), 'workspace-result-ext__body'), actions, state);
-    if (!status.auto) state.textContent = editorText('extOfferOutdated');
+      node('p', editorText('extInstallBody'), 'workspace-result-ext__body'), points, actions);
     overlay.append(card);
   }
 
@@ -192,7 +189,7 @@
       body.append(panel);
       const steam = steamGuide(window.state?.mode);
       panel.append(steam.section);
-      offerExtension(token, modal, steam.mode);
+      offerExtension(token, modal);
 
       const readiness = node('section', null, 'workspace-result__readiness steam-check');
       readiness.append(node('h3', editorText('readinessTitle'), 'workspace-result__section-title'));

@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 386 passed on 2026-09-30 (~130 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 401 passed on 2026-10-01 (~125 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -148,8 +148,11 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
 - **Link upload block** in Process is a highlighted `.process-link` panel (title, sources, primary button).
 - **Extension offer on the result (2026-09-27):** `steam-extension-status.js` exposes `window.SMExtension`
   (`status()`, `openAuto(mode)` = `OPEN_AUTO_UPLOADER`, needs Helper >= 1.0.3, `openManual(mode)` =
-  `START_STEAM_UPLOAD`). `process-result.js:offerExtension` adds a second popup `.workspace-result-ext` to the
-  "files ready" modal only when the extension answers PING; without it nothing is shown.
+  `START_STEAM_UPLOAD`). `process-result.js:offerExtension` (changed 2026-10-01, owner):
+  WITH the extension nothing pops up (the readiness report in the dialog already has the automatic / manual upload
+  buttons); WITHOUT it, on a computer, a card invites to install it (no console code, right order, Chromium browsers,
+  "Install the extension" -> Chrome Web Store, "How it works" -> /extension). Closing hides it for 7 days
+  (localStorage `sm_ext_offer_dismissed`). Copy: `extInstall*` in `workspace-editor-copy.js`.
 - **Process quality:** final GIFs are fitted to ≤ 5 MB (`processor.ensure_under_mb`).
   Workshop/Split GIF panels are one synchronized group — never fit/scale panels independently.
   Frames apply to all three types since 2026-09-26 (see Process layout below). Rotation is per file, quarter turns in Process,
@@ -175,6 +178,46 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
   accept rgb/comet/pulse/dashes (+ `color2`, `frameSpeed`, validated in `routers/builder.py`), drawn by
   `SMSquaresFx.drawFrame` and they make the export animated. `full_with_bars` previews are built from the
   unframed source (as before), the outline is on the `part_N` files. Not in the extension yet.
+- **Rows and squares rework (2026-10-01, owner: "переработай вкладку как Создать дизайн, по удобству"):**
+  `static/js/workshop-studio.js` builds the whole tab into the empty `#workshopStudio` (header: type + 1-3 rows;
+  panel tabs Files/Frame/Color/Animation + create footer `#workshopCreate`; Steam-profile preview, one showcase block
+  per row, squares as 5 tiles with Steam gaps 4/626 = `column-gap:.639%`). Copy is a keyed `var COPY=` (8 languages,
+  checked by check_i18n). Squares now take 1-3 rows, one file + crop each (`crops` JSON list; legacy `crop`), shared
+  fx; ZIP `row_N/part_1..5` when rows > 1. Full-height rows take a frame (`fx`, effects forced off, target strip;
+  `workshop_studio_jobs.row_frame`, `render_image_animation`); the free watermark is drawn after the frame
+  (`_mark_inset`). `SMSquaresFx.mountControls(..., {frameOnly:true})` hides effects/target for rows.
+  Debug hook: `window.SMWorkshopStudio` (state/setLayout/setRows/setFile/fx).
+  Full-height rows are previewed like Steam shows a Workshop row: five columns (width/5 of the file each) with the
+  same gaps (`.wsx-sq--rows`, `buildRow`); the frame is drawn on the whole file and sliced into the columns.
+- **One look for every tab (2026-10-01, owner: "переработай всё под один лад", About rebuilt):**
+  `static/css/tools-unified.css` (loaded LAST on app.html) + `static/js/tools-unified.js` (end of body, keyed
+  `var COPY=` in 8 languages, checked by check_i18n). Download / Converter / Upscale / HEX / DeviantArt cards are wrapped
+  in `.tu-layout` with a `.tu-guide` aside (3 steps, tip, "Next" tool chips). Headings of compose/download/convert/
+  upscale/loop/hex/doctor/design-ai/da/steam are one style (19 px Montserrat, no caps/dots), Consolas labels replaced.
+  `#toolTaskChooser` is hidden on every tab (About > All tools routes instead; qa_tool_clarity updated). Steam tab:
+  extension card restyled into two columns, manual guide below. Profile drop-down in the tool strip = navy overlay.
+  About (`#tab-about`) markup is new: hero + facts, "Your access" (live `/api/quota`, keeps `#accessCode`,
+  `#btnUnlock`, `#btnBuyKeyAbout`; app.js writes activation results into the hidden `#accProfileStatus`, mirrored into
+  `.tu-plan__msg`), Free vs Pro table, All tools grid (names from the tool strip, repainted after load/nav clicks),
+  how-to, FAQ, contacts (`[data-support-choice]`, `.about-socials`). Never use the `.about-text`/`.steps` classes there:
+  app.js overwrites them with `about_body`. Profile page: `static/css/profile-v2.css` (side panel, tabs, catalogue,
+  account dock and the "Author profile & works" pop-up); the Steam mock-up keeps Steam's look.
+- **DeviantArt publishing (2026-10-01, owner request; not verified against the live DA API yet):**
+  `static/js/da-publish.js` + `css/da-publish.css` render the form inside `#daConnectedBlock` (`#daPublish`; the old
+  daAddFiles/daList/daUpload ids are gone, so app.js's legacy handlers no longer bind; refreshDa still toggles the block).
+  Per file: title (template `{name}` = file stem, max 50). Shared: download link + price that fill `{link}`/`{price}`,
+  a contenteditable description (bold/italic/underline/strike, heading h4, link, list, separator, emoji, paste cleaned),
+  preview, tags (letters/digits/_ only, max 30), Mature (+level, reasons), NoAI, AI-made, gallery folders
+  (`GET /api/da/folders`), display size 0-8 + DA watermark, free download, comments, feature; "Publish now" or
+  "Save to Sta.sh". "Copy from my work" = `/api/da/works` + `GET /api/da/work-meta/{id}` (deviation/metadata): the
+  download link becomes `{link}` and the first price `{price}` (`templateFrom`). Presets per account: table
+  `da_presets` (both schemas, export + account deletion), `GET/POST /api/da/presets`, `DELETE /api/da/presets/{id}`,
+  20 per user, `{link}` hrefs allowed only in presets. Server: `smweb/da_publish.py` whitelists the description HTML
+  (unwraps DA `/users/outgoing?` links, drops scripts/attributes), cleans tags/settings and builds the
+  `stash/submit` (title, artist_comments, tags[], noai, is_ai_generated) and `stash/publish` fields (itemid,
+  is_mature, mature_level/classification[], galleryids[], display_resolution, add_watermark, allow_free_download,
+  allow_comments, feature, tags[], agree_*). `POST /api/da/upload` without `settings` keeps the old Sta.sh-only
+  behaviour. Tests: `tests/test_da_publish.py`.
 - **My results** (added 2026-09-26, local, not deployed): when a signed-in user's Process or Workshop
   Studio job finishes, the worker keeps the ZIP (`smweb/saved_results.py`): private R2 `results/<uid>/<id>.zip`
   when R2 is configured, otherwise `/data/results/<uid>/<id>.zip`; a WebP thumbnail always stays in
@@ -611,7 +654,8 @@ Only the hero exists for now; content blocks will be added below it later.
   column's left edge, y for the first showcase) + `project.steamOffsetY` (0-600, server-validated). Measured on
   steamcommunity.com and identical in steam.design / steamprofile.io. Animated Steam backgrounds are scaled to the
   window width by Steam, so they match exactly only at 1920 px. Canvas height is live (`SMBuilder.setHeight`,
-  handle `.bx-height`, 280-1800, even). Animated export = `static/js/builder-export.js`: frames rendered at exact
+  handle `.bx-height`, 280-1800, even). "Fit to the Steam background" (was "To the end of the background") is `.bx-fitbg` in the
+  top-right corner of the stage with a ? tooltip (`h_fit_help`); it shows only when the background is Steam-aligned. Animated export = `static/js/builder-export.js`: frames rendered at exact
   times (`renderExact`: videos seeked, GIFs via ImageDecoder, `manualClock` stops the preview loop), WebCodecs VP9
   ~20 Mbit/s, own minimal WebM muxer, 30 fps, scene length; non-periodic scenes get a crossfade of min(600 ms, 10 %)
   from the loop end into its start. Fallback `legacyBlob` (MediaRecorder). "Download for Steam"

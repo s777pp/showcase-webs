@@ -1,0 +1,81 @@
+/* Profile page (/profile and the Tools "Profile" tab that embeds it) in the site v2 look
+   (2026-10-01). Only the chrome changes: side panel, tabs, catalogue, account dock, buttons
+   and fields. The Steam profile mock-up inside #profileStage keeps Steam's own look. */
+body.site-v2{--pv-cyan:var(--v2-cyan,#1fc9f1);--pv-violet:#8a7dff;--pv-line:var(--v2-line,rgba(110,170,255,.2));--pv-ink:var(--v2-ink,#e9f3ff);
+  --pv-muted:var(--v2-muted,rgba(214,229,250,.68));--pv-panel:linear-gradient(180deg,#0b1532,#050a1c);--pv-inset:rgba(5,10,28,.72);--pv-font:var(--v2-font,'Montserrat',system-ui,sans-serif)}
+body.site-v2 .workspace>.sidebar,body.site-v2 .workspace>.account-dock{background:var(--pv-panel)!important;font-family:var(--pv-font)}
+body.site-v2 .workspace>.sidebar{border-right:1px solid var(--pv-line)!important}
+body.site-v2 .workspace>.account-dock{border-left:1px solid var(--pv-line)!important}
+body.site-v2 .workspace>.preview{background:radial-gradient(60% 50% at 20% 0%,rgba(31,201,241,.08),transparent 70%),radial-gradient(60% 50% at 90% 100%,rgba(138,125,255,.08),transparent 70%),#03070a!important}
+
+/* Tabs: one segmented control, like the tool switches */
+body.site-v2 .mode-tabs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px!important;min-height:0!important;margin:14px!important;padding:4px!important;border:1px solid var(--pv-line)!important;border-radius:12px!important;background:var(--pv-inset)!important}
+body.site-v2 .mode-tab{min-height:38px;border-radius:9px!important;color:var(--pv-muted)!important;font:700 12.5px var(--pv-font)!important;letter-spacing:0!important;text-transform:none!important}
+body.site-v2 .mode-tab:hover{color:var(--pv-ink)!important}
+body.site-v2 .mode-tab.on{color:#fff!important;background:linear-gradient(160deg,rgba(31,201,241,.24),rgba(138,125,255,.14))!important;box-shadow:inset 0 0 0 1px rgba(111,227,255,.45)!important}
+body.site-v2 .mode-tab.on::after{display:none!important}
+body.site-v2 .panel-scroll{height:calc(100dvh - 82px)!important;padding:4px 14px 80px!important}
+
+/* Labels and section cards */
+body.site-v2 .workspace .eyebrow,body.site-v2 .account-dock__eyebrow{color:var(--pv-cyan)!important;font:800 10px/1.2 var(--pv-font)!important;letter-spacing:.14em!important;text-transform:uppercase!important}
+body.site-v2 .workspace .section,body.site-v2 .account-section,body.site-v2 .export-card{margin:12px 0!important;padding:16px!important;border:1px solid var(--pv-line)!important;border-radius:14px!important;background:linear-gradient(160deg,rgba(12,22,52,.7),rgba(5,10,28,.85))!important}
+body.site-v2 .workspace .section h2,body.site-v2 .account-section h3,body.site-v2 .export-card h3{font-family:var(--pv-font)!important;font-size:15px!important;font-weight:800!important;line-height:1.3!important;letter-spacing:-.01em!important;text-transform:none!important;color:#fff!important}
+body.site-v2 .workspace .hint,body.site-v2 .account-dock p{font-family:var(--pv-font)!important;color:var(--pv-muted)!important;letter-spacing:0!important;text-transform:none!important}
+body.site-v2 .workspace .field>span,body.site-v2 .account-section label>span{font:700 12px var(--pv-font)!important;letter-spacing:0!important;text-transform:none!important;color:var(--pv-muted)!important}
+body.site-v2 :is(.workspace,.account-dock) .input{min-height:40px;border:1px solid rgba(110,170,255,.25)!important;border-radius:10px!important;background:rgba(2,6,18,.85)!important;color:var(--pv-ink)!important;font:600 13px var(--pv-font)!important}
+body.site-v2 :is(.workspace,.account-dock) .input:focus{border-color:var(--pv-cyan)!important;box-shadow:0 0 0 3px rgba(31,201,241,.15)!important}
+body.site-v2 :is(.workspace,.account-dock) .btn{border-radius:10px!important;font:800 13px var(--pv-font)!important;letter-spacing:0!important;text-transform:none!important}
+body.site-v2 :is(.workspace,.account-dock) .btn.ghost{border:1px solid rgba(110,170,255,.3)!important;background:rgba(5,10,28,.6)!important;color:var(--pv-ink)!important}
+body.site-v2 :is(.workspace,.account-dock) .btn.ghost:hover{border-color:var(--pv-cyan)!important;background:rgba(31,201,241,.1)!important}
+
+/* Catalogue */
+body.site-v2 .asset-tabs{gap:4px!important;padding:4px!important;border:1px solid var(--pv-line)!important;border-radius:12px!important;background:var(--pv-inset)!important}
+body.site-v2 .asset-tabs button{min-height:34px;border-radius:9px!important;background:transparent!important;color:var(--pv-muted)!important;font:700 12px var(--pv-font)!important;letter-spacing:0!important;text-transform:none!important}
+body.site-v2 .asset-tabs button.on{background:linear-gradient(160deg,rgba(31,201,241,.26),rgba(138,125,255,.16))!important;color:#fff!important;box-shadow:inset 0 0 0 1px rgba(111,227,255,.45)!important}
+body.site-v2 .catalog .asset,body.site-v2 .catalog-item,body.site-v2 .showcase-item{border-radius:10px!important;border-color:rgba(110,170,255,.18)!important;overflow:hidden}
+body.site-v2 .catalog .asset.is-selected{box-shadow:0 0 0 2px var(--pv-cyan)!important}
+
+/* Preview bar */
+body.site-v2 .preview-bar{height:64px!important;background:rgba(5,10,28,.92)!important;border-bottom:1px solid var(--pv-line)!important;font-family:var(--pv-font)}
+body.site-v2 .preview-bar strong{font:800 16px var(--pv-font)!important;letter-spacing:-.01em!important;text-transform:none!important;color:#fff!important}
+body.site-v2 .sync-pill{border-radius:999px!important;padding:4px 10px!important;border:1px solid rgba(111,227,255,.3)!important;background:rgba(31,201,241,.1)!important;color:var(--pv-cyan)!important;font:700 11px var(--pv-font)!important}
+body.site-v2 .preview .sm-stage{height:calc(100dvh - 64px)!important}
+
+/* Account dock */
+body.site-v2 .account-dock__head{border-bottom:1px solid var(--pv-line)!important}
+body.site-v2 .account-dock__head h2{font:900 24px/1.15 var(--pv-font)!important;letter-spacing:-.02em!important;text-transform:none!important;color:#fff!important;margin:10px 0 6px!important}
+body.site-v2 .account-dock__head h2::before{display:none!important}
+body.site-v2 .account-person{border-bottom:1px solid var(--pv-line)!important}
+body.site-v2 .account-person__avatar{border-radius:12px!important;background:linear-gradient(135deg,var(--pv-cyan),var(--pv-violet))!important;box-shadow:none!important;color:#041019!important}
+body.site-v2 .account-metrics{gap:8px!important;background:none!important;border:0!important}
+body.site-v2 .account-metrics>div{border:1px solid var(--pv-line)!important;border-radius:12px!important;background:var(--pv-inset)!important}
+body.site-v2 .account-metrics strong{font:900 26px var(--pv-font)!important;color:var(--pv-cyan)!important}
+body.site-v2 .account-dock .author-settings-link,body.site-v2 .account-dock a.btn{text-decoration:none}
+
+/* "Author profile & works" pop-up (js/author-settings.js): same look as the site's dialogs */
+body.site-v2 .author-settings-entry{width:auto!important;margin:12px 0 0!important;min-height:44px;border:1px solid rgba(110,170,255,.3)!important;border-radius:10px!important;background:rgba(5,10,28,.6)!important;color:var(--pv-ink)!important;font:800 13px var(--pv-font)!important}
+body.site-v2 .author-settings-entry:hover{border-color:var(--pv-cyan)!important;background:rgba(31,201,241,.1)!important}
+body.site-v2 .author-settings-overlay{background:rgba(2,5,14,.78)!important;backdrop-filter:blur(6px)}
+body.site-v2 .author-settings{position:relative;border:1px solid rgba(110,170,255,.24)!important;border-radius:18px!important;background:linear-gradient(180deg,#0e1a3c,#050a1c)!important;box-shadow:0 30px 80px rgba(0,0,0,.6)!important;font-family:var(--pv-font);color:var(--pv-ink)!important}
+body.site-v2 .author-settings::before{content:"";position:sticky;top:0;display:block;height:2px;margin-bottom:-2px;background:linear-gradient(90deg,var(--pv-cyan),var(--pv-violet));z-index:2}
+body.site-v2 .author-settings header{border-bottom:1px solid var(--pv-line)!important}
+body.site-v2 .author-settings header small,body.site-v2 .author-settings__preview>small{font:800 10px var(--pv-font)!important;letter-spacing:.14em!important;color:var(--pv-cyan)!important}
+body.site-v2 .author-settings header h2{font:900 26px/1.15 var(--pv-font)!important;letter-spacing:-.02em!important;color:#fff}
+body.site-v2 .author-settings header p{color:var(--pv-muted)!important}
+body.site-v2 .author-settings header button{border-radius:10px!important;border:1px solid rgba(110,170,255,.3)!important;background:rgba(5,10,28,.6)!important}
+body.site-v2 .author-settings header button:hover{border-color:var(--pv-cyan)!important}
+body.site-v2 .author-settings label{font:700 12px var(--pv-font)!important;color:var(--pv-muted)!important}
+body.site-v2 .author-settings input,body.site-v2 .author-settings textarea{border:1px solid rgba(110,170,255,.25)!important;border-radius:10px!important;background:rgba(2,6,18,.85)!important;font:600 13px var(--pv-font)!important;color:var(--pv-ink)!important}
+body.site-v2 .author-settings input:focus,body.site-v2 .author-settings textarea:focus{border-color:var(--pv-cyan)!important;outline:none}
+body.site-v2 .author-settings__avatar img,body.site-v2 .author-settings__card img{border-radius:14px!important;border:1px solid rgba(111,227,255,.45)!important}
+body.site-v2 .author-settings__avatar label{border-radius:10px!important;border:1px solid rgba(110,170,255,.3)!important;background:rgba(5,10,28,.6)}
+body.site-v2 .author-settings__links{border-top:1px solid var(--pv-line)!important}
+body.site-v2 .author-settings__links h3{font:800 11px var(--pv-font)!important;letter-spacing:.1em;color:var(--pv-muted)}
+body.site-v2 .author-settings__save{border:0!important;border-radius:10px!important;background:var(--pv-cyan)!important;color:#041019!important;font:800 14px var(--pv-font)!important;min-height:44px}
+body.site-v2 .author-settings__card{border:1px solid var(--pv-line)!important;border-radius:14px!important;background:radial-gradient(120% 120% at 0 0,rgba(31,201,241,.14),transparent 60%),rgba(5,10,28,.8)!important}
+body.site-v2 .author-settings__card>span{font:700 12px var(--pv-font)!important;color:var(--pv-cyan)!important}
+body.site-v2 .author-settings__card p{color:var(--pv-muted)!important}
+body.site-v2 .author-settings__stats{border-top:1px solid var(--pv-line)!important}
+body.site-v2 .author-settings__stats b{color:#fff}
+body.site-v2 .author-settings__stats span{color:var(--pv-muted)!important}
+body.site-v2 #authorSettingsView{color:var(--pv-cyan)!important;font-weight:700}

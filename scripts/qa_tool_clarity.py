@@ -29,20 +29,17 @@ def run():
         for language in ['ru','en','de','tr','fr','uk','es','pt']:
             page.goto(base + '/' + language + '/app')
             expect(page.locator('#composeFineSettings')).to_be_attached()
+            # The generic task chooser is hidden on every tab since 2026-10-01 (tools-unified.css);
+            # About > All tools and the tool strip replace it.
             chooser = page.locator('#toolTaskChooser')
-            expect(chooser).to_be_attached()
+            expect(chooser).to_be_hidden()
             open_tab(page, 'download')
             page.locator('#dlUrl').fill('https://example.com/my-media')
             for width in [390, 1440]:
                 page.set_viewport_size({'width': width, 'height': 1000})
-                chooser.locator('summary').click()
-                expect(chooser.locator('[data-task-target="da"]')).to_be_visible()
-                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (language,width,'chooser')
-                if language == 'ru':
-                    page.screenshot(path=str(output / f'task-chooser-{width}.png'),full_page=True)
-                chooser.locator('[data-task-target="download"]').click()
-                expect(page.locator('#tab-download')).to_have_class(__import__('re').compile(r'\bactive\b'))
-                expect(chooser).not_to_have_attribute('open','')
+                open_tab(page, 'download')
+                expect(page.locator('#tab-download .tu-guide')).to_be_visible()
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (language,width,'download')
                 assert page.locator('#dlUrl').input_value() == 'https://example.com/my-media'
                 expect(page.locator('#dlLink + .tool-next-step')).to_be_hidden()
                 # Simulate the existing success/reset link contract, not a
@@ -83,14 +80,10 @@ def run():
             open_tab(page, 'convert')
             assert page.locator('#cvDrop').bounding_box()['y'] < page.locator('#cvTarget').bounding_box()['y']
             for target in ['builder','compose','upscale','steam','da','process']:
-                # The chooser is hidden inside the Process/Builder workspace, which has
-                # its own mode switch; open it from a regular tool tab.
-                if not chooser.is_visible():
-                    open_tab(page, 'convert')
-                chooser.locator('summary').click()
-                chooser.locator('[data-task-target="' + target + '"]').click()
+                # About > All tools routes to every tool (it replaced the task chooser).
+                open_tab(page, 'about')
+                page.locator('#tab-about .tu-tool[data-tool="' + target + '"]').click()
                 expect(page.locator('#tab-' + target)).to_have_class(__import__('re').compile(r'\bactive\b'))
-                expect(chooser).not_to_have_attribute('open','')
             assert page.locator('#dlUrl').input_value() == 'https://example.com/my-media'
         assert not errors, errors
         browser.close()

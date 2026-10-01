@@ -437,3 +437,17 @@ html.bx-fonts-open{overflow:hidden}
 #showcaseBuilder.bx .bx-wait span{display:block;margin-top:3px;font-size:12.5px;line-height:1.45;color:rgba(255,236,200,.85)}
 #showcaseBuilder.bx .bx-wait i{flex:none;width:22px;height:22px;margin-top:1px;border-radius:50%;border:3px solid rgba(255,196,80,.25);border-top-color:#ffc450;animation:smWaitSpin .9s linear infinite}
 @keyframes smWaitSpin{to{transform:rotate(360deg)}}
+
+/* "Fit to the Steam background" in the top-right corner of the stage, with a ? explanation (2026-10-01) */
+#showcaseBuilder.bx .bx-fitbg{position:absolute;top:12px;right:12px;z-index:6;display:flex;align-items:center;gap:6px}
+#showcaseBuilder.bx .bx-fitbg[hidden]{display:none!important}
+#showcaseBuilder.bx .bx-fitbg__button{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:5px 14px;border:1px solid rgba(82,213,255,.55);border-radius:999px;background:rgba(5,10,28,.92);color:#dff6ff;font:800 12px var(--v2-font);cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+#showcaseBuilder.bx .bx-fitbg__button i{width:14px;height:14px;border:2px solid var(--bx-cyan);border-top:0;border-radius:0 0 3px 3px;box-shadow:inset 0 -4px 0 rgba(31,201,241,.35)}
+#showcaseBuilder.bx .bx-fitbg__button:hover{background:rgba(31,201,241,.18);border-color:var(--bx-cyan);color:#fff}
+#showcaseBuilder.bx .bx-fitbg__button.is-done{border-color:rgba(95,242,181,.55);color:#bff8de}
+#showcaseBuilder.bx .bx-fitbg__help{display:grid;place-items:center;width:30px;height:30px;padding:0;border:1px solid rgba(111,227,255,.45);border-radius:50%;background:rgba(5,10,28,.92);color:var(--bx-cyan);font:900 13px var(--v2-font);cursor:help}
+#showcaseBuilder.bx .bx-fitbg__help:hover,#showcaseBuilder.bx .bx-fitbg__help[aria-expanded=true]{background:rgba(31,201,241,.2);color:#fff}
+#showcaseBuilder.bx .bx-fitbg__tip{position:absolute;top:calc(100% + 8px);right:0;width:min(320px,70vw);margin:0;padding:12px 14px;border:1px solid rgba(110,170,255,.3);border-radius:12px;background:linear-gradient(180deg,#0e1a3c,#050a1c);box-shadow:0 18px 40px rgba(0,0,0,.55);color:#e9f3ff;font:500 12.5px/1.5 var(--v2-font)}
+#showcaseBuilder.bx .bx-fitbg__tip::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;border-radius:12px 12px 0 0;background:linear-gradient(90deg,var(--bx-cyan),#8a7dff)}
+#showcaseBuilder.bx .bx-fitbg__tip[hidden]{display:none!important}
+@media (max-width:640px){#showcaseBuilder.bx .bx-fitbg{top:8px;right:8px}#showcaseBuilder.bx .bx-fitbg__button{font-size:11px;padding:4px 10px}}

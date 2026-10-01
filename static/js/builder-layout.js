@@ -57,7 +57,8 @@
     st_done: ['Done: the ZIP with Steam files is ready.', 'Готово: ZIP с файлами для Steam готов.', 'Fertig: das ZIP mit den Steam-Dateien ist bereit.', 'Tamam: Steam dosyalarının ZIP’i hazır.', 'Terminé : le ZIP des fichiers Steam est prêt.', 'Готово: ZIP з файлами для Steam готовий.', 'Listo: el ZIP con los archivos de Steam está listo.', 'Pronto: o ZIP com os arquivos da Steam está pronto.'],
     h_label: ['Showcase height', 'Высота витрины', 'Höhe der Vitrine', 'Vitrin yüksekliği', 'Hauteur de la vitrine', 'Висота вітрини', 'Altura del expositor', 'Altura da vitrine'],
     h_drag: ['Drag to change the height', 'Потяни, чтобы изменить высоту', 'Ziehen, um die Höhe zu ändern', 'Yüksekliği değiştirmek için sürükle', 'Faites glisser pour changer la hauteur', 'Потягни, щоб змінити висоту', 'Arrastra para cambiar la altura', 'Arraste para mudar a altura'],
-    h_fit: ['To the end of the background', 'До конца фона', 'Bis zum Ende des Hintergrunds', 'Arka planın sonuna kadar', 'Jusqu’à la fin du fond', 'До кінця тла', 'Hasta el final del fondo', 'Até o fim do fundo'],
+    h_fit: ['Fit to the Steam background', 'Подогнать под фон Steam', 'An den Steam-Hintergrund anpassen', 'Steam arka planına sığdır', 'Ajuster au fond Steam', 'Підігнати під тло Steam', 'Ajustar al fondo de Steam', 'Ajustar ao fundo da Steam'],
+    h_fit_help: ['Changes the showcase height so it ends exactly where the Steam profile background ends. Below that line Steam shows only the plain page colour, so extra height adds nothing to the look and only makes the files bigger.', 'Меняет высоту витрины так, чтобы она заканчивалась ровно там, где кончается фон профиля Steam. Ниже этой линии Steam показывает просто цвет страницы, поэтому лишняя высота ничего не добавляет к виду и только утяжеляет файлы.', 'Ändert die Höhe der Vitrine so, dass sie genau dort endet, wo der Hintergrund des Steam-Profils endet. Darunter zeigt Steam nur die Seitenfarbe, zusätzliche Höhe bringt also nichts und macht nur die Dateien größer.', 'Vitrin yüksekliğini, Steam profil arka planının bittiği yerde tam bitecek şekilde ayarlar. Bu çizginin altında Steam yalnızca düz sayfa rengini gösterir; fazla yükseklik görünüme bir şey katmaz, sadece dosyaları büyütür.', 'Ajuste la hauteur de la vitrine pour qu’elle s’arrête exactement là où finit le fond du profil Steam. En dessous, Steam n’affiche que la couleur de la page : la hauteur en plus n’apporte rien et alourdit seulement les fichiers.', 'Змінює висоту вітрини так, щоб вона закінчувалася рівно там, де закінчується тло профілю Steam. Нижче цієї лінії Steam показує лише колір сторінки, тож зайва висота нічого не додає до вигляду й лише робить файли важчими.', 'Cambia la altura del expositor para que termine justo donde acaba el fondo del perfil de Steam. Por debajo de esa línea Steam solo muestra el color de la página, así que la altura extra no aporta nada y solo hace los archivos más pesados.', 'Muda a altura da vitrine para que ela termine exatamente onde acaba o fundo do perfil da Steam. Abaixo dessa linha a Steam mostra só a cor da página, então altura extra não acrescenta nada e só deixa os arquivos maiores.'],
     bg_end: ['Steam background ends here', 'Здесь кончается фон Steam', 'Hier endet der Steam-Hintergrund', 'Steam arka planı burada biter', 'Le fond Steam s’arrête ici', 'Тут закінчується тло Steam', 'Aquí termina el fondo de Steam', 'Aqui termina o fundo da Steam'],
     steam_align: ['Match the profile background', 'Совместить с фоном профиля', 'An den Profilhintergrund anpassen', 'Profil arka planıyla eşleştir', 'Aligner sur le fond du profil', 'Поєднати з тлом профілю', 'Alinear con el fondo del perfil', 'Alinhar ao fundo do perfil'],
     steam_offset: ['Showcase lower on the profile', 'Витрина ниже на профиле', 'Vitrine weiter unten im Profil', 'Vitrin profilde daha aşağıda', 'Vitrine plus bas sur le profil', 'Вітрина нижче на профілі', 'Expositor más abajo en el perfil', 'Vitrine mais abaixo no perfil'],
@@ -656,9 +657,13 @@
      like steamprofiletools' crop tool; "To the end of the background" fits it exactly. */
   var stage = root.querySelector('.builder-canvas-wrap'), canvasEl = $('builderCanvas');
   var heightBar = node('div', 'bx-height');
-  heightBar.innerHTML = '<button type="button" class="bx-height__grip"><i aria-hidden="true"></i><span></span></button><output></output><button type="button" class="bx-height__fit"></button>';
+  heightBar.innerHTML = '<button type="button" class="bx-height__grip"><i aria-hidden="true"></i><span></span></button><output></output>';
+  // "Fit to the Steam background" sits in the top-right corner of the stage with a ? explanation.
+  var fitBox = node('div', 'bx-fitbg');
+  fitBox.innerHTML = '<button type="button" class="bx-fitbg__button"><i aria-hidden="true"></i><span></span></button><button type="button" class="bx-fitbg__help" aria-expanded="false" aria-controls="bxFitHelp">?</button><p class="bx-fitbg__tip" id="bxFitHelp" role="tooltip" hidden></p>';
+  fitBox.hidden = true;
   var bgEnd = node('div', 'bx-bgend', '<span></span>'); bgEnd.hidden = true;
-  if (stage) stage.append(heightBar, bgEnd);
+  if (stage) stage.append(heightBar, bgEnd, fitBox);
   var heightDrag = null;
   function fitHeight() {
     var info = SMBuilder.steamInfo(); if (!info) return null;
@@ -675,8 +680,12 @@
     heightBar.querySelector('.bx-height__grip').title = t('h_drag');
     heightBar.querySelector('.bx-height__grip').setAttribute('aria-label', t('h_label'));
     heightBar.querySelector('.bx-height__grip span').textContent = t('h_label');
-    var fit = fitHeight(), fitButton = heightBar.querySelector('.bx-height__fit');
-    fitButton.hidden = !fit; fitButton.textContent = t('h_fit');
+    var fit = fitHeight();
+    fitBox.hidden = heightBar.hidden || !fit;
+    fitBox.querySelector('.bx-fitbg__button span').textContent = t('h_fit');
+    fitBox.querySelector('.bx-fitbg__button').classList.toggle('is-done', !!fit && Math.abs(fit - SMBuilder.height()) <= 2);
+    fitBox.querySelector('.bx-fitbg__help').setAttribute('aria-label', t('h_fit_help'));
+    fitBox.querySelector('.bx-fitbg__tip').textContent = t('h_fit_help');
     // Line where the Steam background image ends (below it Steam shows the page colour).
     var info = SMBuilder.steamInfo();
     if (info && fit && fit < SMBuilder.height() - 6) {
@@ -704,7 +713,14 @@
       var step = event.shiftKey ? 50 : 10;
       if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); SMBuilder.setHeight(SMBuilder.height() + (event.key === 'ArrowDown' ? step : -step)); SMBuilder.commitHeight(); paintHeight(); }
     });
-    heightBar.querySelector('.bx-height__fit').addEventListener('click', function () { var fit = fitHeight(); if (fit) { SMBuilder.setHeight(fit); SMBuilder.commitHeight(); paintHeight(); } });
+    fitBox.querySelector('.bx-fitbg__button').addEventListener('click', function () { var fit = fitHeight(); if (fit) { SMBuilder.setHeight(fit); SMBuilder.commitHeight(); paintHeight(); } });
+    var fitHelp = fitBox.querySelector('.bx-fitbg__help'), fitTip = fitBox.querySelector('.bx-fitbg__tip');
+    var showTip = function (open) { fitTip.hidden = !open; fitHelp.setAttribute('aria-expanded', String(open)); };
+    fitHelp.addEventListener('click', function (event) { event.stopPropagation(); showTip(fitTip.hidden); });
+    fitHelp.addEventListener('mouseenter', function () { showTip(true); });
+    fitHelp.addEventListener('mouseleave', function () { showTip(false); });
+    fitHelp.addEventListener('blur', function () { showTip(false); });
+    fitHelp.addEventListener('keydown', function (event) { if (event.key === 'Escape') showTip(false); });
     new ResizeObserver(function () { paintHeight(); }).observe(stage);
     setInterval(function () { if (!document.hidden && root.offsetParent) paintHeight(); }, 700);
   }

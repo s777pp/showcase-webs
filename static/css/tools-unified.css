@@ -1,0 +1,209 @@
+/* One look for every Tools tab (2026-10-01). Loaded last on /app. Uses the site v2 tokens
+   (navy panels, cyan accent, Montserrat, 14 px radius) so Steam, the simple tools, the
+   Profile menu and About match Process, Rows and squares and Create a design.
+   Structure for the simple tools and About comes from js/tools-unified.js. */
+body.page-tools{--tu-cyan:var(--v2-cyan,#1fc9f1);--tu-violet:#8a7dff;--tu-line:var(--v2-line,rgba(110,170,255,.2));--tu-ink:var(--v2-ink,#e9f3ff);
+  --tu-muted:var(--v2-muted,rgba(214,229,250,.68));--tu-panel:linear-gradient(160deg,rgba(12,22,52,.86),rgba(5,10,28,.94));--tu-inset:rgba(5,10,28,.72);
+  --tu-radius:var(--v2-radius,14px);--tu-font:var(--v2-font,'Montserrat',system-ui,sans-serif)}
+
+/* The generic "What would you like to do?" chooser repeated the tool strip on every tab;
+   the strip, the workspace switch and About > All tools cover it. */
+body.page-tools #toolTaskChooser{display:none!important}
+
+/* ------------------------------------------------------------------ headings */
+/* Old Consolas labels ("1. Background", "no file selected", "PREVIEW · live", kickers) -> site font. */
+body.site-v2 :is(#tab-compose,#tab-download,#tab-convert,#tab-upscale,#tab-loop,#tab-hex,#tab-doctor,#tab-design-ai,#tab-da,#tab-steam) :not(pre):not(code):not(kbd){font-family:var(--tu-font)!important}
+body.site-v2 #tab-compose :is(#composeBgName,#composeCharName){font-size:13px!important}
+body.site-v2 :is(#tab-compose,#tab-download,#tab-convert,#tab-upscale,#tab-loop,#tab-hex,#tab-doctor,#tab-design-ai,#tab-da,#tab-steam) .card :is(h2,.sm-help-heading>h2){
+  font-family:var(--tu-font)!important;font-size:19px!important;font-weight:800!important;line-height:1.25!important;letter-spacing:-.01em!important;text-transform:none!important;color:#fff!important;margin:0 0 6px!important}
+body.site-v2 :is(#tab-compose,#tab-download,#tab-convert,#tab-upscale,#tab-loop,#tab-hex,#tab-doctor,#tab-design-ai,#tab-da,#tab-steam) .card :is(h2,.sm-help-heading)::before,
+body.site-v2 :is(#tab-compose,#tab-download,#tab-convert,#tab-upscale,#tab-loop,#tab-hex,#tab-doctor,#tab-design-ai,#tab-da,#tab-steam) .card h2::before{display:none!important}
+body.site-v2 :is(#tab-compose,#tab-download,#tab-convert,#tab-upscale,#tab-loop,#tab-hex,#tab-doctor,#tab-design-ai,#tab-da) .sm-help-heading{gap:8px!important;margin-bottom:6px!important}
+body.site-v2 :is(#tab-compose,#tab-download,#tab-convert,#tab-upscale,#tab-loop,#tab-hex,#tab-doctor,#tab-design-ai,#tab-da,#tab-steam) :is(.tool-outcome,.steps,.h-sub){
+  color:var(--tu-muted)!important;font-family:var(--tu-font)!important;font-size:13.5px!important;line-height:1.55!important;letter-spacing:0!important;text-transform:none!important}
+body.site-v2 :is(#tab-download,#tab-convert,#tab-upscale,#tab-hex,#tab-da) .tool-outcome{color:var(--tu-ink)!important;font-weight:600!important;margin:0 0 6px!important}
+body.site-v2 .page-tools :is(.loop-kicker,.steam-extension-card__kicker),
+body.site-v2 :is(#tab-loop,#tab-doctor,#tab-design-ai,#tab-steam,#tab-compose) :is(.loop-kicker,.steam-extension-card__kicker,[class*="__kicker"],[class*="-kicker"]){
+  font-family:var(--tu-font)!important;font-size:10px!important;font-weight:800!important;letter-spacing:.14em!important;text-transform:uppercase!important;color:var(--tu-cyan)!important}
+/* The decorative "::after" format line under some cards repeated the drop-zone text. */
+body.site-v2 :is(#tab-download,#tab-convert,#tab-hex)>.tu-layout>.card::after{display:none!important}
+
+/* ------------------------------------------------------------------ simple tools: card + guide */
+body.site-v2 .tu-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,340px);gap:16px;align-items:start;max-width:1240px;margin:0 auto}
+body.site-v2 .tu-layout>.card.tu-main{max-width:none!important;width:auto!important;margin:0!important;min-height:0!important;padding:24px!important}
+body.site-v2 .tu-guide{position:sticky;top:124px;display:grid;gap:14px;padding:20px;border:1px solid var(--tu-line);border-radius:var(--tu-radius);background:var(--tu-panel);box-shadow:0 18px 50px rgba(0,0,0,.28);font-family:var(--tu-font);color:var(--tu-ink)}
+body.site-v2 .tu-guide__title{margin:0;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--tu-cyan)}
+body.site-v2 .tu-steps{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+body.site-v2 .tu-steps li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;font-size:13px;line-height:1.5;color:var(--tu-ink)}
+body.site-v2 .tu-steps__n{display:grid;place-items:center;width:28px;height:28px;border:1px solid rgba(111,227,255,.4);border-radius:50%;background:rgba(31,201,241,.1);color:var(--tu-cyan);font-weight:800;font-size:12px}
+body.site-v2 .tu-tip{padding:10px 12px;border-left:2px solid var(--tu-violet);border-radius:0 10px 10px 0;background:rgba(138,125,255,.09)}
+body.site-v2 .tu-tip b{display:block;margin-bottom:3px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#cbbcff}
+body.site-v2 .tu-tip p{margin:0;font-size:12.5px;line-height:1.5;color:var(--tu-muted)}
+body.site-v2 .tu-next{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+body.site-v2 .tu-next__label{margin-right:4px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--tu-muted)}
+body.site-v2 .tu-chip{padding:7px 12px;border:1px solid rgba(110,170,255,.25);border-radius:999px;background:var(--tu-inset);color:var(--tu-ink);font:700 12px var(--tu-font);cursor:pointer;transition:border-color .15s,background .15s}
+body.site-v2 .tu-chip:hover{border-color:var(--tu-cyan);background:rgba(31,201,241,.12)}
+
+/* Shared controls inside the tool cards */
+body.site-v2 :is(#tab-download,#tab-convert,#tab-upscale,#tab-hex,#tab-da,#tab-compose) .drop{border:1.5px dashed rgba(111,227,255,.32)!important;border-radius:12px!important;background:rgba(5,10,28,.55)!important;min-height:150px;font-family:var(--tu-font)!important;letter-spacing:0!important;text-transform:none!important;color:var(--tu-muted)!important}
+body.site-v2 :is(#tab-download,#tab-convert,#tab-upscale,#tab-hex,#tab-da,#tab-compose) .drop:hover{border-color:var(--tu-cyan)!important;background:rgba(31,201,241,.06)!important}
+body.site-v2 :is(#tab-download,#tab-convert,#tab-upscale,#tab-hex,#tab-da,#tab-steam,#tab-compose,#tab-loop) .field>span{font-family:var(--tu-font)!important;font-size:12px!important;font-weight:700!important;letter-spacing:0!important;text-transform:none!important;color:var(--tu-muted)!important}
+body.site-v2 :is(#tab-download,#tab-convert,#tab-upscale,#tab-hex,#tab-da) .pill{border-radius:999px!important;padding:7px 12px!important;font:700 12px var(--tu-font)!important}
+
+/* ------------------------------------------------------------------ Steam tab */
+body.site-v2 #tab-steam>.card{max-width:1240px!important;margin:0 auto!important;padding:0!important;border:0!important;background:none!important;box-shadow:none!important}
+body.site-v2 #tab-steam .steam-layout{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:16px!important}
+body.site-v2 #tab-steam .steam-extension-card{position:relative;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:32px;align-items:start;
+  padding:28px!important;border:1px solid var(--tu-line)!important;border-radius:var(--tu-radius)!important;background:var(--tu-panel)!important;box-shadow:0 18px 50px rgba(0,0,0,.28)!important;font-family:var(--tu-font)}
+body.site-v2 #tab-steam .steam-extension-card>*{grid-column:1}
+body.site-v2 #tab-steam .steam-extension-card>.steam-extension-card__state{grid-row:1}
+body.site-v2 #tab-steam .steam-extension-card>.steam-extension-card__kicker{grid-row:2}
+body.site-v2 #tab-steam .steam-extension-card>h2{grid-row:3}
+body.site-v2 #tab-steam .steam-extension-card>p:not([class]){grid-row:4}
+body.site-v2 #tab-steam .steam-extension-card>.steam-extension-card__steps{grid-row:5/9}
+body.site-v2 #tab-steam .steam-extension-card>:is(.steam-extension-card__mode-label,.steam-extension-card__modes,.steam-extension-card__actions,.steam-extension-card__install,.steam-extension-card__launch-status,.steam-extension-card__note){grid-column:2}
+body.site-v2 #tab-steam .steam-extension-card__mode-label{grid-row:1;margin:0 0 10px!important;font:800 11px var(--tu-font)!important;letter-spacing:.1em!important;text-transform:uppercase!important;color:var(--tu-muted)!important}
+body.site-v2 #tab-steam .steam-extension-card__modes{grid-row:2/4;align-self:start}
+body.site-v2 #tab-steam .steam-extension-card__actions{grid-row:4/6;align-self:start}
+body.site-v2 #tab-steam .steam-extension-card__install{grid-row:6;align-self:start}
+body.site-v2 #tab-steam .steam-extension-card__launch-status{grid-row:7}
+body.site-v2 #tab-steam .steam-extension-card__note{grid-row:8}
+body.site-v2 #tab-steam .steam-extension-card__state{position:static!important;justify-self:start;display:inline-flex!important;align-items:center;gap:8px;margin:0 0 14px!important;padding:6px 12px!important;border:1px solid rgba(110,170,255,.25)!important;border-radius:999px!important;background:var(--tu-inset)!important;font:700 11px var(--tu-font)!important;letter-spacing:.02em!important;text-transform:none!important;color:var(--tu-ink)!important}
+body.site-v2 #tab-steam .steam-extension-card__state i{width:8px!important;height:8px!important;border-radius:50%!important}
+body.site-v2 #tab-steam .steam-extension-card h2{max-width:none!important;margin:8px 0 10px!important;font-family:var(--tu-font)!important;font-size:clamp(22px,2vw,28px)!important;line-height:1.2!important;text-transform:none!important;letter-spacing:-.01em!important}
+body.site-v2 #tab-steam .steam-extension-card>p{color:var(--tu-muted)!important;font-size:13.5px!important;line-height:1.55!important;font-family:var(--tu-font)!important}
+body.site-v2 #tab-steam .steam-extension-card__steps{counter-reset:tu;display:grid;gap:10px;margin:16px 0 0!important;padding:0!important;list-style:none!important;border:0!important}
+body.site-v2 #tab-steam .steam-extension-card__steps li{counter-increment:tu;display:grid!important;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:center;padding:0!important;border:0!important;font:600 13px/1.45 var(--tu-font)!important;color:var(--tu-ink)!important}
+body.site-v2 #tab-steam .steam-extension-card__steps li::before{content:counter(tu)!important;position:static!important;display:grid!important;place-items:center;width:28px;height:28px;border:1px solid rgba(111,227,255,.4);border-radius:50%;background:rgba(31,201,241,.1);color:var(--tu-cyan)!important;font:800 12px var(--tu-font)!important}
+body.site-v2 #tab-steam .steam-extension-card__modes{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px!important}
+body.site-v2 #tab-steam .steam-extension-card__modes button{display:grid!important;justify-items:start;gap:6px;padding:12px!important;border:1px solid rgba(110,170,255,.22)!important;border-radius:12px!important;background:var(--tu-inset)!important;color:var(--tu-muted)!important;font-family:var(--tu-font)!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer;transition:border-color .15s,background .15s}
+body.site-v2 #tab-steam .steam-extension-card__modes button strong{font:800 14px var(--tu-font)!important;letter-spacing:0!important;text-transform:none!important;color:inherit!important}
+body.site-v2 #tab-steam .steam-extension-card__modes button small{font:600 11px var(--tu-font)!important;letter-spacing:0!important;text-transform:none!important;opacity:.8}
+body.site-v2 #tab-steam .steam-extension-card__modes button[aria-pressed=true]{color:#fff!important;border-color:var(--tu-cyan)!important;background:linear-gradient(160deg,rgba(31,201,241,.2),rgba(138,125,255,.12))!important;box-shadow:0 0 22px rgba(31,201,241,.14)!important}
+body.site-v2 #tab-steam .steam-extension-card__diagram{display:flex!important;gap:3px!important;height:22px!important}
+body.site-v2 #tab-steam .steam-extension-card__diagram i{border:0!important;border-radius:3px!important;background:currentColor!important;opacity:.55}
+body.site-v2 #tab-steam .steam-extension-card__modes button[aria-pressed=true] .steam-extension-card__diagram i{background:var(--tu-cyan)!important;opacity:1}
+body.site-v2 #tab-steam .steam-extension-card__actions{display:grid!important;gap:8px!important;margin:16px 0 8px!important}
+body.site-v2 #tab-steam .steam-extension-card__button{min-height:46px!important;border-radius:10px!important;font:800 14px var(--tu-font)!important;letter-spacing:0!important;text-transform:none!important}
+body.site-v2 #tab-steam .steam-extension-card__note{margin:6px 0 0!important;text-align:left!important;font-size:12px!important;color:var(--tu-muted)!important}
+body.site-v2 #tab-steam .tool-disclosure{border:1px solid var(--tu-line)!important;border-radius:var(--tu-radius)!important;background:var(--tu-panel)!important;overflow:hidden}
+body.site-v2 #tab-steam .tool-disclosure>summary{padding:16px 20px!important;font:800 14px var(--tu-font)!important;letter-spacing:0!important;text-transform:none!important;color:var(--tu-ink)!important;cursor:pointer}
+body.site-v2 #tab-steam .steam-col{padding:4px 20px 20px!important}
+body.site-v2 #tab-steam .steam-block{margin:0 0 12px!important;padding:16px!important;border:1px solid rgba(110,170,255,.16)!important;border-radius:12px!important;background:var(--tu-inset)!important}
+body.site-v2 #tab-steam .steam-block h3{margin:0 0 8px!important;font:800 14px var(--tu-font)!important;letter-spacing:0!important;text-transform:none!important;color:#fff!important}
+body.site-v2 #tab-steam pre.code{border:1px solid rgba(110,170,255,.2)!important;border-radius:10px!important;background:#030713!important;color:#bfefff!important;font-size:12px!important;max-height:220px;overflow:auto}
+body.site-v2 #tab-steam .steam-how{margin:0!important;padding-left:20px!important;color:var(--tu-ink);font:500 13px/1.7 var(--tu-font)}
+
+/* ------------------------------------------------------------------ Profile drop-down (tool strip) */
+body.site-v2 .top-chrome .nav .nav-group__menu{gap:4px!important;min-width:300px;padding:8px!important;border:1px solid rgba(110,170,255,.24)!important;border-top:1px solid rgba(110,170,255,.24)!important;border-radius:var(--tu-radius)!important;
+  background:linear-gradient(180deg,#0e1a3c,#050a1c)!important;box-shadow:0 24px 60px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.4)!important;overflow:hidden}
+body.site-v2 .top-chrome .nav .nav-group__menu::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--tu-cyan),var(--tu-violet))}
+body.site-v2 .top-chrome .nav .nav-group__menu>button[data-tab]{padding:10px 12px!important;border-radius:10px!important;font-family:var(--tu-font)!important;font-weight:700!important;color:var(--tu-ink)!important;background:transparent!important}
+body.site-v2 .top-chrome .nav .nav-group__menu>button[data-tab]::after{font:500 11.5px/1.4 var(--tu-font)!important;color:var(--tu-muted)!important;text-transform:none!important;letter-spacing:0!important}
+body.site-v2 .top-chrome .nav .nav-group__menu>button[data-tab]:hover,body.site-v2 .top-chrome .nav .nav-group__menu>button[data-tab]:focus-visible{background:rgba(31,201,241,.1)!important}
+body.site-v2 .top-chrome .nav .nav-group__menu>button[data-tab].active{background:linear-gradient(160deg,rgba(31,201,241,.18),rgba(138,125,255,.1))!important;box-shadow:inset 0 0 0 1px rgba(111,227,255,.4)!important}
+body.site-v2 .top-chrome .nav .nav-group__menu>button[data-tab]::before{background:var(--tu-cyan)!important}
+
+/* ------------------------------------------------------------------ About */
+body.site-v2 #tab-about [hidden]{display:none!important}
+body.site-v2 #tab-about .tu-about{display:grid;gap:16px;max-width:1240px;margin:0 auto;font-family:var(--tu-font);color:var(--tu-ink)}
+body.site-v2 #tab-about .card{margin:0!important;max-width:none!important;min-height:0!important;padding:24px!important;text-align:left!important;display:block!important}
+body.site-v2 #tab-about h3{margin:0 0 14px;font-size:17px;font-weight:800;color:#fff;letter-spacing:-.01em}
+body.site-v2 #tab-about .tu-kicker{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--tu-cyan)}
+body.site-v2 #tab-about .tu-hero{display:grid!important;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:28px;align-items:center;padding:32px!important;
+  background:radial-gradient(120% 140% at 0% 0%,rgba(31,201,241,.16),transparent 55%),radial-gradient(120% 140% at 100% 100%,rgba(138,125,255,.16),transparent 55%),var(--tu-panel)!important}
+body.site-v2 #tab-about .tu-hero h2{margin:8px 0 10px!important;font-size:clamp(26px,2.6vw,38px)!important;line-height:1.12!important;font-weight:900!important;text-transform:none!important;letter-spacing:-.02em!important;color:#fff!important}
+body.site-v2 #tab-about .tu-hero h2::before{display:none!important}
+body.site-v2 #tab-about .tu-hero p{margin:0;max-width:620px;color:var(--tu-muted);font-size:15px;line-height:1.6}
+body.site-v2 #tab-about .tu-hero__actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+body.site-v2 #tab-about .tu-hero__actions .btn{min-height:44px;text-decoration:none;display:inline-flex;align-items:center}
+body.site-v2 #tab-about .tu-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0;padding:0;list-style:none}
+body.site-v2 #tab-about .tu-facts li{display:grid;gap:4px;padding:16px;border:1px solid rgba(110,170,255,.2);border-radius:12px;background:var(--tu-inset)}
+body.site-v2 #tab-about .tu-facts b{font-size:20px;font-weight:900;background:linear-gradient(90deg,#7fe9ff,#b9a9ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+body.site-v2 #tab-about .tu-facts span{font-size:12px;color:var(--tu-muted);line-height:1.4}
+body.site-v2 #tab-about .tu-about__row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:16px;align-items:start}
+body.site-v2 #tab-about .tu-badge{display:inline-flex;padding:6px 12px;border-radius:999px;border:1px solid rgba(110,170,255,.3);background:var(--tu-inset);font-size:12px;font-weight:800}
+body.site-v2 #tab-about .tu-badge.is-pro{border-color:transparent;background:linear-gradient(90deg,var(--tu-cyan),var(--tu-violet));color:#041019}
+body.site-v2 #tab-about .tu-plan__status{display:grid;gap:8px;justify-items:start;margin-bottom:18px}
+body.site-v2 #tab-about .tu-plan__line{margin:0;font-size:14px;font-weight:700}
+body.site-v2 #tab-about .tu-plan__sub{margin:0;font-size:12px;color:var(--tu-muted)}
+body.site-v2 #tab-about .tu-meter{width:100%;height:8px;border-radius:99px;background:rgba(110,170,255,.14);overflow:hidden}
+body.site-v2 #tab-about .tu-meter i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--tu-cyan),var(--tu-violet))}
+body.site-v2 #tab-about .tu-plan__label{display:block;margin-bottom:6px;font-size:12px;font-weight:700;color:var(--tu-muted)}
+body.site-v2 #tab-about .tu-plan__code{padding:0!important;border:0!important;background:none!important;box-shadow:none!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:8px;width:auto!important;max-width:none!important;margin:0!important}
+body.site-v2 #tab-about .tu-plan__code input{min-height:44px;width:100%;padding:0 12px;border:1px solid rgba(110,170,255,.28);border-radius:10px;background:rgba(2,6,18,.85);color:var(--tu-ink);font:600 14px var(--tu-font)}
+body.site-v2 #tab-about .tu-plan__code .btn{min-height:44px;margin:0}
+body.site-v2 #tab-about .tu-plan__msg{min-height:0;margin:8px 0 0;font-size:12px}
+body.site-v2 #tab-about .tu-plan__msg:empty{display:none}
+body.site-v2 #tab-about .tu-plan__hint{margin:8px 0 14px;font-size:12px;color:var(--tu-muted)}
+body.site-v2 #tab-about .tu-plan__actions{display:flex;flex-wrap:wrap;gap:8px}
+body.site-v2 #tab-about .tu-plan__actions .btn{min-height:42px;margin:0;border-radius:10px!important}
+body.site-v2 #tab-about .tu-compare table{width:100%;border-collapse:collapse;font-size:13px}
+body.site-v2 #tab-about .tu-compare th,body.site-v2 #tab-about .tu-compare td{padding:10px 12px;border-bottom:1px solid rgba(110,170,255,.12);text-align:left;vertical-align:middle}
+body.site-v2 #tab-about .tu-compare thead th{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--tu-muted)}
+body.site-v2 #tab-about .tu-compare tbody th{font-weight:600;color:var(--tu-ink)}
+body.site-v2 #tab-about .tu-compare td{color:var(--tu-muted);width:24%}
+body.site-v2 #tab-about .tu-compare .is-pro{background:rgba(31,201,241,.06);color:var(--tu-ink)}
+body.site-v2 #tab-about .tu-compare thead .is-pro{color:var(--tu-cyan)}
+body.site-v2 #tab-about .tu-yes{color:#5ff2b5;font-weight:900}
+body.site-v2 #tab-about .tu-no{color:rgba(214,229,250,.35)}
+body.site-v2 #tab-about .tu-block__head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+body.site-v2 #tab-about .tu-block__head h3{margin:0}
+body.site-v2 #tab-about .tu-block__head span{font-size:12px;color:var(--tu-muted)}
+body.site-v2 #tab-about .tu-tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+body.site-v2 #tab-about .tu-tool{display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;align-items:start;padding:14px;border:1px solid rgba(110,170,255,.18);border-radius:12px;background:var(--tu-inset);color:var(--tu-ink);font-family:var(--tu-font);text-align:left;cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+body.site-v2 #tab-about .tu-tool:hover{border-color:rgba(111,227,255,.55);background:rgba(31,201,241,.08);transform:translateY(-1px)}
+body.site-v2 #tab-about .tu-tool__icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(160deg,rgba(31,201,241,.22),rgba(138,125,255,.16))}
+body.site-v2 #tab-about .tu-tool__icon::before{content:"";display:block;width:100%;height:100%;background:var(--tu-cyan);-webkit-mask:var(--tu-icon) center/20px 20px no-repeat;mask:var(--tu-icon) center/20px 20px no-repeat}
+body.site-v2 #tab-about .tu-tool__text{display:grid;gap:3px;min-width:0}
+body.site-v2 #tab-about .tu-tool strong{font-size:14px;font-weight:800}
+body.site-v2 #tab-about .tu-tool small{font-size:12px;line-height:1.45;color:var(--tu-muted)}
+body.site-v2 #tab-about .tu-faq{display:grid;gap:8px}
+body.site-v2 #tab-about .tu-faq__item{border:1px solid rgba(110,170,255,.18);border-radius:12px;background:var(--tu-inset)}
+body.site-v2 #tab-about .tu-faq__item summary{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;font-size:13.5px;font-weight:700;cursor:pointer;list-style:none}
+body.site-v2 #tab-about .tu-faq__item summary::-webkit-details-marker{display:none}
+body.site-v2 #tab-about .tu-faq__item summary::after{content:"+";color:var(--tu-cyan);font-weight:800}
+body.site-v2 #tab-about .tu-faq__item[open] summary::after{content:"–"}
+body.site-v2 #tab-about .tu-faq__item p{margin:0;padding:0 14px 14px;font-size:13px;line-height:1.55;color:var(--tu-muted)}
+body.site-v2 #tab-about .tu-contact{display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center}
+body.site-v2 #tab-about .tu-contact p{margin:0 0 14px;color:var(--tu-muted);font-size:14px}
+body.site-v2 #tab-about .tu-contact__links{display:flex;flex-wrap:wrap;gap:8px}
+body.site-v2 #tab-about .tu-contact__links .btn{text-decoration:none;display:inline-flex;align-items:center;min-height:40px;margin:0}
+body.site-v2 #tab-about .tu-contact__social{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;max-width:420px}
+body.site-v2 #tab-about .tu-contact__social .socials{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin:0}
+body.site-v2 #tab-about .tu-contact__social small{flex-basis:100%;text-align:right;font-size:12px;color:var(--tu-muted)}
+body.site-v2 #tab-about .tu-contact__social .socials a,body.site-v2 #tab-about .tu-contact__social .socials button{width:40px!important;height:40px!important;border-radius:10px!important}
+body.site-v2 #tab-about .telegram-channel-link{display:inline-grid;place-items:center;width:40px;height:40px;border:1px solid rgba(110,170,255,.25);border-radius:10px;background:var(--tu-inset);color:#5fc8ff}
+body.site-v2 #tab-about .telegram-channel-link svg{width:20px;height:20px;fill:currentColor}
+
+/* ------------------------------------------------------------------ responsive */
+@media (max-width:1100px){
+  body.site-v2 #tab-about .tu-hero,body.site-v2 #tab-about .tu-about__row{grid-template-columns:1fr}
+}
+@media (max-width:980px){
+  body.site-v2 .tu-layout{grid-template-columns:1fr}
+  body.site-v2 .tu-guide{position:static}
+  body.site-v2 #tab-steam .steam-extension-card{grid-template-columns:1fr}
+  body.site-v2 #tab-steam .steam-extension-card>*{grid-column:1!important;grid-row:auto!important}
+}
+@media (max-width:640px){
+  body.site-v2 .tu-layout>.card.tu-main,body.site-v2 #tab-about .card{padding:18px!important}
+  body.site-v2 #tab-about .tu-hero{padding:22px!important}
+  body.site-v2 #tab-about .tu-facts{grid-template-columns:1fr 1fr}
+  body.site-v2 #tab-about .tu-contact{grid-template-columns:1fr}
+  body.site-v2 #tab-about .tu-contact__social{justify-content:flex-start}
+  body.site-v2 #tab-about .tu-contact__social small{text-align:left}
+  body.site-v2 #tab-about .tu-contact__social .socials{justify-content:flex-start}
+  body.site-v2 #tab-about .tu-compare table{table-layout:fixed}
+  body.site-v2 #tab-about .tu-compare th,body.site-v2 #tab-about .tu-compare td{padding:9px 5px;font-size:11.5px;overflow-wrap:break-word;hyphens:auto}
+  body.site-v2 #tab-about .tu-compare thead th:first-child{width:41%}
+  body.site-v2 #tab-about .tu-compare thead th{font-size:9.5px;letter-spacing:0}
+  body.site-v2 #tab-steam .steam-extension-card{padding:20px!important}
+  body.site-v2 #tab-steam .steam-extension-card__modes{grid-template-columns:1fr 1fr 1fr}
+}
+
+/* ------------------------------------------------------------------ result dialog headings */
+body.site-v2 .workspace-result-modal :is(h2,h3,.workspace-result__section-title){font-family:var(--tu-font)!important;text-transform:none!important;letter-spacing:-.01em!important}
+body.site-v2 .workspace-result-modal h2{font-size:clamp(20px,1.8vw,26px)!important;font-weight:900!important}
+body.site-v2 .workspace-result-modal :is(h3,.workspace-result__section-title){font-size:15px!important;font-weight:800!important}
+body.site-v2 .workspace-result-modal :is([class*="__kicker"],[class*="-kicker"]){font-family:var(--tu-font)!important;font-weight:800!important;letter-spacing:.14em!important}

@@ -1,7 +1,8 @@
 """Workshop Studio jobs.
 
-Rows layout: one full-height Steam file per uploaded row.
-Squares layout: a user-chosen 5:1 area of one source cut into five 150x150 files.
+Rows layout: one full-height Steam file per uploaded row, optionally framed.
+Squares layout: 1-3 rows; each row is a user-chosen 5:1 area of its own source
+cut into five 150x150 files. Frames/effects are shared by every row.
 """
 
 from __future__ import annotations
@@ -61,17 +62,35 @@ def _png_under_limit(image: Image.Image) -> bytes:
     raise ValueError("This image cannot fit under 5 MB without changing its dimensions")
 
 
-def _free_watermark(image: Image.Image) -> Image.Image:
+def _watermark_layer(size: tuple[int, int], inset: int = 0) -> Image.Image:
+    layer = Image.new("RGBA", size, (0, 0, 0, 0))
+    ImageDraw.Draw(layer).text((16 + inset, max(0, size[1] - 38 - inset)), "ShowcaseMaker",
+                               font=proc.load_font("Fineday", 18), fill=(255, 255, 255, 150))
+    return layer
+
+
+def _free_watermark(image: Image.Image, inset: int = 0, layer: Image.Image | None = None) -> Image.Image:
     original_alpha = "A" in image.getbands()
     base = image.convert("RGBA")
-    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(layer)
-    draw.text((16, max(0, image.height - 38)), "ShowcaseMaker", font=proc.load_font("Fineday", 18), fill=(255, 255, 255, 150))
-    result = Image.alpha_composite(base, layer)
+    result = Image.alpha_composite(base, layer or _watermark_layer(base.size, inset))
     return result if original_alpha else result.convert("RGB")
 
 
-def render_image(path: Path, settings: dict, width: int = 750, outline: bool = False, free_watermark: bool = False) -> bytes:
+def _mark_inset(frame: dict | None) -> int:
+    """Free watermark goes on top of the frame and inside it, never under a HUD plate."""
+    if not frame:
+        return 0
+    return 52 if frame.get("shape", "rect") != "rect" else frame["width"] * 2 + 6
+
+
+def row_frame(fx: dict | None) -> dict | None:
+    """Frame of a full-height row: always around the whole file, never five panels."""
+    if not fx or fx["frame"]["style"] == "none":
+        return None
+    return dict(fx["frame"], target="strip")
+
+
+def _row_still(path: Path, settings: dict, width: int, free_watermark: bool) -> Image.Image:
     with Image.open(path) as opened:
         if getattr(opened, "n_frames", 1) != 1:
             raise ValueError("Animated image must be exported as GIF")
@@ -84,17 +103,64 @@ def render_image(path: Path, settings: dict, width: int = 750, outline: bool = F
     image = _grade(image, settings)
     if free_watermark:
         image = _free_watermark(image)
-    if outline:
-        ImageDraw.Draw(image).rectangle((0, 0, image.width - 1, image.height - 1), outline="#8de9ff", width=2)
+    return image
+
+
+def render_image(path: Path, settings: dict, width: int = 750, outline: bool = False, free_watermark: bool = False,
+                 frame: dict | None = None) -> bytes:
+    if frame is None and outline:
+        frame = row_frame(square_fx.normalize(None, legacy_outline=True))
+    image = _row_still(path, settings, width, free_watermark and not frame)
+    if frame:
+        had_alpha = "A" in image.getbands()
+        image = square_fx.draw_frame(image, 0.0, frame)
+        if free_watermark:
+            image = _free_watermark(image, _mark_inset(frame))
+        if not had_alpha:
+            image = image.convert("RGB")
     return _png_under_limit(image)
 
 
-def render_animation(path: Path, output: Path, settings: dict, fps: int, duration: float, start: float, outline: bool = False, free_watermark: bool = False) -> None:
+def _gif_from_frames(frames_dir: Path, output: Path, fps: int, duration: float) -> None:
+    video = output.parent / (output.stem + "_frames.mkv")
+    try:
+        _encode_frames(frames_dir, fps, video)
+        proc.media_to_gif(video, output, fps=fps, width=750, duration=duration, encoder="ffmpeg")
+    finally:
+        video.unlink(missing_ok=True)
+    if not output.is_file() or not output.stat().st_size:
+        raise ValueError("GIF encoding produced an empty file")
+    if output.stat().st_size > STEAM_LIMIT:
+        raise ValueError("This animation cannot fit under 5 MB; shorten the clip")
+    proc.apply_hex21_file(output)
+
+
+def render_image_animation(path: Path, output: Path, settings: dict, frame: dict, fps: int, duration: float,
+                           free_watermark: bool = False) -> None:
+    """A still row with an animated frame becomes one looping GIF of the same size."""
+    image = _row_still(path, settings, 750, False).convert("RGBA")
+    mark = _watermark_layer(image.size, _mark_inset(frame)) if free_watermark else None
+    frames_dir = output.parent / (output.stem + "_frames")
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    count = max(2, round(fps * duration))
+    try:
+        for index in range(count):
+            framed = square_fx.draw_frame(image, index / count, frame)
+            if mark is not None:
+                framed = Image.alpha_composite(framed, mark)
+            framed.save(frames_dir / f"frame_{index + 1:04d}.png", compress_level=1)
+        _gif_from_frames(frames_dir, output, fps, duration)
+    finally:
+        shutil.rmtree(frames_dir, ignore_errors=True)
+
+
+def render_animation(path: Path, output: Path, settings: dict, fps: int, duration: float, start: float,
+                     outline: bool = False, free_watermark: bool = False, frame: dict | None = None) -> None:
     ffmpeg = proc.find_ffmpeg()
     if not ffmpeg:
         raise RuntimeError("FFmpeg is unavailable")
-    source = path
     temporary = output.parent / (output.stem + "_graded.mp4")
+    frames_dir = output.parent / (output.stem + "_frames")
     watermark_image = output.parent / (output.stem + "_watermark.png")
     # Encode once with color correction and optional trim. media_to_gif performs
     # the high-quality palette encode and Steam 5 MB fitting afterwards.
@@ -105,13 +171,17 @@ def render_animation(path: Path, output: Path, settings: dict, fps: int, duratio
         f"eq=brightness={brightness:.3f}:contrast={contrast:.3f}:saturation={saturation:.3f},"
         f"hue=h={settings['hue']},scale=750:-2:flags=lanczos+accurate_rnd+full_chroma_int"
     )
-    if outline:
+    if outline and not frame:
         filters += ",drawbox=x=0:y=0:w=iw:h=ih:color=0x8de9ff:t=2"
     command = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error"]
+    if frame and frame["style"] in square_fx.ANIMATED_FRAMES:
+        # A short GIF would otherwise shrink the frame loop to its own length.
+        command += ["-stream_loop", "-1"]
     if start:
         command += ["-ss", f"{start:.3f}"]
     command += ["-i", str(path)]
-    if free_watermark:
+    # With a frame the watermark is drawn after it, in Python (see below).
+    if free_watermark and not frame:
         watermark = Image.new("RGBA", (750, 60), (0, 0, 0, 0))
         ImageDraw.Draw(watermark).text((16, 16), "ShowcaseMaker", font=proc.load_font("Fineday", 18), fill=(255, 255, 255, 150))
         watermark.save(watermark_image)
@@ -122,8 +192,26 @@ def render_animation(path: Path, output: Path, settings: dict, fps: int, duratio
     command += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p", str(temporary)]
     try:
         subprocess.run(command, check=True, capture_output=True, timeout=90)
-        source = temporary
-        proc.media_to_gif(source, output, fps=fps, width=750, duration=duration, encoder="ffmpeg")
+        if frame:
+            # Decode at the output FPS and draw the frame loop on every frame.
+            frames_dir.mkdir(exist_ok=True)
+            subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", str(temporary),
+                            "-vf", f"fps={fps}", str(frames_dir / "frame_%04d.png")],
+                           check=True, capture_output=True, timeout=120)
+            frames = sorted(frames_dir.glob("frame_*.png"))
+            if not frames:
+                raise ValueError("Selected fragment contains no frames")
+            mark = None
+            for index, frame_path in enumerate(frames):
+                with Image.open(frame_path) as decoded:
+                    framed = square_fx.draw_frame(decoded, index / len(frames), frame)
+                if free_watermark:
+                    mark = mark or _watermark_layer(framed.size, _mark_inset(frame))
+                    framed = Image.alpha_composite(framed, mark)
+                framed.save(frame_path, compress_level=1)
+            _gif_from_frames(frames_dir, output, fps, duration)
+            return
+        proc.media_to_gif(temporary, output, fps=fps, width=750, duration=duration, encoder="ffmpeg")
         if not output.is_file() or not output.stat().st_size:
             raise ValueError("GIF encoding produced an empty file")
         if output.stat().st_size > STEAM_LIMIT:
@@ -132,6 +220,7 @@ def render_animation(path: Path, output: Path, settings: dict, fps: int, duratio
     finally:
         temporary.unlink(missing_ok=True)
         watermark_image.unlink(missing_ok=True)
+        shutil.rmtree(frames_dir, ignore_errors=True)
 
 
 SQUARE = 150
@@ -330,19 +419,33 @@ def render_squares_animation(path: Path, work_dir: Path, settings: dict, crop: d
         shutil.rmtree(frames_dir, ignore_errors=True)
 
 
-def _run_squares(job_dir: Path, archive: zipfile.ZipFile, item: dict, options: dict) -> None:
+def _crops(options: dict, count: int) -> list[dict]:
+    raw = options.get("crops") or ([options["crop"]] if options.get("crop") else [])
+    if len(raw) != count:
+        raise ValueError("Choose the visible area for every row")
+    return [normalize_crop(crop) for crop in raw]
+
+
+def _run_squares(jid: str, job_dir: Path, archive: zipfile.ZipFile, items: list[dict], options: dict) -> None:
+    """One row = five 150x150 files. Several rows go into row_N/ folders."""
+    crops = _crops(options, len(items))
+    fx = square_fx.normalize(options.get("fx"), legacy_outline=bool(options.get("outline")))
+    for index, item in enumerate(items):
+        _job_set(jid, status="running", pct=5 + round(85 * index / len(items)), stage=f"squares:{index + 1}")
+        prefix = f"row_{index + 1}/" if len(items) > 1 else ""
+        _square_row(job_dir / f"squares_{index + 1}", archive, item, options["rows"][index], crops[index], fx,
+                    options, prefix)
+
+
+def _square_row(work_dir: Path, archive: zipfile.ZipFile, item: dict, settings: dict, crop: dict, fx: dict,
+                options: dict, prefix: str) -> None:
     path = Path(item["path"])
     suffix = path.suffix.lower()
-    settings = options["rows"][0]
-    crop = normalize_crop(options["crop"])
-    outline = bool(options.get("outline"))
     free_watermark = bool(options.get("free_watermark"))
-    fx = square_fx.normalize(options.get("fx"), legacy_outline=outline)
-    work_dir = job_dir / "squares"
     try:
         if suffix in IMAGE_EXTENSIONS and not square_fx.is_animated(fx):
             for name, data in render_squares_image(path, settings, crop, free_watermark=free_watermark, fx=fx).items():
-                archive.writestr(name, data)
+                archive.writestr(prefix + name, data)
             return
         if suffix in IMAGE_EXTENSIONS:
             outputs = render_squares_still_animation(path, work_dir, settings, crop, fx, options["fps"],
@@ -353,7 +456,7 @@ def _run_squares(job_dir: Path, archive: zipfile.ZipFile, item: dict, options: d
         else:
             raise ValueError("Unsupported source format")
         for name, output in outputs.items():
-            archive.write(output, name)
+            archive.write(output, prefix + name)
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
 
@@ -369,20 +472,29 @@ def run(jid: str, job: dict) -> None:
     try:
         with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as archive:
             if options.get("layout") == "squares":
-                _job_set(jid, status="running", pct=10, stage="squares")
-                _run_squares(job_dir, archive, files[0], options)
+                _run_squares(jid, job_dir, archive, files, options)
             row_files = [] if options.get("layout") == "squares" else files
+            frame = row_frame(square_fx.normalize(options["fx"])) if options.get("fx") else None
+            free_watermark = bool(options.get("free_watermark"))
             for index, item in enumerate(row_files, 1):
                 _job_set(jid, status="running", pct=5 + round(85 * (index - 1) / len(row_files)), stage=f"row:{index}")
                 path = Path(item["path"])
                 suffix = path.suffix.lower()
                 settings = options["rows"][index - 1]
-                if suffix in IMAGE_EXTENSIONS:
-                    data = render_image(path, settings, outline=bool(options.get("outline")), free_watermark=bool(options.get("free_watermark")))
+                if suffix in IMAGE_EXTENSIONS and frame and frame["style"] in square_fx.ANIMATED_FRAMES:
+                    output = job_dir / f"row_{index}.gif"
+                    render_image_animation(path, output, settings, frame, options["fps"], options["duration"],
+                                           free_watermark)
+                    archive.write(output, f"row_{index}.gif")
+                    output.unlink(missing_ok=True)
+                elif suffix in IMAGE_EXTENSIONS:
+                    data = render_image(path, settings, outline=bool(options.get("outline")),
+                                        free_watermark=free_watermark, frame=frame)
                     archive.writestr(f"row_{index}.png", data)
                 elif suffix in ANIMATED_EXTENSIONS:
                     output = job_dir / f"row_{index}.gif"
-                    render_animation(path, output, settings, options["fps"], options["duration"], settings["start"], bool(options.get("outline")), bool(options.get("free_watermark")))
+                    render_animation(path, output, settings, options["fps"], options["duration"], settings["start"],
+                                     bool(options.get("outline")), free_watermark, frame=frame)
                     archive.write(output, f"row_{index}.gif")
                     output.unlink(missing_ok=True)
                 else:

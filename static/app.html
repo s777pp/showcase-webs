@@ -25,26 +25,28 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
   <link rel="stylesheet" href="/static/css/job-assets.css?v=20260926-results1"/>
 <link rel="stylesheet" href="/static/css/layout-refinement.css?v=20260909-german1">
 <script src="/static/js/layout-refinement.js?v=20260927-import1"></script>
-<script src="/static/js/locales-extra.js?v=20260927-foot1"></script>
+<script src="/static/js/locales-extra.js?v=20261001-tu1"></script>
 <script src="/static/js/i18n.js?v=20260927-guides1"></script>
 <link rel="stylesheet" href="/static/css/support-chat.css?v=20260928-ticket4">
 <link rel="stylesheet" href="/static/css/tools-polish.css?v=20260908-controls8">
 <link href="https://fonts.googleapis.com/css2?family=Alumni+Sans:wght@700;800&family=Arsenal:wght@700&family=Bebas+Neue&family=Bungee&family=Caveat:wght@600;700&family=Comfortaa:wght@600;700&family=Cormorant+Garamond:wght@700&family=Exo+2:wght@700;800&family=Jura:wght@700&family=Kelly+Slab&family=Neucha&family=Oswald:wght@600;700&family=Play:wght@700&family=Poiret+One&family=Press+Start+2P&family=Readex+Pro:wght@600;700&family=Rubik+Mono+One&family=Russo+One&family=Sofia+Sans+Extra+Condensed:wght@700;800&family=Tenor+Sans&family=Unbounded:wght@600;700;800&family=Yeseva+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/showcase-builder.css?v=20260923-grade1">
-<link rel="stylesheet" href="/static/css/workshop-studio.css?v=20260929-hud1">
+<link rel="stylesheet" href="/static/css/workshop-studio.css?v=20261001-wsx2">
 <link rel="stylesheet" href="/static/css/builder-motion.css?v=20260913-motion1">
 <link rel="stylesheet" href="/static/css/steam-dna.css?v=20260912-exp5">
 <script defer src="/static/js/support-chat.js?v=20260928-ticket3"></script>
 <link rel="stylesheet" href="/static/css/analytics-consent.css?v=20260927-lift1">
 <link rel="stylesheet" href="/static/css/workspace-usability.css?v=20260910-process-layout2">
-<link rel="stylesheet" href="/static/css/workspace-editor.css?v=20260929-shapes1">
+<link rel="stylesheet" href="/static/css/workspace-editor.css?v=20261001-ext1">
 <link rel="stylesheet" href="/static/css/tool-clarity.css?v=20260921-ux2">
 <link rel="stylesheet" href="/static/css/process-studio.css?v=20260929-shapes1">
 <link rel="stylesheet" href="/static/css/nav-groups.css?v=20260926-ux1">
 <link rel="stylesheet" href="/static/css/process-compact.css?v=20260930-wait1">
 <link rel="stylesheet" href="/static/css/site-theme.css?v=20260929-shapes1">
-<link rel="stylesheet" href="/static/css/builder-studio.css?v=20260930-r13">
+<link rel="stylesheet" href="/static/css/builder-studio.css?v=20261001-fit1">
 <link rel="stylesheet" href="/static/css/home-overlays.css?v=20260928-rwd5">
+<link rel="stylesheet" href="/static/css/tools-unified.css?v=20261001-tu3">
+<link rel="stylesheet" href="/static/css/da-publish.css?v=20261001-da1">
 </head>
 <body class="page-tools site-v2">
 <div class="stars-layer" id="starsLayer" aria-hidden="true"></div>
@@ -113,18 +115,7 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
     </div>
 
   <section class="tab" id="tab-workshop">
-    <div class="workshop-studio" id="workshopStudio">
-      <div class="workshop-studio__intro"><div><small data-workshop-i="kicker">STEAM / WORKSHOP STUDIO</small><h2 data-workshop-i="title" data-workshop-sq="squaresTitle">Prepare a multi-row Workshop showcase</h2><p data-workshop-i="intro" data-workshop-sq="squaresIntro">One source becomes one full-height file. Choose 1–3 rows and download the matching ZIP. HEX 21 is automatic.</p></div><span class="workshop-studio__seal">ZIP · 1–3 <i>HEX 21 ✓</i></span></div>
-      <div class="workshop-studio__layout">
-        <div class="workshop-studio__controls">
-          <section class="workshop-studio__card"><h3 data-workshop-i="typeLabel">1 · Choose the showcase type</h3><div class="workshop-studio__modes workshop-studio__types" role="group"><button type="button" data-workshop-layout="rows" aria-pressed="true" data-workshop-i="typeRows">Full-height rows</button><button type="button" data-workshop-layout="squares" aria-pressed="false"><span class="workshop-studio__type-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span data-workshop-i="typeSquares">5 squares · 150×150</span></button></div><div class="workshop-studio__rows-choice"><p class="workshop-studio__label" data-workshop-i="rowsLabel">Number of rows</p><div class="workshop-studio__modes" role="group"><button type="button" data-workshop-rows="1" aria-pressed="true" data-workshop-i="oneRow">1 row</button><button type="button" data-workshop-rows="2" aria-pressed="false" data-workshop-i="twoRows">2 rows</button><button type="button" data-workshop-rows="3" aria-pressed="false" data-workshop-i="threeRows">3 rows</button></div></div></section>
-            <section class="workshop-studio__card"><h3 data-workshop-i="sources" data-workshop-sq="squaresSourcesTitle">2 · Add your files</h3><p data-workshop-i="sourcesHint" data-workshop-sq="squaresSources">Add one image, GIF, MP4 or WebM per row. Tall images keep their full height and proportions.</p><div id="workshopSources"></div></section>
-            <section class="workshop-studio__card workshop-studio__fx" id="workshopFxCard" hidden><h3 data-workshop-fx="title">3 · Frame and effects</h3><div id="workshopFx"></div></section>
-            <section class="workshop-studio__card"><h3 data-workshop-i="finish" data-workshop-fx="finish">3 · Download</h3><div class="workshop-studio__finish"><label><span data-workshop-i="fps">Animation FPS</span><select id="workshopFps"><option value="12">12</option><option value="15">15</option><option value="24">24</option></select></label><label><span data-workshop-i="duration">Clip length</span><select id="workshopDuration"><option value="4">4 s</option><option value="6">6 s</option><option value="8">8 s</option></select></label></div><label class="workshop-studio__outline"><input type="checkbox" id="workshopBorder"><span data-workshop-i="border" data-workshop-sq="squaresBorder">Outline each row</span></label><p id="workshopFreeNote" hidden></p><button type="button" class="btn" id="workshopCreate" disabled data-workshop-i="create">Prepare and download ZIP</button><progress id="workshopProgress" max="100" value="0" hidden></progress><p id="workshopStatus" role="status" aria-live="polite"></p><a id="workshopDownload" hidden download="workshop-rows.zip"></a></section>
-        </div>
-          <div class="workshop-studio__preview"><div class="workshop-studio__preview-head"><strong data-workshop-i="preview" data-workshop-sq="squaresPreview">FULL-HEIGHT PREVIEW</strong><span data-workshop-i="previewHint" data-workshop-sq="squaresPreviewHint">Each row keeps the source proportions</span></div><div id="workshopPreviewRows" class="workshop-studio__preview-rows"></div><div class="workshop-studio__preview-foot"><span data-workshop-i="autoHex">HEX 21 is automatic in the final ZIP</span></div></div>
-      </div>
-    </div>
+    <div class="workshop-studio" id="workshopStudio"></div>
   </section>
 
   <section class="tab active" id="tab-process">
@@ -1059,23 +1050,7 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
         <button class="btn ghost" id="daLogout" data-i="da_disconnect" type="button" style="display:none">Disconnect</button>
       </div>
       <div id="daConnectedBlock" style="display:none">
-        <div class="row" style="margin-bottom:10px">
-          <button class="btn" id="daAddFiles" data-i="da_add_files" type="button">Add files</button>
-          <button class="btn ghost" id="daClearFiles" data-i="da_clear_files" type="button">Clear list</button>
-          <input type="file" id="daFiles" multiple accept="image/*,image/gif,image/png,image/jpeg,video/mp4,video/webm,.gif,.png,.jpg,.jpeg,.mp4,.webm" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0"/>
-        </div>
-        <div id="daList" class="files"></div>
-        <div class="row" style="margin-top:12px">
-          <button class="btn" id="daUpload" data-i="da_upload" type="button">Upload to Sta.sh</button>
-        </div>
-        <div class="da-progress" id="daProgress" aria-live="polite">
-          <div class="da-prog-top">
-            <span id="daProgLabel" data-i="prog_uploading">Uploading…</span>
-            <span class="da-prog-pct" id="daProgPct">0%</span>
-          </div>
-          <div class="da-prog-track"><div class="da-prog-fill" id="daProgFill"></div></div>
-          <div class="da-prog-sub" id="daProgSub"></div>
-        </div>
+        <div id="daPublish"></div>
       </div>
       <div class="status" id="daMsg" style="display:block;min-height:28px;margin-top:14px;font-size:13px"></div>
     </div>
@@ -1105,24 +1080,85 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
   </div>
 
   <section class="tab" id="tab-about">
-    <div class="card about-card">
-      <h2 data-i="about_h">About</h2>
-      <p class="steps about-text">
-        <b>Showcase Maker WEB</b> — browser tools for Steam showcases.<br/>
-        Free: daily file limit · Pro: unlimited (account + access code).<br/><br/>
-        by n1t1337
-      </p>
-      <div class="about-stack">
-        <div class="socials about-socials"></div>
-        <a class="telegram-channel-link" href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer" aria-label="Telegram channel" title="Telegram">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 3.4 18.3 20c-.2 1.2-.9 1.5-1.9.9l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-8c.4-.3-.1-.5-.6-.2L6 14l-4.7-1.5c-1-.3-1-1 .2-1.5L20 3.8c.9-.3 1.6.2 1.4-.4Z"/></svg>
-        </a>
-        <button class="btn-buy-key" id="btnBuyKeyAbout" type="button" data-i="buy_key">Buy Key</button>
-        <div class="about-code-row">
-          <input id="accessCode" placeholder="Access code" data-i-ph="ph_code"/>
-          <button class="btn ghost" id="btnUnlock" type="button" data-i="apply">Apply</button>
+    <div class="tu-about">
+      <header class="tu-hero card">
+        <div class="tu-hero__text">
+          <small class="tu-kicker" data-tu="kicker">About the service</small>
+          <h2 data-tu="heroTitle">Steam showcases, made in the browser</h2>
+          <p data-tu="heroText"></p>
+          <div class="tu-hero__actions">
+            <button type="button" class="btn" data-tu-open="process" data-tu="ctaStart">Start in Process</button>
+            <a class="btn ghost" data-tu-href="/extension" href="/extension" data-tu="ctaExt">Upload extension</a>
+          </div>
         </div>
+        <ul class="tu-facts">
+          <li><b data-tu="f1"></b><span data-tu="f1d"></span></li>
+          <li><b data-tu="f2"></b><span data-tu="f2d"></span></li>
+          <li><b data-tu="f3"></b><span data-tu="f3d"></span></li>
+          <li><b data-tu="f4"></b><span data-tu="f4d"></span></li>
+        </ul>
+      </header>
+
+      <div class="tu-about__row">
+        <section class="card tu-plan" aria-labelledby="tuPlanTitle">
+          <h3 id="tuPlanTitle" data-tu="planTitle">Your access</h3>
+          <div class="tu-plan__status" aria-live="polite"></div>
+          <label class="tu-plan__label" for="accessCode" data-tu="codeLabel">Access code</label>
+          <div class="about-code-row tu-plan__code">
+            <input id="accessCode" data-tu-ph="codePh" placeholder="Access code" autocomplete="off"/>
+            <button class="btn" id="btnUnlock" type="button" data-tu="apply">Activate</button>
+          </div>
+          <p class="tu-plan__msg status" aria-live="polite"></p>
+          <p class="tu-plan__hint" data-tu="codeHint"></p>
+          <div class="tu-plan__actions">
+            <button class="btn ghost btn-buy-key" id="btnBuyKeyAbout" type="button" data-tu="buy">Get Pro</button>
+            <button class="btn ghost tu-plan__login" type="button" data-tu="login" hidden>Log in</button>
+          </div>
+        </section>
+        <section class="card tu-compare" aria-labelledby="tuCompareTitle">
+          <h3 id="tuCompareTitle" data-tu="cmpTitle">Free and Pro</h3>
+          <table>
+            <thead><tr><th data-tu="cmpFeature">Feature</th><th data-tu="cmpFree">Free</th><th class="is-pro" data-tu="cmpPro">Pro</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </section>
       </div>
+
+      <section class="card tu-block" aria-labelledby="tuToolsTitle">
+        <div class="tu-block__head"><h3 id="tuToolsTitle" data-tu="toolsTitle">All tools</h3><span data-tu="toolsHint"></span></div>
+        <div class="tu-tools"></div>
+      </section>
+
+      <div class="tu-about__row">
+        <section class="card tu-block" aria-labelledby="tuHowTitle">
+          <h3 id="tuHowTitle" data-tu="howTitle">How to make a showcase</h3>
+          <ol class="tu-steps tu-how"></ol>
+        </section>
+        <section class="card tu-block" aria-labelledby="tuFaqTitle">
+          <h3 id="tuFaqTitle" data-tu="faqTitle">Questions</h3>
+          <div class="tu-faq"></div>
+        </section>
+      </div>
+
+      <section class="card tu-contact" aria-labelledby="tuContactTitle">
+        <div>
+          <h3 id="tuContactTitle" data-tu="contactTitle">Contacts and community</h3>
+          <p data-tu="contactText"></p>
+          <div class="tu-contact__links">
+            <a class="btn" href="#" data-support-choice data-tu="support">Support</a>
+            <a class="btn ghost" data-tu-href="/guides" href="/guides" data-tu="guides">Guides</a>
+            <a class="btn ghost" data-tu-href="/extension" href="/extension" data-tu="extension">Extension</a>
+            <a class="btn ghost" data-tu-href="/privacy" href="/privacy" data-tu="privacy">Privacy policy</a>
+          </div>
+        </div>
+        <div class="tu-contact__social">
+          <div class="socials about-socials"></div>
+          <a class="telegram-channel-link" href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer" aria-label="Telegram channel" title="Telegram">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 3.4 18.3 20c-.2 1.2-.9 1.5-1.9.9l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-8c.4-.3-.1-.5-.6-.2L6 14l-4.7-1.5c-1-.3-1-1 .2-1.5L20 3.8c.9-.3 1.6.2 1.4-.4Z"/></svg>
+          </a>
+          <small data-tu="author">Made by n1t1337</small>
+        </div>
+      </section>
     </div>
   </section>
 
@@ -1161,12 +1197,12 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
   </div>
 </div>
 
-  <script src="/static/js/tool-loader.js?v=20260930-r19"></script>
+  <script src="/static/js/tool-loader.js?v=20261001-fit1"></script>
 <script src="/static/js/app.js?v=20260929-shapes1"></script>
 <script src="/static/js/color-grade.js?v=20260923-grade2"></script>
-<script src="/static/js/workshop-squares-fx.js?v=20260930-r4"></script>
+<script src="/static/js/workshop-squares-fx.js?v=20261001-wsx1"></script>
 <script src="/static/js/process-frame-fx.js?v=20260930-lock2"></script>
-<script src="/static/js/workshop-studio.js?v=20260929-shapes1"></script>
+<script src="/static/js/workshop-studio.js?v=20261001-wsx2"></script>
   <script src="/static/js/workspace-copy.js?v=20260927-fmt1"></script>
   <script src="/static/js/process-guide.js?v=20260929-shapes1"></script>
 
@@ -1228,15 +1264,17 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
 
 <script src="/static/ss-shell.js?v=20260928-rwd1"></script>
 <script src="/static/js/workspace-help.js?v=20260921-polish1"></script>
-<script src="/static/js/process-result.js?v=20260927-fmt1"></script>
-<script src="/static/js/workspace-editor-copy.js?v=20260927-fmt1"></script>
+<script src="/static/js/process-result.js?v=20261001-ext1"></script>
+<script src="/static/js/workspace-editor-copy.js?v=20261001-ext1"></script>
 <script src="/static/js/workspace-editor.js?v=20260920-editor4"></script>
-<script src="/static/js/tool-clarity-copy.js?v=20260921-ux2"></script>
+<script src="/static/js/tool-clarity-copy.js?v=20261001-da2"></script>
 <script src="/static/js/tool-clarity.js?v=20260921-ux2"></script>
 <script src="/static/js/process-layout.js?v=20260930-wait1"></script>
 <script src="/static/js/process-compact.js?v=20260930-lock1"></script>
 <script src="/static/js/nav-groups.js?v=20260926-ux2"></script>
 <script src="/static/js/job-notify.js?v=20260926-perf1"></script>
+<script src="/static/js/tools-unified.js?v=20261001-tu3"></script>
+<script src="/static/js/da-publish.js?v=20261001-da2"></script>
 <script>/* Reveal after i18n, nav grouping and the shell header ran (listeners registered earlier fire first). */
 (function(){function show(){requestAnimationFrame(function(){document.documentElement.classList.remove('sm-booting')})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',show);else show()})();</script>

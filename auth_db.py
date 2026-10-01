@@ -297,6 +297,18 @@ def _create_schema(c: sqlite3.Connection) -> None:
     )
     c.execute(
         """
+        CREATE TABLE IF NOT EXISTS da_presets (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            preset_json TEXT NOT NULL,
+            updated_at REAL NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
+    c.execute(
+        """
         CREATE TABLE IF NOT EXISTS builder_usage (
             user_id INTEGER NOT NULL,
             day_key TEXT NOT NULL,
@@ -422,6 +434,7 @@ def _create_schema(c: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_users_telegram ON users(telegram_id)",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_steam ON users(steam_id) WHERE steam_id IS NOT NULL",
         "CREATE INDEX IF NOT EXISTS idx_builder_projects_user ON builder_projects(user_id, updated_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_da_presets_user ON da_presets(user_id, updated_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_saved_results_user ON saved_results(user_id, created_at DESC)",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_results_job ON saved_results(user_id, job_id)",
         "CREATE INDEX IF NOT EXISTS idx_saved_results_expires ON saved_results(expires_at)",
@@ -736,6 +749,12 @@ def account_export_data(user_id: int, analytics_user_hash: str = "") -> dict:
         ).fetchall()]
         for item in projects:
             item["project"] = _decode_export_json(item.pop("project_json", None))
+        da_presets = [dict(item) for item in c.execute(
+            "SELECT id,name,preset_json,updated_at FROM da_presets WHERE user_id=? ORDER BY updated_at DESC",
+            (uid,),
+        ).fetchall()]
+        for item in da_presets:
+            item["preset"] = _decode_export_json(item.pop("preset_json", None))
         saved = [dict(item) for item in c.execute(
             """SELECT id,job_id,kind,mode,title,size,file_count,created_at,expires_at
                FROM saved_results WHERE user_id=? ORDER BY created_at DESC""",
@@ -772,6 +791,7 @@ def account_export_data(user_id: int, analytics_user_hash: str = "") -> dict:
             "profile_showcases": showcases,
             "builder_projects": projects,
             "builder_usage": usage,
+            "deviantart_presets": da_presets,
             "saved_results": saved,
             "sessions": sessions,
             "activated_codes": codes,
@@ -831,6 +851,7 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
         c.execute("DELETE FROM profile_import_tickets WHERE user_id=?", (uid,))
         c.execute("DELETE FROM profile_showcases WHERE user_id=?", (uid,))
         c.execute("DELETE FROM builder_projects WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM da_presets WHERE user_id=?", (uid,))
         c.execute("DELETE FROM builder_usage WHERE user_id=?", (uid,))
         c.execute("DELETE FROM saved_results WHERE user_id=?", (uid,))
         c.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
@@ -1081,6 +1102,63 @@ def save_builder_project(
         return {"id": project_id, "name": name[:80], "showcase_mode": showcase_mode,
                 "project": project, "created_at": created_at, "updated_at": now,
                 "expires_at": expires_at}
+    finally:
+        c.close()
+
+
+DA_PRESET_LIMIT = 20
+
+
+def da_presets_for_user(user_id: int) -> list[dict]:
+    """Saved DeviantArt publishing presets (title, description, tags, options)."""
+    c = _conn()
+    try:
+        rows = c.execute(
+            "SELECT id, name, preset_json, updated_at FROM da_presets WHERE user_id=? ORDER BY updated_at DESC",
+            (int(user_id),),
+        ).fetchall()
+        out = []
+        for row in rows:
+            item = dict(row)
+            try:
+                item["preset"] = json.loads(item.pop("preset_json") or "{}")
+            except Exception:
+                item["preset"] = {}
+            out.append(item)
+        return out
+    finally:
+        c.close()
+
+
+def save_da_preset(user_id: int, preset_id: str, name: str, preset: dict) -> dict:
+    now = time.time()
+    payload = json.dumps(preset, ensure_ascii=False, separators=(",", ":"))
+    c = _conn()
+    try:
+        owner = c.execute("SELECT user_id FROM da_presets WHERE id=?", (preset_id,)).fetchone()
+        if owner and int(owner["user_id"]) != int(user_id):
+            raise PermissionError("Preset does not belong to this user")
+        if owner:
+            c.execute("UPDATE da_presets SET name=?, preset_json=?, updated_at=? WHERE id=? AND user_id=?",
+                      (name[:60], payload, now, preset_id, int(user_id)))
+        else:
+            count = c.execute("SELECT COUNT(*) AS n FROM da_presets WHERE user_id=?", (int(user_id),)).fetchone()
+            if int(dict(count)["n"]) >= DA_PRESET_LIMIT:
+                raise ValueError(f"Up to {DA_PRESET_LIMIT} presets")
+            c.execute("INSERT INTO da_presets (id,user_id,name,preset_json,updated_at) VALUES (?,?,?,?,?)",
+                      (preset_id, int(user_id), name[:60], payload, now))
+        c.commit()
+        return {"id": preset_id, "name": name[:60], "preset": preset, "updated_at": now}
+    finally:
+        c.close()
+
+
+def delete_da_preset(user_id: int, preset_id: str) -> bool:
+    c = _conn()
+    try:
+        cur = c.execute("DELETE FROM da_presets WHERE id=? AND user_id=?", (preset_id, int(user_id)))
+        c.commit()
+        return bool(cur.rowcount)
     finally:
         c.close()
 

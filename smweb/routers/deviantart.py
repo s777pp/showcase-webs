@@ -27,6 +27,7 @@ from fastapi import APIRouter
 
 
 from smweb.core import LOGGER, MAX_UPLOAD_MB, _auth_user, _esc_html
+from smweb import da_publish
 from smweb.da_client import _da_guess_mime, _da_refresh_token
 from smweb.oauth_util import (
     _app_origin,
@@ -169,22 +170,123 @@ async def da_logout(request: Request):
     return {"ok": True}
 
 
+@router.get("/api/da/presets")
+def da_presets(request: Request):
+    """Saved publishing presets of the signed-in user."""
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
+    return {"ok": True, "presets": auth_db.da_presets_for_user(int(user["id"]))}
+
+
+@router.post("/api/da/presets")
+async def da_save_preset(request: Request):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    name = re.sub(r"\s+", " ", str(body.get("name") or "")).strip()[:60]
+    if not name:
+        return JSONResponse({"ok": False, "msg": "Name the preset"}, status_code=400)
+    preset_id = str(body.get("id") or "")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{8,40}", preset_id):
+        preset_id = secrets.token_urlsafe(12)
+    raw = body.get("preset") if isinstance(body.get("preset"), dict) else {}
+    settings = da_publish.clean_settings(raw, placeholders=True)
+    preset = {
+        "title": str(raw.get("title") or "")[:120],
+        "link": da_publish.safe_href(str(raw.get("link") or "")),
+        "price": str(raw.get("price") or "")[:40],
+    }
+    preset.update({key: settings[key] for key in (
+        "mode", "description", "tags", "is_mature", "mature_level", "mature_classification", "is_ai_generated",
+        "noai", "galleryids", "display_resolution", "add_watermark", "allow_free_download", "allow_comments",
+        "feature")})
+    try:
+        saved = auth_db.save_da_preset(int(user["id"]), preset_id, name, preset)
+    except PermissionError:
+        return JSONResponse({"ok": False, "msg": "Preset not found"}, status_code=404)
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
+    return {"ok": True, "preset": saved}
+
+
+@router.delete("/api/da/presets/{preset_id}")
+def da_delete_preset(request: Request, preset_id: str):
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
+    return {"ok": auth_db.delete_da_preset(int(user["id"]), preset_id)}
+
+
+@router.get("/api/da/folders")
+def da_folders(request: Request):
+    """Gallery folders of the connected account (publish targets)."""
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
+    response, error = _da_api_get(user, "gallery/folders", {"calculate_size": "false", "limit": 50})
+    if error:
+        return error
+    if response.status_code != 200:
+        return JSONResponse({"ok": False, "msg": f"DeviantArt folders error ({response.status_code})"}, status_code=502)
+    folders = [{"id": str(item.get("folderid") or ""), "name": str(item.get("name") or "")[:80]}
+               for item in (response.json() or {}).get("results") or [] if item.get("folderid")]
+    return {"ok": True, "folders": folders}
+
+
+@router.get("/api/da/work-meta/{deviation_id}")
+def da_work_meta(request: Request, deviation_id: str):
+    """Title, description and tags of one of the user's works, to reuse as a template."""
+    user = _auth_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
+    if not re.fullmatch(r"[0-9a-fA-F-]{8,80}", deviation_id or ""):
+        return JSONResponse({"ok": False, "msg": "Invalid deviation id"}, status_code=400)
+    response, error = _da_api_get(user, "deviation/metadata",
+                                  {"deviationids[]": deviation_id, "ext_submission": "true"})
+    if error:
+        return error
+    if response.status_code != 200:
+        return JSONResponse({"ok": False, "msg": f"DeviantArt metadata error ({response.status_code})"}, status_code=502)
+    items = (response.json() or {}).get("metadata") or []
+    if not items:
+        return JSONResponse({"ok": False, "msg": "Work not found"}, status_code=404)
+    item = items[0]
+    tags = [str(t.get("tag_name") or "") for t in item.get("tags") or [] if isinstance(t, dict)]
+    return {
+        "ok": True,
+        "title": str(item.get("title") or "")[:120],
+        "description": da_publish.clean_description(item.get("description") or ""),
+        "tags": da_publish.clean_tags(tags),
+        "is_mature": bool(item.get("is_mature")),
+    }
+
+
 @router.post("/api/da/upload")
 async def da_upload(request: Request):
-    """Upload files to DeviantArt Sta.sh."""
+    """Upload files to Sta.sh and, when asked, publish each one as a deviation.
+
+    Form: ``file`` parts, ``title_<name>`` per file and ``settings`` (JSON: mode
+    stash|publish, description HTML, tags, mature/AI flags, gallery folders, display
+    size, watermark, free download, comments, feature). Old clients send no settings
+    and keep the previous behaviour (Sta.sh only, empty description).
+    """
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in first"}, status_code=401)
     token = (user.get("da_access_token") or "").strip().strip('"').strip("'")
     if not token:
         return JSONResponse({"ok": False, "msg": "Connect DeviantArt first"}, status_code=401)
-    # debug length only (never log full token)
     _LOG.info(f"da_upload: user={user.get('id')} token_len={len(token)} files incoming")
 
     try:
         form = await request.form(
             max_files=20,
-            max_fields=40,
+            max_fields=60,
             max_part_size=MAX_UPLOAD_MB * 1024 * 1024,
         )
     except Exception:
@@ -195,10 +297,17 @@ async def da_upload(request: Request):
     items = form.multi_items() if hasattr(form, "multi_items") else list(form.items())
 
     titles: dict[str, str] = {}
+    raw_settings = None
     for k, v in items:
         ks = str(k)
         if ks.startswith("title_"):
             titles[ks[6:]] = str(v or "")
+        elif ks == "settings" and isinstance(v, str):
+            try:
+                raw_settings = json.loads(v)
+            except ValueError:
+                return JSONResponse({"ok": False, "msg": "Invalid publish settings"}, status_code=400)
+    settings = da_publish.clean_settings(raw_settings)
 
     files: list[tuple[str, bytes, str]] = []
     idx = 0
@@ -225,7 +334,7 @@ async def da_upload(request: Request):
         name = getattr(f, "filename", None) or f"file_{idx}.png"
         name = Path(str(name)).name  # strip path
         title = titles.get(name) or titles.get(str(idx)) or Path(name).stem
-        files.append((name, raw, (title or Path(name).stem)[:50]))
+        files.append((name, raw, da_publish.clean_title(title, Path(name).stem)))
         idx += 1
 
     if not files:
@@ -233,69 +342,91 @@ async def da_upload(request: Request):
 
     import requests as rq
 
-    def submit_one(access: str, name: str, raw: bytes, title: str):
-        """DA Sta.sh: access_token must be in form body for multipart uploads."""
-        access = (access or "").strip()
-        if not access:
-            raise ValueError("empty access_token")
-        mime = _da_guess_mime(name)
-        # Token in form field + query + Bearer — DA is picky with multipart
+    def call(path: str, access: str, fields: list, upload=None):
+        """DA multipart: access_token in the form body, the query and the Bearer header."""
         return rq.post(
-            "https://www.deviantart.com/api/v1/oauth2/stash/submit",
+            "https://www.deviantart.com/api/v1/oauth2/" + path,
             params={"access_token": access},
             headers={"Authorization": f"Bearer {access}"},
-            data={
-                "access_token": access,
-                "title": title or Path(name).stem,
-                "artist_comments": "",
-                "is_mature": "0",
-            },
-            files={"file": (name, raw, mime)},
+            data=[("access_token", access)] + list(fields),
+            files=upload,
             timeout=180,
         )
 
-    ok_n = 0
-    errors: list[str] = []
-    access = token
-
-    for name, raw, title in files:
+    def api_error(response) -> str:
         try:
-            r = submit_one(access, name, raw, title)
-            # expired token → refresh once and retry
-            if r.status_code in (401, 403):
-                new_tok = _da_refresh_token(user)
-                if new_tok:
-                    access = new_tok
-                    user = {**user, "da_access_token": new_tok}
-                    r = submit_one(access, name, raw, title)
-                else:
-                    auth_db.set_da_tokens(int(user["id"]), None, None)
-                    errors.append(f"{name}: session expired — reconnect DeviantArt")
-                    break
-            if r.status_code == 200:
-                try:
-                    body = r.json()
-                except Exception:
-                    body = {}
-                # DA returns {"status":"success", ...} or error object with status error
-                if isinstance(body, dict) and body.get("status") == "error":
-                    err_desc = body.get("error_description") or body.get("error") or r.text[:160]
-                    errors.append(f"{name}: {err_desc}")
-                else:
-                    ok_n += 1
-            else:
-                snippet = (r.text or "")[:180].replace("\n", " ")
-                errors.append(f"{name}: HTTP {r.status_code} {snippet}")
-                if r.status_code in (401, 403):
-                    auth_db.set_da_tokens(int(user["id"]), None, None)
-                    break
-        except Exception as e:
-            errors.append(f"{name}: {type(e).__name__}: {e}")
+            body = response.json()
+        except Exception:
+            body = {}
+        if isinstance(body, dict) and (body.get("error_description") or body.get("error")):
+            details = body.get("error_details")
+            extra = "; ".join(f"{k}: {v}" for k, v in details.items()) if isinstance(details, dict) else ""
+            return str(body.get("error_description") or body.get("error")) + (f" ({extra})" if extra else "")
+        return f"HTTP {response.status_code} " + (response.text or "")[:160].replace("\n", " ")
 
+    state = {"access": token, "user": user, "lost": False}
+
+    def with_refresh(make):
+        response = make(state["access"])
+        if response.status_code in (401, 403):
+            refreshed = _da_refresh_token(state["user"])
+            if refreshed:
+                state["access"] = refreshed
+                state["user"] = {**state["user"], "da_access_token": refreshed}
+                response = make(refreshed)
+            else:
+                auth_db.set_da_tokens(int(user["id"]), None, None)
+                state["lost"] = True
+        return response
+
+    def json_of(response) -> dict:
+        try:
+            body = response.json()
+        except Exception:
+            body = {}
+        return body if isinstance(body, dict) else {}
+
+    results: list[dict] = []
+    for name, raw, title in files:
+        entry = {"name": name, "title": title, "ok": False}
+        results.append(entry)
+        if state["lost"]:
+            entry["error"] = "session expired — reconnect DeviantArt"
+            continue
+        try:
+            mime = _da_guess_mime(name)
+            submitted = with_refresh(lambda a: call("stash/submit", a, da_publish.submit_fields(title, settings),
+                                                     {"file": (name, raw, mime)}))
+            body = json_of(submitted)
+            if submitted.status_code != 200 or body.get("status") == "error" or not body.get("itemid"):
+                entry["error"] = api_error(submitted)
+                continue
+            entry["itemid"] = body.get("itemid")
+            if settings["mode"] != "publish":
+                entry["ok"] = True
+                entry["stash"] = True
+                continue
+            itemid = entry["itemid"]
+            published = with_refresh(lambda a: call("stash/publish", a, da_publish.publish_fields(itemid, settings)))
+            pbody = json_of(published)
+            if published.status_code != 200 or pbody.get("status") == "error":
+                entry["error"] = "saved to Sta.sh, publishing failed: " + api_error(published)
+                entry["stash"] = True
+                continue
+            entry["ok"] = True
+            entry["url"] = str(pbody.get("url") or "")
+            entry["deviationid"] = str(pbody.get("deviationid") or "")
+        except Exception as e:
+            entry["error"] = f"{type(e).__name__}: {e}"
+
+    ok_n = sum(1 for entry in results if entry["ok"])
+    errors = [f"{entry['name']}: {entry['error']}" for entry in results if entry.get("error")]
     return {
         "ok": ok_n > 0,
+        "mode": settings["mode"],
         "uploaded": ok_n,
         "total": len(files),
+        "results": results,
         "errors": errors,
         "msg": None if ok_n > 0 else (errors[0] if errors else "Upload failed"),
     }

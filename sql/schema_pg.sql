@@ -183,6 +183,14 @@ CREATE TABLE IF NOT EXISTS saved_results (
 CREATE INDEX IF NOT EXISTS idx_saved_results_user ON saved_results(user_id, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_results_job ON saved_results(user_id, job_id);
 CREATE INDEX IF NOT EXISTS idx_saved_results_expires ON saved_results(expires_at);
+CREATE TABLE IF NOT EXISTS da_presets (
+ id TEXT PRIMARY KEY,
+ user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ name TEXT NOT NULL,
+ preset_json TEXT NOT NULL,
+ updated_at DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_da_presets_user ON da_presets(user_id, updated_at DESC);
 CREATE TABLE IF NOT EXISTS builder_usage (
  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  day_key TEXT NOT NULL,

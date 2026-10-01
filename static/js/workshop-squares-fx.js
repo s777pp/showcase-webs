@@ -436,19 +436,20 @@
     return box;
   }
 
-  function mountControls(host,fx,language,onChange){
-    host.replaceChildren();
+  /* opts.frameOnly: full-height rows take a frame around the whole file, no effects. */
+  function mountControls(host,fx,language,onChange,opts){
+    opts=opts||{};host.replaceChildren();
     var frame=fx.frame,effect=fx.effect,animated=ANIMATED_FRAMES.indexOf(frame.style)>=0,on=frame.style!=='none';
-    function change(){onChange();mountControls(host,fx,language,onChange)}
+    function change(){onChange();mountControls(host,fx,language,onChange,opts)}
     host.append(el('p','sqfx__label',t('presets',language)));
     var quick=el('div','sqfx__presets');quick.setAttribute('data-no-translate','');
-    PRESETS.forEach(function(preset){
+    PRESETS.filter(function(preset){return !opts.frameOnly||preset[2].type==='none'}).forEach(function(preset){
       var button=el('button','sqfx__preset',t('pr_'+preset[0],language));button.type='button';button.dataset.preset=preset[0];
       button.onclick=function(){applyPreset(fx,preset[0]);change()};quick.append(button);
     });
     host.append(quick);
     host.append(el('p','sqfx__label',t('frame',language)));
-    host.append(shapePicker({mode:'workshop',value:on?(frame.shape||'rect'):'none',color:frame.color,language:language,includeNone:true,onPick:function(key){
+    host.append(shapePicker({mode:opts.frameOnly?'featured':'workshop',value:on?(frame.shape||'rect'):'none',color:frame.color,language:language,includeNone:true,onPick:function(key){
       if(key==='none'){frame.style='none'}
       else{if(frame.style==='none')frame.style=key==='rect'?'neon':'shimmer';if(key!=='rect'&&frame.shape!==key&&!frame.plate)frame.plate=100;frame.shape=key}
       change();
@@ -463,10 +464,11 @@
       row.append(range(t('width',language),frame.width,1,10,1,' px',function(v){frame.width=v;onChange()}));
       if(animated)row.append(range(t('speed',language),frame.speed,1,4,1,'×',function(v){frame.speed=v;onChange()}));
       host.append(row);
-      var target=el('div','sqfx__target');target.append(el('span',null,t('target',language)));
+      if(!opts.frameOnly){var target=el('div','sqfx__target');target.append(el('span',null,t('target',language)));
       ['squares','strip'].forEach(function(key){var b=el('button',null,t(key,language));b.type='button';b.setAttribute('aria-pressed',String(frame.target===key));b.onclick=function(){frame.target=key;change()};target.append(b)});
-      host.append(target);
+      host.append(target)}
     }
+    if(opts.frameOnly){if(animated)host.append(el('p','sqfx__note',t('note',language)));return}
     host.append(el('p','sqfx__label',t('effect',language)));
     var select=el('select','sqfx__select');select.setAttribute('aria-label',t('effect',language));
     EFFECTS.forEach(function(kind){var option=el('option',null,kind==='none'?t('noEffect',language):t(kind,language));option.value=kind;option.selected=effect.type===kind;select.append(option)});
