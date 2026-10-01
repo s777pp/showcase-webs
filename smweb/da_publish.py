@@ -122,6 +122,101 @@ def clean_description(raw: str, placeholders: bool = False) -> str:
     return text[:DESCRIPTION_MAX]
 
 
+
+# DeviantArt keeps artist comments in its classic markup: plain text where a new line is a
+# line break, with only inline tags inside (b, i, u, s, a href, sub, sup, small, code).
+# Block HTML (p, h4, lists) without new lines made DeviantArt drop every tag and glue the
+# text into one line (owner report 2026-10-01), so the editor's HTML is converted here.
+INLINE_RENAME = {"strong": "b", "em": "i", "strike": "s"}
+INLINE_KEEP = {"b", "i", "u", "s", "a", "sub", "sup", "small", "code"}
+BLOCKS = {"p", "h1", "h2", "h3", "h4", "li", "blockquote", "ul", "ol"}
+
+
+class _Markup(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.out: list[str] = []
+        self.open: list[str] = []
+        self.block_text = False
+
+    def _newline(self):
+        self.out.append("\n")
+        self.block_text = False
+
+    def handle_starttag(self, tag, attrs):
+        tag = INLINE_RENAME.get(tag, tag)
+        if tag in ("br", "hr"):
+            self._newline()
+            return
+        if tag in BLOCKS:
+            if self.block_text:
+                self._newline()
+            if tag == "li":
+                self.out.append("• ")
+            if tag in ("h1", "h2", "h3", "h4"):
+                self.out.append("<b>")
+                self.open.append("b")
+            return
+        if tag not in INLINE_KEEP:
+            return
+        if tag == "a":
+            href = safe_href(dict(attrs).get("href") or "")
+            if not href:
+                self.open.append("")
+                return
+            self.out.append(f'<a href="{html.escape(href, quote=True)}">')
+        else:
+            self.out.append(f"<{tag}>")
+        self.open.append(tag)
+
+    def handle_endtag(self, tag):
+        tag = INLINE_RENAME.get(tag, tag)
+        if tag in BLOCKS:
+            if tag in ("h1", "h2", "h3", "h4") and "b" in self.open:
+                self._close("b")
+            if self.block_text or tag in ("p", "li", "h1", "h2", "h3", "h4", "blockquote"):
+                self._newline()
+            return
+        if tag in INLINE_KEEP:
+            self._close(tag)
+
+    def _close(self, tag):
+        if tag == "a" and "a" not in self.open and "" in self.open:
+            self.open.remove("")
+            return
+        if tag in self.open:
+            while self.open:
+                top = self.open.pop()
+                if top:
+                    self.out.append(f"</{top}>")
+                if top == tag:
+                    break
+
+    def handle_data(self, data):
+        if data.strip() or self.block_text:
+            self.out.append(html.escape(data, quote=False))
+            if data.strip():
+                self.block_text = True
+
+    def result(self) -> str:
+        while self.open:
+            top = self.open.pop()
+            if top:
+                self.out.append(f"</{top}>")
+        text = "".join(self.out)
+        text = re.sub(r"[ \t]+\n", "\n", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip("\n")
+
+
+def to_da_markup(clean_html: str) -> str:
+    """Cleaned editor HTML -> DeviantArt's classic artist-comments markup."""
+    parser = _Markup()
+    parser.feed(clean_html or "")
+    parser.close()
+    return parser.result()[:DESCRIPTION_MAX]
+
+
 def clean_tags(raw) -> list[str]:
     """Letters, numbers and underscore only (DeviantArt's rule), lower case, no duplicates."""
     if isinstance(raw, str):
@@ -180,7 +275,7 @@ def _bool(value: bool) -> str:
 
 def submit_fields(title: str, settings: dict) -> list[tuple[str, str]]:
     """Form fields for stash/submit (lists are sent as name[] entries)."""
-    fields = [("title", title), ("artist_comments", settings["description"]),
+    fields = [("title", title), ("artist_comments", to_da_markup(settings["description"])),
               ("is_ai_generated", _bool(settings["is_ai_generated"])), ("noai", _bool(settings["noai"]))]
     fields += [("tags[]", tag) for tag in settings["tags"]]
     return fields

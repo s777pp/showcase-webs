@@ -94,6 +94,7 @@ def test_upload_publishes_with_description_and_tags(monkeypatch):
     assert ("tags[]", "anime") in submit[1] and ("noai", "true") in submit[1]
     description = dict(submit[1])["artist_comments"]
     assert "ko-fi.com/s/abba9c6f64" in description and "<script" not in description
+    assert "<p>" not in description and "\n" in description, "classic DeviantArt markup: new lines, no blocks"
     assert ("itemid", "777") in publish[1] and ("agree_tos", "true") in publish[1]
 
 
@@ -133,3 +134,25 @@ def test_presets_keep_the_link_placeholder_but_uploads_do_not():
     html = '<a href="{link}"><b>LINK DOWNLOAD</b></a>'
     assert 'href="{link}"' in da_publish.clean_description(html, placeholders=True)
     assert "href" not in da_publish.clean_description(html)
+
+
+def test_description_is_sent_as_deviantart_markup():
+    editor = ('<p>✦・<a href="https://ko-fi.com/s/abc"><b>LINK DOWNLOAD</b></a>・✦</p>'
+              '<p>💠 <strong>Price:</strong> Only <b>$2</b></p>'
+              '<p>᠌────────── ✦ ──────────</p>'
+              '<p>✨ <b>Notes:</b><br>✅ Preview may appear in lower quality.<br>✅ DM me anytime.</p>'
+              '<p><br></p>'
+              '<h4>THANK YOU ♡</h4><ul><li>one</li><li>two</li></ul>')
+    markup = da_publish.to_da_markup(da_publish.clean_description(editor))
+    assert markup.split("\n") == [
+        '✦・<a href="https://ko-fi.com/s/abc"><b>LINK DOWNLOAD</b></a>・✦',
+        '💠 <b>Price:</b> Only <b>$2</b>',
+        '᠌────────── ✦ ──────────',
+        '✨ <b>Notes:</b>',
+        '✅ Preview may appear in lower quality.',
+        '✅ DM me anytime.',
+        '',
+        '<b>THANK YOU ♡</b>',
+        '• one',
+        '• two',
+    ]
