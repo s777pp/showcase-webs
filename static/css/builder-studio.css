@@ -451,3 +451,6 @@ html.bx-fonts-open{overflow:hidden}
 #showcaseBuilder.bx .bx-fitbg__tip::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;border-radius:12px 12px 0 0;background:linear-gradient(90deg,var(--bx-cyan),#8a7dff)}
 #showcaseBuilder.bx .bx-fitbg__tip[hidden]{display:none!important}
 @media (max-width:640px){#showcaseBuilder.bx .bx-fitbg{top:8px;right:8px}#showcaseBuilder.bx .bx-fitbg__button{font-size:11px;padding:4px 10px}}
+/* AI model picker note (first Modal run wakes a GPU) */
+#showcaseBuilder.bx .builder-ai-note{margin:-4px 0 0;padding:8px 10px;border:1px solid var(--bx-line);border-radius:10px;font-size:12px;line-height:1.45;color:var(--bx-muted)}
+#showcaseBuilder.bx .builder-ai-note[hidden]{display:none}

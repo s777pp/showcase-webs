@@ -12,7 +12,6 @@ import io
 import os
 import re
 import secrets
-from datetime import datetime, timezone
 from urllib.parse import urlsplit
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
@@ -26,7 +25,7 @@ import processor
 import redis_store as rs
 from smweb import frame_designs, object_store
 from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user
-from smweb.remove_bg_client import configured as remove_bg_configured, provider as remove_bg_provider
+from smweb import remove_bg_client
 
 
 router = APIRouter(prefix="/api/builder", tags=["builder"])
@@ -241,6 +240,10 @@ def _validated_project(raw) -> dict:
             item["archetype"] = re.sub(r"[^a-z_]", "", str(item.get("archetype") or "signal_weaver"))[:40]
         item["animation"] = item.get("animation") if item.get("animation") in _ANIMATIONS else "none"
         item["chroma"] = bool(item.get("chroma", False))
+        if item.get("type") in {"background", "character"}:
+            item["chromaKey"] = item.get("chromaKey") if item.get("chromaKey") in {"auto", "color", "black", "white"} else "auto"
+        else:
+            item.pop("chromaKey", None)
         if "src" in item:
             src = str(item["src"])[:3000]
             if not (src.startswith("/api/builder/assets/") or
@@ -390,6 +393,14 @@ def get_asset(name: str, request: Request):
     return FileResponse(path, media_type=media_type)
 
 
+@router.get("/remove-background/providers")
+def remove_background_providers(request: Request):
+    """Background-removal models the Builder can offer (only configured ones, in fallback order)."""
+    names = remove_bg_client.providers()
+    return {"ok": True, "default": "auto", "fallback": len(remove_bg_client.chain()) > 1,
+            "providers": [{"id": name, "cold_start": name == "modal"} for name in names]}
+
+
 @router.post("/remove-background")
 async def remove_background(request: Request):
     user, error = _user(request)
@@ -412,7 +423,7 @@ async def remove_background(request: Request):
              "msg": "AI background removal supports still images only; use chromakey for GIF and video"},
             status_code=415,
         )
-    if not remove_bg_configured():
+    if not remove_bg_client.configured():
         return JSONResponse(
             {"ok": False, "code": "not_configured",
              "msg": "AI background removal is temporarily unavailable"},
@@ -423,53 +434,31 @@ async def remove_background(request: Request):
     existing = rs.job_find_active(user_key, "builder_bg_remove", source_key)
     if existing:
         return {"ok": True, "job_id": existing[0], "queued": True}
-    # Site-wide caps protect the provider bill: remove.bg is paid per image (its free plan is
-    # ~50 a month), our Modal service costs a fraction of a cent per image.
-    own = remove_bg_provider() == "modal"
-    global_env, monthly_env = (("MODAL_BG_REMOVE_GLOBAL_DAILY", "MODAL_BG_REMOVE_GLOBAL_MONTHLY") if own
-                               else ("REMOVE_BG_GLOBAL_DAILY", "REMOVE_BG_GLOBAL_MONTHLY"))
+    preferred = str(body.get("provider") or "auto").strip().lower()
+    if preferred not in remove_bg_client.PROVIDERS:
+        preferred = "auto"
+    # Per-user daily limits; every provider also has its own monthly cap (remove_bg_client).
     try:
         free_limit = max(1, int(os.environ.get("REMOVE_BG_FREE_DAILY", "5")))
         pro_limit = max(free_limit, int(os.environ.get("REMOVE_BG_PRO_DAILY", "20")))
-        global_limit = max(1, int(os.environ.get(global_env, "300" if own else "100")))
-        monthly_limit = max(1, int(os.environ.get(monthly_env, "5000" if own else "50")))
+        global_limit = max(1, int(os.environ.get("BG_REMOVE_GLOBAL_DAILY", "300")))
     except ValueError:
-        free_limit, pro_limit, global_limit, monthly_limit = 5, 20, 100, 50
+        free_limit, pro_limit, global_limit = 5, 20, 300
     user_limit = pro_limit if auth_db.effective_pro(user) else free_limit
-    allowed_user, _ = rs.rate_limit(
-        f"builder-bg:user:{int(user['id'])}", user_limit, 86400, fail_closed=True
-    )
-    if not allowed_user:
-        return JSONResponse(
-            {"ok": False, "code": "remove_bg_limit",
-             "msg": "Background-removal limit reached. Try again later"},
-            status_code=429,
-        )
-    allowed_global, _ = rs.rate_limit(
-        "builder-bg:global", global_limit, 86400, fail_closed=True
-    )
-    if not allowed_global:
-        return JSONResponse(
-            {"ok": False, "code": "remove_bg_limit",
-             "msg": "Background-removal limit reached. Try again later"},
-            status_code=429,
-        )
-    month = datetime.now(timezone.utc).strftime("%Y-%m")
-    allowed_month, _ = rs.rate_limit(
-        f"builder-bg:global:month:{month}", monthly_limit, 32 * 86400,
-        fail_closed=True, fixed_bucket=True,
-    )
-    if not allowed_month:
-        return JSONResponse(
-            {"ok": False, "code": "remove_bg_limit",
-             "msg": "Background-removal limit reached. Try again later"},
-            status_code=429,
-        )
+    for key, limit in ((f"builder-bg:user:{int(user['id'])}", user_limit), ("builder-bg:global", global_limit)):
+        allowed, _ = rs.rate_limit(key, limit, 86400, fail_closed=True)
+        if not allowed:
+            return JSONResponse(
+                {"ok": False, "code": "remove_bg_limit",
+                 "msg": "Background-removal limit reached. Try again later"},
+                status_code=429,
+            )
     jid = secrets.token_hex(12)
     payload = {
         "kind": "builder_bg_remove", "status": "queued", "pct": 1,
         "stage": "queued", "user_id": int(user["id"]), "user_key": user_key,
         "source_key": source_key, "output_stem": secrets.token_hex(16),
+        "provider": preferred if preferred != "auto" else "",
     }
     external = ((os.environ.get("WORKER_MODE") or "embedded").strip().lower() == "external"
                 and rs.redis_ok() and rs.worker_alive())

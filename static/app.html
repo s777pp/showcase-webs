@@ -43,7 +43,7 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
 <link rel="stylesheet" href="/static/css/nav-groups.css?v=20260926-ux1">
 <link rel="stylesheet" href="/static/css/process-compact.css?v=20260930-wait1">
 <link rel="stylesheet" href="/static/css/site-theme.css?v=20260929-shapes1">
-<link rel="stylesheet" href="/static/css/builder-studio.css?v=20261001-fit1">
+<link rel="stylesheet" href="/static/css/builder-studio.css?v=20261003-bg1">
 <link rel="stylesheet" href="/static/css/home-overlays.css?v=20261001-ovl1">
 <link rel="stylesheet" href="/static/css/tools-unified.css?v=20261001-tu4">
 <link rel="stylesheet" href="/static/css/da-publish.css?v=20261001-da3">
@@ -1010,9 +1010,12 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
           <div class="builder-media-controls" id="builderMediaControls" hidden>
             <label class="builder-toggle"><input id="builderChroma" type="checkbox"/><i></i><span data-builder-i="chroma">Remove chromakey</span></label>
             <div class="builder-chroma-settings" id="builderChromaSettings" hidden>
+              <label><span data-builder-i="chroma-key">Background to remove</span><select id="builderChromaKey"><option value="auto" data-builder-i="chroma-key-auto">Detect automatically</option><option value="color" data-builder-i="chroma-key-color">Coloured (green screen)</option><option value="black" data-builder-i="chroma-key-black">Black</option><option value="white" data-builder-i="chroma-key-white">White</option></select></label>
               <label><span><b data-builder-i="chroma-tolerance">Tolerance</b><output id="builderChromaToleranceValue">45</output></span><input id="builderChromaTolerance" type="range" min="10" max="120" value="45"/></label>
               <label><span><b data-builder-i="chroma-feather">Edge feather</b><output id="builderChromaFeatherValue">1.6</output></span><input id="builderChromaFeather" type="range" min="0" max="40" value="16"/></label>
             </div>
+            <label class="builder-ai-model" id="builderAiModelWrap" hidden><span data-builder-i="ai-model">AI model</span><select id="builderAiModel"><option value="auto" data-builder-i="ai-model-auto">Automatic (best available)</option></select></label>
+            <p class="builder-ai-note" id="builderAiNote" hidden></p>
             <div class="builder-ai-cut-row">
               <button type="button" class="btn ghost builder-ai-cut" id="builderAiRemove" aria-describedby="builderAiHelpText"><span>✦</span> <b data-builder-i="ai-remove">Remove background with AI</b></button>
               <details class="builder-ai-help">
@@ -1198,7 +1201,7 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
   </div>
 </div>
 
-  <script src="/static/js/tool-loader.js?v=20261001-fit1"></script>
+  <script src="/static/js/tool-loader.js?v=20261003-bg1"></script>
 <script src="/static/js/app.js?v=20260929-shapes1"></script>
 <script src="/static/js/color-grade.js?v=20260923-grade2"></script>
 <script src="/static/js/workshop-squares-fx.js?v=20261001-pro2"></script>

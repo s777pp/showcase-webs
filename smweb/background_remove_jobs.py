@@ -1,4 +1,4 @@
-"""Queued remove.bg processing for still Builder source layers."""
+"""Queued AI background removal for still Builder source layers (see remove_bg_client)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,7 +7,7 @@ import redis_store as rs
 from smweb import object_store
 from smweb.core import DATA, _safe_data_path
 from smweb import process_control
-from smweb.remove_bg_client import RemoveBgError, remove_background
+from smweb.remove_bg_client import RemoveBgError, chain, remove_background_with
 
 
 def _local_output_path(key: str) -> Path:
@@ -46,15 +46,18 @@ def run(jid: str, job: dict) -> None:
             data = _source_bytes(source_key)
             process_control.checkpoint(jid)
             rs.job_update(jid, pct=25, stage="provider")
-            result = remove_background(data, Path(source_key).name)
+            preferred = str(job.get("provider") or "") or None
+            planned = (chain(preferred) or [""])[0]
+            result, used = remove_background_with(data, Path(source_key).name, preferred)
             out_suffix, media_type = ".png", "image/png"
             process_control.checkpoint(jid)
             rs.job_update(jid, pct=85, stage="store")
             output_name = str(job["output_stem"]) + out_suffix
             output_key = f"builder/{int(job['user_id'])}/{output_name}"
             _save(output_key, result, media_type)
-            rs.job_update(jid, status="done", pct=100, stage="done", result={
+            rs.job_update(jid, status="done", pct=100, stage="done", provider_used=used, result={
                 "url": f"/api/builder/assets/{output_name}", "media_type": media_type,
+                "provider": used, "fallback": bool(planned and used != planned),
             })
     except process_control.JobCancelled:
         process_control.mark_cancelled(jid)

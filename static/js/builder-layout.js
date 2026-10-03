@@ -289,7 +289,7 @@
   var mediaBox = $('builderMediaControls');
   if (mediaBox) {
     var chromaLabel = $('builderChroma') && $('builderChroma').closest('label');
-    makeGroup('removebg', [chromaLabel, $('builderChromaSettings'), mediaBox.querySelector('.builder-ai-cut-row')], mediaBox);
+    makeGroup('removebg', [chromaLabel, $('builderChromaSettings'), $('builderAiModelWrap'), $('builderAiNote'), mediaBox.querySelector('.builder-ai-cut-row')], mediaBox);
     var animLabel = $('builderAnimation') && $('builderAnimation').closest('label');
     makeGroup('motion', [animLabel, $('bmLocalPanel')], mediaBox);
     var sceneBox = node('div', 'bx-scene');

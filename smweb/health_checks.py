@@ -76,26 +76,35 @@ def _modal(c):
 
 
 def _bg_remove(c):
-    base = (os.environ.get("MODAL_BG_REMOVE_URL") or "").strip().rstrip("/")
-    token_id = (os.environ.get("MODAL_PROXY_TOKEN_ID") or "").strip()
-    token_secret = (os.environ.get("MODAL_PROXY_TOKEN_SECRET") or "").strip()
-    name = "Удаление фона (Modal)"
-    if not (base and token_id and token_secret):
-        fallback = bool((os.environ.get("REMOVE_BG_API_KEY") or "").strip())
-        return c("bg_remove", name, "warn", "Свой сервис не настроен",
-                 "Удаление фона идёт через платный remove.bg." if fallback else "Кнопка «Удалить фон» в «Создать дизайн» недоступна.",
-                 "py -m modal deploy modal_bg_remove.py, затем MODAL_BG_REMOVE_URL в .env.", "Modal")
+    from smweb import remove_bg_client
+
+    names = remove_bg_client.providers()
+    labels = {"modal": "Modal", "iloveapi": "iLoveAPI", "problembo": "Problembo", "removebg": "remove.bg"}
+    chain = " → ".join(labels[n] for n in names) or "нет"
+    name = "Удаление фона (ИИ)"
+    if not names:
+        return c("bg_remove", name, "warn", "Ни один сервис не настроен",
+                 "Кнопка «Удалить фон» в «Создать дизайн» недоступна.",
+                 "py -m modal deploy modal_bg_remove.py и MODAL_BG_REMOVE_URL в .env (или ILOVEAPI_PUBLIC_KEY / PROBLEMBO_API_TOKEN).",
+                 "провайдеров нет")
+    if "modal" not in names:
+        return c("bg_remove", name, "warn", "Свой сервис Modal не настроен",
+                 f"Работает через внешние сервисы: {chain}.",
+                 "py -m modal deploy modal_bg_remove.py, затем MODAL_BG_REMOVE_URL в .env.", chain)
+    base, token_id, token_secret = remove_bg_client._modal_settings()
     # /health runs on the CPU front only, it never starts a GPU container.
     code, _ = _get(base + "/health", {"Modal-Key": token_id, "Modal-Secret": token_secret}, timeout=12)
     if code == 200:
-        return c("bg_remove", name, "ok", "Отвечает",
-                 "Удаление фона доступно. Первая картинка после простоя ждёт запуск GPU (~20-45 с).", "", "Modal · HTTP 200")
+        return c("bg_remove", name, "ok", "Modal отвечает",
+                 f"Порядок: {chain}. Первая картинка после простоя ждёт запуск GPU (~20-45 с).", "", f"Modal · HTTP 200 · {chain}")
+    spare = len(names) > 1
     if code == 0:
-        return c("bg_remove", name, "warn", "Не ответил за 12 с",
-                 "Скорее всего, сервис просто просыпается.",
-                 "Обнови проверку через минуту.", "Modal · таймаут")
-    return c("bg_remove", name, "down", f"Ошибка {code}", "Удаление фона не будет работать.",
-             "Проверь токены Modal и выполни py -m modal deploy modal_bg_remove.py.", f"HTTP {code}")
+        return c("bg_remove", name, "warn", "Modal не ответил за 12 с",
+                 "Скорее всего, сервис просто просыпается." + (" Пока работают запасные: " + chain if spare else ""),
+                 "Обнови проверку через минуту.", f"Modal · таймаут · {chain}")
+    return c("bg_remove", name, "warn" if spare else "down", f"Modal: ошибка {code}",
+             f"Работают запасные сервисы ({chain})." if spare else "Удаление фона не будет работать.",
+             "Проверь токены Modal и выполни py -m modal deploy modal_bg_remove.py.", f"HTTP {code} · {chain}")
 
 
 def _telegram(c):

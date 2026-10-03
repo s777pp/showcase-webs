@@ -72,6 +72,7 @@ function jsUiStrings(file, output) {
     source = source.replace(objectLiteral(source, 'var NEW_COPY ='), '{}');
     if (source.includes('var VFX_COPY =')) source = source.replace(objectLiteral(source, 'var VFX_COPY ='), '{}');
     if (source.includes('var GRADE_COPY =')) source = source.replace(objectLiteral(source, 'var GRADE_COPY ='), '{}');
+    if (source.includes('var BG_COPY =')) source = source.replace(objectLiteral(source, 'var BG_COPY ='), '{}');
   }
   if (file === 'static/js/steam-dna.js' && source.includes('var DNA_COPY=')) {
     source = source.replace(objectLiteral(source, 'var DNA_COPY='), '{}');
@@ -129,6 +130,11 @@ const builderVfxManual = evaluateDictionary('static/js/showcase-builder.js', 'va
 const builderVfxManualKeys = Object.keys(builderVfxManual.en || {}).sort().join('|');
 for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
   if (Object.keys(builderVfxManual[language] || {}).sort().join('|') !== builderVfxManualKeys) errors.push(`builder VFX copy: incomplete ${language}`);
+}
+const builderBgManual = evaluateDictionary('static/js/showcase-builder.js', 'var BG_COPY =');
+const builderBgKeys = Object.keys(builderBgManual.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  if (Object.keys(builderBgManual[language] || {}).sort().join('|') !== builderBgKeys) errors.push(`builder background copy: incomplete ${language}`);
 }
 const builderGradeManual = evaluateDictionary('static/js/showcase-builder.js', 'var GRADE_COPY =');
 const builderGradeKeys = Object.keys(builderGradeManual.en || {}).sort().join('|');
