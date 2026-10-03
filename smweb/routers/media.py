@@ -403,13 +403,18 @@ def download_url(request: Request, body: dict = Body(...)):
         "noplaylist": True,
         "merge_output_format": "mp4",
     }
+    # YouTube no longer serves single files with both video and sound (2026): ask for the best
+    # video + audio streams and let yt-dlp merge them with FFmpeg. H.264/AAC first, so the MP4
+    # plays everywhere and our FFmpeg pipeline never meets AV1/VP9 in a WebM.
     if quality == "best":
         ydl_opts["format"] = "bv*+ba/b"
+        ydl_opts["format_sort"] = ["res", "fps", "vcodec:h264", "acodec:aac"]
     elif quality == "audio":
         ydl_opts["format"] = "ba/b"
         ydl_opts["postprocessors"] = [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3"}]
     else:
-        ydl_opts["format"] = "best[height<=720]/best"
+        ydl_opts["format"] = "bv*[height<=720]+ba/b[height<=720]/bv*+ba/b"
+        ydl_opts["format_sort"] = ["res:720", "fps", "vcodec:h264", "acodec:aac"]
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:

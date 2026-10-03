@@ -4,7 +4,7 @@ python-multipart==0.0.32
 Pillow>=12.1.0,<13
 # HEIC/HEIF photos from iPhones (processor registers it as a Pillow opener).
 pillow-heif>=1.1,<2
-yt-dlp>=2024.1.0
+yt-dlp[default]>=2026.8.19
 requests>=2.31.0
 # CDP client for the Bright Data remote browser (steam_browser_import.py).
 # No local browser binaries are installed in the image.

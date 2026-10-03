@@ -780,12 +780,30 @@ Only the hero exists for now; content blocks will be added below it later.
   `cudnn_conv_algo_search=HEURISTIC` (EXHAUSTIVE made the first image take a minute). No
   `from __future__ import annotations` in that file (FastAPI then read `request: Request` as a query parameter).
   Measured 2026-10-03: cold 18-45 s, warm ~2.5-4 s per image through the HTTP client (T4, 1200x800).
-- Server: `smweb/remove_bg_client.py` `providers()`: `BG_REMOVE_PROVIDER` auto (Modal if configured, else remove.bg),
-  `modal`, `removebg` or a list `modal,removebg` (fallback only on provider outage, never by default, so Modal
-  trouble never silently spends remove.bg credits). Site caps in `routers/builder.py` depend on the provider
-  (`MODAL_BG_REMOVE_GLOBAL_DAILY/MONTHLY` 300/5000 vs `REMOVE_BG_GLOBAL_*` 100/50); per-user `REMOVE_BG_FREE_DAILY` /
-  `REMOVE_BG_PRO_DAILY` for both. Admin status: `health_checks._bg_remove` (CPU front only, never wakes a GPU).
-  Privacy pages (8 languages) name Modal for background removal and remove.bg as a possible backup.
+- Server: `smweb/remove_bg_client.py` has 4 providers: `modal`, `iloveapi` (`ILOVEAPI_PUBLIC_KEY`; auth via
+  `/v1/auth` with the public key, task server must end in .iloveimg.com/.ilovepdf.com; it returns a 256-colour PNG,
+  so `_finalize` keeps only its alpha and takes colours from the source), `problembo` (`PROBLEMBO_API_TOKEN`; upload
+  slot -> PUT -> upload-complete -> `POST /background-removal/tasks {"images":[{"fileId"}]}` (body found in their
+  site bundle) -> poll `/tasks/{id}` -> result URL host allow-list `PROBLEMBO_RESULT_HOSTS`, never tested live) and
+  `removebg`. `chain(preferred)`: the user's pick, then `BG_REMOVE_ORDER`; the next provider is tried only on outage
+  codes (`_FALLBACK_CODES`), never for a bad image; `BG_REMOVE_FALLBACK=0` disables it. Monthly cap per provider
+  (`BG_REMOVE_MONTHLY_<NAME>`, defaults modal 5000 / iloveapi 240 / problembo 100 / removebg 50, Redis calendar bucket).
+  Route: `GET /api/builder/remove-background/providers` (literal, before `{job_id}`), `POST` takes `provider`;
+  job result has `provider` + `fallback`. Per-user `REMOVE_BG_FREE_DAILY`/`PRO_DAILY`, site `BG_REMOVE_GLOBAL_DAILY`.
+  Admin status: `health_checks._bg_remove` (Modal CPU front only, lists the chain).
+- Builder UI: model picker `#builderAiModel` (only configured services, choice in localStorage `sm_bx_ai_model`),
+  note `#builderAiNote` (Modal cold start + automatic fallback), "waking" status after 7 s, fallback message.
+  Copy: `BG_COPY` in showcase-builder.js (8 languages, checked by check_i18n).
+- Chromakey for GIF/video/any layer: `layer.chromaKey` auto|color|black|white (whitelisted in routers/builder.py).
+  Black/white are keyed by brightness (`applyLumaKey`: max channel / 255 - min channel) with colour un-mixing on
+  soft pixels; auto picks black/white when the sampled border colour is near black/white, else the hue key.
+  Privacy pages (8 languages) list Modal, then iLoveAPI / Problembo / remove.bg.
+- Problembo PUT sends `Content-Type` + their `contentDisposition` (presigned); create-task errors fall back unless
+  `INVALID_INPUT_FILE`; steps logged by `sm.bg_remove` (status + error key only). Live check of every provider:
+  `docker compose exec worker python scripts/check_bg_providers.py [name]` (one image/credit each).
+- yt-dlp (2026-10-03): YouTube has no combined video+audio files any more, so `/api/download-url` asks for
+  `bv*+ba` with `format_sort` H.264/AAC first and merges to MP4; Deno is copied into the image
+  (`denoland/deno:bin-2.9.7`) and `yt-dlp[default]` brings yt-dlp-ejs. Without a JS runtime YouTube formats go missing.
 - Test without deploying: `py -m modal run modal_bg_remove.py --path <image>` (prints cold/warm timings).
 
 ## 7. Rules for agents

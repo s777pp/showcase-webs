@@ -9,7 +9,8 @@ from smweb.routers.builder import _validated_project
 
 class BuilderProjectTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
+        # Background threads of other tests may still hold the swapped-in DB open on Windows.
+        self.temp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.previous = (auth_db.USING_POSTGRES, auth_db.DB, auth_db._SCHEMA_READY)
         auth_db.USING_POSTGRES = False
         auth_db.DB = Path(self.temp.name) / "users.db"

@@ -21,6 +21,11 @@ COPY --from=gifski-builder /usr/local/cargo/bin/gifski /usr/local/bin/gifski
 
 RUN gifski --version
 
+# yt-dlp needs a JavaScript runtime for YouTube (since late 2025); without it YouTube
+# formats go missing and links fail with "Requested format is not available".
+COPY --from=denoland/deno:bin-2.9.7 /deno /usr/local/bin/deno
+RUN deno --version
+
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

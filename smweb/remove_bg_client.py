@@ -22,6 +22,7 @@ provider calls.
 from __future__ import annotations
 
 import io
+import logging
 import os
 import time
 import zipfile
@@ -42,6 +43,7 @@ MAX_OUTPUT_BYTES = 64 * 1024 * 1024
 # every provider's output and our re-encoding bounded.
 MAX_PIXELS = 10_000_000
 _FORMATS = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}
+LOGGER = logging.getLogger("sm.bg_remove")
 
 PROVIDERS = ("modal", "iloveapi", "problembo", "removebg")
 # Monthly caps protect the bills: iLoveAPI's free plan is 250 images, remove.bg's free plan 50.
@@ -373,14 +375,25 @@ def _iloveapi(data: bytes, filename: str) -> bytes:
         raise _unavailable() from exc
 
 
-def _problembo(data: bytes, filename: str) -> bytes:
+def _problembo_key(response) -> str:
+    """Their error code ({"error": {"key": ...}}); short and free of user data, safe to log."""
+    try:
+        return str(((response.json() or {}).get("error") or {}).get("key") or "")[:60]
+    except (ValueError, AttributeError):
+        return ""
+
+
+def _problembo_step(step: str, response) -> None:
+    LOGGER.info("problembo %s -> HTTP %s %s", step, response.status_code, _problembo_key(response))
+
+
+def _problembo(data: bytes, filename: str, media_type: str = "image/png") -> bytes:
     headers = {"Authorization": "Bearer " + _env("PROBLEMBO_API_TOKEN")}
     deadline = time.time() + max(30, int(_env("PROBLEMBO_TIMEOUT_SECONDS") or 150))
     try:
         slot = requests.post(f"{PROBLEMBO_URL}/files/upload-url-for-src", headers=headers, timeout=(10, 30),
                              json={"origFileName": filename, "fileSizeBytes": str(len(data))}, allow_redirects=False)
-        if slot.status_code in (401, 402, 403):
-            raise _unavailable()
+        _problembo_step("upload-url", slot)
         if slot.status_code == 429:
             raise _busy()
         if slot.status_code != 200:
@@ -389,19 +402,31 @@ def _problembo(data: bytes, filename: str) -> bytes:
         file_id, upload_url = str(slot_data.get("fileId") or ""), str(slot_data.get("uploadUrl") or "")
         if not file_id or urlparse(upload_url).scheme != "https":
             raise _unavailable()
-        put = requests.put(upload_url, data=data, timeout=(10, 120), allow_redirects=False)
+        # The upload URL is presigned for this file: send the type and the Content-Disposition
+        # they returned, otherwise the stored object is not recognised as an image.
+        put_headers = {"Content-Type": media_type}
+        if slot_data.get("contentDisposition"):
+            put_headers["Content-Disposition"] = str(slot_data["contentDisposition"])[:300]
+        put = requests.put(upload_url, data=data, headers=put_headers, timeout=(10, 120), allow_redirects=False)
+        LOGGER.info("problembo upload -> HTTP %s", put.status_code)
         if put.status_code not in (200, 201, 204):
             raise _unavailable()
         done = requests.post(f"{PROBLEMBO_URL}/files/upload-complete", headers=headers, json={"fileId": file_id},
                              timeout=(10, 30), allow_redirects=False)
+        _problembo_step("upload-complete", done)
         if done.status_code not in (200, 201, 204):
             raise _unavailable()
         created = requests.post(f"{PROBLEMBO_URL}/background-removal/tasks", headers=headers, timeout=(10, 30),
-                                json={"images": [{"fileId": file_id}]}, allow_redirects=False)
-        if created.status_code == 400:
-            raise RemoveBgError("invalid_image", "The selected file is not a valid image")
+                                json={"images": [{"fileId": file_id, "origName": filename}]}, allow_redirects=False)
+        _problembo_step("create-task", created)
+        if created.status_code == 429:
+            raise _busy()
         if created.status_code != 200:
-            raise _busy() if created.status_code == 429 else _unavailable()
+            # A 400 here is about our request or their account far more often than about the image,
+            # so the next provider gets a chance; only their explicit file error blames the image.
+            if _problembo_key(created) == "INVALID_INPUT_FILE":
+                raise RemoveBgError("invalid_image", "The selected file is not a valid image")
+            raise _unavailable()
         task_id = str((created.json() or {}).get("taskId") or "")
         if not task_id or "/" in task_id:
             raise _unavailable()
@@ -409,6 +434,7 @@ def _problembo(data: bytes, filename: str) -> bytes:
             state = requests.get(f"{PROBLEMBO_URL}/tasks/{task_id}", headers=headers, timeout=(10, 30),
                                  allow_redirects=False)
             if state.status_code != 200:
+                _problembo_step("task", state)
                 raise _unavailable()
             body = state.json() or {}
             status = str(body.get("status") or "")
@@ -420,7 +446,8 @@ def _problembo(data: bytes, filename: str) -> bytes:
                               (_env("PROBLEMBO_RESULT_HOSTS") or "storjshare.io,problembo.com").replace(" ", "").split(",") if h)
                 return _download(url, hosts)
             if status.startswith("END_"):
-                key = str(((body.get("error") or {}).get("key")) or "")
+                key = str(((body.get("error") or {}).get("key")) or "")[:60]
+                LOGGER.info("problembo task -> %s %s", status, key)
                 if key == "INVALID_INPUT_FILE":
                     raise RemoveBgError("invalid_image", "The selected file is not a valid image")
                 raise _unavailable()
@@ -453,7 +480,7 @@ def remove_background_with(data: bytes, source_name: str = "image.png",
             elif name == "iloveapi":
                 raw = _iloveapi(data, filename)
             elif name == "problembo":
-                raw = _problembo(data, filename)
+                raw = _problembo(data, filename, media_type)
             else:
                 raw = _removebg(data, filename, media_type)
             return _finalize(data, raw), name
