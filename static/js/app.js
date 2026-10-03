@@ -794,6 +794,7 @@ document.getElementById('btnDl').onclick = async () => {
     stopTick();
     const j = await r.json();
     if (!j.ok) {
+      if (j.code === 'youtube_blocked' && !ru) j.msg = 'YouTube is not letting our server download right now. Download the video yourself and add the file.';
       st.className = 'status err';
       st.textContent = j.msg || 'Error';
       setProg(0, ru ? 'Ошибка' : 'Error', (j.msg || '').slice(0, 100));

@@ -66,6 +66,48 @@ def _job_output_files(directory: Path) -> list[Path]:
     ]
 
 
+def _ytdlp_cookie_file() -> str:
+    """Cookies of a (spare) YouTube account, exported as cookies.txt. YouTube asks datacenter IPs
+    to "confirm you're not a bot"; signed-in requests pass. Lives on the shared /data volume."""
+    path = Path((os.environ.get("YTDLP_COOKIES_FILE") or "").strip() or (Path(DATA) / "yt-cookies.txt"))
+    try:
+        return str(path) if path.is_file() and path.stat().st_size > 0 else ""
+    except OSError:
+        return ""
+
+
+def _ytdlp_access(opts: dict) -> dict:
+    """Cookies and an optional proxy (YTDLP_PROXY, e.g. a residential proxy) for yt-dlp."""
+    cookies = _ytdlp_cookie_file()
+    if cookies:
+        opts["cookiefile"] = cookies
+    proxy = (os.environ.get("YTDLP_PROXY") or "").strip()
+    if proxy:
+        opts["proxy"] = proxy
+    return opts
+
+
+def _is_bot_check(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return "not a bot" in text or "sign in to confirm" in text
+
+
+def _blocked_reply(out_dir: Path) -> JSONResponse:
+    LOGGER.warning("YouTube asks this server to sign in (bot check); cookies=%s proxy=%s",
+                   bool(_ytdlp_cookie_file()), bool((os.environ.get("YTDLP_PROXY") or "").strip()))
+    try:
+        from smweb import admin_notify
+        admin_notify.youtube_blocked(bool(_ytdlp_cookie_file()))
+    except Exception:
+        LOGGER.debug("ignored error", exc_info=True)
+    shutil.rmtree(out_dir, ignore_errors=True)
+    return JSONResponse(
+        {"ok": False, "code": "youtube_blocked",
+         "msg": "YouTube временно не даёт скачивать с нашего сервера. Скачай видео сам и загрузи файл."},
+        status_code=503,
+    )
+
+
 def _download_failure(kind: str, exc: Exception, out_dir: Path) -> JSONResponse:
     """Log diagnostics server-side without exposing provider or filesystem details."""
     LOGGER.warning("%s download failed (%s)", kind, type(exc).__name__, exc_info=True)
@@ -397,12 +439,12 @@ def download_url(request: Request, body: dict = Body(...)):
         )
 
     outtmpl = str(out_dir / "%(title).80s.%(ext)s")
-    ydl_opts = {
+    ydl_opts = _ytdlp_access({
         "outtmpl": outtmpl,
         "quiet": True,
         "noplaylist": True,
         "merge_output_format": "mp4",
-    }
+    })
     # YouTube no longer serves single files with both video and sound (2026): ask for the best
     # video + audio streams and let yt-dlp merge them with FFmpeg. H.264/AAC first, so the MP4
     # plays everywhere and our FFmpeg pipeline never meets AV1/VP9 in a WebM.
@@ -443,6 +485,8 @@ def download_url(request: Request, body: dict = Body(...)):
             **quota_state(request),
         }
     except Exception as e:
+        if _is_bot_check(e):
+            return _blocked_reply(out_dir)
         # Image-only posts (Reddit, X), Imgur albums and similar pages that
         # yt-dlp rejects still show their media in the page itself.
         try:

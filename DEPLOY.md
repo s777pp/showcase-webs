@@ -121,6 +121,35 @@ restarts nginx (its config is a single-file bind mount), waits for `/api/ready` 
 Never copy files into `/opt/showcasemaker` by hand or with `sudo`: everything comes through git.
 Use `docker compose build --pull app worker` by hand only when you want fresh base images.
 
+## YouTube downloads (cookies / proxy)
+
+YouTube asks datacenter IPs (our OVH VPS) to "Sign in to confirm you're not a bot", so links fail
+with that error in the logs and users see "YouTube is not letting our server download right now".
+Two fixes, either one is enough:
+
+**A. Cookies of a spare YouTube account (free).** Use a separate Google account, never the main
+one: YouTube may limit an account that downloads a lot.
+
+1. Open a private/incognito window, sign in to YouTube with the spare account, open
+   `https://www.youtube.com/robots.txt` in the same tab.
+2. Export the cookies of youtube.com in Netscape format (browser extension "Get cookies.txt
+   LOCALLY"), save as `yt-cookies.txt`, then close the private window (so the session is not rotated).
+3. Copy it to the shared volume:
+   ```bash
+   scp yt-cookies.txt ubuntu@<vps>:/tmp/yt-cookies.txt          # from your computer
+   cd /opt/showcasemaker
+   docker compose cp /tmp/yt-cookies.txt app:/data/yt-cookies.txt
+   docker compose exec -u root app chown appuser:appuser /data/yt-cookies.txt
+   docker compose exec -u root app chmod 600 /data/yt-cookies.txt
+   rm /tmp/yt-cookies.txt
+   docker compose exec app python -m yt_dlp -s --cookies /data/yt-cookies.txt "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+   ```
+   No restart needed: every download reads the file. Cookies last weeks to months; when the owner bot
+   reports "YouTube блокирует скачивание" again, export fresh ones. Another path: `YTDLP_COOKIES_FILE`.
+
+**B. A residential proxy (paid per GB).** `YTDLP_PROXY=http://user:pass@host:port` in `.env`, then
+`docker compose up -d app worker`. Only yt-dlp uses it.
+
 ## Rollback
 
 Before an update, record the current commit with `git rev-parse HEAD` and create

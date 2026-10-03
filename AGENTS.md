@@ -804,6 +804,9 @@ Only the hero exists for now; content blocks will be added below it later.
 - yt-dlp (2026-10-03): YouTube has no combined video+audio files any more, so `/api/download-url` asks for
   `bv*+ba` with `format_sort` H.264/AAC first and merges to MP4; Deno is copied into the image
   (`denoland/deno:bin-2.9.7`) and `yt-dlp[default]` brings yt-dlp-ejs. Without a JS runtime YouTube formats go missing.
+  The VPS IP gets YouTube's bot check: `_ytdlp_access` adds `cookiefile` (`/data/yt-cookies.txt` or
+  `YTDLP_COOKIES_FILE`, spare account) and `YTDLP_PROXY`; a bot check answers 503 `youtube_blocked` and pings the owner
+  bot (`admin_notify.youtube_blocked`, 6 h throttle). Steps in DEPLOY.md "YouTube downloads".
 - Test without deploying: `py -m modal run modal_bg_remove.py --path <image>` (prints cold/warm timings).
 
 ## 7. Rules for agents

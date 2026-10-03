@@ -38,6 +38,7 @@
     linkPlaceholder: ['Paste a link to a picture, GIF or video', 'Вставь ссылку на картинку, GIF или видео', 'Link zu Bild, GIF oder Video einfügen', 'Görsel, GIF veya video bağlantısı yapıştır', 'Collez le lien d’une image, d’un GIF ou d’une vidéo', 'Встав посилання на зображення, GIF або відео', 'Pega el enlace de una imagen, GIF o vídeo', 'Cole o link de uma imagem, GIF ou vídeo'],
     linkAdd: ['Add', 'Добавить', 'Hinzufügen', 'Ekle', 'Ajouter', 'Додати', 'Añadir', 'Adicionar'],
     linkLoading: ['Fetching the file…', 'Скачиваем файл…', 'Datei wird geladen…', 'Dosya alınıyor…', 'Récupération du fichier…', 'Завантажуємо файл…', 'Obteniendo el archivo…', 'Baixando o arquivo…'],
+    linkBlocked: ['YouTube is not letting our server download right now. Download the video yourself and add the file.', 'YouTube сейчас не даёт скачивать с нашего сервера. Скачай видео сам и добавь файл.', 'YouTube lässt unseren Server gerade nicht herunterladen. Lade das Video selbst herunter und füge die Datei hinzu.', 'YouTube şu anda sunucumuzun indirmesine izin vermiyor. Videoyu kendin indir ve dosyayı ekle.', 'YouTube empêche actuellement notre serveur de télécharger. Téléchargez la vidéo vous-même et ajoutez le fichier.', 'YouTube зараз не дає завантажувати з нашого сервера. Завантаж відео сам і додай файл.', 'YouTube no deja descargar desde nuestro servidor ahora mismo. Descarga el vídeo tú mismo y añade el archivo.', 'O YouTube não está deixando nosso servidor baixar agora. Baixe o vídeo você mesmo e adicione o arquivo.'],
     linkFail: ['Could not fetch this link. Check that it is public or download the file yourself.', 'Не удалось скачать по ссылке. Проверь, что она публичная, или скачай файл сам.', 'Link konnte nicht geladen werden. Ist er öffentlich? Sonst lade die Datei selbst herunter.', 'Bağlantı alınamadı. Herkese açık olduğundan emin ol ya da dosyayı kendin indir.', 'Impossible de récupérer ce lien. Vérifiez qu’il est public ou téléchargez le fichier vous-même.', 'Не вдалося завантажити за посиланням. Перевір, що воно публічне, або завантаж файл сам.', 'No se pudo obtener el enlace. Comprueba que es público o descarga el archivo tú mismo.', 'Não foi possível baixar o link. Verifique se é público ou baixe o arquivo você mesmo.'],
     dropHere: ['Drop the file to add it', 'Отпусти файл, чтобы добавить', 'Datei loslassen, um sie hinzuzufügen', 'Eklemek için dosyayı bırak', 'Déposez le fichier pour l’ajouter', 'Відпусти файл, щоб додати', 'Suelta el archivo para añadirlo', 'Solte o arquivo para adicionar'],
     pasteHint: ['Tip: you can also paste a picture with Ctrl+V.', 'Совет: картинку можно вставить и через Ctrl+V.', 'Tipp: Du kannst ein Bild auch mit Strg+V einfügen.', 'İpucu: Görseli Ctrl+V ile de yapıştırabilirsin.', 'Astuce : vous pouvez aussi coller une image avec Ctrl+V.', 'Порада: зображення можна вставити й через Ctrl+V.', 'Consejo: también puedes pegar una imagen con Ctrl+V.', 'Dica: você também pode colar uma imagem com Ctrl+V.'],
@@ -208,14 +209,14 @@
         var headers = Object.assign({ 'Content-Type': 'application/json' }, window.__smHeaders ? window.__smHeaders() : {});
         var response = await fetch('/api/download-url', { method: 'POST', credentials: 'include', headers: headers, body: JSON.stringify({ url: url, quality: 'best', purpose: 'process' }) });
         var data = await response.json();
-        if (!response.ok || !data.ok || !data.download) throw new Error(data.msg || 'link');
+        if (!response.ok || !data.ok || !data.download) throw new Error(data.code === 'youtube_blocked' ? 'blocked' : (data.msg || 'link'));
         var blob = await (await fetch(data.download, { credentials: 'include' })).blob();
         var name = String(data.name || 'linked-media').replace(/[\\/:*?"<>|]+/g, '_');
         if (!addFiles([new File([blob], name, { type: blob.type || '' })])) throw new Error('type');
         linkInput.value = ''; linkStatus.textContent = '';
       } catch (error) {
         linkStatus.className = 'process-link__status is-error';
-        linkStatus.textContent = word('linkFail');
+        linkStatus.textContent = word(error && error.message === 'blocked' ? 'linkBlocked' : 'linkFail');
       } finally { linkButton.disabled = false; }
     });
   }

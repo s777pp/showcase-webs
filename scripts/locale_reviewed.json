@@ -104,7 +104,8 @@
     "My requests →": "Meine Anfragen →",
     "My requests": "Meine Anfragen",
     "The answer will also appear here in notifications → My requests": "Die Antwort erscheint auch hier in den Benachrichtigungen → Meine Anfragen",
-    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Das ist kein Link zu einem Steam-Profil. Füge einen Link wie steamcommunity.com/id/name oder steamcommunity.com/profiles/7656… ein oder einfach deinen eigenen Profilnamen."
+    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Das ist kein Link zu einem Steam-Profil. Füge einen Link wie steamcommunity.com/id/name oder steamcommunity.com/profiles/7656… ein oder einfach deinen eigenen Profilnamen.",
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube lässt unseren Server gerade nicht herunterladen. Lade das Video selbst herunter und füge die Datei hinzu."
   },
   "tr": {
     "3 Steam formats": "3 Steam formatı",
@@ -210,7 +211,8 @@
     "My requests →": "Taleplerim →",
     "My requests": "Taleplerim",
     "The answer will also appear here in notifications → My requests": "Yanıt burada da bildirimlerde görünecek → Taleplerim",
-    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Bu bir Steam profil bağlantısı değil. steamcommunity.com/id/ad veya steamcommunity.com/profiles/7656… gibi bir bağlantı ya da yalnızca özel profil adını yapıştır."
+    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Bu bir Steam profil bağlantısı değil. steamcommunity.com/id/ad veya steamcommunity.com/profiles/7656… gibi bir bağlantı ya da yalnızca özel profil adını yapıştır.",
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube şu anda sunucumuzun indirmesine izin vermiyor. Videoyu kendin indir ve dosyayı ekle."
   },
   "fr": {
     "3 Steam formats": "3 formats Steam",
@@ -317,7 +319,8 @@
     "My requests →": "Mes demandes →",
     "My requests": "Mes demandes",
     "The answer will also appear here in notifications → My requests": "La réponse apparaîtra aussi ici dans les notifications → Mes demandes",
-    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Ce n’est pas un lien vers un profil Steam. Colle un lien du type steamcommunity.com/id/nom ou steamcommunity.com/profiles/7656…, ou simplement ton nom de profil personnalisé."
+    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Ce n’est pas un lien vers un profil Steam. Colle un lien du type steamcommunity.com/id/nom ou steamcommunity.com/profiles/7656…, ou simplement ton nom de profil personnalisé.",
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube empêche actuellement notre serveur de télécharger. Téléchargez la vidéo vous-même et ajoutez le fichier."
   },
   "uk": {
     "3 Steam formats": "3 формати Steam",
@@ -426,7 +429,8 @@
     "My requests →": "Мої звернення →",
     "My requests": "Мої звернення",
     "The answer will also appear here in notifications → My requests": "Відповідь також з’явиться тут у сповіщеннях → Мої звернення",
-    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Це не посилання на профіль Steam. Встав посилання на кшталт steamcommunity.com/id/ім’я або steamcommunity.com/profiles/7656… чи просто свій нік з адреси профілю."
+    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Це не посилання на профіль Steam. Встав посилання на кшталт steamcommunity.com/id/ім’я або steamcommunity.com/profiles/7656… чи просто свій нік з адреси профілю.",
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube зараз не дає завантажувати з нашого сервера. Завантаж відео сам і додай файл."
   },
   "es": {
     "3 Steam formats": "3 formatos de Steam",
@@ -532,7 +536,8 @@
     "My requests →": "Mis solicitudes →",
     "My requests": "Mis solicitudes",
     "The answer will also appear here in notifications → My requests": "La respuesta también aparecerá aquí en las notificaciones → Mis solicitudes",
-    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Esto no es un enlace a un perfil de Steam. Pega un enlace como steamcommunity.com/id/nombre o steamcommunity.com/profiles/7656…, o simplemente tu nombre de perfil personalizado."
+    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Esto no es un enlace a un perfil de Steam. Pega un enlace como steamcommunity.com/id/nombre o steamcommunity.com/profiles/7656…, o simplemente tu nombre de perfil personalizado.",
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube no deja descargar desde nuestro servidor ahora mismo. Descarga el vídeo tú mismo y añade el archivo."
   },
   "pt": {
     "3 Steam formats": "3 formatos da Steam",
@@ -638,6 +643,7 @@
     "My requests →": "Minhas solicitações →",
     "My requests": "Minhas solicitações",
     "The answer will also appear here in notifications → My requests": "A resposta também aparecerá aqui nas notificações → Minhas solicitações",
-    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Isto não é um link de perfil Steam. Cole um link como steamcommunity.com/id/nome ou steamcommunity.com/profiles/7656…, ou apenas o seu nome de perfil personalizado."
+    "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Isto não é um link de perfil Steam. Cole um link como steamcommunity.com/id/nome ou steamcommunity.com/profiles/7656…, ou apenas o seu nome de perfil personalizado.",
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "O YouTube não está deixando nosso servidor baixar agora. Baixe o vídeo você mesmo e adicione o arquivo."
   }
 }

@@ -101,6 +101,15 @@ def paid_import_used(profile_url: str) -> None:
              f"профиль{more}.\n{html.escape(profile_url)}")
 
 
+def youtube_blocked(with_cookies: bool) -> None:
+    allowed, skipped = _throttled("youtube-blocked", 6 * 3600)
+    if allowed:
+        more = f" (+{skipped} за 6 часов)" if skipped else ""
+        hint = ("Cookies есть, но YouTube их больше не принимает: выгрузи свежие и замени /data/yt-cookies.txt (DEPLOY.md, раздел YouTube)."
+                if with_cookies else "Нужны cookies YouTube в /data/yt-cookies.txt или YTDLP_PROXY (DEPLOY.md, раздел YouTube).")
+        send(f"▶️ YouTube блокирует скачивание с сервера («Sign in to confirm you’re not a bot»){more}. {hint}")
+
+
 def check_disk(path: str) -> None:
     """At most hourly; warns when the data disk has under 10 % or 5 GB free."""
     global _last_disk_check
