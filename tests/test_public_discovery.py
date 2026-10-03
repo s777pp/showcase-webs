@@ -42,5 +42,5 @@ def test_extension_guide_is_localized_and_public():
         assert response.status_code == 200
         assert f'<html lang="{language}">' in response.text
         assert 'steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej' in response.text
-        assert 'auto-uploader-workshop.webp' in response.text
+        assert 'extension-guide/v2/uploader-anim-en.webp' in response.text
     assert client.get('/de/extension').headers['x-robots-tag'] == 'noindex, follow'

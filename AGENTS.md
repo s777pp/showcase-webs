@@ -423,6 +423,11 @@ Only the hero exists for now; content blocks will be added below it later.
   hidden tab, off for reduced motion, DPR capped at 1.5. `window.__homeStars.spawn()/state()` for testing.
 - Support assistant (`support-chat.js`, all pages): while a footer is on screen the launcher is
   lifted by the visible footer height (`--support-lift`), so it never covers footer links.
+- Extension page rebuilt 2026-10-03 for Helper 1.0.9 (`xg-*` classes, `extension-guide.css/js`, images in
+  `static/img/extension-guide/v2/`, RU/EN pairs swapped by `data-eg-src-ru` / `data-eg-href-ru`, hero popup has no src in
+  markup). Extension pages were shot with Playwright + Edge loading the unpacked extension (`--load-extension`, headless
+  works); the upload page needs a stubbed `getUploadProgress` reply (the worker marks a fake queue as interrupted).
+  In 1.0.9 the popup UI themes and the upload-page mini game exist in code but are hidden: do not advertise them.
 - Extension guide page `/<lang>/extension` (`static/extension.html`, `extension-guide.css/js`,
   `static/img/extension-guide/`) was ported on 2026-09-25 from `Desktop\showcase-webs` (the owner's
   git checkout, which had this uncommitted feature). Shared shell nav now has "Extension · new"
