@@ -129,3 +129,15 @@ def test_steam_patched_gif_upload_gets_its_trailer_back(tmp_path):
     path.write_bytes(patched)
     processor.restore_gif_trailer_file(path)
     assert path.read_bytes() == fixed
+
+
+def test_process_job_accepts_a_jpeg_with_a_cut_off_end(tmp_path, monkeypatch):
+    # prod 2026-10-03: "OSError: image file is truncated (0 bytes not processed)"; browsers show such files
+    image = Image.radial_gradient("L").convert("RGB").resize((750, 400))
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG", quality=90)
+    opts = _opts("solid")
+    opts["outline_width"] = 0
+    opts["outline_fx"] = None
+    _, archive = _run(tmp_path, monkeypatch, "cut.jpg", buffer.getvalue()[:-3000], opts)
+    assert any("/part_" in n for n in archive.namelist())

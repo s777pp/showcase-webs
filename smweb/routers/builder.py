@@ -22,10 +22,11 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from PIL import Image, UnidentifiedImageError
 
 import auth_db
+import processor
 import redis_store as rs
 from smweb import frame_designs, object_store
 from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user
-from smweb.remove_bg_client import configured as remove_bg_configured
+from smweb.remove_bg_client import configured as remove_bg_configured, provider as remove_bg_provider
 
 
 router = APIRouter(prefix="/api/builder", tags=["builder"])
@@ -347,11 +348,13 @@ async def upload_asset(request: Request, file: UploadFile = File(...)):
         return JSONResponse({"ok": False, "msg": f"File limit is {MAX_UPLOAD_MB} MB"}, status_code=413)
     animated = media_type.startswith("video/") or suffix == ".gif"
     if media_type.startswith("image/"):
+        # GIFs this site prepared for Steam end with 0x21; Pillow fails on them.
+        data = processor.restore_gif_trailer(data)
         try:
             with Image.open(io.BytesIO(data)) as image:
                 animated = int(getattr(image, "n_frames", 1) or 1) > 1
                 image.verify()
-        except (UnidentifiedImageError, OSError, ValueError):
+        except (UnidentifiedImageError, OSError, ValueError, IndexError, EOFError):
             return JSONResponse({"ok": False, "msg": "Invalid image file"}, status_code=400)
     name = secrets.token_hex(16) + suffix
     rel = f"builder/{int(user['id'])}/{name}"
@@ -420,11 +423,16 @@ async def remove_background(request: Request):
     existing = rs.job_find_active(user_key, "builder_bg_remove", source_key)
     if existing:
         return {"ok": True, "job_id": existing[0], "queued": True}
+    # Site-wide caps protect the provider bill: remove.bg is paid per image (its free plan is
+    # ~50 a month), our Modal service costs a fraction of a cent per image.
+    own = remove_bg_provider() == "modal"
+    global_env, monthly_env = (("MODAL_BG_REMOVE_GLOBAL_DAILY", "MODAL_BG_REMOVE_GLOBAL_MONTHLY") if own
+                               else ("REMOVE_BG_GLOBAL_DAILY", "REMOVE_BG_GLOBAL_MONTHLY"))
     try:
         free_limit = max(1, int(os.environ.get("REMOVE_BG_FREE_DAILY", "5")))
         pro_limit = max(free_limit, int(os.environ.get("REMOVE_BG_PRO_DAILY", "20")))
-        global_limit = max(1, int(os.environ.get("REMOVE_BG_GLOBAL_DAILY", "100")))
-        monthly_limit = max(1, int(os.environ.get("REMOVE_BG_GLOBAL_MONTHLY", "50")))
+        global_limit = max(1, int(os.environ.get(global_env, "300" if own else "100")))
+        monthly_limit = max(1, int(os.environ.get(monthly_env, "5000" if own else "50")))
     except ValueError:
         free_limit, pro_limit, global_limit, monthly_limit = 5, 20, 100, 50
     user_limit = pro_limit if auth_db.effective_pro(user) else free_limit

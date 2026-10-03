@@ -75,6 +75,29 @@ def _modal(c):
              "Апскейл не будет работать.", "Проверь токены Modal и выполни py -m modal deploy modal_upscale.py.", f"HTTP {code}")
 
 
+def _bg_remove(c):
+    base = (os.environ.get("MODAL_BG_REMOVE_URL") or "").strip().rstrip("/")
+    token_id = (os.environ.get("MODAL_PROXY_TOKEN_ID") or "").strip()
+    token_secret = (os.environ.get("MODAL_PROXY_TOKEN_SECRET") or "").strip()
+    name = "Удаление фона (Modal)"
+    if not (base and token_id and token_secret):
+        fallback = bool((os.environ.get("REMOVE_BG_API_KEY") or "").strip())
+        return c("bg_remove", name, "warn", "Свой сервис не настроен",
+                 "Удаление фона идёт через платный remove.bg." if fallback else "Кнопка «Удалить фон» в «Создать дизайн» недоступна.",
+                 "py -m modal deploy modal_bg_remove.py, затем MODAL_BG_REMOVE_URL в .env.", "Modal")
+    # /health runs on the CPU front only, it never starts a GPU container.
+    code, _ = _get(base + "/health", {"Modal-Key": token_id, "Modal-Secret": token_secret}, timeout=12)
+    if code == 200:
+        return c("bg_remove", name, "ok", "Отвечает",
+                 "Удаление фона доступно. Первая картинка после простоя ждёт запуск GPU (~20-45 с).", "", "Modal · HTTP 200")
+    if code == 0:
+        return c("bg_remove", name, "warn", "Не ответил за 12 с",
+                 "Скорее всего, сервис просто просыпается.",
+                 "Обнови проверку через минуту.", "Modal · таймаут")
+    return c("bg_remove", name, "down", f"Ошибка {code}", "Удаление фона не будет работать.",
+             "Проверь токены Modal и выполни py -m modal deploy modal_bg_remove.py.", f"HTTP {code}")
+
+
 def _telegram(c):
     token = (os.environ.get("ADMIN_BOT_TOKEN") or "").strip()
     chat = (os.environ.get("ADMIN_BOT_CHAT_ID") or "").strip()
@@ -164,7 +187,7 @@ def _backups(c):
              "" if ok else "Проверь docker compose logs db-backup.", f"{latest['Key'].rsplit('/', 1)[-1]} · {latest['Size'] / 1048576:.1f} МБ")
 
 
-CHECKS = (_mirror, _relay, _steam_import, _modal, _loop_ai, _telegram, _bot_api, _backups)
+CHECKS = (_mirror, _relay, _steam_import, _modal, _bg_remove, _loop_ai, _telegram, _bot_api, _backups)
 
 
 def components(make_component) -> list[dict]:

@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 
+from smweb import remove_bg_client
 from smweb.remove_bg_client import API_URL, RemoveBgError, remove_background
 
 
@@ -35,6 +36,10 @@ class _Response:
 
     def iter_content(self, _chunk_size):
         yield self.body
+
+    def json(self):
+        import json
+        return json.loads(self.body)
 
 
 class RemoveBgClientTests(unittest.TestCase):
@@ -89,6 +94,64 @@ class RemoveBgClientTests(unittest.TestCase):
             with self.assertRaises(RemoveBgError) as caught:
                 remove_background(_png())
         self.assertEqual(caught.exception.code, "invalid_result")
+
+
+_MODAL = {"MODAL_BG_REMOVE_URL": "https://team--showcasemaker-bg-remove-api.modal.run",
+          "MODAL_PROXY_TOKEN_ID": "wk-test", "MODAL_PROXY_TOKEN_SECRET": "ws-test",
+          "REMOVE_BG_API_KEY": "", "BG_REMOVE_PROVIDER": ""}
+
+
+class ModalProviderTests(unittest.TestCase):
+    def test_provider_choice(self):
+        with patch.dict("os.environ", _MODAL, clear=False):
+            self.assertEqual(remove_bg_client.providers(), ["modal"])
+        with patch.dict("os.environ", {**_MODAL, "REMOVE_BG_API_KEY": "k"}, clear=False):
+            self.assertEqual(remove_bg_client.providers(), ["modal"], "auto never falls back to the paid provider")
+        with patch.dict("os.environ", {**_MODAL, "REMOVE_BG_API_KEY": "k", "BG_REMOVE_PROVIDER": "modal,removebg"}, clear=False):
+            self.assertEqual(remove_bg_client.providers(), ["modal", "removebg"])
+        with patch.dict("os.environ", {**_MODAL, "REMOVE_BG_API_KEY": "k", "BG_REMOVE_PROVIDER": "removebg"}, clear=False):
+            self.assertEqual(remove_bg_client.providers(), ["removebg"])
+        for url in ("http://team--x.modal.run", "https://evil.example.com", ""):
+            with patch.dict("os.environ", {**_MODAL, "MODAL_BG_REMOVE_URL": url}, clear=False):
+                self.assertFalse(remove_bg_client.configured(), url)
+
+    @patch("smweb.remove_bg_client.requests.post")
+    def test_posts_raw_image_to_modal_with_proxy_token(self, post: Mock):
+        post.return_value = _Response(200, _png())
+        with patch.dict("os.environ", _MODAL, clear=False):
+            self.assertEqual(remove_background(_png("RGB"), "a.png"), _png())
+        args, kwargs = post.call_args
+        self.assertEqual(args[0], _MODAL["MODAL_BG_REMOVE_URL"] + "/remove")
+        self.assertEqual(kwargs["headers"]["Modal-Key"], "wk-test")
+        self.assertEqual(kwargs["headers"]["Modal-Secret"], "ws-test")
+        self.assertEqual(kwargs["data"], _png("RGB"))
+        self.assertFalse(kwargs["allow_redirects"])
+
+    @patch("smweb.remove_bg_client.requests.post")
+    def test_modal_errors_map_to_safe_codes(self, post: Mock):
+        with patch.dict("os.environ", _MODAL, clear=False):
+            for status, body, code in ((422, b'{"ok":false,"code":"image_too_large"}', "image_too_large"),
+                                       (422, b'{"detail":"x"}', "invalid_image"),
+                                       (503, b"modal internals", "provider_unavailable")):
+                post.return_value = _Response(status, body)
+                with self.assertRaises(RemoveBgError) as caught:
+                    remove_background(_png())
+                self.assertEqual(caught.exception.code, code)
+                self.assertNotIn("modal internals", str(caught.exception))
+
+    @patch("smweb.remove_bg_client.requests.post")
+    def test_listed_fallback_is_used_only_when_modal_is_down(self, post: Mock):
+        env = {**_MODAL, "REMOVE_BG_API_KEY": "k", "BG_REMOVE_PROVIDER": "modal,removebg"}
+        post.side_effect = [_Response(503), _Response(200, _png())]
+        with patch.dict("os.environ", env, clear=False):
+            self.assertEqual(remove_background(_png()), _png())
+        self.assertEqual(post.call_args_list[1].args[0], API_URL)
+        post.reset_mock(side_effect=True)
+        post.return_value = _Response(422, b'{"ok":false,"code":"image_only"}')
+        with patch.dict("os.environ", env, clear=False):
+            with self.assertRaises(RemoveBgError):
+                remove_background(_png())
+        self.assertEqual(post.call_count, 1, "a bad image is not sent to the paid provider")
 
 
 if __name__ == "__main__":

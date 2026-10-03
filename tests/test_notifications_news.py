@@ -175,3 +175,13 @@ def test_steam_profile_links_are_checked_before_queueing():
         assert steam_catalog.canonical_profile_url(value), value
     for value in ["https://store.steampowered.com/app/570", "https://youtube.com/watch?v=x", "", "a b c"]:
         assert steam_catalog.canonical_profile_url(value) is None, value
+
+
+def test_mark_read_returns_the_number_of_rows_it_changed():
+    # PostgreSQL connections have no sqlite3 total_changes (prod 500 on 2026-10-03): count comes from the cursor
+    uid, _ = _user()
+    notify.add(uid, "news", title="a", group_key=f"t1-{uid}")
+    notify.add(uid, "news", title="b", group_key=f"t2-{uid}")
+    assert _unread(uid) == 2
+    assert auth_db.notifications_mark_read(uid) == 2
+    assert _unread(uid) == 0

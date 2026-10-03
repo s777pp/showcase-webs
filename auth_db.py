@@ -2352,14 +2352,14 @@ def notifications_mark_read(user_id: int, ids: list[int] | None = None) -> int:
     _ensure_social(c)
     if ids:
         q = ",".join("?" * len(ids))
-        c.execute(
+        cur = c.execute(
             f"UPDATE notifications SET is_read=1 WHERE user_id=? AND id IN ({q})",
             [user_id, *ids],
         )
     else:
-        c.execute("UPDATE notifications SET is_read=1 WHERE user_id=?", (user_id,))
+        cur = c.execute("UPDATE notifications SET is_read=1 WHERE user_id=?", (user_id,))
+    n = cur.rowcount
     c.commit()
-    n = c.total_changes
     c.close()
     return n
 

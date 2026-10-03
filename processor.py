@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFile, ImageFont
 import logging
 _LOG = logging.getLogger(__name__)
 
@@ -219,6 +219,10 @@ try:
     HEIF_SUPPORTED = True
 except Exception:
     HEIF_SUPPORTED = False
+# Decode JPEG/PNG files whose end is missing (interrupted downloads, some phone and messenger
+# exports) the way browsers do: the missing rows stay grey instead of failing the whole job
+# with "image file is truncated". The user already saw the same picture in the preview.
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 MOTION_EXTENSIONS = {".gif", ".mp4", ".mov", ".webm", ".avi", ".mkv"}
 
 

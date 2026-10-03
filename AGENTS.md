@@ -125,7 +125,8 @@ Modal (`MODAL_UPSCALE_URL`, `MODAL_PROXY_TOKEN_*`), R2 (`R2_*`), Bright Data
 (`BRIGHTDATA_BROWSER_*`), Gemini (`GEMINI_API_KEY`, model default `gemini-3.6-flash`) for
 Profile Rating / Design Selection, Groq (`GROQ_API_KEY`) for support chat and Steam DNA
 (no key ⇒ FAQ mode), Resend (`RESEND_API_KEY`, `MAIL_FROM`/`EMAIL_FROM`), Stripe, Gumroad,
-remove.bg (`REMOVE_BG_API_KEY`, Builder still layers only), DeviantArt (`DA_*`), Steam Web API
+own background removal on Modal (`MODAL_BG_REMOVE_URL`, `modal_bg_remove.py`, see 6.7) with remove.bg
+(`REMOVE_BG_API_KEY`) as the optional paid provider (Builder still layers only), DeviantArt (`DA_*`), Steam Web API
 (`STEAM_API_KEY`), yt-dlp for `/api/download-url` (domain allow-list + resolved-IP check).
 Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
 
@@ -767,6 +768,25 @@ Only the hero exists for now; content blocks will be added below it later.
   in docker-compose.yml (json-file 20m x 5), also in the mirror and relay compose files. Tests: `tests/test_error_log.py`.
 - Tests: `tests/test_notifications_news.py`. Load: one indexed query per bell poll (60 s, visible tabs only),
   news unread is a single count against `news_posts`.
+
+## 6.7 AI background removal on Modal (2026-10-03, local, not deployed)
+
+- Owner: remove.bg is too expensive. `modal_bg_remove.py` = app `showcasemaker-bg-remove`: CPU web front `api`
+  (proxy auth, `GET /health`, `POST /remove` raw image bytes -> PNG) + GPU class `Remover` (T4, scale to zero,
+  `scaledown_window=60`). Model BiRefNet general (MIT), the ONNX export rembg publishes (md5-checked, baked into
+  the image). rembg itself is NOT imported at runtime: its pymatting import compiles numba for ~100 s per cold start.
+  Pre/post-processing copies rembg's BiRefNet session; colour = putalpha (rembg's default darkens soft edges),
+  RGB zeroed where alpha is 0. cuDNN pinned to 9.8 (9.27 fails on T4 and onnxruntime silently runs on CPU);
+  `cudnn_conv_algo_search=HEURISTIC` (EXHAUSTIVE made the first image take a minute). No
+  `from __future__ import annotations` in that file (FastAPI then read `request: Request` as a query parameter).
+  Measured 2026-10-03: cold 18-45 s, warm ~2.5-4 s per image through the HTTP client (T4, 1200x800).
+- Server: `smweb/remove_bg_client.py` `providers()`: `BG_REMOVE_PROVIDER` auto (Modal if configured, else remove.bg),
+  `modal`, `removebg` or a list `modal,removebg` (fallback only on provider outage, never by default, so Modal
+  trouble never silently spends remove.bg credits). Site caps in `routers/builder.py` depend on the provider
+  (`MODAL_BG_REMOVE_GLOBAL_DAILY/MONTHLY` 300/5000 vs `REMOVE_BG_GLOBAL_*` 100/50); per-user `REMOVE_BG_FREE_DAILY` /
+  `REMOVE_BG_PRO_DAILY` for both. Admin status: `health_checks._bg_remove` (CPU front only, never wakes a GPU).
+  Privacy pages (8 languages) name Modal for background removal and remove.bg as a possible backup.
+- Test without deploying: `py -m modal run modal_bg_remove.py --path <image>` (prints cold/warm timings).
 
 ## 7. Rules for agents
 

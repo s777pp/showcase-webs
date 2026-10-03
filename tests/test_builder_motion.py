@@ -151,3 +151,27 @@ class LoopModeApiTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
+
+def test_asset_upload_accepts_a_steam_patched_gif(tmp_path, monkeypatch):
+    # A GIF this site prepared for Steam ends with 0x21 (HEX 21); Pillow raised IndexError (prod 500, 2026-10-02)
+    import io
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from PIL import Image
+    from smweb import object_store
+    from smweb.routers import builder
+
+    frames = [Image.new("RGB", (8, 8), c) for c in ((255, 0, 0), (0, 0, 255))]
+    buf = io.BytesIO()
+    frames[0].save(buf, "GIF", save_all=True, append_images=frames[1:], duration=100, loop=0)
+    patched = buf.getvalue()[:-1] + b"!"
+    monkeypatch.setattr(builder, "_user", lambda request: ({"id": 7}, None))
+    monkeypatch.setattr(object_store, "configured", lambda: False)
+    monkeypatch.setattr(builder, "_local_asset_path", lambda rel: tmp_path / rel)
+    app = FastAPI()
+    app.include_router(builder.router)
+    res = TestClient(app).post("/api/builder/assets", files={"file": ("steam.gif", patched, "image/gif")})
+    assert res.status_code == 200 and res.json()["animated"] is True
+    broken = TestClient(app).post("/api/builder/assets", files={"file": ("bad.gif", b"GIF89a" + b"\0" * 20, "image/gif")})
+    assert broken.status_code == 400
