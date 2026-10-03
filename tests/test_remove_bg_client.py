@@ -132,6 +132,7 @@ class _Json(_Response):
 class ProviderChainTests(unittest.TestCase):
     def setUp(self):
         remove_bg_client._ilove_token.update(value="", until=0)
+        remove_bg_client._problembo_body.update(name="")
         patcher = patch("smweb.remove_bg_client._take_budget", return_value=True)
         self.budget = patcher.start()
         self.addCleanup(patcher.stop)
@@ -242,8 +243,10 @@ class ProviderChainTests(unittest.TestCase):
     @patch("smweb.remove_bg_client.requests.post")
     def test_problembo_flow(self, post: Mock, get: Mock, put: Mock, _sleep: Mock):
         post.side_effect = [
-            _Json(200, {"fileId": "f1.png", "uploadUrl": "https://upload.example.net/x"}),
+            _Json(200, {"fileId": "f1.png", "uploadUrl": "https://upload.example.net/x",
+                        "contentDisposition": "inline; filename=a.png"}),
             _Json(200, {}),
+            _Json(400, {"type": "msgType_error", "errorKey": "PARSE_TASK"}),
             _Json(200, {"taskId": "task-1"}),
         ]
         put.return_value = _Json(200)
@@ -256,8 +259,11 @@ class ProviderChainTests(unittest.TestCase):
         with patch.dict("os.environ", {**_NONE, "PROBLEMBO_API_TOKEN": "pb"}, clear=False):
             png, used = remove_bg_client.remove_background_with(_png("RGB"), "a.png")
         self.assertEqual((png, used), (_png(), "problembo"))
-        self.assertEqual(post.call_args_list[2].kwargs["json"], {"images": [{"fileId": "f1.png", "origName": "a.png"}]})
+        self.assertEqual(post.call_args_list[2].kwargs["json"], {"sourceImageFileIds": ["f1.png"]})
+        self.assertEqual(post.call_args_list[3].kwargs["json"], {"sourceImageFileId": "f1.png"})
+        self.assertEqual(remove_bg_client._problembo_body["name"], "sourceImageFileId", "the shape that parsed is kept")
         self.assertEqual(put.call_args.kwargs["headers"]["Content-Type"], "image/png")
+        self.assertEqual(put.call_args.kwargs["headers"]["Content-Disposition"], "inline; filename=a.png")
         self.assertEqual(post.call_args_list[0].kwargs["headers"]["Authorization"], "Bearer pb")
 
     @patch("smweb.remove_bg_client.time.sleep")

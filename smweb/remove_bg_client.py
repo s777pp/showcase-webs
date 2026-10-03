@@ -376,11 +376,40 @@ def _iloveapi(data: bytes, filename: str) -> bytes:
 
 
 def _problembo_key(response) -> str:
-    """Their error code ({"error": {"key": ...}}); short and free of user data, safe to log."""
+    """Their error code: top-level "errorKey" in practice, {"error": {"key"}} in the docs.
+    Short and free of user data, safe to log."""
     try:
-        return str(((response.json() or {}).get("error") or {}).get("key") or "")[:60]
+        body = response.json() or {}
+        return str(body.get("errorKey") or (body.get("error") or {}).get("key") or "")[:60]
     except (ValueError, AttributeError):
         return ""
+
+
+# Their public API names the input field differently from the site's own form, and the docs do
+# not show it for this service. These are the shapes their other contracts use; the first one the
+# server can parse is remembered (PROBLEMBO_BG_BODY picks one by name). A shape that cannot be
+# parsed creates no task, so trying them costs nothing.
+_PROBLEMBO_BODIES = {
+    "sourceImageFileIds": lambda fid, name: {"sourceImageFileIds": [fid]},
+    "sourceImageFileId": lambda fid, name: {"sourceImageFileId": fid},
+    "images": lambda fid, name: {"images": [{"fileId": fid}]},
+    "sourceFileIds": lambda fid, name: {"sourceFileIds": [fid]},
+    "sourceFileId": lambda fid, name: {"sourceFileId": fid},
+    "imageFileIds": lambda fid, name: {"imageFileIds": [fid]},
+    "fileIds": lambda fid, name: {"fileIds": [fid]},
+}
+_problembo_body: dict = {"name": ""}
+
+
+def _problembo_body_order() -> list[str]:
+    forced = _env("PROBLEMBO_BG_BODY")
+    if forced in _PROBLEMBO_BODIES:
+        return [forced]
+    names = list(_PROBLEMBO_BODIES)
+    if _problembo_body["name"] in names:
+        names.remove(_problembo_body["name"])
+        names.insert(0, _problembo_body["name"])
+    return names
 
 
 def _problembo_step(step: str, response) -> None:
@@ -424,9 +453,16 @@ def _problembo(data: bytes, filename: str, media_type: str = "image/png") -> byt
         _problembo_step("upload-complete", done)
         if done.status_code not in (200, 201, 204):
             raise _unavailable()
-        created = requests.post(f"{PROBLEMBO_URL}/background-removal/tasks", headers=headers, timeout=(10, 30),
-                                json={"images": [{"fileId": file_id, "origName": filename}]}, allow_redirects=False)
-        _problembo_step("create-task", created)
+        created = None
+        for shape in _problembo_body_order():
+            created = requests.post(f"{PROBLEMBO_URL}/background-removal/tasks", headers=headers, timeout=(10, 30),
+                                    json=_PROBLEMBO_BODIES[shape](file_id, filename), allow_redirects=False)
+            _problembo_step(f"create-task[{shape}]", created)
+            if created.status_code == 200:
+                _problembo_body["name"] = shape
+                break
+            if _problembo_key(created) != "PARSE_TASK":
+                break
         if created.status_code == 429:
             raise _busy()
         if created.status_code != 200:
