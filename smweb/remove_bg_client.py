@@ -385,31 +385,34 @@ def _problembo_key(response) -> str:
         return ""
 
 
-# Their public API names the input field differently from the site's own form, and the docs do
-# not show it for this service. These are the shapes their other contracts use; the first one the
-# server can parse is remembered (PROBLEMBO_BG_BODY picks one by name). A shape that cannot be
-# parsed creates no task, so trying them costs nothing.
+# Problembo support (2026-10-03): tasks go to ONE endpoint, POST /apis/v1/client/tasks, with the task
+# type in the body. Their site stores tasks as {"protoType": "com.problembo.proto.Pr<Name>Request",
+# "payload": {...}} (task history code), so that envelope is the default. The older per-service path
+# answered PARSE_TASK to every shape and stays only for PROBLEMBO_BG_BODY=probe.
+_PB_REQUEST = "com.problembo.proto.PrBackgroundRemovalRequest"
+
+
+def _pb_images(fid: str, name: str) -> dict:
+    return {"images": [{"fileId": fid, "origName": name}]}
+
+
 _PROBLEMBO_BODIES = {
-    # The site form: images + the optional uploadRoute (0/1/2) and idempotencyKey of its schema.
-    "images_route0": lambda fid, name: {"images": [{"fileId": fid, "origName": name}], "uploadRoute": 0},
-    "images_route1": lambda fid, name: {"images": [{"fileId": fid, "origName": name}], "uploadRoute": 1},
-    "images_route2": lambda fid, name: {"images": [{"fileId": fid, "origName": name}], "uploadRoute": 2},
-    "images_key": lambda fid, name: {"images": [{"fileId": fid, "origName": name}], "idempotencyKey": fid[:64]},
-    "sourceImageFileIds": lambda fid, name: {"sourceImageFileIds": [fid]},
-    "sourceImageFileId": lambda fid, name: {"sourceImageFileId": fid},
-    "images": lambda fid, name: {"images": [{"fileId": fid}]},
-    "sourceFileIds": lambda fid, name: {"sourceFileIds": [fid]},
-    "sourceFileId": lambda fid, name: {"sourceFileId": fid},
-    "imageFileIds": lambda fid, name: {"imageFileIds": [fid]},
-    "fileIds": lambda fid, name: {"fileIds": [fid]},
+    "envelope": ("tasks", lambda fid, name: {"protoType": _PB_REQUEST, "payload": _pb_images(fid, name)}),
+    "envelope_task": ("tasks", lambda fid, name: {"protoType": "com.problembo.proto.BackgroundRemovalClientTaskPr",
+                                                  "payload": _pb_images(fid, name)}),
+    "envelope_contract": ("tasks", lambda fid, name: {"contractId": "background-removal", "payload": _pb_images(fid, name)}),
+    "envelope_flat": ("tasks", lambda fid, name: {"contractId": "background-removal", **_pb_images(fid, name)}),
+    "images": ("background-removal/tasks", lambda fid, name: {"images": [{"fileId": fid}]}),
+    "sourceImageFileIds": ("background-removal/tasks", lambda fid, name: {"sourceImageFileIds": [fid]}),
 }
 _problembo_body: dict = {"name": ""}
 
 
 def _problembo_body_order() -> list[str]:
-    forced = _env("PROBLEMBO_BG_BODY")
-    if forced in _PROBLEMBO_BODIES:
-        return [forced]
+    """One shape per request (PROBLEMBO_BG_BODY, default "envelope"); PROBLEMBO_BG_BODY=probe tries them all."""
+    forced = _env("PROBLEMBO_BG_BODY") or "envelope"
+    if forced != "probe":
+        return [forced] if forced in _PROBLEMBO_BODIES else ["envelope"]
     names = list(_PROBLEMBO_BODIES)
     if _problembo_body["name"] in names:
         names.remove(_problembo_body["name"])
@@ -460,8 +463,9 @@ def _problembo(data: bytes, filename: str, media_type: str = "image/png") -> byt
             raise _unavailable()
         created = None
         for shape in _problembo_body_order():
-            created = requests.post(f"{PROBLEMBO_URL}/background-removal/tasks", headers=headers, timeout=(10, 30),
-                                    json=_PROBLEMBO_BODIES[shape](file_id, filename), allow_redirects=False)
+            path, build = _PROBLEMBO_BODIES[shape]
+            created = requests.post(f"{PROBLEMBO_URL}/{path}", headers=headers, timeout=(10, 30),
+                                    json=build(file_id, filename), allow_redirects=False)
             _problembo_step(f"create-task[{shape}]", created)
             if created.status_code == 200:
                 _problembo_body["name"] = shape

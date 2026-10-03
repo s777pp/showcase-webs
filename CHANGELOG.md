@@ -17,6 +17,9 @@
   и запоминает подошедший; закрепить можно `PROBLEMBO_BG_BODY=<имя>`. Код ошибки читается из `errorKey`.
   На VPS все 7 вариантов дали `PARSE_TASK`; добавлены варианты формы сайта (`uploadRoute` 0/1/2, `idempotencyKey`) и
   пробный режим `check_bg_providers.py --problembo-url` (их собственный формат со ссылкой на картинку).
+  Поддержка Problembo: задания создаются через общий `POST /apis/v1/client/tasks` с типом в теле. По умолчанию теперь
+  `{"protoType":"com.problembo.proto.PrBackgroundRemovalRequest","payload":{"images":[{"fileId"}]}}` (так задания
+  хранит их сайт); `PROBLEMBO_BG_BODY=probe` перебирает остальные варианты.
 - YouTube блокирует IP сервера («Sign in to confirm you’re not a bot», проверено на VPS 03.10). Поддержка cookies
   запасного аккаунта (`/data/yt-cookies.txt` или `YTDLP_COOKIES_FILE`) и прокси (`YTDLP_PROXY`); пользователь видит
   понятное сообщение на 8 языках, владельцу приходит уведомление в бота (не чаще раза в 6 часов). Инструкция: DEPLOY.md,

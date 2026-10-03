@@ -38,10 +38,12 @@ def probe_problembo_url(url: str) -> None:
     task parses at all (one paid image if it does)."""
     import requests
     headers = {"Authorization": "Bearer " + os.environ.get("PROBLEMBO_API_TOKEN", "").strip()}
-    for body in ({"images": [{"url": url}]}, {"images": [{"url": url}], "uploadRoute": 0}):
-        response = requests.post(f"{client.PROBLEMBO_URL}/background-removal/tasks", headers=headers, json=body,
+    for path, body in (("tasks", {"protoType": client._PB_REQUEST, "payload": {"images": [{"url": url}]}}),
+                       ("tasks", {"contractId": "background-removal", "payload": {"images": [{"url": url}]}}),
+                       ("background-removal/tasks", {"images": [{"url": url}]})):
+        response = requests.post(f"{client.PROBLEMBO_URL}/{path}", headers=headers, json=body,
                                  timeout=(10, 30), allow_redirects=False)
-        print(f"    {sorted(body)} -> HTTP {response.status_code} {client._problembo_key(response)} {response.text[:200]}")
+        print(f"    {path} {sorted(body)} -> HTTP {response.status_code} {client._problembo_key(response)} {response.text[:200]}")
         if response.status_code == 200:
             break
 
@@ -66,6 +68,7 @@ def main() -> int:
             continue
         print(f"{name}:")
         os.environ["BG_REMOVE_FALLBACK"] = "0"
+        os.environ.setdefault("PROBLEMBO_BG_BODY", "probe")  # the check tries every known request shape
         started = time.time()
         try:
             png, used = client.remove_background_with(data, "check.png", name)

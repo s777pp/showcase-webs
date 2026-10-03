@@ -799,8 +799,10 @@ Only the hero exists for now; content blocks will be added below it later.
   soft pixels; auto picks black/white when the sampled border colour is near black/white, else the hue key.
   Privacy pages (8 languages) list Modal, then iLoveAPI / Problembo / remove.bg.
 - Problembo create-task answered `PARSE_TASK` for `{"images":[{fileId}]}` (the site form shape, not the API one).
-  `_PROBLEMBO_BODIES` are tried until one parses (remembered per process, `PROBLEMBO_BG_BODY` pins it); errors
-  come as top-level `errorKey`. Record the working shape here once the VPS check shows it.
+  Their support: one endpoint `POST /apis/v1/client/tasks`, task type in the body. Default shape `envelope` =
+  `{protoType: com.problembo.proto.PrBackgroundRemovalRequest, payload: {images: [{fileId, origName}]}}` (guessed from
+  their task-history code; unverified). `PROBLEMBO_BG_BODY` pins a shape, `probe` tries all `_PROBLEMBO_BODIES`;
+  errors come as top-level `errorKey`. Record the working shape here once the VPS check shows it.
 - Problembo PUT sends `Content-Type` + their `contentDisposition` (presigned); create-task errors fall back unless
   `INVALID_INPUT_FILE`; steps logged by `sm.bg_remove` (status + error key only). Live check of every provider:
   `docker compose exec worker python scripts/check_bg_providers.py [name]` (one image/credit each).

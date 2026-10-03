@@ -96,7 +96,7 @@ class RemoveBgClientTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "invalid_result")
 
 
-_NONE = {"MODAL_BG_REMOVE_URL": "", "MODAL_PROXY_TOKEN_ID": "", "MODAL_PROXY_TOKEN_SECRET": "",
+_NONE = {"MODAL_BG_REMOVE_URL": "", "MODAL_PROXY_TOKEN_ID": "", "MODAL_PROXY_TOKEN_SECRET": "", "PROBLEMBO_BG_BODY": "",
          "ILOVEAPI_PUBLIC_KEY": "", "PROBLEMBO_API_TOKEN": "", "REMOVE_BG_API_KEY": "",
          "BG_REMOVE_ORDER": "", "BG_REMOVE_FALLBACK": ""}
 _MODAL = {**_NONE, "MODAL_BG_REMOVE_URL": "https://team--showcasemaker-bg-remove-api.modal.run",
@@ -256,12 +256,15 @@ class ProviderChainTests(unittest.TestCase):
                         "result": {"taskResult": [{"url": "https://prbo.gateway.storjshare.io/r.png"}]}}),
             _Response(200, _png()),
         ]
-        with patch.dict("os.environ", {**_NONE, "PROBLEMBO_API_TOKEN": "pb"}, clear=False):
+        with patch.dict("os.environ", {**_NONE, "PROBLEMBO_API_TOKEN": "pb", "PROBLEMBO_BG_BODY": "probe"}, clear=False):
             png, used = remove_bg_client.remove_background_with(_png("RGB"), "a.png")
         self.assertEqual((png, used), (_png(), "problembo"))
         first, second = list(remove_bg_client._PROBLEMBO_BODIES)[:2]
-        self.assertEqual(post.call_args_list[2].kwargs["json"], remove_bg_client._PROBLEMBO_BODIES[first]("f1.png", "a.png"))
-        self.assertEqual(post.call_args_list[3].kwargs["json"], remove_bg_client._PROBLEMBO_BODIES[second]("f1.png", "a.png"))
+        self.assertEqual(post.call_args_list[2].args[0], remove_bg_client.PROBLEMBO_URL + "/tasks")
+        self.assertEqual(post.call_args_list[2].kwargs["json"],
+                         {"protoType": "com.problembo.proto.PrBackgroundRemovalRequest",
+                          "payload": {"images": [{"fileId": "f1.png", "origName": "a.png"}]}})
+        self.assertEqual(post.call_args_list[3].kwargs["json"], remove_bg_client._PROBLEMBO_BODIES[second][1]("f1.png", "a.png"))
         self.assertEqual(remove_bg_client._problembo_body["name"], second, "the shape that parsed is kept")
         self.assertEqual(put.call_args.kwargs["headers"]["Content-Type"], "image/png")
         self.assertEqual(put.call_args.kwargs["headers"]["Content-Disposition"], "inline; filename=a.png")
