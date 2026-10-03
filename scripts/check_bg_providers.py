@@ -34,18 +34,23 @@ def _picture() -> bytes:
 
 
 def probe_problembo_url(url: str) -> None:
-    """Send their own documented shape {"images":[{"url"}]} with a public picture: shows whether the
-    task parses at all (one paid image if it does)."""
+    """Their documented URL form {"sourceImages": [{"url"}]}: one paid image if it works."""
     import requests
     headers = {"Authorization": "Bearer " + os.environ.get("PROBLEMBO_API_TOKEN", "").strip()}
-    for path, body in (("tasks", {"protoType": client._PB_REQUEST, "payload": {"images": [{"url": url}]}}),
-                       ("tasks", {"contractId": "background-removal", "payload": {"images": [{"url": url}]}}),
-                       ("background-removal/tasks", {"images": [{"url": url}]})):
-        response = requests.post(f"{client.PROBLEMBO_URL}/{path}", headers=headers, json=body,
-                                 timeout=(10, 30), allow_redirects=False)
-        print(f"    {path} {sorted(body)} -> HTTP {response.status_code} {client._problembo_key(response)} {response.text[:200]}")
-        if response.status_code == 200:
-            break
+    response = requests.post(f"{client.PROBLEMBO_URL}/background-removal/tasks", headers=headers,
+                             json={"sourceImages": [{"url": url}]}, timeout=(10, 30), allow_redirects=False)
+    print(f"    create-task (url) -> HTTP {response.status_code} {client._problembo_key(response)} {response.text[:200]}")
+    task_id = str((response.json() or {}).get("taskId") or "") if response.status_code == 200 else ""
+    for _ in range(60):
+        if not task_id:
+            return
+        state = requests.get(f"{client.PROBLEMBO_URL}/operations/{task_id}", headers=headers, timeout=(10, 30))
+        body = state.json() if state.status_code == 200 else {}
+        status = str(body.get("status") or state.status_code)
+        if status.upper() in client._PB_DONE | client._PB_FAILED or state.status_code != 200:
+            print(f"    operation -> {status}, result host: {client.urlparse(client._pb_result_url(body)).hostname or '-'}")
+            return
+        time.sleep(2)
 
 
 def main() -> int:
@@ -68,7 +73,6 @@ def main() -> int:
             continue
         print(f"{name}:")
         os.environ["BG_REMOVE_FALLBACK"] = "0"
-        os.environ.setdefault("PROBLEMBO_BG_BODY", "probe")  # the check tries every known request shape
         started = time.time()
         try:
             png, used = client.remove_background_with(data, "check.png", name)

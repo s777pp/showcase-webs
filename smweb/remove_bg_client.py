@@ -385,41 +385,6 @@ def _problembo_key(response) -> str:
         return ""
 
 
-# Problembo support (2026-10-03): tasks go to ONE endpoint, POST /apis/v1/client/tasks, with the task
-# type in the body. Their site stores tasks as {"protoType": "com.problembo.proto.Pr<Name>Request",
-# "payload": {...}} (task history code), so that envelope is the default. The older per-service path
-# answered PARSE_TASK to every shape and stays only for PROBLEMBO_BG_BODY=probe.
-_PB_REQUEST = "com.problembo.proto.PrBackgroundRemovalRequest"
-
-
-def _pb_images(fid: str, name: str) -> dict:
-    return {"images": [{"fileId": fid, "origName": name}]}
-
-
-_PROBLEMBO_BODIES = {
-    "envelope": ("tasks", lambda fid, name: {"protoType": _PB_REQUEST, "payload": _pb_images(fid, name)}),
-    "envelope_task": ("tasks", lambda fid, name: {"protoType": "com.problembo.proto.BackgroundRemovalClientTaskPr",
-                                                  "payload": _pb_images(fid, name)}),
-    "envelope_contract": ("tasks", lambda fid, name: {"contractId": "background-removal", "payload": _pb_images(fid, name)}),
-    "envelope_flat": ("tasks", lambda fid, name: {"contractId": "background-removal", **_pb_images(fid, name)}),
-    "images": ("background-removal/tasks", lambda fid, name: {"images": [{"fileId": fid}]}),
-    "sourceImageFileIds": ("background-removal/tasks", lambda fid, name: {"sourceImageFileIds": [fid]}),
-}
-_problembo_body: dict = {"name": ""}
-
-
-def _problembo_body_order() -> list[str]:
-    """One shape per request (PROBLEMBO_BG_BODY, default "envelope"); PROBLEMBO_BG_BODY=probe tries them all."""
-    forced = _env("PROBLEMBO_BG_BODY") or "envelope"
-    if forced != "probe":
-        return [forced] if forced in _PROBLEMBO_BODIES else ["envelope"]
-    names = list(_PROBLEMBO_BODIES)
-    if _problembo_body["name"] in names:
-        names.remove(_problembo_body["name"])
-        names.insert(0, _problembo_body["name"])
-    return names
-
-
 def _problembo_step(step: str, response) -> None:
     detail = ""
     if response.status_code >= 400:
@@ -430,6 +395,38 @@ def _problembo_step(step: str, response) -> None:
         except Exception:
             detail = ""
     LOGGER.info("problembo %s -> HTTP %s %s %s", step, response.status_code, _problembo_key(response), detail)
+
+
+# Problembo "AI background removal API" (their service page, 2026-10-03):
+#   POST /background-removal/tasks  {"sourceImages": [{"fileId"} | {"url"}], "idempotencyKey"?} -> {"taskId"}
+#   GET  /operations/{taskId}       {"status": "SUCCEEDED", "result": {"items": [{"kind": "IMAGE", "url"}]}}
+# File ids must belong to the token owner (uploaded with the same token).
+_PB_DONE = {"SUCCEEDED", "SUCCESS", "COMPLETED", "END_SUCCESS"}
+_PB_FAILED = {"FAILED", "FAILURE", "ERROR", "CANCELLED", "CANCELED", "REJECTED", "EXPIRED", "TIMEOUT",
+              "END_ERR", "END_TIMEOUT"}
+
+
+def _pb_result_url(body: dict) -> str:
+    result = body.get("result") or {}
+    items = result.get("items") or result.get("taskResult") or []
+    for item in items:
+        if isinstance(item, dict) and item.get("url") and str(item.get("kind") or "IMAGE").upper() == "IMAGE":
+            return str(item["url"])
+    return ""
+
+
+def _pb_result_host_ok(url: str) -> bool:
+    """Their result links point at temporary storage whose host is theirs to choose; refuse only
+    what can never be it (plain IPs, localhost, single-label names)."""
+    import ipaddress
+    host = (urlparse(url).hostname or "").lower()
+    if not host or "." not in host or host == "localhost" or host.endswith(".local"):
+        return False
+    try:
+        ipaddress.ip_address(host)
+        return False
+    except ValueError:
+        return True
 
 
 def _problembo(data: bytes, filename: str, media_type: str = "image/png") -> bytes:
@@ -447,8 +444,7 @@ def _problembo(data: bytes, filename: str, media_type: str = "image/png") -> byt
         file_id, upload_url = str(slot_data.get("fileId") or ""), str(slot_data.get("uploadUrl") or "")
         if not file_id or urlparse(upload_url).scheme != "https":
             raise _unavailable()
-        # The upload URL is presigned for this file: send the type and the Content-Disposition
-        # they returned, otherwise the stored object is not recognised as an image.
+        # The upload URL is presigned for this file: send the type and the Content-Disposition they returned.
         put_headers = {"Content-Type": media_type}
         if slot_data.get("contentDisposition"):
             put_headers["Content-Disposition"] = str(slot_data["contentDisposition"])[:300]
@@ -461,46 +457,37 @@ def _problembo(data: bytes, filename: str, media_type: str = "image/png") -> byt
         _problembo_step("upload-complete", done)
         if done.status_code not in (200, 201, 204):
             raise _unavailable()
-        created = None
-        for shape in _problembo_body_order():
-            path, build = _PROBLEMBO_BODIES[shape]
-            created = requests.post(f"{PROBLEMBO_URL}/{path}", headers=headers, timeout=(10, 30),
-                                    json=build(file_id, filename), allow_redirects=False)
-            _problembo_step(f"create-task[{shape}]", created)
-            if created.status_code == 200:
-                _problembo_body["name"] = shape
-                break
-            if _problembo_key(created) != "PARSE_TASK":
-                break
+        created = requests.post(f"{PROBLEMBO_URL}/background-removal/tasks", headers=headers, timeout=(10, 30),
+                                json={"sourceImages": [{"fileId": file_id}], "idempotencyKey": file_id[:128]},
+                                allow_redirects=False)
+        _problembo_step("create-task", created)
         if created.status_code == 429:
             raise _busy()
         if created.status_code != 200:
-            # A 400 here is about our request or their account far more often than about the image,
-            # so the next provider gets a chance; only their explicit file error blames the image.
+            # Only their explicit file error blames the image; anything else lets the next provider try.
             if _problembo_key(created) == "INVALID_INPUT_FILE":
                 raise RemoveBgError("invalid_image", "The selected file is not a valid image")
             raise _unavailable()
         task_id = str((created.json() or {}).get("taskId") or "")
-        if not task_id or "/" in task_id:
+        if not task_id or "/" in task_id or len(task_id) > 100:
             raise _unavailable()
         while True:
-            state = requests.get(f"{PROBLEMBO_URL}/tasks/{task_id}", headers=headers, timeout=(10, 30),
+            state = requests.get(f"{PROBLEMBO_URL}/operations/{task_id}", headers=headers, timeout=(10, 30),
                                  allow_redirects=False)
             if state.status_code != 200:
-                _problembo_step("task", state)
+                _problembo_step("operation", state)
                 raise _unavailable()
             body = state.json() or {}
-            status = str(body.get("status") or "")
-            if status == "END_SUCCESS":
-                results = ((body.get("result") or {}).get("taskResult") or [])
-                url = str((results[0] or {}).get("url") or "") if results else ""
-                # The result lives on their storage (a Storj gateway today).
-                hosts = tuple(h if h.startswith(".") else "." + h for h in
-                              (_env("PROBLEMBO_RESULT_HOSTS") or "storjshare.io,problembo.com").replace(" ", "").split(",") if h)
-                return _download(url, hosts)
-            if status.startswith("END_"):
-                key = str(((body.get("error") or {}).get("key")) or "")[:60]
-                LOGGER.info("problembo task -> %s %s", status, key)
+            status = str(body.get("status") or "").upper()
+            if status in _PB_DONE:
+                url = _pb_result_url(body)
+                LOGGER.info("problembo operation -> %s, result on %s", status, urlparse(url).hostname or "-")
+                if not url or not _pb_result_host_ok(url):
+                    raise RemoveBgError("invalid_result", "The background-removal result is invalid")
+                return _download(url, ())
+            if status in _PB_FAILED:
+                key = str(body.get("errorKey") or (body.get("error") or {}).get("key") or "")[:60]
+                LOGGER.info("problembo operation -> %s %s", status, key)
                 if key == "INVALID_INPUT_FILE":
                     raise RemoveBgError("invalid_image", "The selected file is not a valid image")
                 raise _unavailable()

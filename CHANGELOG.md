@@ -20,6 +20,8 @@
   Поддержка Problembo: задания создаются через общий `POST /apis/v1/client/tasks` с типом в теле. По умолчанию теперь
   `{"protoType":"com.problembo.proto.PrBackgroundRemovalRequest","payload":{"images":[{"fileId"}]}}` (так задания
   хранит их сайт); `PROBLEMBO_BG_BODY=probe` перебирает остальные варианты.
+  Итог: по описанию «AI background removal API» на странице сервиса тело — `{"sourceImages":[{"fileId"}]}` на
+  `/background-removal/tasks`, результат — `GET /operations/{taskId}` (`SUCCEEDED`, `result.items[].url`). Догадки удалены.
 - YouTube блокирует IP сервера («Sign in to confirm you’re not a bot», проверено на VPS 03.10). Поддержка cookies
   запасного аккаунта (`/data/yt-cookies.txt` или `YTDLP_COOKIES_FILE`) и прокси (`YTDLP_PROXY`); пользователь видит
   понятное сообщение на 8 языках, владельцу приходит уведомление в бота (не чаще раза в 6 часов). Инструкция: DEPLOY.md,
