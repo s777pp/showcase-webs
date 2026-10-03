@@ -384,7 +384,15 @@ def _problembo_key(response) -> str:
 
 
 def _problembo_step(step: str, response) -> None:
-    LOGGER.info("problembo %s -> HTTP %s %s", step, response.status_code, _problembo_key(response))
+    detail = ""
+    if response.status_code >= 400:
+        # Their validation message names the field they did not like; links are cut out.
+        import re
+        try:
+            detail = re.sub(r"https?://\S+", "<url>", str(response.text or ""))[:300]
+        except Exception:
+            detail = ""
+    LOGGER.info("problembo %s -> HTTP %s %s %s", step, response.status_code, _problembo_key(response), detail)
 
 
 def _problembo(data: bytes, filename: str, media_type: str = "image/png") -> bytes:
