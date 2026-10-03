@@ -390,6 +390,11 @@ def _problembo_key(response) -> str:
 # server can parse is remembered (PROBLEMBO_BG_BODY picks one by name). A shape that cannot be
 # parsed creates no task, so trying them costs nothing.
 _PROBLEMBO_BODIES = {
+    # The site form: images + the optional uploadRoute (0/1/2) and idempotencyKey of its schema.
+    "images_route0": lambda fid, name: {"images": [{"fileId": fid, "origName": name}], "uploadRoute": 0},
+    "images_route1": lambda fid, name: {"images": [{"fileId": fid, "origName": name}], "uploadRoute": 1},
+    "images_route2": lambda fid, name: {"images": [{"fileId": fid, "origName": name}], "uploadRoute": 2},
+    "images_key": lambda fid, name: {"images": [{"fileId": fid, "origName": name}], "idempotencyKey": fid[:64]},
     "sourceImageFileIds": lambda fid, name: {"sourceImageFileIds": [fid]},
     "sourceImageFileId": lambda fid, name: {"sourceImageFileId": fid},
     "images": lambda fid, name: {"images": [{"fileId": fid}]},

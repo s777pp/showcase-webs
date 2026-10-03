@@ -259,9 +259,10 @@ class ProviderChainTests(unittest.TestCase):
         with patch.dict("os.environ", {**_NONE, "PROBLEMBO_API_TOKEN": "pb"}, clear=False):
             png, used = remove_bg_client.remove_background_with(_png("RGB"), "a.png")
         self.assertEqual((png, used), (_png(), "problembo"))
-        self.assertEqual(post.call_args_list[2].kwargs["json"], {"sourceImageFileIds": ["f1.png"]})
-        self.assertEqual(post.call_args_list[3].kwargs["json"], {"sourceImageFileId": "f1.png"})
-        self.assertEqual(remove_bg_client._problembo_body["name"], "sourceImageFileId", "the shape that parsed is kept")
+        first, second = list(remove_bg_client._PROBLEMBO_BODIES)[:2]
+        self.assertEqual(post.call_args_list[2].kwargs["json"], remove_bg_client._PROBLEMBO_BODIES[first]("f1.png", "a.png"))
+        self.assertEqual(post.call_args_list[3].kwargs["json"], remove_bg_client._PROBLEMBO_BODIES[second]("f1.png", "a.png"))
+        self.assertEqual(remove_bg_client._problembo_body["name"], second, "the shape that parsed is kept")
         self.assertEqual(put.call_args.kwargs["headers"]["Content-Type"], "image/png")
         self.assertEqual(put.call_args.kwargs["headers"]["Content-Disposition"], "inline; filename=a.png")
         self.assertEqual(post.call_args_list[0].kwargs["headers"]["Authorization"], "Bearer pb")

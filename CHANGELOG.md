@@ -15,6 +15,8 @@
 - Problembo отвечал `PARSE_TASK`: публичный API называет поле с файлом иначе, чем форма на их сайте, а в документации
   оно не показано. Клиент перебирает форматы их других сервисов (`sourceImageFileIds`, `sourceImageFileId`, `images`…)
   и запоминает подошедший; закрепить можно `PROBLEMBO_BG_BODY=<имя>`. Код ошибки читается из `errorKey`.
+  На VPS все 7 вариантов дали `PARSE_TASK`; добавлены варианты формы сайта (`uploadRoute` 0/1/2, `idempotencyKey`) и
+  пробный режим `check_bg_providers.py --problembo-url` (их собственный формат со ссылкой на картинку).
 - YouTube блокирует IP сервера («Sign in to confirm you’re not a bot», проверено на VPS 03.10). Поддержка cookies
   запасного аккаунта (`/data/yt-cookies.txt` или `YTDLP_COOKIES_FILE`) и прокси (`YTDLP_PROXY`); пользователь видит
   понятное сообщение на 8 языках, владельцу приходит уведомление в бота (не чаще раза в 6 часов). Инструкция: DEPLOY.md,

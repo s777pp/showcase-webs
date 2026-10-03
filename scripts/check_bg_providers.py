@@ -4,6 +4,7 @@ Run on the VPS (inside the worker, so it sees the same .env):
 
     docker compose exec worker python scripts/check_bg_providers.py            # all configured
     docker compose exec worker python scripts/check_bg_providers.py problembo  # one provider
+    docker compose exec worker python scripts/check_bg_providers.py --problembo-url [image URL]
 
 Each provider gets one small test picture (one paid image / credit). Keys, tokens and
 signed URLs are never printed: only HTTP statuses and the providers' own error codes.
@@ -32,7 +33,23 @@ def _picture() -> bytes:
     return out.getvalue()
 
 
+def probe_problembo_url(url: str) -> None:
+    """Send their own documented shape {"images":[{"url"}]} with a public picture: shows whether the
+    task parses at all (one paid image if it does)."""
+    import requests
+    headers = {"Authorization": "Bearer " + os.environ.get("PROBLEMBO_API_TOKEN", "").strip()}
+    for body in ({"images": [{"url": url}]}, {"images": [{"url": url}], "uploadRoute": 0}):
+        response = requests.post(f"{client.PROBLEMBO_URL}/background-removal/tasks", headers=headers, json=body,
+                                 timeout=(10, 30), allow_redirects=False)
+        print(f"    {sorted(body)} -> HTTP {response.status_code} {client._problembo_key(response)} {response.text[:200]}")
+        if response.status_code == 200:
+            break
+
+
 def main() -> int:
+    if sys.argv[1:2] == ["--problembo-url"]:
+        probe_problembo_url(sys.argv[2] if len(sys.argv) > 2 else "https://upload.wikimedia.org/wikipedia/commons/a/a3/June_odd-eyed-cat.jpg")
+        return 0
     logging.basicConfig(level=logging.WARNING, format="    %(message)s")
     logging.getLogger("sm.bg_remove").setLevel(logging.INFO)
     wanted = [name.lower() for name in sys.argv[1:]] or list(client.PROVIDERS)
