@@ -105,7 +105,18 @@
     "My requests": "Meine Anfragen",
     "The answer will also appear here in notifications → My requests": "Die Antwort erscheint auch hier in den Benachrichtigungen → Meine Anfragen",
     "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Das ist kein Link zu einem Steam-Profil. Füge einen Link wie steamcommunity.com/id/name oder steamcommunity.com/profiles/7656… ein oder einfach deinen eigenen Profilnamen.",
-    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube lässt unseren Server gerade nicht herunterladen. Lade das Video selbst herunter und füge die Datei hinzu."
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube lässt unseren Server gerade nicht herunterladen. Lade das Video selbst herunter und füge die Datei hinzu.",
+    "Always within Steam's 5 MB": "Immer innerhalb der 5 MB von Steam",
+    "Always on for final Steam GIFs. When you start, choose Standard (faster) or Maximum quality.": "Für fertige Steam-GIFs immer aktiv. Beim Start wählst du Standard (schneller) oder Maximale Qualität.",
+    "Upload a background and a character (picture, GIF or video). The preview on the right already shows the cut-out. «Compose» builds the final file.": "Lade einen Hintergrund und eine Figur hoch (Bild, GIF oder Video). Die Vorschau rechts zeigt die Freistellung schon. «Kombinieren» erstellt die fertige Datei.",
+    "Detect the backdrop automatically": "Hintergrund automatisch erkennen",
+    "Backdrop tolerance": "Hintergrund-Toleranz",
+    "Background — the picture, GIF or video the character is placed on.": "Hintergrund — das Bild, GIF oder Video, auf das die Figur gesetzt wird.",
+    "Character — a transparent PNG, or a picture, GIF or video on a solid backdrop of any colour (green, blue, white, black…).": "Figur — ein transparentes PNG oder ein Bild, GIF oder Video vor einfarbigem Hintergrund in jeder Farbe (grün, blau, weiß, schwarz…).",
+    "The preview on the right shows the cut-out. Drag, resize and rotate the character; the final file keeps the same placement.": "Die Vorschau rechts zeigt die Freistellung. Verschiebe, skaliere und drehe die Figur; die fertige Datei übernimmt die Position.",
+    "Solid backdrop — keep «Detect the backdrop automatically» or pick its colour. Pre-cut PNG — choose «Already transparent».": "Einfarbiger Hintergrund — lass «Hintergrund automatisch erkennen» oder wähle seine Farbe. Freigestelltes PNG — wähle «Bereits transparent».",
+    "Tolerance — how close to the backdrop a colour must be to disappear: lower it if parts of the character vanish. Smoothing — edge softness (0 = hard).": "Toleranz — wie nah eine Farbe am Hintergrund sein muss, um zu verschwinden: senke sie, wenn Teile der Figur fehlen. Glättung — Weichheit der Kante (0 = hart).",
+    "Video is usually ready in 10–30 s": "Ein Video ist meist in 10–30 s fertig"
   },
   "tr": {
     "3 Steam formats": "3 Steam formatı",
@@ -212,7 +223,18 @@
     "My requests": "Taleplerim",
     "The answer will also appear here in notifications → My requests": "Yanıt burada da bildirimlerde görünecek → Taleplerim",
     "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Bu bir Steam profil bağlantısı değil. steamcommunity.com/id/ad veya steamcommunity.com/profiles/7656… gibi bir bağlantı ya da yalnızca özel profil adını yapıştır.",
-    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube şu anda sunucumuzun indirmesine izin vermiyor. Videoyu kendin indir ve dosyayı ekle."
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube şu anda sunucumuzun indirmesine izin vermiyor. Videoyu kendin indir ve dosyayı ekle.",
+    "Always within Steam's 5 MB": "Her zaman Steam’in 5 MB sınırında",
+    "Always on for final Steam GIFs. When you start, choose Standard (faster) or Maximum quality.": "Son Steam GIF’lerinde her zaman açık. Başlatırken Standart (daha hızlı) ya da En yüksek kaliteyi seçersin.",
+    "Upload a background and a character (picture, GIF or video). The preview on the right already shows the cut-out. «Compose» builds the final file.": "Bir arka plan ve bir karakter yükle (resim, GIF ya da video). Sağdaki önizleme kesimi hemen gösterir. «Birleştir» son dosyayı oluşturur.",
+    "Detect the backdrop automatically": "Arka planı otomatik algıla",
+    "Backdrop tolerance": "Arka plan toleransı",
+    "Background — the picture, GIF or video the character is placed on.": "Arka plan — karakterin yerleştirildiği resim, GIF ya da video.",
+    "Character — a transparent PNG, or a picture, GIF or video on a solid backdrop of any colour (green, blue, white, black…).": "Karakter — şeffaf bir PNG ya da herhangi bir düz renk (yeşil, mavi, beyaz, siyah…) üzerinde resim, GIF veya video.",
+    "The preview on the right shows the cut-out. Drag, resize and rotate the character; the final file keeps the same placement.": "Sağdaki önizleme kesimi gösterir. Karakteri sürükle, boyutlandır ve döndür; son dosya aynı yerleşimi korur.",
+    "Solid backdrop — keep «Detect the backdrop automatically» or pick its colour. Pre-cut PNG — choose «Already transparent».": "Düz arka plan — «Arka planı otomatik algıla»yı bırak ya da rengini seç. Önceden kesilmiş PNG — «Zaten şeffaf»ı seç.",
+    "Tolerance — how close to the backdrop a colour must be to disappear: lower it if parts of the character vanish. Smoothing — edge softness (0 = hard).": "Tolerans — bir rengin kaybolması için arka plana ne kadar yakın olması gerektiği: karakterin parçaları kaybolursa düşür. Yumuşatma — kenar yumuşaklığı (0 = sert).",
+    "Video is usually ready in 10–30 s": "Video genellikle 10–30 sn’de hazır olur"
   },
   "fr": {
     "3 Steam formats": "3 formats Steam",
@@ -320,7 +342,18 @@
     "My requests": "Mes demandes",
     "The answer will also appear here in notifications → My requests": "La réponse apparaîtra aussi ici dans les notifications → Mes demandes",
     "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Ce n’est pas un lien vers un profil Steam. Colle un lien du type steamcommunity.com/id/nom ou steamcommunity.com/profiles/7656…, ou simplement ton nom de profil personnalisé.",
-    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube empêche actuellement notre serveur de télécharger. Téléchargez la vidéo vous-même et ajoutez le fichier."
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube empêche actuellement notre serveur de télécharger. Téléchargez la vidéo vous-même et ajoutez le fichier.",
+    "Always within Steam's 5 MB": "Toujours sous les 5 Mo de Steam",
+    "Always on for final Steam GIFs. When you start, choose Standard (faster) or Maximum quality.": "Toujours actif pour les GIF Steam finaux. Au lancement, choisissez Standard (plus rapide) ou Qualité maximale.",
+    "Upload a background and a character (picture, GIF or video). The preview on the right already shows the cut-out. «Compose» builds the final file.": "Ajoutez un fond et un personnage (image, GIF ou vidéo). L’aperçu à droite montre déjà le détourage. «Combiner» crée le fichier final.",
+    "Detect the backdrop automatically": "Détecter le fond automatiquement",
+    "Backdrop tolerance": "Tolérance du fond",
+    "Background — the picture, GIF or video the character is placed on.": "Fond — l’image, le GIF ou la vidéo sur lequel on place le personnage.",
+    "Character — a transparent PNG, or a picture, GIF or video on a solid backdrop of any colour (green, blue, white, black…).": "Personnage — un PNG transparent, ou une image, un GIF ou une vidéo sur un fond uni de n’importe quelle couleur (vert, bleu, blanc, noir…).",
+    "The preview on the right shows the cut-out. Drag, resize and rotate the character; the final file keeps the same placement.": "L’aperçu à droite montre le détourage. Déplacez, redimensionnez et tournez le personnage ; le fichier final garde ce placement.",
+    "Solid backdrop — keep «Detect the backdrop automatically» or pick its colour. Pre-cut PNG — choose «Already transparent».": "Fond uni — gardez «Détecter le fond automatiquement» ou choisissez sa couleur. PNG déjà détouré — choisissez «Déjà transparent».",
+    "Tolerance — how close to the backdrop a colour must be to disappear: lower it if parts of the character vanish. Smoothing — edge softness (0 = hard).": "Tolérance — à quel point une couleur doit être proche du fond pour disparaître : baissez-la si des parties du personnage disparaissent. Lissage — douceur du bord (0 = net).",
+    "Video is usually ready in 10–30 s": "Une vidéo est en général prête en 10–30 s"
   },
   "uk": {
     "3 Steam formats": "3 формати Steam",
@@ -430,7 +463,18 @@
     "My requests": "Мої звернення",
     "The answer will also appear here in notifications → My requests": "Відповідь також з’явиться тут у сповіщеннях → Мої звернення",
     "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Це не посилання на профіль Steam. Встав посилання на кшталт steamcommunity.com/id/ім’я або steamcommunity.com/profiles/7656… чи просто свій нік з адреси профілю.",
-    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube зараз не дає завантажувати з нашого сервера. Завантаж відео сам і додай файл."
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube зараз не дає завантажувати з нашого сервера. Завантаж відео сам і додай файл.",
+    "Always within Steam's 5 MB": "Завжди в межах 5 МБ для Steam",
+    "Always on for final Steam GIFs. When you start, choose Standard (faster) or Maximum quality.": "Завжди ввімкнено для підсумкових GIF Steam. Під час запуску обираєш «Стандарт» (швидше) або «Максимальну якість».",
+    "Upload a background and a character (picture, GIF or video). The preview on the right already shows the cut-out. «Compose» builds the final file.": "Завантаж фон і персонажа (картинку, GIF або відео). Попередній перегляд праворуч одразу показує вирізаного персонажа. «Поєднати» збирає підсумковий файл.",
+    "Detect the backdrop automatically": "Визначити фон автоматично",
+    "Backdrop tolerance": "Допуск фону",
+    "Background — the picture, GIF or video the character is placed on.": "Фон вітрини — картинка, GIF або відео, на яке ставиться персонаж.",
+    "Character — a transparent PNG, or a picture, GIF or video on a solid backdrop of any colour (green, blue, white, black…).": "Персонаж — PNG із прозорістю або картинка, GIF, відео на однотонному фоні будь-якого кольору (зелений, синій, білий, чорний…).",
+    "The preview on the right shows the cut-out. Drag, resize and rotate the character; the final file keeps the same placement.": "Попередній перегляд праворуч показує вирізку. Переміщуй, масштабуй і повертай персонажа — підсумковий файл збереже це розташування.",
+    "Solid backdrop — keep «Detect the backdrop automatically» or pick its colour. Pre-cut PNG — choose «Already transparent».": "Однотонний фон — залиш «Визначити фон автоматично» або вибери його колір. Уже вирізаний PNG — вибери «Уже прозорий».",
+    "Tolerance — how close to the backdrop a colour must be to disappear: lower it if parts of the character vanish. Smoothing — edge softness (0 = hard).": "Допуск — наскільки колір має бути близьким до фону, щоб зникнути: якщо зникають частини персонажа, зменш його. Згладжування — м’якість краю (0 = різко).",
+    "Video is usually ready in 10–30 s": "Відео зазвичай готове за 10–30 секунд"
   },
   "es": {
     "3 Steam formats": "3 formatos de Steam",
@@ -537,7 +581,18 @@
     "My requests": "Mis solicitudes",
     "The answer will also appear here in notifications → My requests": "La respuesta también aparecerá aquí en las notificaciones → Mis solicitudes",
     "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Esto no es un enlace a un perfil de Steam. Pega un enlace como steamcommunity.com/id/nombre o steamcommunity.com/profiles/7656…, o simplemente tu nombre de perfil personalizado.",
-    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube no deja descargar desde nuestro servidor ahora mismo. Descarga el vídeo tú mismo y añade el archivo."
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "YouTube no deja descargar desde nuestro servidor ahora mismo. Descarga el vídeo tú mismo y añade el archivo.",
+    "Always within Steam's 5 MB": "Siempre dentro de los 5 MB de Steam",
+    "Always on for final Steam GIFs. When you start, choose Standard (faster) or Maximum quality.": "Siempre activo para los GIF finales de Steam. Al empezar eliges Estándar (más rápido) o Calidad máxima.",
+    "Upload a background and a character (picture, GIF or video). The preview on the right already shows the cut-out. «Compose» builds the final file.": "Sube un fondo y un personaje (imagen, GIF o vídeo). La vista previa de la derecha ya muestra el recorte. «Combinar» crea el archivo final.",
+    "Detect the backdrop automatically": "Detectar el fondo automáticamente",
+    "Backdrop tolerance": "Tolerancia del fondo",
+    "Background — the picture, GIF or video the character is placed on.": "Fondo — la imagen, GIF o vídeo sobre el que se coloca el personaje.",
+    "Character — a transparent PNG, or a picture, GIF or video on a solid backdrop of any colour (green, blue, white, black…).": "Personaje — un PNG transparente, o una imagen, GIF o vídeo sobre un fondo liso de cualquier color (verde, azul, blanco, negro…).",
+    "The preview on the right shows the cut-out. Drag, resize and rotate the character; the final file keeps the same placement.": "La vista previa de la derecha muestra el recorte. Arrastra, escala y gira el personaje; el archivo final mantiene la misma posición.",
+    "Solid backdrop — keep «Detect the backdrop automatically» or pick its colour. Pre-cut PNG — choose «Already transparent».": "Fondo liso — deja «Detectar el fondo automáticamente» o elige su color. PNG ya recortado — elige «Ya transparente».",
+    "Tolerance — how close to the backdrop a colour must be to disappear: lower it if parts of the character vanish. Smoothing — edge softness (0 = hard).": "Tolerancia — cuánto debe parecerse un color al fondo para desaparecer: bájala si se pierden partes del personaje. Suavizado — suavidad del borde (0 = duro).",
+    "Video is usually ready in 10–30 s": "Un vídeo suele estar listo en 10–30 s"
   },
   "pt": {
     "3 Steam formats": "3 formatos da Steam",
@@ -644,6 +699,17 @@
     "My requests": "Minhas solicitações",
     "The answer will also appear here in notifications → My requests": "A resposta também aparecerá aqui nas notificações → Minhas solicitações",
     "This is not a Steam profile link. Paste a link like steamcommunity.com/id/name or steamcommunity.com/profiles/7656…, or just your custom profile name.": "Isto não é um link de perfil Steam. Cole um link como steamcommunity.com/id/nome ou steamcommunity.com/profiles/7656…, ou apenas o seu nome de perfil personalizado.",
-    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "O YouTube não está deixando nosso servidor baixar agora. Baixe o vídeo você mesmo e adicione o arquivo."
+    "YouTube is not letting our server download right now. Download the video yourself and add the file.": "O YouTube não está deixando nosso servidor baixar agora. Baixe o vídeo você mesmo e adicione o arquivo.",
+    "Always within Steam's 5 MB": "Sempre dentro dos 5 MB da Steam",
+    "Always on for final Steam GIFs. When you start, choose Standard (faster) or Maximum quality.": "Sempre ativo nos GIFs finais da Steam. Ao começar, escolha Padrão (mais rápido) ou Qualidade máxima.",
+    "Upload a background and a character (picture, GIF or video). The preview on the right already shows the cut-out. «Compose» builds the final file.": "Envie um fundo e um personagem (imagem, GIF ou vídeo). A prévia à direita já mostra o recorte. «Combinar» cria o arquivo final.",
+    "Detect the backdrop automatically": "Detectar o fundo automaticamente",
+    "Backdrop tolerance": "Tolerância do fundo",
+    "Background — the picture, GIF or video the character is placed on.": "Fundo — a imagem, GIF ou vídeo onde o personagem é colocado.",
+    "Character — a transparent PNG, or a picture, GIF or video on a solid backdrop of any colour (green, blue, white, black…).": "Personagem — um PNG transparente, ou uma imagem, GIF ou vídeo sobre um fundo liso de qualquer cor (verde, azul, branco, preto…).",
+    "The preview on the right shows the cut-out. Drag, resize and rotate the character; the final file keeps the same placement.": "A prévia à direita mostra o recorte. Arraste, redimensione e gire o personagem; o arquivo final mantém a mesma posição.",
+    "Solid backdrop — keep «Detect the backdrop automatically» or pick its colour. Pre-cut PNG — choose «Already transparent».": "Fundo liso — mantenha «Detectar o fundo automaticamente» ou escolha a cor dele. PNG já recortado — escolha «Já transparente».",
+    "Tolerance — how close to the backdrop a colour must be to disappear: lower it if parts of the character vanish. Smoothing — edge softness (0 = hard).": "Tolerância — o quanto uma cor precisa estar perto do fundo para sumir: diminua se partes do personagem desaparecerem. Suavização — suavidade da borda (0 = duro).",
+    "Video is usually ready in 10–30 s": "Um vídeo costuma ficar pronto em 10–30 s"
   }
 }

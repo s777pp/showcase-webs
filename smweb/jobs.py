@@ -302,7 +302,8 @@ def _run_process_job_from_payload(jid: str, job: dict) -> None:
         return
     # Reuse existing runner if present
     try:
-        with process_control.job_context(jid):
+        # Jobs queued before the quality choice existed keep the old (max) encoding.
+        with process_control.job_context(jid), proc.encode_profile(opts.get("encode_profile") or "max"):
             _run_process_job(jid, files_data, opts)
     except TypeError:
         # if signature differs, mark error
@@ -326,6 +327,17 @@ def _duplicate_original(name: str, path: Path, written: dict[str, str]) -> bool:
     if not duplicate:
         written[name] = digest
     return duplicate
+
+
+def _extra_wanted(name: str, extras) -> bool:
+    """False for an optional extra (original, DeviantArt preview) the user did not tick; None = keep all."""
+    if extras is None:
+        return True
+    if name.startswith("full_original."):
+        return proc.EXTRA_ORIGINAL in extras
+    if name.startswith(("full_with_bars.", "full_with_watermark.")):
+        return proc.EXTRA_PREVIEW in extras
+    return True
 
 
 def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
@@ -366,6 +378,8 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
     size_i = opts["size_i"]
     fps = opts["fps"]
     enc = opts["enc"]
+    # None (jobs from before the option) = every extra file, as before.
+    extras = None if opts.get("extras") is None else frozenset(opts.get("extras") or ())
     n_files = max(1, len(files_data))
     try:
         process_control.checkpoint(jid)
@@ -428,6 +442,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                             wm_color=color, wm_corner=corner, wm_scale=scale, wm_x=wm_x_f, wm_y=wm_y_f,
                             encoder="ffmpeg" if enc == "pillow" else enc, fps=max(5, min(int(fps), 24)),
                             duration=4.0, frame_fx=frame_fx,
+                            extras=extras,
                         )
                         if mode == "workshop":
                             paths = proc.process_gif_workshop(clip, work, width=size_i, **clip_kwargs)
@@ -438,7 +453,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                         written: dict[str, str] = {}
                         for pname, pth in paths.items():
                             pth = Path(pth)
-                            if pth.is_file() and not _duplicate_original(pname, pth, written):
+                            if pth.is_file() and _extra_wanted(pname, extras) and not _duplicate_original(pname, pth, written):
                                 zf.write(pth, f"{folder}/{pname}")
                                 if len(listed) < 20:
                                     listed.append({"name": f"{folder}/{pname}", "size": pth.stat().st_size})
@@ -478,6 +493,8 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                 frame_fx=frame_fx,
                             )
                         for pname, data in parts.items():
+                            if not _extra_wanted(pname, extras):
+                                continue
                             zf.writestr(f"{folder}/{pname}", data)
                             if len(listed) < 20:
                                 listed.append({"name": f"{folder}/{pname}", "size": len(data)})
@@ -501,6 +518,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
                                     outline_width=outline_width, outline_color=outline_color,
                                     rotation=rotation, frame_fx=frame_fx,
+                                    extras=extras,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_video_featured(
@@ -508,6 +526,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     wm_text=text, wm_font=opts["wm_font"], wm_opacity=opacity, wm_color=color,
                                     wm_corner=corner, wm_scale=scale, wm_x=wm_x_f, wm_y=wm_y_f,
                                     rotation=rotation, frame_fx=frame_fx,
+                                    extras=extras,
                                 )
                             else:
                                 paths = proc.process_video_split(
@@ -516,6 +535,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     duration=v_dur, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
                                     rotation=rotation, frame_fx=frame_fx,
+                                    extras=extras,
                                 )
                         else:
                             if mode == "workshop":
@@ -527,6 +547,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     outline_width=outline_width, outline_color=outline_color,
                                     rotation=rotation,
                                     width=size_i, frame_fx=frame_fx,
+                                    extras=extras,
                                 )
                             elif mode == "featured":
                                 paths = proc.process_gif_featured(
@@ -535,6 +556,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     wm_color=color, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f,
                                     rotation=rotation, frame_fx=frame_fx,
+                                    extras=extras,
                                 )
                             else:
                                 paths = proc.process_gif_split(
@@ -543,13 +565,14 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                                     wm_color=color, wm_corner=corner, wm_scale=scale,
                                     wm_x=wm_x_f, wm_y=wm_y_f, encoder=encoder,
                                     rotation=rotation, frame_fx=frame_fx,
+                                    extras=extras,
                                 )
                         written: dict[str, str] = {}
                         for pname, pth in paths.items():
                             pth = Path(pth)
                             if not pth.is_file():
                                 continue
-                            if _duplicate_original(pname, pth, written):
+                            if not _extra_wanted(pname, extras) or _duplicate_original(pname, pth, written):
                                 pth.unlink(missing_ok=True)
                                 continue
                             size_bytes = pth.stat().st_size

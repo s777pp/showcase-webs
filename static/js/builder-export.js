@@ -161,6 +161,8 @@
     form.append('gif_encoder', 'gifski'); form.append('workshop_outline', '0'); form.append('auto_contrast', '0');
     form.append('all_modes', '0'); form.append('rotations', '[0]'); form.append('asset_ids', '[]');
     Object.keys(o.watermark || {}).forEach(function (k) { form.append(k, o.watermark[k]); });
+    // Same ZIP rule as every tool: only the Steam files (extras off), chosen encode speed.
+    form.append('encode_profile', o.encodeProfile || 'standard');
     form.append('files', file);
     var started = await upload(form, function (p) { o.onProgress && o.onProgress('upload', p); });
     var id = started.job_id, deadline = Date.now() + 15 * 60 * 1000, job = null;

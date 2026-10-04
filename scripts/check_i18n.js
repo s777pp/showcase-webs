@@ -193,6 +193,33 @@ for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
   if (Object.keys(values).sort().join('|') !== squaresFxKeys) errors.push(`Workshop squares effects copy: incomplete ${language}`);
   if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`Workshop squares effects copy: empty ${language}`);
 }
+// Quality dialog + "also put in the ZIP" switches: reviewed in all eight languages in the source itself.
+const encodeChoice = evaluateDictionary('static/js/encode-choice.js', 'var COPY=');
+const encodeChoiceKeys = Object.keys(encodeChoice.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  const values = encodeChoice[language] || {};
+  if (Object.keys(values).sort().join('|') !== encodeChoiceKeys) errors.push(`Encode choice copy: incomplete ${language}`);
+  if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`Encode choice copy: empty ${language}`);
+}
+// Error popup: { language: { key: text | [problem, fix] } }, reviewed in all eight languages.
+const errorReport = evaluateDictionary('static/js/error-report.js', 'var COPY =');
+const errorReportKeys = Object.keys(errorReport.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  const values = errorReport[language] || {};
+  if (Object.keys(values).sort().join('|') !== errorReportKeys) errors.push(`Error popup copy: incomplete ${language}`);
+  for (const value of Object.values(values)) {
+    const parts = Array.isArray(value) ? value : [value];
+    if (parts.some(part => typeof part !== 'string' || !part.trim())) errors.push(`Error popup copy: empty ${language}`);
+  }
+}
+// Character keying controls: reviewed in all eight languages in the source itself.
+const chromaUi = evaluateDictionary('static/js/chroma-ui.js', 'var COPY =');
+const chromaUiKeys = Object.keys(chromaUi.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  const values = chromaUi[language] || {};
+  if (Object.keys(values).sort().join('|') !== chromaUiKeys) errors.push(`Character keying copy: incomplete ${language}`);
+  if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`Character keying copy: empty ${language}`);
+}
 // Maintenance notice labels: { key: { language: text } }, reviewed in all eight languages.
 for (const [key, values] of Object.entries(evaluateDictionary('static/ss-shell.js', 'var MAINTENANCE_UI ='))) {
   for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {

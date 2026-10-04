@@ -45,8 +45,8 @@
     media_loading: ['Loading the animated background{pct}…', 'Загружаем анимированный фон{pct}…', 'Animierter Hintergrund lädt{pct}…', 'Hareketli arka plan yükleniyor{pct}…', 'Chargement du fond animé{pct}…', 'Завантажуємо анімоване тло{pct}…', 'Cargando el fondo animado{pct}…', 'Carregando o fundo animado{pct}…'],
     media_slow: ['Animated backgrounds are video files of several MB, so the time depends on your connection. The editor keeps working meanwhile.', 'Анимированные фоны — это видео на несколько МБ, поэтому время зависит от скорости интернета. Редактор при этом работает.', 'Animierte Hintergründe sind Videos mit mehreren MB, die Dauer hängt von deiner Verbindung ab. Der Editor funktioniert weiter.', 'Hareketli arka planlar birkaç MB’lık videolardır; süre bağlantına bağlı. Bu sırada editör çalışır.', 'Les fonds animés sont des vidéos de plusieurs Mo : la durée dépend de votre connexion. L’éditeur reste utilisable.', 'Анімовані тла — це відео на кілька МБ, тож час залежить від швидкості інтернету. Редактор тим часом працює.', 'Los fondos animados son vídeos de varios MB: el tiempo depende de tu conexión. El editor sigue funcionando.', 'Fundos animados são vídeos de vários MB, então o tempo depende da sua conexão. O editor continua funcionando.'],
     media_error: ['The background could not be loaded. Check the connection or pick it again.', 'Не удалось загрузить фон. Проверь интернет или выбери его ещё раз.', 'Der Hintergrund konnte nicht geladen werden. Prüfe die Verbindung oder wähle ihn erneut.', 'Arka plan yüklenemedi. Bağlantını kontrol et ya da yeniden seç.', 'Impossible de charger le fond. Vérifiez la connexion ou choisissez-le à nouveau.', 'Не вдалося завантажити тло. Перевір інтернет або обери його ще раз.', 'No se pudo cargar el fondo. Revisa la conexión o elígelo de nuevo.', 'Não foi possível carregar o fundo. Verifique a conexão ou escolha de novo.'],
-    wait_title: ['This can take up to 2 minutes', 'Это может занять до 2 минут', 'Das kann bis zu 2 Minuten dauern', 'Bu işlem 2 dakikaya kadar sürebilir', 'Cela peut prendre jusqu’à 2 minutes', 'Це може тривати до 2 хвилин', 'Esto puede tardar hasta 2 minutos', 'Isso pode levar até 2 minutos'],
-    wait_body: ['The site has not frozen: we are assembling the frames and preparing your Steam files. Please do not close or reload the tab.', 'Сайт не завис: мы собираем кадры и готовим файлы для Steam. Не закрывай и не обновляй вкладку.', 'Die Seite hängt nicht: Wir setzen die Bilder zusammen und bereiten deine Steam-Dateien vor. Bitte den Tab nicht schließen oder neu laden.', 'Site donmadı: kareleri birleştirip Steam dosyalarını hazırlıyoruz. Lütfen sekmeyi kapatma veya yenileme.', 'Le site n’est pas bloqué : nous assemblons les images et préparons vos fichiers Steam. Ne fermez pas et ne rechargez pas l’onglet.', 'Сайт не завис: ми збираємо кадри й готуємо файли для Steam. Не закривай і не оновлюй вкладку.', 'El sitio no se ha colgado: estamos montando los fotogramas y preparando tus archivos de Steam. No cierres ni recargues la pestaña.', 'O site não travou: estamos montando os quadros e preparando seus arquivos da Steam. Não feche nem recarregue a aba.'],
+    wait_title: ['Preparing your Steam files', 'Готовим файлы для Steam', 'Deine Steam-Dateien werden vorbereitet', 'Steam dosyaların hazırlanıyor', 'Préparation de vos fichiers Steam', 'Готуємо файли для Steam', 'Preparando tus archivos de Steam', 'Preparando seus arquivos da Steam'],
+    wait_body: ['First the frames are drawn in your browser: keep this tab open until the upload starts. Then the server cuts the files, usually in under a minute.', 'Сначала кадры рисуются в твоём браузере: не закрывай вкладку, пока не начнётся загрузка. Потом сервер нарезает файлы, обычно меньше минуты.', 'Zuerst werden die Bilder in deinem Browser gezeichnet: Lass den Tab offen, bis der Upload beginnt. Danach schneidet der Server die Dateien, meist in unter einer Minute.', 'Önce kareler tarayıcında çizilir: yükleme başlayana kadar sekmeyi açık tut. Sonra sunucu dosyaları keser, genellikle bir dakikadan kısa sürer.', 'Les images sont d’abord dessinées dans votre navigateur : gardez l’onglet ouvert jusqu’au début de l’envoi. Ensuite le serveur découpe les fichiers, en général en moins d’une minute.', 'Спочатку кадри малюються у твоєму браузері: не закривай вкладку, доки не почнеться завантаження. Потім сервер нарізає файли, зазвичай менше хвилини.', 'Primero los fotogramas se dibujan en tu navegador: no cierres la pestaña hasta que empiece la subida. Después el servidor corta los archivos, normalmente en menos de un minuto.', 'Primeiro os quadros são desenhados no seu navegador: mantenha a aba aberta até o envio começar. Depois o servidor corta os arquivos, geralmente em menos de um minuto.'],
     dl_steam: ['Download for Steam', 'Скачать для Steam', 'Für Steam herunterladen', 'Steam için indir', 'Télécharger pour Steam', 'Завантажити для Steam', 'Descargar para Steam', 'Baixar para a Steam'],
     dl_hint: ['Cuts the design into Steam files, fits GIFs under 5 MB and downloads one ZIP. No need to open Prepare.', 'Нарежет дизайн на файлы Steam, ужмёт GIF до 5 МБ и скачает один ZIP. Открывать «Обработку» не нужно.', 'Schneidet das Design in Steam-Dateien, passt GIFs unter 5 MB an und lädt ein ZIP herunter.', 'Tasarımı Steam dosyalarına böler, GIF’leri 5 MB altına sığdırır ve tek ZIP indirir.', 'Découpe le design en fichiers Steam, ajuste les GIF sous 5 Mo et télécharge un ZIP.', 'Наріже дизайн на файли Steam, стисне GIF до 5 МБ і завантажить один ZIP.', 'Corta el diseño en archivos de Steam, ajusta los GIF a menos de 5 MB y descarga un ZIP.', 'Corta o design em arquivos da Steam, ajusta os GIFs abaixo de 5 MB e baixa um ZIP.'],
     dl_fps: ['Frames per second of the GIF', 'Кадров в секунду в GIF', 'Bilder pro Sekunde im GIF', 'GIF saniye başına kare', 'Images par seconde du GIF', 'Кадрів на секунду в GIF', 'Fotogramas por segundo del GIF', 'Quadros por segundo do GIF'],
@@ -58,7 +58,7 @@
     h_label: ['Showcase height', 'Высота витрины', 'Höhe der Vitrine', 'Vitrin yüksekliği', 'Hauteur de la vitrine', 'Висота вітрини', 'Altura del expositor', 'Altura da vitrine'],
     h_drag: ['Drag to change the height', 'Потяни, чтобы изменить высоту', 'Ziehen, um die Höhe zu ändern', 'Yüksekliği değiştirmek için sürükle', 'Faites glisser pour changer la hauteur', 'Потягни, щоб змінити висоту', 'Arrastra para cambiar la altura', 'Arraste para mudar a altura'],
     h_fit: ['Fit to the Steam background', 'Подогнать под фон Steam', 'An den Steam-Hintergrund anpassen', 'Steam arka planına sığdır', 'Ajuster au fond Steam', 'Підігнати під тло Steam', 'Ajustar al fondo de Steam', 'Ajustar ao fundo da Steam'],
-    h_fit_help: ['Changes the showcase height so it ends exactly where the Steam profile background ends. Below that line Steam shows only the plain page colour, so extra height adds nothing to the look and only makes the files bigger.', 'Меняет высоту витрины так, чтобы она заканчивалась ровно там, где кончается фон профиля Steam. Ниже этой линии Steam показывает просто цвет страницы, поэтому лишняя высота ничего не добавляет к виду и только утяжеляет файлы.', 'Ändert die Höhe der Vitrine so, dass sie genau dort endet, wo der Hintergrund des Steam-Profils endet. Darunter zeigt Steam nur die Seitenfarbe, zusätzliche Höhe bringt also nichts und macht nur die Dateien größer.', 'Vitrin yüksekliğini, Steam profil arka planının bittiği yerde tam bitecek şekilde ayarlar. Bu çizginin altında Steam yalnızca düz sayfa rengini gösterir; fazla yükseklik görünüme bir şey katmaz, sadece dosyaları büyütür.', 'Ajuste la hauteur de la vitrine pour qu’elle s’arrête exactement là où finit le fond du profil Steam. En dessous, Steam n’affiche que la couleur de la page : la hauteur en plus n’apporte rien et alourdit seulement les fichiers.', 'Змінює висоту вітрини так, щоб вона закінчувалася рівно там, де закінчується тло профілю Steam. Нижче цієї лінії Steam показує лише колір сторінки, тож зайва висота нічого не додає до вигляду й лише робить файли важчими.', 'Cambia la altura del expositor para que termine justo donde acaba el fondo del perfil de Steam. Por debajo de esa línea Steam solo muestra el color de la página, así que la altura extra no aporta nada y solo hace los archivos más pesados.', 'Muda a altura da vitrine para que ela termine exatamente onde acaba o fundo do perfil da Steam. Abaixo dessa linha a Steam mostra só a cor da página, então altura extra não acrescenta nada e só deixa os arquivos maiores.'],
+    h_fit_help: ['Changes the showcase height so it ends exactly where the Steam profile background ends. Below that line Steam shows only the plain page colour, so extra height adds nothing to the look and only makes the files bigger. It also happens by itself when you choose a Steam background or a showcase type.', 'Меняет высоту витрины так, чтобы она заканчивалась ровно там, где кончается фон профиля Steam. Ниже этой линии Steam показывает просто цвет страницы, поэтому лишняя высота ничего не добавляет к виду и только утяжеляет файлы. Это происходит и само, когда выбираешь фон Steam или тип витрины.', 'Ändert die Höhe der Vitrine so, dass sie genau dort endet, wo der Hintergrund des Steam-Profils endet. Darunter zeigt Steam nur die Seitenfarbe, zusätzliche Höhe bringt also nichts und macht nur die Dateien größer. Das passiert auch automatisch, wenn du einen Steam-Hintergrund oder einen Vitrinentyp wählst.', 'Vitrin yüksekliğini, Steam profil arka planının bittiği yerde tam bitecek şekilde ayarlar. Bu çizginin altında Steam yalnızca düz sayfa rengini gösterir; fazla yükseklik görünüme bir şey katmaz, sadece dosyaları büyütür. Bir Steam arka planı ya da vitrin türü seçtiğinde bu kendiliğinden de olur.', 'Ajuste la hauteur de la vitrine pour qu’elle s’arrête exactement là où finit le fond du profil Steam. En dessous, Steam n’affiche que la couleur de la page : la hauteur en plus n’apporte rien et alourdit seulement les fichiers. Cela se fait aussi tout seul quand vous choisissez un fond Steam ou un type de vitrine.', 'Змінює висоту вітрини так, щоб вона закінчувалася рівно там, де закінчується тло профілю Steam. Нижче цієї лінії Steam показує лише колір сторінки, тож зайва висота нічого не додає до вигляду й лише робить файли важчими. Це відбувається й саме, коли обираєш фон Steam або тип вітрини.', 'Cambia la altura del expositor para que termine justo donde acaba el fondo del perfil de Steam. Por debajo de esa línea Steam solo muestra el color de la página, así que la altura extra no aporta nada y solo hace los archivos más pesados. También ocurre solo cuando eliges un fondo de Steam o un tipo de escaparate.', 'Muda a altura da vitrine para que ela termine exatamente onde acaba o fundo do perfil da Steam. Abaixo dessa linha a Steam mostra só a cor da página, então altura extra não acrescenta nada e só deixa os arquivos maiores. Isso também acontece sozinho quando você escolhe um fundo da Steam ou um tipo de vitrine.'],
     bg_end: ['Steam background ends here', 'Здесь кончается фон Steam', 'Hier endet der Steam-Hintergrund', 'Steam arka planı burada biter', 'Le fond Steam s’arrête ici', 'Тут закінчується тло Steam', 'Aquí termina el fondo de Steam', 'Aqui termina o fundo da Steam'],
     steam_align: ['Match the profile background', 'Совместить с фоном профиля', 'An den Profilhintergrund anpassen', 'Profil arka planıyla eşleştir', 'Aligner sur le fond du profil', 'Поєднати з тлом профілю', 'Alinear con el fondo del perfil', 'Alinhar ao fundo do perfil'],
     steam_offset: ['Showcase lower on the profile', 'Витрина ниже на профиле', 'Vitrine weiter unten im Profil', 'Vitrin profilde daha aşağıda', 'Vitrine plus bas sur le profil', 'Вітрина нижче на профілі', 'Expositor más abajo en el perfil', 'Vitrine mais abaixo no perfil'],
@@ -646,9 +646,9 @@
     steamBox.querySelector('.bx-steamfit__hint').textContent = t('steam_hint');
   }
   if (steamGroup) {
-    steamBox.querySelector('#builderSteamAlign').addEventListener('change', function (event) { SMBuilder.setSteamAlign(event.target.checked); paintSteam(); paintHeight(); });
+    steamBox.querySelector('#builderSteamAlign').addEventListener('change', function (event) { SMBuilder.setSteamAlign(event.target.checked); paintSteam(); if (event.target.checked) requestFit(false); paintHeight(); });
     var steamOffset = steamBox.querySelector('#builderSteamOffset');
-    steamOffset.addEventListener('input', function () { var v = SMBuilder.setSteamOffset(steamOffset.value); steamBox.querySelector('.bx-steamfit__offset output').textContent = v + ' px'; paintHeight(); });
+    steamOffset.addEventListener('input', function () { var v = SMBuilder.setSteamOffset(steamOffset.value); steamBox.querySelector('.bx-steamfit__offset output').textContent = v + ' px'; requestFit(false); paintHeight(); });
     steamOffset.addEventListener('change', function () { SMBuilder.commitHeight(); });
   }
 
@@ -665,13 +665,82 @@
   var bgEnd = node('div', 'bx-bgend', '<span></span>'); bgEnd.hidden = true;
   if (stage) stage.append(heightBar, bgEnd, fitBox);
   var heightDrag = null;
+  // steamInfo() reports a default size (300x150, 1x1) until the media has decoded its header.
+  function mediaReady(info) { var n = info && info.node; return !!n && (n.videoWidth > 0 || n.naturalWidth > 0 || n.displayWidth > 0); }
   function fitHeight() {
-    var info = SMBuilder.steamInfo(); if (!info) return null;
+    var info = SMBuilder.steamInfo(); if (!mediaReady(info)) return null;
     var part = info.parts[0], scale = part.sw / part.dw;
-    return Math.round((info.height - part.y) / scale);
+    return info.height > part.y ? Math.round((info.height - part.y) / scale) : null;
+  }
+  /* Auto-fit (owner, 2026-10-04): choosing a Steam background, a showcase type, the
+     alignment or the offset fits the height to the end of the background by itself.
+     Once the height is dragged by hand it stays (a type change keeps it) until the
+     fit button or a newly chosen background. Media load late, so the wish waits
+     in `fitWanted` until steamInfo() knows the background size. */
+  var fitWanted = false, manualHeight = false, fitTimer = null, fitTries = 0;
+  function requestFit(fresh) {
+    if (fresh) manualHeight = false;
+    if (manualHeight) return;
+    fitWanted = true; fitTries = 0; tryAutoFit();
+  }
+  function tryAutoFit() {
+    if (!fitWanted) return;
+    var fit = fitHeight();
+    if (!fit) {
+      // Not decoded yet: look again shortly (the 0.7 s stage refresh pauses in hidden tabs); give up after ~30 s.
+      if (!fitTimer && ++fitTries < 120) fitTimer = setTimeout(function () { fitTimer = null; tryAutoFit(); }, 250);
+      return;
+    }
+    fitWanted = false;
+    if (Math.abs(fit - SMBuilder.height()) > 2) { SMBuilder.setHeight(fit); SMBuilder.commitHeight(); }
+    paintHeight();
+  }
+  document.addEventListener('sm:builder-steam-bg', function () { requestFit(true); });
+  document.addEventListener('sm:builder-mode', function () { requestFit(false); });
+  document.addEventListener('sm:builder-media', function () { if (fitWanted) setTimeout(tryAutoFit, 0); });
+
+  /* Variant "B" (owner, 2026-10-04): instead of the plain stage colour the whole Steam
+     background is shown around the canvas at the same scale and place as on the profile,
+     with Steam's 976 px profile column and the showcase block as translucent shapes.
+     Display only: the exported files still hold just the showcase area. */
+  var steamCtx = node('div', 'bx-steamctx', '<div class="bx-steamctx__bg"></div><i class="bx-steamctx__dim"></i><i class="bx-steamctx__col"></i><i class="bx-steamctx__block"><b></b></i>');
+  steamCtx.setAttribute('aria-hidden', 'true'); steamCtx.hidden = true;
+  if (stage) stage.prepend(steamCtx);
+  var ctxMedia = null, ctxSrc = '';
+  function place(el, x, y, w, h) { el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.width = w + 'px'; if (h != null) el.style.height = h + 'px'; }
+  function paintContext(info, box, wrap) {
+    var on = !!(mediaReady(info) && box.width && canvasEl.width);
+    steamCtx.hidden = !on; stage.classList.toggle('has-steamctx', on);
+    if (!on) return;
+    var source = info.node.currentSrc || info.node.src || info.layer.src, isVideo = info.node.tagName === 'VIDEO';
+    if (source !== ctxSrc) {
+      ctxSrc = source;
+      ctxMedia = document.createElement(isVideo ? 'video' : 'img');
+      if (isVideo) { ctxMedia.muted = true; ctxMedia.loop = true; ctxMedia.playsInline = true; ctxMedia.autoplay = true; ctxMedia.preload = 'auto'; }
+      else ctxMedia.decoding = 'async';
+      ctxMedia.alt = ''; ctxMedia.src = source;
+      steamCtx.firstChild.replaceChildren(ctxMedia);
+      if (isVideo) ctxMedia.play().catch(function () {});
+    }
+    // Display pixels per background pixel, from the first showcase part (exact vertically;
+    // Workshop/Split gaps make the files 1-3 % narrower than their footprint, so centre it).
+    var parts = info.parts, first = parts[0], last = parts[parts.length - 1], column = (info.width - 976) / 2;
+    var perCanvas = box.width / canvasEl.width, f = perCanvas * first.dw / first.sw;
+    var left = box.left - wrap.left, top = box.top - wrap.top, span = (last.sx + last.sw - first.sx) * f;
+    var bgLeft = left - (column + first.sx) * f - (span - box.width) / 2, bgTop = top - first.y * f;
+    place(ctxMedia, bgLeft, bgTop, info.width * f, info.height * f);
+    var col = steamCtx.querySelector('.bx-steamctx__col'); col.style.left = (bgLeft + column * f) + 'px'; col.style.width = (976 * f) + 'px';
+    // Steam's showcase box: 12 px around the images, title bar above them.
+    var block = steamCtx.querySelector('.bx-steamctx__block');
+    place(block, bgLeft + (column + 11) * f, top - 46 * f, 654 * f, box.height + 58 * f);
+    block.firstChild.style.height = (34 * f) + 'px';
+    if (isVideo && info.node.tagName === 'VIDEO' && Math.abs((ctxMedia.currentTime || 0) - (info.node.currentTime || 0)) > 0.25) {
+      try { ctxMedia.currentTime = info.node.currentTime; } catch (e) {}
+    }
   }
   function paintHeight() {
     if (!stage || !canvasEl) return;
+    tryAutoFit();
     var box = canvasEl.getBoundingClientRect(), wrap = stage.getBoundingClientRect();
     heightBar.hidden = !box.width || !SMBuilder.layers().length;
     heightBar.style.left = Math.round(box.left - wrap.left + box.width / 2) + 'px';
@@ -694,12 +763,14 @@
       bgEnd.style.top = Math.round(box.top - wrap.top + box.height * fit / SMBuilder.height()) + 'px';
       bgEnd.querySelector('span').textContent = t('bg_end');
     } else bgEnd.hidden = true;
+    paintContext(info, box, wrap);
   }
   if (stage) {
     var grip = heightBar.querySelector('.bx-height__grip');
     grip.addEventListener('pointerdown', function (event) {
       var box = canvasEl.getBoundingClientRect();
       heightDrag = { y: event.clientY, h: SMBuilder.height(), display: box.height, pointer: event.pointerId };
+      manualHeight = true; fitWanted = false;  // the person sets the length now; type changes keep it
       grip.setPointerCapture(event.pointerId); event.preventDefault(); heightBar.classList.add('is-dragging');
     });
     grip.addEventListener('pointermove', function (event) {
@@ -711,9 +782,9 @@
     grip.addEventListener('pointerup', endHeight); grip.addEventListener('pointercancel', endHeight);
     grip.addEventListener('keydown', function (event) {
       var step = event.shiftKey ? 50 : 10;
-      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); SMBuilder.setHeight(SMBuilder.height() + (event.key === 'ArrowDown' ? step : -step)); SMBuilder.commitHeight(); paintHeight(); }
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); manualHeight = true; fitWanted = false; SMBuilder.setHeight(SMBuilder.height() + (event.key === 'ArrowDown' ? step : -step)); SMBuilder.commitHeight(); paintHeight(); }
     });
-    fitBox.querySelector('.bx-fitbg__button').addEventListener('click', function () { var fit = fitHeight(); if (fit) { SMBuilder.setHeight(fit); SMBuilder.commitHeight(); paintHeight(); } });
+    fitBox.querySelector('.bx-fitbg__button').addEventListener('click', function () { var fit = fitHeight(); if (fit) { manualHeight = false; SMBuilder.setHeight(fit); SMBuilder.commitHeight(); paintHeight(); } });
     var fitHelp = fitBox.querySelector('.bx-fitbg__help'), fitTip = fitBox.querySelector('.bx-fitbg__tip');
     var showTip = function (open) { fitTip.hidden = !open; fitHelp.setAttribute('aria-expanded', String(open)); };
     fitHelp.addEventListener('click', function (event) { event.stopPropagation(); showTip(fitTip.hidden); });
@@ -721,7 +792,8 @@
     fitHelp.addEventListener('mouseleave', function () { showTip(false); });
     fitHelp.addEventListener('blur', function () { showTip(false); });
     fitHelp.addEventListener('keydown', function (event) { if (event.key === 'Escape') showTip(false); });
-    new ResizeObserver(function () { paintHeight(); }).observe(stage);
+    var stageObserver = new ResizeObserver(function () { paintHeight(); });
+    stageObserver.observe(stage); stageObserver.observe(canvasEl);
     setInterval(function () { if (!document.hidden && root.offsetParent) paintHeight(); }, 700);
   }
 
@@ -737,6 +809,9 @@
     var dlButton = dlWrap.querySelector('#builderDownloadSteam');
     dlButton.addEventListener('click', async function () {
       if (dlButton.disabled) return;
+      // An animated design is a GIF for Steam: Standard or Maximum quality (encode-choice.js), asked before the render.
+      var encodeProfile = window.SMEncodeChoice ? await SMEncodeChoice.ask({ animated: !SMBuilder.animated || SMBuilder.animated() }) : 'standard';
+      if (!encodeProfile || dlButton.disabled) return;
       dlButton.disabled = true; exportButton.disabled = true; waitNote.hidden = false; paintDownload();
       try { waitNote.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
       var say = function (key, pct) { SMBuilder.status(t(key).replace('{pct}', pct == null ? '' : Math.round(pct)), 'wait'); };
@@ -746,7 +821,7 @@
         var watermark = { wm_text: q('wmText', 'n1t1337'), wm_font: q('wmFont', 'lap'), wm_opacity: q('wmOpacity', '22'), wm_enable: q('wmEnable', '1'),
           wm_corner: q('wmCorner', 'bl'), wm_color: q('wmColor', '#ffffff'), wm_scale: String((Number(q('wmScale', '100')) || 100) / 100) };
         var result = await SMBuilderExport.processForSteam(file, {
-          mode: SMBuilder.project().mode, fps: Number($('builderDownloadFps').value) || 15, size: 750, watermark: watermark,
+          mode: SMBuilder.project().mode, fps: Number($('builderDownloadFps').value) || 15, size: 750, watermark: watermark, encodeProfile: encodeProfile,
           onProgress: function (stage, fraction) { say(stage === 'upload' ? 'st_upload' : stage === 'queued' ? 'st_queued' : 'st_process', fraction * 100); }
         });
         SMBuilder.status(t('st_done'), 'ok');

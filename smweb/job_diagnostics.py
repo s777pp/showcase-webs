@@ -288,3 +288,15 @@ def summarize(jobs: list[dict]) -> dict:
     finished = counts["done"] + counts["error"]
     counts["success_rate"] = round(counts["done"] / finished * 100) if finished else None
     return {"counts": counts, "reasons": sorted(reasons.values(), key=lambda item: -item["count"])[:8]}
+
+
+def public_error(text: str | None) -> dict:
+    """What the user-facing error popup needs (static/js/error-report.js): ``error_kind``
+    "user" = the file or settings, explained with a fix and no report form; "server" = our
+    side (or unknown), the popup offers to send the report to the developer. ``error_code``
+    is the diagnostic category, never the raw text (that may carry paths)."""
+    matched = classify(str(text or ""))
+    if not matched:
+        return {"error_kind": "server", "error_code": "unknown"}
+    category, info = matched
+    return {"error_kind": "user" if info.get("fault") == "user" else "server", "error_code": category}

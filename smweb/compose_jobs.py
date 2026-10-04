@@ -55,7 +55,9 @@ def _sweep_old_jobs(jobs_root: Path, max_age: float = 3600.0) -> None:
 
 def run(jid: str, job: dict) -> None:
     try:
-        with process_control.job_context(jid):
+        # Jobs queued before the quality choice existed keep the old (max) encoding.
+        profile = (job.get("options") or {}).get("encode_profile") or "max"
+        with process_control.job_context(jid), proc.encode_profile(profile):
             _run(jid, job)
     except process_control.JobCancelled:
         process_control.mark_cancelled(jid)
@@ -86,6 +88,7 @@ def _run(jid: str, job: dict) -> None:
     fps = max(5, min(30, int(opts.get("fps") or 12)))
     key = str(opts.get("chroma_key") or "auto")
     tol = float(opts.get("chroma_tol") or 55)
+    holes = opts.get("chroma_holes", True) is not False
     feather = max(0.0, min(4.0, float(opts.get("feather") or 1.6)))
     scale = max(0.05, min(4.0, float(opts.get("scale") or 1.0)))
     offset_x = max(0.0, min(1.0, float(opts.get("offset_x") or 0.5)))
@@ -101,22 +104,24 @@ def _run(jid: str, job: dict) -> None:
     if animated:
         bg = background
         ch = character
+        # Videos are decoded into lossless frame folders; the compositor reads
+        # them directly (a GIF fitted to 5 MB here cost a size search per layer).
         if background.suffix.lower() in VIDEO_EXTS:
             process_control.checkpoint(jid)
             rs.job_update(jid, pct=18, stage="background")
-            bg = root / "background.gif"
-            proc.media_to_gif(background, bg, fps=fps, width=width, duration=8)
+            bg = root / "background_frames"
+            proc.extract_frames(background, bg, fps=fps, width=width, duration=8)
         if character.suffix.lower() in VIDEO_EXTS:
             process_control.checkpoint(jid)
             t = time.monotonic()
             rs.job_update(jid, pct=30, stage="character")
-            ch = root / "character.gif"
-            proc.media_to_gif(character, ch, fps=fps, width=min(width, 800), duration=8)
-            _LOG.info(f"[compose {jid}] character media_to_gif: {time.monotonic()-t:.1f}s")
+            ch = root / "character_frames"
+            proc.extract_frames(character, ch, fps=fps, width=min(width, 800), duration=8)
+            _LOG.info(f"[compose {jid}] character frames: {time.monotonic()-t:.1f}s")
         t = time.monotonic()
         rs.job_update(jid, pct=45, stage="chromakey")
         frames, durations = proc.compose_animated_layers(
-            bg, ch, chroma_key=key, chroma_tol=tol, scale=scale,
+            bg, ch, chroma_key=key, chroma_tol=tol, scale=scale, chroma_holes=holes,
             offset_x=offset_x, offset_y=offset_y, feather=feather,
             target_width=width, fps=fps, max_seconds=8,
             rotation=rotation,
@@ -165,7 +170,7 @@ def _run(jid: str, job: dict) -> None:
             bg_image = bg_image.resize((width, height), Image.Resampling.LANCZOS)
         char_image = Image.open(character).convert("RGBA")
         output = proc.compose_static(
-            bg_image, char_image, chroma_key=key, chroma_tol=tol,
+            bg_image, char_image, chroma_key=key, chroma_tol=tol, chroma_holes=holes,
             scale=scale, offset_x=offset_x, offset_y=offset_y, feather=feather,
             rotation=rotation,
         )
@@ -178,7 +183,8 @@ def _run(jid: str, job: dict) -> None:
     if object_store.configured():
         rs.job_update(jid, pct=92, stage="upload")
         result_key = object_store.upload_file(result, f"jobs/{jid}/{result.name}", public=False)
-    shutil.rmtree(root / "frames", ignore_errors=True)
+    for scratch in ("frames", "background_frames", "character_frames"):
+        shutil.rmtree(root / scratch, ignore_errors=True)
     process_control.checkpoint(jid)
     rs.job_update(
         jid, status="done", pct=100, stage="done", result_path=str(result),

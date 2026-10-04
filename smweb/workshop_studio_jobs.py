@@ -125,7 +125,7 @@ def _gif_from_frames(frames_dir: Path, output: Path, fps: int, duration: float) 
     video = output.parent / (output.stem + "_frames.mkv")
     try:
         _encode_frames(frames_dir, fps, video)
-        proc.media_to_gif(video, output, fps=fps, width=750, duration=duration, encoder="ffmpeg")
+        proc.media_to_gif(video, output, fps=fps, width=750, duration=duration, encoder="gifski")
     finally:
         video.unlink(missing_ok=True)
     if not output.is_file() or not output.stat().st_size:
@@ -211,7 +211,7 @@ def render_animation(path: Path, output: Path, settings: dict, fps: int, duratio
                 framed.save(frame_path, compress_level=1)
             _gif_from_frames(frames_dir, output, fps, duration)
             return
-        proc.media_to_gif(temporary, output, fps=fps, width=750, duration=duration, encoder="ffmpeg")
+        proc.media_to_gif(temporary, output, fps=fps, width=750, duration=duration, encoder="gifski")
         if not output.is_file() or not output.stat().st_size:
             raise ValueError("GIF encoding produced an empty file")
         if output.stat().st_size > STEAM_LIMIT:
@@ -221,6 +221,11 @@ def render_animation(path: Path, output: Path, settings: dict, fps: int, duratio
         temporary.unlink(missing_ok=True)
         watermark_image.unlink(missing_ok=True)
         shutil.rmtree(frames_dir, ignore_errors=True)
+
+
+def _extras(value) -> frozenset:
+    """Squares extras; jobs from before the option keep their preview (and no whole strip)."""
+    return frozenset({proc.EXTRA_PREVIEW}) if value is None else frozenset(value)
 
 
 SQUARE = 150
@@ -279,7 +284,7 @@ def _still_strip(path: Path, settings: dict, crop: dict) -> Image.Image:
 
 
 def render_squares_image(path: Path, settings: dict, crop: dict, outline: bool = False,
-                         free_watermark: bool = False, fx: dict | None = None) -> dict[str, bytes]:
+                         free_watermark: bool = False, fx: dict | None = None, extras=None) -> dict[str, bytes]:
     """Cut the chosen 5:1 area of a still image into five 150x150 Steam files.
 
     Only static frames are drawn here; animated frames/effects go through
@@ -299,12 +304,18 @@ def render_squares_image(path: Path, settings: dict, crop: dict, outline: bool =
         part = strip.crop((index * SQUARE, 0, (index + 1) * SQUARE, SQUARE))
         parts.append(part)
         result[f"part_{index + 1}.png"] = _png_under_limit(part)
-    preview = _squares_preview(parts)
-    if free_watermark:
-        preview = _free_watermark(preview)
-    buffer = io.BytesIO()
-    preview.save(buffer, format="PNG", optimize=True)
-    result["preview.png"] = buffer.getvalue()
+    extras = _extras(extras)
+    if proc.EXTRA_ORIGINAL in extras:
+        buffer = io.BytesIO()
+        strip.save(buffer, format="PNG", optimize=True)
+        result["full_original.png"] = buffer.getvalue()
+    if proc.EXTRA_PREVIEW in extras:
+        preview = _squares_preview(parts)
+        if free_watermark:
+            preview = _free_watermark(preview)
+        buffer = io.BytesIO()
+        preview.save(buffer, format="PNG", optimize=True)
+        result["preview.png"] = buffer.getvalue()
     return result
 
 
@@ -322,12 +333,14 @@ def _encode_frames(frames_dir: Path, fps: int, target: Path) -> None:
                    check=True, capture_output=True, timeout=120)
 
 
-def _cut_strip(video: Path, work_dir: Path, fps: int, duration: float, free_watermark: bool) -> dict[str, Path]:
-    """Five synchronized 150x150 GIFs (+ preview) from a 750x150 strip video."""
+def _cut_strip(video: Path, work_dir: Path, fps: int, duration: float, free_watermark: bool,
+               extras=None) -> dict[str, Path]:
+    """Five synchronized 150x150 GIFs (+ the optional preview / whole strip) from a 750x150 strip video."""
     # wm_* only affects full_with_bars.gif (the preview), never the part_N.gif files.
     outputs = proc.process_gif_workshop(
-        video, work_dir, fps=fps, width=STRIP_SIZE[0], duration=duration, encoder="ffmpeg",
+        video, work_dir, fps=fps, width=STRIP_SIZE[0], duration=duration, encoder="gifski",
         wm_text="ShowcaseMaker" if free_watermark else "", wm_font="Fineday", wm_opacity=0.5,
+        extras=_extras(extras),
     )
     result = {}
     for index in range(1, SQUARE_COUNT + 1):
@@ -339,11 +352,14 @@ def _cut_strip(video: Path, work_dir: Path, fps: int, duration: float, free_wate
         result[part.name] = part
     if outputs.get("full_with_bars.gif"):
         result["preview.gif"] = outputs["full_with_bars.gif"]
+    if outputs.get("full_original.gif"):
+        result["full_original.gif"] = outputs["full_original.gif"]
     return result
 
 
 def render_squares_still_animation(path: Path, work_dir: Path, settings: dict, crop: dict, fx: dict,
-                                   fps: int, duration: float, free_watermark: bool = False) -> dict[str, Path]:
+                                   fps: int, duration: float, free_watermark: bool = False,
+                                   extras=None) -> dict[str, Path]:
     """A still picture with an animated frame or effect becomes five looping GIFs."""
     effects = square_fx.normalize(fx)
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -356,7 +372,7 @@ def render_squares_still_animation(path: Path, work_dir: Path, settings: dict, c
     video = work_dir / "squares_fx.mkv"
     try:
         _encode_frames(frames_dir, fps, video)
-        return _cut_strip(video, work_dir, fps, duration, free_watermark)
+        return _cut_strip(video, work_dir, fps, duration, free_watermark, extras)
     finally:
         shutil.rmtree(frames_dir, ignore_errors=True)
         video.unlink(missing_ok=True)
@@ -364,7 +380,7 @@ def render_squares_still_animation(path: Path, work_dir: Path, settings: dict, c
 
 def render_squares_animation(path: Path, work_dir: Path, settings: dict, crop: dict, fps: int,
                              duration: float, start: float, outline: bool = False,
-                             free_watermark: bool = False, fx: dict | None = None) -> dict[str, Path]:
+                             free_watermark: bool = False, fx: dict | None = None, extras=None) -> dict[str, Path]:
     """Crop an animation to the 5:1 strip, draw frames/effects on every frame,
     then reuse the synchronized Workshop cutter.
 
@@ -412,7 +428,7 @@ def render_squares_animation(path: Path, work_dir: Path, settings: dict, crop: d
                     square_fx.apply(frame, index / len(frames), effects).save(frame_path, compress_level=1)
             _encode_frames(frames_dir, fps, video)
             source = video
-        return _cut_strip(source, work_dir, fps, duration, free_watermark)
+        return _cut_strip(source, work_dir, fps, duration, free_watermark, extras)
     finally:
         strip.unlink(missing_ok=True)
         video.unlink(missing_ok=True)
@@ -442,17 +458,20 @@ def _square_row(work_dir: Path, archive: zipfile.ZipFile, item: dict, settings: 
     path = Path(item["path"])
     suffix = path.suffix.lower()
     free_watermark = bool(options.get("free_watermark"))
+    extras = options.get("extras")
     try:
         if suffix in IMAGE_EXTENSIONS and not square_fx.is_animated(fx):
-            for name, data in render_squares_image(path, settings, crop, free_watermark=free_watermark, fx=fx).items():
+            for name, data in render_squares_image(path, settings, crop, free_watermark=free_watermark, fx=fx,
+                                                   extras=extras).items():
                 archive.writestr(prefix + name, data)
             return
         if suffix in IMAGE_EXTENSIONS:
             outputs = render_squares_still_animation(path, work_dir, settings, crop, fx, options["fps"],
-                                                     options["duration"], free_watermark)
+                                                     options["duration"], free_watermark, extras)
         elif suffix in ANIMATED_EXTENSIONS:
             outputs = render_squares_animation(path, work_dir, settings, crop, options["fps"], options["duration"],
-                                               settings["start"], free_watermark=free_watermark, fx=fx)
+                                               settings["start"], free_watermark=free_watermark, fx=fx,
+                                               extras=extras)
         else:
             raise ValueError("Unsupported source format")
         for name, output in outputs.items():
@@ -470,7 +489,9 @@ def run(jid: str, job: dict) -> None:
     failed = False
     _job_set(jid, runner=job_diagnostics.runner_label(), started=time.time())
     try:
-        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as archive:
+        # Jobs queued before the quality choice existed keep the old (max) encoding.
+        with proc.encode_profile(options.get("encode_profile") or "max"), \
+                zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as archive:
             if options.get("layout") == "squares":
                 _run_squares(jid, job_dir, archive, files, options)
             row_files = [] if options.get("layout") == "squares" else files

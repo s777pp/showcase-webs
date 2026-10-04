@@ -241,9 +241,19 @@ def _validated_project(raw) -> dict:
         item["animation"] = item.get("animation") if item.get("animation") in _ANIMATIONS else "none"
         item["chroma"] = bool(item.get("chroma", False))
         if item.get("type") in {"background", "character"}:
-            item["chromaKey"] = item.get("chromaKey") if item.get("chromaKey") in {"auto", "color", "black", "white"} else "auto"
+            item["chromaKey"] = item.get("chromaKey") if item.get("chromaKey") in {
+                "auto", "color", "green", "blue", "black", "white", "custom"} else "auto"
+            # "custom" keys this exact colour; pockets = backdrop enclosed by the figure (chroma-matte.js).
+            color = str(item.get("chromaColor") or "")
+            if re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+                item["chromaColor"] = color.lower()
+            else:
+                item.pop("chromaColor", None)
+            item["chromaHoles"] = item.get("chromaHoles", True) is not False
         else:
             item.pop("chromaKey", None)
+            item.pop("chromaColor", None)
+            item.pop("chromaHoles", None)
         if "src" in item:
             src = str(item["src"])[:3000]
             if not (src.startswith("/api/builder/assets/") or

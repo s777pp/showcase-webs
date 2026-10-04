@@ -73,7 +73,7 @@ class WorkshopGroupEncodingTests(unittest.TestCase):
             destinations = [tmp / f"part_{index}.gif" for index in range(5)]
             attempts = []
 
-            def fake_encode(frame_dir, destination, fps, quality=100, extra=False):
+            def fake_encode(frame_dir, destination, fps, quality=100, extra=False, fast=None):
                 panel = int(frame_dir.name.rsplit("_", 1)[1])
                 attempts.append((panel, fps, quality))
                 size = 900 if quality <= 80 or panel < 4 else 1200
@@ -233,7 +233,7 @@ class SplitGroupEncodingTests(unittest.TestCase):
             side_frames.mkdir()
             destinations = [tmp / "center.gif", tmp / "side.gif"]
 
-            def fake_encode(frame_dir, destination, fps, quality=100, extra=False):
+            def fake_encode(frame_dir, destination, fps, quality=100, extra=False, fast=None):
                 is_center = frame_dir.name == "center"
                 size = 1200 if is_center and quality > 82 else (850 if is_center else 180)
                 destination.write_bytes(f"q={quality:03d};".encode("ascii") + b"x" * size)

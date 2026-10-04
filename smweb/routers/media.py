@@ -31,6 +31,7 @@ import redis_store as rs
 
 import auth_db
 from smweb import media_assets
+from smweb import job_diagnostics
 
 
 from fastapi import APIRouter
@@ -705,6 +706,7 @@ def api_upscale_status(request: Request, job_id: str):
         "media_kind": job.get("media_kind", "image"),
         "download_url": f"/api/upscale/download/{job_id}" if job.get("status") == "done" else "",
         "preview_url": f"/api/upscale/download/{job_id}?inline=1" if job.get("status") == "done" else "",
+        **(job_diagnostics.public_error(job.get("error")) if job.get("status") == "error" else {}),
     }
 
 
@@ -757,6 +759,8 @@ async def api_compose_start(
     width: int = Form(750), gif_encoder: str = Form("gifski"), fps: int = Form(12),
     background: UploadFile | None = File(None), character: UploadFile | None = File(None),
     background_asset_id: str = Form(""), character_asset_id: str = Form(""),
+    encode_profile: str = Form("standard"),
+    chroma_holes: str = Form("1"),
 ):
     """Accept the inputs quickly and render in the background.
 
@@ -790,12 +794,20 @@ async def api_compose_start(
     if not bg_raw or not ch_raw or len(bg_raw) > limit or len(ch_raw) > limit:
         return JSONResponse({"ok": False, "msg": "File missing or too large"}, status_code=400)
 
-    cache_options = {"chroma_key": chroma_key, "chroma_tol": chroma_tol, "feather": feather,
+    # auto | green | blue | red | white | black | #rrggbb | none (smweb.chroma_matte.resolve)
+    chroma_key = (chroma_key or "auto").strip().lower()
+    if not (chroma_key in ("auto", "none", "green", "blue", "red", "white", "black")
+            or re.fullmatch(r"#[0-9a-f]{6}", chroma_key)):
+        chroma_key = "auto"
+    cache_options = {"chroma_key": chroma_key, "chroma_tol": chroma_tol,
+                     "chroma_holes": str(chroma_holes).strip().lower() not in ("0", "false", "off", "no"), "feather": feather,
                      "scale": scale, "offset_x": offset_x, "offset_y": offset_y,
                      "rotation": proc.normalize_rotation(rotation), "width": width,
-                     "gif_encoder": gif_encoder, "fps": fps}
+                     "gif_encoder": gif_encoder, "fps": fps,
+                     # Animated result: "standard" (fast) or "max"; see processor.encode_profile.
+                     "encode_profile": proc.normalize_encode_profile(encode_profile)}
     cache_key = hashlib.sha256(
-        b"compose:2:" + user_key.encode("utf-8") + b":" +
+        b"compose:3:" + user_key.encode("utf-8") + b":" +
         json.dumps(cache_options, sort_keys=True, separators=(",", ":")).encode("utf-8") + b":" +
         hashlib.sha256(bg_raw).digest() + hashlib.sha256(ch_raw).digest()
     ).hexdigest()
@@ -869,7 +881,8 @@ def api_compose_status(request: Request, job_id: str):
         return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
     return {"ok": True, "status": job.get("status"), "pct": job.get("pct", 0),
             "stage": job.get("stage", ""), "error": job.get("error", ""),
-            "filename": job.get("filename", "")}
+            "filename": job.get("filename", ""),
+            **(job_diagnostics.public_error(job.get("error")) if job.get("status") == "error" else {})}
 
 
 @router.get("/api/compose/download/{job_id}")

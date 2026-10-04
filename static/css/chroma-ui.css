@@ -1,0 +1,22 @@
+/* Character keying controls (chroma-ui.js), Builder keying controls and the Builder
+   showcase cuts (owner, 2026-10-05). Loaded after builder-studio.css. */
+
+/* Cuts between the showcase files: solid black bars like the gaps on a Steam profile
+   (and the Process preview), not dashed lines. */
+#showcaseBuilder .builder-guides i{border-left:0!important;width:3px;margin-left:-1.5px;background:#000;filter:none!important;box-shadow:none}
+
+/* Long localized showcase names ("Избранная иллюстрация") wrap to two lines instead of
+   being cut with an ellipsis (builder-studio.css keeps the button on one line). */
+#showcaseBuilder.bx .builder-mode-switch>button{white-space:normal;text-overflow:clip;line-height:1.12;gap:7px}
+#showcaseBuilder.bx .builder-mode-switch .builder-mode-name{display:block;min-width:0;text-align:left;overflow-wrap:anywhere;font-size:11.5px}
+
+/* Builder: colour picker and pocket switch under the backdrop choice. */
+#showcaseBuilder .builder-chroma-color{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#showcaseBuilder .builder-chroma-color input[type=color]{width:44px;height:28px;padding:0;border:1px solid rgba(110,170,255,.35);border-radius:6px;background:transparent;cursor:pointer}
+#showcaseBuilder .builder-chroma-holes{margin-top:4px}
+
+/* Character tab */
+.compose-chroma-colour input[type=color]{width:52px;height:34px;padding:0;border:1px solid rgba(110,170,255,.35);border-radius:8px;background:transparent;cursor:pointer}
+.compose-chroma-holes{align-self:end}
+.compose-chroma-note{margin:4px 0 0;font-size:12px;line-height:1.45;color:rgba(214,229,250,.62)}
+.compose-chroma-colour[hidden],.compose-chroma-holes[hidden],#showcaseBuilder .builder-chroma-color[hidden]{display:none!important}

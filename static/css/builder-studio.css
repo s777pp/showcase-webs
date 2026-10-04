@@ -454,3 +454,16 @@ html.bx-fonts-open{overflow:hidden}
 /* AI model picker note (first Modal run wakes a GPU) */
 #showcaseBuilder.bx .builder-ai-note{margin:-4px 0 0;padding:8px 10px;border:1px solid var(--bx-line);border-radius:10px;font-size:12px;line-height:1.45;color:var(--bx-muted)}
 #showcaseBuilder.bx .builder-ai-note[hidden]{display:none}
+
+/* Steam background around the canvas (builder-layout.js paintContext, owner 2026-10-04):
+   the whole profile background at the canvas scale, Steam's 976 px column and the
+   showcase box as translucent shapes. Under the canvas and every stage overlay. */
+#showcaseBuilder.bx .builder-canvas-wrap{isolation:isolate}
+#showcaseBuilder.bx .bx-steamctx{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+#showcaseBuilder.bx .bx-steamctx[hidden]{display:none!important}
+#showcaseBuilder.bx .bx-steamctx__bg>img,#showcaseBuilder.bx .bx-steamctx__bg>video{position:absolute;display:block;max-width:none;max-height:none;object-fit:fill}
+#showcaseBuilder.bx .bx-steamctx__dim{position:absolute;inset:0;background:rgba(2,6,12,.38)}
+#showcaseBuilder.bx .bx-steamctx__col{position:absolute;top:0;bottom:0;background:rgba(8,12,20,.42);box-shadow:inset 1px 0 rgba(255,255,255,.05),inset -1px 0 rgba(255,255,255,.05)}
+#showcaseBuilder.bx .bx-steamctx__block{position:absolute;border-radius:3px;background:rgba(0,0,0,.45);box-shadow:0 0 0 1px rgba(255,255,255,.06)}
+#showcaseBuilder.bx .bx-steamctx__block b{position:absolute;left:0;right:0;top:0;border-radius:3px 3px 0 0;background:linear-gradient(90deg,rgba(255,255,255,.09),rgba(255,255,255,.02))}
+#showcaseBuilder.bx .builder-canvas-wrap.has-steamctx>canvas{box-shadow:0 0 0 1px rgba(111,227,255,.55),0 12px 40px rgba(0,0,0,.6)}

@@ -43,11 +43,13 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
 <link rel="stylesheet" href="/static/css/nav-groups.css?v=20260926-ux1">
 <link rel="stylesheet" href="/static/css/process-compact.css?v=20260930-wait1">
 <link rel="stylesheet" href="/static/css/site-theme.css?v=20260929-shapes1">
-<link rel="stylesheet" href="/static/css/builder-studio.css?v=20261003-bg1">
+<link rel="stylesheet" href="/static/css/builder-studio.css?v=20261004-enc4">
 <link rel="stylesheet" href="/static/css/home-overlays.css?v=20261001-ovl1">
 <link rel="stylesheet" href="/static/css/tools-unified.css?v=20261001-tu4">
 <link rel="stylesheet" href="/static/css/da-publish.css?v=20261001-da3">
 <link rel="stylesheet" href="/static/css/site-shell.css?v=20261001-shell4">
+<link rel="stylesheet" href="/static/css/encode-choice.css?v=20261004-enc1">
+<link rel="stylesheet" href="/static/css/chroma-ui.css?v=20261005-key3">
 </head>
 <body class="page-tools site-v2">
 <div class="stars-layer" id="starsLayer" aria-hidden="true"></div>
@@ -334,7 +336,7 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
         <div class="row">
           <label class="field"><span data-i="compose_chroma_lbl">Character background</span>
             <select id="composeChroma">
-              <option value="auto" selected data-i-opt="compose_chroma_auto">Remove colored backdrop automatically</option>
+              <option value="auto" selected data-i-opt="compose_chroma_auto">Detect the backdrop automatically</option>
               <option value="none" data-i-opt="compose_chroma_none">Already transparent (don't touch)</option>
             </select>
           </label>
@@ -953,9 +955,9 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
         </section>
         <div class="builder-stage-head">
           <div class="builder-mode-switch" id="builderModes">
-            <button type="button" class="active" data-builder-mode="workshop"><span class="mode-diagram mode-diagram--workshop"><i></i><i></i><i></i><i></i><i></i></span>Workshop</button>
-            <button type="button" data-builder-mode="featured"><span class="mode-diagram mode-diagram--featured"><i></i></span>Featured</button>
-            <button type="button" data-builder-mode="split"><span class="mode-diagram mode-diagram--split"><i></i><i></i></span>Split</button>
+            <button type="button" class="active" data-builder-mode="workshop" data-builder-i-title="mode-workshop-hint"><span class="mode-diagram mode-diagram--workshop"><i></i><i></i><i></i><i></i><i></i></span><span class="builder-mode-name" data-builder-i="mode-workshop">Workshop</span></button>
+            <button type="button" data-builder-mode="featured" data-builder-i-title="mode-featured-hint"><span class="mode-diagram mode-diagram--featured"><i></i></span><span class="builder-mode-name" data-builder-i="mode-featured">Featured</span></button>
+            <button type="button" data-builder-mode="split" data-builder-i-title="mode-split-hint"><span class="mode-diagram mode-diagram--split"><i></i><i></i></span><span class="builder-mode-name" data-builder-i="mode-split">Split</span></button>
           </div>
           <span class="builder-live"><i></i> LIVE</span>
         </div>
@@ -1010,7 +1012,7 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
           <div class="builder-media-controls" id="builderMediaControls" hidden>
             <label class="builder-toggle"><input id="builderChroma" type="checkbox"/><i></i><span data-builder-i="chroma">Remove chromakey</span></label>
             <div class="builder-chroma-settings" id="builderChromaSettings" hidden>
-              <label><span data-builder-i="chroma-key">Background to remove</span><select id="builderChromaKey"><option value="auto" data-builder-i="chroma-key-auto">Detect automatically</option><option value="color" data-builder-i="chroma-key-color">Coloured (green screen)</option><option value="black" data-builder-i="chroma-key-black">Black</option><option value="white" data-builder-i="chroma-key-white">White</option></select></label>
+              <label><span data-builder-i="chroma-key">Background to remove</span><select id="builderChromaKey"><option value="auto" data-builder-i="chroma-key-auto">Detect automatically</option><option value="color" data-builder-i="chroma-key-color">Coloured (green screen)</option><option value="green" data-builder-i="chroma-key-green">Green</option><option value="blue" data-builder-i="chroma-key-blue">Blue</option><option value="black" data-builder-i="chroma-key-black">Black</option><option value="white" data-builder-i="chroma-key-white">White</option><option value="custom" data-builder-i="chroma-key-custom">My colour…</option></select></label><label id="builderChromaColorWrap" class="builder-chroma-color" hidden><span data-builder-i="chroma-color">Backdrop colour</span><input id="builderChromaColor" type="color" value="#00b140"/></label><label class="builder-toggle builder-chroma-holes"><input id="builderChromaHoles" type="checkbox" checked/><i></i><span data-builder-i="chroma-holes">Remove backdrop between arms and legs</span></label>
               <label><span><b data-builder-i="chroma-tolerance">Tolerance</b><output id="builderChromaToleranceValue">45</output></span><input id="builderChromaTolerance" type="range" min="10" max="120" value="45"/></label>
               <label><span><b data-builder-i="chroma-feather">Edge feather</b><output id="builderChromaFeatherValue">1.6</output></span><input id="builderChromaFeather" type="range" min="0" max="40" value="16"/></label>
             </div>
@@ -1201,14 +1203,17 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
   </div>
 </div>
 
-  <script src="/static/js/tool-loader.js?v=20261003-bg1"></script>
-<script src="/static/js/app.js?v=20261003-yt1"></script>
+  <script src="/static/js/tool-loader.js?v=20261005-names1"></script>
+<script src="/static/js/chroma-matte.js?v=20261005-rev1"></script>
+<script src="/static/js/app.js?v=20261005-rev1"></script>
+<script src="/static/js/chroma-ui.js?v=20261005-key2"></script>
 <script src="/static/js/color-grade.js?v=20260923-grade2"></script>
 <script src="/static/js/workshop-squares-fx.js?v=20261001-pro2"></script>
 <script src="/static/js/process-frame-fx.js?v=20260930-lock2"></script>
-<script src="/static/js/workshop-studio.js?v=20261001-wsx2"></script>
+<script src="/static/js/encode-choice.js?v=20261004-enc1"></script>
+<script src="/static/js/workshop-studio.js?v=20261005-rev1"></script>
   <script src="/static/js/workspace-copy.js?v=20260927-fmt1"></script>
-  <script src="/static/js/process-guide.js?v=20260929-shapes1"></script>
+  <script src="/static/js/process-guide.js?v=20261005-perf1"></script>
 
 
 
@@ -1266,19 +1271,19 @@ html.sm-booting body.page-tools{visibility:hidden;animation:sm-boot-reveal 0s li
 <script src="/static/js/steam-extension-status.js?v=20260927-fmt1"></script>
 
 
-<script src="/static/ss-shell.js?v=20261001-shell2"></script>
+<script src="/static/ss-shell.js?v=20261005-err1"></script>
 <script src="/static/js/workspace-help.js?v=20260921-polish1"></script>
 <script src="/static/js/process-result.js?v=20261001-ext1"></script>
-<script src="/static/js/workspace-editor-copy.js?v=20261001-ext1"></script>
+<script src="/static/js/workspace-editor-copy.js?v=20261005-names1"></script>
 <script src="/static/js/workspace-editor.js?v=20260920-editor4"></script>
 <script src="/static/js/tool-clarity-copy.js?v=20261001-da2"></script>
 <script src="/static/js/tool-clarity.js?v=20260921-ux2"></script>
-<script src="/static/js/process-layout.js?v=20261003-yt1"></script>
+<script src="/static/js/process-layout.js?v=20261005-rev1"></script>
 <script src="/static/js/process-compact.js?v=20260930-lock1"></script>
 <script src="/static/js/nav-groups.js?v=20260926-ux2"></script>
 <script src="/static/js/job-notify.js?v=20260926-perf1"></script>
-<script src="/static/js/tools-unified.js?v=20261001-tu3"></script>
-<script src="/static/js/da-publish.js?v=20261001-da3"></script>
+<script src="/static/js/tools-unified.js?v=20261005-rev1"></script>
+<script src="/static/js/da-publish.js?v=20261005-rev1"></script>
 <script>/* Reveal after i18n, nav grouping and the shell header ran (listeners registered earlier fire first). */
 (function(){function show(){requestAnimationFrame(function(){document.documentElement.classList.remove('sm-booting')})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',show);else show()})();</script>

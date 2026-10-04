@@ -31,8 +31,11 @@
     return new Promise(function (resolve, reject) {
       var url = URL.createObjectURL(file), video = document.createElement('video');
       video.preload = 'metadata'; video.muted = true;
-      video.onloadedmetadata = function () { var meta={ width:video.videoWidth, height:video.videoHeight, duration:Number(video.duration)||0 }; video.src=''; URL.revokeObjectURL(url); resolve(meta); };
-      video.onerror = function () { video.src=''; URL.revokeObjectURL(url); reject(Error(copy('fileUnsupported'))); };
+      // Release the element once. Setting src='' fires another error event, and the old handler
+      // reset src again on it: an endless error loop that kept the tab busy after every video.
+      var settle = function () { video.onloadedmetadata = video.onerror = null; video.removeAttribute('src'); try { video.load(); } catch (e) {} URL.revokeObjectURL(url); };
+      video.onloadedmetadata = function () { var meta={ width:video.videoWidth, height:video.videoHeight, duration:Number(video.duration)||0 }; settle(); resolve(meta); };
+      video.onerror = function () { settle(); reject(Error(copy('fileUnsupported'))); };
       video.src = url;
     });
   }

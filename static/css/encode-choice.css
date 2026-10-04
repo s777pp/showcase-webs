@@ -1,0 +1,44 @@
+/* "Standard / Maximum quality" dialog and the "also put in the ZIP" switches
+   (static/js/encode-choice.js). Same navy panel and cyan-violet line as the
+   other site dialogs (home-overlays.css, site-theme.css). */
+
+.sm-encode{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:16px;font-family:'Montserrat',system-ui,sans-serif}
+.sm-encode__backdrop{position:absolute;inset:0;border:0;background:rgba(2,5,14,.72);backdrop-filter:blur(3px);cursor:default}
+.sm-encode__dialog{position:relative;width:min(560px,100%);max-height:calc(100dvh - 32px);overflow:auto;border:1px solid rgba(110,170,255,.26);border-radius:14px;
+  background:linear-gradient(165deg,#0e1a3c,#050a1c);color:#e9f3ff;box-shadow:0 30px 90px rgba(0,0,0,.55);padding:22px 22px 18px}
+.sm-encode__dialog::before{content:"";position:absolute;inset:0 0 auto;height:2px;border-radius:14px 14px 0 0;background:linear-gradient(90deg,#1fc9f1,#8a7dff)}
+.sm-encode__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.sm-encode__eyebrow{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;color:#6fe3ff;margin-bottom:6px}
+.sm-encode__head h2{margin:0;font-size:20px;line-height:1.25;font-weight:700;color:#e9f3ff}
+.sm-encode__close{flex:none;width:34px;height:34px;border:1px solid rgba(110,170,255,.26);border-radius:9px;background:rgba(3,8,24,.72);color:#e9f3ff;font-size:20px;line-height:1;cursor:pointer}
+.sm-encode__close:hover{border-color:rgba(111,227,255,.6)}
+.sm-encode__intro{margin:10px 0 16px;color:rgba(214,229,250,.75);font-size:13.5px;line-height:1.5}
+.sm-encode__options{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sm-encode__option{display:flex;flex-direction:column;gap:8px;text-align:left;padding:14px;border:1px solid rgba(110,170,255,.26);border-radius:12px;
+  background:rgba(3,8,24,.6);color:#e9f3ff;cursor:pointer;font:inherit;transition:border-color .15s,background .15s,box-shadow .15s}
+.sm-encode__option:hover{border-color:rgba(111,227,255,.55)}
+.sm-encode__option:focus-visible{outline:2px solid #6fe3ff;outline-offset:2px}
+.sm-encode__option.is-selected{border-color:#1fc9f1;background:linear-gradient(160deg,rgba(31,201,241,.16),rgba(138,125,255,.1));box-shadow:0 0 0 1px rgba(31,201,241,.45) inset}
+.sm-encode__option-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sm-encode__option-top b{font-size:15px;font-weight:700}
+.sm-encode__option-top em{flex:none;font-style:normal;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.sm-encode__option.is-fast em{background:rgba(31,201,241,.16);color:#6fe3ff}
+.sm-encode__option.is-best em{background:rgba(138,125,255,.18);color:#c3bbff}
+.sm-encode__option-text{font-size:12.5px;line-height:1.45;color:rgba(214,229,250,.72)}
+.sm-encode__foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.sm-encode__foot .btn{min-width:110px}
+body.has-sm-encode{overflow:hidden}
+@media (max-width:520px){
+  .sm-encode__options{grid-template-columns:1fr}
+  .sm-encode__foot .btn{flex:1}
+}
+
+/* "Also put in the ZIP" */
+.sm-extras{grid-column:1/-1;margin:10px 0 0;padding:12px 14px;border:1px solid rgba(110,170,255,.2);border-radius:12px;background:rgba(5,10,28,.55);min-width:0}
+.sm-extras__title{padding:0 4px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#6fe3ff}
+.sm-extras__item{display:flex;align-items:flex-start;gap:10px;padding:6px 0;cursor:pointer}
+.sm-extras__item input{flex:none;width:17px;height:17px;margin:2px 0 0;accent-color:#1fc9f1;cursor:pointer}
+.sm-extras__text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sm-extras__text b{font-size:13px;font-weight:600;color:#e9f3ff}
+.sm-extras__text small{font-size:12px;line-height:1.4;color:rgba(214,229,250,.62)}
+.sm-extras__note{margin:6px 0 0;font-size:11.5px;line-height:1.45;color:rgba(200,214,238,.5)}

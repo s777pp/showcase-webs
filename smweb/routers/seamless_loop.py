@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 import auth_db
 import redis_store as rs
 from smweb import object_store
+from smweb import job_diagnostics
 from smweb import media_assets
 from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, LOGGER, max_jobs_for_user
 from smweb.jobs import _job_pool, _worker_mode
@@ -169,7 +170,8 @@ def status(request: Request, job_id: str):
             "stage": job.get("stage", ""), "error": job.get("error", ""),
             "download_url": f"/api/loop/download/{job_id}" if job.get("status") == "done" else "",
             "preview_url": f"/api/loop/download/{job_id}?inline=1" if job.get("status") == "done" else "",
-            "media_type": job.get("media_type", ""), "duration": job.get("output_duration")}
+            "media_type": job.get("media_type", ""), "duration": job.get("output_duration"),
+            **(job_diagnostics.public_error(job.get("error")) if job.get("status") == "error" else {})}
 
 
 @router.get("/api/loop/download/{job_id}")

@@ -492,6 +492,12 @@ document.getElementById('btnClear').onclick = () => {
 };
 document.getElementById('btnRun').onclick = async () => {
   if (window.ProcessGuide && !(await window.ProcessGuide.beforeRun(state.files,state.fileRotations))) return;
+  // Animated output (GIF/video, or a still with an animated frame): ask Standard or Maximum quality.
+  const encodeChoice = window.SMEncodeChoice;
+  const frameStyle = document.getElementById('workshopOutline')?.checked && window.SMProcessFrame ? window.SMProcessFrame.options().style : 'none';
+  const animatedJob = state.files.some(f => encodeChoice?.isAnimatedFile(f)) || !!window.SMSquaresFx?.isAnimatedFrame?.(frameStyle);
+  const encodeProfile = encodeChoice ? await encodeChoice.ask({animated: animatedJob}) : 'standard';
+  if (!encodeProfile) return;
   const processOriginals = Array.from(state.files);
   const st = document.getElementById('status');
   const dl = document.getElementById('dlProcess');
@@ -579,6 +585,7 @@ document.getElementById('btnRun').onclick = async () => {
   fd.append('all_modes', (document.getElementById('allModes') || {}).checked ? '1' : '0');
   fd.append('rotations', JSON.stringify(state.fileRotations || []));
   fd.append('asset_ids', JSON.stringify(reusableAssetIds));
+  if (encodeChoice) encodeChoice.append(fd, encodeProfile);
   if (!reusableAssetIds.length) state.files.forEach(f => fd.append('files', f));
 
   try {
@@ -2074,7 +2081,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       rotation_half: "Rotate 180°",
       rotation_reset: "Reset",
       auto_contrast: "Auto-contrast",
-      smart_compress: "Smart compression to 5 MB", smart_compress_hint: "Always on for final Steam GIFs. The processor keeps the highest quality that fits the limit.",
+      smart_compress: "Always within Steam's 5 MB", smart_compress_hint: "Always on for final Steam GIFs. When you start, choose Standard (faster) or Maximum quality.",
       workshop_outline: "Panel outline", outline_width: "Thickness", outline_color: "Color", outline_hint: "Adds an inner outline to every final Workshop panel without changing its dimensions.",
       dl_zip: "Download ZIP", publish_gallery: "Publish to gallery", get_pro: "Get Pro",
       prog_processing: "Processing…", prog_downloading: "Downloading…", prog_converting: "Converting…",
@@ -2107,15 +2114,15 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       title_account: "Account", sub_account: "Sign up, log in and buy Pro",
       title_about: "About", sub_about: "Limits, Pro and contacts",
       compose_h: "Character + background",
-      compose_intro: "Upload a background and a character (PNG / GIF / MP4). Live preview is on the right. «Compose» builds the final file (chromakey + animation).",
+      compose_intro: "Upload a background and a character (picture, GIF or video). The preview on the right already shows the cut-out. «Compose» builds the final file.",
       compose_bg_lbl: "1. Showcase background",
       compose_char_lbl: "2. Character",
       compose_nofile: "no file selected",
       compose_pick: "Choose",
       compose_chroma_lbl: "Character background",
-      compose_chroma_auto: "Remove colored backdrop automatically",
+      compose_chroma_auto: "Detect the backdrop automatically",
       compose_chroma_none: "Already transparent (don't touch)",
-      compose_tol_lbl: "Chromakey tolerance",
+      compose_tol_lbl: "Backdrop tolerance",
       compose_feather_lbl: "Edge smoothing",
       compose_scale_lbl: "Character scale",
       compose_rotation_lbl: "Character rotation",
@@ -2128,11 +2135,11 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       compose_dl: "Download",
       compose_to_process: "To Process →",
       compose_help_title: "How to use",
-      compose_help_1: "Background — image the character is placed on (PNG/JPG).",
-      compose_help_2: "Character — transparent PNG, or photo/video on green, blue or red screen.",
-      compose_help_3: "Live preview on the right. Drag, resize and rotate the character; the final file keeps the same placement.",
-      compose_help_4: "Colored backdrop — leave «Remove colored backdrop automatically». Pre-cut PNG — choose «Already transparent».",
-      compose_help_5: "Tolerance — how aggressive chromakey is. Smoothing — edge softness (0 = hard).",
+      compose_help_1: "Background — the picture, GIF or video the character is placed on.",
+      compose_help_2: "Character — a transparent PNG, or a picture, GIF or video on a solid backdrop of any colour (green, blue, white, black…).",
+      compose_help_3: "The preview on the right shows the cut-out. Drag, resize and rotate the character; the final file keeps the same placement.",
+      compose_help_4: "Solid backdrop — keep «Detect the backdrop automatically» or pick its colour. Pre-cut PNG — choose «Already transparent».",
+      compose_help_5: "Tolerance — how close to the backdrop a colour must be to disappear: lower it if parts of the character vanish. Smoothing — edge softness (0 = hard).",
       compose_help_6: "Press Compose → download the result or send To Process for Workshop slicing.",
       compose_live_empty: "Add background and character — preview updates instantly",
       compose_final_empty: "Final result after Compose",
@@ -2234,7 +2241,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       rotation_half: "Повернуть на 180°",
       rotation_reset: "Сброс",
       auto_contrast: "Автоконтраст",
-      smart_compress: "Умное сжатие до 5 МБ", smart_compress_hint: "Всегда включено для итоговых GIF Steam. Обработчик сохраняет максимально возможное качество в пределах лимита.",
+      smart_compress: "Всегда в пределах 5 МБ для Steam", smart_compress_hint: "Всегда включено для итоговых GIF Steam. При запуске выбираешь «Стандарт» (быстрее) или «Максимальное качество».",
       workshop_outline: "Обводка панелей", outline_width: "Толщина", outline_color: "Цвет", outline_hint: "Добавляет внутреннюю обводку к каждой итоговой части Workshop, не меняя её размеры.",
       dl_zip: "Скачать ZIP", publish_gallery: "Опубликовать в галерею", get_pro: "Купить Pro",
       prog_processing: "Обработка…", prog_downloading: "Скачивание…", prog_converting: "Конвертация…",
@@ -2267,15 +2274,15 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       title_account: "Аккаунт", sub_account: "Регистрация, вход и покупка Pro",
       title_about: "О сервисе", sub_about: "Лимиты, Pro и контакты",
       compose_h: "Персонаж + фон",
-      compose_intro: "Загрузи фон и персонажа (PNG / GIF / MP4). Справа — живой превью. «Совместить» делает финальный файл (с хромакеем и анимацией).",
+      compose_intro: "Загрузи фон и персонажа (картинку, GIF или видео). Предпросмотр справа сразу показывает вырезанного персонажа. «Совместить» собирает итоговый файл.",
       compose_bg_lbl: "1. Фон витрины",
       compose_char_lbl: "2. Персонаж",
       compose_nofile: "файл не выбран",
       compose_pick: "Выбрать",
       compose_chroma_lbl: "Фон у персонажа",
-      compose_chroma_auto: "Убрать цветной фон автоматически",
+      compose_chroma_auto: "Определить фон автоматически",
       compose_chroma_none: "Уже прозрачный (не трогать)",
-      compose_tol_lbl: "Толерантность хромакея",
+      compose_tol_lbl: "Допуск фона",
       compose_feather_lbl: "Сглаживание краёв",
       compose_scale_lbl: "Масштаб персонажа",
       compose_rotation_lbl: "Поворот персонажа",
@@ -2288,11 +2295,11 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       compose_dl: "Скачать",
       compose_to_process: "В Обработку →",
       compose_help_title: "Как пользоваться",
-      compose_help_1: "Фон витрины — картинка, на которую ставится персонаж (PNG/JPG).",
-      compose_help_2: "Персонаж — PNG с прозрачностью или фото/видео на зелёном, синем или красном фоне.",
-      compose_help_3: "Справа — живой предпросмотр. Перемещай, масштабируй и поворачивай персонажа — итоговый файл сохранит это расположение.",
-      compose_help_4: "Если фон цветной — оставь «Убрать цветной фон автоматически». Уже вырезанный PNG — выбери «Уже прозрачный».",
-      compose_help_5: "Толерантность — насколько агрессивно режется хромакей. Сглаживание — мягкость края (0 = резко).",
+      compose_help_1: "Фон витрины — картинка, GIF или видео, на которое ставится персонаж.",
+      compose_help_2: "Персонаж — PNG с прозрачностью или картинка, GIF, видео на однотонном фоне любого цвета (зелёный, синий, белый, чёрный…).",
+      compose_help_3: "Предпросмотр справа показывает вырезку. Перемещай, масштабируй и поворачивай персонажа — итоговый файл сохранит это расположение.",
+      compose_help_4: "Однотонный фон — оставь «Определить фон автоматически» или выбери его цвет. Уже вырезанный PNG — выбери «Уже прозрачный».",
+      compose_help_5: "Допуск — насколько цвет должен быть близок к фону, чтобы исчезнуть: если пропадают части персонажа, уменьши его. Сглаживание — мягкость края (0 = резко).",
       compose_help_6: "Нажми Совместить → скачай результат или отправь В Обработку для нарезки Workshop.",
       compose_live_empty: "Добавь фон и персонажа — превью обновится сразу",
       compose_final_empty: "Финальный результат после «Совместить»",
@@ -3519,8 +3526,10 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     liveCtx.save();
     liveCtx.translate(dx + dw / 2, dy + dh / 2);
     liveCtx.rotate(p.rotation * Math.PI / 180);
+    // Keyed like the final compose (chroma-ui.js + chroma-matte.js).
+    const charSource = window.SMComposeKey ? window.SMComposeKey.source(charImg, p.sourceDrawW * dispScale, p.sourceDrawH * dispScale) : charImg;
     liveCtx.drawImage(
-      charImg,
+      charSource,
       -p.sourceDrawW * dispScale / 2,
       -p.sourceDrawH * dispScale / 2,
       p.sourceDrawW * dispScale,
@@ -3686,6 +3695,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       // image / gif — browser shows first frame of GIF
       const url = URL.createObjectURL(file);
       const im = new Image();
+      im.dataset.type = type;  // chroma-ui.js re-keys GIF frames in the preview
       im.onload = function(){ URL.revokeObjectURL(url); resolve(im); };
       im.onerror = function(){ URL.revokeObjectURL(url); resolve(null); };
       im.src = url;
@@ -3747,6 +3757,9 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       if (st) { st.className = 'status err'; st.textContent = smT('Добавь оба файла: сначала фон, потом персонажа', 'Add both files: background first, then the character'); }
       return;
     }
+    const encodeChoice = window.SMEncodeChoice;
+    const encodeProfile = encodeChoice ? await encodeChoice.ask({animated: encodeChoice.isAnimatedFile(bg) || encodeChoice.isAnimatedFile(ch)}) : 'standard';
+    if (!encodeProfile) return;
     try {
       if (window.SMToolLoader) await window.SMToolLoader.load('assets');
       if (window.SMMediaAssets) {
@@ -3771,6 +3784,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     fd.append('width', document.getElementById('composeWidth')?.value || '750');
     fd.append('gif_encoder', document.getElementById('composeGifEncoder')?.value || 'gifski');
     fd.append('fps', document.getElementById('composeFps')?.value || '12');
+    fd.append('encode_profile', encodeProfile);
+    if (window.SMComposeKey) window.SMComposeKey.append(fd);
 
     const prog = document.getElementById('composeProgress');
     const fill = document.getElementById('composeProgFill');
@@ -3800,7 +3815,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
         const stage = fake < 25 ? smT('Загрузка…', 'Uploading…')
           : (fake < 55 ? smT('Убираем фон / хромакей…', 'Removing background / chromakey…')
                        : smT('Собираем кадры и GIF…', 'Assembling frames and GIF…'));
-        setProg(fake, stage, smT('Это может занять 10–60 сек для видео', 'Video can take 10–60 s'));
+        setProg(fake, stage, smT('Видео обычно готово за 10–30 секунд', 'Video is usually ready in 10–30 s'));
       }
     }, 350);
 

@@ -20,6 +20,47 @@ FONTS = ROOT / "fonts"
 BIN = ROOT / "bin"
 MAX_STEAM_MB = 5.0
 
+# Encode profile of the current job (user's choice in the quality dialog).
+#   standard: gifski --fast, coarser size search (~2-3x faster; measured on panel
+#             frames: +3 % size at equal quality, -0.06 dB PSNR, not visible)
+#   max:      plain gifski probes and a final --extra pass, filled close to 5 MB
+# A ContextVar does not follow work into ThreadPoolExecutor threads, so code that
+# encodes in a pool reads `encode_fast()` first and passes it on explicitly.
+import contextlib
+import contextvars
+
+ENCODE_PROFILES = ("standard", "max")
+_ENCODE_PROFILE: contextvars.ContextVar[str] = contextvars.ContextVar("sm_encode_profile", default="max")
+
+
+def normalize_encode_profile(value) -> str:
+    value = str(value or "").strip().lower()
+    return value if value in ENCODE_PROFILES else "standard"
+
+
+@contextlib.contextmanager
+def encode_profile(value):
+    token = _ENCODE_PROFILE.set(normalize_encode_profile(value))
+    try:
+        yield
+    finally:
+        _ENCODE_PROFILE.reset(token)
+
+
+def encode_fast() -> bool:
+    return _ENCODE_PROFILE.get() == "standard"
+
+
+# Extra files next to the Steam files. Direct callers (gallery, profile) get all of
+# them as before; Process jobs pass only what the user ticked.
+EXTRA_ORIGINAL = "original"   # full_original.* : the whole showcase without cuts
+EXTRA_PREVIEW = "preview"     # full_with_bars.* / full_with_watermark.* : DeviantArt preview
+ALL_EXTRAS = frozenset({EXTRA_ORIGINAL, EXTRA_PREVIEW})
+
+
+def _extras(value) -> frozenset:
+    return ALL_EXTRAS if value is None else frozenset(value) & ALL_EXTRAS
+
 
 def _is_runnable(path: Path) -> bool:
     """File exists and is executable (skip Windows .exe on Linux, no +x, etc.)."""
@@ -562,12 +603,32 @@ def source_matrix(src: Path) -> str:
     return ":in_color_matrix=bt709" if int(stream.get("height") or 0) >= 720 else ""
 
 
-def _gifski_from_frames(frames_dir: Path, dest: Path, fps: int, quality: int = 100, extra: bool = False) -> bool:
+def _gifski_size_args(first_frame: Path) -> list[str]:
+    """Pin gifski's output to the frame size.
+
+    Without --width gifski quietly shrinks large animations ("limited to about
+    800x600"): a 750x1500 row came out 375x750.
+    """
+    try:
+        with Image.open(first_frame) as image:
+            width, height = image.size
+    except Exception:
+        return []
+    return ["--width", str(width), "--height", str(height)]
+
+
+def _gifski_from_frames(frames_dir: Path, dest: Path, fps: int, quality: int = 100, extra: bool = False,
+                       fast: bool | None = None) -> bool:
     """Encode PNG sequence with gifski. Returns True on success.
 
-    ``extra`` is gifski's slower, more careful quantization (about twice the
-    time for visibly smoother gradients); used for the final encode only.
+    ``extra`` is gifski's slower, more careful quantization (about 1.6x the
+    time); used for the final encode of the "max" profile only.  ``fast``
+    (default: the job's encode profile) adds ``--fast`` and drops ``extra``.
     """
+    if fast is None:
+        fast = encode_fast()
+    if fast:
+        extra = False
     gs = find_gifski()
     if not gs:
         return False
@@ -582,13 +643,23 @@ def _gifski_from_frames(frames_dir: Path, dest: Path, fps: int, quality: int = 1
         files = files * 2
     try:
         cmd = [
-            gs, "--fps", str(fps), "--quality", str(quality), *(["--extra"] if extra else []),
+            gs, "--fps", str(fps), "--quality", str(quality), *_gifski_size_args(files[0]),
+            *(["--fast"] if fast else []), *(["--extra"] if extra else []),
             "-o", str(dest), *[str(f) for f in files],
         ]
         subprocess.run(cmd, check=True, capture_output=True)
         return dest.is_file() and dest.stat().st_size > 50
     except Exception:
         return False
+
+
+def _search_band() -> tuple[float, float]:
+    """(target, close enough) as fractions of the limit for the job's profile.
+
+    "standard" accepts a file 12 % under the limit and saves one or two encodes;
+    "max" keeps filling the limit to within 6 %.
+    """
+    return (0.95, 0.88) if encode_fast() else (0.97, 0.94)
 
 
 def _best_quality(size_at, limit: int, min_quality: int = 1) -> int:
@@ -612,7 +683,8 @@ def _best_quality(size_at, limit: int, min_quality: int = 1) -> int:
 
     if probe(100) <= limit:
         return 100
-    target = 0.97 * limit
+    target_share, close_share = _search_band()
+    target = target_share * limit
     fit_q, fail_q = 0, 100
     slope = 0.0375  # typical d ln(size) / d quality for gifski
     guess = 100 - math.log(sizes[100] / target) / slope
@@ -632,7 +704,7 @@ def _best_quality(size_at, limit: int, min_quality: int = 1) -> int:
             quality = (low + high) // 2
         if probe(quality) <= limit:
             fit_q = quality
-            if sizes[quality] >= 0.94 * limit:
+            if sizes[quality] >= close_share * limit:
                 break
         else:
             fail_q = quality
@@ -682,6 +754,9 @@ def fit_frames_to_gif(frames_dir: Path, dest: Path, fps: int, max_mb: float = MA
         best = _best_quality(size_at, limit, min_quality=max(1, min_quality))
         if not best:
             return None
+        if encode_fast():
+            _safe_replace(paths[best], dest)
+            return {"quality": best, "extra": False, "fast": True}
         # --extra can add a few KB; step down a little if it no longer fits.
         for quality in range(best, max(min_quality, best - 4) - 1, -1):
             candidate = encode(quality, extra=True)
@@ -733,6 +808,38 @@ def _ffmpeg_rotation_filter(degrees: float | int | str | None) -> str:
         return "hflip,vflip"
     radians = angle * 3.141592653589793 / 180.0
     return f"rotate={radians:.10f}:ow=rotw({radians:.10f}):oh=roth({radians:.10f}):c=black@0"
+
+
+def extract_frames(src: Path, frames_dir: Path, fps: int, width: int, duration: float = 8,
+                   rotation: float = 0) -> int:
+    """Decode a video into lossless ``frame_%04d.png`` files at ``fps`` and ``width``.
+
+    For intermediate steps (Character compositing): a GIF fitted to 5 MB there
+    cost a full size search and added a second layer of dithering.
+    """
+    ff = find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not found (install ffmpeg or put bin/ffmpeg)")
+    fps = max(5, min(30, int(fps)))
+    width = max(100, min(1920, int(width)))
+    width -= width % 2
+    frames_dir = Path(frames_dir)
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    video_filter = ",".join(part for part in (
+        _ffmpeg_rotation_filter(rotation),
+        f"fps={fps}",
+        f"scale={width}:-2:flags={SCALE_FLAGS}{source_matrix(Path(src))}",
+    ) if part)
+    _run([
+        ff, "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(src), "-t", str(max(1.0, min(20.0, float(duration)))),
+        "-an", "-vf", video_filter, "-compression_level", "0",
+        str(frames_dir / "frame_%04d.png"),
+    ])
+    count = len(list(frames_dir.glob("frame_*.png")))
+    if not count:
+        raise RuntimeError("no frames extracted")
+    return count
 
 
 def media_to_gif(
@@ -884,6 +991,7 @@ def process_video_workshop(
     outline_color: str = "#ffffff",
     rotation: float = 0,
     frame_fx: dict | None = None,
+    extras=None,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -893,6 +1001,7 @@ def process_video_workshop(
         wm_x=wm_x, wm_y=wm_y, encoder=encoder, fps=fps,
         outline_width=outline_width, outline_color=outline_color,
         rotation=rotation, width=width, duration=duration, frame_fx=frame_fx,
+        extras=extras,
     )
 
 
@@ -912,24 +1021,19 @@ def process_video_featured(
     wm_y: float | None = None,
     rotation: float = 0,
     frame_fx: dict | None = None,
+    extras=None,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    if _active_frame(frame_fx):
-        # Framed output is rebuilt from lossless frames; skip the lossy GIF hop.
-        return process_gif_featured(
-            src, out_dir, fps=fps, encoder=encoder,
-            wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
-            wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
-            wm_x=wm_x, wm_y=wm_y, rotation=rotation, frame_fx=frame_fx, duration=duration,
-        )
-    gif_src = out_dir / "source_featured.gif"
-    media_to_gif(src, gif_src, fps=fps, width=630, duration=duration, encoder=encoder, rotation=rotation)
+    # Straight from the video frames to the final GIF. This used to encode an
+    # intermediate GIF fitted to 5 MB first and then decode and fit it again:
+    # twice the work and a second layer of dithering.
     return process_gif_featured(
-        gif_src, out_dir, fps=fps, encoder=encoder,
+        src, out_dir, fps=fps, encoder=encoder,
         wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale,
-        wm_x=wm_x, wm_y=wm_y,
+        wm_x=wm_x, wm_y=wm_y, rotation=rotation, frame_fx=frame_fx, duration=duration,
+        extras=extras,
     )
 
 
@@ -949,6 +1053,7 @@ def process_video_split(
     encoder: str = "ffmpeg",
     rotation: float = 0,
     frame_fx: dict | None = None,
+    extras=None,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -956,6 +1061,7 @@ def process_video_split(
         src, out_dir, fps=fps, wm_text=wm_text, wm_font=wm_font, wm_opacity=wm_opacity,
         wm_color=wm_color, wm_corner=wm_corner, wm_scale=wm_scale, wm_x=wm_x, wm_y=wm_y,
         encoder=encoder, rotation=rotation, duration=duration, frame_fx=frame_fx,
+        extras=extras,
     )
 
 
@@ -1006,7 +1112,8 @@ def encode_gif_from_png_sequence(
             raise RuntimeError("gifski selected but binary not found")
         cmd = [
             gs, "--fps", str(fps),
-            "--quality", str(quality),
+            "--quality", str(quality), *_gifski_size_args(files[0]),
+            *(["--fast"] if encode_fast() else []),
             "-o", str(dest),
             *[str(f) for f in files],
         ]
@@ -1545,6 +1652,7 @@ def _encode_synchronized_frame_group(
         if encoder == "gifski":
             if not find_gifski():
                 raise RuntimeError("gifski selected but binary not found")
+            fast = encode_fast()  # read here: the pool threads below do not see the ContextVar
 
             def encode_quality(quality: int, extra: bool = False) -> list[Path]:
                 attempt_dir = attempts_root / f"q_{quality}{'x' if extra else ''}"
@@ -1555,7 +1663,8 @@ def _encode_synchronized_frame_group(
                 from concurrent.futures import ThreadPoolExecutor
                 with ThreadPoolExecutor(max_workers=min(len(frame_dirs), os.cpu_count() or 2)) as pool:
                     done = list(pool.map(
-                        lambda pair: _gifski_from_frames(pair[0], pair[1], fps=fps, quality=quality, extra=extra),
+                        lambda pair: _gifski_from_frames(pair[0], pair[1], fps=fps, quality=quality,
+                                                         extra=extra, fast=fast),
                         zip(frame_dirs, outputs),
                     ))
                 for index, ok in enumerate(done, start=1):
@@ -1566,6 +1675,9 @@ def _encode_synchronized_frame_group(
                 return outputs
 
             def install_best(quality: int, fast_paths: list[Path]) -> dict[str, int | str]:
+                if fast:
+                    install(fast_paths)
+                    return {"encoder": "gifski", "quality": quality, "fps": fps, "fast": 1}
                 # Final encode with gifski --extra (smoother gradients); it can
                 # grow a few KB, so step down a little when it stops fitting.
                 for candidate in range(quality, max(1, quality - 4) - 1, -1):
@@ -1688,6 +1800,7 @@ def _prepare_workshop_frame_sets(
     outline_width: int = 0,
     outline_color: str = "#ffffff",
     frame_fx: dict | None = None,
+    need_full: bool = True,
 ) -> tuple[Path, list[Path], int]:
     """Decode once, then derive five perfectly aligned lossless frame sets.
 
@@ -1706,6 +1819,16 @@ def _prepare_workshop_frame_sets(
 
     full_frames = work_dir / "full_frames"
     full_frames.mkdir()
+    part_dirs = [work_dir / f"part_{index}_frames" for index in range(1, 6)]
+    for part_dir in part_dirs:
+        part_dir.mkdir()
+    part_width = width // 5
+    stroke = 0 if frame_fx else max(0, min(12, int(outline_width or 0)))
+    stroke_color = _parse_rgb(outline_color)
+    draw_frame = None
+    if frame_fx and frame_fx.get("style", "none") != "none":
+        from smweb.square_fx import draw_frame
+
     rotation_filter = _ffmpeg_rotation_filter(rotation)
     video_filter = ",".join(part for part in (
         rotation_filter,
@@ -1718,6 +1841,33 @@ def _prepare_workshop_frame_sets(
     ]
     if duration is not None:
         command.extend(["-t", str(max(1.0, min(20.0, float(duration))))])
+
+    if not draw_frame:
+        # Fast path: one FFmpeg run decodes once and writes the five panel
+        # sequences (plus the full frames only when an extra file needs them).
+        # Same pixels as the Pillow crop below; the plain outline is a drawbox
+        # of the same thickness, drawn in RGBA so the edge keeps its colour.
+        # `-t` is an output option that binds to the next output only, so every
+        # output repeats it (otherwise only part 1 is cut to the duration).
+        limit = command[-2:] if duration is not None else []
+        del command[len(command) - len(limit):]
+        outputs = 5 + (1 if need_full else 0)
+        graph = [f"[0:v]{video_filter},format=rgba,split={outputs}" + "".join(f"[s{i}]" for i in range(outputs))]
+        hex_color = "0x%02x%02x%02x" % stroke_color
+        for index in range(5):
+            box = f",drawbox=x=0:y=0:w=iw:h=ih:color={hex_color}@1:t={stroke}" if stroke else ""
+            graph.append(f"[s{index}]crop={part_width}:ih:{index * part_width}:0{box}[p{index}]")
+        command.extend(["-an", "-filter_complex", ";".join(graph)])
+        for index, part_dir in enumerate(part_dirs):
+            command.extend(["-map", f"[p{index}]", *limit, "-compression_level", "0", str(part_dir / "frame_%04d.png")])
+        if need_full:
+            command.extend(["-map", "[s5]", *limit, "-compression_level", "0", str(full_frames / "frame_%04d.png")])
+        _run(command)
+        count = len(list(part_dirs[0].glob("frame_*.png")))
+        if not count:
+            raise RuntimeError("Workshop source produced no frames")
+        return full_frames, part_dirs, count
+
     command.extend([
         "-an", "-vf", video_filter, "-compression_level", "0",
         str(full_frames / "frame_%04d.png"),
@@ -1727,16 +1877,6 @@ def _prepare_workshop_frame_sets(
     frame_files = sorted(full_frames.glob("frame_*.png"))
     if not frame_files:
         raise RuntimeError("Workshop source produced no frames")
-
-    part_dirs = [work_dir / f"part_{index}_frames" for index in range(1, 6)]
-    for part_dir in part_dirs:
-        part_dir.mkdir()
-    part_width = width // 5
-    stroke = 0 if frame_fx else max(0, min(12, int(outline_width or 0)))
-    stroke_color = _parse_rgb(outline_color)
-    draw_frame = None
-    if frame_fx and frame_fx.get("style", "none") != "none":
-        from smweb.square_fx import draw_frame
 
     for frame_index, frame_path in enumerate(frame_files):
         with Image.open(frame_path) as opened:
@@ -1779,12 +1919,21 @@ def process_gif_workshop(
     width: int = 750,
     duration: float | None = None,
     frame_fx: dict | None = None,
+    extras=None,
 ) -> dict[str, Path]:
-    """Create five synchronized Workshop GIFs at one common quality."""
+    """Create five synchronized Workshop GIFs at one common quality.
+
+    ``extras`` (default: all) picks the optional full-width files:
+    EXTRA_ORIGINAL -> full_original.gif, EXTRA_PREVIEW -> full_with_bars.gif.
+    """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    extras = _extras(extras)
     temp = Path(tempfile.mkdtemp(prefix="sm_workshop_frames_"))
     result: dict[str, Path] = {}
+    clean = out_dir / "full_original.gif"
+    bars = out_dir / "full_with_bars.gif"
+    bars_done = False
     try:
         destinations = [out_dir / f"part_{index}.gif" for index in range(1, 6)]
         requested_fps = max(5, min(24, int(fps)))
@@ -1794,6 +1943,7 @@ def process_gif_workshop(
                 Path(gif_path), candidate_dir, fps=candidate_fps, width=width,
                 rotation=normalize_rotation(rotation), duration=duration,
                 outline_width=outline_width, outline_color=outline_color, frame_fx=frame_fx,
+                need_full=bool(extras),
             )
 
         full_frames, settings, frame_count = _select_synchronized_frame_group(
@@ -1806,23 +1956,29 @@ def process_gif_workshop(
             apply_hex21_file(output)
             result[output.name] = output
 
-        clean = out_dir / "full_original.gif"
-        if (encoder or "").strip().lower() == "gifski":
-            if not _gifski_from_frames(full_frames, clean, fps=int(settings["fps"]), quality=100):
-                raise RuntimeError("gifski failed to create Workshop full preview")
-        else:
-            encode_gif_from_png_sequence(full_frames, clean, fps=int(settings["fps"]), encoder="ffmpeg")
-        result[clean.name] = clean
-        bars = out_dir / "full_with_bars.gif"
-        bars_done = False
-        try:
-            bars_done = _bars_gif_from_frames(full_frames, bars, "workshop", int(settings["fps"]), wm_text, wm_font, wm_opacity, wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color, wm_x=wm_x, wm_y=wm_y)
-        except Exception:
-            import traceback
-            traceback.print_exc()
+        def encode_clean() -> None:
+            if (encoder or "").strip().lower() == "gifski":
+                if not _gifski_from_frames(full_frames, clean, fps=int(settings["fps"]), quality=100):
+                    raise RuntimeError("gifski failed to create Workshop full preview")
+            else:
+                encode_gif_from_png_sequence(full_frames, clean, fps=int(settings["fps"]), encoder="ffmpeg")
+
+        if EXTRA_ORIGINAL in extras:
+            encode_clean()
+            result[clean.name] = clean
+        if EXTRA_PREVIEW in extras:
+            try:
+                bars_done = _bars_gif_from_frames(full_frames, bars, "workshop", int(settings["fps"]), wm_text, wm_font, wm_opacity, wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color, wm_x=wm_x, wm_y=wm_y)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+            if not bars_done and not clean.is_file():
+                encode_clean()  # the fallback below rebuilds the preview from it
     finally:
         shutil.rmtree(temp, ignore_errors=True)
 
+    if EXTRA_PREVIEW not in extras:
+        return result
     try:
         if bars_done:
             result[bars.name] = bars
@@ -1981,10 +2137,12 @@ def process_gif_featured(
     rotation: float = 0,
     frame_fx: dict | None = None,
     duration: float | None = 10,
+    extras=None,
 ) -> dict[str, Path]:
     ff = find_ffmpeg()
     if not ff:
         raise RuntimeError("FFmpeg не найден")
+    extras = _extras(extras)
     out = out_dir / "featured_630.gif"
     if _active_frame(frame_fx):
         # Styled frame drawn per decoded frame (loop position index/count), then
@@ -2003,14 +2161,16 @@ def process_gif_featured(
         finally:
             shutil.rmtree(temp, ignore_errors=True)
     else:
-        media_to_gif(gif_path, out, fps=fps, width=630, duration=10, encoder=encoder, rotation=rotation)
+        media_to_gif(gif_path, out, fps=fps, width=630, duration=duration or 10, encoder=encoder, rotation=rotation)
         ensure_under_mb(out)
     apply_hex21_file(out)
-    clean = out_dir / "full_original.gif"
-    shutil.copy2(out, clean)
-    result = {out.name: out, clean.name: clean}
+    result = {out.name: out}
+    if EXTRA_ORIGINAL in extras:
+        clean = out_dir / "full_original.gif"
+        shutil.copy2(out, clean)
+        result[clean.name] = clean
     # Watermarked animated copy
-    if wm_text and float(wm_opacity or 0) > 0:
+    if EXTRA_PREVIEW in extras and wm_text and float(wm_opacity or 0) > 0:
         wm_out = out_dir / "full_with_watermark.gif"
         try:
             _gif_apply_watermark(
@@ -2088,6 +2248,7 @@ def _prepare_split_frame_sets(
     rotation: float = 0,
     duration: float | None = 10,
     frame_fx: dict | None = None,
+    need_full: bool = True,
 ) -> tuple[Path, list[Path], int]:
     """Decode once and derive aligned 506 px + 100 px lossless frames.
 
@@ -2117,6 +2278,25 @@ def _prepare_split_frame_sets(
     ]
     if duration is not None:
         command.extend(["-t", str(max(1.0, min(20.0, float(duration))))])
+    if not _active_frame(frame_fx):
+        # Fast path without a frame: one FFmpeg run writes both parts directly
+        # (same crop as _split_parts), full frames only when an extra needs them.
+        # `-t` binds to the next output only, so it is repeated for each one.
+        limit = command[-2:] if duration is not None else []
+        del command[len(command) - len(limit):]
+        outputs = 3 if need_full else 2
+        graph = (f"[0:v]{video_filter},format=rgba,split={outputs}" + "".join(f"[s{i}]" for i in range(outputs))
+                 + ";[s0]crop=506:ih:0:0[c];[s1]crop=100:ih:506:0[d]")
+        command.extend(["-an", "-filter_complex", graph,
+                        "-map", "[c]", *limit, "-compression_level", "0", str(center_frames / "frame_%04d.png"),
+                        "-map", "[d]", *limit, "-compression_level", "0", str(side_frames / "frame_%04d.png")])
+        if need_full:
+            command.extend(["-map", "[s2]", *limit, "-compression_level", "0", str(full_frames / "frame_%04d.png")])
+        _run(command)
+        count = len(list(center_frames.glob("frame_*.png")))
+        if not count:
+            raise RuntimeError("Artwork Split source produced no frames")
+        return full_frames, [center_frames, side_frames], count
     command.extend([
         "-an", "-vf", video_filter, "-compression_level", "0",
         str(full_frames / "frame_%04d.png"),
@@ -2154,14 +2334,19 @@ def process_gif_split(
     rotation: float = 0,
     duration: float | None = 10,
     frame_fx: dict | None = None,
+    extras=None,
 ) -> dict[str, Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    extras = _extras(extras)
     temp = Path(tempfile.mkdtemp(prefix="sm_split_frames_"))
     center = out_dir / "center_506.gif"
     side = out_dir / "side_100.gif"
     destinations = [center, side]
     result: dict[str, Path] = {}
+    clean = out_dir / "full_original.gif"
+    bars = out_dir / "full_with_bars.gif"
+    bars_done = False
     try:
         requested_fps = max(5, min(24, int(fps)))
 
@@ -2169,6 +2354,7 @@ def process_gif_split(
             return _prepare_split_frame_sets(
                 Path(gif_path), candidate_dir, fps=candidate_fps,
                 rotation=normalize_rotation(rotation), duration=duration, frame_fx=frame_fx,
+                need_full=bool(extras),
             )
 
         full_frames, settings, frame_count = _select_synchronized_frame_group(
@@ -2181,23 +2367,29 @@ def process_gif_split(
             apply_hex21_file(output)
             result[output.name] = output
 
-        clean = out_dir / "full_original.gif"
-        if (encoder or "").strip().lower() == "gifski":
-            if not _gifski_from_frames(full_frames, clean, fps=int(settings["fps"]), quality=100):
-                raise RuntimeError("gifski failed to create Artwork Split full preview")
-        else:
-            encode_gif_from_png_sequence(full_frames, clean, fps=int(settings["fps"]), encoder="ffmpeg")
-        result[clean.name] = clean
-        bars = out_dir / "full_with_bars.gif"
-        bars_done = False
-        try:
-            bars_done = _bars_gif_from_frames(full_frames, bars, "split", int(settings["fps"]), wm_text, wm_font, wm_opacity, wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color, wm_x=wm_x, wm_y=wm_y)
-        except Exception:
-            import traceback
-            traceback.print_exc()
+        def encode_clean() -> None:
+            if (encoder or "").strip().lower() == "gifski":
+                if not _gifski_from_frames(full_frames, clean, fps=int(settings["fps"]), quality=100):
+                    raise RuntimeError("gifski failed to create Artwork Split full preview")
+            else:
+                encode_gif_from_png_sequence(full_frames, clean, fps=int(settings["fps"]), encoder="ffmpeg")
+
+        if EXTRA_ORIGINAL in extras:
+            encode_clean()
+            result[clean.name] = clean
+        if EXTRA_PREVIEW in extras:
+            try:
+                bars_done = _bars_gif_from_frames(full_frames, bars, "split", int(settings["fps"]), wm_text, wm_font, wm_opacity, wm_corner=wm_corner, wm_scale=wm_scale, wm_color=wm_color, wm_x=wm_x, wm_y=wm_y)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+            if not bars_done and not clean.is_file():
+                encode_clean()  # the fallback below rebuilds the preview from it
     finally:
         shutil.rmtree(temp, ignore_errors=True)
 
+    if EXTRA_PREVIEW not in extras:
+        return result
     try:
         if bars_done:
             result[bars.name] = bars
@@ -2335,271 +2527,46 @@ def remove_chromakey(
     img: Image.Image,
     key: str = "auto",
     tolerance: float = 55.0,
-    softness: float = 20.0,
+    softness: float = 16.0,
+    holes: bool = True,
 ) -> Image.Image:
-    """Remove green/blue/red screen using vectorized NumPy processing.
+    """Remove a solid backdrop of any colour from one picture (smweb.chroma_matte).
 
-    Keeps the same keying thresholds, soft edge, despill and safety fallback
-    as the original implementation, but processes pixels in vectorized arrays.
+    ``key``: auto | green | blue | red | white | black | #rrggbb | none. Clips should go
+    through ``key_character_frames`` so the whole clip shares one backdrop model.
     """
-    import numpy as np
+    from smweb import chroma_matte
+    keyed = chroma_matte.key_frames([img.convert("RGBA")], key, tolerance, softness, holes)[0]
+    return Image.fromarray(keyed, mode="RGBA")
 
-    img = img.convert("RGBA")
-    w, h = img.size
 
-    rgba = np.asarray(img, dtype=np.uint8)
-    flat = rgba.reshape(-1, 4)
+def key_character_frames(frames: list[Image.Image], key: str = "auto", tolerance: float = 55.0,
+                         feather: float = 1.6, holes: bool = True) -> list[Image.Image]:
+    """Key a character clip with ONE backdrop model and frame-to-frame smoothing, then
+    crop every frame with the same box (the union of the figure over the clip).
 
-    key = (key or "auto").strip().lower()
-    n = flat.shape[0]
+    Per-frame keying re-measured the backdrop on every frame (flicker) and per-frame
+    cropping changed the figure's size whenever an arm moved (the figure "breathed").
+    """
+    from smweb import chroma_matte
+    frames = [frame.convert("RGBA") for frame in frames]
+    if key and key not in ("none", "0", "off", ""):
+        frames = [Image.fromarray(array, mode="RGBA")
+                  for array in chroma_matte.key_frames(frames, key, tolerance, 16, holes)]
+        if feather and float(feather) > 0:
+            frames = [feather_alpha(frame, radius=float(feather)) for frame in frames]
+    box = None
+    for frame in frames:
+        bbox = frame.getchannel("A").getbbox()
+        if bbox:
+            box = bbox if box is None else (min(box[0], bbox[0]), min(box[1], bbox[1]),
+                                            max(box[2], bbox[2]), max(box[3], bbox[3]))
+    if box is None:
+        return frames
+    width, height = frames[0].size
+    box = (max(0, box[0] - 2), max(0, box[1] - 2), min(width, box[2] + 2), min(height, box[3] + 2))
+    return [frame.crop(box) for frame in frames]
 
-    if n == 0:
-        return img
-
-    # Already a cutout PNG? keep as-is in auto mode
-    if key in ("auto", "a"):
-        sample_n = min(n, 2500)
-        step = max(1, n // sample_n)
-
-        sampled_alpha = flat[::step, 3]
-        transparent = int(np.count_nonzero(sampled_alpha < 250))
-        checked = len(sampled_alpha)
-
-        if checked and (transparent / checked) > 0.08:
-            return img
-
-    def sample_backdrop():
-        """Sample border ring — chromakey usually fills the frame edge."""
-        acc = []
-
-        step_x = max(1, w // 24)
-        step_y = max(1, h // 24)
-
-        for x in range(0, w, step_x):
-            for y in (1, 2, max(0, h - 2), max(0, h - 3)):
-                if 0 <= x < w and 0 <= y < h:
-                    r, g, b, a = (int(v) for v in rgba[y, x])
-                    if a >= 16:
-                        acc.append((r, g, b))
-
-        for y in range(0, h, step_y):
-            for x in (1, 2, max(0, w - 2), max(0, w - 3)):
-                if 0 <= x < w and 0 <= y < h:
-                    r, g, b, a = (int(v) for v in rgba[y, x])
-                    if a >= 16:
-                        acc.append((r, g, b))
-
-        if not acc:
-            return "green", (40, 200, 40)
-
-        rs = sorted(c[0] for c in acc)
-        gs = sorted(c[1] for c in acc)
-        bs = sorted(c[2] for c in acc)
-
-        lo = len(acc) // 4
-        hi = max(len(acc) // 4 + 1, 3 * len(acc) // 4)
-
-        ar = sum(rs[lo:hi]) // max(1, hi - lo)
-        ag = sum(gs[lo:hi]) // max(1, hi - lo)
-        ab = sum(bs[lo:hi]) // max(1, hi - lo)
-
-        green_votes = sum(1 for r, g, b in acc if g > r + 15 and g > b + 15)
-        blue_votes = sum(1 for r, g, b in acc if b > r + 15 and b > g + 15)
-        red_votes = sum(1 for r, g, b in acc if r > g + 15 and r > b + 15)
-
-        if (
-            green_votes >= blue_votes
-            and green_votes >= red_votes
-            and green_votes > len(acc) * 0.2
-        ):
-            return "green", (ar, ag, ab)
-
-        if (
-            blue_votes >= green_votes
-            and blue_votes >= red_votes
-            and blue_votes > len(acc) * 0.2
-        ):
-            return "blue", (ar, ag, ab)
-
-        if (
-            red_votes >= green_votes
-            and red_votes >= blue_votes
-            and red_votes > len(acc) * 0.2
-        ):
-            return "red", (ar, ag, ab)
-
-        if ag >= ar and ag >= ab:
-            return "green", (ar, ag, ab)
-
-        if ab >= ar and ab >= ag:
-            return "blue", (ar, ag, ab)
-
-        return "red", (ar, ag, ab)
-
-    if key in ("none", "0", "off", ""):
-        return img
-
-    if key in ("auto", "a"):
-        mode, (kr, kg, kb) = sample_backdrop()
-    elif key == "blue":
-        mode, kr, kg, kb = "blue", 20, 40, 220
-    elif key == "red":
-        mode, kr, kg, kb = "red", 220, 30, 30
-    elif key == "green":
-        mode, kr, kg, kb = "green", 40, 200, 40
-    elif key.startswith("#") or (
-        len(key) == 6 and all(c in "0123456789abcdef" for c in key)
-    ):
-        kr, kg, kb = _hex_to_rgb(key if key.startswith("#") else "#" + key)
-
-        if kg >= kr and kg >= kb:
-            mode = "green"
-        elif kb >= kr and kb >= kg:
-            mode = "blue"
-        else:
-            mode = "red"
-    else:
-        mode, kr, kg, kb = "green", 40, 200, 40
-
-    # Same tolerance mapping as the original version
-    tol_ui = max(10.0, min(120.0, float(tolerance or 55)))
-    base_thr = 18.0 + (tol_ui - 10.0) * (70.0 / 110.0)
-    soft = max(4.0, float(softness or 20.0))
-    rgb_thr = 28.0 + (tol_ui - 10.0) * 0.55
-
-    # Float64 is intentional here to stay as close as possible
-    # to the calculations of the old Python implementation.
-    r = flat[:, 0].astype(np.float64)
-    g = flat[:, 1].astype(np.float64)
-    b = flat[:, 2].astype(np.float64)
-    a = flat[:, 3].astype(np.float64)
-
-    if mode == "green":
-        sc = g - np.maximum(r, b)
-    elif mode == "blue":
-        sc = b - np.maximum(r, g)
-    else:
-        sc = r - np.maximum(g, b)
-
-    rd = np.sqrt(
-        (r - float(kr)) ** 2
-        + (g - float(kg)) ** 2
-        + (b - float(kb)) ** 2
-    )
-
-    # Start with original alpha
-    na = a.copy()
-
-    # Original function immediately makes a < 8 transparent
-    low_alpha = a < 8
-    na[low_alpha] = 0
-
-    active = ~low_alpha
-
-    # First branch:
-    # sc >= base_thr OR rd <= rgb_thr * 0.65
-    fully_keyed = active & (
-        (sc >= base_thr)
-        | (rd <= rgb_thr * 0.65)
-    )
-    na[fully_keyed] = 0
-
-    remaining = active & ~fully_keyed
-
-    # Second branch: soft edge based on channel score
-    score_soft = remaining & (sc > base_thr - soft)
-
-    if np.any(score_soft):
-        t = (
-            sc[score_soft]
-            - (base_thr - soft)
-        ) / soft
-
-        t = np.clip(t, 0.0, 1.0)
-
-        na[score_soft] = np.trunc(
-            a[score_soft] * (1.0 - t)
-        )
-
-    remaining &= ~score_soft
-
-    # Third branch: soft edge based on RGB distance
-    rgb_soft = remaining & (rd < rgb_thr)
-
-    if np.any(rgb_soft):
-        t = (
-            rgb_thr - rd[rgb_soft]
-        ) / max(1.0, rgb_thr * 0.5)
-
-        t = np.clip(t, 0.0, 1.0)
-
-        na[rgb_soft] = np.trunc(
-            a[rgb_soft] * (1.0 - t * 0.85)
-        )
-
-    # Despill — same formulas and branch conditions
-    if mode == "green":
-        despill = (
-            (na > 0)
-            & (g > np.maximum(r, b) + 8)
-        )
-
-        if np.any(despill):
-            avg = (r[despill] + b[despill]) * 0.5
-            mix = np.where(na[despill] < 200, 0.55, 0.25)
-
-            g[despill] = np.trunc(
-                g[despill] * (1.0 - mix)
-                + avg * mix
-            )
-
-    elif mode == "blue":
-        despill = (
-            (na > 0)
-            & (b > np.maximum(r, g) + 8)
-        )
-
-        if np.any(despill):
-            avg = (r[despill] + g[despill]) * 0.5
-            mix = np.where(na[despill] < 200, 0.55, 0.25)
-
-            b[despill] = np.trunc(
-                b[despill] * (1.0 - mix)
-                + avg * mix
-            )
-
-    else:
-        despill = (
-            (na > 0)
-            & (r > np.maximum(g, b) + 8)
-        )
-
-        if np.any(despill):
-            avg = (g[despill] + b[despill]) * 0.5
-            mix = np.where(na[despill] < 200, 0.55, 0.25)
-
-            r[despill] = np.trunc(
-                r[despill] * (1.0 - mix)
-                + avg * mix
-            )
-
-    opaque = int(np.count_nonzero(na > 16))
-
-    # Same safety fallback as before
-    if opaque < max(16, int(n * 0.004)):
-        return img
-
-    out_arr = np.empty((n, 4), dtype=np.uint8)
-
-    out_arr[:, 0] = np.clip(r, 0, 255).astype(np.uint8)
-    out_arr[:, 1] = np.clip(g, 0, 255).astype(np.uint8)
-    out_arr[:, 2] = np.clip(b, 0, 255).astype(np.uint8)
-    out_arr[:, 3] = np.clip(na, 0, 255).astype(np.uint8)
-
-    return Image.fromarray(
-        out_arr.reshape((h, w, 4)),
-        mode="RGBA",
-    )
 
 def _place_character(
     bg: Image.Image,
@@ -2695,14 +2662,9 @@ def compose_static(
     offset_y: float = 1.0,
     feather: float = 1.6,
     rotation: float = 0.0,
+    chroma_holes: bool = True,
 ) -> Image.Image:
-    did_key = False
-    if chroma_key and chroma_key not in ("none", "0", "off", ""):
-        char = remove_chromakey(char, key=chroma_key, tolerance=chroma_tol)
-        did_key = True
-    if did_key and feather and float(feather) > 0:
-        char = feather_alpha(char, radius=float(feather))
-    char = _crop_to_alpha(char)
+    char = key_character_frames([char], chroma_key, chroma_tol, feather, chroma_holes)[0]
     return _place_character(
         bg, char, scale=scale, offset_x=offset_x, offset_y=offset_y,
         rotation=rotation,
@@ -2721,12 +2683,12 @@ def compose_animated(
     feather: float = 1.6,
     max_frames: int = 120,
     rotation: float = 0.0,
+    chroma_holes: bool = True,
 ) -> tuple[list[Image.Image], list[int]]:
     """Composite each frame of GIF/WebP onto bg. Returns RGBA frames + durations ms."""
     bg = bg.convert("RGBA")
-    frames: list[Image.Image] = []
+    raw: list[Image.Image] = []
     durations: list[int] = []
-    do_key = bool(chroma_key and chroma_key not in ("none", "0", "off", ""))
     with Image.open(char_path) as im:
         n = int(getattr(im, "n_frames", 1) or 1)
         step = 1
@@ -2734,24 +2696,17 @@ def compose_animated(
             step = max(1, n // max_frames)
         for idx in range(0, n, step):
             im.seek(idx)
-            fr = im.convert("RGBA")
-            if do_key:
-                fr = remove_chromakey(fr, key=chroma_key, tolerance=chroma_tol)
-                if feather and float(feather) > 0:
-                    fr = feather_alpha(fr, radius=float(feather))
-            fr = _crop_to_alpha(fr)
-            composed = _place_character(
-                bg, fr, scale=scale, offset_x=offset_x, offset_y=offset_y,
-                rotation=rotation,
-            )
-            frames.append(composed)
+            raw.append(im.convert("RGBA"))
             try:
                 d = int(im.info.get("duration", 100) or 100)
             except Exception:
                 d = 100
             durations.append(max(20, d * step))
-    if not frames:
+    if not raw:
         raise RuntimeError("No frames in character file")
+    keyed = key_character_frames(raw, chroma_key, chroma_tol, feather, chroma_holes)
+    frames = [_place_character(bg, fr, scale=scale, offset_x=offset_x, offset_y=offset_y, rotation=rotation)
+              for fr in keyed]
     return frames, durations
 
 
@@ -2769,6 +2724,7 @@ def compose_animated_layers(
     fps: int = 12,
     max_seconds: float = 8.0,
     rotation: float = 0.0,
+    chroma_holes: bool = True,
 ) -> tuple[list[Image.Image], list[int]]:
     """Composite two animated/static image sources on one shared timeline."""
     fps = max(5, min(30, int(fps or 12)))
@@ -2778,6 +2734,19 @@ def compose_animated_layers(
     def read_frames(path: Path, resize_bg: bool = False):
         frames: list[Image.Image] = []
         durations: list[int] = []
+        if Path(path).is_dir():
+            # A video decoded by extract_frames(): lossless frames at this fps.
+            for frame_path in sorted(Path(path).glob("frame_*.png"))[:240]:
+                with Image.open(frame_path) as opened:
+                    rgba = opened.convert("RGBA")
+                if resize_bg and rgba.width != target_width:
+                    nh = max(1, int(rgba.height * target_width / max(1, rgba.width)))
+                    rgba = rgba.resize((target_width, nh), Image.Resampling.LANCZOS)
+                frames.append(rgba)
+                durations.append(frame_ms)
+            if not frames:
+                raise RuntimeError(f"No frames in {Path(path).name}")
+            return frames, durations
         with Image.open(path) as im:
             try:
                 count = max(1, min(240, int(getattr(im, "n_frames", 1) or 1)))
@@ -2821,50 +2790,20 @@ def compose_animated_layers(
 
     import time
 
+    # The character clip is keyed once, as a clip: one backdrop model, frame-to-frame
+    # smoothing and one crop box for every frame (smweb.chroma_matte, key_character_frames).
+    t0 = time.monotonic()
+    keyed_chars = key_character_frames(char_frames, chroma_key, chroma_tol, feather, chroma_holes)
+    keyed_by_id = {id(frame): keyed for frame, keyed in zip(char_frames, keyed_chars)}
+    t_key = time.monotonic() - t0
+
     output: list[Image.Image] = []
-    do_key = bool(chroma_key and chroma_key not in ("none", "0", "off", ""))
-
-    t_key = 0.0
-    t_feather = 0.0
-    t_crop = 0.0
-    t_place = 0.0
-
+    t0 = time.monotonic()
     for index in range(count):
         time_ms = index * frame_ms
         bg = at_time(bg_frames, bg_durations, time_ms)
-        char = at_time(char_frames, char_durations, time_ms)
-
-        if do_key:
-            t0 = time.monotonic()
-            char = remove_chromakey(char, key=chroma_key, tolerance=chroma_tol)
-            t_key += time.monotonic() - t0
-
-            if feather and float(feather) > 0:
-                t0 = time.monotonic()
-                char = feather_alpha(char, radius=float(feather))
-                t_feather += time.monotonic() - t0
-
-        t0 = time.monotonic()
-        char = _crop_to_alpha(char)
-        t_crop += time.monotonic() - t0
-
-        t0 = time.monotonic()
-        output.append(
-            _place_character(
-                bg,
-                char,
-                scale=scale,
-                offset_x=offset_x,
-                offset_y=offset_y,
-                rotation=rotation,
-            )
-        )
-        t_place += time.monotonic() - t0
-
-    _LOG.info(f"[compose-detail] frames={count} "
-        f"chromakey={t_key:.1f}s "
-        f"feather={t_feather:.1f}s "
-        f"crop={t_crop:.1f}s "
-        f"place={t_place:.1f}s")
+        char = keyed_by_id[id(at_time(char_frames, char_durations, time_ms))]
+        output.append(_place_character(bg, char, scale=scale, offset_x=offset_x, offset_y=offset_y, rotation=rotation))
+    _LOG.info(f"[compose-detail] frames={count} key={t_key:.1f}s place={time.monotonic() - t0:.1f}s")
 
     return output, [frame_ms] * len(output)

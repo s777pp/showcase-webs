@@ -23,6 +23,7 @@ import processor as proc
 import redis_store as rs
 
 from smweb import analytics
+from smweb import job_diagnostics
 from smweb import media_assets
 from smweb import saved_results
 from smweb import square_fx
@@ -61,6 +62,9 @@ async def api_workshop_studio_start(
     crop: str = Form(""),
     crops: str = Form(""),
     fx: str = Form(""),
+    encode_profile: str = Form("standard"),
+    include_original: str = Form("0"),
+    include_preview: str = Form("0"),
     files: list[UploadFile] = File(default=[]),
 ):
     """Create Workshop files in a background job.
@@ -178,7 +182,10 @@ async def api_workshop_studio_start(
         "options": {"rows": normalized, "fps": fps, "duration": duration,
                     "outline": outline.lower() in ("1", "true", "on"),
                     "free_watermark": not q["pro"],
-                    "layout": layout, "crops": crop_boxes, "fx": effects},
+                    "layout": layout, "crops": crop_boxes, "fx": effects,
+                    # Same choices as Process: encode speed and the optional extra files.
+                    "encode_profile": proc.normalize_encode_profile(encode_profile),
+                    "extras": sorted(_selected_extras(include_original, include_preview))},
         "opts": {"modes": ["workshop_studio"]},
     }
     rs.job_create(jid, payload, enqueue=external)
@@ -247,6 +254,16 @@ def _json_object(raw: str) -> dict:
     return value if isinstance(value, dict) else {}
 
 
+def _selected_extras(include_original, include_preview) -> set[str]:
+    on = lambda value: str(value or "").strip().lower() in ("1", "true", "yes", "on")
+    extras = set()
+    if on(include_original):
+        extras.add(proc.EXTRA_ORIGINAL)
+    if on(include_preview):
+        extras.add(proc.EXTRA_PREVIEW)
+    return extras
+
+
 @router.post("/api/process/start")
 async def api_process_start(
     request: Request,
@@ -277,6 +294,9 @@ async def api_process_start(
     all_modes: str = Form("0"),
     rotations: str = Form("[]"),
     asset_ids: str = Form("[]"),
+    encode_profile: str = Form("standard"),
+    include_original: str = Form("0"),
+    include_preview: str = Form("0"),
     files: list[UploadFile] = File(default=[]),
 ):
     """Start async job; poll /api/process/status/{id} then download."""
@@ -359,6 +379,10 @@ async def api_process_start(
         "fps": fps,
         "enc": enc,
         "wm_font": wm_font,
+        # Animated outputs: "standard" (fast) or "max" (slow, fills 5 MB); see processor.encode_profile.
+        "encode_profile": proc.normalize_encode_profile(encode_profile),
+        # Optional files next to the Steam files; by default the ZIP holds only what Steam needs.
+        "extras": sorted(_selected_extras(include_original, include_preview)),
         # The integrated report is available to every signed-in account.
         # Anonymous jobs still download normally and get a sign-in hint.
         "steam_check": bool(q.get("email")),
@@ -543,6 +567,8 @@ def api_process_status(job_id: str, request: Request):
         "errors": j.get("errors") or [],
     }
     out.update(_process_eta(job_id, j))
+    if j.get("status") == "error":
+        out.update(job_diagnostics.public_error(j.get("error")))
     if j.get("status") == "done":
         out["download"] = f"/api/process/download/{job_id}"
         if j.get("readiness"):

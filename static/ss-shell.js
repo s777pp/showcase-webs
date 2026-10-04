@@ -183,6 +183,13 @@
     bell: { en:'Notifications', ru:'Уведомления', de:'Benachrichtigungen', tr:'Bildirimler', fr:'Notifications', uk:'Сповіщення', es:'Notificaciones', pt:'Notificações' }
   };
   var BELL_SCRIPT = '/static/js/site-bell.js?v=20261001-bell1';
+  // Error popup on every shell page (explains file problems, sends real errors to the developer).
+  (function loadErrorReport() {
+    if (window.SMErrorReport || document.querySelector('script[data-error-report]')) return;
+    var script = document.createElement('script');
+    script.src = '/static/js/error-report.js?v=20261005-err1'; script.async = true; script.dataset.errorReport = '1';
+    (document.head || document.documentElement).appendChild(script);
+  })();
   NAV.forEach(function (n) { if (n.key === 'news') n.label = SHELL_COPY.news; });
 
   var MAINTENANCE_UI = {

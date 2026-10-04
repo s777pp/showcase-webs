@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 452 passed on 2026-10-01 (~145 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 500 passed on 2026-10-05 (~165 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -817,6 +817,75 @@ Only the hero exists for now; content blocks will be added below it later.
   `YTDLP_COOKIES_FILE`, spare account) and `YTDLP_PROXY`; a bot check answers 503 `youtube_blocked` and pings the owner
   bot (`admin_notify.youtube_blocked`, 6 h throttle). Steps in DEPLOY.md "YouTube downloads".
 - Test without deploying: `py -m modal run modal_bg_remove.py --path <image>` (prints cold/warm timings).
+
+## 6.8 Encode profile, optional ZIP extras, Builder auto-fit (2026-10-04, local, not deployed)
+
+- Owner: "make animated showcases noticeably faster; one logic for every tab". `processor.encode_profile(name)`
+  is a ContextVar set per job (`standard` | `max`; unset = `max`, so gallery/profile/loop keep the old encoding).
+  `standard` = gifski `--fast`, no final `--extra`, search accepts 88 % of the limit (`_search_band`); measured on
+  panels: +3 % size, -0.06 dB PSNR. Pool threads do not inherit ContextVars: `_encode_synchronized_frame_group`
+  reads `encode_fast()` first and passes `fast=` down. Jobs store `encode_profile` (Process `opts`, Workshop Studio
+  and compose `options`); old queued jobs without it run as `max`.
+- Extras: `extras=` on process_gif_*/process_video_* (`EXTRA_ORIGINAL` full_original.*, `EXTRA_PREVIEW`
+  full_with_bars.* / full_with_watermark.*; None = all, as direct callers expect). Process/Workshop Studio forms send
+  `include_original` / `include_preview` (default off: only Steam files); `jobs._extra_wanted` filters stills too.
+  Squares map them to full_original.* (the 750x150 strip) and preview.*; free squares watermark lives on the preview
+  only, so without the preview a free squares ZIP has no watermark (owner decision of 2026-09-25 kept).
+- Panels are cut by one FFmpeg filter graph when no styled frame is drawn (plain outline = `drawbox`, pixel-identical
+  to the Pillow stroke). `-t` binds to ONE output in FFmpeg, so it is repeated per output. Featured from video encodes
+  once. Workshop Studio uses gifski everywhere (was ffmpeg palette). Character decodes videos to frame folders
+  (`extract_frames`; `compose_animated_layers` reads a folder). gifski gets `--width/--height` of the frames
+  (`_gifski_size_args`): without them it halves large animations.
+- UI: `static/js/encode-choice.js` + `css/encode-choice.css` (`SMEncodeChoice.ask/append/mountExtras`, 8 languages,
+  checked by check_i18n). Asked only for animated output; last choice in localStorage `sm_encode_profile`, extras in
+  `sm_zip_extras`. Builder "Download for Steam" asks before rendering (`SMBuilder.animated()`).
+- Builder auto-fit (builder-layout.js `requestFit`): `sm:builder-steam-bg` (catalogue pick, resets manual), `sm:builder-mode`,
+  align on, offset input. A drag/keyboard height change sets `manualHeight`; the fit button clears it. Fit waits for
+  the media to decode (`mediaReady`, retry 250 ms; the 0.7 s stage refresh pauses in hidden tabs).
+  Variant "B": `.bx-steamctx` under the canvas (stage `isolation:isolate`, z-index -1) shows the whole background at
+  the canvas scale, the 976 px column and the showcase box; `steamInfo().node` exposes the media element.
+- Benchmark harness lived in the session scratchpad (not kept); repeat with `processor.process_video_*` under
+  `encode_profile(...)` on a real clip when tuning.
+
+## 6.9 Chroma keying engine (2026-10-05, local, not deployed)
+
+- Owner: GIF/video cut-outs flickered and keyed badly (white backdrop + black outline, etc.). One engine, two
+  twins: `smweb/chroma_matte.py` (Character compose: `processor.remove_chromakey`, `key_character_frames`) and
+  `static/js/chroma-matte.js` (`SMChroma`, Builder layers + Character preview). Keep formulas identical;
+  `tests/test_chroma_matte.py` runs both on the same images.
+- Model: backdrop colour from the border ring of up to 12 frames (5-bit histogram peak + cluster mean, `spread` =
+  p90 noise) ONCE per clip; YCbCr distance with brightness weight 1 for neutral keys, 0.35 for saturated ones.
+  Removed = 4-connected components of "near backdrop" touching the border (3x3-averaged distance), plus enclosed
+  pockets >= 0.6 % of the image (neutral keys) or >= 16 px (saturated keys). Soft alpha from min(raw, averaged)
+  distance; 1 px rim alpha = raw / max neighbour distance (anti-aliasing); colour un-mix + chroma despill on the
+  rim; specks dropped; alpha of unchanged pixels averaged with the previous frame. A frame whose border is another
+  solid colour (intro/flash) gets its own model (`border_match`, `frameModel`). Auto mode leaves cut-outs and
+  photos without a solid border alone.
+- `key_character_frames` crops every frame with the union box (per-frame crops made the figure change size).
+  Compose form: `chroma_key` auto|green|blue|red|white|black|#rrggbb|none, `chroma_holes`; cache prefix `compose:3`.
+  Builder layer fields: `chromaKey` + green|blue|custom, `chromaColor`, `chromaHoles` (whitelisted in routers/builder.py).
+  Character UI: `static/js/chroma-ui.js` (8 languages, check_i18n) adds options/colour/pockets and
+  `SMComposeKey.source()` used by app.js drawLive. Styles: `static/css/chroma-ui.css` (also Builder cut bars:
+  3 px black instead of dashed lines, wrapping RU showcase names `mode-*` in BG_COPY).
+
+## 6.10 Error popup, news paste, keying v2 (2026-10-05 evening, local)
+
+- Keying v2 (both twins): candidates and pockets use level = min(raw, 3x3 average) (1-3 px hair gaps); a
+  pocket goes when it has >= 8 px (saturated key) or >= 0.08 % of the image AND half of it is the exact backdrop
+  (neutral/muted keys); `onset` = first 4-unit distance bin holding a quarter of the fullest bin beyond the
+  backdrop caps the inner threshold at 0.75 x onset (muted backdrops vs dark clothes); the soft band gets
+  alpha = raw / max(5x5) (mixing share). Builder keys at the displayed resolution (x1.25, 120k-350k px) in the
+  preview and up to 1.2 MP when `exportingCanvas`.
+- `static/js/error-report.js` (loaded by ss-shell.js on every shell page, 8 languages): wraps fetch/XHR for
+  same-origin /api (QUIET list skips background polls and tools that explain their own errors, e.g. Steam import),
+  job statuses with `error_kind`/`error_code` (job_diagnostics.public_error, added to process/compose/loop/
+  upscale status) and own-script crashes. "user" -> explanation + fix; "server"/page -> report form ->
+  POST /api/support/tickets with context kind=error_report, tool, error, error_code, request_id (whitelisted in
+  admin_content.create_ticket). Max one card per 15 s, one per signature/job.
+- `static/js/admin-news-paste.js` (`SMNewsPaste.parse`, node-testable) + paste hook in admin-news.js: the
+  owner's prepared posts (Заголовок:/Анонс:/Категория:/H2:/lists/**bold**/[links]/RU-EN markers) fill the fields.
+- process-guide.js video probe: never set `video.src=''` inside media handlers (it fires another error event and
+  looped forever, pinning the CPU after every added video).
 
 ## 7. Rules for agents
 

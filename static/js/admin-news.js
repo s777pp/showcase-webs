@@ -52,6 +52,7 @@
         '<button type="button" data-an-cmd="insertUnorderedList">• Список</button><button type="button" data-an-block="blockquote">❝ Цитата</button>' +
         '<button type="button" data-an-link>🔗 Ссылка</button><label class="an-file">🖼 Картинка<input type="file" accept="image/*" data-an-inline hidden></label>' +
         '<button type="button" data-an-cmd="insertHorizontalRule">— Линия</button><button type="button" data-an-cmd="removeFormat">Tx</button></div>' +
+        '<p class="muted an-paste-hint">Можно вставить готовый текст новости: строки «Заголовок:», «Анонс:», «Категория:», H2: / H3:, списки «- », **жирный**, [ссылки](https://…), метки RU / EN — поля и обе вкладки заполнятся сами.</p>' +
         '<div class="an-body" contenteditable="true" data-an-body>' + (n['body_' + lang] || '') + '</div></div>' +
       '<div class="actions"><button class="button" type="submit">Сохранить</button><span class="form-status" data-an-status></span></div></form>';
   }
@@ -112,6 +113,32 @@
           if (!href) return; sel.removeAllRanges(); sel.addRange(range); document.execCommand('createLink', false, href);
         });
       }
+    });
+    // Pasting a prepared post (admin-news-paste.js): fill title / summary / category / body,
+    // both languages when the text has RU / EN parts. Other pastes go into the body as clean text.
+    host.addEventListener('paste', function (event) {
+      if (!editing || !window.SMNewsPaste || !event.target.closest('[data-an-form]')) return;
+      var text = event.clipboardData && event.clipboardData.getData('text/plain'), inBody = event.target.closest('[data-an-body]');
+      if (!text) return;
+      if (!SMNewsPaste.looksStructured(text)) {
+        if (inBody) { event.preventDefault(); document.execCommand('insertText', false, text); }
+        return;
+      }
+      event.preventDefault();
+      var parsed = SMNewsPaste.parse(text), filled = [];
+      var fields = parsed.category || parsed.marked || parsed.languages.some(function (l) { return parsed[l].title || parsed[l].summary; });
+      if (!fields && inBody) { document.execCommand('insertHTML', false, parsed[parsed.languages[0] || 'ru'].body); toast('Разметка применена'); return; }
+      collect();
+      parsed.languages.forEach(function (lang) {
+        var part = parsed[lang], dest = parsed.marked ? lang : tab;
+        if (part.title) editing['title_' + dest] = part.title;
+        if (part.summary) editing['summary_' + dest] = part.summary;
+        if (part.body) editing['body_' + dest] = part.body;
+        filled.push(dest.toUpperCase());
+      });
+      if (parsed.category) editing.category = parsed.category;
+      paint();
+      toast('Текст разобран: ' + (filled.join(' + ') || '—') + (parsed.category ? ', категория «' + CATS[parsed.category] + '»' : ''));
     });
     host.addEventListener('mousedown', function (event) { if (event.target.closest('[data-an-cmd],[data-an-block],[data-an-link]')) event.preventDefault(); });
     host.addEventListener('change', function (event) {
