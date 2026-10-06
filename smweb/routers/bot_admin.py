@@ -102,3 +102,56 @@ def close_ticket(ticket_id: str, request: Request):
     except LookupError:
         return JSONResponse({"ok": False, "msg": "Ticket not found"}, status_code=404)
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- Pro bought in the bot (smweb/telegram_billing.py)
+@router.get("/pro/account")
+def pro_account(request: Request, tg_id: str = ""):
+    """Which site account receives purchases of this Telegram user, and its Pro state."""
+    if (denied := _denied(request)):
+        return denied
+    from smweb import telegram_billing
+    return {"ok": True, **telegram_billing.account_info(tg_id)}
+
+
+@router.get("/pro/order")
+def pro_order(request: Request, token: str = ""):
+    """A purchase started on the site (t.me/<bot>?start=buy_<token>): the chosen plan and the account's name."""
+    if (denied := _denied(request)):
+        return denied
+    from smweb import telegram_billing
+    info = telegram_billing.order_info(token)
+    if not info:
+        return JSONResponse({"ok": False, "msg": "Order not found or expired"}, status_code=404)
+    return {"ok": True, **info}
+
+
+@router.post("/pro/grant")
+def pro_grant(request: Request, body: dict = Body(...)):
+    """The bot verified a payment. Safe to repeat: one payment_id grants once."""
+    if (denied := _denied(request)):
+        return denied
+    from smweb import telegram_billing
+    try:
+        result = telegram_billing.record_payment(
+            str(body.get("payment_id") or ""), str(body.get("tg_id") or ""), str(body.get("plan") or ""),
+            tg_username=str(body.get("tg_username") or ""), method=str(body.get("method") or ""),
+            amount=str(body.get("amount") or ""), currency=str(body.get("currency") or ""),
+            order_token=str(body.get("order_token") or ""), claim_only=bool(body.get("claim_only")),
+        )
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "msg": f"Bad {exc}"}, status_code=400)
+    LOGGER.info("telegram pro payment: %s (%s)", result.get("status"), result.get("plan"))
+    result.pop("user_id", None)
+    return {"ok": True, **result}
+
+
+@router.post("/pro/revoke")
+def pro_revoke(request: Request, body: dict = Body(...)):
+    """A refund made in the bot: take the Pro time of that payment back."""
+    if (denied := _denied(request)):
+        return denied
+    from smweb import telegram_billing
+    result = telegram_billing.revoke(str(body.get("payment_id") or ""))
+    LOGGER.info("telegram pro revoke: %s", result.get("status"))
+    return {"ok": True, **result}

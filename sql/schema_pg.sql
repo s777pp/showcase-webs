@@ -160,6 +160,40 @@ CREATE TABLE IF NOT EXISTS gumroad_sales (
 CREATE INDEX IF NOT EXISTS idx_gumroad_orders_user ON gumroad_orders(user_id,created_at);
 CREATE INDEX IF NOT EXISTS idx_gumroad_sales_user ON gumroad_sales(user_id);
 CREATE INDEX IF NOT EXISTS idx_gumroad_sales_check ON gumroad_sales(status,checked_at);
+CREATE TABLE IF NOT EXISTS telegram_orders (
+ token TEXT PRIMARY KEY,
+ user_id BIGINT NOT NULL,
+ plan TEXT NOT NULL,
+ created_at DOUBLE PRECISION NOT NULL,
+ payment_id TEXT
+);
+CREATE TABLE IF NOT EXISTS telegram_sales (
+ payment_id TEXT PRIMARY KEY,
+ tg_id TEXT NOT NULL,
+ tg_username TEXT,
+ user_id BIGINT,
+ plan TEXT NOT NULL,
+ days INTEGER,
+ status TEXT NOT NULL,
+ method TEXT,
+ amount TEXT,
+ currency TEXT,
+ order_token TEXT,
+ claim_token TEXT,
+ created_at DOUBLE PRECISION NOT NULL,
+ granted_at DOUBLE PRECISION,
+ revoked_at DOUBLE PRECISION,
+ updated_at DOUBLE PRECISION NOT NULL
+);
+CREATE TABLE IF NOT EXISTS telegram_links (
+ tg_id TEXT PRIMARY KEY,
+ user_id BIGINT NOT NULL,
+ updated_at DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_telegram_orders_user ON telegram_orders(user_id,created_at);
+CREATE INDEX IF NOT EXISTS idx_telegram_sales_user ON telegram_sales(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_sales_claim ON telegram_sales(claim_token);
+CREATE INDEX IF NOT EXISTS idx_telegram_links_user ON telegram_links(user_id);
 CREATE TABLE IF NOT EXISTS profile_showcases (id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, sc_type TEXT NOT NULL, title TEXT, sort_order INTEGER DEFAULT 0, data_json TEXT, created_at DOUBLE PRECISION);
 ALTER TABLE profile_showcases ADD COLUMN IF NOT EXISTS sc_type TEXT;
 ALTER TABLE profile_showcases ADD COLUMN IF NOT EXISTS data_json TEXT;

@@ -1,4 +1,5 @@
-"""Billing: legacy checkout redirect, Stripe webhook, Gumroad Pro plans (orders, Ping, claim page)."""
+"""Billing: legacy checkout redirect, Stripe webhook, Gumroad Pro plans (orders, Ping, claim page),
+Pro through the Telegram bot (order link, claim)."""
 
 
 from __future__ import annotations
@@ -94,7 +95,9 @@ def _plans_payload() -> dict:
         plans.append({"id": plan, "days": days, "lifetime": days is None,
                       "price": info.get("price") or gumroad.DEFAULT_PRICES.get(plan, ""),
                       "checkout": bool(info.get("published"))})
-    return {"ok": True, "enabled": any(item["checkout"] for item in plans), "plans": plans}
+    # "telegram": the bot can switch Pro on by itself (both sides share BOT_ADMIN_SECRET).
+    return {"ok": True, "enabled": any(item["checkout"] for item in plans), "plans": plans,
+            "telegram": telegram.configured()}
 
 
 @router.get("/api/billing/plans")
@@ -213,3 +216,60 @@ def _claim_page(language: str):
 for _language in SUPPORTED_LANGUAGES:
     router.add_api_route(f"/{_language}/billing/claim", _claim_page(_language), methods=["GET"],
                          response_class=HTMLResponse, include_in_schema=False)
+
+
+# ---------------------------------------------------------------- Pro through the Telegram bot (2026-10-06)
+# Flow and safety notes: smweb/telegram_billing.py. The bot reports payments through /api/bot-admin/pro/*.
+from smweb import telegram_billing as telegram  # noqa: E402
+
+
+@router.post("/api/billing/telegram/order")
+async def telegram_order(request: Request):
+    """Start a purchase in the Telegram bot bound to the signed-in account; the browser opens the returned t.me link."""
+    import asyncio
+    user = _auth_user(request)
+    if not user or not user.get("id"):
+        return JSONResponse({"ok": False, "code": "login"}, status_code=401)
+    if not telegram.configured():
+        return JSONResponse({"ok": False, "code": "off"}, status_code=503)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    plan = str((body or {}).get("plan") or "") if isinstance(body, dict) else ""
+    if plan not in telegram.PLANS:
+        return JSONResponse({"ok": False, "code": "plan"}, status_code=400)
+    state = await asyncio.to_thread(gumroad.pro_state, int(user["id"]))
+    if state.get("lifetime"):
+        return JSONResponse({"ok": False, "code": "lifetime"}, status_code=409)
+    order = await asyncio.to_thread(telegram.create_order, int(user["id"]), plan)
+    analytics.record("checkout_started", request=request, user_id=int(user["id"]), properties={"method": "telegram"})
+    return {"ok": True, "url": order["url"]}
+
+
+@router.post("/api/billing/telegram/claim")
+async def telegram_claim(request: Request):
+    """Bind a bot purchase that had no account yet to the signed-in one (the link the bot sent to the buyer)."""
+    import asyncio
+    user = _auth_user(request)
+    if not user or not user.get("id"):
+        return JSONResponse({"ok": False, "code": "login"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    token = str((body or {}).get("token") or "").strip() if isinstance(body, dict) else ""
+    if not telegram.valid_token(token):
+        return JSONResponse({"ok": False, "code": "unknown"}, status_code=400)
+    result = await asyncio.to_thread(telegram.claim, token, int(user["id"]))
+    status = result.get("status")
+    if status in ("granted", "already"):
+        return {"ok": True, "code": status, "plan": result.get("plan"), "pro": result.get("pro")}
+    codes = {"taken": 409, "refunded": 410, "unknown": 404}
+    return JSONResponse({"ok": False, "code": status}, status_code=codes.get(status, 400))
+
+
+@router.get("/billing/telegram/claim", include_in_schema=False)
+def telegram_claim_redirect(request: Request):
+    from smweb.routers import pages
+    return pages._legacy_redirect(request, "/billing/claim")

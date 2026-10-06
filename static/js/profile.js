@@ -259,6 +259,7 @@ $('saveBtn').onclick=function(){setStatus('saveState',pT('save_wait'),'wait');fe
   if(el('accountDisplayName'))el('accountDisplayName').value=d.display_name||'';if(el('accountEmail'))el('accountEmail').value=d.email||'';
   el('accountPlan').textContent=d.is_pro?t('pro'):t('free');el('accountPlan').className=d.is_pro?'is-pro':'';
   el('accountGalleryCount').textContent=d.gallery_uploads||0;el('accountShowcaseCount').textContent=d.showcase_count||0;
+  if(el('accountAvatarRemove'))el('accountAvatarRemove').hidden=!d.avatar_url;
   var av=el('accountAvatar');
   av.replaceChildren();
   if(d.avatar_url){
@@ -269,6 +270,14 @@ $('saveBtn').onclick=function(){setStatus('saveState',pT('save_wait'),'wait');fe
    av.appendChild(avatarImage);
   }else av.textContent=(d.display_name||d.email||'S').charAt(0).toUpperCase();
  }
+ // Avatar change / removal (SMAvatar, avatar-upload.js; the account page uses the same).
+ var avChange=el('accountAvatarChange'),avRemove=el('accountAvatarRemove'),avPick=el('accountAvatar');
+ function avLabels(){if(!window.SMAvatar)return;if(avChange)avChange.textContent=SMAvatar.t('change');if(avRemove)avRemove.textContent=SMAvatar.t('remove');if(avPick)avPick.title=SMAvatar.t('change')}
+ function avDone(r){state('accountAvatarState',r.message,r.ok===null?'wait':r.ok?'ok':'bad');if(r.ok)load()}
+ if(avChange)avChange.onclick=function(){if(window.SMAvatar)SMAvatar.pick(avDone)};
+ if(avPick)avPick.onclick=function(){if(window.SMAvatar)SMAvatar.pick(avDone)};
+ if(avRemove)avRemove.onclick=function(){if(window.SMAvatar)SMAvatar.remove(avDone)};
+ avLabels();window.addEventListener('sm:langchange',avLabels);
  function load(){return fetch('/api/profile/account-overview',{credentials:'same-origin'}).then(function(r){return r.json()}).then(paint).catch(function(){paint(null)})}
  var login=el('accountLogin');if(login)login.onclick=function(){if(window.SSShell&&SSShell.openAuth)SSShell.openAuth('login')};
  var save=el('accountSaveName');if(save)save.onclick=function(){var name=el('accountDisplayName').value.trim();state('accountNameState',t('saving'),'wait');save.disabled=true;fetch('/api/profile/update',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({display_name:name})}).then(function(r){return r.json()}).then(function(d){if(!d.ok)throw Error(d.msg||'Save failed');state('accountNameState',t('saved'),'ok');return load()}).catch(function(e){state('accountNameState',e.message,'bad')}).finally(function(){save.disabled=false})};

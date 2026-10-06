@@ -624,7 +624,7 @@
     if (done) proPlansWaiting.push(done);
     if (document.querySelector('script[data-pro-plans]')) return;
     var script = document.createElement('script');
-    script.src = '/static/js/pro-plans.js?v=20261006-pay4'; script.dataset.proPlans = '1';
+    script.src = '/static/js/pro-plans.js?v=20261006-tg1'; script.dataset.proPlans = '1';
     script.onload = function () { var queue = proPlansWaiting.splice(0); if (window.SMProPlans) queue.forEach(function (fn) { fn(); }); };
     // Without the plans the dialog still offers the key form (it is visible by default).
     script.onerror = function () { proPlansWaiting.length = 0; document.getElementById('ssActivationCode')?.focus(); };

@@ -222,7 +222,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/loop/start", 6, 60),
         ("/api/gallery/", 60, 60),
         ("/api/download-url", 5, 60),
+        ("/api/account/avatar", 10, 60),
         ("/api/billing/gumroad/order", 10, 60),
+        ("/api/billing/telegram/order", 10, 60),
+        ("/api/billing/telegram/claim", 10, 60),
         ("/api/billing/gumroad/claim", 10, 60),
         ("/api/billing/gumroad", 30, 60),
     )

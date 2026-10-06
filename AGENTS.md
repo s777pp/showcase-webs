@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 526 passed on 2026-10-06 (~150 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 526 passed on 2026-10-06 (~150 s), before the 10 avatar tests (6.13) and the 21 Telegram billing tests (6.14)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -917,7 +917,7 @@ Only the hero exists for now; content blocks will be added below it later.
   one SQL statement; `reconcile()` (hourly from the job cleaner) rechecks granted sales for refunds.
   The older license-key activation of the $10 product in `routers/system.py` (`/api/unlock`) is unchanged.
 - Purchase dialog (owner, same day): every Buy/Activate opens step 1 = plans, step 2 = payment method (Gumroad card/PayPal
-  automatic; FunPay and Telegram bot = manual key, the bot will be automated later), the key form is step 3
+  automatic; the Telegram bot = automatic since 6.14; FunPay = manual key), the key form is step 3
   (`#ssKeyPane`, also the fallback if pro-plans.js fails). `SSShell.openActivation({plan})` opens step 2,
   `{key: true}` the key form. `/api/billing/plans` always lists all plans (`DEFAULT_PRICES` until Gumroad answers) with a
   `checkout` flag. Landing pricing (`index.html #pricing`): Free / Pro from $0.99 / Pro forever, prices via `data-plan-price`.
@@ -941,6 +941,50 @@ Only the hero exists for now; content blocks will be added below it later.
   The header Profile button has no chevron (owner).
 - `core.quota_state` marks Pro as a trial only for `SM-TRIAL` codes; Gumroad time plans set `pro_code=GRS-…`.
   Tests: `tests/test_account_page.py`.
+- Avatar (same day): `POST` / `DELETE /api/account/avatar` in `smweb/routers/account.py`, rate rule in
+  `middleware.py` (10 per 60 s). `_avatar_bytes`: at most 6 MB read, over 16 MP rejected, stills become a 512 px
+  PNG (with alpha) or JPG, animated GIF / WebP are stored untouched and must be under 3 MB. Key
+  `avatars/<uid>-<token><ext>` (R2 when configured, else `DATA/avatars`); `_drop_old_avatar` removes the previous
+  object/file, and a removal also clears every local `<uid>.*`, `<uid>-*`, `<uid>_*` file because
+  `/api/auth/avatar/{id}` falls back to them. Error codes `login`, `too_big`, `animated_too_big`, `too_large`,
+  `bad_image`, `failed` are the keys of COPY in `static/js/avatar-upload.js` (`SMAvatar.pick/remove/t`, loaded before
+  `account-page.js` and `profile.js`, checked by check_i18n). UI: `avatarEditor()` in account-page.js,
+  `#accountAvatar*` in profile.html. The older `/api/auth/profile` and `/api/gallery/author/avatar` uploads are unchanged.
+- **Not verified yet:** the 10 avatar tests in `tests/test_account_page.py` were written in a sandbox without
+  FastAPI/pytest (package index blocked), so neither they nor the full suite were run after this change. Only the
+  fixtures were checked against `_avatar_bytes` / `_drop_old_avatar`, and `check_i18n` passes. Run the section 0
+  commands, then delete this bullet and update the passed count there.
+
+## 6.14 Pro through the Telegram bot (2026-10-06, local, not deployed)
+
+- The owner's shop bot is a separate project (`C:\Users\n1t1337\Desktop\bottg-main`, aiogram 3, Docker on an Oracle VM;
+  its README explains plans, payments and `/refund`). It takes the money (Stars, CryptoBot, PayPal / card confirmed
+  by the owner) and reports each verified payment to the site. The site only decides WHICH account gets the Pro.
+- `smweb/telegram_billing.py` (flow and safety notes in its docstring). Account resolution for a payment:
+  1. `order_token` from a purchase started on the site (`POST /api/billing/telegram/order`, signed-in, returns
+     `https://t.me/<bot>?start=buy_<token>`; table `telegram_orders`, one payment per order, 30 days);
+  2. `telegram_links` (tg_id -> the account an earlier purchase of that Telegram user landed on), then
+     `users.telegram_id` (Telegram sign-in);
+  3. nobody known: the sale stays `pending` with a `claim_token`; the bot sends
+     `/billing/telegram/claim?tg=<token>` -> `/{lang}/billing/claim` (billing-claim.js, `fromBot`) ->
+     `POST /api/billing/telegram/claim` binds it to the signed-in account once.
+  `telegram_links` is deliberately not `users.telegram_id`: that column grants a login, a payment must not.
+- Bot-facing API in `routers/bot_admin.py` (same `X-Bot-Admin-Secret` as the rest of /api/bot-admin):
+  `GET /pro/account?tg_id=`, `GET /pro/order?token=`, `POST /pro/grant` (idempotent on the bot's random
+  `payment_id`; status granted / already / claim + claim_url / revoked; `claim_only` = "buy for another account"),
+  `POST /pro/revoke` (refund: takes the days back). Pro time uses the same SQL as Gumroad (`_grant` / `_revoke`),
+  `pro_code = TGS-<hash>`; bell `pro_purchased`, analytics `pro_activated` method `telegram`.
+- UI: `/api/billing/plans` carries `"telegram": bool` (= BOT_ADMIN_SECRET set); pro-plans.js then shows the Telegram
+  option as automatic and runs the same `checkout()` + `watch()` as Gumroad, else it is the old manual link.
+  Account page purchases list source `telegram` with `price_label` ("300 ⭐"). Bot username:
+  `TELEGRAM_SHOP_BOT_USERNAME`, else `TELEGRAM_BOT_USERNAME`; claim links are built from `APP_URL`.
+- Account export has `telegram_purchases`; account deletion drops orders and links and detaches sales.
+  Rate rules for the two `/api/billing/telegram/*` routes. Schema in both `auth_db._create_schema` and `schema_pg.sql`.
+- Tests: `tests/test_telegram_billing.py` (21). **Not verified yet:** written in a sandbox without FastAPI/pytest.
+  The 16 rule tests (no HTTP) were executed there with a stand-in runner and pass; the 5 HTTP tests (bot API,
+  site routes, account page) and the full suite were NOT run. Run the section 0 commands, then delete this note.
+- Deploy order: site first (the bot needs `/api/bot-admin/pro/*`), then the bot. VPS `.env`: `BOT_ADMIN_SECRET`
+  (same value as in the bot), `TELEGRAM_BOT_USERNAME` = the shop bot, `APP_URL`.
 
 ## 7. Rules for agents
 

@@ -360,6 +360,54 @@ def _create_schema(c: sqlite3.Connection) -> None:
     c.execute("CREATE INDEX IF NOT EXISTS idx_gumroad_orders_user ON gumroad_orders(user_id, created_at)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_gumroad_sales_user ON gumroad_sales(user_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_gumroad_sales_check ON gumroad_sales(status, checked_at)")
+    # Pro bought in the Telegram bot (smweb/telegram_billing.py, 2026-10-06): an order is a purchase started on
+    # the site, a sale is a payment the bot reported, a link remembers which account a Telegram user pays for.
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS telegram_orders (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            plan TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            payment_id TEXT
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS telegram_sales (
+            payment_id TEXT PRIMARY KEY,
+            tg_id TEXT NOT NULL,
+            tg_username TEXT,
+            user_id INTEGER,
+            plan TEXT NOT NULL,
+            days INTEGER,
+            status TEXT NOT NULL,
+            method TEXT,
+            amount TEXT,
+            currency TEXT,
+            order_token TEXT,
+            claim_token TEXT,
+            created_at REAL NOT NULL,
+            granted_at REAL,
+            revoked_at REAL,
+            updated_at REAL NOT NULL
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS telegram_links (
+            tg_id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            updated_at REAL NOT NULL
+        )
+        """
+    )
+    c.execute("CREATE INDEX IF NOT EXISTS idx_telegram_orders_user ON telegram_orders(user_id, created_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_telegram_sales_user ON telegram_sales(user_id)")
+    c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_sales_claim ON telegram_sales(claim_token)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_telegram_links_user ON telegram_links(user_id)")
     c.execute(
         """
         CREATE TABLE IF NOT EXISTS profile_showcases (
@@ -867,6 +915,11 @@ def account_export_data(user_id: int, analytics_user_hash: str = "") -> dict:
                FROM gumroad_sales WHERE user_id=? ORDER BY sale_created""",
             (uid,),
         ).fetchall()]
+        telegram_purchases = [dict(item) for item in c.execute(
+            """SELECT plan,days,status,method,amount,currency,created_at,granted_at,revoked_at
+               FROM telegram_sales WHERE user_id=? ORDER BY created_at""",
+            (uid,),
+        ).fetchall()]
         codes = [dict(item) for item in c.execute(
             "SELECT code,used_at FROM used_codes WHERE user_id=? ORDER BY used_at",
             (uid,),
@@ -895,6 +948,7 @@ def account_export_data(user_id: int, analytics_user_hash: str = "") -> dict:
             "sessions": sessions,
             "activated_codes": codes,
             "pro_purchases": purchases,
+            "telegram_purchases": telegram_purchases,
             "analytics_events": analytics_rows,
         }
     finally:
@@ -956,6 +1010,12 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
         c.execute("DELETE FROM saved_results WHERE user_id=?", (uid,))
         c.execute("DELETE FROM gumroad_orders WHERE user_id=?", (uid,))
         c.execute("UPDATE gumroad_sales SET user_id=NULL WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM telegram_orders WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM telegram_links WHERE user_id=?", (uid,))
+        # Sales stay as bookkeeping without the account. A delivered one loses its claim link for good; one that
+        # was paid but never granted keeps it, so the buyer can still attach it to another account.
+        c.execute("UPDATE telegram_sales SET user_id=NULL, "
+                  "claim_token=CASE WHEN status='pending' THEN claim_token ELSE NULL END WHERE user_id=?", (uid,))
         c.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
         c.execute("UPDATE used_codes SET user_id=NULL WHERE user_id=?", (uid,))
         c.execute("DELETE FROM email_codes WHERE email=?", (str(user["email"]),))

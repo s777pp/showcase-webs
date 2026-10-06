@@ -33,7 +33,8 @@
     grid: '<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
     shield: '<path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
     data: '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>',
-    download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>'
+    download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+    camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'
   };
   var root = document.getElementById('accountPage');
   if (!root) return;
@@ -102,7 +103,7 @@
 
   function avatarNode(cls) {
     var u = data.user, avatar = el('div', cls);
-    if (u.avatar_url) { var img = el('img'); img.src = u.avatar_url; img.alt = ''; img.decoding = 'async'; avatar.append(img); }
+    if (u.avatar_url) { var img = el('img'); img.src = u.avatar_url; img.alt = ''; img.decoding = 'async'; img.dataset.smAvatar = '1'; avatar.append(img); }
     else avatar.textContent = (u.name || 'S').charAt(0).toUpperCase();
     return avatar;
   }
@@ -178,9 +179,32 @@
     tools.append(pub);
     var out = button('', 'acc-icon-btn', logout); out.append(icon('logout')); out.setAttribute('aria-label', t('logout')); out.title = t('logout');
     tools.append(out);
-    var avatar = el('div', 'acc-hero__avatar'); avatar.append(avatarNode('acc-avatar'));
-    box.append(avatar, who, tools);
+    box.append(avatarEditor(), who, tools);
     return box;
+  }
+  // Avatar: click to change, x to remove (SMAvatar from avatar-upload.js; shared with the public profile page).
+  function avatarEditor() {
+    var wrap = el('div', 'acc-hero__avatar-wrap');
+    var pick = el('button', 'acc-hero__avatar'); pick.type = 'button';
+    var words = window.SMAvatar ? SMAvatar.t : function (k) { return k; };
+    pick.setAttribute('aria-label', words('change')); pick.title = words('change');
+    pick.append(avatarNode('acc-avatar'));
+    var cam = el('span', 'acc-hero__cam'); cam.append(icon('camera')); pick.append(cam);
+    var stateLine = el('p', 'acc-state acc-hero__avatar-state'); stateLine.setAttribute('aria-live', 'polite');
+    function done(result) {
+      state(stateLine, result.message, result.ok === null ? 'wait' : result.ok ? 'ok' : 'bad');
+      if (result.ok) { data.user.avatar_url = result.avatar_url; setTimeout(render, 900); }
+    }
+    pick.addEventListener('click', function () { if (window.SMAvatar) SMAvatar.pick(done); });
+    wrap.append(pick);
+    if (data.user.avatar_url) {
+      var drop = el('button', 'acc-hero__avatar-remove', '×'); drop.type = 'button';
+      drop.setAttribute('aria-label', words('remove')); drop.title = words('remove');
+      drop.addEventListener('click', function () { if (window.SMAvatar) SMAvatar.remove(done); });
+      wrap.append(drop);
+    }
+    wrap.append(stateLine);
+    return wrap;
   }
   function chip(kind, label, value) {
     var c = el('span', 'acc-chip acc-chip--' + kind); c.append(brand(kind), el('b', null, label)); if (value) c.append(el('span', null, value)); return c;
@@ -282,7 +306,7 @@
     items.forEach(function (item) {
       var li = el('li', 'acc-buy');
       var what = item.plan ? t(PLAN_LABEL[item.plan] || item.plan) : t(item.source === 'trial' ? 'srcTrial' : item.source === 'gumroad_license' ? 'srcLicense' : 'srcKey');
-      var via = item.source === 'gumroad' ? t('srcGumroad') : '';
+      var via = item.source === 'gumroad' ? t('srcGumroad') : item.source === 'telegram' ? 'Telegram' : '';
       var mark = el('span', 'acc-buy__mark' + (item.plan === 'unlimited' ? ' is-life' : ''));
       if (item.plan === 'unlimited') mark.textContent = '∞'; else if (item.plan) mark.textContent = item.plan.replace('d', ''); else mark.append(icon('key'));
       var main = el('div', 'acc-buy__main'); main.append(el('b', null, what), el('small', null, [via, date(item.at)].filter(Boolean).join(' · ')));

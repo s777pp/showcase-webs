@@ -85,9 +85,19 @@ body.page-account #ssFootHost{position:relative;z-index:1}
 .acc-hero{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:24px;padding:30px;overflow:hidden;border:1px solid var(--acc-line);border-radius:24px;
   background:linear-gradient(120deg,rgba(14,26,60,.9),rgba(5,10,28,.92));box-shadow:0 24px 70px rgba(0,0,0,.4)}
 .acc-hero>*:not(.acc-glow){position:relative;z-index:1}
-.acc-hero__avatar{padding:3px;border-radius:24px;background:linear-gradient(135deg,var(--acc-cyan),var(--acc-violet));box-shadow:0 0 40px rgba(31,201,241,.25)}
+.acc-hero__avatar-wrap{position:relative;display:grid;justify-items:center;gap:6px}
+.acc-hero__avatar{position:relative;display:block;margin:0;border:0;cursor:pointer;font:inherit;color:inherit;padding:3px;border-radius:24px;background:linear-gradient(135deg,var(--acc-cyan),var(--acc-violet));box-shadow:0 0 40px rgba(31,201,241,.25)}
 .acc-avatar{display:grid;place-items:center;width:92px;height:92px;overflow:hidden;border-radius:21px;background:#0b1430;font-size:36px;font-weight:900}
 .acc-avatar img{width:100%;height:100%;object-fit:cover}
+.acc-hero__cam{position:absolute;inset:3px;display:grid;place-items:center;border-radius:21px;background:rgba(3,7,20,.62);color:#fff;opacity:0;transition:opacity .15s}
+.acc-hero__cam .acc-ico{width:auto;height:auto;border:0;background:none;color:#fff}
+.acc-hero__cam .acc-ico svg{width:26px;height:26px}
+.acc-hero__avatar:hover .acc-hero__cam,.acc-hero__avatar:focus-visible .acc-hero__cam{opacity:1}
+.acc-hero__avatar:focus-visible{outline:2px solid #7fe9ff;outline-offset:3px}
+.acc-hero__avatar-remove{position:absolute;top:-6px;right:-6px;display:grid;place-items:center;width:26px;height:26px;padding:0;border:1px solid rgba(255,90,120,.5);border-radius:50%;background:#0b1430;color:#ff9aaa;font:800 16px/1 Montserrat,system-ui,sans-serif;cursor:pointer;opacity:0;transition:opacity .15s}
+.acc-hero__avatar-wrap:hover .acc-hero__avatar-remove,.acc-hero__avatar-remove:focus-visible{opacity:1}
+.acc-hero__avatar-state{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);width:max-content;max-width:220px;text-align:center}
+@media (hover:none){.acc-hero__cam{opacity:.55}.acc-hero__avatar-remove{opacity:1}}
 .acc-hero__who{display:grid;gap:10px;min-width:0}
 .acc-hero__name{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 .acc-hero__name h1{font-size:clamp(26px,2.8vw,38px);font-weight:900;line-height:1.05;overflow-wrap:anywhere}
