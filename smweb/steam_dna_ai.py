@@ -52,7 +52,6 @@ def settings() -> dict[str, Any]:
             os.environ.get("GROQ_DNA_MODEL")
             or "openai/gpt-oss-20b"
         ).strip(),
-        "free_daily": bounded("STEAM_DNA_FREE_DAILY", 1, 20),
         "pro_daily": bounded("STEAM_DNA_PRO_DAILY", 20, 100),
         "global_daily": bounded("STEAM_DNA_GLOBAL_DAILY", 150, 5000),
     }

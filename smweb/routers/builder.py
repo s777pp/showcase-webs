@@ -23,8 +23,8 @@ from PIL import Image, UnidentifiedImageError
 import auth_db
 import processor
 import redis_store as rs
-from smweb import frame_designs, object_store
-from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user
+from smweb import frame_designs, free_limits, object_store
+from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, _ip
 from smweb import remove_bg_client
 
 
@@ -338,12 +338,10 @@ def reserve_export(request: Request):
     if error:
         return error
     pro = auth_db.effective_pro(user)
-    ok, remaining = auth_db.consume_builder_render(int(user["id"]), is_pro=pro)
+    limit = free_limits.builder_exports_per_day()
+    ok, remaining = auth_db.consume_builder_render(int(user["id"]), is_pro=pro, limit=limit)
     if not ok:
-        return JSONResponse(
-            {"ok": False, "msg": "Free Builder limit reached: 1 export per day", "remaining": 0},
-            status_code=429,
-        )
+        return free_limits.refusal(request, "builder", "builder", n=limit)
     return {"ok": True, "remaining": remaining, "is_pro": pro}
 
 
@@ -447,22 +445,29 @@ async def remove_background(request: Request):
     preferred = str(body.get("provider") or "auto").strip().lower()
     if preferred not in remove_bg_client.PROVIDERS:
         preferred = "auto"
-    # Per-user daily limits; every provider also has its own monthly cap (remove_bg_client).
+    # Pro: a daily cap per account. Free: one removal a week (smweb/free_limits.py). Both share a global daily
+    # cap, and every provider also has its own monthly cap (remove_bg_client).
     try:
-        free_limit = max(1, int(os.environ.get("REMOVE_BG_FREE_DAILY", "5")))
-        pro_limit = max(free_limit, int(os.environ.get("REMOVE_BG_PRO_DAILY", "20")))
+        pro_limit = max(1, int(os.environ.get("REMOVE_BG_PRO_DAILY", "20")))
         global_limit = max(1, int(os.environ.get("BG_REMOVE_GLOBAL_DAILY", "300")))
     except ValueError:
-        free_limit, pro_limit, global_limit = 5, 20, 300
-    user_limit = pro_limit if auth_db.effective_pro(user) else free_limit
-    for key, limit in ((f"builder-bg:user:{int(user['id'])}", user_limit), ("builder-bg:global", global_limit)):
-        allowed, _ = rs.rate_limit(key, limit, 86400, fail_closed=True)
+        pro_limit, global_limit = 20, 300
+    busy = JSONResponse({"ok": False, "code": "remove_bg_limit",
+                         "msg": "Background-removal limit reached. Try again later"}, status_code=429)
+    pro = auth_db.effective_pro(user)
+    free_try = None
+    if pro:
+        allowed, _ = rs.rate_limit(f"builder-bg:user:{int(user['id'])}", pro_limit, 86400, fail_closed=True)
         if not allowed:
-            return JSONResponse(
-                {"ok": False, "code": "remove_bg_limit",
-                 "msg": "Background-removal limit reached. Try again later"},
-                status_code=429,
-            )
+            return busy
+    else:
+        if not free_limits.consume("bg", int(user["id"]), _ip(request)):
+            return free_limits.refusal(request, "weekly", "bg", code="remove_bg_limit")
+        free_try = free_limits.ticket("bg", int(user["id"]), _ip(request))
+    allowed, _ = rs.rate_limit("builder-bg:global", global_limit, 86400, fail_closed=True)
+    if not allowed:
+        free_limits.refund_ticket(free_try)
+        return busy
     jid = secrets.token_hex(12)
     payload = {
         "kind": "builder_bg_remove", "status": "queued", "pct": 1,
@@ -470,6 +475,8 @@ async def remove_background(request: Request):
         "source_key": source_key, "output_stem": secrets.token_hex(16),
         "provider": preferred if preferred != "auto" else "",
     }
+    if free_try:
+        payload["free_try"] = free_try   # given back if the job fails (redis_store.job_update)
     external = ((os.environ.get("WORKER_MODE") or "embedded").strip().lower() == "external"
                 and rs.redis_ok() and rs.worker_alive())
     rs.job_create(jid, payload, enqueue=external)

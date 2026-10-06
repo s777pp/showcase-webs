@@ -19,10 +19,10 @@
 <link rel="stylesheet" href="/static/css/home-loader.css?v=20260925-loader2"/>
 <link rel="stylesheet" href="/static/css/support-chat.css?v=20261001-sup1"/>
 <link rel="stylesheet" href="/static/css/analytics-consent.css?v=20260927-lift1"/>
-<link rel="stylesheet" href="/static/css/home.css?v=20260927-stars2"/>
-<link rel="stylesheet" href="/static/css/home-blocks.css?v=20261006-plans1"/>
+<link rel="stylesheet" href="/static/css/home.css?v=20261007-home1"/>
+<link rel="stylesheet" href="/static/css/home-blocks.css?v=20261007-home1"/>
 <link rel="stylesheet" href="/static/css/home-overlays.css?v=20261001-ovl1"/>
-<script src="/static/js/locales-extra.js?v=20261006-acc1"></script>
+<script src="/static/js/locales-extra.js?v=20261007-home3"></script>
 <script src="/static/js/i18n.js?v=20260927-guides1"></script>
 <script defer src="/static/js/home-loader.js?v=20260921-polish1" onerror="document.documentElement.classList.remove('home-is-loading')"></script>
 <script defer src="/static/js/support-chat.js?v=20261001-sup2"></script>
@@ -61,6 +61,7 @@
           <source type="image/webp" srcset="/static/img/home/fon-1000.webp?v=20260925-home22 1000w, /static/img/home/fon-1280.webp?v=20260925-home22 1280w, /static/img/home/fon-1920.webp?v=20260925-home22 1920w, /static/img/home/fon-2560.webp?v=20260925-home22 2560w, /static/img/home/fon-3840.webp?v=20260925-home22 3840w" sizes="max(100vw, 177.7svh)"/>
           <img class="home-art__bg" src="/static/img/home/fon-1920.webp?v=20260925-home22" alt="" width="3840" height="2160" decoding="async" fetchpriority="high"/>
         </picture>
+        <canvas class="home-petals" id="homePetals" aria-hidden="true"></canvas>
         <div class="home-vrm" id="heroVrm" data-model="/static/models/saba-0.1-web.vrm?v=20260929-web1" data-model-fallback="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1">
           <canvas id="heroVrmCanvas"></canvas>
           <span class="home-vrm__hit" id="heroVrmHit" aria-hidden="true"></span>
@@ -106,229 +107,205 @@
     </section>
     <div class="home-blocks">
       <div class="hb-aurora" aria-hidden="true"></div>
-      <section class="hb-mock hb-extension-console" id="features" aria-labelledby="extTitle">
-        <div class="hb-mock-frame">
-          <div class="hb-mock-title">
-            <span class="hb-mock-title-label"><span data-i="mock_title">Showcase Maker — Tools</span></span>
-            <div class="hb-win-controls" aria-hidden="true">
-              <span class="hb-win-btn" title="Minimize">
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5h8" stroke="currentColor" stroke-width="1.2"/></svg>
-              </span>
-              <span class="hb-win-btn" title="Maximize">
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="1.2" y="1.2" width="7.6" height="7.6" stroke="currentColor" stroke-width="1.2"/></svg>
-              </span>
-              <span class="hb-win-btn hb-win-close" title="Close">
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.2"/></svg>
-              </span>
-            </div>
-          </div>
-          <div class="hb-extension-browser-strip">
-            <div class="hb-extension-browser-icons" aria-hidden="true"><img class="hb-extension-browser-icon" src="/static/img/browser-icons/chrome.svg" alt="" width="32" height="32" loading="lazy"><img class="hb-extension-browser-icon" src="/static/img/browser-icons/edge.svg" alt="" width="32" height="32" loading="lazy"></div>
-            <div class="hb-extension-browser-copy">
-              <b data-i="ext_eyebrow">Browser extension</b>
-              <p data-i="ext_hint">Download the ZIP, unpack it and select “Load unpacked” on the browser extensions page.</p>
-              <div class="hb-extension-browser-flow" aria-hidden="true"><span>1 · ZIP</span><i>→</i><span data-i="flow_unpack">2 · UNPACK</span><i>→</i><span data-i="flow_load">3 · LOAD</span></div>
-            </div>
-            <a class="hb-extension-browser-cta" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=item-share-cb" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span data-i="ext_install">Install extension</span></a>
-          </div>
-          <div class="hb-mock-body">
-            <div class="hb-mock-side">
-              <a class="hb-compose" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=item-share-cb" target="_blank" rel="noopener" data-i="ext_install">Install extension</a>
-              <div class="hb-nav-item hb-active"><span data-i="ext_nav_overview">Overview</span><span class="hb-nav-state">●</span></div>
-              <div class="hb-nav-item"><span data-i="ext_nav_steam">Steam tools</span></div>
-              <div class="hb-nav-item"><span data-i="ext_nav_browser">Browser Engine</span></div>
-              <div class="hb-nav-item"><span data-i="ext_nav_preview">Profile preview</span></div>
-              <div class="hb-nav-item"><span data-i="ext_nav_privacy">Privacy</span></div>
-              <div class="hb-labels" data-i="ext_supports">Supports</div>
-              <div class="hb-label-row"><span class="hb-ldot" style="background:#00d2ff"></span> Chrome</div>
-              <div class="hb-label-row"><span class="hb-ldot" style="background:#A4F4FD"></span> Edge</div>
-              <div class="hb-label-row"><span class="hb-ldot" style="background:#f59e0b"></span> Chromium</div>
-              <div class="hb-label-row"><span class="hb-ldot" style="background:#10b981"></span> Manifest V3</div>
-            </div>
-            <div class="hb-mock-list">
-              <div class="hb-msg hb-unread hb-active">
-                <div class="hb-top"><span class="hb-name" data-i="ext_list_steam">Steam integration</span><span class="hb-time" data-i="badge_live">live</span></div>
-                <div class="hb-sub" data-i="ext_list_steam_sub">Tools inside Steam pages</div>
-                <div class="hb-prev" data-i="ext_list_steam_prev">Edit showcases without switching tabs</div>
-              </div>
-              <div class="hb-msg hb-unread">
-                <div class="hb-top"><span class="hb-name" data-i="ext_nav_browser">Browser Engine</span><span class="hb-time" data-i="badge_local">local</span></div>
-                <div class="hb-sub" data-i="ext_list_engine_sub">PNG · JPG · WEBP · GIF</div>
-                <div class="hb-prev" data-i="ext_list_engine_prev">Files stay on your computer</div>
-              </div>
-              <div class="hb-msg">
-                <div class="hb-top"><span class="hb-name" data-i="ext_list_modes">Showcase modes</span><span class="hb-time">3</span></div>
-                <div class="hb-sub">Workshop ×5 · Featured 630 · Split</div>
-                <div class="hb-prev" data-i="ext_list_modes_prev">Ready-made Steam dimensions and layouts</div>
-              </div>
-              <div class="hb-msg">
-                <div class="hb-top"><span class="hb-name" data-i="ext_list_profile">Profile preview</span><span class="hb-time" data-i="badge_instant">instant</span></div>
-                <div class="hb-sub" data-i="ext_list_profile_sub">Backgrounds · frames · avatars</div>
-                <div class="hb-prev" data-i="ext_list_profile_prev">Try the look before applying it</div>
-              </div>
-              <div class="hb-msg">
-                <div class="hb-top"><span class="hb-name" data-i="ext_list_privacy">Private by design</span><span class="hb-time" data-i="badge_safe">safe</span></div>
-                <div class="hb-sub" data-i="ext_list_privacy_sub">No passwords · no cookies</div>
-                <div class="hb-prev" data-i="ext_list_privacy_prev">Only the permissions required for Steam</div>
-              </div>
-            </div>
-            <div class="hb-mock-reader hb-reader">
-              <div class="hb-reader-tools"><span>↩</span><span>↪</span><span>⬇</span><span>✕</span></div>
-              <h3 id="extTitle" data-i="ext_reader_title">SteamShowcase Helper</h3>
-              <div class="hb-reader-meta">
-                <div class="hb-av">S</div>
-                <div><b>SteamShowcase</b><br/><span data-i="ext_reader_meta">extension · v0.9.9</span></div>
-                <span class="hb-pill">Manifest V3</span>
-              </div>
-              <div class="hb-summary">
-                <b data-i="ext_reader_summary">✦ Everything close at hand</b>
-                <p data-i="ext_reader_summary_p">Showcase preparation, local media processing and live Steam profile preview in one lightweight browser extension.</p>
-              </div>
-              <p data-i="ext_reader_body">Open a supported Steam page and the required tool appears automatically. Your media is processed locally whenever possible.</p>
-              <a class="hb-extension-reader-download" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=item-share-cb" target="_blank" rel="noopener">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 18v2h14v-2"/></svg>
-                <span data-i="ext_install">Install extension</span>
-              </a>
-              <p class="hb-extension-reader-hint" data-i="ext_hint">Download the ZIP, unpack it and select “Load unpacked” on the browser extensions page.</p>
-            </div>
-          </div>
-        </div>
+
+      <section class="hb-facts">
+        <ul class="hb-facts__list">
+          <li><b>3</b><span data-i="fact_types">showcase types: Workshop, Featured and Split</span></li>
+          <li><b data-i="fact_size_v">≤ 5 MB</b><span data-i="fact_size">GIFs are fitted to the Steam limit</span></li>
+          <li><b>HEX 21</b><span data-i="fact_hex">added automatically</span></li>
+          <li><b>50+</b><span data-i="fact_sites">sites to download a source from</span></li>
+        </ul>
       </section>
 
-      <section class="hb-section hb-process">
-        <div class="hb-grid2">
+      <section class="hb-demo" id="features" aria-labelledby="demoTitle">
+        <div class="hb-demo__copy">
+          <p class="hb-eyebrow" data-i="demo_eyebrow">Showcase cuts</p>
+          <h2 class="hb-title" id="demoTitle"><span data-i="demo_h_a">One artwork.</span><span class="hb-title__accent" data-i="demo_h_b">Three showcases</span></h2>
+          <p class="hb-lead" data-i="demo_p">Drop in a picture, GIF or video. Showcase Maker cuts it exactly to the Steam grid, keeps every part under 5 MB and adds HEX 21.</p>
+          <div class="hb-seg" role="tablist" aria-labelledby="demoTitle" data-no-translate>
+            <button type="button" role="tab" class="is-on" aria-selected="true" data-cut="workshop">Workshop</button>
+            <button type="button" role="tab" aria-selected="false" data-cut="featured">Featured</button>
+            <button type="button" role="tab" aria-selected="false" data-cut="split">Split</button>
+          </div>
+          <ul class="hb-ticks">
+            <li data-i="demo_b1">Frames, effects and a watermark in the same step</li>
+            <li data-i="demo_b2">A preview on a Steam profile mock-up</li>
+            <li data-i="demo_b3">A ready ZIP: the parts are named in upload order</li>
+          </ul>
+          <a class="home-btn home-btn--primary hb-btn" href="/app#process"><span data-i="demo_cta">Try it on your file</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12h7m-3-3 3 3-3 3"/></svg></a>
+        </div>
+        <figure class="hb-stage" id="cutStage" data-cut="workshop" aria-hidden="true">
+          <div class="hb-stage__bar">
+            <span class="hb-stage__spec" data-for="workshop" data-i="demo_m_workshop">5 parts · a 630 px row</span>
+            <span class="hb-stage__spec" data-for="featured" data-i="demo_m_featured">1 file · 630 px wide</span>
+            <span class="hb-stage__spec" data-for="split" data-i="demo_m_split">2 parts · 506 + 100 px</span>
+            <span class="hb-stage__ok" data-i="demo_badge">under 5 MB · HEX 21</span>
+          </div>
+          <div class="hb-stage__art">
+            <img src="/static/img/samples/sample-art.webp?v=2" alt="" width="1672" height="941" loading="lazy" decoding="async"/>
+            <i class="hb-cutline hb-cutline--w" style="--at:20%"></i>
+            <i class="hb-cutline hb-cutline--w" style="--at:40%"></i>
+            <i class="hb-cutline hb-cutline--w" style="--at:60%"></i>
+            <i class="hb-cutline hb-cutline--w" style="--at:80%"></i>
+            <i class="hb-cutline hb-cutline--s" style="--at:83.5%"></i>
+          </div>
+          <div class="hb-stage__files" data-for="workshop"><span>part_1</span><span>part_2</span><span>part_3</span><span>part_4</span><span>part_5</span></div>
+          <div class="hb-stage__files" data-for="featured"><span>featured_630</span></div>
+          <div class="hb-stage__files" data-for="split"><span>center_506</span><span>side_100</span></div>
+        </figure>
+      </section>
+
+      <section class="hb-steps" aria-labelledby="stepsTitle">
+        <header class="hb-head hb-head--center">
+          <p class="hb-eyebrow" data-i="steps_eyebrow">How it works</p>
+          <h2 class="hb-title" id="stepsTitle"><span data-i="steps_h_a">From file to profile.</span><span class="hb-title__accent" data-i="steps_h_b">Four steps</span></h2>
+        </header>
+        <ol class="hb-steps__list">
+          <li class="hb-step"><span class="hb-step__n" aria-hidden="true">01</span><h3 data-i="step1_t">Bring a file</h3><p data-i="step1_d">A picture, GIF or video. Or paste a link and download the source right here.</p></li>
+          <li class="hb-step"><span class="hb-step__n" aria-hidden="true">02</span><h3 data-i="step2_t">Pick a showcase</h3><p data-i="step2_d">Workshop, Featured or Split. Add a frame and effects, then check the look on a profile mock-up.</p></li>
+          <li class="hb-step"><span class="hb-step__n" aria-hidden="true">03</span><h3 data-i="step3_t">Download the ZIP</h3><p data-i="step3_d">Parts at the right size, under 5 MB and with HEX 21 already applied.</p></li>
+          <li class="hb-step"><span class="hb-step__n" aria-hidden="true">04</span><h3 data-i="step4_t">Upload to Steam</h3><p data-i="step4_d">With the extension in a couple of clicks, or by hand with the step-by-step guide.</p></li>
+        </ol>
+      </section>
+
+      <section class="hb-tools" aria-labelledby="toolsTitle">
+        <header class="hb-head hb-head--split">
           <div>
-            <div class="hb-eyebrow"><i></i> <span data-i="tri_label">Process</span> <span class="hb-tag" data-i="steam_native">Steam-native</span></div>
-            <h2 data-i-html="tri_h">Clear the busywork.<br/>Ship the showcase.</h2>
-            <p class="hb-lead" data-i="tri_p">Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.</p>
-            <div class="hb-chips">
-              <span class="hb-chip">Workshop ×5</span>
-              <span class="hb-chip">Featured 630</span>
-              <span class="hb-chip">Artwork Split</span>
-              <span class="hb-chip">HEX 21</span>
-              <span class="hb-chip">GIF · MP4</span>
-            </div>
+            <p class="hb-eyebrow" data-i="tools_eyebrow">Tools</p>
+            <h2 class="hb-title" id="toolsTitle"><span data-i="tools_h_a">Everything for a profile.</span><span class="hb-title__accent" data-i="tools_h_b">In one tab</span></h2>
           </div>
-          <div class="hb-triage-card">
-            <div class="hb-t" data-i="tri_today">Today · showcase pipeline</div>
-            <div class="hb-subc">
-              <div class="hb-h"><span data-i="pipe_process">Process</span> <span data-i="pipe_core">core</span></div>
-              <ul><li>Workshop / Featured / Split</li><li data-i="pipe_watermark">Watermark · font · opacity</li></ul>
-            </div>
-            <div class="hb-subc">
-              <div class="hb-h"><span data-i="pipe_download">Download</span> <span data-i="pipe_sources">sources</span></div>
-              <ul><li>YouTube · TikTok · Instagram</li><li>Pinterest · Giphy · 50+</li></ul>
-            </div>
-            <div class="hb-subc">
-              <div class="hb-h"><span data-i="pipe_preview">Preview</span> <span data-i="pipe_profile">profile</span></div>
-              <ul><li data-i="pipe_slots">Template slots</li><li data-i="pipe_animated">Animated GIF / MP4</li></ul>
-            </div>
-            <div class="hb-subc">
-              <div class="hb-h">Steam <span data-i="pipe_upload">upload</span></div>
-              <ul><li data-i="pipe_console">Console code</li><li data-i="pipe_guide">Step-by-step guide</li></ul>
-            </div>
+          <p class="hb-lead" data-i="tools_p">No installs and no hopping between five sites: from the source file to the upload, it is all here.</p>
+        </header>
+        <ul class="hb-tools__grid">
+          <li><a class="hb-tool" href="/app#process"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/process.svg)" aria-hidden="true"></i><b data-i="t_process">Process</b><span data-i="t_process_d">Cut a file into a Workshop, Featured or Split showcase with frames and a watermark.</span></a></li>
+          <li><a class="hb-tool" href="/app#workshop"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/workshop.svg)" aria-hidden="true"></i><b data-i="t_rows">Workshop Studio</b><span data-i="t_rows_d">Full-height rows and rows of 150×150 squares, up to three rows.</span></a></li>
+          <li><a class="hb-tool" href="/app#builder"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/design-selection.svg)" aria-hidden="true"></i><b data-i="t_builder">Create a design</b><span data-i="t_builder_d">Layered editor: background, character, text, frames and effects.</span></a></li>
+          <li><a class="hb-tool" href="/app#compose"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/character.svg)" aria-hidden="true"></i><b data-i="t_char">Character</b><span data-i="t_char_d">Put a character on a background and get one picture or animation.</span></a></li>
+          <li><a class="hb-tool" href="/app#download"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/download.svg)" aria-hidden="true"></i><b data-i="t_download">Download</b><span data-i="t_download_d">Pictures, GIFs and videos from 50+ sites by link.</span></a></li>
+          <li><a class="hb-tool" href="/app#convert"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/converter.svg)" aria-hidden="true"></i><b data-i="t_convert">Converter</b><span data-i="t_convert_d">Video ↔ GIF, MP4, WebM, PNG, JPG, WebP.</span></a></li>
+          <li><a class="hb-tool" href="/app#loop"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/loop.svg)" aria-hidden="true"></i><b data-i="t_loop">Loop</b><span data-i="t_loop_d">Turn a clip into a seamless loop.</span><em class="hb-tag hb-tag--week" data-i="tag_week">Free: once a week</em></a></li>
+          <li><a class="hb-tool" href="/app#doctor"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/profile-rating.svg)" aria-hidden="true"></i><b data-i="t_ai">Profile AI</b><span data-i="t_ai_d">Profile rating, design ideas and Steam DNA from your public profile.</span><em class="hb-tag hb-tag--week" data-i="tag_week">Free: once a week</em></a></li>
+          <li><a class="hb-tool" href="/app#upscale"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/upscale.svg)" aria-hidden="true"></i><b data-i="t_upscale">Upscale</b><span data-i="t_upscale_d">AI enlargement of pictures, GIFs and video.</span><em class="hb-tag hb-tag--pro">Pro</em></a></li>
+          <li><a class="hb-tool" href="/app#gifopt"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/gif-optimizer.svg)" aria-hidden="true"></i><b data-i="t_gifopt">GIF Optimizer</b><span data-i="t_gifopt_d">Shrink a GIF: fewer colours, lossy compression or auto-fit under 5 MB.</span><em class="hb-tag hb-tag--pro" data-i="tag_beta">Pro · beta</em></a></li>
+          <li><a class="hb-tool" href="/app#preview"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/preview.svg)" aria-hidden="true"></i><b data-i="t_preview">Profile preview</b><span data-i="t_preview_d">Try showcases on a Steam profile mock-up.</span></a></li>
+          <li><a class="hb-tool" href="/app#steam"><i class="hb-tool__icon" style="--hb-icon:url(/static/img/tool-icons/steam.svg)" aria-hidden="true"></i><b data-i="t_steam">Steam upload</b><span data-i="t_steam_d">Upload to Steam with the extension or by hand.</span></a></li>
+        </ul>
+        <a class="hb-link" href="/app" data-i="tools_all">Open all tools</a>
+      </section>
+
+      <section class="hb-ext" aria-labelledby="extTitle">
+        <div class="hb-ext__copy">
+          <p class="hb-eyebrow" data-i="ext_eyebrow">Browser extension</p>
+          <h2 class="hb-title" id="extTitle"><span data-i="ext_h_a">Into Steam.</span><span class="hb-title__accent" data-i="ext_h_b">In a few clicks</span></h2>
+          <p class="hb-lead" data-i="ext_p">SteamShowcase Helper uploads your finished files to Steam, places them into the showcase in the right order and keeps whole profile looks as presets.</p>
+          <ul class="hb-ticks">
+            <li data-i="ext_b1">Automatic upload: pick the showcase type and drop the files in</li>
+            <li data-i="ext_b2">No console and no code to paste</li>
+            <li data-i="ext_b3">Never asks for a password: it works in your own Steam session</li>
+          </ul>
+          <div class="hb-actions">
+            <a class="home-btn home-btn--primary hb-btn" href="https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=item-share-cb" target="_blank" rel="noopener"><svg class="hb-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span data-i="ext_install">Install for free</span></a>
+            <a class="home-btn home-btn--ghost hb-btn" href="/extension" data-i="ext_more">See what it does</a>
           </div>
+          <p class="hb-ext__browsers"><img src="/static/img/browser-icons/chrome.svg" alt="" width="22" height="22" loading="lazy"/><span data-i="ext_browsers">Chrome, Edge, Opera, Yandex Browser</span></p>
+        </div>
+        <div class="hb-ext__shots" aria-hidden="true">
+          <img class="hb-ext__shot hb-ext__shot--back" data-shot="uploader-anim" src="/static/img/extension-guide/v2/uploader-anim-en.webp" alt="" width="1200" height="938" loading="lazy" decoding="async"/>
+          <img class="hb-ext__shot hb-ext__shot--front" data-shot="upload-done" src="/static/img/extension-guide/v2/upload-done-en.webp" alt="" width="1100" height="1321" loading="lazy" decoding="async"/>
         </div>
       </section>
 
-      <section class="hb-section hb-logos">
-        <div class="hb-k" data-i="trust">Built for Steam profile creators</div>
-        <div class="hb-logoloop hb-logoloop--fade" id="formatsLoop" role="region" aria-label="Formats">
-          <div class="hb-logoloop__track" id="formatsTrack">
-            <ul class="hb-logoloop__list" id="formatsSeq">
-              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">Workshop</span></li>
-              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">Featured</span></li>
-              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">Split</span></li>
-              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">GIF</span></li>
-              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">MP4</span></li>
-              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">HEX21</span></li>
-              <li class="hb-logoloop__item"><span class="hb-logoloop__pill" data-i="format_preview">Preview</span></li>
-              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">FunPay</span></li>
-              <li class="hb-logoloop__item"><span class="hb-logoloop__pill" data-i="format_watermark">Watermark</span></li>
-              <li class="hb-logoloop__item"><span class="hb-logoloop__pill">Steam</span></li>
+      <section class="hb-pricing" id="pricing" aria-labelledby="priceTitle">
+        <header class="hb-head hb-head--center">
+          <p class="hb-eyebrow" data-i="price_eyebrow">Pricing</p>
+          <h2 class="hb-title" id="priceTitle"><span data-i="price_h_a">No subscriptions.</span><span class="hb-title__accent" data-i="price_h_b">Pay once</span></h2>
+          <p class="hb-lead" data-i="price_p">Free is enough for a showcase now and then. Pro lifts the limits for a day, a month or for good: one payment, no auto-renewal.</p>
+        </header>
+        <div class="hb-plans">
+          <article class="hb-plan">
+            <p class="hb-plan__tier" data-i="price_free">Free plan</p>
+            <p class="hb-plan__price">$0</p>
+            <p class="hb-plan__desc" data-i="price_free_d">Enough to build a showcase and see how everything works.</p>
+            <ul class="hb-plan__list">
+              <li data-i="price_files">5 files a day</li>
+              <li data-no-translate>Workshop · Featured · Split</li>
+              <li data-i="price_builder">3 exports a day from Create a design</li>
+              <li data-i="price_weekly">AI tools and Loop: once a week</li>
+              <li class="is-off" data-i="price_mark">Showcase Maker watermark on the result</li>
             </ul>
-          </div>
-        </div>
-      </section>
-
-      <section class="hb-section hb-quotes">
-        <div class="hb-q-grid">
-          <figure class="hb-q-card">
-            <blockquote><span data-i="q1">“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”</span></blockquote>
-            <figcaption><div class="hb-n" data-i="aud_artists">Profile artists</div><div class="hb-r">Steam Workshop</div><div class="hb-c" data-i="aud_creators">CREATORS</div></figcaption>
-          </figure>
-          <figure class="hb-q-card">
-            <blockquote><span data-i="q2">“Download + process + preview in one tab. No more juggling five sites.”</span></blockquote>
-            <figcaption><div class="hb-n" data-i="aud_sellers">Commission sellers</div><div class="hb-r">FunPay · Discord</div><div class="hb-c" data-i="aud_sellers_badge">SELLERS</div></figcaption>
-          </figure>
-          <figure class="hb-q-card">
-            <blockquote><span data-i="q3">“Pro is worth it when you ship showcases every week — no daily limit stress.”</span></blockquote>
-            <figcaption><div class="hb-n" data-i="aud_power">Power users</div><div class="hb-r" data-i="desktop_web">Desktop + Web</div><div class="hb-c">PRO</div></figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <section class="hb-c3-pricing-section" id="pricing">
-        <div class="hb-c3-watermark-container">
-          <div class="hb-c3-watermark-main">
-            <span class="hb-c3-watermark-line-1" data-i="h1a">Steam showcases.</span>
-            <span class="hb-c3-watermark-line-2" data-i="h1b">Revitalized</span>
-          </div>
-        </div>
-        <div class="hb-c3-grid">
-          <div class="hb-c3-card">
-            <div class="hb-c3-tier-small" data-i="price_free">Free</div>
-            <div class="hb-c3-tier-large" data-i="price_free">Free</div>
-            <p class="hb-c3-desc"><span data-i="price_free_d">Try the full pipeline with a daily file limit.</span></p>
-            <ul class="hb-c3-list">
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_files">5 files / day</span></li>
-              <li><span class="hb-c3-check">✓</span> Workshop · Featured · Split</li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_watermark">Watermark &amp; preview</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_source">Source download</span></li>
+            <a class="home-btn home-btn--ghost hb-btn" href="/app" data-i="start_free">Start free</a>
+          </article>
+          <article class="hb-plan hb-plan--pro">
+            <p class="hb-plan__tier">Pro</p>
+            <p class="hb-plan__price"><small data-i="price_from">from</small> <span data-plan-price="1d">$0.99</span></p>
+            <p class="hb-plan__desc" data-i="price_pro_d">Pick a term. Days add up, and Pro turns on by itself after payment.</p>
+            <ul class="hb-plan__list">
+              <li data-i="price_unlimited">No daily limit on files and exports</li>
+              <li data-i="price_nomark">No watermark, or your own</li>
+              <li data-i="price_tools">AI Upscale and the standalone Steam check</li>
+              <li data-i="price_noweek">AI tools and Loop with no weekly limit</li>
+              <li data-i="price_beta">New and beta tools first</li>
             </ul>
-            <a class="hb-c3-btn" href="/app" data-i="start_free">Start free</a>
-          </div>
-          <div class="hb-c3-card">
-            <div class="hb-c3-tier-small">Pro</div>
-            <div class="hb-c3-tier-large"><span data-i="price_from">from</span> <span data-plan-price="1d">$0.99</span></div>
-            <p class="hb-c3-desc"><span data-i="price_pro_d">Pick a term. One payment, no auto-renewal: days add up.</span></p>
-            <ul class="hb-c3-list">
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_unlimited">No daily file limit</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_nomark">No watermark, or your own</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_tools">Upscale, Loop and AI tools</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_auto">Turns on by itself after payment</span></li>
-            </ul>
-            <div class="hb-c3-terms">
-              <span><b data-i="term_1d">24 hours</b><i data-plan-price="1d">$0.99</i></span>
-              <span><b data-i="term_7d">7 days</b><i data-plan-price="7d">$1.99</i></span>
-              <span><b data-i="term_30d">30 days</b><i data-plan-price="30d">$3.99</i></span>
-              <span><b data-i="term_90d">90 days</b><i data-plan-price="90d">$4.99</i></span>
+            <div class="hb-terms">
+              <button type="button" data-buy-key="1" data-buy-plan="1d"><b data-i="term_1d">24 hours</b><i data-plan-price="1d">$0.99</i></button>
+              <button type="button" data-buy-key="1" data-buy-plan="7d"><b data-i="term_7d">7 days</b><i data-plan-price="7d">$1.99</i></button>
+              <button type="button" data-buy-key="1" data-buy-plan="30d"><b data-i="term_30d">30 days</b><i data-plan-price="30d">$3.99</i></button>
+              <button type="button" data-buy-key="1" data-buy-plan="90d"><b data-i="term_90d">90 days</b><i data-plan-price="90d">$4.99</i></button>
             </div>
-            <a class="hb-c3-btn" href="#" role="button" data-buy-key="1" data-i="buy_plan">Choose a plan</a>
-          </div>
-          <div class="hb-c3-card hb-c3-card-pro">
-            <div class="hb-c3-tier-small" data-i="price_forever">Pro forever</div>
-            <div class="hb-c3-tier-large" data-plan-price="unlimited">$5.99</div>
-            <p class="hb-c3-desc"><span data-i="price_forever_d">One payment, and Pro stays on your account for good.</span></p>
-            <ul class="hb-c3-list">
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_all">Everything in Pro</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_once">Pay once, no renewals</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_future">Every future Pro tool</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_account">Bound to your account</span></li>
+            <a class="home-btn home-btn--primary hb-btn" href="#" role="button" data-buy-key="1" data-i="buy_plan">Choose a plan</a>
+          </article>
+          <article class="hb-plan hb-plan--forever">
+            <span class="hb-plan__flag" data-i="price_best">Best value</span>
+            <p class="hb-plan__tier" data-i="price_forever">Pro forever</p>
+            <p class="hb-plan__price"><span data-plan-price="unlimited">$5.99</span></p>
+            <p class="hb-plan__desc" data-i="price_forever_d">One payment, and Pro stays on your account for good.</p>
+            <ul class="hb-plan__list">
+              <li data-i="price_all">Everything in Pro</li>
+              <li data-i="price_once">Pay once, no renewals</li>
+              <li data-i="price_future">Every future Pro tool</li>
+              <li data-i="price_account">Bound to your account</li>
             </ul>
-            <a class="hb-c3-btn" href="#" role="button" data-buy-key="1" data-buy-plan="unlimited" data-i="buy_forever">Get Pro forever</a>
-          </div>
+            <a class="home-btn hb-btn hb-btn--grad" href="#" role="button" data-buy-key="1" data-buy-plan="unlimited" data-i="buy_forever">Get Pro forever</a>
+          </article>
+        </div>
+        <div class="hb-trial">
+          <span class="hb-trial__mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m19.7 4.4-2.8 14.1c-.2 1-1 1.2-1.8.8l-4.3-3.2-2.1 2c-.2.2-.4.4-.8.4l.3-4.5 8.2-7.4c.4-.3-.1-.5-.5-.2L5.8 12.7l-4.3-1.3c-.9-.3-.9-.9.2-1.3l16.8-6.5c.8-.3 1.5.2 1.2.8Z"/></svg></span>
+          <p class="hb-trial__copy"><b data-i="trial_t">Not sure yet? Try Pro for 2 hours</b><span data-i="trial_d">A free key is waiting in our Telegram channel.</span></p>
+          <a class="home-btn home-btn--ghost hb-btn" href="https://t.me/showcasemaker" target="_blank" rel="noopener noreferrer" data-i="tg_offer_action">Get the key</a>
+          <a class="hb-link" href="/app#about" data-i="price_compare">Full Free and Pro comparison</a>
         </div>
       </section>
 
-      <section class="hb-final">
-        <div class="hb-final-card">
-          <div class="hb-glow"></div>
-          <h2 data-i-html="cta_h">Close the tabs.<br/>Open your profile.</h2>
-          <p data-i="cta_p">Process, download sources, preview on a Steam template, and ship — without leaving the browser.</p>
-          <div class="hb-final-btns">
-            <a class="home-btn home-btn--primary" href="/app" data-i="cta_open2">Open tools</a>
-            <a href="#" class="home-btn home-btn--ghost" data-i="cta_reg" id="ctaReg" role="button">Create account →</a>
+      <section class="hb-faq" aria-labelledby="faqTitle">
+        <header class="hb-head">
+          <p class="hb-eyebrow" data-i="faq_eyebrow">Questions</p>
+          <h2 class="hb-title" id="faqTitle"><span data-i="faq_h_a">Common questions.</span><span class="hb-title__accent" data-i="faq_h_b">Short answers</span></h2>
+          <p class="hb-lead" data-i="faq_p">Did not find yours? Ask the assistant or write to support.</p>
+          <div class="hb-actions">
+            <a class="home-btn home-btn--ghost hb-btn" href="https://t.me/showcasemaker" data-support-choice data-i="faq_support">Support</a>
+            <a class="hb-link" href="/guides" data-guides-link>Guides</a>
+          </div>
+        </header>
+        <div class="hb-faq__list">
+          <details class="hb-q" open><summary><span data-i="q1">Do I need to install anything?</span><i aria-hidden="true"></i></summary><p data-i="a1">No, everything runs in the browser. The SteamShowcase Helper extension only speeds up uploading to Steam.</p></details>
+          <details class="hb-q"><summary><span data-i="q2">Why does Steam reject my GIF?</span><i aria-hidden="true"></i></summary><p data-i="a2">Steam accepts files up to 5 MB and needs the HEX 21 byte. Showcase Maker does both; for files made elsewhere use the HEX tab.</p></details>
+          <details class="hb-q"><summary><span data-i="q3">Do you need my Steam password?</span><i aria-hidden="true"></i></summary><p data-i="a3">No. The site never asks for it. The extension works inside your own Steam session in the browser, and nothing changes on your profile until you press Save on Steam.</p></details>
+          <details class="hb-q"><summary><span data-i="q4">Are my files public?</span><i aria-hidden="true"></i></summary><p data-i="a4">No. Sources and ZIPs are deleted automatically after their storage time; a preview becomes public only if you share its link yourself.</p></details>
+          <details class="hb-q"><summary><span data-i="q5">How does paying for Pro work?</span><i aria-hidden="true"></i></summary><p data-i="a5">You pay once for a term, with no auto-renewal. Days add up with the Pro you already have. Pro is bound to your account and turns on by itself after payment.</p></details>
+          <details class="hb-q"><summary><span data-i="q6">Is this made by Valve?</span><i aria-hidden="true"></i></summary><p data-i="a6">No. It is an independent project; Steam and Valve are trademarks of Valve Corporation.</p></details>
+        </div>
+      </section>
+
+      <section class="hb-final" aria-labelledby="finalTitle">
+        <div class="hb-final__card">
+          <img class="hb-final__art" src="/static/img/samples/sample-art.webp?v=2" alt="" width="1672" height="941" loading="lazy" decoding="async" aria-hidden="true"/>
+          <div class="hb-final__copy">
+            <h2 class="hb-title" id="finalTitle"><span data-i="cta_h_a">Your showcase is ready</span><span class="hb-title__accent" data-i="cta_h_b">The rest is up to you</span></h2>
+            <p class="hb-lead" data-i="cta_p">Start without an account: 5 files a day are free.</p>
+            <div class="hb-actions">
+              <a class="home-btn home-btn--primary hb-btn" href="/app"><span data-i="cta_open2">Open tools</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 12h7m-3-3 3 3-3 3"/></svg></a>
+              <a href="#" class="home-btn home-btn--ghost hb-btn" data-i="cta_reg" id="ctaReg" role="button">Create account</a>
+            </div>
           </div>
         </div>
       </section>
@@ -361,8 +338,9 @@
 
 <script src="/static/js/analytics.js?v=20260922a"></script>
 <script src="/static/ss-shell.js?v=20261006-tg1"></script>
-<script src="/static/js/home.js?v=20261006-plans1"></script>
+<script src="/static/js/home.js?v=20261007-home3"></script>
 <script src="/static/js/home-stars.js?v=20260927-stars2" defer></script>
+<script src="/static/js/home-petals.js?v=20261007-home1" defer></script>
 <script type="module" src="/static/js/home-vrm.js?v=20260927-stars2"></script>
 </body>
 </html>

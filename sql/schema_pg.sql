@@ -194,6 +194,14 @@ CREATE INDEX IF NOT EXISTS idx_telegram_orders_user ON telegram_orders(user_id,c
 CREATE INDEX IF NOT EXISTS idx_telegram_sales_user ON telegram_sales(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_sales_claim ON telegram_sales(claim_token);
 CREATE INDEX IF NOT EXISTS idx_telegram_links_user ON telegram_links(user_id);
+CREATE TABLE IF NOT EXISTS feature_uses (
+ feature TEXT NOT NULL,
+ subject TEXT NOT NULL,
+ period TEXT NOT NULL,
+ used INTEGER NOT NULL DEFAULT 0,
+ updated_at DOUBLE PRECISION,
+ PRIMARY KEY (feature, subject, period)
+);
 CREATE TABLE IF NOT EXISTS profile_showcases (id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, sc_type TEXT NOT NULL, title TEXT, sort_order INTEGER DEFAULT 0, data_json TEXT, created_at DOUBLE PRECISION);
 ALTER TABLE profile_showcases ADD COLUMN IF NOT EXISTS sc_type TEXT;
 ALTER TABLE profile_showcases ADD COLUMN IF NOT EXISTS data_json TEXT;

@@ -94,19 +94,82 @@ class HeroVrmTests(unittest.TestCase):
 
 
 class LandingBlocksTests(unittest.TestCase):
-    def test_restored_blocks_are_present_and_isolated(self):
+    def test_blocks_are_present_and_isolated(self):
         html = INDEX.read_text(encoding="utf-8")
-        for anchor in ('id="features"', 'id="pricing"', 'id="formatsTrack"', 'id="ctaReg"', 'data-buy-key="1"'):
+        for anchor in ('id="features"', 'id="pricing"', 'id="cutStage"', 'id="ctaReg"', 'data-buy-key="1"'):
             self.assertIn(anchor, html)
         blocks = html[html.index('<div class="home-blocks">'):html.index('</main>')]
         # Classes are prefixed so legacy redesign.css rules (.section, .mock-frame, ...) cannot restyle them.
         for legacy in ('class="section', 'class="mock-frame', 'class="c3-card', 'class="q-card'):
             self.assertNotIn(legacy, blocks)
         css = (ROOT / "static" / "css" / "home-blocks.css").read_text(encoding="utf-8")
-        self.assertIn(".home-blocks .hb-c3-card", css)
+        self.assertIn(".home-blocks .hb-plan", css)
         self.assertIn("/static/css/home-blocks.css?v=", html)
-        for icon in ("chrome.svg", "edge.svg"):
-            self.assertTrue((ROOT / "static" / "img" / "browser-icons" / icon).is_file())
+        self.assertTrue((ROOT / "static" / "img" / "browser-icons" / "chrome.svg").is_file())
+        # browser-icons/edge.svg is in fact the Firefox logo, and the extension is Chromium-only.
+        self.assertNotIn("edge.svg", html)
+
+    def test_rebuilt_blocks_2026_10_07(self):
+        html = INDEX.read_text(encoding="utf-8")
+        blocks = html[html.index('<div class="home-blocks">'):html.index('</main>')]
+        for section in ("hb-facts", "hb-demo", "hb-steps", "hb-tools", "hb-ext", "hb-pricing", "hb-faq", "hb-final"):
+            self.assertIn(f'<section class="{section}"', blocks)
+        # The mail-client mock-up, the invented quotes and the outdated ZIP instructions are gone.
+        for removed in ("hb-mock", "hb-q-card", "v0.9.9", "Load unpacked", "formatsTrack"):
+            self.assertNotIn(removed, blocks)
+        # Every term of the Pro card opens the purchase dialog on that plan.
+        for plan in ("1d", "7d", "30d", "90d", "unlimited"):
+            self.assertIn(f'data-buy-key="1" data-buy-plan="{plan}"', blocks)
+            self.assertIn(f'data-plan-price="{plan}"', blocks)
+        for tab in ("process", "workshop", "builder", "compose", "download", "convert", "loop", "doctor", "upscale", "gifopt", "preview", "steam"):
+            self.assertIn(f'href="/app#{tab}"', blocks)
+        self.assertIn("/static/img/samples/sample-art.webp", blocks)
+        for shot in ("upload-done", "uploader-anim"):  # popup-en.webp is a copy of the Russian shot
+            self.assertIn(f'data-shot="{shot}"', blocks)
+            for language in ("ru", "en"):
+                self.assertTrue((ROOT / "static" / "img" / "extension-guide" / "v2" / f"{shot}-{language}.webp").is_file())
+        js = (ROOT / "static" / "js" / "home.js").read_text(encoding="utf-8")
+        self.assertIn("function wireCutDemo()", js)
+        self.assertIn("'/static/img/extension-guide/v2/' + img.dataset.shot + suffix + '.webp'", js)
+
+    def test_landing_copy_has_all_six_generated_languages(self):
+        # home.js is EN/RU; the other languages come from the generated packs, looked up by the English text.
+        import json
+        import re
+        js = (ROOT / "static" / "js" / "home.js").read_text(encoding="utf-8")
+        english = js[js.index("en: {"):js.index("ru: {")]
+        strings = re.findall(r"^\s+\w+: '((?:[^'\\]|\\.)*)',?\s*$", english, flags=re.M)
+        self.assertGreater(len(strings), 120)
+        bundle = (ROOT / "static" / "js" / "locales-extra.js").read_text(encoding="utf-8")
+        packs = json.loads(re.search(r"window\.SM_EXTRA_TRANSLATIONS=(\{.*\});\s*$", bundle, flags=re.S).group(1))
+        same_everywhere = {"GIF · MP4 · Loop", "Chrome, Edge, Opera, Yandex Browser"}
+        for language in ("de", "tr", "fr", "uk", "es", "pt"):
+            missing = [text for text in strings if text not in packs[language] and text not in same_everywhere]
+            self.assertEqual(missing, [], language)
+
+
+class HeroPetalsAndHitZoneTests(unittest.TestCase):
+    def test_click_zone_follows_the_character_outline(self):
+        css = CSS.read_text(encoding="utf-8")
+        rule = css[css.index(".home-vrm__hit{"):css.index("}", css.index(".home-vrm__hit{"))]
+        self.assertIn("clip-path:polygon(", rule)
+        self.assertIn("-webkit-clip-path:polygon(", rule)
+        self.assertIn("inset:0", rule)
+        self.assertGreaterEqual(rule.count("%"), 2 * 2 * 15)  # at least 15 points, both properties
+
+    def test_petals_fall_behind_the_character(self):
+        html = INDEX.read_text(encoding="utf-8")
+        # The canvas lives in the art frame BEFORE the VRM box, so the character covers the petals.
+        self.assertLess(html.index('id="homePetals"'), html.index('id="heroVrm"'))
+        self.assertLess(html.index('class="home-art creator-scene"'), html.index('id="homePetals"'))
+        self.assertIn('<script src="/static/js/home-petals.js?v=', html)
+        css = CSS.read_text(encoding="utf-8")
+        self.assertIn(".home-petals{position:absolute;left:50%;top:26%;width:36%;height:74%;z-index:0;pointer-events:none}", css)
+        source = (ROOT / "static" / "js" / "home-petals.js").read_text(encoding="utf-8")
+        self.assertIn("prefers-reduced-motion: reduce", source)
+        self.assertIn("document.hidden", source)
+        self.assertIn("IntersectionObserver", source)
+        self.assertNotIn("__homeStarsMask", source)  # no silhouette copy: the layer order does the job
 
 
 class LandingPolishTests(unittest.TestCase):

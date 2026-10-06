@@ -162,7 +162,15 @@ def api_admin_whoami(request: Request):
 
 @router.get("/api/quota")
 def api_quota(request: Request):
-    return quota_state(request)
+    state = quota_state(request)
+    # Weekly free tries, beta features and when the limits renew (smweb/free_limits.py); pages draw their notes from it.
+    try:
+        from smweb import free_limits
+        from smweb.core import _ip
+        state["free"] = free_limits.state(state.get("user_id"), _ip(request), bool(state.get("pro")))
+    except Exception:
+        LOGGER.debug("free limits state unavailable", exc_info=True)
+    return state
 
 
 # === GUMROAD LICENSE ACTIVATION ===

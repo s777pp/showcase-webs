@@ -33,6 +33,12 @@ def run(job_id: str, job: dict) -> None:
         result["warning"] = "ai_unavailable"
     # A degraded baseline is useful, but must not consume a Free user's weekly
     # successful AI analysis. Pro history may retain it for diagnostics.
+    if result.get("warning") and job.get("free_try"):
+        try:
+            from smweb import free_limits
+            free_limits.refund_job(job_id, job)
+        except Exception:
+            pass
     if job.get("is_pro") or not result.get("warning"):
         rs.profile_insight_history_add(int(job.get("user_id") or 0), {
             "kind": kind, "created": time.time(), "expires_at": time.time() + 7 * 86400,

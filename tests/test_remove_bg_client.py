@@ -304,7 +304,9 @@ class BuilderProviderRouteTests(unittest.TestCase):
         app = FastAPI()
         app.include_router(builder.router)
         client = TestClient(app)
-        with patch.object(builder, "_user", lambda request: ({"id": 9}, None)),              patch.dict("os.environ", {**_NONE, "ILOVEAPI_PUBLIC_KEY": "pub", "REMOVE_BG_API_KEY": "rb"}, clear=False):
+        # A Free account removes a background once a week (tests/test_free_limits.py); not what this test is about.
+        with patch.object(builder.free_limits, "consume", return_value=True), \
+             patch.object(builder, "_user", lambda request: ({"id": 9}, None)),              patch.dict("os.environ", {**_NONE, "ILOVEAPI_PUBLIC_KEY": "pub", "REMOVE_BG_API_KEY": "rb"}, clear=False):
             data = client.get("/api/builder/remove-background/providers").json()
             self.assertEqual([p["id"] for p in data["providers"]], ["iloveapi", "removebg"])
             self.assertTrue(data["fallback"])

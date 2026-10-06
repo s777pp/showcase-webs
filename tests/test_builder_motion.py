@@ -143,11 +143,22 @@ class LoopModeApiTests(unittest.TestCase):
             self.assertEqual(response.status_code,400)
         self.mocks[-1].assert_not_called()
 
-    def test_pro_gate_cannot_be_bypassed_by_builder(self):
+    def test_free_account_without_a_weekly_use_left_is_refused(self):
+        # Since 2026-10-06 a Free account gets one loop a week (smweb/free_limits.py); a spent one is still a wall.
         self.mocks[2].return_value=False
-        response=self.client.post('/api/loop/start',files={'file':('source.gif',b'GIF89a'+b'x'*30,'image/gif')},data={'mode':'blend'})
-        self.assertEqual(response.status_code,403)
+        with patch.object(loop_api.free_limits,'left',return_value=0):
+            response=self.client.post('/api/loop/start',files={'file':('source.gif',b'GIF89a'+b'x'*30,'image/gif')},data={'mode':'blend'})
+        self.assertEqual(response.status_code,429)
+        self.assertEqual(response.json()['code'],'weekly_limit')
         self.mocks[-1].assert_not_called()
+
+    def test_free_account_spends_its_weekly_use_on_a_loop(self):
+        self.mocks[2].return_value=False
+        with patch.object(loop_api.free_limits,'left',return_value=1),patch.object(loop_api.free_limits,'consume',return_value=True) as consume:
+            response=self.client.post('/api/loop/start',files={'file':('source.gif',b'GIF89a'+b'x'*30,'image/gif')},data={'mode':'blend'})
+        self.assertEqual(response.status_code,202)
+        consume.assert_called_once()
+        self.assertEqual(self.mocks[-1].call_args.args[1]['free_try']['feature'],'loop')
 
 
 if __name__=='__main__':unittest.main()

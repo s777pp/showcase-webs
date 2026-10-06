@@ -157,7 +157,9 @@ def retry_job(job_id: str, request: Request):
     quota = quota_state(request)
     file_count = len(old.get("files") or [])
     if not quota.get("pro") and int(quota.get("left") or 0) < file_count:
-        return JSONResponse({"ok": False, "msg": "Daily processing limit reached"}, status_code=403)
+        from smweb import free_limits
+        return free_limits.refusal(request, "daily_more" if int(quota.get("left") or 0) > 0 else "daily", "files",
+                                   n=quota.get("limit") or 0)
     if rs.job_count_user(_owner(request)) >= max_jobs_for_user(quota.get("user_id")):
         return JSONResponse({"ok": False, "msg": "Too many active jobs. Wait for current processing to finish."}, status_code=429)
     allowed, _ = rs.rate_limit(f"job-retry:{_owner(request)}", 1, 5, fail_closed=True)

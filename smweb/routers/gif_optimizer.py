@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 import processor as proc
 import redis_store as rs
-from smweb import gif_optimizer, job_diagnostics, object_store
+from smweb import free_limits, gif_optimizer, job_diagnostics, object_store
 from smweb.core import DATA, MAX_UPLOAD_MB, LOGGER, _auth_user, max_jobs_for_user, owner_key, quota_inc, quota_state
 from smweb.jobs import _job_pool, _worker_mode
 
@@ -29,10 +29,13 @@ async def start(request: Request, file: UploadFile = File(...), mode: str = Form
                 colors: int = Form(256), lossy: int = Form(30)):
     if mode not in ("manual", "auto"):
         return JSONResponse({"ok": False, "msg": "Unknown mode"}, status_code=400)
-    # Same daily allowance as Process: one optimisation = one file.
     q = quota_state(request)
+    # While the tool is in beta it is Pro-only (smweb/free_limits.py, BETA_FEATURES).
+    if not q["pro"] and free_limits.is_beta("gifopt"):
+        return free_limits.refusal(request, "beta", "gifopt")
+    # Out of beta it shares the daily allowance of Process: one optimisation = one file.
     if not q["pro"] and q["left"] < 1:
-        return JSONResponse({"ok": False, "msg": "Not enough free files left today", "code": "quota"}, status_code=403)
+        return free_limits.refusal(request, "daily", "files", n=q.get("limit") or 0)
     user = _auth_user(request)
     owner = owner_key(request, user)
     if owner and rs.job_count_user(owner) >= max_jobs_for_user(int(user["id"]) if user else None):

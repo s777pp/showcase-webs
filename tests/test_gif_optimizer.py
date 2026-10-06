@@ -108,7 +108,9 @@ def test_auto_fits_the_limit(tmp_path):
 
 def _client(tmp_path, monkeypatch, owner="guest-1", left=5):
     monkeypatch.setattr(api, "DATA", tmp_path)
-    monkeypatch.setattr(api, "quota_state", lambda request: {"pro": False, "left": left})
+    monkeypatch.setattr(api, "quota_state", lambda request: {"pro": False, "left": left, "limit": 5})
+    # These tests cover the tool itself. While it is in beta it is Pro-only (tests/test_free_limits.py).
+    monkeypatch.setenv("BETA_FEATURES", "")
     monkeypatch.setattr(api, "_auth_user", lambda request: None)
     monkeypatch.setattr(api, "owner_key", lambda request, user=None: owner)
     monkeypatch.setattr(api, "_worker_mode", lambda: "embedded")

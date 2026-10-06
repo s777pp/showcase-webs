@@ -207,3 +207,5 @@ body.site-v2 .workspace-result-modal :is(h2,h3,.workspace-result__section-title)
 body.site-v2 .workspace-result-modal h2{font-size:clamp(20px,1.8vw,26px)!important;font-weight:900!important}
 body.site-v2 .workspace-result-modal :is(h3,.workspace-result__section-title){font-size:15px!important;font-weight:800!important}
 body.site-v2 .workspace-result-modal :is([class*="__kicker"],[class*="-kicker"]){font-family:var(--tu-font)!important;font-weight:800!important;letter-spacing:.14em!important}
+/* Footnote of the Free / Pro table: what "once a week" and "beta" mean (2026-10-06). */
+body.site-v2 #tab-about .tu-compare__note{margin:12px 2px 0;font-size:12px;line-height:1.5;color:var(--tu-muted)}

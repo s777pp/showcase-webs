@@ -15,10 +15,11 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 import auth_db
 import redis_store as rs
+from smweb import free_limits
 from smweb import object_store
 from smweb import job_diagnostics
 from smweb import media_assets
-from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, LOGGER, max_jobs_for_user
+from smweb.core import DATA, MAX_UPLOAD_MB, _auth_user, _ip, LOGGER, max_jobs_for_user
 from smweb.jobs import _job_pool, _worker_mode
 
 # The quick preview renders inside the API process (it answers in seconds and the
@@ -63,8 +64,10 @@ async def start(request: Request, file: UploadFile | None = File(None), asset_id
     user, owner = _owner(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
-    if not auth_db.effective_pro(user):
-        return JSONResponse({"ok": False, "msg": "Seamless Loop is available for Pro subscribers", "code": "pro"}, status_code=403)
+    # Pro: no limit. Free: one loop a week (smweb/free_limits.py); the use is spent just before the job is queued.
+    pro = auth_db.effective_pro(user)
+    if not pro and free_limits.left("loop", int(user["id"]), _ip(request)) <= 0:
+        return free_limits.refusal(request, "weekly", "loop")
     if rs.job_count_user(owner) >= max_jobs_for_user(int(user["id"])):
         return JSONResponse({"ok": False, "msg": "Too many active jobs"}, status_code=429)
     allowed, _ = rs.rate_limit(f"loop-start:{owner}", 12, 3600)
@@ -91,6 +94,11 @@ async def start(request: Request, file: UploadFile | None = File(None), asset_id
     ):
         rs.job_update(cached_id, cache_hit=True)
         return JSONResponse({"ok": True, "job_id": cached_id, "cached": True}, status_code=200)
+    free_try = None
+    if not pro:
+        if not free_limits.consume("loop", int(user["id"]), _ip(request)):
+            return free_limits.refusal(request, "weekly", "loop")
+        free_try = free_limits.ticket("loop", int(user["id"]), _ip(request))
     jid = secrets.token_hex(16)
     root = Path(DATA) / "jobs" / jid
     root.mkdir(parents=True, exist_ok=False)
@@ -104,6 +112,8 @@ async def start(request: Request, file: UploadFile | None = File(None), asset_id
                "transition": max(.25, min(.75, transition)),
                "cache_key": cache_key,
                "created": time.time()}
+    if free_try:
+        payload["free_try"] = free_try   # given back if the job fails (redis_store.job_update)
     rs.job_create(jid, payload, enqueue=external)
     if not external:
         from smweb.loop_jobs import run
@@ -119,8 +129,9 @@ async def preview(request: Request, file: UploadFile | None = File(None), asset_
     user, owner = _owner(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
-    if not auth_db.effective_pro(user):
-        return JSONResponse({"ok": False, "msg": "Seamless Loop is available for Pro subscribers", "code": "pro"}, status_code=403)
+    # A preview costs nothing, but a Free account may only preview while this week's loop is still unused.
+    if not auth_db.effective_pro(user) and free_limits.left("loop", int(user["id"]), _ip(request)) <= 0:
+        return free_limits.refusal(request, "weekly", "loop")
     allowed, _ = rs.rate_limit(f"loop-preview:{owner}", 30, 3600)
     if not allowed:
         return JSONResponse({"ok": False, "msg": "Too many previews. Try again later."}, status_code=429)

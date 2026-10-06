@@ -26,8 +26,8 @@ import auth_db
 from fastapi import APIRouter
 
 
-from smweb.core import LOGGER, MAX_UPLOAD_MB, _auth_user, _esc_html
-from smweb import da_publish
+from smweb.core import LOGGER, MAX_UPLOAD_MB, _auth_user, _esc_html, _ip
+from smweb import da_publish, free_limits
 from smweb.da_client import _da_guess_mime, _da_refresh_token
 from smweb.oauth_util import (
     _app_origin,
@@ -282,6 +282,10 @@ async def da_upload(request: Request):
     if not token:
         return JSONResponse({"ok": False, "msg": "Connect DeviantArt first"}, status_code=401)
     _LOG.info(f"da_upload: user={user.get('id')} token_len={len(token)} files incoming")
+    # Pro: no limit. Free: one publication a week, any number of files in it (smweb/free_limits.py).
+    pro = auth_db.effective_pro(user)
+    if not pro and free_limits.left("da", int(user["id"]), _ip(request)) <= 0:
+        return free_limits.refusal(request, "weekly", "da")
 
     try:
         form = await request.form(
@@ -339,6 +343,12 @@ async def da_upload(request: Request):
 
     if not files:
         return JSONResponse({"ok": False, "msg": "No files received"}, status_code=400)
+
+    free_try = None
+    if not pro:
+        if not free_limits.consume("da", int(user["id"]), _ip(request)):
+            return free_limits.refusal(request, "weekly", "da")
+        free_try = free_limits.ticket("da", int(user["id"]), _ip(request))
 
     import requests as rq
 
@@ -420,6 +430,8 @@ async def da_upload(request: Request):
             entry["error"] = f"{type(e).__name__}: {e}"
 
     ok_n = sum(1 for entry in results if entry["ok"])
+    if not ok_n:
+        free_limits.refund_ticket(free_try)   # nothing reached DeviantArt: the weekly use is not spent
     errors = [f"{entry['name']}: {entry['error']}" for entry in results if entry.get("error")]
     return {
         "ok": ok_n > 0,

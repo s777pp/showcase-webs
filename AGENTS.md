@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 526 passed on 2026-10-06 (~150 s), before the 10 avatar tests (6.13) and the 21 Telegram billing tests (6.14)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 583 passed on 2026-10-07 (~150 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -110,8 +110,9 @@ Modal GPU (Real-ESRGAN upscale). Compose services: `postgres redis app worker ng
   tab); on the landing it is a floating capsule under the top bar (`home-overlays.css`).
 - Pro: DB flag/`pro_until` set by activation code (`data/access_codes.json` on the volume),
   Stripe (needs verified webhook secret), Gumroad, trial. Enforce Pro **server-side**; UI gating
-  is cosmetic. Pro-only: Upscale, Loop, `/api/steam-check` standalone + `fix-safe`, Design Selection.
-  Free (signed in): integrated readiness report, Profile Rating once per 7 days.
+  is cosmetic. Pro-only: Upscale, `/api/steam-check` standalone + `fix-safe`, beta tools (`BETA_FEATURES`).
+  Free (signed in): integrated readiness report; once per calendar week each: Loop, Design Selection,
+  Profile Rating, Steam DNA, AI background removal, DeviantArt publishing (section 6.15).
 - Free watermark is forced server-side only in `/api/process/start` (`_watermark_options`);
   `tools_api.enforce_watermark` intentionally returns options unchanged (two policies — known).
 - Never expose errors that may contain provider URLs/credentials (Modal, R2 presigned, Bright
@@ -794,7 +795,7 @@ Only the hero exists for now; content blocks will be added below it later.
   codes (`_FALLBACK_CODES`), never for a bad image; `BG_REMOVE_FALLBACK=0` disables it. Monthly cap per provider
   (`BG_REMOVE_MONTHLY_<NAME>`, defaults modal 5000 / iloveapi 240 / problembo 100 / removebg 50, Redis calendar bucket).
   Route: `GET /api/builder/remove-background/providers` (literal, before `{job_id}`), `POST` takes `provider`;
-  job result has `provider` + `fallback`. Per-user `REMOVE_BG_FREE_DAILY`/`PRO_DAILY`, site `BG_REMOVE_GLOBAL_DAILY`.
+  job result has `provider` + `fallback`. Free: one per week (6.15); Pro: `REMOVE_BG_PRO_DAILY`; site `BG_REMOVE_GLOBAL_DAILY`.
   Admin status: `health_checks._bg_remove` (Modal CPU front only, lists the chain).
 - Builder UI: model picker `#builderAiModel` (only configured services, choice in localStorage `sm_bx_ai_model`),
   note `#builderAiNote` (Modal cold start + automatic fallback), "waking" status after 7 s, fallback message.
@@ -898,6 +899,8 @@ Only the hero exists for now; content blocks will be added below it later.
   folder for the before/after comparison until the normal cleanup. Dockerfile installs `gifsicle`.
   The older synchronous `/api/optimizer` in tools_api.py has no UI and still runs in Uvicorn: remove it when convenient.
 
+- Cache keys (2026-10-07): `locales-extra.js?v=` must be the same on every page (`tests/test_privacy_page.py`); the
+  landing rebuild bumped only index.html, the other pages were aligned to `20261007-home1`.
 - Tidy pass (2026-10-06, owner screenshots of old-design leftovers): `static/css/tools-tidy.css` is loaded LAST on
   app.html (after gif-optimizer.css). It unifies the tab header for every tool (no `.main > .back`, no
   "WORKSPACE /" kicker, 40 px title), keeps the tools strip inside the window at 1401-1599 px (icons hidden) and
@@ -950,10 +953,6 @@ Only the hero exists for now; content blocks will be added below it later.
   `bad_image`, `failed` are the keys of COPY in `static/js/avatar-upload.js` (`SMAvatar.pick/remove/t`, loaded before
   `account-page.js` and `profile.js`, checked by check_i18n). UI: `avatarEditor()` in account-page.js,
   `#accountAvatar*` in profile.html. The older `/api/auth/profile` and `/api/gallery/author/avatar` uploads are unchanged.
-- **Not verified yet:** the 10 avatar tests in `tests/test_account_page.py` were written in a sandbox without
-  FastAPI/pytest (package index blocked), so neither they nor the full suite were run after this change. Only the
-  fixtures were checked against `_avatar_bytes` / `_drop_old_avatar`, and `check_i18n` passes. Run the section 0
-  commands, then delete this bullet and update the passed count there.
 
 ## 6.14 Pro through the Telegram bot (2026-10-06, local, not deployed)
 
@@ -980,11 +979,91 @@ Only the hero exists for now; content blocks will be added below it later.
   `TELEGRAM_SHOP_BOT_USERNAME`, else `TELEGRAM_BOT_USERNAME`; claim links are built from `APP_URL`.
 - Account export has `telegram_purchases`; account deletion drops orders and links and detaches sales.
   Rate rules for the two `/api/billing/telegram/*` routes. Schema in both `auth_db._create_schema` and `schema_pg.sql`.
-- Tests: `tests/test_telegram_billing.py` (21). **Not verified yet:** written in a sandbox without FastAPI/pytest.
-  The 16 rule tests (no HTTP) were executed there with a stand-in runner and pass; the 5 HTTP tests (bot API,
-  site routes, account page) and the full suite were NOT run. Run the section 0 commands, then delete this note.
+- Tests: `tests/test_telegram_billing.py` (21).
 - Deploy order: site first (the bot needs `/api/bot-admin/pro/*`), then the bot. VPS `.env`: `BOT_ADMIN_SECRET`
   (same value as in the bot), `TELEGRAM_BOT_USERNAME` = the shop bot, `APP_URL`.
+
+## 6.15 Free tier rules and weekly tries (2026-10-06, local, not deployed)
+
+- Owner's decision. Free: files 5/day by IP (unchanged), Builder exports 3/day (was 1), and ONE use per calendar
+  week of each of: AI background removal `bg` (was 5/day), Profile Rating `doctor`, Steam DNA `dna` (was 1/day),
+  Seamless Loop `loop` and Design Selection `design` (both were Pro-only), DeviantArt publishing `da` (was
+  unlimited). Pro-only: Upscale, standalone Steam Check + `fix-safe`, and beta tools (`BETA_FEATURES`, now `gifopt`).
+- `smweb/free_limits.py` is the single place for these rules. Table `feature_uses(feature, subject, period, used)`
+  (both schemas). Subjects: `u:<uid>` AND `ip:<hmac24 of the address>`; a use is taken only when both are free,
+  so a second account from the same address gets nothing (the owner wants IP counting on purpose). Period = ISO
+  week, reset Monday 00:00 UTC. `consume()` is one atomic upsert per subject (`... DO UPDATE ... WHERE used < ?`),
+  rolled back when any subject is full. Rows older than 60 days are pruned; account deletion drops `u:<uid>` rows.
+- Refunds: a job that took a try carries `free_try` (`free_limits.ticket`); `redis_store.job_update` gives it back
+  when the job ends with `status == "error"`. Profile insights also refund when only the fallback (`warning`)
+  answered; `/api/da/upload` refunds when nothing was published.
+- Refusals: `free_limits.refusal(request, kind, feature, code=...)` -> JSON `{ok:false, code, msg, limit:{kind,
+  feature, resets_at}}`, `msg` localized on the server (8 languages, `MESSAGES`). Kinds: `weekly` 429, `builder`
+  429, `beta` 403, `daily` / `daily_more` 403. Old `code` values are kept (`quota`, `remove_bg_limit`, `limit`,
+  `weekly_limit`, `beta`). The daily file limit answers go through the same helper.
+- Pro keeps its own daily caps where they existed (`REMOVE_BG_PRO_DAILY`, Steam DNA Pro daily); Pro never touches
+  `feature_uses`.
+- `/api/quota` -> `free: {pro, beta: [...], week_resets_at, day_resets_at, weekly_limit, weekly: {feature:
+  {limit, left}}, builder: {limit, left}}` (`weekly` / `builder` only for non-Pro). Builder exports are counted
+  per account only (`builder_usage`), not per IP.
+- UI: `static/js/free-limits.js` + `css/free-limits.css` (`window.SMLimits`): a note at the top of the loop /
+  design-ai / doctor / dna / da tabs, a beta note on gifopt, a hint next to the Builder "remove background"
+  button, and ONE dialog for every refusal. It wraps `fetch`: any non-GET `/api/` answer that has `limit` opens
+  the dialog (wait until the date / 2-hour trial in the Telegram bot / Pro 24h / all plans). Do not add per-tool
+  "limit reached" popups; return `limit` from the server instead.
+- Tariff copy lives in: `tools-unified.js` (COMPARE table, 14 rows, `cmp*` keys, `@builder` / `@20` tokens, the
+  beta row lists tool names from `/api/quota`), `home.js` + `index.html` (pricing: `price_weekly`, `price_beta`),
+  `account-page.js` (`tNoWeekly`, `tBeta`), `profile-insights.js`, `gif-optimizer.js` (`errBeta`), the bot's
+  `app/texts.yml`. Change a rule -> change all of them.
+- Env: `FREE_WEEKLY_USES` (1), `BUILDER_EXPORTS_PER_DAY` (3), `BETA_FEATURES` (`gifopt`; empty = open to all).
+  `REMOVE_BG_FREE_DAILY` and `STEAM_DNA_FREE_DAILY` are gone.
+- To take a tool out of beta: remove it from `BETA_FEATURES` and fix the copy (`d_gifopt` "(Pro, beta)").
+- Tests: `tests/test_free_limits.py` (21) + edits in test_builder_projects / builder_motion (+1) / gif_optimizer /
+  da_publish / remove_bg_client / steam_dna.
+- Privacy pages (8 languages, 2026-10-07) say that the weekly counter keeps a keyed hash of the IP (never the
+  address) for 60 days, and what the Telegram bot sends the site (payment reference, plan, Telegram ID link).
+
+## 6.16 Landing blocks rebuilt, petals, hit zone, About tab (2026-10-07, local, not deployed)
+
+- Owner gave full freedom for everything below the hero. `static/index.html` `.home-blocks` now holds, in order:
+  `hb-facts` (4 facts) -> `hb-demo` `#features` (one artwork, cut lines move with the Workshop / Featured / Split
+  tabs, `#cutStage`, auto-rotates until the visitor clicks) -> `hb-steps` (4 steps) -> `hb-tools` (12 tool cards,
+  `/app#<tab>` links, tags Pro / "Pro · beta" / "Free: once a week") -> `hb-ext` (real screenshots
+  `upload-done` + `uploader-anim`, RU/EN swapped by `data-shot` in home.js) -> `hb-pricing` `#pricing` (three
+  plans; every term button carries `data-buy-key` + `data-buy-plan`) -> `hb-faq` (`<details>`) -> `hb-final`.
+  Removed for good: the mail-client mock-up, the invented quotes, the formats marquee, "download the ZIP and
+  load unpacked", version numbers. Do not bring fabricated testimonials or user counts back.
+- `static/css/home-blocks.css` was rewritten (still `hb-` prefixed, still `.hb-aurora` + `hb-drift-*`). Shared
+  pieces: `.hb-eyebrow`, `.hb-title` (two lines, `.hb-title__accent` cyan, the hero headline at a calmer size),
+  `.hb-lead`, `.hb-btn` (hero buttons at a fixed size), `.hb-ticks`, panel = border + navy gradient + cyan tick.
+  No monospace font anywhere. Reveal: home.js marks elements with `data-hb-reveal` and REMOVES the mark 1.6 s
+  after they appear, otherwise the reveal transition overrides the cards' hover transitions.
+- Copy: `home.js` is EN/RU (149 keys each). The other six languages are looked up by the ENGLISH text node in the
+  generated packs, so every new English string needs entries in `scripts/locale_reviewed.json`, then
+  `node scripts/build_extra_locales.js --overrides-only`. `check_i18n.js` does NOT check this for home.js;
+  `tests/test_hero_vrm.py::test_landing_copy_has_all_six_generated_languages` does. Names that must stay
+  English (the Workshop / Featured / Split tabs) carry `data-no-translate`: the pack turns "Split" into "Geteilt".
+  Tool descriptions and four FAQ answers are word for word the Tools page copy (`tools-unified.js`).
+- Facts checked against code before writing: 630 px row, 506 + 100 px split, `part_N` / `featured_630` /
+  `center_506` / `side_100` file names (processor.py), 5 files a day without an account (process route has no
+  login check), `/app#<data-tab>` opens a tab (support-chat.js `openLinkedTool`, not `check`).
+- Hero click zone: `.home-vrm__hit` is `inset:0` with a `clip-path:polygon(...)` in percent of the VRM box, traced
+  from the owner's red contour. clip-path also clips hit testing. Still no raycasting.
+- Sakura petals: `static/js/home-petals.js` + `canvas#homePetals`, placed INSIDE `.home-art` BEFORE `.home-vrm`
+  (`left:50%;top:26%;width:36%;height:74%`), so the character covers them by layer order and no silhouette mask
+  is needed (unlike home-stars.js). Up to 18 petals, spawn zone `SPAWN`, off for reduced motion, paused off
+  screen. `window.__homePetals.state()` for testing.
+- About tab: `COMPARE` in tools-unified.js has `true` in every Pro cell; the Free column keeps the limits
+  (`@limit` -> "5 a day"); the watermark row is worded as the Pro benefit (`perk2`). `PERKS=[1,2,6,7,3,8,9,4,5]`
+  (nine lines, `perk6`..`perk9` new, `perk3` reworded), `.tu-perks` is `flex:1` and its rows spread evenly
+  (`tools-tidy.css`, a file with MIXED line endings: patch it byte-wise). FAQ `a3` rewritten in 8 languages.
+- Found on the way: `img/browser-icons/edge.svg` is the Firefox logo (not used on the landing any more);
+  `img/extension-guide/v2/popup-en.webp` is byte-identical to `popup-ru.webp`.
+- Verified in a sandbox with Playwright (Inter standing in for Montserrat, text widened by letter-spacing):
+  8 languages x 1920/1440/1280/1024/768/390 px, no horizontal scroll, nothing clipped or outside its card;
+  `check_i18n.js` complete. Full pytest suite passed on 2026-10-07 (583). Checked again on the dev machine with the
+  real Montserrat in Edge (ru/en/de x 1920/1280/390): no horizontal scroll, nothing clipped (the step arrows and the
+  overlapping extension screenshots stick out on purpose).
 
 ## 7. Rules for agents
 

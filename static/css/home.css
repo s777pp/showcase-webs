@@ -113,10 +113,18 @@ body.page-home::before,body.page-home::after{content:none!important}
 .home-stars{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 30%,transparent 41%);mask-image:linear-gradient(90deg,#000 0,#000 30%,transparent 41%)}
 .home-stars.is-occluded{-webkit-mask-image:linear-gradient(90deg,#000 0,#000 47%,transparent 56%);mask-image:linear-gradient(90deg,#000 0,#000 47%,transparent 56%)}
+/* Sakura petals (home-petals.js): a canvas over the painted monitor, placed UNDER the VRM box, so the character
+   always covers them. Percentages of the art frame, like the VRM box. */
+.home-petals{position:absolute;left:50%;top:26%;width:36%;height:74%;z-index:0;pointer-events:none}
 .home-vrm{position:absolute;left:24%;top:0;width:56%;height:100%;z-index:1}
 .home-vrm canvas{display:block;width:100%;height:100%;opacity:0;transition:opacity .9s ease;pointer-events:none}
-/* Simple click/hover zone over the character (percent of the VRM box). */
-.home-vrm__hit{position:absolute;left:28%;top:6%;width:38%;height:89%;cursor:pointer;pointer-events:auto}
+/* Click/hover zone: the character's outline only (owner's contour, 2026-10-07), in percent of the VRM box.
+   clip-path also clips hit testing, so clicks outside the outline go to whatever is underneath. */
+.home-vrm__hit{
+  position:absolute;inset:0;cursor:pointer;pointer-events:auto;
+  -webkit-clip-path:polygon(25% 12%,34.8% 7%,45.1% 9%,48.5% 19.7%,51.5% 31.3%,55.5% 43.7%,62.5% 54.8%,69.2% 68.6%,75.6% 81.1%,78.3% 90.4%,77% 92.4%,42% 92.6%,37.9% 82.8%,28.6% 76.2%,18.3% 70.8%,16.1% 58%,18.8% 45.5%,20.7% 32.2%,21.6% 19.3%);
+  clip-path:polygon(25% 12%,34.8% 7%,45.1% 9%,48.5% 19.7%,51.5% 31.3%,55.5% 43.7%,62.5% 54.8%,69.2% 68.6%,75.6% 81.1%,78.3% 90.4%,77% 92.4%,42% 92.6%,37.9% 82.8%,28.6% 76.2%,18.3% 70.8%,16.1% 58%,18.8% 45.5%,20.7% 32.2%,21.6% 19.3%);
+}
 .is-vrm-fallback .home-vrm__hit{display:none}
 .is-vrm-ready .home-vrm canvas{opacity:1}
 .home-reaction{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}

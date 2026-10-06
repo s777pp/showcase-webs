@@ -224,6 +224,15 @@ def job_update(jid: str, **kw) -> None:
             notify.job_finished(jid, kw)
         except Exception:
             pass
+    if kw.get("status") == "error":
+        # A Free user's weekly use that paid for this job is given back (smweb/free_limits.py).
+        try:
+            job = job_get(jid)
+            if job and job.get("free_try"):
+                from smweb import free_limits
+                free_limits.refund_job(jid, job)
+        except Exception:
+            pass
 
 
 def job_get(jid: str) -> Optional[dict]:

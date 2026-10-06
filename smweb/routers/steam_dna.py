@@ -13,7 +13,8 @@ from fastapi.responses import JSONResponse
 
 import auth_db
 import redis_store as rs
-from smweb.core import _auth_user
+from smweb import free_limits
+from smweb.core import _auth_user, _ip
 from smweb.locales import normalize_language
 from steam_browser_import import _public_profile_url
 
@@ -78,13 +79,23 @@ async def analyze(request: Request):
     existing = rs.job_find_active(user_key, "steam_dna", source_key)
     if existing:
         return {"ok": True, "queued": True, "job_id": existing[0]}
+    # Pro: a daily cap per account. Free: one analysis a week (smweb/free_limits.py). Both share a global daily cap.
     pro = auth_db.effective_pro(user)
-    daily_limit = _bounded_env("STEAM_DNA_PRO_DAILY", 20, 100) if pro else _bounded_env("STEAM_DNA_FREE_DAILY", 1, 20)
-    user_allowed, remaining = rs.rate_limit(f"steam-dna-live:user:{uid}", daily_limit, 86400, fail_closed=True)
+    free_try = None
+    remaining = 0
+    if pro:
+        user_allowed, remaining = rs.rate_limit(
+            f"steam-dna-live:user:{uid}", _bounded_env("STEAM_DNA_PRO_DAILY", 20, 100), 86400, fail_closed=True)
+    else:
+        if not free_limits.consume("dna", uid, _ip(request)):
+            return free_limits.refusal(request, "weekly", "dna", code="limit")
+        free_try = free_limits.ticket("dna", uid, _ip(request))
+        user_allowed = True
     global_allowed, _ = rs.rate_limit(
         "steam-dna-live:global", _bounded_env("STEAM_DNA_GLOBAL_DAILY", 150, 5000), 86400, fail_closed=True
     )
     if not user_allowed or not global_allowed:
+        free_limits.refund_ticket(free_try)
         return JSONResponse(
             {"ok": False, "code": "limit", "msg": "Daily Steam DNA limit reached", "remaining": remaining},
             status_code=429,
@@ -100,6 +111,8 @@ async def analyze(request: Request):
         "user_key": user_key, "user_id": uid, "source_key": source_key, "cache_key": cache_key,
         "url": url, "mode": mode, "language": language, "is_pro": bool(pro), "created": time.time(),
     }
+    if free_try:
+        payload["free_try"] = free_try   # given back if the job fails (redis_store.job_update)
     rs.job_create(jid, payload, enqueue=external)
     if not external:
         from smweb.steam_dna_jobs import run

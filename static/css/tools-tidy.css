@@ -68,9 +68,10 @@ body.page-tools.site-v2 #processSubmit>.row>.btn{margin:0!important}
 body.page-tools.site-v2 #tab-about .tu-about__row{align-items:stretch!important}
 body.page-tools.site-v2 #tab-about .tu-about__row>.card{display:flex!important;flex-direction:column}
 body.page-tools.site-v2 #tab-about .tu-plan__actions,body.page-tools.site-v2 #tab-about .tu-how-cta{margin-top:auto!important;padding-top:16px}
-body.page-tools.site-v2 #tab-about .tu-perks{margin:4px 0 18px;padding:14px 16px;border:1px solid rgba(110,170,255,.18);border-radius:12px;background:var(--tu-inset,rgba(5,10,28,.5))}
-body.page-tools.site-v2 #tab-about .tu-perks b{display:block;margin-bottom:10px;font-size:13px;font-weight:800;color:#fff}
-body.page-tools.site-v2 #tab-about .tu-perks ul{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+/* The list fills the card down to the buttons (owner request 2026-10-07): rows spread evenly. */
+body.page-tools.site-v2 #tab-about .tu-perks{flex:1 1 auto;display:flex;flex-direction:column;margin:12px 0 0;padding:16px 18px;border:1px solid rgba(110,170,255,.18);border-radius:12px;background:var(--tu-inset,rgba(5,10,28,.5))}
+body.page-tools.site-v2 #tab-about .tu-perks b{display:block;margin-bottom:12px;font-size:13px;font-weight:800;color:#fff}
+body.page-tools.site-v2 #tab-about .tu-perks ul{flex:1 1 auto;display:grid;gap:10px;align-content:space-evenly;margin:0;padding:0;list-style:none}
 body.page-tools.site-v2 #tab-about .tu-perks li{position:relative;padding-left:24px;font-size:13px;line-height:1.45;color:rgba(214,229,250,.78)}
 body.page-tools.site-v2 #tab-about .tu-perks li::before{content:"✓";position:absolute;left:0;top:0;width:18px;height:18px;display:grid;place-items:center;border-radius:50%;background:rgba(95,242,181,.14);color:#5ff2b5;font-size:11px;font-weight:900}
 body.page-tools.site-v2 #tab-about .tu-how-tip{margin:16px 0 0;padding:12px 14px;border-left:3px solid var(--tu-cyan,#1fc9f1);border-radius:0 10px 10px 0;background:rgba(31,201,241,.07);font-size:13px;line-height:1.5;color:rgba(214,229,250,.78)}

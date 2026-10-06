@@ -40,7 +40,10 @@ class BuilderProjectTests(unittest.TestCase):
         self.assertEqual([item["id"] for item in auth_db.builder_projects_for_user(self.user_id)],
                          ["pro", "free"])
 
-    def test_free_export_is_one_per_utc_day(self):
+    def test_free_exports_are_three_per_utc_day(self):
+        # Three by default since 2026-10-06 (was one); the number left is returned.
+        self.assertEqual(auth_db.consume_builder_render(self.user_id, is_pro=False), (True, 2))
+        self.assertEqual(auth_db.consume_builder_render(self.user_id, is_pro=False), (True, 1))
         self.assertEqual(auth_db.consume_builder_render(self.user_id, is_pro=False), (True, 0))
         self.assertEqual(auth_db.consume_builder_render(self.user_id, is_pro=False), (False, 0))
         self.assertEqual(auth_db.consume_builder_render(self.user_id, is_pro=True), (True, None))

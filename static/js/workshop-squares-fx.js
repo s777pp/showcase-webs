@@ -346,7 +346,7 @@
      the design on a sample picture for the current showcase type (Split shows
      both files: 506 + 100); animation tiles play the real animation on a small
      outline. Tiles animate only while visible; reduced motion shows one still. */
-  var SAMPLE_URL='/static/img/samples/sample-art.webp',sample=null,liveTiles=[],ticker=0,lastTick=0;
+  var SAMPLE_URL='/static/img/samples/sample-art.webp?v=2',sample=null,liveTiles=[],ticker=0,lastTick=0;
   var PALETTE=['#ffffff','#ff2d2d','#ffa31a','#b5ff1f','#1fff8f','#19ffd5','#5fe4ff','#1a9bff','#2600ff','#8a62ff','#c13bff','#ff00a1','#ffe600','#ff6a00'];
   function sampleImage(onReady){
     if(sample&&sample.complete&&sample.naturalWidth)return sample;

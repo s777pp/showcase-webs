@@ -75,6 +75,9 @@ def _client(monkeypatch, calls):
 
     monkeypatch.setattr(requests, "post", fake_post)
     monkeypatch.setattr(deviantart, "_auth_user", lambda request: {"id": 1, "da_access_token": "token"})
+    # The weekly limit of Free accounts has its own tests below; here every upload is allowed.
+    monkeypatch.setattr(deviantart.free_limits, "left", lambda *a, **k: 1)
+    monkeypatch.setattr(deviantart.free_limits, "consume", lambda *a, **k: True)
     app = FastAPI()
     app.include_router(deviantart.router)
     return TestClient(app)

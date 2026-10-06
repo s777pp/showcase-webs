@@ -68,6 +68,8 @@ class SteamDnaTests(unittest.TestCase):
         with (
             patch.object(steam_dna_router, "_auth_user", return_value={"id": 7, "is_pro": False}),
             patch.object(steam_dna_router.auth_db, "effective_pro", return_value=False),
+            # A Free account analyses once a week (smweb/free_limits.py); the use is taken here.
+            patch.object(steam_dna_router.free_limits, "consume", return_value=True) as weekly,
             patch.object(steam_dna_router.rs, "rate_limit", return_value=(True, 11)),
             patch.object(steam_dna_router.rs, "steam_dna_cache_get", return_value=None),
             patch.object(steam_dna_router.rs, "job_find_active", return_value=None),
@@ -83,6 +85,8 @@ class SteamDnaTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["queued"])
         payload = create.call_args.args[1]
+        weekly.assert_called_once()
+        self.assertEqual(payload["free_try"]["feature"], "dna")
         self.assertEqual(payload["kind"], "steam_dna")
         self.assertEqual(payload["mode"], "featured")
         self.assertEqual(payload["language"], "ru")

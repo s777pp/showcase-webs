@@ -142,7 +142,7 @@
     sample.addEventListener('click', async function () {
       sample.disabled = true;
       try {
-        var response = await fetch('/static/img/samples/sample-art.webp?v=1', { cache: 'force-cache' });
+        var response = await fetch('/static/img/samples/sample-art.webp?v=2', { cache: 'force-cache' });
         if (!response.ok) throw new Error('sample');
         var file = new File([await response.blob()], 'showcase-sample.webp', { type: 'image/webp' });
         document.dispatchEvent(new CustomEvent('sm:assets-selected', { detail: { target: 'process', files: [file] } }));

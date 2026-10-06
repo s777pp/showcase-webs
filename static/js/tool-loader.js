@@ -17,7 +17,7 @@
       '/static/js/builder-fonts.js?v=20260930-bx9'
     ],
     dna: ['/static/js/steam-dna.js?v=20260912-exp7'],
-    loop: ['/static/js/builder-motion-copy.js?v=20260928-loop3','/static/js/seamless-loop.js?v=20260928-prev2']
+    loop: ['/static/js/builder-motion-copy.js?v=20260928-loop3','/static/js/seamless-loop.js?v=20261006-fl1']
   };
 
   function script(src) {

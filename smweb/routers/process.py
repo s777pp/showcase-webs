@@ -23,6 +23,7 @@ import processor as proc
 import redis_store as rs
 
 from smweb import analytics
+from smweb import free_limits
 from smweb import job_diagnostics
 from smweb import media_assets
 from smweb import saved_results
@@ -102,7 +103,7 @@ async def api_workshop_studio_start(
         effects["frame"]["target"] = "strip"
     q = quota_state(request)
     if not q["pro"] and q["left"] < rows:
-        return JSONResponse({"ok": False, "msg": "Not enough free files left today"}, status_code=403)
+        return free_limits.refusal(request, "daily_more" if q["left"] > 0 else "daily", "files", n=q["limit"])
     try:
         parsed = json.loads(settings)
         if not isinstance(parsed, list) or len(parsed) != rows:
@@ -303,10 +304,7 @@ async def api_process_start(
     _job_cleanup_old()
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
-        return JSONResponse(
-            {"ok": False, "msg": f"Limit {q['limit']} files/day. Enter access code or buy Pro."},
-            status_code=403,
-        )
+        return free_limits.refusal(request, "daily", "files", n=q["limit"])
     mode = (mode or "workshop").lower().strip()
     if mode not in ("workshop", "featured", "split"):
         return JSONResponse({"ok": False, "msg": "Unknown mode"}, status_code=400)

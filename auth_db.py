@@ -408,6 +408,20 @@ def _create_schema(c: sqlite3.Connection) -> None:
     c.execute("CREATE INDEX IF NOT EXISTS idx_telegram_sales_user ON telegram_sales(user_id)")
     c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_sales_claim ON telegram_sales(claim_token)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_telegram_links_user ON telegram_links(user_id)")
+    # Free-tier weekly tries (smweb/free_limits.py, 2026-10-06): one row per tool, per subject (an account "u:<id>"
+    # or a hashed address "ip:<hash>") and per ISO week.
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS feature_uses (
+            feature TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            period TEXT NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            updated_at REAL,
+            PRIMARY KEY (feature, subject, period)
+        )
+        """
+    )
     c.execute(
         """
         CREATE TABLE IF NOT EXISTS profile_showcases (
@@ -1007,6 +1021,7 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
         c.execute("DELETE FROM builder_projects WHERE user_id=?", (uid,))
         c.execute("DELETE FROM da_presets WHERE user_id=?", (uid,))
         c.execute("DELETE FROM builder_usage WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM feature_uses WHERE subject=?", (f"u:{uid}",))
         c.execute("DELETE FROM saved_results WHERE user_id=?", (uid,))
         c.execute("DELETE FROM gumroad_orders WHERE user_id=?", (uid,))
         c.execute("UPDATE gumroad_sales SET user_id=NULL WHERE user_id=?", (uid,))
@@ -1426,10 +1441,11 @@ def pop_expired_saved_results(limit: int = 200) -> list[dict]:
         c.close()
 
 
-def consume_builder_render(user_id: int, *, is_pro: bool = False) -> tuple[bool, int | None]:
-    """Reserve one Builder export. Free accounts receive one per UTC day."""
+def consume_builder_render(user_id: int, *, is_pro: bool = False, limit: int = 3) -> tuple[bool, int | None]:
+    """Reserve one Builder export. Free accounts receive ``limit`` per UTC day; returns (ok, exports left today)."""
     if is_pro:
         return True, None
+    limit = max(1, int(limit))
     day_key = time.strftime("%Y-%m-%d", time.gmtime())
     c = _conn()
     try:
@@ -1438,7 +1454,7 @@ def consume_builder_render(user_id: int, *, is_pro: bool = False) -> tuple[bool,
             (int(user_id), day_key),
         ).fetchone()
         used = int(row["renders"] or 0) if row else 0
-        if used >= 1:
+        if used >= limit:
             return False, 0
         if row:
             c.execute(
@@ -1451,7 +1467,7 @@ def consume_builder_render(user_id: int, *, is_pro: bool = False) -> tuple[bool,
                 (int(user_id), day_key),
             )
         c.commit()
-        return True, 0
+        return True, limit - used - 1
     finally:
         c.close()
 

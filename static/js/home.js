@@ -1,6 +1,7 @@
 /* Landing page: copy, header additions and small interactions.
    EN/RU are hand-written; the other six languages are translated from the
-   English source by i18n.js (SM_EXTRA_TRANSLATIONS), falling back to English. */
+   English source by i18n.js (SM_EXTRA_TRANSLATIONS), falling back to English.
+   Every English string below needs an entry in scripts/locale_reviewed.json. */
 (function () {
   'use strict';
 
@@ -23,107 +24,147 @@
       feat_up_s: 'Higher quality',
       feat_anim_t: 'Animations',
       feat_anim_s: 'GIF · MP4 · Loop',
-      feat_steam_t: 'Steam Ready',
-      feat_steam_s: 'Up to 5 MB · HEX 21',
       scroll: 'Scroll',
       footer_tagline: 'Steam showcase tools by n1t1337',
       footer_tools: 'Tools',
       footer_gallery: 'Gallery',
       footer_profile: 'Profile',
-      // Blocks below the hero (restored from the previous landing)
-      aud_artists: "Profile artists",
-      aud_creators: "CREATORS",
-      aud_power: "Power users",
-      aud_sellers: "Commission sellers",
-      aud_sellers_badge: "SELLERS",
-      badge_instant: "instant",
-      badge_live: "live",
-      badge_local: "local",
-      badge_safe: "safe",
-      cta_h: "Close the tabs.<br/>Open your profile.",
-      cta_open2: "Open tools",
-      cta_p: "Process, download sources, preview on a Steam template, and ship — without leaving the browser.",
-      cta_reg: "Create account →",
-      desktop_web: "Desktop + Web",
-      ext_eyebrow: "Browser extension",
-      ext_hint: "Download the ZIP, unpack it and select “Load unpacked” on the browser extensions page.",
-      ext_install: "Install extension",
-      ext_list_engine_prev: "Files stay on your computer",
-      ext_list_engine_sub: "PNG · JPG · WEBP · GIF",
-      ext_list_modes: "Showcase modes",
-      ext_list_modes_prev: "Ready-made Steam dimensions and layouts",
-      ext_list_privacy: "Private by design",
-      ext_list_privacy_prev: "Only the permissions required for Steam",
-      ext_list_privacy_sub: "No passwords · no cookies",
-      ext_list_profile: "Profile preview",
-      ext_list_profile_prev: "Try the look before applying it",
-      ext_list_profile_sub: "Backgrounds · frames · avatars",
-      ext_list_steam: "Steam integration",
-      ext_list_steam_prev: "Edit showcases without switching tabs",
-      ext_list_steam_sub: "Tools inside Steam pages",
-      ext_nav_browser: "Browser Engine",
-      ext_nav_overview: "Overview",
-      ext_nav_preview: "Profile preview",
-      ext_nav_privacy: "Privacy",
-      ext_nav_steam: "Steam tools",
-      ext_reader_body: "Open a supported Steam page and the required tool appears automatically. Your media is processed locally whenever possible.",
-      ext_reader_meta: "extension · v0.9.9",
-      ext_reader_summary: "✦ Everything close at hand",
-      ext_reader_summary_p: "Showcase preparation, local media processing and live Steam profile preview in one lightweight browser extension.",
-      ext_reader_title: "SteamShowcase Helper",
-      ext_supports: "Supports",
-      flow_load: "3 · LOAD",
-      flow_unpack: "2 · UNPACK",
-      format_preview: "Preview",
-      format_watermark: "Watermark",
-      mock_title: "SteamShowcase Helper — Extension",
-      pipe_animated: "Animated GIF / MP4",
-      pipe_console: "Console code",
-      pipe_core: "core",
-      pipe_download: "Download",
-      pipe_guide: "Step-by-step guide",
-      pipe_preview: "Preview",
-      pipe_process: "Process",
-      pipe_profile: "profile",
-      pipe_slots: "Template slots",
-      pipe_sources: "sources",
-      pipe_upload: "upload",
-      pipe_watermark: "Watermark · font · opacity",
-      price_files: "5 files / day",
-      price_free: "Free",
-      price_free_d: "Try the full pipeline with a daily file limit.",
-      price_source: "Source download",
-      price_watermark: "Watermark & preview",
-      price_from: "from",
-      price_pro_d: "Pick a term. One payment, no auto-renewal: days add up.",
-      price_unlimited: "No daily file limit",
-      price_nomark: "No watermark, or your own",
-      price_tools: "Upscale, Loop and AI tools",
-      price_auto: "Turns on by itself after payment",
-      term_1d: "24 hours",
-      term_7d: "7 days",
-      term_30d: "30 days",
-      term_90d: "90 days",
-      buy_plan: "Choose a plan",
-      price_forever: "Pro forever",
-      price_forever_d: "One payment, and Pro stays on your account for good.",
-      price_all: "Everything in Pro",
-      price_once: "Pay once, no renewals",
-      price_future: "Every future Pro tool",
-      price_account: "Bound to your account",
-      buy_forever: "Get Pro forever",
-      q1: "“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”",
-      q2: "“Download + process + preview in one tab. No more juggling five sites.”",
-      q3: "“Pro is worth it when you ship showcases every week — no daily limit stress.”",
-      start_free: "Start free",
-      steam_native: "Steam-native",
-      tri_h: "Clear the busywork.<br/>Ship the showcase.",
-      tri_label: "Process",
-      tri_p: "Showcase Maker cuts Workshop, Featured and Split, applies watermark, respects Steam limits, and packages a ZIP — so you stay on the art, not the crop math.",
-      tri_today: "Today · showcase pipeline",
-      trust: "Built for Steam profile creators",
-      footer_pricing: "Pricing",
-      footer_extension: "Extension"
+      footer_pricing: 'Pricing',
+      footer_extension: 'Extension',
+
+      // Blocks below the hero (rebuilt 2026-10-07)
+      fact_types: 'showcase types: Workshop, Featured and Split',
+      fact_size_v: '≤ 5 MB',
+      fact_size: 'GIFs are fitted to the Steam limit',
+      fact_hex: 'added automatically',
+      fact_sites: 'sites to download a source from',
+
+      demo_eyebrow: 'Showcase cuts',
+      demo_h_a: 'One artwork.',
+      demo_h_b: 'Three showcases',
+      demo_p: 'Drop in a picture, GIF or video. Showcase Maker cuts it exactly to the Steam grid, keeps every part under 5 MB and adds HEX 21.',
+      demo_m_workshop: '5 parts · a 630 px row',
+      demo_m_featured: '1 file · 630 px wide',
+      demo_m_split: '2 parts · 506 + 100 px',
+      demo_badge: 'under 5 MB · HEX 21',
+      demo_b1: 'Frames, effects and a watermark in the same step',
+      demo_b2: 'A preview on a Steam profile mock-up',
+      demo_b3: 'A ready ZIP: the parts are named in upload order',
+      demo_cta: 'Try it on your file',
+
+      steps_eyebrow: 'How it works',
+      steps_h_a: 'From file to profile.',
+      steps_h_b: 'Four steps',
+      step1_t: 'Bring a file',
+      step1_d: 'A picture, GIF or video. Or paste a link and download the source right here.',
+      step2_t: 'Pick a showcase',
+      step2_d: 'Workshop, Featured or Split. Add a frame and effects, then check the look on a profile mock-up.',
+      step3_t: 'Download the ZIP',
+      step3_d: 'Parts at the right size, under 5 MB and with HEX 21 already applied.',
+      step4_t: 'Upload to Steam',
+      step4_d: 'With the extension in a couple of clicks, or by hand with the step-by-step guide.',
+
+      tools_eyebrow: 'Tools',
+      tools_h_a: 'Everything for a profile.',
+      tools_h_b: 'In one tab',
+      tools_p: 'No installs and no hopping between five sites: from the source file to the upload, it is all here.',
+      t_process: 'Process',
+      t_process_d: 'Cut a file into a Workshop, Featured or Split showcase with frames and a watermark.',
+      t_rows: 'Workshop Studio',
+      t_rows_d: 'Full-height rows and rows of 150×150 squares, up to three rows.',
+      t_builder: 'Create a design',
+      t_builder_d: 'Layered editor: background, character, text, frames and effects.',
+      t_char: 'Character',
+      t_char_d: 'Put a character on a background and get one picture or animation.',
+      t_download: 'Download',
+      t_download_d: 'Pictures, GIFs and videos from 50+ sites by link.',
+      t_convert: 'Converter',
+      t_convert_d: 'Video ↔ GIF, MP4, WebM, PNG, JPG, WebP.',
+      t_loop: 'Loop',
+      t_loop_d: 'Turn a clip into a seamless loop.',
+      t_ai: 'Profile AI',
+      t_ai_d: 'Profile rating, design ideas and Steam DNA from your public profile.',
+      t_upscale: 'Upscale',
+      t_upscale_d: 'AI enlargement of pictures, GIFs and video.',
+      t_gifopt: 'GIF Optimizer',
+      t_gifopt_d: 'Shrink a GIF: fewer colours, lossy compression or auto-fit under 5 MB.',
+      t_preview: 'Profile preview',
+      t_preview_d: 'Try showcases on a Steam profile mock-up.',
+      t_steam: 'Steam upload',
+      t_steam_d: 'Upload to Steam with the extension or by hand.',
+      tag_week: 'Free: once a week',
+      tag_beta: 'Pro · beta',
+      tools_all: 'Open all tools',
+
+      ext_eyebrow: 'Browser extension',
+      ext_h_a: 'Into Steam.',
+      ext_h_b: 'In a few clicks',
+      ext_p: 'SteamShowcase Helper uploads your finished files to Steam, places them into the showcase in the right order and keeps whole profile looks as presets.',
+      ext_b1: 'Automatic upload: pick the showcase type and drop the files in',
+      ext_b2: 'No console and no code to paste',
+      ext_b3: 'Never asks for a password: it works in your own Steam session',
+      ext_install: 'Install for free',
+      ext_more: 'See what it does',
+      ext_browsers: 'Chrome, Edge, Opera, Yandex Browser',
+
+      price_eyebrow: 'Pricing',
+      price_h_a: 'No subscriptions.',
+      price_h_b: 'Pay once',
+      price_p: 'Free is enough for a showcase now and then. Pro lifts the limits for a day, a month or for good: one payment, no auto-renewal.',
+      price_free: 'Free plan',
+      price_free_d: 'Enough to build a showcase and see how everything works.',
+      price_files: '5 files a day',
+      price_builder: '3 exports a day from Create a design',
+      price_weekly: 'AI tools and Loop: once a week',
+      price_mark: 'Showcase Maker watermark on the result',
+      price_from: 'from',
+      price_pro_d: 'Pick a term. Days add up, and Pro turns on by itself after payment.',
+      price_unlimited: 'No daily limit on files and exports',
+      price_nomark: 'No watermark, or your own',
+      price_tools: 'AI Upscale and the standalone Steam check',
+      price_noweek: 'AI tools and Loop with no weekly limit',
+      price_beta: 'New and beta tools first',
+      term_1d: '24 hours',
+      term_7d: '7 days',
+      term_30d: '30 days',
+      term_90d: '90 days',
+      buy_plan: 'Choose a plan',
+      price_best: 'Best value',
+      price_forever: 'Pro forever',
+      price_forever_d: 'One payment, and Pro stays on your account for good.',
+      price_all: 'Everything in Pro',
+      price_once: 'Pay once, no renewals',
+      price_future: 'Every future Pro tool',
+      price_account: 'Bound to your account',
+      buy_forever: 'Get Pro forever',
+      start_free: 'Start free',
+      trial_t: 'Not sure yet? Try Pro for 2 hours',
+      trial_d: 'A free key is waiting in our Telegram channel.',
+      price_compare: 'Full Free and Pro comparison',
+
+      faq_eyebrow: 'Questions',
+      faq_h_a: 'Common questions.',
+      faq_h_b: 'Short answers',
+      faq_p: 'Did not find yours? Ask the assistant or write to support.',
+      faq_support: 'Support',
+      q1: 'Do I need to install anything?',
+      a1: 'No, everything runs in the browser. The SteamShowcase Helper extension only speeds up uploading to Steam.',
+      q2: 'Why does Steam reject my GIF?',
+      a2: 'Steam accepts files up to 5 MB and needs the HEX 21 byte. Showcase Maker does both; for files made elsewhere use the HEX tab.',
+      q3: 'Do you need my Steam password?',
+      a3: 'No. The site never asks for it. The extension works inside your own Steam session in the browser: you sign in to Steam yourself, as usual.',
+      q4: 'Are my files public?',
+      a4: 'No. Sources and ZIPs are deleted automatically after their storage time; a preview becomes public only if you share its link yourself.',
+      q5: 'How does paying for Pro work?',
+      a5: 'You pay once for a term, with no auto-renewal. Days add up with the Pro you already have. Pro is bound to your account and turns on by itself after payment.',
+      q6: 'Is this made by Valve?',
+      a6: 'No. It is an independent project; Steam and Valve are trademarks of Valve Corporation.',
+
+      cta_h_a: 'Your showcase is ready',
+      cta_h_b: 'The rest is up to you',
+      cta_p: 'Start without an account: 5 files a day are free.',
+      cta_open2: 'Open tools',
+      cta_reg: 'Create account'
     },
     ru: {
       page_title: 'Showcase Maker — витрины Steam без рутины',
@@ -143,109 +184,151 @@
       feat_up_s: 'Выше качество',
       feat_anim_t: 'Анимации',
       feat_anim_s: 'GIF · MP4 · Loop',
-      feat_steam_t: 'Готово для Steam',
-      feat_steam_s: 'До 5 МБ · HEX 21',
       scroll: 'Вниз',
       footer_tagline: 'Инструменты для Steam-витрин от n1t1337',
       footer_tools: 'Инструменты',
       footer_gallery: 'Галерея',
       footer_profile: 'Профиль',
-      // Blocks below the hero (restored from the previous landing)
-      aud_artists: "Оформители профилей",
-      aud_creators: "АВТОРЫ",
-      aud_power: "Опытные пользователи",
-      aud_sellers: "Продавцы оформления",
-      aud_sellers_badge: "ПРОДАВЦЫ",
-      badge_instant: "сразу",
-      badge_live: "активно",
-      badge_local: "локально",
-      badge_safe: "безопасно",
-      cta_h: "Закрой лишние вкладки.<br/>Открой профиль.",
-      cta_open2: "Открыть инструменты",
-      cta_p: "Обработка, исходники, превью на шаблоне Steam — без ухода из браузера.",
-      cta_reg: "Создать аккаунт →",
-      desktop_web: "Приложение + сайт",
-      ext_eyebrow: "Расширение для браузера",
-      ext_hint: "Скачай ZIP, распакуй его и выбери «Загрузить распакованное расширение» на странице расширений браузера.",
-      ext_install: "Установить расширение",
-      ext_list_engine_prev: "Файлы остаются на твоём компьютере",
-      ext_list_engine_sub: "PNG · JPG · WEBP · GIF",
-      ext_list_modes: "Режимы витрин",
-      ext_list_modes_prev: "Готовые размеры и раскладки Steam",
-      ext_list_privacy: "Приватность по умолчанию",
-      ext_list_privacy_prev: "Только необходимые разрешения для Steam",
-      ext_list_privacy_sub: "Без паролей · без файлов cookie",
-      ext_list_profile: "Предпросмотр профиля",
-      ext_list_profile_prev: "Примерь оформление перед применением",
-      ext_list_profile_sub: "Фоны · рамки · аватары",
-      ext_list_steam: "Интеграция со Steam",
-      ext_list_steam_prev: "Настраивай витрины без переключения вкладок",
-      ext_list_steam_sub: "Инструменты внутри страниц Steam",
-      ext_nav_browser: "Браузерный движок",
-      ext_nav_overview: "Обзор",
-      ext_nav_preview: "Предпросмотр профиля",
-      ext_nav_privacy: "Приватность",
-      ext_nav_steam: "Инструменты Steam",
-      ext_reader_body: "Открой поддерживаемую страницу Steam — нужный инструмент появится автоматически. Медиа по возможности обрабатываются локально.",
-      ext_reader_meta: "расширение · v0.9.9",
-      ext_reader_summary: "✦ Всё необходимое под рукой",
-      ext_reader_summary_p: "Подготовка витрин, локальная обработка медиа и живой предпросмотр профиля Steam в одном лёгком расширении.",
-      ext_reader_title: "SteamShowcase Helper",
-      ext_supports: "Поддерживается",
-      flow_load: "3 · ЗАГРУЗИТЬ",
-      flow_unpack: "2 · РАСПАКОВАТЬ",
-      format_preview: "Предпросмотр",
-      format_watermark: "Водяной знак",
-      mock_title: "SteamShowcase Helper — Расширение",
-      pipe_animated: "Анимация GIF / MP4",
-      pipe_console: "Код для консоли",
-      pipe_core: "основа",
-      pipe_download: "Скачивание",
-      pipe_guide: "Пошаговая инструкция",
-      pipe_preview: "Предпросмотр",
-      pipe_process: "Обработка",
-      pipe_profile: "профиль",
-      pipe_slots: "Слоты шаблона",
-      pipe_sources: "исходники",
-      pipe_upload: "загрузка",
-      pipe_watermark: "Водяной знак · шрифт · прозрачность",
-      price_files: "5 файлов в сутки",
-      price_free: "Бесплатно",
-      price_free_d: "Полный пайплайн с дневным лимитом файлов.",
-      price_source: "Скачивание исходников",
-      price_watermark: "Водяной знак и предпросмотр",
-      price_from: "от",
-      price_pro_d: "Выбери срок. Разовая оплата без автопродления: дни складываются.",
-      price_unlimited: "Без дневного лимита файлов",
-      price_nomark: "Без водяного знака или со своим",
-      price_tools: "Апскейл, Зациклить и ИИ-инструменты",
-      price_auto: "Включается сам после оплаты",
-      term_1d: "24 часа",
-      term_7d: "7 дней",
-      term_30d: "30 дней",
-      term_90d: "90 дней",
-      buy_plan: "Выбрать тариф",
-      price_forever: "Pro навсегда",
-      price_forever_d: "Одна оплата — и Pro остаётся на аккаунте навсегда.",
-      price_all: "Всё, что есть в Pro",
-      price_once: "Платишь один раз, без продлений",
-      price_future: "Все будущие инструменты Pro",
-      price_account: "Привязан к твоему аккаунту",
-      buy_forever: "Взять Pro навсегда",
-      q1: "«Режет Workshop на пять частей с hex 21 за секунды. Больше не делаю это руками.»",
-      q2: "«Скачать + обработать + превью в одной вкладке. Не прыгаю по пяти сайтам.»",
-      q3: "«Pro окупается, если витрины каждую неделю — без дневного лимита.»",
-      start_free: "Начать бесплатно",
-      steam_native: "Для Steam",
-      tri_h: "Убери рутину.<br/>Отгрузи витрину.",
-      tri_label: "Обработка",
-      tri_p: "Showcase Maker режет Workshop, Featured и Split, ставит водяной знак, укладывается в лимиты Steam и собирает ZIP — ты занимаешься артом, а не пиксельной математикой.",
-      tri_today: "Сегодня · конвейер витрин",
-      trust: "Для авторов Steam-профилей",
-      footer_pricing: "Цены",
-      footer_extension: "Расширение"
+      footer_pricing: 'Цены',
+      footer_extension: 'Расширение',
+
+      // Blocks below the hero (rebuilt 2026-10-07)
+      fact_types: 'типа витрин: Workshop, Featured и Split',
+      fact_size_v: '≤ 5 МБ',
+      fact_size: 'GIF сами подгоняются под лимит Steam',
+      fact_hex: 'ставится автоматически',
+      fact_sites: 'сайтов, откуда можно скачать исходник',
+
+      demo_eyebrow: 'Нарезка витрин',
+      demo_h_a: 'Один арт.',
+      demo_h_b: 'Три витрины',
+      demo_p: 'Загрузи картинку, GIF или видео. Showcase Maker разрежет файл точно по сетке Steam, уложит каждую часть в 5 МБ и поставит HEX 21.',
+      demo_m_workshop: '5 частей · ряд 630 px',
+      demo_m_featured: '1 файл · ширина 630 px',
+      demo_m_split: '2 части · 506 + 100 px',
+      demo_badge: 'до 5 МБ · HEX 21',
+      demo_b1: 'Рамки, эффекты и водяной знак — в том же шаге',
+      demo_b2: 'Предпросмотр на макете профиля Steam',
+      demo_b3: 'Готовый ZIP: части подписаны по порядку загрузки',
+      demo_cta: 'Попробовать на своём файле',
+
+      steps_eyebrow: 'Как это работает',
+      steps_h_a: 'От файла до профиля.',
+      steps_h_b: 'Четыре шага',
+      step1_t: 'Возьми файл',
+      step1_d: 'Картинка, GIF или видео. Или вставь ссылку и скачай исходник прямо здесь.',
+      step2_t: 'Выбери витрину',
+      step2_d: 'Workshop, Featured или Split. Добавь рамку и эффекты, проверь вид на макете профиля.',
+      step3_t: 'Скачай ZIP',
+      step3_d: 'Части нужного размера, до 5 МБ и уже с HEX 21.',
+      step4_t: 'Загрузи в Steam',
+      step4_d: 'Через расширение в пару кликов или вручную по пошаговой инструкции.',
+
+      tools_eyebrow: 'Инструменты',
+      tools_h_a: 'Всё для профиля.',
+      tools_h_b: 'В одной вкладке',
+      tools_p: 'Без установки и без прыжков по пяти сайтам: от исходника до загрузки — всё здесь.',
+      t_process: 'Обработка',
+      t_process_d: 'Нарезка файла под Workshop, Featured или Split — с рамками и водяным знаком.',
+      t_rows: 'Ряды и квадраты',
+      t_rows_d: 'Ряды во всю высоту и ряды квадратов 150×150, до трёх рядов.',
+      t_builder: 'Создать дизайн',
+      t_builder_d: 'Редактор слоёв: фон, персонаж, текст, рамки и эффекты.',
+      t_char: 'Персонаж',
+      t_char_d: 'Персонаж на фоне — одна картинка или анимация.',
+      t_download: 'Скачать',
+      t_download_d: 'Картинки, GIF и видео с 50+ сайтов по ссылке.',
+      t_convert: 'Конвертер',
+      t_convert_d: 'Видео ↔ GIF, MP4, WebM, PNG, JPG, WebP.',
+      t_loop: 'Зациклить',
+      t_loop_d: 'Бесшовный цикл из короткого ролика.',
+      t_ai: 'ИИ для профиля',
+      t_ai_d: 'Оценка профиля, идеи оформления и Steam DNA по твоему публичному профилю.',
+      t_upscale: 'Апскейл',
+      t_upscale_d: 'ИИ-увеличение картинок, GIF и видео.',
+      t_gifopt: 'GIF оптимизатор',
+      t_gifopt_d: 'Сжать GIF: меньше цветов, сжатие с потерями или автоподгонка до 5 МБ.',
+      t_preview: 'Предпросмотр профиля',
+      t_preview_d: 'Примерить витрины на макете профиля Steam.',
+      t_steam: 'Загрузка в Steam',
+      t_steam_d: 'Загрузка в Steam через расширение или вручную.',
+      tag_week: 'Бесплатно: раз в неделю',
+      tag_beta: 'Pro · бета',
+      tools_all: 'Открыть все инструменты',
+
+      ext_eyebrow: 'Расширение для браузера',
+      ext_h_a: 'В Steam.',
+      ext_h_b: 'За пару кликов',
+      ext_p: 'SteamShowcase Helper загружает готовые файлы в Steam, расставляет их по витрине в нужном порядке и хранит оформление профиля в пресетах.',
+      ext_b1: 'Автозагрузка: выбери тип витрины и перетащи файлы',
+      ext_b2: 'Без консоли и вставки кода',
+      ext_b3: 'Не спрашивает пароль: работает в твоей сессии Steam',
+      ext_install: 'Установить бесплатно',
+      ext_more: 'Что умеет расширение',
+      ext_browsers: 'Chrome, Edge, Opera, Яндекс Браузер',
+
+      price_eyebrow: 'Тарифы',
+      price_h_a: 'Без подписок.',
+      price_h_b: 'Плати один раз',
+      price_p: 'Бесплатного хватит на витрину время от времени. Pro снимает лимиты на день, на месяц или навсегда: разовая оплата без автопродления.',
+      price_free: 'Бесплатно',
+      price_free_d: 'Хватит, чтобы собрать витрину и понять, как всё устроено.',
+      price_files: '5 файлов в день',
+      price_builder: '3 экспорта в день из «Создать дизайн»',
+      price_weekly: 'ИИ-инструменты и Зациклить — раз в неделю',
+      price_mark: 'Водяной знак Showcase Maker на результате',
+      price_from: 'от',
+      price_pro_d: 'Выбери срок. Дни складываются, а Pro включается сам после оплаты.',
+      price_unlimited: 'Без дневного лимита файлов и экспортов',
+      price_nomark: 'Без водяного знака или со своим',
+      price_tools: 'ИИ-апскейл и отдельная проверка Steam',
+      price_noweek: 'ИИ-инструменты и Зациклить без недельного лимита',
+      price_beta: 'Новые и бета-инструменты — сразу',
+      term_1d: '24 часа',
+      term_7d: '7 дней',
+      term_30d: '30 дней',
+      term_90d: '90 дней',
+      buy_plan: 'Выбрать тариф',
+      price_best: 'Выгоднее всего',
+      price_forever: 'Pro навсегда',
+      price_forever_d: 'Одна оплата — и Pro остаётся на аккаунте навсегда.',
+      price_all: 'Всё, что есть в Pro',
+      price_once: 'Платишь один раз, без продлений',
+      price_future: 'Все будущие инструменты Pro',
+      price_account: 'Привязан к твоему аккаунту',
+      buy_forever: 'Взять Pro навсегда',
+      start_free: 'Начать бесплатно',
+      trial_t: 'Сомневаешься? Попробуй Pro на 2 часа',
+      trial_d: 'Бесплатный ключ ждёт в нашем Telegram-канале.',
+      price_compare: 'Полное сравнение Бесплатно и Pro',
+
+      faq_eyebrow: 'Вопросы',
+      faq_h_a: 'Частые вопросы.',
+      faq_h_b: 'Короткие ответы',
+      faq_p: 'Не нашёл свой? Спроси помощника или напиши в поддержку.',
+      faq_support: 'Техподдержка',
+      q1: 'Нужно ли что-то устанавливать?',
+      a1: 'Нет, всё работает в браузере. Расширение SteamShowcase Helper только ускоряет загрузку в Steam.',
+      q2: 'Почему Steam не принимает GIF?',
+      a2: 'Steam принимает файлы до 5 МБ и требует служебный байт HEX 21. Сервис делает и то и другое сам; для файлов из других мест есть вкладка HEX.',
+      q3: 'Нужен ли вам мой пароль от Steam?',
+      a3: 'Нет. Сайт его не спрашивает. Расширение работает в твоей сессии Steam в браузере: в Steam ты входишь сам, как обычно.',
+      q4: 'Мои файлы кто-то видит?',
+      a4: 'Нет. Исходники и ZIP удаляются автоматически по сроку хранения; превью становится публичным, только если ты сам поделишься ссылкой.',
+      q5: 'Как устроена оплата Pro?',
+      a5: 'Ты платишь один раз за срок, без автопродления. Дни складываются с уже действующим Pro. Pro привязан к аккаунту и включается сам после оплаты.',
+      q6: 'Это сервис от Valve?',
+      a6: 'Нет. Это независимый проект; Steam и Valve — товарные знаки Valve Corporation.',
+
+      cta_h_a: 'Витрина готова',
+      cta_h_b: 'Дело за тобой',
+      cta_p: 'Начни без аккаунта: 5 файлов в день бесплатно.',
+      cta_open2: 'Открыть инструменты',
+      cta_reg: 'Создать аккаунт'
     }
   };
+
+  var reducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
   function lang() {
     return window.SMLang ? SMLang.get() : 'en';
@@ -260,8 +343,6 @@
     document.title = pack().page_title;
   }
 
-  /* Blocks below the hero: purchase buttons open the shell's activation dialog
-     (it lists the shops), "Create account" opens the shared registration. */
   /* Pricing cards show the prices the store really charges (Gumroad, read by the server). */
   function paintPrices() {
     fetch('/api/billing/plans', { credentials: 'same-origin' })
@@ -275,6 +356,8 @@
       .catch(function () {});
   }
 
+  /* Purchase buttons open the shell's activation dialog (it lists the shops);
+     "Create account" opens the shared registration and is hidden once signed in. */
   function wireBlocks() {
     document.querySelectorAll('[data-buy-key]').forEach(function (button) {
       button.addEventListener('click', function (event) {
@@ -284,65 +367,102 @@
       });
     });
     var register = document.getElementById('ctaReg');
-    if (register) register.addEventListener('click', function (event) {
-      event.preventDefault();
-      if (window.SSShell && SSShell.openAuth) SSShell.openAuth('register');
-    });
-    // Seamless marquee: the list is duplicated once, CSS moves the track by 50%.
-    var track = document.getElementById('formatsTrack');
-    var list = document.getElementById('formatsSeq');
-    if (track && list && track.children.length === 1) {
-      var copy = list.cloneNode(true);
-      copy.removeAttribute('id');
-      copy.setAttribute('aria-hidden', 'true');
-      track.appendChild(copy);
+    if (register) {
+      register.addEventListener('click', function (event) {
+        event.preventDefault();
+        if (window.SSShell && SSShell.openAuth) SSShell.openAuth('register');
+      });
+      var hideWhenSignedIn = function (me) { if (me && me.logged_in) register.hidden = true; };
+      hideWhenSignedIn(window.SS_ME);
+      document.addEventListener('ss:me', function (event) { hideWhenSignedIn(event.detail); });
     }
+    // Extension screenshots exist in Russian and English.
+    var suffix = lang() === 'ru' ? '-ru' : '-en';
+    document.querySelectorAll('.home-blocks img[data-shot]').forEach(function (img) {
+      var src = '/static/img/extension-guide/v2/' + img.dataset.shot + suffix + '.webp';
+      if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+    });
   }
 
-  /* Appearance on scroll (as on the live landing): cards rise and fade in with
-     a small stagger, section headings reveal line by line. Runs once per item. */
+  /* "One artwork, three showcases": the tabs move the cut lines over the same picture.
+     Until the visitor picks a tab, the types rotate by themselves while the stage is on screen. */
+  function wireCutDemo() {
+    var stage = document.getElementById('cutStage');
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.home-blocks .hb-seg [data-cut]'));
+    if (!stage || !tabs.length) return;
+    var order = tabs.map(function (tab) { return tab.dataset.cut; });
+    var timer = 0, auto = !reducedMotion;
+    function show(kind) {
+      stage.dataset.cut = kind;
+      tabs.forEach(function (tab) {
+        var on = tab.dataset.cut === kind;
+        tab.classList.toggle('is-on', on);
+        tab.setAttribute('aria-selected', on ? 'true' : 'false');
+        tab.tabIndex = on ? 0 : -1;
+      });
+    }
+    function stop() { auto = false; clearInterval(timer); timer = 0; }
+    tabs.forEach(function (tab, index) {
+      tab.addEventListener('click', function () { stop(); show(tab.dataset.cut); });
+      tab.addEventListener('keydown', function (event) {
+        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+        event.preventDefault();
+        var next = tabs[(index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+        stop(); show(next.dataset.cut); next.focus();
+      });
+    });
+    show(stage.dataset.cut || order[0]);
+    if (!auto || !('IntersectionObserver' in window)) return;
+    new IntersectionObserver(function (entries) {
+      clearInterval(timer); timer = 0;
+      if (!auto || !entries[0].isIntersecting) return;
+      timer = setInterval(function () {
+        if (!document.hidden) show(order[(order.indexOf(stage.dataset.cut) + 1) % order.length]);
+      }, 3600);
+    }, { threshold: 0.45 }).observe(stage);
+  }
+
+  /* Appearance on scroll: panels rise and fade in once with a small stagger,
+     headings and lists follow. The mark is removed afterwards so hover
+     transitions of the cards work as written in the stylesheet. */
   function initReveal() {
     var root = document.querySelector('.home-blocks');
     if (!root) return;
-    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var items = [];
     function mark(selector, kind) {
       root.querySelectorAll(selector).forEach(function (el) {
         if (el.hasAttribute('data-hb-reveal')) return;
-        var index = Array.prototype.indexOf.call(el.parentNode.children, el);
+        var slot = el.closest('li') || el;
+        var index = Array.prototype.indexOf.call(slot.parentNode.children, slot);
         el.setAttribute('data-hb-reveal', kind);
-        el.style.setProperty('--hb-delay', Math.min(index, 6) * 90 + 'ms');
+        el.style.setProperty('--hb-delay', (index % 4) * 80 + 'ms');
         items.push(el);
       });
     }
-    // Headings keep their <br/> structure; each line slides up from a mask.
-    root.querySelectorAll('.hb-process h2, .hb-final-card h2').forEach(function (heading) {
-      if (heading.querySelector('.hb-reveal-line')) return;
-      var lines = heading.innerHTML.split(/<br\s*\/?>/i);
-      heading.innerHTML = lines.map(function (line, index) {
-        return '<span class="hb-reveal-line" style="--hb-line:' + index + '"><span>' + line + '</span></span>';
-      }).join('');
-      items.push(heading);
-    });
-    mark('.hb-mock-frame, .hb-subc, .hb-logos, .hb-q-card, .hb-c3-card, .hb-final-card', 'block');
-    mark('.hb-eyebrow, .hb-lead, .hb-chips, .hb-c3-watermark-main', 'text');
-    if (reduce || !('IntersectionObserver' in window)) {
-      items.forEach(function (el) { el.classList.add('is-in'); });
+    mark('.hb-facts__list, .hb-stage, .hb-step, .hb-tool, .hb-ext, .hb-plan, .hb-trial, .hb-q, .hb-final__card', 'block');
+    mark('.hb-eyebrow, .hb-title, .hb-lead, .hb-seg, .hb-ticks, .hb-demo .hb-btn', 'text');
+    function done(el) {
+      el.classList.add('is-in');
+      setTimeout(function () { el.removeAttribute('data-hb-reveal'); el.classList.remove('is-in'); el.style.removeProperty('--hb-delay'); }, 1600);
+    }
+    if (reducedMotion || !('IntersectionObserver' in window)) {
+      items.forEach(function (el) { el.removeAttribute('data-hb-reveal'); });
       return;
     }
     var observer = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
-        entry.target.classList.add('is-in');
+        done(entry.target);
         observer.unobserve(entry.target);
       });
-    }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
     items.forEach(function (el) { observer.observe(el); });
   }
 
   function boot() {
     applyCopy();
     wireBlocks();
+    wireCutDemo();
     paintPrices();
     initReveal();
   }

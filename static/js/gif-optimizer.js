@@ -16,7 +16,7 @@
       working: 'Optimizing…', done: 'Done', saved: 'smaller by', bigger: 'The result is bigger than the original: try fewer colours or a higher Lossy.',
       fits: 'Fits Steam (up to 5 MB)', tooBig: 'Over 5 MB: Steam will not accept it', alreadyFits: 'The GIF is already under 5 MB, there is nothing to compress.',
       frames: 'frames', errNotGif: 'GIF files only. Convert other formats in the Converter tab first.',
-      errQuota: 'The free files for today are used up. Pro has no limit.', errFail: 'Could not optimize the GIF. Try again or pick other settings.',
+      errQuota: 'The free files for today are used up. Pro has no limit.', errBeta: 'GIF Optimizer is in beta and available with Pro only for now.', errFail: 'Could not optimize the GIF. Try again or pick other settings.',
       errBig: 'The file is too large.', pickFirst: 'Choose a GIF first.', compareLabel: 'Divider between the original and the result'
     },
     ru: {
@@ -31,7 +31,7 @@
       working: 'Оптимизируем…', done: 'Готово', saved: 'меньше на', bigger: 'Результат получился больше исходника: уменьшите число цветов или увеличьте Lossy.',
       fits: 'Подходит для Steam (до 5 МБ)', tooBig: 'Больше 5 МБ: Steam не примет', alreadyFits: 'GIF уже меньше 5 МБ, сжимать нечего.',
       frames: 'кадров', errNotGif: 'Только GIF. Другие форматы сначала переведите во вкладке «Конвертер».',
-      errQuota: 'Бесплатные файлы на сегодня закончились. У Pro лимита нет.', errFail: 'Не удалось оптимизировать GIF. Попробуйте ещё раз или другие настройки.',
+      errQuota: 'Бесплатные файлы на сегодня закончились. У Pro лимита нет.', errBeta: 'GIF оптимизатор в бета-тесте и пока доступен только с Pro.', errFail: 'Не удалось оптимизировать GIF. Попробуйте ещё раз или другие настройки.',
       errBig: 'Файл слишком большой.', pickFirst: 'Сначала выберите GIF.', compareLabel: 'Разделитель между исходником и результатом'
     },
     de: {
@@ -46,7 +46,7 @@
       working: 'Wird optimiert…', done: 'Fertig', saved: 'kleiner um', bigger: 'Das Ergebnis ist größer als das Original: weniger Farben oder ein höheres Lossy versuchen.',
       fits: 'Passt für Steam (bis 5 MB)', tooBig: 'Über 5 MB: Steam nimmt es nicht an', alreadyFits: 'Das GIF ist schon unter 5 MB, es gibt nichts zu komprimieren.',
       frames: 'Frames', errNotGif: 'Nur GIF-Dateien. Andere Formate zuerst im Tab „Konverter“ umwandeln.',
-      errQuota: 'Die kostenlosen Dateien für heute sind aufgebraucht. Pro hat kein Limit.', errFail: 'Das GIF konnte nicht optimiert werden. Erneut versuchen oder andere Einstellungen wählen.',
+      errQuota: 'Die kostenlosen Dateien für heute sind aufgebraucht. Pro hat kein Limit.', errBeta: 'Der GIF-Optimierer ist in der Beta und vorerst nur mit Pro verfügbar.', errFail: 'Das GIF konnte nicht optimiert werden. Erneut versuchen oder andere Einstellungen wählen.',
       errBig: 'Die Datei ist zu groß.', pickFirst: 'Wähle zuerst ein GIF.', compareLabel: 'Trenner zwischen Original und Ergebnis'
     },
     tr: {
@@ -61,7 +61,7 @@
       working: 'Optimize ediliyor…', done: 'Hazır', saved: 'daha küçük:', bigger: 'Sonuç orijinalden büyük çıktı: daha az renk veya daha yüksek Lossy dene.',
       fits: 'Steam\'e uygun (5 MB\'a kadar)', tooBig: '5 MB\'tan büyük: Steam kabul etmez', alreadyFits: 'GIF zaten 5 MB\'tan küçük, sıkıştırılacak bir şey yok.',
       frames: 'kare', errNotGif: 'Yalnızca GIF dosyaları. Diğer biçimleri önce Dönüştürücü sekmesinde çevir.',
-      errQuota: 'Bugünkü ücretsiz dosyalar bitti. Pro\'da sınır yok.', errFail: 'GIF optimize edilemedi. Tekrar dene veya başka ayarlar seç.',
+      errQuota: 'Bugünkü ücretsiz dosyalar bitti. Pro\'da sınır yok.', errBeta: 'GIF Optimizer beta aşamasında ve şimdilik yalnızca Pro ile kullanılabilir.', errFail: 'GIF optimize edilemedi. Tekrar dene veya başka ayarlar seç.',
       errBig: 'Dosya çok büyük.', pickFirst: 'Önce bir GIF seç.', compareLabel: 'Orijinal ile sonuç arasındaki ayırıcı'
     },
     fr: {
@@ -76,7 +76,7 @@
       working: 'Optimisation…', done: 'Terminé', saved: 'plus léger de', bigger: 'Le résultat est plus lourd que l\'original : essayez moins de couleurs ou un Lossy plus élevé.',
       fits: 'Convient à Steam (jusqu\'à 5 Mo)', tooBig: 'Plus de 5 Mo : Steam le refusera', alreadyFits: 'Le GIF fait déjà moins de 5 Mo, rien à compresser.',
       frames: 'images', errNotGif: 'Fichiers GIF uniquement. Convertissez d\'abord les autres formats dans l\'onglet Convertisseur.',
-      errQuota: 'Les fichiers gratuits du jour sont épuisés. Pro est illimité.', errFail: 'Impossible d\'optimiser le GIF. Réessayez ou changez les réglages.',
+      errQuota: 'Les fichiers gratuits du jour sont épuisés. Pro est illimité.', errBeta: 'L’Optimiseur GIF est en bêta et réservé à Pro pour l’instant.', errFail: 'Impossible d\'optimiser le GIF. Réessayez ou changez les réglages.',
       errBig: 'Le fichier est trop volumineux.', pickFirst: 'Choisissez d\'abord un GIF.', compareLabel: 'Séparateur entre l\'original et le résultat'
     },
     uk: {
@@ -91,7 +91,7 @@
       working: 'Оптимізуємо…', done: 'Готово', saved: 'менше на', bigger: 'Результат вийшов більшим за оригінал: зменште кількість кольорів або збільште Lossy.',
       fits: 'Підходить для Steam (до 5 МБ)', tooBig: 'Більше 5 МБ: Steam не прийме', alreadyFits: 'GIF уже менший за 5 МБ, стискати нічого.',
       frames: 'кадрів', errNotGif: 'Лише GIF. Інші формати спершу переведіть на вкладці «Конвертер».',
-      errQuota: 'Безкоштовні файли на сьогодні закінчилися. У Pro ліміту немає.', errFail: 'Не вдалося оптимізувати GIF. Спробуйте ще раз або інші налаштування.',
+      errQuota: 'Безкоштовні файли на сьогодні закінчилися. У Pro ліміту немає.', errBeta: 'GIF оптимізатор у бета-тесті й поки доступний лише з Pro.', errFail: 'Не вдалося оптимізувати GIF. Спробуйте ще раз або інші налаштування.',
       errBig: 'Файл завеликий.', pickFirst: 'Спершу виберіть GIF.', compareLabel: 'Роздільник між оригіналом і результатом'
     },
     es: {
@@ -106,7 +106,7 @@
       working: 'Optimizando…', done: 'Listo', saved: 'más ligero en', bigger: 'El resultado pesa más que el original: prueba menos colores o un Lossy más alto.',
       fits: 'Apto para Steam (hasta 5 MB)', tooBig: 'Más de 5 MB: Steam no lo aceptará', alreadyFits: 'El GIF ya pesa menos de 5 MB, no hay nada que comprimir.',
       frames: 'fotogramas', errNotGif: 'Solo archivos GIF. Convierte otros formatos primero en la pestaña Convertidor.',
-      errQuota: 'Se acabaron los archivos gratuitos de hoy. Pro no tiene límite.', errFail: 'No se pudo optimizar el GIF. Inténtalo de nuevo o cambia los ajustes.',
+      errQuota: 'Se acabaron los archivos gratuitos de hoy. Pro no tiene límite.', errBeta: 'El Optimizador de GIF está en beta y por ahora solo está disponible con Pro.', errFail: 'No se pudo optimizar el GIF. Inténtalo de nuevo o cambia los ajustes.',
       errBig: 'El archivo es demasiado grande.', pickFirst: 'Primero elige un GIF.', compareLabel: 'Divisor entre el original y el resultado'
     },
     pt: {
@@ -121,7 +121,7 @@
       working: 'Otimizando…', done: 'Pronto', saved: 'menor em', bigger: 'O resultado ficou maior que o original: tente menos cores ou um Lossy maior.',
       fits: 'Serve para a Steam (até 5 MB)', tooBig: 'Mais de 5 MB: a Steam não aceita', alreadyFits: 'O GIF já tem menos de 5 MB, não há o que comprimir.',
       frames: 'quadros', errNotGif: 'Somente arquivos GIF. Converta outros formatos primeiro na aba Conversor.',
-      errQuota: 'Os arquivos gratuitos de hoje acabaram. O Pro não tem limite.', errFail: 'Não foi possível otimizar o GIF. Tente de novo ou mude os ajustes.',
+      errQuota: 'Os arquivos gratuitos de hoje acabaram. O Pro não tem limite.', errBeta: 'O Otimizador de GIF está em beta e, por enquanto, só está disponível com o Pro.', errFail: 'Não foi possível otimizar o GIF. Tente de novo ou mude os ajustes.',
       errBig: 'O arquivo é grande demais.', pickFirst: 'Escolha um GIF primeiro.', compareLabel: 'Divisor entre o original e o resultado'
     }
   };
@@ -300,6 +300,7 @@
   function errorText(json, status) {
     var code = json && json.code;
     if (code === 'not_gif' || code === 'bad_gif') return t('errNotGif');
+    if (code === 'beta') return t('errBeta');   // beta tools are Pro-only (smweb/free_limits.py)
     if (code === 'quota' || status === 403) return t('errQuota');
     if (status === 413) return t('errBig');
     if (json && json.msg && /larger than/i.test(json.msg)) return t('errBig');

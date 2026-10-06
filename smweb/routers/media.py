@@ -30,6 +30,7 @@ import processor as proc
 import redis_store as rs
 
 import auth_db
+from smweb import free_limits
 from smweb import media_assets
 from smweb import job_diagnostics
 
@@ -133,10 +134,7 @@ async def api_convert(
 
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
-        return JSONResponse(
-            {"ok": False, "msg": f"Limit {q['limit']} files/day."},
-            status_code=403,
-        )
+        return free_limits.refusal(request, "daily", "files", n=q["limit"])
     target = (target or "gif").lower().lstrip(".")
     if target == "jpeg":
         target = "jpg"
@@ -197,10 +195,7 @@ async def api_hex21(
     """Apply Steam hex 0x21 to PNG/GIF/any binary. ZIP uses STORE (no recompress)."""
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
-        return JSONResponse(
-            {"ok": False, "msg": f"Limit {q['limit']} files/day."},
-            status_code=403,
-        )
+        return free_limits.refusal(request, "daily", "files", n=q["limit"])
     left = 999 if q["pro"] else q["left"]
     files = files[: max(1, min(40, left))]
 
@@ -264,7 +259,7 @@ def download_url(request: Request, body: dict = Body(...)):
     """Download from a supported site (see SUPPORTED_MEDIA_SITES) or a direct file link."""
     q = quota_state(request)
     if not q["pro"] and q["left"] <= 0:
-        return JSONResponse({"ok": False, "msg": "Лимит исчерпан"}, status_code=403)
+        return free_limits.refusal(request, "daily", "files", n=q["limit"])
     url = str(body.get("url") or "").strip()
     # A link fetched as a Process source is charged once, by /api/process/start.
     for_process = str(body.get("purpose") or "") == "process"
