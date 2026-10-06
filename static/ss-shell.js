@@ -101,8 +101,24 @@
     return p === href || p.indexOf(href + '/') === 0;
   }
 
+  // "Profile" in the bar is a small menu: the public profile (showcases, works) or the site account
+  // (plan, purchases, sign-in, password) on /account.
+  function profileMenuHTML(n) {
+    var on = active('/profile') || active('/account');
+    return '<div class="ss-nav__drop" id="ssProfileDrop">' +
+      '<button class="ss-nav__i' + (on ? ' is-on' : '') + '" type="button" id="ssProfileBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="ssProfileMenu">' +
+      svg(n.icon) + '<span>' + esc(t(n.label)) + '</span></button>' +
+      '<div class="ss-nav__menu" id="ssProfileMenu" role="menu" hidden>' +
+        '<a role="menuitem" href="' + siteUrl('/profile') + '"' + (active('/profile') ? ' class="is-on"' : '') + '>' + svg('grid') +
+          '<span><b>' + esc(t(SHELL_COPY.publicProfile)) + '</b><small>' + esc(t(SHELL_COPY.publicProfileHint)) + '</small></span></a>' +
+        '<a role="menuitem" href="' + siteUrl('/account') + '"' + (active('/account') ? ' class="is-on"' : '') + '>' + svg('key') +
+          '<span><b>' + esc(t(SHELL_COPY.accountPage)) + '</b><small>' + esc(t(SHELL_COPY.accountPageHint)) + '</small></span></a>' +
+      '</div></div>';
+  }
+
   function navHTML() {
     return NAV.map(function (n) {
+      if (n.key === 'builder') return profileMenuHTML(n);
       return '<a class="ss-nav__i' + (active(n.href) ? ' is-on' : '') + '" href="' + siteUrl(n.href) + '"' + (n.key === 'support' ? ' data-support-choice' : '') +
         (n.external ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
         svg(n.icon) + '<span>' + esc(t(n.label)) + '</span>' +
@@ -114,8 +130,8 @@
   function drawerHTML() {
     var byKey = {};
     NAV.forEach(function (n) { byKey[n.key] = n; });
-    byKey.account = { href: '/profile#account', key: 'account', icon: 'key',
-                      label: { ru: 'Аккаунт и Pro-ключ', en: 'Account & Pro key' } };
+    byKey.builder = { href: '/profile', key: 'builder', icon: 'user', label: SHELL_COPY.publicProfile };
+    byKey.account = { href: '/account', key: 'account', icon: 'key', label: SHELL_COPY.accountPage };
     var groups = GROUPS.map(function (g) {
       var links = g.items.map(function (k) {
         var n = byKey[k];
@@ -152,7 +168,7 @@
           '<button class="ss-pill" id="ssUser" type="button" hidden aria-haspopup="menu" aria-expanded="false" aria-controls="ssAccountMenu" aria-label="' + esc(t(SHELL_COPY.account)) + '"></button>' +
           '<div class="ss-account__menu" id="ssAccountMenu" role="menu" hidden>' +
             '<a role="menuitem" id="ssMenuProfile" href="' + siteUrl('/profile') + '">' + svg('user') + '<span>' + esc(t(SHELL_COPY.profile)) + '</span></a>' +
-            '<a role="menuitem" id="ssMenuSettings" href="' + siteUrl('/profile') + '#account">' + svg('settings') + '<span>' + esc(t(SHELL_COPY.settings)) + '</span></a>' +
+            '<a role="menuitem" id="ssMenuSettings" href="' + siteUrl('/account') + '">' + svg('settings') + '<span>' + esc(t(SHELL_COPY.settings)) + '</span></a>' +
             '<button role="menuitem" type="button" id="ssMenuLogout">' + svg('logout') + '<span>' + esc(t(SHELL_COPY.logout)) + '</span></button>' +
           '</div>' +
         '</div>' +
@@ -177,10 +193,14 @@
   var SHELL_COPY = {
     news: { en:'News', ru:'Новости', de:'Neuigkeiten', tr:'Haberler', fr:'Actualités', uk:'Новини', es:'Noticias', pt:'Novidades' },
     profile: { en:'Profile', ru:'Профиль', de:'Profil', tr:'Profil', fr:'Profil', uk:'Профіль', es:'Perfil', pt:'Perfil' },
-    settings: { en:'Account settings', ru:'Настройки аккаунта', de:'Kontoeinstellungen', tr:'Hesap ayarları', fr:'Paramètres du compte', uk:'Налаштування акаунта', es:'Ajustes de la cuenta', pt:'Configurações da conta' },
+    settings: { en:'Account and Pro', ru:'Аккаунт и подписка', de:'Konto und Pro', tr:'Hesap ve Pro', fr:'Compte et Pro', uk:'Акаунт і підписка', es:'Cuenta y Pro', pt:'Conta e Pro' },
     logout: { en:'Log out', ru:'Выйти', de:'Abmelden', tr:'Çıkış yap', fr:'Se déconnecter', uk:'Вийти', es:'Cerrar sesión', pt:'Sair' },
     account: { en:'Account menu', ru:'Меню аккаунта', de:'Kontomenü', tr:'Hesap menüsü', fr:'Menu du compte', uk:'Меню акаунта', es:'Menú de la cuenta', pt:'Menu da conta' },
-    bell: { en:'Notifications', ru:'Уведомления', de:'Benachrichtigungen', tr:'Bildirimler', fr:'Notifications', uk:'Сповіщення', es:'Notificaciones', pt:'Notificações' }
+    bell: { en:'Notifications', ru:'Уведомления', de:'Benachrichtigungen', tr:'Bildirimler', fr:'Notifications', uk:'Сповіщення', es:'Notificaciones', pt:'Notificações' },
+    publicProfile: { en:'Public profile', ru:'Публичный профиль', de:'Öffentliches Profil', tr:'Herkese açık profil', fr:'Profil public', uk:'Публічний профіль', es:'Perfil público', pt:'Perfil público' },
+    publicProfileHint: { en:'Your showcases and works that everyone sees', ru:'Витрины и работы, которые видят все', de:'Deine Vitrinen und Werke, die alle sehen', tr:'Herkesin gördüğü vitrinlerin ve çalışmaların', fr:'Vos vitrines et œuvres visibles par tous', uk:'Вітрини й роботи, які бачать усі', es:'Tus escaparates y obras que ve todo el mundo', pt:'Suas vitrines e obras que todos veem' },
+    accountPage: { en:'Account', ru:'Аккаунт', de:'Konto', tr:'Hesap', fr:'Compte', uk:'Акаунт', es:'Cuenta', pt:'Conta' },
+    accountPageHint: { en:'Plan, purchases, sign-in and password', ru:'Тариф, покупки, вход и пароль', de:'Tarif, Käufe, Anmeldung und Passwort', tr:'Plan, satın alımlar, giriş ve şifre', fr:'Offre, achats, connexion et mot de passe', uk:'Тариф, покупки, вхід і пароль', es:'Plan, compras, acceso y contraseña', pt:'Plano, compras, acesso e senha' }
   };
   var BELL_SCRIPT = '/static/js/site-bell.js?v=20261006-pay1';
   // Error popup on every shell page (explains file problems, sends real errors to the developer).
@@ -572,6 +592,17 @@
       document.addEventListener('ss:menu-open', function (event) { if (event.detail !== 'account') setMenu(false); });
       var menuLogout = document.getElementById('ssMenuLogout');
       if (menuLogout) menuLogout.addEventListener('click', performLogout);
+    }
+    var drop = document.getElementById('ssProfileDrop'), dropButton = document.getElementById('ssProfileBtn'), dropMenu = document.getElementById('ssProfileMenu');
+    if (drop && dropButton && dropMenu) {
+      var setDrop = function (open) {
+        dropMenu.hidden = !open; dropButton.setAttribute('aria-expanded', String(open)); drop.classList.toggle('is-open', open);
+        if (open) document.dispatchEvent(new CustomEvent('ss:menu-open', { detail: 'profile' }));
+      };
+      dropButton.addEventListener('click', function (event) { event.stopPropagation(); setDrop(dropMenu.hidden); });
+      document.addEventListener('click', function (event) { if (!dropMenu.hidden && !drop.contains(event.target)) setDrop(false); });
+      document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !dropMenu.hidden) { setDrop(false); dropButton.focus(); } });
+      document.addEventListener('ss:menu-open', function (event) { if (event.detail !== 'profile') setDrop(false); });
     }
     wireAuth();
     wireActivation();

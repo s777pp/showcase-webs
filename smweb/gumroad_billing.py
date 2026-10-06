@@ -266,10 +266,11 @@ def _grant(user_id: int, sale_id: str, days: int | None) -> None:
             c.execute("UPDATE users SET is_pro=1, pro_until=NULL, pro_code=? WHERE id=?", (marker(sale_id), int(user_id)))
         else:
             # Extend what is left (or start now); permanent Pro is left alone.
+            # pro_code marks the purchase, so the site no longer calls this Pro a "trial".
             c.execute(
-                "UPDATE users SET is_pro=1, pro_until=(CASE WHEN is_pro=1 AND pro_until IS NOT NULL AND pro_until>? "
-                "THEN pro_until ELSE ? END)+? WHERE id=? AND NOT (is_pro=1 AND pro_until IS NULL)",
-                (now, now, float(days) * 86400, int(user_id)),
+                "UPDATE users SET is_pro=1, pro_code=?, pro_until=(CASE WHEN is_pro=1 AND pro_until IS NOT NULL "
+                "AND pro_until>? THEN pro_until ELSE ? END)+? WHERE id=? AND NOT (is_pro=1 AND pro_until IS NULL)",
+                (marker(sale_id), now, now, float(days) * 86400, int(user_id)),
             )
         c.commit()
     finally:

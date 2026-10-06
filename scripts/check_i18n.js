@@ -221,7 +221,7 @@ for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
   if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`GIF Optimizer copy: empty ${language}`);
 }
 // Pro plans in the activation dialog and the purchase claim page: reviewed in all eight languages.
-for (const [file, name] of [['static/js/pro-plans.js', 'Pro plans'], ['static/js/billing-claim.js', 'Purchase claim page']]) {
+for (const [file, name] of [['static/js/pro-plans.js', 'Pro plans'], ['static/js/billing-claim.js', 'Purchase claim page'], ['static/js/account-page.js', 'Account page']]) {
   const dictionary = evaluateDictionary(file, 'var COPY =');
   const keys = Object.keys(dictionary.en || {}).sort().join('|');
   for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {

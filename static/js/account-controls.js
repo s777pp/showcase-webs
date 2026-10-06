@@ -153,6 +153,8 @@
     paint();
   }
 
+  // The account page (account-page.js) redraws its cards and calls this to mount the controls again.
+  window.SMAccountControlsMount = mount;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();
 })();

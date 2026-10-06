@@ -137,7 +137,9 @@
     "Pay once, no renewals": "Einmal zahlen, keine Verlängerungen",
     "Every future Pro tool": "Alle künftigen Pro-Werkzeuge",
     "Bound to your account": "An dein Konto gebunden",
-    "Get Pro forever": "Pro für immer holen"
+    "Get Pro forever": "Pro für immer holen",
+    "Open account settings": "Kontoeinstellungen öffnen",
+    "Plan, purchases, sign-in, password and your data.": "Tarif, Käufe, Anmeldung, Passwort und deine Daten."
   },
   "tr": {
     "3 Steam formats": "3 Steam formatı",
@@ -276,7 +278,9 @@
     "Pay once, no renewals": "Bir kez öde, yenileme yok",
     "Every future Pro tool": "Gelecekteki tüm Pro araçları",
     "Bound to your account": "Hesabına bağlı",
-    "Get Pro forever": "Süresiz Pro al"
+    "Get Pro forever": "Süresiz Pro al",
+    "Open account settings": "Hesap ayarlarını aç",
+    "Plan, purchases, sign-in, password and your data.": "Plan, satın alımlar, giriş, şifre ve verilerin."
   },
   "fr": {
     "3 Steam formats": "3 formats Steam",
@@ -416,7 +420,9 @@
     "Pay once, no renewals": "Payez une fois, sans renouvellement",
     "Every future Pro tool": "Tous les futurs outils Pro",
     "Bound to your account": "Lié à votre compte",
-    "Get Pro forever": "Obtenir Pro à vie"
+    "Get Pro forever": "Obtenir Pro à vie",
+    "Open account settings": "Ouvrir les paramètres du compte",
+    "Plan, purchases, sign-in, password and your data.": "Offre, achats, connexion, mot de passe et vos données."
   },
   "uk": {
     "3 Steam formats": "3 формати Steam",
@@ -558,7 +564,9 @@
     "Pay once, no renewals": "Платиш один раз, без продовжень",
     "Every future Pro tool": "Усі майбутні інструменти Pro",
     "Bound to your account": "Прив’язаний до твого акаунта",
-    "Get Pro forever": "Взяти Pro назавжди"
+    "Get Pro forever": "Взяти Pro назавжди",
+    "Open account settings": "Відкрити налаштування акаунта",
+    "Plan, purchases, sign-in, password and your data.": "Тариф, покупки, вхід, пароль і твої дані."
   },
   "es": {
     "3 Steam formats": "3 formatos de Steam",
@@ -697,7 +705,9 @@
     "Pay once, no renewals": "Pagas una vez, sin renovaciones",
     "Every future Pro tool": "Todas las futuras herramientas Pro",
     "Bound to your account": "Vinculado a tu cuenta",
-    "Get Pro forever": "Conseguir Pro para siempre"
+    "Get Pro forever": "Conseguir Pro para siempre",
+    "Open account settings": "Abrir los ajustes de la cuenta",
+    "Plan, purchases, sign-in, password and your data.": "Plan, compras, acceso, contraseña y tus datos."
   },
   "pt": {
     "3 Steam formats": "3 formatos da Steam",
@@ -836,6 +846,8 @@
     "Pay once, no renewals": "Pague uma vez, sem renovações",
     "Every future Pro tool": "Todas as futuras ferramentas Pro",
     "Bound to your account": "Vinculado à sua conta",
-    "Get Pro forever": "Obter o Pro para sempre"
+    "Get Pro forever": "Obter o Pro para sempre",
+    "Open account settings": "Abrir as configurações da conta",
+    "Plan, purchases, sign-in, password and your data.": "Plano, compras, acesso, senha e seus dados."
   }
 }

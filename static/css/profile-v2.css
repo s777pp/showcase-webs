@@ -79,3 +79,6 @@ body.site-v2 .author-settings__stats{border-top:1px solid var(--pv-line)!importa
 body.site-v2 .author-settings__stats b{color:#fff}
 body.site-v2 .author-settings__stats span{color:var(--pv-muted)!important}
 body.site-v2 #authorSettingsView{color:var(--pv-cyan)!important;font-weight:700}
+/* Account settings moved to /account (2026-10-06): the dock keeps the summary and a link there. */
+body.site-v2 .account-dock .account-open{display:flex!important;align-items:center;justify-content:center;width:100%;min-height:44px;margin:16px 0 8px!important;text-decoration:none!important;white-space:normal;text-align:center}
+body.site-v2 .account-dock .account-open__hint{display:block;margin:0 0 18px!important;font-size:12.5px!important;line-height:1.5!important}

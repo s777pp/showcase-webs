@@ -57,7 +57,7 @@ var PDICT={
   ,account_site:'Site account',account_settings:'Account settings',account_settings_hint:'Your identity and activity across Showcase Maker.',
   account_login_hint:'Sign in to view account details and activity.',login:'Log in',account_gallery_count:'Gallery uploads',account_showcase_count:'Profile showcases',
   account_identity:'Identity',account_nick:'Nickname',account_email:'Email',account_save_name:'Save nickname',account_password:'Change password',
-  account_current_password:'Current password',account_new_password:'New password',account_repeat_password:'Repeat new password',account_change_password:'Change password'
+  account_current_password:'Current password',account_new_password:'New password',account_repeat_password:'Repeat new password',account_change_password:'Change password',account_open:'Open account settings',account_open_hint:'Plan, purchases, sign-in, password and your data.'
  },
  ru:{
   nav_profile:'Профиль',
@@ -114,7 +114,7 @@ var PDICT={
   ,account_site:'Аккаунт сайта',account_settings:'Настройки аккаунта',account_settings_hint:'Ваш профиль и активность в Showcase Maker.',
   account_login_hint:'Войдите, чтобы увидеть данные аккаунта и активность.',login:'Войти',account_gallery_count:'Работ в галерее',account_showcase_count:'Витрин в профиле',
   account_identity:'Основные данные',account_nick:'Ник',account_email:'Почта',account_save_name:'Сохранить ник',account_password:'Смена пароля',
-  account_current_password:'Текущий пароль',account_new_password:'Новый пароль',account_repeat_password:'Повторите новый пароль',account_change_password:'Изменить пароль'
+  account_current_password:'Текущий пароль',account_new_password:'Новый пароль',account_repeat_password:'Повторите новый пароль',account_change_password:'Изменить пароль',account_open:'Открыть настройки аккаунта',account_open_hint:'Тариф, покупки, вход, пароль и твои данные.'
  }
 };
 if(window.SMLang&&SMLang.extend)SMLang.extend(PDICT);
@@ -256,7 +256,7 @@ $('saveBtn').onclick=function(){setStatus('saveState',pT('save_wait'),'wait');fe
   if(!d||!d.ok){if(guest)guest.hidden=false;if(content)content.hidden=true;return}
   if(guest)guest.hidden=true;if(content)content.hidden=false;
   el('accountName').textContent=d.display_name||d.email.split('@')[0];
-  el('accountDisplayName').value=d.display_name||'';el('accountEmail').value=d.email||'';
+  if(el('accountDisplayName'))el('accountDisplayName').value=d.display_name||'';if(el('accountEmail'))el('accountEmail').value=d.email||'';
   el('accountPlan').textContent=d.is_pro?t('pro'):t('free');el('accountPlan').className=d.is_pro?'is-pro':'';
   el('accountGalleryCount').textContent=d.gallery_uploads||0;el('accountShowcaseCount').textContent=d.showcase_count||0;
   var av=el('accountAvatar');
@@ -283,6 +283,9 @@ $('saveBtn').onclick=function(){setStatus('saveState',pT('save_wait'),'wait');fe
 (function () {
   function showAccount() {
     if (location.hash !== '#account') return;
+    // Account settings moved to their own page (2026-10-06).
+    location.replace(window.SMLang && SMLang.url ? SMLang.url('/account') : '/account');
+    return;
     var dock = document.getElementById('accountDock');
     if (dock) { dock.scrollIntoView({ behavior: 'smooth', block: 'start' }); var first = dock.querySelector('input,button'); if (first) setTimeout(function () { first.focus({ preventScroll: true }); }, 400); }
   }

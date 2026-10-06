@@ -102,3 +102,18 @@ html body.page-home .home-hero__content{left:var(--site-gutter)!important}
 body.page-tools .main{width:auto!important;max-width:none!important;margin-left:var(--site-gutter)!important;margin-right:var(--site-gutter)!important}
 body.page-gallery main.community,html body main#communityRoot{width:auto!important;max-width:none!important;margin-left:var(--site-gutter)!important;margin-right:var(--site-gutter)!important}
 html body main#extensionGuide.eg{width:auto!important;max-width:none!important;margin-left:var(--site-gutter)!important;margin-right:var(--site-gutter)!important}
+
+/* "Profile" menu in the bar (ss-shell.js profileMenuHTML, 2026-10-06): public profile or the site account. */
+html body .ss-nav__drop{position:relative;display:flex;align-items:stretch;align-self:stretch}
+html body .ss-nav__drop>button.ss-nav__i{display:inline-flex!important;align-items:center;align-self:stretch;height:auto!important;text-decoration:none!important;margin:0;border:0;background:transparent;font:inherit;cursor:pointer;-webkit-appearance:none;appearance:none}
+html body .ss-nav__drop.is-open>button.ss-nav__i{color:#fff!important}
+html body .ss-nav__menu{position:absolute;top:calc(100% + 4px);left:50%;z-index:1500;display:grid;gap:2px;width:280px;padding:8px;transform:translateX(-50%);
+  border:1px solid rgba(110,170,255,.24);border-radius:14px;background:linear-gradient(180deg,#0e1a3c,#050a1c);box-shadow:0 22px 60px rgba(0,0,0,.55);overflow:hidden}
+html body .ss-nav__menu::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,#1fc9f1,#8a7dff)}
+html body .ss-nav__menu[hidden]{display:none!important}
+html body .ss-nav__menu>a{display:flex;align-items:flex-start;gap:12px;padding:11px 12px;border-radius:10px;color:#e9f3ff;text-decoration:none;font-family:Montserrat,system-ui,sans-serif}
+html body .ss-nav__menu>a:hover,html body .ss-nav__menu>a:focus-visible,html body .ss-nav__menu>a.is-on{background:rgba(31,201,241,.12);outline:none}
+html body .ss-nav__menu>a svg{flex:none;width:18px!important;height:18px!important;margin-top:1px;color:#5fe4ff;display:block!important}
+html body .ss-nav__menu>a span{display:grid;gap:3px;min-width:0}
+html body .ss-nav__menu>a b{font-size:14px;font-weight:800;color:#fff}
+html body .ss-nav__menu>a small{font-size:12px;line-height:1.4;font-weight:500;color:rgba(214,229,250,.62)}

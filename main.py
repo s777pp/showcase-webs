@@ -58,6 +58,7 @@ from smweb.routers import (
     auth,
     oauth,
     billing,
+    account as account_router,
     profile,
     gallery,
     gallery_releases,
@@ -172,6 +173,7 @@ app.include_router(system.router)
 app.include_router(auth.router)
 app.include_router(oauth.router)
 app.include_router(billing.router)
+app.include_router(account_router.router)
 app.include_router(profile.router)
 app.include_router(gallery_releases.router)
 app.include_router(gallery.router)

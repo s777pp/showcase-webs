@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 520 passed on 2026-10-06 (~160 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 526 passed on 2026-10-06 (~150 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -924,6 +924,23 @@ Only the hero exists for now; content blocks will be added below it later.
 - UI: `static/js/pro-plans.js` is lazy-loaded by `ss-shell.js` `openActivation()`; claim page
   `static/billing-claim.html` + `js/billing-claim.js`; styles `css/pro-plans.css`. Both COPY dictionaries are checked
   by check_i18n. No admin page for purchases yet: the owner bot gets every sale/refund.
+
+## 6.13 Account page and the Profile menu (2026-10-06, local, not deployed)
+
+- Header "Profile" is a menu (`ss-shell.js profileMenuHTML`, `#ssProfileDrop`, styles in `site-shell.css`): Public profile
+  (/profile) and Account (/account). Labels in `SHELL_COPY` (publicProfile/accountPage + hints, 8 languages).
+- `/{lang}/account`: `smweb/routers/account.py` (`GET /api/account/overview`: user + sign-in methods, plan with
+  `days_left`/`trial`, quota, stats, saved results, Gumroad purchases + entered keys without the code text) and
+  `static/account.html` + `js/account-page.js` (keyed COPY, checked by check_i18n) + `css/account-page.css`.
+  Export/delete are still `account-controls.js`, lazy-loaded into `#accountContent`; it exposes `SMAccountControlsMount`
+  for re-renders. Accounts with `@users.local` emails have no password section.
+- The profile page dock keeps only the summary + "Open account settings"; `/profile#account` redirects to /account.
+- Account page layout (redesign, same day): `.acc-shell` = sticky `.acc-side` (section nav with IntersectionObserver
+  highlight + help card; a horizontal strip under 1020 px) + `.acc-main` (hero, `#acc-overview`, `#acc-results`,
+  `#acc-purchases`, `#acc-security`, `#acc-data`). account-controls.js renders into `#accountContent` inside `#acc-data`.
+  The header Profile button has no chevron (owner).
+- `core.quota_state` marks Pro as a trial only for `SM-TRIAL` codes; Gumroad time plans set `pro_code=GRS-…`.
+  Tests: `tests/test_account_page.py`.
 
 ## 7. Rules for agents
 

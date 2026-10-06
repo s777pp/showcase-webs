@@ -479,7 +479,8 @@ def quota_state(req: Request) -> dict:
         if until is not None:
             try:
                 remaining = max(0, int(float(until) - time.time()))
-                is_trial = True
+                # Time-limited Pro is a trial only when it came from a trial code; bought days are plain Pro.
+                is_trial = str(user.get("pro_code") or "").upper().startswith("SM-TRIAL")
             except (TypeError, ValueError):
                 remaining = None
         return {
