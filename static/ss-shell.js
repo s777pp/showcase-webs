@@ -182,12 +182,12 @@
     account: { en:'Account menu', ru:'Меню аккаунта', de:'Kontomenü', tr:'Hesap menüsü', fr:'Menu du compte', uk:'Меню акаунта', es:'Menú de la cuenta', pt:'Menu da conta' },
     bell: { en:'Notifications', ru:'Уведомления', de:'Benachrichtigungen', tr:'Bildirimler', fr:'Notifications', uk:'Сповіщення', es:'Notificaciones', pt:'Notificações' }
   };
-  var BELL_SCRIPT = '/static/js/site-bell.js?v=20261001-bell1';
+  var BELL_SCRIPT = '/static/js/site-bell.js?v=20261006-pay1';
   // Error popup on every shell page (explains file problems, sends real errors to the developer).
   (function loadErrorReport() {
     if (window.SMErrorReport || document.querySelector('script[data-error-report]')) return;
     var script = document.createElement('script');
-    script.src = '/static/js/error-report.js?v=20261005-err1'; script.async = true; script.dataset.errorReport = '1';
+    script.src = '/static/js/error-report.js?v=20261006-err2'; script.async = true; script.dataset.errorReport = '1';
     (document.head || document.documentElement).appendChild(script);
   })();
   NAV.forEach(function (n) { if (n.key === 'news') n.label = SHELL_COPY.news; });
@@ -290,15 +290,18 @@
 
   function activationHTML() {
     var ru = lang() === 'ru';
+    // Step 1 (plans) and step 2 (payment) are drawn into #ssBuy by static/js/pro-plans.js; the key pane below
+    // is the third step (I already have a key) and the fallback if that script cannot load.
     return '<div class="ss-activation" id="ssActivation" aria-hidden="true"><div class="ss-activation__card" role="dialog" aria-modal="true" aria-labelledby="ssActivationTitle">' +
       '<button class="ss-auth__close" id="ssActivationClose" type="button" aria-label="Close">×</button>' +
+      '<div class="ss-buy" id="ssBuy" hidden></div>' +
+      '<div class="ss-activation__key" id="ssKeyPane">' +
       '<div class="ss-activation__icon">' + svg('key') + '</div>' +
       '<p class="ss-auth__eyebrow">SHOWCASE MAKER / PRO</p>' +
       '<h2 id="ssActivationTitle">' + (ru ? 'Активировать ключ' : 'Activate a key') + '</h2>' +
       '<p class="ss-auth__sub">' + (ru ? 'Ключ привязывается к аккаунту. Один ключ нельзя использовать повторно.' : 'The key is linked to your account and cannot be reused.') + '</p>' +
       '<form class="ss-activation__form" id="ssActivationForm"><label><span>' + (ru ? 'Ключ доступа' : 'Access key') + '</span><div class="ss-activation__entry"><input id="ssActivationCode" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX"><button type="submit">' + (ru ? 'Активировать' : 'Activate') + '</button></div></label><p class="ss-auth__state" id="ssActivationState"></p></form>' +
-      '<div class="ss-activation__divide"><span>' + (ru ? 'Купить ключ' : 'Buy a key') + '</span></div>' +
-      '<div class="ss-activation__shops"><a class="ss-shop ss-shop--funpay" href="https://funpay.com/lots/offer?id=76420307" target="_blank" rel="noopener"><span class="ss-shop__icon"><img src="/static/img/funpay-favicon.ico" alt=""></span><span><b>FunPay</b><small>' + (ru ? 'Код сразу после оплаты' : 'Instant code after payment') + '</small></span><i>↗</i></a><a class="ss-shop ss-shop--telegram" href="https://t.me/SteamMakerBot" target="_blank" rel="noopener"><span class="ss-shop__icon ss-shop__icon--telegram"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#229ED9"/><path fill="#fff" d="M17.6 7.2 15.7 16.6c-.14.64-.52.8-1.06.5l-2.9-2.14-1.4 1.35c-.16.16-.29.29-.6.29l.21-3 5.45-4.92c.24-.21-.05-.33-.37-.12L8.3 12.8l-2.9-.9c-.63-.2-.64-.63.13-.93l11.3-4.36c.52-.19.98.13.8.59Z"/></svg></span><span><b>Telegram</b><small>' + (ru ? 'Покупка через бота' : 'Buy via bot') + '</small></span><i>↗</i></a><a class="ss-shop ss-shop--card" href="https://store.showcasemaker.com" target="_blank" rel="noopener"><span class="ss-shop__icon">' + svg('card') + '</span><span><b>' + (ru ? 'Оплата картой' : 'Pay by card') + '</b><small>' + (ru ? 'Банковская карта · защищённая оплата' : 'Bank card · secure checkout') + '</small></span><i>↗</i></a></div>' +
+      '</div>' +
     '</div></div>';
   }
 
@@ -572,13 +575,29 @@
     }
     wireAuth();
     wireActivation();
+    // Warm the plan picker so a Buy click shows it at once.
+    setTimeout(function () { (window.requestIdleCallback || function (fn) { fn(); })(function () { loadProPlans(); }); }, 1200);
   }
 
-  function openActivation() {
+  // Every Buy / Activate button opens the plan choice first; opts.plan jumps to the payment step, opts.key to the key form.
+  function openActivation(opts) {
     var modal = document.getElementById('ssActivation');
     if (!modal) return;
+    opts = opts && typeof opts === 'object' && !opts.target ? opts : {};
     modal.classList.add('is-open'); modal.setAttribute('aria-hidden', 'false'); document.body.style.overflow = 'hidden';
-    setTimeout(function () { document.getElementById('ssActivationCode')?.focus(); }, 40);
+    loadProPlans(function () { window.SMProPlans.show(opts); });
+  }
+  var proPlansWaiting = [];
+  function loadProPlans(done) {
+    if (window.SMProPlans) { if (done) done(); return; }
+    if (done) proPlansWaiting.push(done);
+    if (document.querySelector('script[data-pro-plans]')) return;
+    var script = document.createElement('script');
+    script.src = '/static/js/pro-plans.js?v=20261006-pay4'; script.dataset.proPlans = '1';
+    script.onload = function () { var queue = proPlansWaiting.splice(0); if (window.SMProPlans) queue.forEach(function (fn) { fn(); }); };
+    // Without the plans the dialog still offers the key form (it is visible by default).
+    script.onerror = function () { proPlansWaiting.length = 0; document.getElementById('ssActivationCode')?.focus(); };
+    document.head.appendChild(script);
   }
   function closeActivation() {
     var modal = document.getElementById('ssActivation');

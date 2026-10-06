@@ -20,6 +20,7 @@
     modeHelpTitle: ['Which one do I have?', 'Как понять, какая у меня?', 'Welche habe ich?', 'Bende hangisi var?', 'Laquelle ai-je ?', 'Як зрозуміти, яка в мене?', '¿Cuál tengo?', 'Qual eu tenho?'],
     modeHelpPath: ['In Steam open your profile → Edit Profile → Featured Showcase and look at the showcase name:', 'В Steam открой профиль → «Редактировать профиль» → «Витрина» и посмотри на название витрины:', 'Öffne in Steam dein Profil → Profil bearbeiten → Vitrine und sieh dir den Namen der Vitrine an:', 'Steam’de profilini aç → Profili düzenle → Vitrin bölümünde vitrinin adına bak:', 'Dans Steam, ouvrez votre profil → Modifier le profil → Vitrine et regardez le nom de la vitrine :', 'У Steam відкрий профіль → «Редагувати профіль» → «Вітрина» і подивися на назву вітрини:', 'En Steam abre tu perfil → Editar perfil → Escaparate y mira el nombre del escaparate:', 'Na Steam abra seu perfil → Editar perfil → Vitrine e veja o nome da vitrine:'],
     modeHelpNone: ['No showcase yet? Choose one there first; Steam gives the first showcase at profile level 10.', 'Витрины ещё нет? Сначала выбери её там; первую витрину Steam даёт на 10 уровне профиля.', 'Noch keine Vitrine? Wähle sie dort zuerst aus; Steam schaltet die erste Vitrine ab Profilstufe 10 frei.', 'Henüz vitrinin yok mu? Önce oradan birini seç; Steam ilk vitrini profil seviyesi 10’da verir.', 'Pas encore de vitrine ? Choisissez-la d’abord ; Steam débloque la première vitrine au niveau 10.', 'Вітрини ще немає? Спочатку вибери її там; першу вітрину Steam дає на 10 рівні профілю.', '¿Aún no tienes escaparate? Elígelo allí primero; Steam da el primero en el nivel 10 del perfil.', 'Ainda sem vitrine? Escolha uma lá primeiro; a Steam libera a primeira no nível 10 do perfil.'],
+    studioOpen: ['Open Workshop Studio →', 'Открыть «Ряды и квадраты» →', 'Workshop-Studio öffnen →', 'Workshop Stüdyosu’nu aç →', 'Ouvrir le Studio Workshop →', 'Відкрити «Майстерню Workshop» →', 'Abrir Estudio Workshop →', 'Abrir Estúdio Workshop →'],
     studioLink: ['Need full-height rows or five 150×150 squares?', 'Нужны ряды на всю высоту или 5 квадратов 150×150?', 'Brauchst du Reihen in voller Höhe oder fünf Quadrate 150×150?', 'Tam yükseklikte satırlar ya da beş 150×150 kare mi lazım?', 'Besoin de rangées pleine hauteur ou de cinq carrés 150×150 ?', 'Потрібні ряди на всю висоту або 5 квадратів 150×150?', '¿Necesitas filas a altura completa o cinco cuadrados de 150×150?', 'Precisa de linhas em altura total ou cinco quadrados 150×150?'],
     sample: ['✦ Try it with a sample picture', '✦ Попробовать на примере', '✦ Mit einem Beispielbild testen', '✦ Örnek bir görselle dene', '✦ Essayer avec une image d’exemple', '✦ Спробувати на прикладі', '✦ Probar con una imagen de ejemplo', '✦ Testar com uma imagem de exemplo'],
     sampleFail: ['Could not load the sample. Check your connection.', 'Не удалось загрузить пример. Проверь соединение.', 'Beispiel konnte nicht geladen werden. Prüfe die Verbindung.', 'Örnek yüklenemedi. Bağlantını kontrol et.', 'Impossible de charger l’exemple. Vérifiez la connexion.', 'Не вдалося завантажити приклад. Перевір з’єднання.', 'No se pudo cargar el ejemplo. Revisa la conexión.', 'Não foi possível carregar o exemplo. Verifique a conexão.'],
@@ -241,7 +242,7 @@
   if (modeCard && studioTab) {
     studioLink = document.createElement('p');
     studioLink.className = 'process-studio-link';
-    studioLink.innerHTML = '<span data-pl="studioLink"></span><button type="button"></button>';
+    studioLink.innerHTML = '<span data-pl="studioLink"></span><button type="button" data-pl="studioOpen"></button>';
     studioLink.querySelector('button').addEventListener('click', function () { studioTab.click(); window.scrollTo({ top: 0 }); });
     var modes = modeCard.querySelector('.modes');
     if (modes) modes.after(studioLink);
@@ -249,7 +250,6 @@
   function syncStudioLink() {
     if (!studioLink) return;
     studioLink.hidden = ((window.state || {}).mode || 'workshop') !== 'workshop';
-    studioLink.querySelector('button').textContent = studioTab.textContent.trim() + ' →';
   }
   function localize() {
     root.querySelectorAll('[data-pl]').forEach(function (node) { node.textContent = word(node.dataset.pl); });

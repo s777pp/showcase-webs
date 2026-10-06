@@ -68,6 +68,7 @@ from smweb.routers import (
     steam_check,
     profile_insights,
     seamless_loop,
+    gif_optimizer,
     support,
     builder,
     steam_dna,
@@ -181,6 +182,7 @@ app.include_router(deviantart.router)
 app.include_router(steam_check.router)
 app.include_router(profile_insights.router)
 app.include_router(seamless_loop.router)
+app.include_router(gif_optimizer.router)
 app.include_router(support.router)
 app.include_router(builder.router)
 app.include_router(steam_dna.router)

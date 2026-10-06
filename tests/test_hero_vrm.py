@@ -127,7 +127,8 @@ class LandingPolishTests(unittest.TestCase):
         shell = (ROOT / "static" / "ss-shell.js").read_text(encoding="utf-8")
         self.assertIn("href: '/extension'", shell)
         self.assertNotIn('ss-shop__icon--telegram">➤', shell)
-        self.assertIn('fill="#229ED9"', shell)
+        # The purchase dialog's payment list (pro-plans.js since 2026-10-06) uses the real Telegram mark.
+        self.assertIn('fill="#229ED9"', (ROOT / "static" / "js" / "pro-plans.js").read_text(encoding="utf-8"))
         self.assertIn('fill="#229ED9"', (ROOT / "static" / "app.html").read_text(encoding="utf-8"))
         self.assertTrue((ROOT / "static" / "extension.html").is_file())
 

@@ -15,7 +15,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     gosu \
+    gifsicle \
     && rm -rf /var/lib/apt/lists/*
+
+# GIF Optimizer tab: palette + lossy compression (Debian's gifsicle has --lossy since 1.92).
+RUN gifsicle --version | head -1
 
 COPY --from=gifski-builder /usr/local/cargo/bin/gifski /usr/local/bin/gifski
 

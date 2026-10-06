@@ -133,6 +133,33 @@ CREATE TABLE IF NOT EXISTS server_errors (
  resolved_at DOUBLE PRECISION
 );
 CREATE INDEX IF NOT EXISTS idx_server_errors_seen ON server_errors(resolved_at,last_seen);
+CREATE TABLE IF NOT EXISTS gumroad_orders (
+ token TEXT PRIMARY KEY,
+ user_id BIGINT NOT NULL,
+ plan TEXT NOT NULL,
+ created_at DOUBLE PRECISION NOT NULL,
+ sale_id TEXT
+);
+CREATE TABLE IF NOT EXISTS gumroad_sales (
+ sale_id TEXT PRIMARY KEY,
+ user_id BIGINT,
+ plan TEXT NOT NULL,
+ days INTEGER,
+ status TEXT NOT NULL,
+ price_cents INTEGER,
+ currency TEXT,
+ order_token TEXT,
+ source TEXT,
+ is_test INTEGER NOT NULL DEFAULT 0,
+ sale_created DOUBLE PRECISION,
+ granted_at DOUBLE PRECISION,
+ revoked_at DOUBLE PRECISION,
+ checked_at DOUBLE PRECISION,
+ updated_at DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_gumroad_orders_user ON gumroad_orders(user_id,created_at);
+CREATE INDEX IF NOT EXISTS idx_gumroad_sales_user ON gumroad_sales(user_id);
+CREATE INDEX IF NOT EXISTS idx_gumroad_sales_check ON gumroad_sales(status,checked_at);
 CREATE TABLE IF NOT EXISTS profile_showcases (id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, sc_type TEXT NOT NULL, title TEXT, sort_order INTEGER DEFAULT 0, data_json TEXT, created_at DOUBLE PRECISION);
 ALTER TABLE profile_showcases ADD COLUMN IF NOT EXISTS sc_type TEXT;
 ALTER TABLE profile_showcases ADD COLUMN IF NOT EXISTS data_json TEXT;

@@ -1,0 +1,92 @@
+/* Tidy pass over the Tools page (2026-10-06, owner screenshots: "куски старого дизайна" + "нормальная
+   вёрстка без каши"). Loaded LAST on app.html. Every rule is scoped to body.page-tools.site-v2.
+   1) One tab header for every tool (the Process one): no "← Home" pill, no "WORKSPACE /" kicker.
+   2) Tools strip fits the window (the GIF Optimizer tab made it overflow at 1440-1920 px).
+   3) Terminal-style mono labels -> the site font.
+   4) Character: real upload tiles, a proper preview heading.
+   5) Process: compact right column, the Workshop Studio cross-link in the new panel style.
+   6) About: rows stretch, the shorter card gets useful content instead of a hole. */
+
+/* ---------------------------------------------------------------- 1. tab header */
+body.page-tools.site-v2 .main>.back{display:none!important}
+body.page-tools.site-v2 #pageTitle::before,body.page-tools.site-v2 .h-title::before{content:none!important;display:none!important}
+body.page-tools.site-v2 .main>.topbar{padding:12px 0 14px!important;margin:0 0 8px!important}
+body.page-tools.site-v2 #pageTitle{font-size:40px!important;line-height:1.12!important;letter-spacing:-.02em!important;margin:0!important}
+body.page-tools.site-v2 #pageSub{margin-top:6px!important}
+@media (max-width:820px){body.page-tools.site-v2 #pageTitle{font-size:30px!important}}
+
+/* ---------------------------------------------------------------- 2. tools strip */
+@media (min-width:1401px){body.page-tools.site-v2 .top-chrome #nav>button,body.page-tools.site-v2 .top-chrome #nav .nav-group__trigger{padding-left:8px!important;padding-right:8px!important}}
+@media (min-width:1401px) and (max-width:1599px){body.page-tools.site-v2 .top-chrome #nav>button::before,body.page-tools.site-v2 .top-chrome #nav .nav-group__trigger::before{display:none!important}}
+
+/* ---------------------------------------------------------------- 3. mono labels */
+body.page-tools.site-v2 :is(.wsx-head__kicker,.wsx-stage__title,.process-file__meta,.process-file__rotation,#processModeCard .mode>small,#processModeCard .mode b,.steam-opt-badge,.process-mode-help li b,#drop small){font-family:Montserrat,system-ui,sans-serif!important}
+body.page-tools.site-v2 .wsx-head__kicker{font-size:11px!important;letter-spacing:.12em!important}
+body.page-tools.site-v2 .wsx-stage__title{font-size:15px!important;line-height:1.3!important;letter-spacing:0!important;text-transform:none!important;color:#fff!important}
+body.page-tools.site-v2 #processModeCard .mode>small{font-size:11px!important;letter-spacing:0!important}
+body.page-tools.site-v2 .process-readiness-hint b{font:800 13.5px/1.3 Montserrat,system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important}
+body.page-tools.site-v2 .process-readiness-hint{border:1px solid rgba(110,170,255,.2)!important;border-radius:12px!important;background:rgba(5,10,28,.55)!important}
+
+/* ---------------------------------------------------------------- 4. Character */
+body.page-tools.site-v2 #tab-compose .compose-controls>.row:first-of-type{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px!important}
+body.page-tools.site-v2 #tab-compose .compose-controls>.row:first-of-type>.field{max-width:none!important;min-width:0!important}
+body.page-tools.site-v2 #tab-compose .compose-controls>.row:first-of-type>.field>div:first-child{font:700 12.5px/1.3 Montserrat,system-ui,sans-serif!important;color:rgba(214,229,250,.78)!important;margin-bottom:8px!important}
+body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser{display:grid!important;grid-template-columns:auto auto 1fr;grid-template-areas:"name name name" "pick lib .";align-items:center;gap:10px 8px!important;min-height:0!important;padding:14px!important;border:1px dashed rgba(110,170,255,.38)!important;border-radius:12px!important;background:rgba(5,10,28,.5)!important;box-shadow:none!important;transition:border-color .15s,background .15s}
+body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser:hover,body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser.drag{border-color:#1fc9f1!important;background:rgba(31,201,241,.07)!important}
+body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser::before,body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser::after{content:none!important;display:none!important}
+body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser .sm-file-caption{grid-area:name;display:flex!important;align-items:center;gap:10px;min-width:0;padding:0!important;margin:0!important;border:0!important;background:none!important}
+body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser .sm-file-caption::before{content:""!important;flex:none;display:block!important;width:36px!important;height:36px!important;margin:0!important;border:1px solid rgba(110,170,255,.3)!important;border-radius:10px!important;background:linear-gradient(160deg,rgba(31,201,241,.18),rgba(138,125,255,.12))!important;-webkit-mask:none!important;mask:none!important;position:static!important}
+body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser .sm-file-caption::after{content:"";position:absolute;left:0;top:50%;margin-top:-18px;width:36px;height:36px;background:#7fe9ff;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 16V4M6 10l6-6 6 6M4 20h16'/%3E%3C/svg%3E") center/18px 18px no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 16V4M6 10l6-6 6 6M4 20h16'/%3E%3C/svg%3E") center/18px 18px no-repeat;pointer-events:none}
+body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser .sm-file-caption{position:relative}
+body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser .sm-file-caption>span{flex:1 1 auto!important;font:700 13px/1.35 Montserrat,system-ui,sans-serif!important;color:#e9f3ff!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;overflow-wrap:normal!important}
+body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser .btn{min-height:36px!important;padding:6px 14px!important;margin:0!important;border-radius:9px!important}
+body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser #btnComposeBg,body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser #btnComposeChar{grid-area:pick}
+body.page-tools.site-v2 #tab-compose .fi.sm-file-chooser [data-asset-library]{grid-area:lib}
+body.page-tools.site-v2 #tab-compose .compose-preview-panel h3{display:flex!important;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px!important;font:800 16px/1.3 Montserrat,system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important;color:#fff!important}
+body.page-tools.site-v2 #tab-compose .compose-preview-panel h3>span:last-child{font:600 12px/1 Montserrat,system-ui,sans-serif!important;color:rgba(214,229,250,.65)!important}
+body.page-tools.site-v2 #tab-compose .compose-canvas-wrap,body.page-tools.site-v2 #tab-compose .compose-final-wrap{border:1px solid rgba(110,170,255,.16)!important;border-radius:12px!important;background:#02050f!important}
+body.page-tools.site-v2 #tab-compose .compose-final-wrap{margin-top:10px!important}
+body.page-tools.site-v2 #tab-compose .compose-empty-hint,body.page-tools.site-v2 #tab-compose .final-hint{font:600 12.5px/1.5 Montserrat,system-ui,sans-serif!important;color:rgba(214,229,250,.55)!important}
+body.page-tools.site-v2 #tab-compose .compose-preview-panel>.sm-help{display:flex;justify-content:flex-end;margin-top:8px}
+@media (max-width:640px){body.page-tools.site-v2 #tab-compose .compose-controls>.row:first-of-type{grid-template-columns:1fr}}
+
+/* ---------------------------------------------------------------- 5. Process */
+body.page-tools.site-v2 .process-studio-link{display:flex!important;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 14px!important;margin:14px 0 0!important;padding:12px 14px!important;border:1px solid rgba(110,170,255,.2)!important;border-radius:12px!important;background:linear-gradient(90deg,rgba(31,201,241,.08),rgba(138,125,255,.06))!important;color:rgba(214,229,250,.78)!important;font:600 13px/1.45 Montserrat,system-ui,sans-serif!important}
+body.page-tools.site-v2 .process-studio-link[hidden]{display:none!important}
+body.page-tools.site-v2 .process-studio-link button{min-height:36px;padding:6px 14px!important;border:1px solid rgba(111,227,255,.45)!important;border-radius:9px!important;background:rgba(31,201,241,.12)!important;color:#e9fbff!important;font:700 12.5px/1 Montserrat,system-ui,sans-serif!important;cursor:pointer;transition:background .15s,border-color .15s}
+body.page-tools.site-v2 .process-studio-link button:hover{border-color:#1fc9f1!important;background:rgba(31,201,241,.22)!important}
+/* Right column: rotation on one line, Run and Clear side by side, so the preview keeps its room. */
+body.page-tools.site-v2 #processRotationPanel{display:flex!important;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 14px}
+body.page-tools.site-v2 #processRotationPanel[hidden]{display:none!important}
+body.page-tools.site-v2 #processRotationPanel .process-rotation__identity{display:flex!important;align-items:baseline;gap:8px;min-width:0;flex:1 1 160px}
+body.page-tools.site-v2 #processRotationPanel .process-rotation__identity strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.page-tools.site-v2 #processSubmit>.row{display:flex!important;flex-wrap:wrap;gap:8px!important}
+body.page-tools.site-v2 #processSubmit>.row>#btnRun{flex:1 1 220px;width:auto!important;margin:0!important}
+body.page-tools.site-v2 #processSubmit>.row>.btn{margin:0!important}
+
+/* ---------------------------------------------------------------- 6. About */
+body.page-tools.site-v2 #tab-about .tu-about__row{align-items:stretch!important}
+body.page-tools.site-v2 #tab-about .tu-about__row>.card{display:flex!important;flex-direction:column}
+body.page-tools.site-v2 #tab-about .tu-plan__actions,body.page-tools.site-v2 #tab-about .tu-how-cta{margin-top:auto!important;padding-top:16px}
+body.page-tools.site-v2 #tab-about .tu-perks{margin:4px 0 18px;padding:14px 16px;border:1px solid rgba(110,170,255,.18);border-radius:12px;background:var(--tu-inset,rgba(5,10,28,.5))}
+body.page-tools.site-v2 #tab-about .tu-perks b{display:block;margin-bottom:10px;font-size:13px;font-weight:800;color:#fff}
+body.page-tools.site-v2 #tab-about .tu-perks ul{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+body.page-tools.site-v2 #tab-about .tu-perks li{position:relative;padding-left:24px;font-size:13px;line-height:1.45;color:rgba(214,229,250,.78)}
+body.page-tools.site-v2 #tab-about .tu-perks li::before{content:"✓";position:absolute;left:0;top:0;width:18px;height:18px;display:grid;place-items:center;border-radius:50%;background:rgba(95,242,181,.14);color:#5ff2b5;font-size:11px;font-weight:900}
+body.page-tools.site-v2 #tab-about .tu-how-tip{margin:16px 0 0;padding:12px 14px;border-left:3px solid var(--tu-cyan,#1fc9f1);border-radius:0 10px 10px 0;background:rgba(31,201,241,.07);font-size:13px;line-height:1.5;color:rgba(214,229,250,.78)}
+body.page-tools.site-v2 #tab-about .tu-how-cta{display:flex;flex-wrap:wrap;gap:8px}
+body.page-tools.site-v2 #tab-about .tu-how-cta .btn{min-height:42px;margin:0;border-radius:10px!important}
+
+/* ---------------------------------------------------------------- follow-ups after the screenshots */
+body.page-tools.site-v2 #processRotationPanel .process-rotation__kicker{white-space:nowrap;flex:none}
+body.page-tools.site-v2 #processSubmit>.row{align-items:stretch!important}
+body.page-tools.site-v2 #tab-compose .tool-background-choice{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px!important;align-items:end}
+body.page-tools.site-v2 #tab-compose .tool-background-choice>.field{min-width:0!important;margin:0!important}
+body.page-tools.site-v2 #tab-compose .compose-chroma-holes{display:flex!important;flex-direction:row!important;align-items:center;justify-content:space-between;gap:12px;min-height:46px;padding:8px 14px!important;border:1px solid rgba(110,170,255,.2);border-radius:10px;background:rgba(5,10,28,.45);text-align:left!important}
+body.page-tools.site-v2 #tab-compose .compose-chroma-holes>span{margin:0!important;font:600 12.5px/1.35 Montserrat,system-ui,sans-serif!important;color:rgba(214,229,250,.85)!important;text-align:left!important}
+body.page-tools.site-v2 #tab-compose .compose-chroma-holes>input{flex:none;margin:0!important}
+body.page-tools.site-v2 #tab-compose .compose-preview-panel{position:relative}
+body.page-tools.site-v2 #tab-compose .compose-preview-panel>.sm-help{position:absolute;top:22px;right:24px;margin:0!important}
+body.page-tools.site-v2 #tab-compose .compose-preview-panel h3{padding-right:40px}
+@media (max-width:640px){body.page-tools.site-v2 #tab-compose .tool-background-choice{grid-template-columns:1fr}}
+body.page-tools.site-v2 #tab-compose .tool-background-choice>[hidden]{display:none!important}

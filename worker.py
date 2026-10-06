@@ -84,6 +84,10 @@ def _process_one(jid: str) -> None:
             from smweb.loop_jobs import run
             run(jid, job)
             return
+        if job.get("kind") == "gif_optimizer":
+            from smweb.gif_optimizer_jobs import run
+            run(jid, job)
+            return
         if job.get("kind") == "builder_bg_remove":
             from smweb.background_remove_jobs import run
             run(jid, job)

@@ -212,6 +212,24 @@ for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
     if (parts.some(part => typeof part !== 'string' || !part.trim())) errors.push(`Error popup copy: empty ${language}`);
   }
 }
+// GIF Optimizer tab: reviewed in all eight languages in the source itself.
+const gifOptimizer = evaluateDictionary('static/js/gif-optimizer.js', 'var COPY =');
+const gifOptimizerKeys = Object.keys(gifOptimizer.en || {}).sort().join('|');
+for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+  const values = gifOptimizer[language] || {};
+  if (Object.keys(values).sort().join('|') !== gifOptimizerKeys) errors.push(`GIF Optimizer copy: incomplete ${language}`);
+  if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`GIF Optimizer copy: empty ${language}`);
+}
+// Pro plans in the activation dialog and the purchase claim page: reviewed in all eight languages.
+for (const [file, name] of [['static/js/pro-plans.js', 'Pro plans'], ['static/js/billing-claim.js', 'Purchase claim page']]) {
+  const dictionary = evaluateDictionary(file, 'var COPY =');
+  const keys = Object.keys(dictionary.en || {}).sort().join('|');
+  for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
+    const values = dictionary[language] || {};
+    if (Object.keys(values).sort().join('|') !== keys) errors.push(`${name} copy: incomplete ${language}`);
+    if (Object.values(values).some(value => typeof value !== 'string' || !value.trim())) errors.push(`${name} copy: empty ${language}`);
+  }
+}
 // Character keying controls: reviewed in all eight languages in the source itself.
 const chromaUi = evaluateDictionary('static/js/chroma-ui.js', 'var COPY =');
 const chromaUiKeys = Object.keys(chromaUi.en || {}).sort().join('|');

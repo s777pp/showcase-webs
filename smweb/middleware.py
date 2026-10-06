@@ -194,6 +194,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/process/profile-preview/", 10, 60),
         ("/api/process", 8, 60),
         ("/api/workshop-studio/start", 8, 60),
+        ("/api/gif-optimizer/start", 8, 60),
         # Modal GPU time costs money; the router also caps jobs per account.
         ("/api/upscale/start", 6, 60),
         ("/api/upscale", 6, 60),
@@ -221,6 +222,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/loop/start", 6, 60),
         ("/api/gallery/", 60, 60),
         ("/api/download-url", 5, 60),
+        ("/api/billing/gumroad/order", 10, 60),
+        ("/api/billing/gumroad/claim", 10, 60),
         ("/api/billing/gumroad", 30, 60),
     )
     async def dispatch(self, request, call_next):

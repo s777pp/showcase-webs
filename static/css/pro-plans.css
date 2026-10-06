@@ -1,0 +1,72 @@
+/* Pro plans inside the shell's activation dialog (static/js/pro-plans.js). */
+.ss-plans{margin:18px 0 4px;padding:16px;border:1px solid rgba(110,170,255,.22);border-radius:14px;background:linear-gradient(160deg,rgba(31,201,241,.08),rgba(138,125,255,.06)),rgba(3,7,20,.6);text-align:left}
+.ss-plans[hidden]{display:none!important}
+.ss-plans__title{margin:0 0 12px;font:800 15px/1.3 Montserrat,system-ui,sans-serif;color:#fff;letter-spacing:0;text-transform:none}
+.ss-plans__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px;margin-top:6px}
+.ss-plans__plan{position:relative;display:grid;gap:4px;justify-items:center;align-content:center;min-height:74px;padding:16px 8px 12px;border:1px solid rgba(110,170,255,.26);border-radius:12px;background:rgba(2,6,18,.75);color:#e9f3ff;font-family:Montserrat,system-ui,sans-serif;cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+.ss-plans__plan:hover:not(:disabled),.ss-plans__plan:focus-visible{border-color:#1fc9f1;background:rgba(31,201,241,.12);transform:translateY(-1px);outline:none}
+.ss-plans__plan:disabled{opacity:.5;cursor:default}
+.ss-plans__plan.is-life{border-color:rgba(184,169,255,.55);background:linear-gradient(160deg,rgba(138,125,255,.2),rgba(31,201,241,.08)),rgba(2,6,18,.75)}
+.ss-plans__term{font-size:12.5px;font-weight:700;color:rgba(214,229,250,.82)}
+.ss-plans__price{font-size:18px;font-weight:900;color:#fff}
+.ss-plans__badge{position:absolute;top:-9px;left:50%;transform:translateX(-50%);padding:2px 8px;border-radius:999px;background:linear-gradient(90deg,#1fc9f1,#8a7dff);color:#041019;font:800 10px/1.5 Montserrat,system-ui,sans-serif;white-space:nowrap}
+.ss-plans__note{margin:12px 0 0;font:500 12px/1.5 Montserrat,system-ui,sans-serif;color:rgba(214,229,250,.62)}
+.ss-plans__status{margin:8px 0 0;min-height:0;font:600 12.5px/1.5 Montserrat,system-ui,sans-serif;color:rgba(214,229,250,.8)}
+.ss-plans__status:empty{display:none}
+.ss-plans__status.is-wait{color:#7fe9ff}
+.ss-plans__status.is-ok{color:#5ff2b5}
+.ss-plans__status.is-bad{color:#ff9aaa}
+.ss-plans__link{padding:0;border:0;background:none;color:#7fe9ff;font:inherit;font-weight:800;text-decoration:underline;cursor:pointer}
+.ss-shop[hidden]{display:none!important}
+@media (max-width:520px){.ss-plans__grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ss-plans__plan.is-life{grid-column:1/-1}}
+
+/* Pro purchase dialog (static/js/pro-plans.js) inside the shell's #ssActivation:
+   step 1 plans -> step 2 payment -> key form (#ssKeyPane). */
+.ss-buy[hidden],.ss-activation__key[hidden]{display:none!important}
+.ss-buy{text-align:left}
+.ss-buy__icon{display:grid;place-items:center;width:46px;height:46px;margin-bottom:14px;border:1px solid rgba(110,170,255,.35);border-radius:12px;background:rgba(31,201,241,.08);color:#7fe9ff}
+.ss-buy__icon svg{width:20px;height:20px}
+.ss-buy__title{margin:0 0 6px!important}
+.ss-buy__sub{margin-bottom:18px!important}
+.ss-buy__back{display:inline-flex;align-items:center;gap:6px;margin:0 0 14px;padding:6px 12px 6px 8px;border:1px solid rgba(110,170,255,.25);border-radius:999px;background:rgba(2,6,18,.6);color:rgba(214,229,250,.85);font:700 12.5px/1 Montserrat,system-ui,sans-serif;cursor:pointer}
+.ss-buy__back:hover{border-color:#1fc9f1;color:#fff}
+.ss-buy__back span{color:#7fe9ff}
+.ss-buy__key{display:block;margin:16px auto 0;padding:4px;border:0;background:none;color:#7fe9ff;font:700 13px/1.4 Montserrat,system-ui,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.ss-buy__key:hover{color:#fff}
+.ss-buy__chosen{display:flex;align-items:center;gap:12px;margin:14px 0 14px;padding:12px 14px;border:1px solid rgba(111,227,255,.4);border-radius:12px;background:linear-gradient(90deg,rgba(31,201,241,.12),rgba(138,125,255,.08))}
+.ss-buy__chosen span{flex:1;font:700 14px/1.3 Montserrat,system-ui,sans-serif;color:#e9f3ff}
+.ss-buy__chosen b{font:900 18px/1 Montserrat,system-ui,sans-serif;color:#fff}
+.ss-buy__change{display:grid;place-items:center;width:30px;height:30px;border:1px solid rgba(110,170,255,.3);border-radius:8px;background:rgba(2,6,18,.6);color:#7fe9ff;cursor:pointer}
+.ss-pay{display:grid;gap:8px}
+.ss-pay__opt{display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;padding:12px 14px;border:1px solid rgba(110,170,255,.24);border-radius:12px;background:rgba(2,6,18,.7);color:#e9f3ff;text-align:left;text-decoration:none;font-family:Montserrat,system-ui,sans-serif;cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+.ss-pay__opt:hover:not(:disabled),.ss-pay__opt:focus-visible{border-color:#1fc9f1;background:rgba(31,201,241,.1);transform:translateY(-1px);outline:none}
+.ss-pay__opt:disabled{opacity:.5;cursor:default}
+.ss-pay__opt--card{border-color:rgba(111,227,255,.45)}
+.ss-pay__icon{display:grid;place-items:center;width:40px;height:40px;border:1px solid rgba(110,170,255,.25);border-radius:10px;background:rgba(3,8,24,.8);color:#7fe9ff}
+.ss-pay__icon img{width:22px;height:22px}
+.ss-pay__icon svg{width:22px;height:22px}
+.ss-pay__opt--telegram .ss-pay__icon{border:0;background:none}
+.ss-pay__opt--telegram .ss-pay__icon svg{width:30px;height:30px}
+.ss-pay__text{display:grid;gap:3px;min-width:0}
+.ss-pay__text b{font-size:14px;font-weight:800;color:#fff}
+.ss-pay__text small{font-size:12px;line-height:1.4;color:rgba(214,229,250,.62)}
+.ss-pay__tag{padding:4px 9px;border-radius:999px;font:800 10.5px/1.3 Montserrat,system-ui,sans-serif;white-space:nowrap}
+.ss-pay__tag.is-auto{background:rgba(95,242,181,.14);color:#5ff2b5;border:1px solid rgba(95,242,181,.4)}
+.ss-pay__tag.is-manual{background:rgba(255,196,90,.1);color:#ffd27a;border:1px solid rgba(255,196,90,.35)}
+.ss-pay__tag.is-off{background:rgba(214,229,250,.06);color:rgba(214,229,250,.6);border:1px solid rgba(214,229,250,.2)}
+@media (max-width:520px){.ss-pay__opt{grid-template-columns:36px minmax(0,1fr)}.ss-pay__tag{grid-column:2;justify-self:start}}
+
+/* /billing/claim page (static/js/billing-claim.js) */
+body.page-billing{background:#03070a}
+.bc{display:grid;place-items:center;min-height:calc(100svh - 260px);padding:48px var(--site-gutter,16px)}
+.bc__card{display:grid;justify-items:center;gap:12px;width:min(560px,100%);padding:36px 28px;border:1px solid rgba(110,170,255,.22);border-radius:18px;background:linear-gradient(180deg,#0e1a3c,#050a1c);text-align:center;font-family:Montserrat,system-ui,sans-serif;box-shadow:0 24px 70px rgba(0,0,0,.45)}
+.bc__icon{display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:rgba(31,201,241,.14);color:#7fe9ff;font-size:24px;font-weight:900}
+.bc__card.is-ok .bc__icon{background:rgba(95,242,181,.14);color:#5ff2b5}
+.bc__card.is-bad .bc__icon{background:rgba(255,90,120,.12);color:#ff9aaa}
+.bc__title{margin:0;font-size:26px;font-weight:900;color:#fff;letter-spacing:-.01em;text-transform:none}
+.bc__text{margin:0;max-width:440px;font-size:15px;line-height:1.55;color:rgba(214,229,250,.85)}
+.bc__extra{margin:0;padding:6px 14px;border-radius:999px;background:linear-gradient(90deg,#1fc9f1,#8a7dff);color:#041019;font-size:13px;font-weight:800}
+.bc__actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:8px}
+.bc__actions .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 20px;margin:0;border:1px solid transparent;border-radius:10px;background:linear-gradient(90deg,#1fc9f1,#8a7dff);color:#041019;font:800 14px/1 Montserrat,system-ui,sans-serif;text-decoration:none;cursor:pointer;transition:filter .15s}
+.bc__actions .btn:hover{filter:brightness(1.08)}
+.bc__actions .btn.ghost{border-color:rgba(110,170,255,.35);background:rgba(2,6,18,.6);color:#e9f3ff}

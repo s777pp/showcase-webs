@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 500 passed on 2026-10-05 (~165 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 520 passed on 2026-10-06 (~160 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -886,6 +886,44 @@ Only the hero exists for now; content blocks will be added below it later.
   owner's prepared posts (Заголовок:/Анонс:/Категория:/H2:/lists/**bold**/[links]/RU-EN markers) fill the fields.
 - process-guide.js video probe: never set `video.src=''` inside media handlers (it fires another error event and
   looped forever, pinning the CPU after every added video).
+
+## 6.11 GIF Optimizer tab (2026-10-06, local, not deployed)
+
+- Owner request "like steamprofile.io/ru/optimizer": `#tab-gifopt` (nav button `nav_gifopt`, top-level as all tools),
+  `static/js/gif-optimizer.js` (+ css, keyed `var COPY =` in 8 languages, checked by check_i18n; debug hook
+  `window.SMGifOptimizer`). Manual = gifsicle `-O3 --lossy=<pct*2> --colors N` (owner choice), FFmpeg palette fallback
+  when gifsicle is missing; "Auto up to 5 MB" = `processor.fit_frames_to_gif` from decoded frames (owner choice).
+  Job kind `gif_optimizer` (worker dispatch, embedded fallback), `/api/gif-optimizer/start|status|file/{id}/{result|source}`,
+  owner = `core.owner_key` (guests too), quota like Process (1 file per run), rate rule 8/min. The source stays in the job
+  folder for the before/after comparison until the normal cleanup. Dockerfile installs `gifsicle`.
+  The older synchronous `/api/optimizer` in tools_api.py has no UI and still runs in Uvicorn: remove it when convenient.
+
+- Tidy pass (2026-10-06, owner screenshots of old-design leftovers): `static/css/tools-tidy.css` is loaded LAST on
+  app.html (after gif-optimizer.css). It unifies the tab header for every tool (no `.main > .back`, no
+  "WORKSPACE /" kicker, 40 px title), keeps the tools strip inside the window at 1401-1599 px (icons hidden) and
+  >= 1600 px (8 px padding), swaps leftover Consolas labels for Montserrat, restyles Character pickers / preview
+  heading (`compose_preview_h`, `compose_live`), the Process Workshop Studio link (`studioOpen` key in
+  process-layout.js) and the About rows (`.tu-perks`, `.tu-how-tip`, `.tu-how-cta`, `[data-tu-open]` buttons).
+
+## 6.12 Gumroad Pro plans (2026-10-06, local, not deployed)
+
+- `smweb/gumroad_billing.py` (flow + safety notes in its docstring), routes in `smweb/routers/billing.py`:
+  `GET /api/billing/plans` (published products only, prices from `GET /v2/products`, cached 10 min),
+  `POST /api/billing/gumroad/order` (signed-in; order token -> `?sm_order=` on the product URL),
+  `POST /api/billing/gumroad` (Ping; answers 2xx at once, `sync_sale` runs as a background task),
+  `POST /api/billing/gumroad/claim`, page `/billing/gumroad/claim` -> `/{lang}/billing/claim`.
+  The Ping is unsigned: never trust its fields, always `fetch_sale` (needs `GUMROAD_ACCESS_TOKEN`, view_sales).
+  Plans map by product id/permalink (`PLANS`); lifetime purchases set `pro_code=GRS-<hash>`; time plans add days in
+  one SQL statement; `reconcile()` (hourly from the job cleaner) rechecks granted sales for refunds.
+  The older license-key activation of the $10 product in `routers/system.py` (`/api/unlock`) is unchanged.
+- Purchase dialog (owner, same day): every Buy/Activate opens step 1 = plans, step 2 = payment method (Gumroad card/PayPal
+  automatic; FunPay and Telegram bot = manual key, the bot will be automated later), the key form is step 3
+  (`#ssKeyPane`, also the fallback if pro-plans.js fails). `SSShell.openActivation({plan})` opens step 2,
+  `{key: true}` the key form. `/api/billing/plans` always lists all plans (`DEFAULT_PRICES` until Gumroad answers) with a
+  `checkout` flag. Landing pricing (`index.html #pricing`): Free / Pro from $0.99 / Pro forever, prices via `data-plan-price`.
+- UI: `static/js/pro-plans.js` is lazy-loaded by `ss-shell.js` `openActivation()`; claim page
+  `static/billing-claim.html` + `js/billing-claim.js`; styles `css/pro-plans.css`. Both COPY dictionaries are checked
+  by check_i18n. No admin page for purchases yet: the owner bot gets every sale/refund.
 
 ## 7. Rules for agents
 

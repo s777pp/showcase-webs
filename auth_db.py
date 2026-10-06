@@ -323,6 +323,43 @@ def _create_schema(c: sqlite3.Connection) -> None:
         """
     )
     c.execute("CREATE INDEX IF NOT EXISTS idx_server_errors_seen ON server_errors(resolved_at, last_seen)")
+    # Gumroad Pro purchases (smweb/gumroad_billing.py, 2026-10-06): an order is a checkout started from the
+    # site by a signed-in user; a sale is a Gumroad purchase, verified through the Gumroad API.
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gumroad_orders (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            plan TEXT NOT NULL,
+            created_at REAL NOT NULL,
+            sale_id TEXT
+        )
+        """
+    )
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gumroad_sales (
+            sale_id TEXT PRIMARY KEY,
+            user_id INTEGER,
+            plan TEXT NOT NULL,
+            days INTEGER,
+            status TEXT NOT NULL,
+            price_cents INTEGER,
+            currency TEXT,
+            order_token TEXT,
+            source TEXT,
+            is_test INTEGER NOT NULL DEFAULT 0,
+            sale_created REAL,
+            granted_at REAL,
+            revoked_at REAL,
+            checked_at REAL,
+            updated_at REAL NOT NULL
+        )
+        """
+    )
+    c.execute("CREATE INDEX IF NOT EXISTS idx_gumroad_orders_user ON gumroad_orders(user_id, created_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_gumroad_sales_user ON gumroad_sales(user_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_gumroad_sales_check ON gumroad_sales(status, checked_at)")
     c.execute(
         """
         CREATE TABLE IF NOT EXISTS profile_showcases (
@@ -825,6 +862,11 @@ def account_export_data(user_id: int, analytics_user_hash: str = "") -> dict:
             "SELECT created_at FROM sessions WHERE user_id=? ORDER BY created_at",
             (uid,),
         ).fetchall()]
+        purchases = [dict(item) for item in c.execute(
+            """SELECT plan,days,status,price_cents,currency,sale_created,granted_at,revoked_at
+               FROM gumroad_sales WHERE user_id=? ORDER BY sale_created""",
+            (uid,),
+        ).fetchall()]
         codes = [dict(item) for item in c.execute(
             "SELECT code,used_at FROM used_codes WHERE user_id=? ORDER BY used_at",
             (uid,),
@@ -852,6 +894,7 @@ def account_export_data(user_id: int, analytics_user_hash: str = "") -> dict:
             "saved_results": saved,
             "sessions": sessions,
             "activated_codes": codes,
+            "pro_purchases": purchases,
             "analytics_events": analytics_rows,
         }
     finally:
@@ -911,6 +954,8 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
         c.execute("DELETE FROM da_presets WHERE user_id=?", (uid,))
         c.execute("DELETE FROM builder_usage WHERE user_id=?", (uid,))
         c.execute("DELETE FROM saved_results WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM gumroad_orders WHERE user_id=?", (uid,))
+        c.execute("UPDATE gumroad_sales SET user_id=NULL WHERE user_id=?", (uid,))
         c.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
         c.execute("UPDATE used_codes SET user_id=NULL WHERE user_id=?", (uid,))
         c.execute("DELETE FROM email_codes WHERE email=?", (str(user["email"]),))

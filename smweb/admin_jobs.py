@@ -26,7 +26,7 @@ JOB_ID = re.compile(r"[a-f0-9]{24,32}")
 
 KIND_LABELS = {
     "process": "Обработка витрины", "workshop_studio": "Мастерская", "compose": "Персонаж",
-    "seamless_loop": "Зацикливание", "upscale": "Апскейл", "builder_bg_remove": "Удаление фона",
+    "seamless_loop": "Зацикливание", "gif_optimizer": "GIF оптимизатор", "upscale": "Апскейл", "builder_bg_remove": "Удаление фона",
     "steam_profile_import": "Импорт профиля", "profile_insight": "Оценка профиля", "steam_dna": "Steam DNA",
 }
 MODE_LABELS = {"workshop": "Workshop", "featured": "Featured", "split": "Artwork Split",
@@ -188,6 +188,9 @@ def settings_summary(job: dict) -> list[str]:
     elif kind == "seamless_loop":
         out.append(f"Режим {job.get('mode')} · {str(job.get('output_format') or 'gif').upper()} · FPS {job.get('fps')}")
         out.append(f"Начало {job.get('start')} с · длина {job.get('duration')} с · переход {job.get('transition')} с")
+    elif kind == "gif_optimizer":
+        out.append("Авто до 5 МБ" if job.get("mode") == "auto" else f"Цвета {job.get('colors')} · Lossy {job.get('lossy')} %")
+        out.append(f"{job.get('in_width')}×{job.get('in_height')} · кадров {job.get('in_frames')}")
     elif kind == "upscale":
         out.append(f"Пресет {job.get('preset')} · ×{job.get('scale')} · {job.get('media_kind')}")
     elif kind == "compose":

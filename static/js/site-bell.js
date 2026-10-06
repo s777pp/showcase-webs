@@ -60,6 +60,8 @@
     pro1d: ['Pro ends tomorrow', 'Pro закончится завтра', 'Pro endet morgen', 'Pro yarın bitiyor', 'Pro se termine demain', 'Pro закінчиться завтра', 'Pro termina mañana', 'O Pro termina amanhã'],
     pro15m: ['Pro ends in 15 minutes', 'Pro закончится через 15 минут', 'Pro endet in 15 Minuten', 'Pro 15 dakika içinde bitiyor', 'Pro se termine dans 15 minutes', 'Pro закінчиться через 15 хвилин', 'Pro termina en 15 minutos', 'O Pro termina em 15 minutos'],
     proBody: ['Renew it to keep working without limits.', 'Продли, чтобы работать без лимитов.', 'Verlängere es, um ohne Limits weiterzuarbeiten.', 'Sınırsız çalışmaya devam etmek için yenile.', 'Renouvelez-le pour continuer sans limites.', 'Продовж, щоб працювати без лімітів.', 'Renuévalo para seguir sin límites.', 'Renove para continuar sem limites.'],
+    proBought: ['Pro is active, thank you!', 'Pro активирован, спасибо!', 'Pro ist aktiv, danke!', 'Pro etkin, teşekkürler!', 'Pro est actif, merci !', 'Pro активовано, дякуємо!', 'Pro está activo, ¡gracias!', 'O Pro está ativo, obrigado!'],
+    proBoughtBody: ['Your purchase is linked to this account. All Pro tools are open.', 'Покупка привязана к этому аккаунту. Все инструменты Pro открыты.', 'Dein Kauf ist mit diesem Konto verknüpft. Alle Pro-Werkzeuge sind frei.', 'Satın alman bu hesaba bağlandı. Tüm Pro araçları açık.', 'Votre achat est lié à ce compte. Tous les outils Pro sont ouverts.', 'Покупку прив’язано до цього акаунта. Усі інструменти Pro відкрито.', 'Tu compra está vinculada a esta cuenta. Todas las herramientas Pro están abiertas.', 'Sua compra está vinculada a esta conta. Todas as ferramentas Pro estão liberadas.'],
     proEnded: ['Pro has ended', 'Pro закончился', 'Pro ist abgelaufen', 'Pro sona erdi', 'Pro est terminé', 'Pro закінчився', 'Pro ha terminado', 'O Pro terminou'],
     proEndedBody: ['The free plan is active again. Enter a new code to get Pro back.', 'Снова действует бесплатный тариф. Введи новый код, чтобы вернуть Pro.', 'Der kostenlose Tarif gilt wieder. Gib einen neuen Code ein, um Pro zurückzubekommen.', 'Ücretsiz plan yeniden etkin. Pro’yu geri almak için yeni kod gir.', 'L’offre gratuite est de nouveau active. Saisissez un nouveau code pour retrouver Pro.', 'Знову діє безкоштовний тариф. Введи новий код, щоб повернути Pro.', 'Vuelve el plan gratuito. Introduce un código nuevo para recuperar Pro.', 'O plano gratuito voltou. Digite um novo código para ter o Pro de volta.']
   };
@@ -85,7 +87,7 @@
     unknown: ['The job stopped with an error. Try again; if it repeats, write to support.', 'Задача остановилась с ошибкой. Попробуй ещё раз; если повторится — напиши в поддержку.', 'Der Auftrag wurde mit einem Fehler beendet. Versuche es erneut; wenn es wieder passiert, schreib dem Support.', 'İş bir hatayla durdu. Tekrar dene; yinelenirse desteğe yaz.', 'La tâche s’est arrêtée sur une erreur. Réessayez ; si cela se répète, écrivez au support.', 'Завдання зупинилося з помилкою. Спробуй ще раз; якщо повториться — напиши в підтримку.', 'La tarea se detuvo con un error. Inténtalo de nuevo; si se repite, escribe a soporte.', 'A tarefa parou com um erro. Tente de novo; se repetir, fale com o suporte.']
   };
   var ICON = { news: '📰', update: '✨', feature: '✨', announcement: '📣', event: '📅', maintenance: '🛠', promo: '🎁',
-               support_reply: '💬', job_done: '⚙️', job_error: '❌', pro_expiring: '💎', pro_expired: '💎',
+               support_reply: '💬', job_done: '⚙️', job_error: '❌', pro_expiring: '💎', pro_expired: '💎', pro_purchased: '💎',
                like: '❤️', comment: '💬', reply: '💬', downloads: '⬇️' };
 
   function present(item) {
@@ -100,6 +102,7 @@
     else if (kind === 'downloads') { out.title = L(TEXT.downloads); out.body = fmt(L(TEXT.downloadsBody), { work: meta.work || '—', count: meta.count || 1 }); }
     else if (kind === 'support_reply') { out.title = L(TEXT.support); }
     else if (kind === 'pro_expiring') { out.title = L(TEXT['pro' + (meta.stage || '3d')] || TEXT.pro3d); out.body = L(TEXT.proBody); }
+    else if (kind === 'pro_purchased') { out.title = L(TEXT.proBought); out.body = L(TEXT.proBoughtBody); }
     else if (kind === 'pro_expired') { out.title = L(TEXT.proEnded); out.body = L(TEXT.proEndedBody); }
     return out;
   }

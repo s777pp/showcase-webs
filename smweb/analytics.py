@@ -41,6 +41,7 @@ SERVER_EVENTS = frozenset({
     "zip_download",
     "registration_success",
     "pro_activated",
+    "checkout_started",
 })
 ALL_EVENTS = PUBLIC_EVENTS | SERVER_EVENTS
 

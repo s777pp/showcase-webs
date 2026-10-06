@@ -20,9 +20,9 @@
 <link rel="stylesheet" href="/static/css/support-chat.css?v=20261001-sup1"/>
 <link rel="stylesheet" href="/static/css/analytics-consent.css?v=20260927-lift1"/>
 <link rel="stylesheet" href="/static/css/home.css?v=20260927-stars2"/>
-<link rel="stylesheet" href="/static/css/home-blocks.css?v=20260925-blocks4"/>
+<link rel="stylesheet" href="/static/css/home-blocks.css?v=20261006-plans1"/>
 <link rel="stylesheet" href="/static/css/home-overlays.css?v=20261001-ovl1"/>
-<script src="/static/js/locales-extra.js?v=20261003-yt1"></script>
+<script src="/static/js/locales-extra.js?v=20261006-plans1"></script>
 <script src="/static/js/i18n.js?v=20260927-guides1"></script>
 <script defer src="/static/js/home-loader.js?v=20260921-polish1" onerror="document.documentElement.classList.remove('home-is-loading')"></script>
 <script defer src="/static/js/support-chat.js?v=20261001-sup2"></script>
@@ -290,27 +290,33 @@
           </div>
           <div class="hb-c3-card">
             <div class="hb-c3-tier-small">Pro</div>
-            <div class="hb-c3-tier-large" id="pricePro">FunPay</div>
-            <p class="hb-c3-desc"><span data-i="price_pro_d">Unlimited processing for sellers and daily shippers.</span></p>
+            <div class="hb-c3-tier-large"><span data-i="price_from">from</span> <span data-plan-price="1d">$0.99</span></div>
+            <p class="hb-c3-desc"><span data-i="price_pro_d">Pick a term. One payment, no auto-renewal: days add up.</span></p>
             <ul class="hb-c3-list">
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_unlimited">Unlimited files</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_modes">All modes + HEX 21</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_account">Account-bound access code</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_priority">Priority-ready pipeline</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_unlimited">No daily file limit</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_nomark">No watermark, or your own</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_tools">Upscale, Loop and AI tools</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_auto">Turns on by itself after payment</span></li>
             </ul>
-            <a class="hb-c3-btn" href="#" role="button" data-buy-key="1" data-i="buy_fp">Buy on FunPay</a>
+            <div class="hb-c3-terms">
+              <span><b data-i="term_1d">24 hours</b><i data-plan-price="1d">$0.99</i></span>
+              <span><b data-i="term_7d">7 days</b><i data-plan-price="7d">$1.99</i></span>
+              <span><b data-i="term_30d">30 days</b><i data-plan-price="30d">$3.99</i></span>
+              <span><b data-i="term_90d">90 days</b><i data-plan-price="90d">$4.99</i></span>
+            </div>
+            <a class="hb-c3-btn" href="#" role="button" data-buy-key="1" data-i="buy_plan">Choose a plan</a>
           </div>
           <div class="hb-c3-card hb-c3-card-pro">
-            <div class="hb-c3-tier-small" data-i="price_desktop">Desktop</div>
-            <div class="hb-c3-tier-large">EXE</div>
-            <p class="hb-c3-desc"><span data-i="price_desk_d">Full desktop app with offline processing and DeviantArt helpers.</span></p>
+            <div class="hb-c3-tier-small" data-i="price_forever">Pro forever</div>
+            <div class="hb-c3-tier-large" data-plan-price="unlimited">$5.99</div>
+            <p class="hb-c3-desc"><span data-i="price_forever_d">One payment, and Pro stays on your account for good.</span></p>
             <ul class="hb-c3-list">
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_same">Same core pipeline</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_ffmpeg">Local FFmpeg power</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_license">License key system</span></li>
-              <li><span class="hb-c3-check">✓</span> <span data-i="price_update">Auto-update ready</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_all">Everything in Pro</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_once">Pay once, no renewals</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_future">Every future Pro tool</span></li>
+              <li><span class="hb-c3-check">✓</span> <span data-i="price_account">Bound to your account</span></li>
             </ul>
-            <a class="hb-c3-btn" href="#" role="button" data-buy-key="1" data-i="get_desk">Get desktop</a>
+            <a class="hb-c3-btn" href="#" role="button" data-buy-key="1" data-buy-plan="unlimited" data-i="buy_forever">Get Pro forever</a>
           </div>
         </div>
       </section>
@@ -354,8 +360,8 @@
 </div>
 
 <script src="/static/js/analytics.js?v=20260922a"></script>
-<script src="/static/ss-shell.js?v=20261005-err1"></script>
-<script src="/static/js/home.js?v=20260927-trial2h"></script>
+<script src="/static/ss-shell.js?v=20261006-pay4"></script>
+<script src="/static/js/home.js?v=20261006-plans1"></script>
 <script src="/static/js/home-stars.js?v=20260927-stars2" defer></script>
 <script type="module" src="/static/js/home-vrm.js?v=20260927-stars2"></script>
 </body>

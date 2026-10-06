@@ -40,7 +40,6 @@
       badge_live: "live",
       badge_local: "local",
       badge_safe: "safe",
-      buy_fp: "Buy on FunPay",
       cta_h: "Close the tabs.<br/>Open your profile.",
       cta_open2: "Open tools",
       cta_p: "Process, download sources, preview on a Steam template, and ship — without leaving the browser.",
@@ -77,7 +76,6 @@
       flow_unpack: "2 · UNPACK",
       format_preview: "Preview",
       format_watermark: "Watermark",
-      get_desk: "Get desktop",
       mock_title: "SteamShowcase Helper — Extension",
       pipe_animated: "Animated GIF / MP4",
       pipe_console: "Console code",
@@ -91,22 +89,29 @@
       pipe_sources: "sources",
       pipe_upload: "upload",
       pipe_watermark: "Watermark · font · opacity",
-      price_account: "Account-bound access code",
-      price_desk_d: "Full desktop app with offline processing and DeviantArt helpers.",
-      price_desktop: "Desktop",
-      price_ffmpeg: "Local FFmpeg power",
       price_files: "5 files / day",
       price_free: "Free",
       price_free_d: "Try the full pipeline with a daily file limit.",
-      price_license: "License key system",
-      price_modes: "All modes + HEX 21",
-      price_priority: "Priority-ready pipeline",
-      price_pro_d: "Unlimited processing for sellers and daily shippers.",
-      price_same: "Same core pipeline",
       price_source: "Source download",
-      price_unlimited: "Unlimited files",
-      price_update: "Auto-update ready",
       price_watermark: "Watermark & preview",
+      price_from: "from",
+      price_pro_d: "Pick a term. One payment, no auto-renewal: days add up.",
+      price_unlimited: "No daily file limit",
+      price_nomark: "No watermark, or your own",
+      price_tools: "Upscale, Loop and AI tools",
+      price_auto: "Turns on by itself after payment",
+      term_1d: "24 hours",
+      term_7d: "7 days",
+      term_30d: "30 days",
+      term_90d: "90 days",
+      buy_plan: "Choose a plan",
+      price_forever: "Pro forever",
+      price_forever_d: "One payment, and Pro stays on your account for good.",
+      price_all: "Everything in Pro",
+      price_once: "Pay once, no renewals",
+      price_future: "Every future Pro tool",
+      price_account: "Bound to your account",
+      buy_forever: "Get Pro forever",
       q1: "“Cuts Workshop into five parts with hex 21 in seconds. I stopped doing this by hand.”",
       q2: "“Download + process + preview in one tab. No more juggling five sites.”",
       q3: "“Pro is worth it when you ship showcases every week — no daily limit stress.”",
@@ -155,7 +160,6 @@
       badge_live: "активно",
       badge_local: "локально",
       badge_safe: "безопасно",
-      buy_fp: "Купить на FunPay",
       cta_h: "Закрой лишние вкладки.<br/>Открой профиль.",
       cta_open2: "Открыть инструменты",
       cta_p: "Обработка, исходники, превью на шаблоне Steam — без ухода из браузера.",
@@ -192,7 +196,6 @@
       flow_unpack: "2 · РАСПАКОВАТЬ",
       format_preview: "Предпросмотр",
       format_watermark: "Водяной знак",
-      get_desk: "Взять десктоп",
       mock_title: "SteamShowcase Helper — Расширение",
       pipe_animated: "Анимация GIF / MP4",
       pipe_console: "Код для консоли",
@@ -206,22 +209,29 @@
       pipe_sources: "исходники",
       pipe_upload: "загрузка",
       pipe_watermark: "Водяной знак · шрифт · прозрачность",
-      price_account: "Код доступа привязан к аккаунту",
-      price_desk_d: "Десктоп-приложение: офлайн-обработка и помощники DeviantArt.",
-      price_desktop: "Приложение",
-      price_ffmpeg: "Локальная мощность FFmpeg",
       price_files: "5 файлов в сутки",
       price_free: "Бесплатно",
       price_free_d: "Полный пайплайн с дневным лимитом файлов.",
-      price_license: "Система лицензионных ключей",
-      price_modes: "Все режимы + HEX 21",
-      price_priority: "Приоритетная обработка",
-      price_pro_d: "Безлимитная обработка для продавцов и ежедневной отгрузки.",
-      price_same: "Тот же основной конвейер",
       price_source: "Скачивание исходников",
-      price_unlimited: "Безлимитные файлы",
-      price_update: "Автоматические обновления",
       price_watermark: "Водяной знак и предпросмотр",
+      price_from: "от",
+      price_pro_d: "Выбери срок. Разовая оплата без автопродления: дни складываются.",
+      price_unlimited: "Без дневного лимита файлов",
+      price_nomark: "Без водяного знака или со своим",
+      price_tools: "Апскейл, Зациклить и ИИ-инструменты",
+      price_auto: "Включается сам после оплаты",
+      term_1d: "24 часа",
+      term_7d: "7 дней",
+      term_30d: "30 дней",
+      term_90d: "90 дней",
+      buy_plan: "Выбрать тариф",
+      price_forever: "Pro навсегда",
+      price_forever_d: "Одна оплата — и Pro остаётся на аккаунте навсегда.",
+      price_all: "Всё, что есть в Pro",
+      price_once: "Платишь один раз, без продлений",
+      price_future: "Все будущие инструменты Pro",
+      price_account: "Привязан к твоему аккаунту",
+      buy_forever: "Взять Pro навсегда",
       q1: "«Режет Workshop на пять частей с hex 21 за секунды. Больше не делаю это руками.»",
       q2: "«Скачать + обработать + превью в одной вкладке. Не прыгаю по пяти сайтам.»",
       q3: "«Pro окупается, если витрины каждую неделю — без дневного лимита.»",
@@ -252,11 +262,25 @@
 
   /* Blocks below the hero: purchase buttons open the shell's activation dialog
      (it lists the shops), "Create account" opens the shared registration. */
+  /* Pricing cards show the prices the store really charges (Gumroad, read by the server). */
+  function paintPrices() {
+    fetch('/api/billing/plans', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        (data && data.plans || []).forEach(function (plan) {
+          if (!plan.price) return;
+          document.querySelectorAll('[data-plan-price="' + plan.id + '"]').forEach(function (node) { node.textContent = plan.price; });
+        });
+      })
+      .catch(function () {});
+  }
+
   function wireBlocks() {
     document.querySelectorAll('[data-buy-key]').forEach(function (button) {
       button.addEventListener('click', function (event) {
         event.preventDefault();
-        if (window.SSShell && SSShell.openActivation) SSShell.openActivation();
+        // data-buy-plan jumps straight to the payment step of that plan.
+        if (window.SSShell && SSShell.openActivation) SSShell.openActivation(button.dataset.buyPlan ? { plan: button.dataset.buyPlan } : {});
       });
     });
     var register = document.getElementById('ctaReg');
@@ -319,6 +343,7 @@
   function boot() {
     applyCopy();
     wireBlocks();
+    paintPrices();
     initReveal();
   }
 
