@@ -150,11 +150,8 @@ Cloudflare Tunnel token and all secrets exist only in the VPS `.env`.
 - **Link upload block** in Process is a highlighted `.process-link` panel (title, sources, primary button).
 - **Extension offer on the result (2026-09-27):** `steam-extension-status.js` exposes `window.SMExtension`
   (`status()`, `openAuto(mode)` = `OPEN_AUTO_UPLOADER`, needs Helper >= 1.0.3, `openManual(mode)` =
-  `START_STEAM_UPLOAD`). `process-result.js:offerExtension` (changed 2026-10-01, owner):
-  WITH the extension nothing pops up (the readiness report in the dialog already has the automatic / manual upload
-  buttons); WITHOUT it, on a computer, a card invites to install it (no console code, right order, Chromium browsers,
-  "Install the extension" -> Chrome Web Store, "How it works" -> /extension). Closing hides it for 7 days
-  (localStorage `sm_ext_offer_dismissed`). Copy: `extInstall*` in `workspace-editor-copy.js`.
+  `START_STEAM_UPLOAD`). Since 2026-10-07 the result dialog's "what next" block uses them directly (see 6.17);
+  the floating install card (`offerExtension`, localStorage `sm_ext_offer_dismissed`) is gone. Copy: `extInstall*`, `extAuto*`.
 - **Process quality:** final GIFs are fitted to ≤ 5 MB (`processor.ensure_under_mb`).
   Workshop/Split GIF panels are one synchronized group — never fit/scale panels independently.
   Frames apply to all three types since 2026-09-26 (see Process layout below). Rotation is per file, quarter turns in Process,
@@ -1064,6 +1061,26 @@ Only the hero exists for now; content blocks will be added below it later.
   `check_i18n.js` complete. Full pytest suite passed on 2026-10-07 (583). Checked again on the dev machine with the
   real Montserrat in Edge (ru/en/de x 1920/1280/390): no horizontal scroll, nothing clipped (the step arrows and the
   overlapping extension screenshots stick out on purpose).
+
+## 6.17 Process tab for first-time visitors (2026-10-07, local, not deployed)
+
+- Owner: "a user who knows nothing about showcases". `static/js/process-onboarding.js` (keyed `var COPY =`, 8 languages,
+  checked by check_i18n) + `css/process-onboarding.css` (loaded after tools-tidy.css): a "How it works" WINDOW
+  (`.pon-modal`, owner wanted a pop-up, not an inline block) opened by itself on the first visit of the Process tab
+  (mini Steam profile cut from sample-art.webp, 3 steps, level 10 note, guides link; Got it / x / Esc / backdrop close
+  it and set localStorage `sm_process_intro_closed`; the `.pon-reopen` pill above step 1 opens it again;
+  `window.SMProcessOnboarding.show/hide/reset`). It does not open by itself in automated browsers (`navigator.webdriver`)
+  unless the URL has `?intro=1`, so the Playwright QA scripts are not blocked; a `<mark class="pon-badge">`
+  "Recommended" on Workshop (NOT a span: app.js writes the mode hint into the first span of `.mode`), `.mode>small`
+  hidden, `#processModeHelp` open while the intro is shown, guest `#processReadinessHint` turned into a quiet tip
+  (its data-i attributes are removed so app.js does not overwrite it).
+- The free watermark is drawn only on `full_with_bars` / `full_with_watermark` (processor.py), never on the Steam parts:
+  copy says so (`wmFree`, `wmOn` in process-layout.js). Keep it true if that ever changes.
+- Result dialog (`process-result.js`): right column `.workspace-result__side` = `steamGuide()` ("what next": the
+  extension first via `SMExtension.status()` / `openAuto(mode)`, the console steps inside `details.workspace-result__manual`)
+  + the readiness report (`.is-empty` when there is none). `offerExtension` (the floating card) was removed; the install
+  button lives in the guide now. New copy keys in workspace-editor-copy.js: resultNextTitle, extAuto*, extNeedInstall,
+  extOpenFail, manualTitle, partsHint.
 
 ## 7. Rules for agents
 

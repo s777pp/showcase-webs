@@ -45,11 +45,11 @@
   function localizeLaunchers() {
     const language = window.SMLang ? SMLang.get() : 'en';
     const words = {
-      en:['Jobs','My media · upload once','Library','My media'], ru:['Задачи','Мои файлы · одна загрузка','Медиатека','Мои файлы'],
-      de:['Aufgaben','Meine Medien · einmal hochladen','Mediathek','Meine Medien'], tr:['Görevler','Medyalarım · bir kez yükle','Medya','Medyalarım'],
-      fr:['Tâches','Mes médias · un seul envoi','Médiathèque','Mes médias'], uk:['Завдання','Мої файли · одне завантаження','Медіатека','Мої файли'],
-      es:['Tareas','Mis archivos · una sola carga','Biblioteca','Mis archivos'], pt:['Tarefas','Meus arquivos · um só envio','Biblioteca','Meus arquivos']
-    }[language] || ['Jobs','My media · upload once','Library','My media'];
+      en:['Jobs','Pick from my uploads','Library','My media'], ru:['Задачи','Выбрать из моих загрузок','Медиатека','Мои файлы'],
+      de:['Aufgaben','Aus meinen Uploads wählen','Mediathek','Meine Medien'], tr:['Görevler','Yüklediklerimden seç','Medya','Medyalarım'],
+      fr:['Tâches','Choisir dans mes envois','Médiathèque','Mes médias'], uk:['Завдання','Обрати з моїх завантажень','Медіатека','Мої файли'],
+      es:['Tareas','Elegir de mis subidas','Biblioteca','Mis archivos'], pt:['Tarefas','Escolher dos meus envios','Biblioteca','Meus arquivos']
+    }[language] || ['Jobs','Pick from my uploads','Library','My media'];
     document.querySelectorAll('[data-job-center]').forEach(function(node){node.textContent=words[0];});
     document.querySelectorAll('[data-asset-library]').forEach(function(node){
       node.textContent=node.classList.contains('asset-library-open')?(node.dataset.assetTarget?words[3]:words[1]):words[2];

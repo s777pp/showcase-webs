@@ -34,7 +34,6 @@
     dialog.setAttribute('aria-labelledby', 'workspaceResultTitle');
     const header = node('header', null, 'workspace-result-modal__header');
     const heading = node('div');
-    heading.append(node('span', 'STEAM / RESULT', 'workspace-result-modal__eyebrow'));
     const title = node('h2', editorText('resultDialogTitle')); title.id = 'workspaceResultTitle'; heading.append(title);
     const closeButton = node('button', '×', 'workspace-result-modal__close');
     closeButton.type = 'button'; closeButton.setAttribute('aria-label', editorText('closeResult'));
@@ -56,21 +55,42 @@
     return body;
   }
 
-  /* Short "what now" block: the full guide stays in the Steam tab (app.js). */
-  function steamGuide(initialMode) {
+  /* "What next" (2026-10-07, for people who never uploaded a showcase): the extension is the main path
+     (automatic upload when it is installed, an install button otherwise); the console steps are folded
+     under "Without the extension". The full guide stays in the Steam tab (app.js). */
+  const EXTENSION_URL = 'https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=showcasemaker-result';
+  function steamGuide(initialMode, token) {
     const section = node('section', null, 'workspace-result__steam');
-    section.append(node('h3', editorText('steamNextTitle'), 'workspace-result__section-title'));
+    section.append(node('h3', editorText('resultNextTitle'), 'workspace-result__section-title'));
+
+    const ext = node('div', null, 'workspace-result__ext');
+    const extTitle = node('b', editorText('extAutoTitle'));
+    const extBody = node('p', editorText('extAutoBody'));
+    const extActions = node('div', null, 'workspace-result__ext-actions');
+    const install = node('a', editorText('extInstallButton'), 'btn'); install.href = EXTENSION_URL; install.target = '_blank'; install.rel = 'noopener';
+    const how = node('a', editorText('extInstallMore'), 'btn ghost');
+    how.href = window.SMLang?.url ? window.SMLang.url('/extension') : '/extension'; how.target = '_blank'; how.rel = 'noopener';
+    const auto = node('button', editorText('extAutoButton'), 'btn'); auto.type = 'button'; auto.hidden = true;
+    const extNote = node('small', editorText('extNeedInstall'), 'workspace-result__ext-note');
+    const extStatus = node('span', '', 'workspace-result__steam-status'); extStatus.setAttribute('role', 'status');
+    extActions.append(auto, install, how);
+    ext.append(extTitle, extBody, extActions, extNote, extStatus);
+
+    const manual = node('details', null, 'workspace-result__manual');
+    manual.append(node('summary', editorText('manualTitle')));
     const steps = node('ol', null, 'workspace-result__steam-steps');
     const filesStep = node('li');
     steps.append(node('li', editorText('steamStepUnzip')), node('li', editorText('steamStepConsole')), filesStep);
     const buttons = node('div', null, 'workspace-result__steam-actions');
     const pageUrl = typeof STEAM_UPLOAD_URL === 'string' ? STEAM_UPLOAD_URL : 'https://steamcommunity.com/sharedfiles/edititem/767/3/';
-    const page = node('a', editorText('steamOpenPage'), 'btn'); page.href = pageUrl; page.target = '_blank'; page.rel = 'noopener';
+    const page = node('a', editorText('steamOpenPage'), 'btn ghost'); page.href = pageUrl; page.target = '_blank'; page.rel = 'noopener';
     const copyButton = node('button', editorText('steamCopyCode'), 'btn ghost'); copyButton.type = 'button';
     const guide = node('button', editorText('steamFullGuide'), 'btn ghost'); guide.type = 'button';
     const status = node('span', '', 'workspace-result__steam-status'); status.setAttribute('role', 'status');
     buttons.append(page, copyButton, guide, status);
-    section.append(steps, buttons, node('p', editorText('steamExtensionHint'), 'editor-note'));
+    manual.append(steps, buttons);
+    section.append(ext, manual);
+
     let mode = 'workshop';
     function setMode(value) {
       mode = ['workshop', 'featured', 'split'].includes(value) ? value : 'workshop';
@@ -88,42 +108,21 @@
       if (select) { select.value = mode; select.dispatchEvent(new Event('change', {bubbles:true})); }
       document.querySelector('#nav button[data-tab="steam"]')?.click();
     };
+    auto.onclick = async () => {
+      auto.disabled = true; extStatus.textContent = '';
+      try { await window.SMExtension.openAuto(mode); }
+      catch (_) { extStatus.textContent = editorText('extOpenFail'); }
+      finally { auto.disabled = false; }
+    };
+    // With the extension installed (and new enough) the automatic upload becomes the one big button.
+    if (window.SMExtension) {
+      window.SMExtension.status().then(state => {
+        if (token !== generation || !state || !state.installed) return;
+        if (state.auto) { auto.hidden = false; install.hidden = true; extNote.hidden = true; how.classList.add('ghost'); }
+      }).catch(() => {});
+    }
     setMode(initialMode);
     return { section, setMode, mode: () => mode };
-  }
-
-  /* Second popup over the result: only when SteamShowcase Helper answers. */
-  // The result dialog already has the extension's automatic / manual upload buttons
-  // (readiness report). This pop-up only invites people WITHOUT the extension, on a
-  // computer; closing it hides it for a week.
-  const EXTENSION_URL = 'https://chromewebstore.google.com/detail/steamshowcase-helper/nopmeakgeongafdhgmlpllalpcfpedej?utm_source=showcasemaker-result';
-  const EXT_DISMISS = 'sm_ext_offer_dismissed';
-  function extOfferDismissed() {
-    try { return Date.now() - Number(localStorage.getItem(EXT_DISMISS) || 0) < 7 * 86400000; } catch (_) { return false; }
-  }
-  async function offerExtension(token, overlay) {
-    if (!window.SMExtension || extOfferDismissed()) return;
-    if (window.matchMedia && matchMedia('(max-width: 820px), (pointer: coarse)').matches) return;
-    let status;
-    try { status = await window.SMExtension.status(); } catch (_) { status = null; }
-    if (token !== generation || !overlay.isConnected || (status && status.installed)) return;
-    const card = node('aside', null, 'workspace-result-ext is-install');
-    card.setAttribute('role', 'dialog'); card.setAttribute('aria-labelledby', 'workspaceResultExtTitle');
-    const close = node('button', '×', 'workspace-result-ext__close'); close.type = 'button';
-    close.setAttribute('aria-label', editorText('closeResult'));
-    close.onclick = () => { try { localStorage.setItem(EXT_DISMISS, String(Date.now())); } catch (_) {} card.remove(); };
-    const title = node('h3', editorText('extInstallTitle')); title.id = 'workspaceResultExtTitle';
-    const points = node('ul', null, 'workspace-result-ext__points');
-    ['extInstallPoint1', 'extInstallPoint2', 'extInstallPoint3'].forEach(key => points.append(node('li', editorText(key))));
-    const actions = node('div', null, 'workspace-result-ext__actions');
-    const install = node('a', editorText('extInstallButton'), 'btn workspace-result-ext__install');
-    install.href = EXTENSION_URL; install.target = '_blank'; install.rel = 'noopener';
-    const more = node('a', editorText('extInstallMore'), 'btn ghost workspace-result-ext__more');
-    more.href = window.SMLang?.url ? window.SMLang.url('/extension') : '/extension'; more.target = '_blank'; more.rel = 'noopener';
-    actions.append(install, more);
-    card.append(close, node('span', 'STEAMSHOWCASE HELPER', 'workspace-result-ext__kicker'), title,
-      node('p', editorText('extInstallBody'), 'workspace-result-ext__body'), points, actions);
-    overlay.append(card);
   }
 
   window.ProcessResult = {
@@ -134,7 +133,7 @@
       const download = job.download || '/api/process/download/' + encodeURIComponent(id);
       const body = createModal();
       const panel = node('section', null, 'workspace-result'); panel.id = 'workspaceResult'; panel.setAttribute('data-no-translate', '');
-      panel.append(node('h3', editorText('previewSummary')), node('p', editorText('resultHint'), 'editor-note'));
+      panel.append(node('h3', editorText('previewSummary')), node('p', editorText('partsHint'), 'editor-note'));
       const toolbar = node('div', null, 'workspace-result__toolbar'), select = node('select'); select.setAttribute('aria-label', t('result'));
       const tabs = ['result','original','compare'].map(key => {
         const button = node('button', t(key)); button.type = 'button'; button.onclick = () => { view = key; paint(); };
@@ -186,17 +185,18 @@
       else Promise.resolve(window.SSShell?.me?.()).then(user => {
         if (token === generation && user && !user.logged_in) actions.after(node('p', editorText('guestNote'), 'workspace-result__saved'));
       }).catch(() => {});
-      body.append(panel);
-      const steam = steamGuide(window.state?.mode);
-      panel.append(steam.section);
-      offerExtension(token, modal);
+      const side = node('aside', null, 'workspace-result__side');
+      body.append(panel, side);
+      const steam = steamGuide(window.state?.mode, token);
+      side.append(steam.section);
 
       const readiness = node('section', null, 'workspace-result__readiness steam-check');
       readiness.append(node('h3', editorText('readinessTitle'), 'workspace-result__section-title'));
-      const reportMount = node('div', null, 'workspace-result__readiness-report'); readiness.append(reportMount); body.append(readiness);
+      const reportMount = node('div', null, 'workspace-result__readiness-report'); readiness.append(reportMount); side.append(readiness);
       const integrated = !!(job.readiness && window.SteamCheckResult?.open(job.readiness, download, reportMount, {jobId:id}));
       if (integrated) readiness.dataset.status = job.readiness.status || 'ready';
       else {
+        readiness.classList.add('is-empty');
         const notice = node('div', null, 'workspace-result__readiness-empty');
         notice.append(node('span', 'i'), node('p', editorText('readinessUnavailable'))); reportMount.append(notice);
       }
