@@ -1,4 +1,4 @@
-"""Private API for the owner's Telegram bot (maintenance, keys, support replies).
+"""Private API for the owner's Telegram bot (maintenance, keys, support replies, Pro purchases, cutting files).
 
 Every call must carry ``X-Bot-Admin-Secret`` equal to BOT_ADMIN_SECRET.  When
 the variable is empty the whole API answers 404, so it is off by default.
@@ -11,8 +11,9 @@ import secrets
 import shutil
 import time
 
-from fastapi import APIRouter, Body, Request
+from fastapi import APIRouter, Body, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 import redis_store as rs
 from smweb import admin_content, maintenance
@@ -155,3 +156,61 @@ def pro_revoke(request: Request, body: dict = Body(...)):
     result = telegram_billing.revoke(str(body.get("payment_id") or ""))
     LOGGER.info("telegram pro revoke: %s", result.get("status"))
     return {"ok": True, **result}
+
+
+# ---------------------------------------------------------------- cutting a file sent to the bot (smweb/telegram_cut.py)
+@router.get("/cut/quota")
+def cut_quota(request: Request, tg_id: str = ""):
+    """Pro or how many free files are left today for this Telegram user."""
+    if (denied := _denied(request)):
+        return denied
+    from smweb import telegram_cut
+    if not telegram_cut.valid_tg(tg_id):
+        return JSONResponse({"ok": False, "msg": "Bad Telegram id"}, status_code=400)
+    return {"ok": True, **telegram_cut.quota(tg_id)}
+
+
+@router.post("/cut/start")
+async def cut_start(request: Request, tg_id: str = Form(""), mode: str = Form("workshop"),
+                    frame: str = Form("none"), file: UploadFile = File(...)):
+    """Queue an ordinary Process job for the file the bot downloaded from Telegram."""
+    if (denied := _denied(request)):
+        return denied
+    from smweb import telegram_cut
+    from smweb.core import MAX_UPLOAD_MB
+    data = await file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
+    code, body = await run_in_threadpool(telegram_cut.start, tg_id, file.filename or "file", data, mode, frame)
+    return JSONResponse(body, status_code=code)
+
+
+@router.get("/cut/status/{job_id}")
+def cut_status(job_id: str, request: Request, tg_id: str = ""):
+    if (denied := _denied(request)):
+        return denied
+    from smweb import telegram_cut
+    job = telegram_cut.job_for(tg_id, job_id)
+    if not job:
+        return JSONResponse({"ok": False, "msg": "Job not found"}, status_code=404)
+    return {"ok": True, **telegram_cut.describe(job_id, job)}
+
+
+@router.get("/cut/download/{job_id}")
+def cut_download(job_id: str, request: Request, tg_id: str = ""):
+    """The finished ZIP (or a short-lived R2 link when the file lives only there)."""
+    if (denied := _denied(request)):
+        return denied
+    from pathlib import Path
+    from fastapi.responses import FileResponse, RedirectResponse
+    from smweb import telegram_cut
+    job = telegram_cut.job_for(tg_id, job_id)
+    if not job or job.get("status") != "done":
+        return JSONResponse({"ok": False, "msg": "Not ready"}, status_code=409 if job else 404)
+    path = Path(str(job.get("zip_path") or ""))
+    if path.is_file():
+        return FileResponse(str(path), media_type="application/zip", filename="showcase.zip")
+    if job.get("result_key"):
+        from smweb import object_store
+        url = object_store.presigned_get_url(str(job["result_key"]), expires=600, download_name="showcase.zip",
+                                             media_type="application/zip")
+        return RedirectResponse(url, status_code=302)
+    return JSONResponse({"ok": False, "msg": "Result expired"}, status_code=410)

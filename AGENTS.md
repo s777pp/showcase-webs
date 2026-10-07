@@ -28,6 +28,10 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
 4. **`.env` exists locally** (a possibly outdated copy of the VPS one). Never print its values.
    Code reads only process environment variables (no dotenv), so tests never load it.
 5. **Cleanup status and what remains:** see section 12 (only the owner's VPS `.env` tidy-up and the git baseline remain).
+6. **"Ченджлог" / "что сделано" / "что выкладывать":** answer from `CHANGELOG.md` IN FULL, in Russian: start with the
+   block "Не выложено на VPS" at the top and then give every entry it lists with all its points (nothing summarised
+   away, nothing skipped), plus the "На VPS" steps. Check `py -3.14 scripts/release_sync.py` (dry run) for the current
+   file list and update the block when you add a new entry or after the owner says a release went out.
 
 ## 1. Stack and runtime
 
@@ -1282,6 +1286,36 @@ Only the hero exists for now; content blocks will be added below it later.
   as the site shows them in that language, Steam's own showcase names in English quotes. The extension is no longer a
   tip inside the steps: one calm `.guide__ext` block after the steps ("Don't want to deal with the console?") linking
   to `/<lang>/extension`. Tests: `tests/test_guides.py`.
+
+## 6.24 Cutting files through the Telegram bot (2026-10-08, local, not deployed)
+
+- Owner: "send a picture / GIF to the bot, pick the showcase type and maybe a frame, get the ZIP; like the Process
+  tab, no Builder". Owner allowed editing the bot project `C:\Users\n1t1337\Desktop\bottg-main` (aiogram 3, Docker
+  on an Oracle VM, deployed from the owner's PC over SSH; the folder has NO git of its own, the owner backs it up to
+  GitHub himself).
+- DONE on the site: `smweb/telegram_cut.py` + routes in `smweb/routers/bot_admin.py` (same `X-Bot-Admin-Secret`):
+  `GET /api/bot-admin/cut/quota?tg_id=`, `POST /api/bot-admin/cut/start` (multipart: tg_id, mode
+  workshop|featured|split, frame none|line|neon|rgb, file), `GET /cut/status/{job_id}?tg_id=` (status, pct, stage,
+  eta_seconds / eta_over / pct_time, error_kind / error_code, files), `GET /cut/download/{job_id}?tg_id=` (ZIP or
+  302 to R2). Ordinary Process job, owner `tg:<id>`, encode profile standard, ZIP = Steam files only. Limits: Pro if
+  the Telegram id maps to a Pro account (`telegram_billing.account_for`), else `TELEGRAM_CUT_DAILY` (default
+  FREE_LIMIT = 5) per Telegram id per UTC day; 1 active job free / 2 Pro; refusal codes limit|active|busy|too_big|empty.
+  Tests: `tests/test_telegram_cut.py` (4, pass).
+- DONE in the bot: `app/services/site_api.py` got `cut_quota`, `cut_start` (raises SiteApiError with `.code`),
+  `cut_status`, `cut_download`.
+- DONE in the bot: `bot/cutter.py` (router + FSM `CutSt.waiting_file|choose`): menu button `CUT_BUTTON`
+  "✂️ Нарезать файл" (`bot/keyboards.py`), `/cut` (command menu for everyone in run_bot.py), and any photo / animation /
+  video / image-or-video document sent with no state (or while the cut dialog is open). Screens `cut:m:<mode>` ->
+  `cut:f:<frame>` (`cut:back`, `cut:x`); the state is cleared before the download, so a double tap cannot start twice.
+  A background task downloads the file (20 MB Telegram limit), calls `site_api.cut_start`, edits one status message
+  every 2.5 s (stage words = app.js `processStageLabel`, bar = max(pct, pct_time), never backwards, 20 min cap), then
+  sends `showcase_<mode>.zip` to the chat with links to /ru/extension and the mode's guide. Refusal `limit` -> button
+  `plans:`. Router order in run_bot.py: admin, sections, purchase, cutter, handlers (catch-all last). Help text in
+  `app/texts.yml`. Checked with a real aiogram 3.15 Dispatcher, a fake Telegram session and a fake site API (script
+  lived in the session scratchpad); not yet tried against live Telegram.
+- Deploy order: site first (it needs the new /api/bot-admin/cut/* routes; `bash deploy/update.sh`, rebuild app +
+  worker), then the bot (`docker compose up -d --build` in the bot folder on the Oracle VM, .env and ./state untouched).
+  The Oracle VM address is not recorded anywhere in this project: ask the owner.
 
 ## 7. Rules for agents
 
