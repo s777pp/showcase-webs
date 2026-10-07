@@ -181,6 +181,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # not on this list, so a script could try codes as fast as it liked.
         ("/api/unlock", 10, 60),
         ("/api/analytics/event", 60, 60),
+        ("/api/presence", 6, 60),
         # Admin login stays deliberately tight. Once authenticated, the control
         # centre may perform several legitimate mutations in one minute.
         ("/api/admin/control/session", 5, 300),

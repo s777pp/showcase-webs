@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 590 passed on 2026-10-07 (~145 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 593 passed on 2026-10-07 (~150 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -1098,6 +1098,18 @@ Only the hero exists for now; content blocks will be added below it later.
   read. Clicking the message in the bell opens the same window. Language: ru/uk read the Russian text, others the
   English copy when it exists. Plain text only (`white-space:pre-line`), the only link is the message's own
   (`/path` or `https://`). Guests are not reachable (no account). Tests: `tests/test_admin_messages.py`.
+
+## 6.19 "Now on the site" on the landing monitor (2026-10-07, local, not deployed)
+
+- `smweb/presence.py` + `POST /api/presence` (routers/system.py, rate rule 6/min, no DB lookup: key =
+  `core.owner_key(request, None)`, stored as a 20-char hash in the Redis sorted set `sm:presence`, window 150 s;
+  in-process dict without Redis). `ss-shell.js` pings 0.4 s after load, every 60 s and on becoming visible (hidden
+  tabs do not ping), sets `window.SM_ONLINE` and fires `sm:online`; `/api/presence` is in error-report.js QUIET.
+- `static/js/home-online.js` paints `#homeOnline` (inside `.home-art`, before the petals canvas, so petals fall over
+  it) with 8-language copy; hidden until the first count, minimum 1. Geometry measured on `fon-3840.webp`: box
+  x 3084..3555, y 552..654 at the left edge, `transform:skewY(-3.1deg)` from the top-left (the painted text and the
+  panel's top edge slope, verticals do not: a rotate() pushed the right end into the panel border), background =
+  panel colours sampled along the slant, feathered by masks. If the background master changes, re-measure.
 
 ## 7. Rules for agents
 

@@ -207,10 +207,30 @@
   (function loadErrorReport() {
     if (window.SMErrorReport || document.querySelector('script[data-error-report]')) return;
     var script = document.createElement('script');
-    script.src = '/static/js/error-report.js?v=20261006-err2'; script.async = true; script.dataset.errorReport = '1';
+    script.src = '/static/js/error-report.js?v=20261007-online1'; script.async = true; script.dataset.errorReport = '1';
     (document.head || document.documentElement).appendChild(script);
   })();
   NAV.forEach(function (n) { if (n.key === 'news') n.label = SHELL_COPY.news; });
+
+  // "Now on the site" (2026-10-07): every shell page pings once a minute while visible; the landing
+  // monitor shows the count (home-online.js listens for sm:online). smweb/presence.py keeps 150 s.
+  (function presence() {
+    var last = 0;
+    function ping() {
+      if (document.hidden || Date.now() - last < 20000) return;
+      last = Date.now();
+      fetch('/api/presence', { method: 'POST', credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) return;
+          window.SM_ONLINE = d.online;
+          document.dispatchEvent(new CustomEvent('sm:online', { detail: d.online }));
+        }).catch(function () {});
+    }
+    setTimeout(ping, 400);
+    setInterval(ping, 60000);
+    document.addEventListener('visibilitychange', ping);
+  })();
 
   var MAINTENANCE_UI = {
     label: { en:'Maintenance', ru:'Техработы', de:'Wartung', tr:'Bakım', fr:'Maintenance', uk:'Техроботи', es:'Mantenimiento', pt:'Manutenção' },

@@ -49,6 +49,16 @@ router = APIRouter()
 LOGGER = logging.getLogger("sm")
 
 
+@router.post("/api/presence")
+def api_presence(request: Request):
+    """Count this browser as on the site; returns how many are (smweb/presence.py).
+    Keyed by the browser cookie (or IP) without a DB lookup: it runs once a minute per open tab."""
+    from smweb import presence
+    from smweb.core import owner_key
+    return JSONResponse({"ok": True, "online": presence.ping(owner_key(request, None))},
+                        headers={"Cache-Control": "no-store"})
+
+
 @router.get("/api/maintenance")
 def api_maintenance():
     state = maintenance.get_state()

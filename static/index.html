@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="/static/css/home-loader.css?v=20260925-loader2"/>
 <link rel="stylesheet" href="/static/css/support-chat.css?v=20261001-sup1"/>
 <link rel="stylesheet" href="/static/css/analytics-consent.css?v=20260927-lift1"/>
-<link rel="stylesheet" href="/static/css/home.css?v=20261007-home1"/>
+<link rel="stylesheet" href="/static/css/home.css?v=20261007-online2"/>
 <link rel="stylesheet" href="/static/css/home-blocks.css?v=20261007-home1"/>
 <link rel="stylesheet" href="/static/css/home-overlays.css?v=20261001-ovl1"/>
 <script src="/static/js/locales-extra.js?v=20261007-home3"></script>
@@ -61,6 +61,8 @@
           <source type="image/webp" srcset="/static/img/home/fon-1000.webp?v=20260925-home22 1000w, /static/img/home/fon-1280.webp?v=20260925-home22 1280w, /static/img/home/fon-1920.webp?v=20260925-home22 1920w, /static/img/home/fon-2560.webp?v=20260925-home22 2560w, /static/img/home/fon-3840.webp?v=20260925-home22 3840w" sizes="max(100vw, 177.7svh)"/>
           <img class="home-art__bg" src="/static/img/home/fon-1920.webp?v=20260925-home22" alt="" width="3840" height="2160" decoding="async" fetchpriority="high"/>
         </picture>
+        <!-- Live "now on the site" over the painted "Currently Offline" (home-online.js) -->
+        <div class="home-online" id="homeOnline" hidden><span class="home-online__state">Now on the site</span><span class="home-online__count"></span></div>
         <canvas class="home-petals" id="homePetals" aria-hidden="true"></canvas>
         <div class="home-vrm" id="heroVrm" data-model="/static/models/saba-0.1-web.vrm?v=20260929-web1" data-model-fallback="https://media.showcasemaker.com/site-assets/models/saba-0.1.vrm?v=20260918-r2-1">
           <canvas id="heroVrmCanvas"></canvas>
@@ -337,10 +339,11 @@
 </div>
 
 <script src="/static/js/analytics.js?v=20260922a"></script>
-<script src="/static/ss-shell.js?v=20261007-msg1"></script>
+<script src="/static/ss-shell.js?v=20261007-online1"></script>
 <script src="/static/js/home.js?v=20261007-home3"></script>
 <script src="/static/js/home-stars.js?v=20260927-stars2" defer></script>
 <script src="/static/js/home-petals.js?v=20261007-home1" defer></script>
+<script src="/static/js/home-online.js?v=20261007-online2" defer></script>
 <script type="module" src="/static/js/home-vrm.js?v=20260927-stars2"></script>
 </body>
 </html>
