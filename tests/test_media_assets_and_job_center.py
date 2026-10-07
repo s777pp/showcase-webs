@@ -75,7 +75,7 @@ def test_retry_rechecks_quota_concurrency_and_current_watermark(tmp_path, monkey
     source.write_bytes(b"fixture")
     old = {"kind": "process", "status": "done", "user_key": "42",
            "files": [{"path": str(source)}], "opts": {"text": "", "opacity": 0}}
-    quota = {"pro": False, "left": 0, "user_id": 42, "email": "test@example.invalid"}
+    quota = {"pro": False, "left": 0, "limit": 5, "user_id": 42, "email": "test@example.invalid"}
     active = {"count": 0}
     created, charged = [], []
     monkeypatch.setattr(jobs, "_owned", lambda request, jid: old)
@@ -85,7 +85,8 @@ def test_retry_rechecks_quota_concurrency_and_current_watermark(tmp_path, monkey
     monkeypatch.setattr(rs, "job_count_user", lambda owner: active["count"])
     monkeypatch.setattr(rs, "rate_limit", lambda *args, **kwargs: (True, 0))
     monkeypatch.setattr(rs, "job_create", lambda jid, payload, **kwargs: created.append(payload))
-    monkeypatch.setattr(jobs, "quota_inc", lambda request, n: charged.append(n))
+    # StartGuard reserves with +n and gives back the unused part with -n: the net is what was charged.
+    monkeypatch.setattr(rs, "quota_inc", lambda ip, day, n=1: charged.append(n) or sum(charged))
     monkeypatch.setattr(jobs, "_worker_mode", lambda: "embedded")
     monkeypatch.setattr(jobs, "_dispatch_embedded", lambda *args: None)
     app = FastAPI()

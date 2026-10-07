@@ -225,8 +225,10 @@ async function initHomeVrm() {
 
   function applyPose(now, gaze, reactAmount) {
     const t = now / 1000;
-    const breath = Math.sin(t * 1.55);
-    const sway = Math.sin(t * 0.42);
+    // During the scroll close-up she holds still: at 10x any breathing reads as shaking.
+    const calm = 1 - 0.9 * Math.min(1, window.__homeLook?.w || 0);
+    const breath = Math.sin(t * 1.55) * calm;
+    const sway = Math.sin(t * 0.42) * calm;
     for (const [name, [x, y, z]] of Object.entries(pose)) {
       let dx = 0, dy = 0, dz = 0;
       if (name === 'spine') { dx = breath * 0.012; dz = sway * 0.012; }
@@ -270,9 +272,10 @@ async function initHomeVrm() {
   const headTop = headWorld.y + 0.25; // crown + hair above the head bone
 
   function resize() {
-    const rect = host.getBoundingClientRect();
+    // Layout size, not getBoundingClientRect: during the scroll close-up the box is scaled by CSS.
+    const rect = { width: host.offsetWidth, height: host.offsetHeight };
     if (!rect.width || !rect.height) return;
-    renderer.setSize(rect.width, rect.height, false);
+    if (!view.zoomed) renderer.setSize(rect.width, rect.height, false);
     camera.aspect = rect.width / rect.height;
     // Map design pixels to world units so the seat and the crown land where
     // the painting expects them, whatever the viewport size.
@@ -286,10 +289,72 @@ async function initHomeVrm() {
     camera.position.set(cx, cy, distance);
     camera.lookAt(cx, cy, 0);
     camera.updateProjectionMatrix();
+    view.key = '';
+  }
+
+  /* Close-up (desktop scroll scene, home-scroll.js): the painting is scaled by CSS, which would blur the
+     character. While the host box is scaled up, the canvas covers only the window's part of the box and the
+     camera renders exactly that part (setViewOffset) at screen resolution, so the face stays sharp at any zoom.
+     The drawing buffer is the window size, so it is not reallocated while the zoom changes. */
+  const view = { zoomed: false, key: '' };
+  function syncView() {
+    const w = host.offsetWidth, h = host.offsetHeight;
+    if (!w || !h) return false;
+    const rect = host.getBoundingClientRect();
+    const s = rect.width / w;
+    const zoomed = s > 1.03;
+    if (!zoomed) {
+      if (view.zoomed) {
+        view.zoomed = false;
+        canvas.style.left = canvas.style.top = canvas.style.width = canvas.style.height = canvas.style.position = '';
+        camera.clearViewOffset();
+        resize();
+        return true;
+      }
+      return false;
+    }
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const x = -rect.left / s, y = -rect.top / s, cw = vw / s, ch = vh / s;
+    const key = [x, y, cw].map(v => v.toFixed(2)).join(',');
+    if (view.zoomed && key === view.key) return false;
+    if (!view.zoomed) {
+      view.zoomed = true;
+      renderer.setSize(vw, vh, false);
+      camera.aspect = w / h;
+    } else if (canvas.width !== Math.round(vw * renderer.getPixelRatio())) {
+      renderer.setSize(vw, vh, false);
+    }
+    view.key = key;
+    Object.assign(canvas.style, { position: 'absolute', left: x + 'px', top: y + 'px', width: cw + 'px', height: ch + 'px' });
+    camera.setViewOffset(w, h, x, y, cw, ch);
+    return true;
+  }
+
+  // Eye point for the close-up, as fractions of the host box (published every frame).
+  const eyeL = new THREE.Vector3(), eyeR = new THREE.Vector3();
+  function publishEyes() {
+    const left = humanoid.getNormalizedBoneNode('leftEye'), right = humanoid.getNormalizedBoneNode('rightEye');
+    const head = humanoid.getNormalizedBoneNode('head');
+    if (left && right) { left.getWorldPosition(eyeL); right.getWorldPosition(eyeR); }
+    else if (head) { head.getWorldPosition(eyeL); eyeL.y += 0.06; eyeL.z += 0.08; eyeR.copy(eyeL); eyeL.x -= 0.032; eyeR.x += 0.032; }
+    else return;
+    // Project with the plain (unzoomed) frustum.
+    const offset = camera.view && camera.view.enabled ? Object.assign({}, camera.view) : null;
+    if (offset) { camera.view.enabled = false; camera.updateProjectionMatrix(); }
+    eyeL.project(camera); eyeR.project(camera);
+    if (offset) { camera.view.enabled = true; camera.updateProjectionMatrix(); }
+    window.__homeEyes = {
+      x: ((eyeL.x + eyeR.x) / 2 + 1) / 2,
+      y: (1 - (eyeL.y + eyeR.y) / 2) / 2,
+      span: Math.abs(eyeL.x - eyeR.x) / 2,
+    };
   }
 
   const pointer = new THREE.Vector2(0, 0);
   const gaze = new THREE.Vector2(0, 0);
+  // Desktop scroll scene (home-scroll.js): window.__homeLook = {x, y, w} turns the head towards the monitor.
+  const lookAim = new THREE.Vector2(0, 0);
+  const lookMix = new THREE.Vector2(0, 0);
   let reactingUntil = 0;
   let reactAmount = 0;
   let nextBlink = performance.now() + randomBlinkDelay();
@@ -340,7 +405,8 @@ async function initHomeVrm() {
     reactAmount += ((reacting ? 1 : 0) - reactAmount) * Math.min(1, delta * (reacting ? 7 : 3));
 
     if (!reducedMotion) {
-      gaze.lerp(pointer, 0.06);
+      const look = window.__homeLook;
+      gaze.lerp(look && look.w > 0 ? lookMix.copy(pointer).lerp(lookAim.set(look.x, look.y), Math.min(1, look.w)) : pointer, 0.06);
       applyPose(now, gaze, reactAmount);
       lookTarget.position.set(gaze.x * 1.2, headWorld.y + gaze.y * 0.5, 2.5);
       if (!blinkStarted && now >= nextBlink) blinkStarted = now;
@@ -357,7 +423,10 @@ async function initHomeVrm() {
     }
 
     vrm.update(delta);
+    syncView();
+    publishEyes();
     renderer.render(scene, camera);
+    renderedKey = view.key;
     // Shooting stars (home-stars.js) cut the character's silhouette out of their canvas.
     if (window.__homeStarsMask) window.__homeStarsMask(canvas);
     if (firstFrame) {
@@ -367,6 +436,15 @@ async function initHomeVrm() {
       prepareReactionSound();
     }
   }
+
+  // home-scroll.js writes the zoom after this loop may already have drawn the frame; it calls this so the
+  // character is redrawn for the new transform in the same frame instead of lagging one frame behind.
+  let renderedKey = '';
+  window.__homeVrmSync = () => {
+    if (disposed || !active || firstFrame) return;
+    syncView();
+    if (view.key !== renderedKey) { renderer.render(scene, camera); renderedKey = view.key; }
+  };
 
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(host);

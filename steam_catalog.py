@@ -734,10 +734,11 @@ def canonical_profile_url(url: str) -> str | None:
     return f"https://steamcommunity.com/{m.group(1).lower()}/{quote(m.group(2))}"
 
 
-def profile(url: str, progress=None, fresh: bool = False) -> dict:
+def profile(url: str, progress=None, fresh: bool = False, paid: bool = True) -> dict:
     """Load the public part of a Steam profile without a Web API key.
 
     Accepts full URL, /id/vanity, /profiles/steamid64, bare vanity or SteamID64.
+    paid=False never uses the paid Bright Data browser (the anonymous GET /api/steam/profile).
     """
     canonical = canonical_profile_url(url)
     if not canonical:
@@ -748,7 +749,7 @@ def profile(url: str, progress=None, fresh: bool = False) -> dict:
     # Rate limits are tracked per route inside _load_profile, not globally.
     return steam_profile_guard.run(
         gate_path, canonical.lower(),
-        lambda: _load_profile(canonical, progress=progress, gate_path=gate_path),
+        lambda: _load_profile(canonical, progress=progress, gate_path=gate_path, paid=paid),
         use_global_gate=False, fresh=fresh,
     )
 
@@ -856,14 +857,15 @@ def _profile_routes(progress):
     return routes
 
 
-def _page_via_routes(canonical, progress, gate_path):
+def _page_via_routes(canonical, progress, gate_path, paid=True):
     """Try every configured way of reaching Steam, cheapest first.
 
     Returns (html, route, error).  Raises RateLimited when every route is
     paused, so the caller can fall back to a cached copy of the profile.
     """
     waits, error = [], None
-    for step, (name, fetch) in enumerate(_profile_routes(progress)):
+    routes = [route for route in _profile_routes(progress) if paid or route[0] != "browser"]
+    for step, (name, fetch) in enumerate(routes):
         wait = steam_profile_guard.route_wait(gate_path, name)
         if wait:
             waits.append(wait)
@@ -901,9 +903,9 @@ def _page_via_routes(canonical, progress, gate_path):
                       "msg": "Steam profile is unavailable or private"}
 
 
-def _load_profile(canonical, progress=None, gate_path=None):
+def _load_profile(canonical, progress=None, gate_path=None, paid=True):
     gate_path = gate_path or Path(os.environ.get("DATA_DIR", "data")) / "steam_profiles.sqlite3"
-    page_html, route, error = _page_via_routes(canonical, progress, gate_path)
+    page_html, route, error = _page_via_routes(canonical, progress, gate_path, paid=paid)
     if error:
         return error
     if "profile_private_info" in page_html and "profile_customization" not in page_html:

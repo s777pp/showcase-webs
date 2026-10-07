@@ -1,6 +1,6 @@
 @import url('/static/steam-mockup/motiva_sans.css');
 @font-face{font-family:'Vela Sans';src:url('/static/steam-mockup/fonts/VelaSans-Medium.ttf') format('truetype');font-weight:500 900;font-style:normal;font-display:swap}
-@font-face{font-family:'Consolas';src:url('/static/steam-mockup/fonts/consolas.ttf') format('truetype');font-weight:400 900;font-style:normal;font-display:swap}
+@font-face{font-family:'Consolas';src:local('Consolas'),url('/static/steam-mockup/fonts/consolas.ttf') format('truetype');font-weight:400 900;font-style:normal;font-display:swap}
 
 .workspace-heading{display:flex;align-items:center;gap:28px;flex-wrap:wrap}
 #showcaseBuilder [hidden],#tab-projects [hidden]{display:none!important}

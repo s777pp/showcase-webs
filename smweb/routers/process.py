@@ -18,6 +18,7 @@ from pathlib import Path
 
 from fastapi import File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, FileResponse, Response
+from starlette.concurrency import run_in_threadpool
 
 import processor as proc
 import redis_store as rs
@@ -33,7 +34,7 @@ from smweb import square_fx
 from fastapi import APIRouter
 
 
-from smweb.core import JOBS, MAX_UPLOAD_MB, _auth_user, max_jobs_for_user, owner_key, quota_inc, quota_state
+from smweb.core import JOBS, MAX_UPLOAD_MB, StartGuard, _auth_user, max_jobs_for_user, owner_key, quota_state
 from smweb.job_access import browser_owns_job
 from smweb.jobs import _sniff_extension
 from smweb.jobs import (
@@ -126,79 +127,84 @@ async def api_workshop_studio_start(
     duration = max(1.0, min(8.0, duration))
     user = _auth_user(request)
     user_key = owner_key(request, user)
-    if user_key and rs.job_count_user(user_key) >= max_jobs_for_user(int(user["id"]) if user else None):
-        return JSONResponse({"ok": False, "msg": "Too many active jobs"}, status_code=429)
-
-    jid = secrets.token_hex(12)
-    job_dir = JOBS / jid
-    job_dir.mkdir(parents=True, exist_ok=True)
-    uploaded = []
-    uploaded_bytes = 0
-    allowed = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".webm"}
+    guard = StartGuard(request, q, user_key)
+    if not guard.lock():
+        return JSONResponse({"ok": False, "msg": "Your previous upload is still starting. Try again in a moment."}, status_code=429)
     try:
-        for index, file in enumerate(files, 1):
-            suffix = Path(file.filename or "").suffix.lower()
-            # Other still-image formats are stored as-is first and converted to PNG below.
-            path = job_dir / f"upload_{index}{suffix if suffix in allowed else '.src'}"
-            written = 0
-            with path.open("wb") as output:
-                while chunk := await file.read(1024 * 1024):
-                    written += len(chunk)
-                    uploaded_bytes += len(chunk)
-                    if written > MAX_UPLOAD_MB * 1024 * 1024:
-                        raise ValueError(f"Each source must be under {MAX_UPLOAD_MB} MB")
-                    if uploaded_bytes > 95 * 1024 * 1024:
-                        raise ValueError("All sources together must be under 100 MB")
-                    output.write(chunk)
-            if not written:
-                raise ValueError("One source file is empty")
-            proc.restore_gif_trailer_file(path)  # a part of a Steam-ready ZIP (HEX 21) used as a source
-            if suffix not in allowed:
-                # Names like "From Klickpin.com- Long title" lost their extension: trust the bytes.
-                with path.open("rb") as head_file:
-                    sniffed = _sniff_extension(head_file.read(32))
-                if sniffed in allowed:
-                    real = job_dir / f"upload_{index}{sniffed}"
-                    path.replace(real)
-                    path, suffix = real, sniffed
-            if suffix not in allowed:
-                png = proc.still_image_to_png(path.read_bytes())
-                path.unlink(missing_ok=True)
-                if png is None:
-                    raise ValueError("Unsupported file format")
-                path = job_dir / f"upload_{index}.png"
-                path.write_bytes(png)
-                written = len(png)
-            uploaded.append({"name": file.filename, "path": str(path), "size": written})
-    except ValueError as exc:
-        shutil.rmtree(job_dir, ignore_errors=True)
-        return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
+        if user_key and rs.job_count_user(user_key) >= max_jobs_for_user(int(user["id"]) if user else None):
+            return JSONResponse({"ok": False, "msg": "Too many active jobs"}, status_code=429)
+        if not guard.reserve(rows):
+            return free_limits.refusal(request, "daily_more" if q["left"] > 0 else "daily", "files", n=q["limit"])
 
-    worker_mode = _worker_mode()
-    external = worker_mode == "external" and rs.redis_ok() and rs.worker_alive()
-    payload = {
-        "kind": "workshop_studio", "queue": "media", "status": "queued", "pct": 1,
-        "stage": "queued", "created": time.time(), "user_key": user_key,
-        "files": uploaded,
-        "options": {"rows": normalized, "fps": fps, "duration": duration,
-                    "outline": outline.lower() in ("1", "true", "on"),
-                    "free_watermark": not q["pro"],
-                    "layout": layout, "crops": crop_boxes, "fx": effects,
-                    # Same choices as Process: encode speed and the optional extra files.
-                    "encode_profile": proc.normalize_encode_profile(encode_profile),
-                    "extras": sorted(_selected_extras(include_original, include_preview))},
-        "opts": {"modes": ["workshop_studio"]},
-    }
-    rs.job_create(jid, payload, enqueue=external)
-    _job_set(jid, status="queued", pct=1, stage="queued", user_key=user_key)
-    try:
-        quota_inc(request, rows)
-    except Exception:
-        pass
-    if not external:
-        from smweb.workshop_studio_jobs import run
-        _job_pool.submit(run, jid, payload)
-    return {"ok": True, "job_id": jid}
+        jid = secrets.token_hex(12)
+        job_dir = JOBS / jid
+        job_dir.mkdir(parents=True, exist_ok=True)
+        uploaded = []
+        uploaded_bytes = 0
+        allowed = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".webm"}
+        try:
+            for index, file in enumerate(files, 1):
+                suffix = Path(file.filename or "").suffix.lower()
+                # Other still-image formats are stored as-is first and converted to PNG below.
+                path = job_dir / f"upload_{index}{suffix if suffix in allowed else '.src'}"
+                written = 0
+                with path.open("wb") as output:
+                    while chunk := await file.read(1024 * 1024):
+                        written += len(chunk)
+                        uploaded_bytes += len(chunk)
+                        if written > MAX_UPLOAD_MB * 1024 * 1024:
+                            raise ValueError(f"Each source must be under {MAX_UPLOAD_MB} MB")
+                        if uploaded_bytes > 95 * 1024 * 1024:
+                            raise ValueError("All sources together must be under 100 MB")
+                        output.write(chunk)
+                if not written:
+                    raise ValueError("One source file is empty")
+                await run_in_threadpool(proc.restore_gif_trailer_file, path)  # a part of a Steam-ready ZIP (HEX 21) used as a source
+                if suffix not in allowed:
+                    # Names like "From Klickpin.com- Long title" lost their extension: trust the bytes.
+                    with path.open("rb") as head_file:
+                        sniffed = _sniff_extension(head_file.read(32))
+                    if sniffed in allowed:
+                        real = job_dir / f"upload_{index}{sniffed}"
+                        path.replace(real)
+                        path, suffix = real, sniffed
+                if suffix not in allowed:
+                    png = await run_in_threadpool(lambda source=path: proc.still_image_to_png(source.read_bytes()))
+                    path.unlink(missing_ok=True)
+                    if png is None:
+                        raise ValueError("Unsupported file format")
+                    path = job_dir / f"upload_{index}.png"
+                    path.write_bytes(png)
+                    written = len(png)
+                uploaded.append({"name": file.filename, "path": str(path), "size": written})
+        except ValueError as exc:
+            shutil.rmtree(job_dir, ignore_errors=True)
+            return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
+
+        worker_mode = _worker_mode()
+        external = worker_mode == "external" and rs.redis_ok() and rs.worker_alive()
+        payload = {
+            "kind": "workshop_studio", "queue": "media", "status": "queued", "pct": 1,
+            "stage": "queued", "created": time.time(), "user_key": user_key,
+            "files": uploaded,
+            "options": {"rows": normalized, "fps": fps, "duration": duration,
+                        "outline": outline.lower() in ("1", "true", "on"),
+                        "free_watermark": not q["pro"],
+                        "layout": layout, "crops": crop_boxes, "fx": effects,
+                        # Same choices as Process: encode speed and the optional extra files.
+                        "encode_profile": proc.normalize_encode_profile(encode_profile),
+                        "extras": sorted(_selected_extras(include_original, include_preview))},
+            "opts": {"modes": ["workshop_studio"]},
+        }
+        rs.job_create(jid, payload, enqueue=external)
+        _job_set(jid, status="queued", pct=1, stage="queued", user_key=user_key)
+        guard.settle(rows)
+        if not external:
+            from smweb.workshop_studio_jobs import run
+            _job_pool.submit(run, jid, payload)
+        return {"ok": True, "job_id": jid}
+    finally:
+        guard.release()
 
 
 def _analytics_mode(opts: dict) -> str:
@@ -395,123 +401,130 @@ async def api_process_start(
         user_key = owner_key(request, u)
     except Exception:
         user_key = ""
-    # Check the per-user cap BEFORE registering the job or charging quota,
-    # otherwise a rejected request still burns a free-tier slot.
-    if user_key and rs.job_count_user(user_key) >= max_jobs_for_user(int(u["id"]) if u else None):
-        return JSONResponse(
-            {"ok": False, "msg": "Too many active jobs. Wait for current processing to finish."},
-            status_code=429,
-        )
-
-    # Persist directly to the shared volume. Do not retain every upload in RAM:
-    # several users sending 40 MB files otherwise exhaust the API container
-    # before the worker even starts.
-    job_upload_dir = JOBS / jid
-    job_upload_dir.mkdir(parents=True, exist_ok=True)
-    files_meta = []
-    asset_owner = media_assets.owner_key(request)
-    for asset_index, asset_id in enumerate(requested_assets):
-        resolved = media_assets.resolve(asset_id, asset_owner)
-        if not resolved:
-            shutil.rmtree(job_upload_dir, ignore_errors=True)
-            return JSONResponse({"ok": False, "msg": "One of the uploaded assets is unavailable"}, status_code=410)
-        meta, path = resolved
-        asset_rotation = proc.normalize_rotation(requested_rotations[asset_index] if asset_index < len(requested_rotations) else 0)
-        asset_rotation = min((0.0, 90.0, -90.0, -180.0), key=lambda angle: abs(angle - asset_rotation))
-        files_meta.append({
-            "name": str(meta.get("name") or path.name), "path": str(path),
-            "rotation": asset_rotation, "size": int(meta.get("size") or path.stat().st_size),
-            "sha256": str(meta.get("sha256") or ""), "asset_id": asset_id,
-        })
-    per_file_limit = MAX_UPLOAD_MB * 1024 * 1024
-    for index, uf in enumerate(files, start=len(files_meta)):
-        name = uf.filename or "file"
-        safe = re.sub(r"[^a-zA-Z0-9._-]", "_", name)[:80] or "file"
-        p = job_upload_dir / f"{index:02d}_{safe}"
-        written = 0
-        too_large = False
-        digest = hashlib.sha256()
-        with p.open("wb") as destination:
-            while True:
-                chunk = await uf.read(1024 * 1024)
-                if not chunk:
-                    break
-                written += len(chunk)
-                if written > per_file_limit:
-                    too_large = True
-                    break
-                destination.write(chunk)
-                digest.update(chunk)
-        if too_large:
-            shutil.rmtree(job_upload_dir, ignore_errors=True)
-            return JSONResponse({"ok": False, "msg": f"{name}: >{MAX_UPLOAD_MB}MB"}, status_code=413)
-        if not written:
-            p.unlink(missing_ok=True)
-            continue
-        rotation = proc.normalize_rotation(requested_rotations[index] if index < len(requested_rotations) else 0)
-        # Processing uses crisp quarter-turns. Arbitrary rotation belongs to the
-        # Character editor, where a transparent expanded canvas is meaningful.
-        rotation = min((0.0, 90.0, -90.0, -180.0), key=lambda angle: abs(angle - rotation))
-        files_meta.append({"name": name, "path": str(p), "rotation": rotation, "size": written, "sha256": digest.hexdigest()})
-    if not files_meta:
-        shutil.rmtree(job_upload_dir, ignore_errors=True)
-        return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
-
-    event_context = analytics.request_context(request)
-    total_upload_bytes = sum(int(item.get("size") or 0) for item in files_meta)
-    first_suffix = Path(files_meta[0]["name"]).suffix.lower().lstrip(".")
-    total_mb = total_upload_bytes / (1024 * 1024)
-    opts["_analytics"] = {
-        "session_hash": event_context.get("session_hash") or "",
-        "language": event_context.get("language") or "other",
-        "user_id": int(u["id"]) if u and u.get("id") else None,
-        "file_type": first_suffix,
-        "size_bucket": "under_1mb" if total_mb < 1 else "1_5mb" if total_mb < 5 else "5_20mb" if total_mb < 20 else "over_20mb",
-    }
-
-    cache_document = {
-        "version": 2,
-        "owner": user_key,
-        "files": [{"sha256": item.get("sha256"), "rotation": item.get("rotation"), "name": item.get("name")} for item in files_meta],
-        "options": {key: value for key, value in opts.items() if key != "_analytics"},
-    }
-    cache_key = hashlib.sha256(json.dumps(cache_document, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-    cached_jid = rs.job_cache_get(cache_key)
-    cached_job = rs.job_get(cached_jid) if cached_jid else None
-    if cached_jid and cached_job and cached_job.get("status") == "done" and (
-        cached_job.get("result_key") or Path(str(cached_job.get("zip_path") or "")).is_file()
-    ):
-        rs.job_update(cached_jid, cache_hit=True)
-        shutil.rmtree(job_upload_dir, ignore_errors=True)
-        return {"ok": True, "job_id": cached_jid, "cached": True}
-
-    # Only hand the job to an external worker if one is actually alive; otherwise
-    # the entry would sit in the Redis queue forever with nobody to pop it.
-    mode = _worker_mode()
-    external = mode == "external" and rs.redis_ok() and rs.worker_alive()
-    if mode == "external" and not external:
-        _LOG.info(f"[job {jid[:8]}] WORKER_MODE=external but no live worker "
-            f"(redis={rs.redis_ok()} beat={rs.worker_alive()}) — running embedded")
-
-    payload = {
-        "kind": "process", "queue": "media",
-        "status": "queued", "pct": 1, "stage": "queued",
-        "user_key": user_key, "files": files_meta, "opts": opts,
-        "created": time.time(), "cache_key": cache_key,
-    }
-    rs.job_create(jid, payload, enqueue=external)
-    _job_set(jid, status="queued", pct=1, stage="queued", created=time.time(), user_key=user_key)
-    analytics.record("process_started", session_hash=opts["_analytics"]["session_hash"],
-                     user_id=opts["_analytics"]["user_id"], language=opts["_analytics"]["language"],
-                     properties={"mode": _analytics_mode(opts), "file_type": opts["_analytics"]["file_type"]},
-                     event_key=f"process:{jid}:started")
+    # One start at a time per owner; the free files are reserved atomically and the
+    # unused part is given back (smweb.core.StartGuard).
+    guard = StartGuard(request, q, user_key)
+    if not guard.lock():
+        return JSONResponse({"ok": False, "msg": "Your previous upload is still starting. Try again in a moment."}, status_code=429)
     try:
-        quota_inc(request, len(files_meta))
-    except Exception:
-        pass
-    if not external:
-        _job_pool.submit(_run_process_job_from_payload, jid, payload)
-    return {"ok": True, "job_id": jid}
+        # Check the per-user cap BEFORE registering the job or charging quota,
+        # otherwise a rejected request still burns a free-tier slot.
+        if user_key and rs.job_count_user(user_key) >= max_jobs_for_user(int(u["id"]) if u else None):
+            return JSONResponse(
+                {"ok": False, "msg": "Too many active jobs. Wait for current processing to finish."},
+                status_code=429,
+            )
+        if not guard.reserve(len(files) + len(requested_assets)):
+            return free_limits.refusal(request, "daily", "files", n=q["limit"])
+
+        # Persist directly to the shared volume. Do not retain every upload in RAM:
+        # several users sending 40 MB files otherwise exhaust the API container
+        # before the worker even starts.
+        job_upload_dir = JOBS / jid
+        job_upload_dir.mkdir(parents=True, exist_ok=True)
+        files_meta = []
+        asset_owner = media_assets.owner_key(request)
+        for asset_index, asset_id in enumerate(requested_assets):
+            resolved = media_assets.resolve(asset_id, asset_owner)
+            if not resolved:
+                shutil.rmtree(job_upload_dir, ignore_errors=True)
+                return JSONResponse({"ok": False, "msg": "One of the uploaded assets is unavailable"}, status_code=410)
+            meta, path = resolved
+            asset_rotation = proc.normalize_rotation(requested_rotations[asset_index] if asset_index < len(requested_rotations) else 0)
+            asset_rotation = min((0.0, 90.0, -90.0, -180.0), key=lambda angle: abs(angle - asset_rotation))
+            files_meta.append({
+                "name": str(meta.get("name") or path.name), "path": str(path),
+                "rotation": asset_rotation, "size": int(meta.get("size") or path.stat().st_size),
+                "sha256": str(meta.get("sha256") or ""), "asset_id": asset_id,
+            })
+        per_file_limit = MAX_UPLOAD_MB * 1024 * 1024
+        for index, uf in enumerate(files, start=len(files_meta)):
+            name = uf.filename or "file"
+            safe = re.sub(r"[^a-zA-Z0-9._-]", "_", name)[:80] or "file"
+            p = job_upload_dir / f"{index:02d}_{safe}"
+            written = 0
+            too_large = False
+            digest = hashlib.sha256()
+            with p.open("wb") as destination:
+                while True:
+                    chunk = await uf.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    written += len(chunk)
+                    if written > per_file_limit:
+                        too_large = True
+                        break
+                    destination.write(chunk)
+                    digest.update(chunk)
+            if too_large:
+                shutil.rmtree(job_upload_dir, ignore_errors=True)
+                return JSONResponse({"ok": False, "msg": f"{name}: >{MAX_UPLOAD_MB}MB"}, status_code=413)
+            if not written:
+                p.unlink(missing_ok=True)
+                continue
+            rotation = proc.normalize_rotation(requested_rotations[index] if index < len(requested_rotations) else 0)
+            # Processing uses crisp quarter-turns. Arbitrary rotation belongs to the
+            # Character editor, where a transparent expanded canvas is meaningful.
+            rotation = min((0.0, 90.0, -90.0, -180.0), key=lambda angle: abs(angle - rotation))
+            files_meta.append({"name": name, "path": str(p), "rotation": rotation, "size": written, "sha256": digest.hexdigest()})
+        if not files_meta:
+            shutil.rmtree(job_upload_dir, ignore_errors=True)
+            return JSONResponse({"ok": False, "msg": "No files"}, status_code=400)
+
+        event_context = analytics.request_context(request)
+        total_upload_bytes = sum(int(item.get("size") or 0) for item in files_meta)
+        first_suffix = Path(files_meta[0]["name"]).suffix.lower().lstrip(".")
+        total_mb = total_upload_bytes / (1024 * 1024)
+        opts["_analytics"] = {
+            "session_hash": event_context.get("session_hash") or "",
+            "language": event_context.get("language") or "other",
+            "user_id": int(u["id"]) if u and u.get("id") else None,
+            "file_type": first_suffix,
+            "size_bucket": "under_1mb" if total_mb < 1 else "1_5mb" if total_mb < 5 else "5_20mb" if total_mb < 20 else "over_20mb",
+        }
+
+        cache_document = {
+            "version": 2,
+            "owner": user_key,
+            "files": [{"sha256": item.get("sha256"), "rotation": item.get("rotation"), "name": item.get("name")} for item in files_meta],
+            "options": {key: value for key, value in opts.items() if key != "_analytics"},
+        }
+        cache_key = hashlib.sha256(json.dumps(cache_document, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+        cached_jid = rs.job_cache_get(cache_key)
+        cached_job = rs.job_get(cached_jid) if cached_jid else None
+        if cached_jid and cached_job and cached_job.get("status") == "done" and (
+            cached_job.get("result_key") or Path(str(cached_job.get("zip_path") or "")).is_file()
+        ):
+            rs.job_update(cached_jid, cache_hit=True)
+            shutil.rmtree(job_upload_dir, ignore_errors=True)
+            return {"ok": True, "job_id": cached_jid, "cached": True}
+
+        # Only hand the job to an external worker if one is actually alive; otherwise
+        # the entry would sit in the Redis queue forever with nobody to pop it.
+        mode = _worker_mode()
+        external = mode == "external" and rs.redis_ok() and rs.worker_alive()
+        if mode == "external" and not external:
+            _LOG.info(f"[job {jid[:8]}] WORKER_MODE=external but no live worker "
+                f"(redis={rs.redis_ok()} beat={rs.worker_alive()}) — running embedded")
+
+        payload = {
+            "kind": "process", "queue": "media",
+            "status": "queued", "pct": 1, "stage": "queued",
+            "user_key": user_key, "files": files_meta, "opts": opts,
+            "created": time.time(), "cache_key": cache_key,
+        }
+        rs.job_create(jid, payload, enqueue=external)
+        _job_set(jid, status="queued", pct=1, stage="queued", created=time.time(), user_key=user_key)
+        analytics.record("process_started", session_hash=opts["_analytics"]["session_hash"],
+                         user_id=opts["_analytics"]["user_id"], language=opts["_analytics"]["language"],
+                         properties={"mode": _analytics_mode(opts), "file_type": opts["_analytics"]["file_type"]},
+                         event_key=f"process:{jid}:started")
+        guard.settle(len(files_meta))
+        if not external:
+            _job_pool.submit(_run_process_job_from_payload, jid, payload)
+        return {"ok": True, "job_id": jid}
+    finally:
+        guard.release()
 
 
 def _process_job_for(request: Request, job_id: str) -> dict | None:

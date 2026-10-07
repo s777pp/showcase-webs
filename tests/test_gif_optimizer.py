@@ -114,7 +114,7 @@ def _client(tmp_path, monkeypatch, owner="guest-1", left=5):
     monkeypatch.setattr(api, "_auth_user", lambda request: None)
     monkeypatch.setattr(api, "owner_key", lambda request, user=None: owner)
     monkeypatch.setattr(api, "_worker_mode", lambda: "embedded")
-    monkeypatch.setattr(api, "quota_inc", lambda request, count: None)
+    monkeypatch.setattr(api.rs, "quota_inc", lambda ip, day, n=1: 0)
     monkeypatch.setattr(api._job_pool, "submit", lambda func, *args: func(*args))
     monkeypatch.setattr(opt, "find_gifsicle", lambda: None)
     app = FastAPI()

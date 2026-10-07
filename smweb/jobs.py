@@ -161,6 +161,11 @@ def _cleanup_loop():
             except Exception:
                 _LOG.debug("ignored error", exc_info=True)
             try:
+                import auth_db
+                auth_db.prune_sessions()
+            except Exception:
+                _LOG.debug("ignored error", exc_info=True)
+            try:
                 from smweb import gumroad_billing
                 gumroad_billing.maybe_reconcile()
             except Exception:

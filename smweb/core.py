@@ -184,8 +184,19 @@ def _load_usage() -> dict:
 
 
 def _save_usage(u: dict) -> None:
+    """Keep only today's rows and replace the file atomically.
+
+    The file used to keep every address ever seen and was rewritten in place by two
+    Uvicorn processes at once (a torn file read back as {} after a restart). Redis is the
+    shared counter; this file is only the outage floor, so today's rows are enough.
+    """
+    today = _day()
+    for ip in [ip for ip, row in u.items() if not isinstance(row, dict) or row.get("day") != today]:
+        u.pop(ip, None)
     try:
-        USAGE_FILE.write_text(json.dumps(u, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp = USAGE_FILE.with_name(USAGE_FILE.name + f".{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(u, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        tmp.replace(USAGE_FILE)
     except Exception:
         pass
 
@@ -498,12 +509,8 @@ def quota_state(req: Request) -> dict:
     email = user.get("email") if user else None
     uid = user.get("id") if user else None
     ip = _ip(req)
-    u = _usage.get(ip) or {"count": 0, "day": _day()}
-    if u.get("day") != _day():
-        u = {"count": 0, "day": _day()}
-        _usage[ip] = u
-        _save_usage(_usage)
-    legacy_used = int(u.get("count") or 0)
+    u = _usage.get(ip) or {}
+    legacy_used = int(u.get("count") or 0) if u.get("day") == _day() else 0
     # Redis is shared by every API worker and is therefore authoritative in
     # production. Keep the file-backed value as a migration/outage floor so a
     # rolling deploy or brief Redis failure can never make spent quota vanish.
@@ -546,13 +553,80 @@ def quota_inc(req: Request, n: int) -> None:
     user = _auth_user(req)
     if user and auth_db.effective_pro(user):
         return
-    ip = _ip(req)
+    _legacy_usage_add(_ip(req), n)
+
+
+def _legacy_usage_add(ip: str, n: int) -> None:
     u = _usage.get(ip) or {"count": 0, "day": _day()}
     if u.get("day") != _day():
         u = {"count": 0, "day": _day()}
-    u["count"] = int(u.get("count") or 0) + n
+    u["count"] = max(0, int(u.get("count") or 0) + n)
     _usage[ip] = u
     _save_usage(_usage)
+
+
+class StartGuard:
+    """One job start at a time per owner, with the free quota held while it runs (2026-10-07 audit).
+
+    Starts used to check quota_state() first and charge quota_inc() only after the upload, and the
+    active-job cap was counted before the job existed: five parallel starts with five files left
+    processed 25 files and ran five jobs past MAX_JOBS_PER_USER. Now a start takes a short lock per
+    owner, reserves its files with one atomic INCRBY and gives back whatever it did not use.
+
+        guard = StartGuard(request, q, owner)
+        if not guard.lock(): ...429
+        try:
+            ...job cap check...
+            if not guard.reserve(n): ...refusal
+            ...work; early returns refund everything...
+            guard.settle(used)
+        finally:
+            guard.release()
+    """
+
+    def __init__(self, req: Request, quota: dict, owner: str):
+        self.quota = quota or {}
+        self.free = not self.quota.get("pro")
+        self.ip = _ip(req)
+        self.day = _day()
+        self.key = "start:" + str(owner or self.ip)
+        self.locked = False
+        self.reserved = 0
+        self.settled = False
+
+    def lock(self, ttl: int = 60) -> bool:
+        self.locked = rs.start_lock(self.key, ttl)
+        return self.locked
+
+    def reserve(self, n: int) -> bool:
+        n = max(0, int(n))
+        if not self.free or not n:
+            return True
+        after = rs.quota_inc(self.ip, self.day, n)
+        # quota["used"] already holds max(file floor, shared counter) as read by quota_state.
+        floor = int(self.quota.get("used") or 0) + n
+        if max(int(after or 0), floor) > int(self.quota.get("limit") or 0):
+            rs.quota_inc(self.ip, self.day, -n)
+            return False
+        self.reserved = n
+        return True
+
+    def settle(self, used: int) -> None:
+        """The start went through with `used` files: return the rest of the reservation."""
+        used = max(0, min(int(used), self.reserved))
+        if self.reserved - used:
+            rs.quota_inc(self.ip, self.day, -(self.reserved - used))
+        if self.free and used:
+            _legacy_usage_add(self.ip, used)
+        self.settled = True
+
+    def release(self) -> None:
+        if not self.settled and self.reserved:
+            rs.quota_inc(self.ip, self.day, -self.reserved)
+            self.reserved = 0
+        if self.locked:
+            rs.start_unlock(self.key)
+            self.locked = False
 
 
 USED_CODES_FILE = DATA / "used_codes.json"

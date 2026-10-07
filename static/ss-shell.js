@@ -212,7 +212,7 @@
   })();
   NAV.forEach(function (n) { if (n.key === 'news') n.label = SHELL_COPY.news; });
 
-  // "Now on the site" (2026-10-07): every shell page pings once a minute while visible; the landing
+  // Live visitor count (2026-10-07): every shell page pings once a minute while visible; the landing
   // monitor shows the count (home-online.js listens for sm:online). smweb/presence.py keeps 150 s.
   (function presence() {
     var last = 0;

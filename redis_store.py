@@ -582,6 +582,40 @@ def quota_inc(ip: str, day: str, n: int = 1) -> int:
         return u["count"]
 
 
+# ---------- short exclusive locks (one job start at a time per owner) ----------
+_local_locks: dict[str, float] = {}
+
+
+def start_lock(key: str, ttl: int = 60) -> bool:
+    """Take a short lock; False when someone else holds it. Expires on its own after ttl."""
+    r = _r()
+    if r:
+        try:
+            return bool(r.set("sm:lock:" + key, "1", nx=True, ex=max(1, int(ttl))))
+        except Exception as e:
+            _note(e)
+    now = time.time()
+    with _local_lock:
+        for stale in [k for k, until in _local_locks.items() if until <= now]:
+            _local_locks.pop(stale, None)
+        if key in _local_locks:
+            return False
+        _local_locks[key] = now + ttl
+        return True
+
+
+def start_unlock(key: str) -> None:
+    r = _r()
+    if r:
+        try:
+            r.delete("sm:lock:" + key)
+            return
+        except Exception as e:
+            _note(e)
+    with _local_lock:
+        _local_locks.pop(key, None)
+
+
 # ---------- rate limit ----------
 def rate_limit(key: str, limit: int, window_sec: int, *, fail_closed: bool = False, fixed_bucket: bool = False) -> tuple[bool, int]:
     """Return (allowed, remaining).

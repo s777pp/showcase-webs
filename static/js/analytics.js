@@ -53,7 +53,8 @@
     sessionStorage.setItem(HOME_KEY, '1'); track('home_view');
   }
   function showConsent() {
-    if (consent()) return;
+    // Embedded pages (the profile editor inside Tools) leave the choice to the page around them.
+    if (consent() || window.self !== window.top) return;
     const c = COPY[language()];
     const box = document.createElement('aside'); box.className = 'sm-consent'; box.setAttribute('role','dialog'); box.setAttribute('aria-label',c[0]);
     const privacy = '/' + language() + '/privacy';

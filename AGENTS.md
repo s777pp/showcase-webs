@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 593 passed on 2026-10-07 (~150 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 605 passed on 2026-10-07 (~150 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -64,7 +64,7 @@ Modal GPU (Real-ESRGAN upscale). Compose services: `postgres redis app worker ng
 | `smweb/object_store.py` | R2 (public/private buckets, presigned URLs) |
 | `steam_catalog.py`, `steam_browser_import.py`, `steam_profile_guard.py`, `smweb/steam*.py` | Steam integrations |
 | `modal_upscale.py` | Modal service, deployed separately (`py -m modal deploy modal_upscale.py`) |
-| `tools_api.py` | extra `/api/*` routes (optimizer, Steam catalog, builder render); mounted in `try/except` |
+| `tools_api.py` | extra `/api/*` routes (watermark policy, Steam catalog + media proxy, projects); mounted in `try/except` |
 | `static/` | classic HTML + JS/CSS, no bundler; `?v=` query is the cache key — bump it on every edit |
 | `tests/` | pytest suite (39 files); `scripts/qa_*.py` are Playwright UI checks (not in CI) |
 | `docs/` | audits; only `THREAT_MODEL.md` and `RELEASE_AUDIT_2026-09-22.md` are current |
@@ -894,7 +894,7 @@ Only the hero exists for now; content blocks will be added below it later.
   Job kind `gif_optimizer` (worker dispatch, embedded fallback), `/api/gif-optimizer/start|status|file/{id}/{result|source}`,
   owner = `core.owner_key` (guests too), quota like Process (1 file per run), rate rule 8/min. The source stays in the job
   folder for the before/after comparison until the normal cleanup. Dockerfile installs `gifsicle`.
-  The older synchronous `/api/optimizer` in tools_api.py has no UI and still runs in Uvicorn: remove it when convenient.
+  The older `/api/optimizer` and `/api/builder/render` in tools_api.py were removed on 2026-10-07 (section 6.20).
 
 - Cache keys (2026-10-07): `locales-extra.js?v=` must be the same on every page (`tests/test_privacy_page.py`); the
   landing rebuild bumped only index.html, the other pages were aligned to `20261007-home1`.
@@ -1101,7 +1101,7 @@ Only the hero exists for now; content blocks will be added below it later.
 
 ## 6.19 "Now on the site" on the landing monitor (2026-10-07, local, not deployed)
 
-- `smweb/presence.py` + `POST /api/presence` (routers/system.py, rate rule 6/min, no DB lookup: key =
+- `smweb/presence.py` + `POST /api/presence` (routers/system.py, rate rule 120/min per IP because NAT users share it, no DB lookup: key =
   `core.owner_key(request, None)`, stored as a 20-char hash in the Redis sorted set `sm:presence`, window 150 s;
   in-process dict without Redis). `ss-shell.js` pings 0.4 s after load, every 60 s and on becoming visible (hidden
   tabs do not ping), sets `window.SM_ONLINE` and fires `sm:online`; `/api/presence` is in error-report.js QUIET.
@@ -1110,6 +1110,158 @@ Only the hero exists for now; content blocks will be added below it later.
   x 3084..3555, y 552..654 at the left edge, `transform:skewY(-3.1deg)` from the top-left (the painted text and the
   panel's top edge slope, verticals do not: a rotate() pushed the right end into the panel border), background =
   panel colours sampled along the slant, feathered by masks. If the background master changes, re-measure.
+
+## 6.20 Audit fixes: races, event-loop stalls, money (2026-10-07, local, not deployed)
+
+- Owner asked for an end-to-end audit for 5-10 simultaneous users, then "do everything" (except the public-repo
+  `data/` clean-up, which stays the owner's). Tests: `tests/test_audit_fixes.py`.
+- Never run FFmpeg/gifski/Pillow work in an `async def` route body: it stops the whole Uvicorn process. Use the
+  worker, a plain `def` route, or `await run_in_threadpool(...)`. The dead `/api/optimizer` and `/api/builder/render`
+  did exactly that (the first without a rate rule or quota) and were removed.
+- One-time codes: `auth_db.claim_code(code, uid)` (INSERT OR IGNORE, `rowcount == 1`) is the only way to bind a code;
+  grant Pro after it. `mark_code_used` (INSERT OR REPLACE) is legacy, do not use it for new grants. `/api/unlock`:
+  permanent Pro answers "Already Pro"; time-limited Pro accepts a permanent key and refuses a shorter trial without
+  claiming it.
+- `effective_pro` clears an expired flag with a guarded UPDATE (`... AND pro_until<=now`) so a stale user dict can
+  never wipe a purchase that landed during the request.
+- Own GZip middleware: `text/event-stream` is never compressed (it buffered the job SSE stream for 6 minutes).
+- `RateLimitMiddleware.GET_RULES` limit outbound GETs (`/api/steam/profile` 6/300 s, `/api/steam/proxy-image` 300/60 s).
+  `steam_catalog.profile(..., paid=False)` filters the Bright Data route out (`_page_via_routes`); the anonymous
+  `GET /api/steam/profile` always uses it.
+- Job starts (`/api/process/start`, `/api/workshop-studio/start`, `/api/gif-optimizer/start`, `/api/jobs/{id}/retry`)
+  use `core.StartGuard`: `lock()` (Redis `SET NX` `sm:lock:start:<owner>`, 60 s; in-process fallback) -> job-cap check
+  -> `reserve(n)` (atomic INCRBY, refused and rolled back when over the limit; floor = `quota["used"]`) -> work ->
+  `settle(used)` (gives back the unused part, updates the file floor) -> `release()` in `finally` (refunds everything
+  if never settled). Tests that fake the quota patch `rs.quota_inc`, not the route's `quota_inc`.
+- `usage.json` keeps today's rows only and is replaced atomically; `auth_db.prune_sessions()` runs hourly from the
+  job cleaner; `PG_POOL_MAX` default 20.
+- Process UI (`app.js`): status polling retries network errors / 5xx / 429 up to 8 times with a growing pause; the
+  fallback ZIP download is a plain link (no Blob in memory).
+- Not done on purpose: caching the user per request (`/api/notifications/read` re-reads the user after updating
+  `news_seen_at`; a cache would break the counter) and dependency pinning (needs a lock file built online).
+
+## 6.21 Front-end pass: what visitors notice (2026-10-07, local, not deployed)
+
+- Owner: "everything users actually notice; full freedom". Method: a Playwright walk over every page and the 18 tools
+  tabs at 1440 and 390 px (horizontal scroll, elements past the viewport, text under 11 px, tap targets under 30 px,
+  JS errors, 4xx assets, transfer sizes), then screenshots. The walk script lived in the session scratchpad; when you
+  repeat it, never remove `[class*=consent]` without excluding `<body>` (its class `sm-consent-open` matches).
+- `static/css/ui-polish.css` is the LAST stylesheet on every shell page (index, app, gallery, profile, profile-view,
+  account, news, support, extension, guide, billing-claim, 404; `tests/test_ui_polish.py` checks it). Numbered
+  sections: 1 Consolas -> Montserrat for a generated list of 109 selectors (rules that set Consolas; code, the Steam
+  mock-up, font previews and `#ssAuthCode` excluded), 2 readable disabled `.btn`, 3 header labels, 4 footer tap
+  targets, 5 no title gap on Tools > Profile (`.main:has(> #tab-preview.active)`), 6 embedded profile without header /
+  maintenance / consent, 7 Builder mode switch on phones, 8 My projects, 9 gallery, 11-12 phone overflow (account dock
+  grid `minmax(0,1fr)`, DNA lab bar), 13 compact consent on phones, 14 tools strip fade (an overlay on
+  `.top-chrome-inner`: a mask on `#nav` clipped the Profile group's drop-down and broke qa_tool_clarity), 15 loop lock.
+  Do not use `max(11px, 1em)` for font sizes: `em` in font-size is the PARENT size (it blew labels up to 16 px).
+- `analytics.js` shows the consent banner only in the top window. `showcase-builder.css` loads Consolas with
+  `local('Consolas')` first. `tools-unified.js` keeps the open tool visible in the strip (phones, instant scroll).
+- 404: `static/404.html` (8-language inline copy, noindex) via `pages.not_found_page()`; `main.py` handles
+  StarletteHTTPException 404 for GET/HEAD with `Accept: text/html` outside `/api/ /static/ /fonts/ /r2m/ /r2s/ /admin/`
+  (`pages.wants_not_found_page`); everything else keeps FastAPI's JSON. Unknown guides return the same page.
+- Loop lock (`seamless-loop.js` `lockCopy`): guest -> "free once a week with an account" + Sign in / Get Pro; signed in
+  with the week's try used -> next try on Monday + Get Pro. New English strings are in `scripts/locale_reviewed.json`.
+- Sample art for previews: `static/img/samples/sample-art-960.webp` (landing srcset, process-onboarding.css, frame
+  previews in workshop-squares-fx.js); `sample-art.webp` stays the real file for "Try with a sample".
+- Shell note: a Python heredoc turned `\b` into a backspace character in pages.py once; write such scripts to a
+  file with the Write tool (and scan for control characters afterwards).
+
+## 6.22 Scroll-driven landing for computers (2026-10-07, local, not deployed)
+
+- Owner: "scrolling the home page should feel like an animation" (reference: motionsites' Obsidian), desktop only,
+  "if I do not like it we roll back". `static/js/home-scroll.js` + `static/css/home-scroll.css` (all rules under
+  `html.hs-on`). The script returns early below 1100 px, without `(hover:hover) and (pointer:fine)`, with reduced
+  motion; crossing those media queries reloads the page. ROLL BACK = delete the two tags from index.html.
+- It wraps `.home-hero`, `.hb-demo` and `.hb-tools` in `.hs-track` divs whose height it sets (pinned height + scroll
+  length); the child is `position:sticky`. `.home-blocks` becomes `overflow:clip` (hidden broke sticky) and the
+  `section+section` gap is re-applied to tracks. Progress per scene goes into CSS variables (`--hs-zoom`, `--hs-copy`,
+  `--hs-lift`, `--hs-veil`, `--hs-p`, `--hs-x`, `--hs-line`, `--hs-drift`); geometry is re-measured on resize,
+  fonts ready, load and a ResizeObserver on `.home-blocks`.
+- Hero: 1.5 screens; `.home-art` scales to 1.62 around 72% 42% (the monitor), the copy fades/lifts, a solid veil fades
+  into `--home-bg`; `window.__homeLook = {x, y, w}` makes home-vrm.js mix the gaze target towards the monitor.
+  Demo: 2.1 screens, tabs via `window.__homeCut.show()` (its auto-rotation is stopped), pin skipped when the block is
+  taller than the window minus 100 px (`.hs-nopin`). Steps: `.hs-lit` by position, filling line `::before`.
+  Tools: one flex row translated by `--hs-x`; travel = row end - section width + left padding; `focusin` scrolls the
+  page to the card. Wheel inertia only for notched wheels (|deltaY| >= 50 or line/page mode), never Ctrl+wheel,
+  scrollable panels or locked pages; `scrollTo({behavior:'instant'})` because html has `scroll-behavior:smooth`.
+- Round 3 (same day, owner: jerky character, no glint, the artwork must grow on the way, smoother tools, own
+  entrances below). Everything follows a smoothed scroll copy `sy` (rAF follower; jumps > 2.5 windows snap).
+  Hero pin 2.2 screens, track `margin-bottom:-35vh` so the blocks rise while she dissolves (VRM opacity
+  0.66-0.86, `.hs-dark` > 0.88). Zoom: `.home-art` at most 2.4x (`ART_ZOOM_MAX`; a 16x painting layer left
+  unpainted tiles after scrolling back), `.home-vrm` takes the rest (`--hs-vzoom`, origin = eye point); home-vrm.js
+  `syncView()` re-renders the visible part sharp (`setViewOffset`). The eye point (`window.__homeEyes`) is low-pass
+  filtered, and `__homeLook.w` damps breathing/sway in home-vrm.js (`calm`). No eyelids / glint / flying overlay any more.
+  "One artwork": pin 2.7 windows; the first 0.6 window (plus 0.45 before the pin) is the approach: the stage grows from
+  0.32 at the window centre (`--hs-grow`, `--hs-shift`), the copy slides in staggered (`--hs-i`); then the type walk.
+  The picture is five `.hs-piece` elements (container units, `--l/--w/--g1/--g2` per `data-cut`) that physically part
+  into Workshop 5 / Featured 1 / Split 506+100; the real img and cut lines are hidden in this mode.
+  Tools: no classes/transitions per card: `--d` (distance to focus) and `--f` (1 at focus) per li drive opacity,
+  scale, glow; soft slow-down at each card (smoothstep), never a stop.
+  Below: `[data-hs-in]` + `--e` from the element's own layout position (`docTop`, not transformed rects): facts rise
+  and count up (only values without data-i), section heads slide out of a mask, the extension panel opens from the
+  middle with screenshots flying in, price cards fan in, questions unfold, the final card zooms. home.js
+  `initReveal` returns early when `html.hs-own-reveal` is set (it used to re-mark the blocks after this script).
+- Round 4 (same day, owner: tools and the blocks below still jerky; a beautiful site title before the facts).
+  Smoothness rules now: per frame only transform / opacity are written, straight to element.style (custom
+  properties set on big sections recalculated whole subtrees; animated shadows / filters / clip-paths repainted);
+  no per-frame layout reads (the head parallax and the rect-based steps/entries were removed).
+  Tools: row and cards get `style.transform/opacity`; the focus look is a pre-drawn `.hs-glow` layer per card whose
+  opacity is the only thing that changes. Demo approach writes the stage / copy styles directly too.
+  Below the tools: no scroll-linked motion at all. `[data-hs-in]` elements get `.hs-in` from an IntersectionObserver
+  (removed when wholly below the window, so it replays) and play one-off CSS transitions (fact, head, steps, ext,
+  plans, trial, faq, final; stagger via `--hs-delay` / `--hs-k`); facts count up time-based (`countUp`).
+  Brand moment: JS-built `section.hs-brand` (pinned 1.4 windows, first in `.home-blocks`, so phones never get it):
+  "Showcase Maker" as five clip-path strips flying in from alternating heights, seams, a `.hs-brand__shine` copy with a
+  bright band in its text fill (background-position), tagline = the hero script line (`data-i` copied).
+  Headless Edge frame timing while wheel-scrolling brand / tools / below: 0 frames over 34 ms (indicative only).
+- Round 5 (same day, owner: scrolling too long; the title assembly looked clumsy). Pins: hero 1.5, brand 1.0,
+  "One artwork" 1.8 (approach 0.45 before + 0.4 inside), tools 0.17 per card + 0.15 windows; wheel step x1.25.
+  The page is ~3.2 windows shorter at 1920x1080. Brand moment rebuilt: a light line draws from the centre, each
+  letter of "Showcase Maker" sits in a clipping cell and rises out of the line (centre first, small turn and
+  scale), the line melts into the glow, a highlight row (`.hs-brand__shinewrap`) runs over the letters, tagline.
+  One gradient spans the word: `layout()` gives each letter `background-size` = word width and its own offset.
+- Round 6 (same day, owner): one grid: on computers every `.home-blocks>section` spans the `--site-gutter` margins
+  like the pinned scenes; the extension (min 84vh, bigger type/shots) and pricing (bigger cards; entrance = a deck in
+  the middle dealt to the places with a turn, then a light band `.hs-plan-shine` per card) are larger. The facts
+  block is moved INTO the brand scene as a thin strip at its bottom (no screen of its own; panel and items fade with
+  the scene, count-up when it appears). Brand track `margin-bottom:-30vh`, demo approach starts 0.85 window before the
+  pin, so there is no empty screen. Space backdrop `.hs-space` (fixed, behind `main.home` which is z-index 1; blocks
+  are transparent): four drifting nebulae (keyframes, transform/opacity) + one canvas with three depths of twinkling
+  stars (parallax to the scroll) and shooting stars; runs only while past the hero and the tab is visible.
+  Hero script line / brand tagline = "Your Profile / Your Story", RU "Твой профиль — / твоя история" (owner), Great
+  Vibes; translations in `scripts/locale_reviewed.json`, `locales-extra.js?v=20261007-tag1` on every page.
+- Round 7 (same day, owner): bigger text on the wide blocks (section 8 of home-scroll.css: one type scale, titles up
+  to 68 px, bigger leads / ticks / type switch / steps / questions). Dive -> title is shorter and seamless: the hero has
+  no background of its own in this mode; during the dive the painting, petals, online label and shade fade out
+  (`--hs-dim`) and the space backdrop (switched on at 2% of the hero pin) shows through, so she ends on the same space
+  as the blocks below; she dissolves at 0.62-0.82 and the hero track has `margin-bottom:-140vh`, so the title scene
+  pins at ~73% of the hero pin. The brand timeline `q` is now relative to its own pin (0 = pinned).
+- Round 8 (same day, owner: "a cool effect between the eyes and the title"): hyperspace jump on the space canvas
+  (`drawWarp` in home-scroll.js): 420 particles in 3D rush from the window centre (between her eyes) towards the
+  viewer as streaks, plus a soft bloom. `warpTarget` = rises with hero p 0.55-0.8, falls with the title pin
+  0.03-0.2; `warp` follows it smoothly and the flight runs in real time (it keeps flying if the wheel stops).
+  Meteors pause while warp > 0.2. She dissolves over it, so the streaks pass through her face.
+- Round 9 (same day, owner): the title assembles from ~1300 stars sampled from the real letters (`sampleWord()` draws
+  each letter on a scratch canvas at its offset inside the pinned section; `drawStarWord` on the space canvas, bent
+  paths with short tails, 9 meteors), then the light line draws and the letters rise out of it as before; most stars
+  fade, ~18% keep twinkling. Black hole (`BLACK_HOLE = true` in home-scroll.js; false = the plain dive): a WebGL
+  canvas `.hs-hole` over the painting inside `.home-art` redraws it as a vortex around the eye point (twist + inward
+  pull, dark core, spinning accretion ring), the room fades later (`--hs-dim` 0.22-0.62), the hero copy is pulled
+  into the eyes with the individual `translate` / `rotate` / `scale` properties (NOT `transform`: the script line
+  keeps its own stylesheet tilt; overriding transform-origin once moved it onto the title), and the space stars
+  spiral in (`holePull`). RU hero script line has no dash ("Твой профиль" / "твоя история").
+- Round 10 (pre-release check, same day): tool cards have big icon tiles (clamp 110-190 px), the leaving cards are
+  clipped at the rail (`clip-path` on `.hs-tools__rail`) so they never show under the title column. Vortex shader:
+  highp where available, re-upload on every image load (srcset swaps), off on context loss or a texture too big for
+  the GPU. Lite mode (`lite`, class `html.hs-lite`): software WebGL (SwiftShader / llvmpipe / "Basic Render"), no
+  WebGL, <= 4 GB or <= 4 threads, or ~60 late frames (> 34 ms) while the space canvas runs -> no vortex shader, half
+  the stars / warp particles / title stars. All of it runs in the visitor's browser; the VPS only serves the files.
+  Checked: full pytest 605, qa_home_layout / qa_accessibility / qa_home_loader_performance / qa_polish, full-page
+  scroll sweep at 1920 / 1366 / 1024 touch / 390 (ru, en): no console errors, no 4xx, no horizontal scroll; GPU and
+  SwiftShader runs both clean (lite only on SwiftShader).
+- Verified at 1920x1080 and 1366x768 (screenshots of every scene), phones / 1024 touch untouched, qa_home_layout,
+  qa_accessibility, qa_home_loader_performance and the landing tests pass.
 
 ## 7. Rules for agents
 

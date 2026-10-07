@@ -9,11 +9,12 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, RedirectResponse, Response
+from starlette.concurrency import run_in_threadpool
 
 import processor as proc
 import redis_store as rs
 from smweb import free_limits, gif_optimizer, job_diagnostics, object_store
-from smweb.core import DATA, MAX_UPLOAD_MB, LOGGER, _auth_user, max_jobs_for_user, owner_key, quota_inc, quota_state
+from smweb.core import DATA, MAX_UPLOAD_MB, LOGGER, StartGuard, _auth_user, max_jobs_for_user, owner_key, quota_state
 from smweb.jobs import _job_pool, _worker_mode
 
 router = APIRouter()
@@ -38,49 +39,55 @@ async def start(request: Request, file: UploadFile = File(...), mode: str = Form
         return free_limits.refusal(request, "daily", "files", n=q.get("limit") or 0)
     user = _auth_user(request)
     owner = owner_key(request, user)
-    if owner and rs.job_count_user(owner) >= max_jobs_for_user(int(user["id"]) if user else None):
-        return JSONResponse({"ok": False, "msg": "Too many active jobs"}, status_code=429)
-    raw = await file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
-    if not raw or len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
-        return JSONResponse({"ok": False, "msg": f"File missing or larger than {MAX_UPLOAD_MB} MB"}, status_code=400)
-    if raw[:6] not in (b"GIF87a", b"GIF89a"):
-        return JSONResponse({"ok": False, "msg": "GIF only — convert the file first", "code": "not_gif"}, status_code=400)
-    raw = proc.restore_gif_trailer(raw)  # a Steam-ready (HEX 21) GIF used as the source
-    colors = max(2, min(256, int(colors)))
-    lossy = max(0, min(100, int(lossy)))
-    settings = f"auto:{proc.MAX_STEAM_MB}" if mode == "auto" else f"manual:{colors}:{lossy}"
-    cache_key = hashlib.sha256(f"gifopt:1:{owner}:{settings}:".encode() + raw).hexdigest()
-    cached_id = rs.job_cache_get(cache_key)
-    cached = rs.job_get(cached_id) if cached_id else None
-    if cached and cached.get("status") == "done" and (cached.get("result_key") or Path(str(cached.get("result_path") or "")).is_file()) \
-            and Path(str(cached.get("source_path") or "")).is_file():
-        return {"ok": True, "job_id": cached_id, "cached": True}
-    jid = secrets.token_hex(16)
-    root = Path(DATA) / "jobs" / jid
-    root.mkdir(parents=True, exist_ok=False)
-    source = root / "source.gif"
-    source.write_bytes(raw)
+    # One start per owner, the file reserved atomically (smweb.core.StartGuard).
+    guard = StartGuard(request, q, owner)
+    if not guard.lock():
+        return JSONResponse({"ok": False, "msg": "Your previous upload is still starting. Try again in a moment."}, status_code=429)
     try:
-        meta = gif_optimizer.info(source)
-    except ValueError as exc:
-        import shutil
-        shutil.rmtree(root, ignore_errors=True)
-        return JSONResponse({"ok": False, "msg": str(exc), "code": "bad_gif"}, status_code=400)
-    external = _worker_mode() == "external" and rs.redis_ok() and rs.worker_alive()
-    payload = {"kind": KIND, "queue": "media", "job_dir": str(root), "source_path": str(source),
-               "user_key": owner, "status": "queued", "pct": 2, "stage": "queued", "created": time.time(),
-               "mode": mode, "colors": colors, "lossy": lossy, "stem": _stem(file.filename),
-               "size_before": len(raw), "in_width": meta["width"], "in_height": meta["height"],
-               "in_frames": meta["frames"], "cache_key": cache_key}
-    rs.job_create(jid, payload, enqueue=external)
-    try:
-        quota_inc(request, 1)
-    except Exception:
-        pass
-    if not external:
-        from smweb.gif_optimizer_jobs import run
-        _job_pool.submit(run, jid, dict(payload))
-    return JSONResponse({"ok": True, "job_id": jid}, status_code=202)
+        if owner and rs.job_count_user(owner) >= max_jobs_for_user(int(user["id"]) if user else None):
+            return JSONResponse({"ok": False, "msg": "Too many active jobs"}, status_code=429)
+        if not guard.reserve(1):
+            return free_limits.refusal(request, "daily", "files", n=q.get("limit") or 0)
+        raw = await file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
+        if not raw or len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
+            return JSONResponse({"ok": False, "msg": f"File missing or larger than {MAX_UPLOAD_MB} MB"}, status_code=400)
+        if raw[:6] not in (b"GIF87a", b"GIF89a"):
+            return JSONResponse({"ok": False, "msg": "GIF only — convert the file first", "code": "not_gif"}, status_code=400)
+        raw = await run_in_threadpool(proc.restore_gif_trailer, raw)  # a Steam-ready (HEX 21) GIF used as the source
+        colors = max(2, min(256, int(colors)))
+        lossy = max(0, min(100, int(lossy)))
+        settings = f"auto:{proc.MAX_STEAM_MB}" if mode == "auto" else f"manual:{colors}:{lossy}"
+        cache_key = hashlib.sha256(f"gifopt:1:{owner}:{settings}:".encode() + raw).hexdigest()
+        cached_id = rs.job_cache_get(cache_key)
+        cached = rs.job_get(cached_id) if cached_id else None
+        if cached and cached.get("status") == "done" and (cached.get("result_key") or Path(str(cached.get("result_path") or "")).is_file()) \
+                and Path(str(cached.get("source_path") or "")).is_file():
+            return {"ok": True, "job_id": cached_id, "cached": True}
+        jid = secrets.token_hex(16)
+        root = Path(DATA) / "jobs" / jid
+        root.mkdir(parents=True, exist_ok=False)
+        source = root / "source.gif"
+        source.write_bytes(raw)
+        try:
+            meta = await run_in_threadpool(gif_optimizer.info, source)
+        except ValueError as exc:
+            import shutil
+            shutil.rmtree(root, ignore_errors=True)
+            return JSONResponse({"ok": False, "msg": str(exc), "code": "bad_gif"}, status_code=400)
+        external = _worker_mode() == "external" and rs.redis_ok() and rs.worker_alive()
+        payload = {"kind": KIND, "queue": "media", "job_dir": str(root), "source_path": str(source),
+                   "user_key": owner, "status": "queued", "pct": 2, "stage": "queued", "created": time.time(),
+                   "mode": mode, "colors": colors, "lossy": lossy, "stem": _stem(file.filename),
+                   "size_before": len(raw), "in_width": meta["width"], "in_height": meta["height"],
+                   "in_frames": meta["frames"], "cache_key": cache_key}
+        rs.job_create(jid, payload, enqueue=external)
+        guard.settle(1)
+        if not external:
+            from smweb.gif_optimizer_jobs import run
+            _job_pool.submit(run, jid, dict(payload))
+        return JSONResponse({"ok": True, "job_id": jid}, status_code=202)
+    finally:
+        guard.release()
 
 
 def _job(request: Request, job_id: str):

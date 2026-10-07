@@ -8,8 +8,8 @@
   var I18N = {
     en: {
       page_title: 'Showcase Maker — Steam showcases without the grind',
-      hero_script_a: 'Your Art',
-      hero_script_b: 'Bigger Stories',
+      hero_script_a: 'Your Profile',
+      hero_script_b: 'Your Story',
       h1a: 'Steam showcases.',
       h1b: 'Revitalized',
       hero_p: 'Workshop, Featured and Split cuts, watermark, Steam size limits, source downloads and profile preview — one browser tool for creators.',
@@ -168,8 +168,8 @@
     },
     ru: {
       page_title: 'Showcase Maker — витрины Steam без рутины',
-      hero_script_a: 'Твой арт —',
-      hero_script_b: 'большие истории',
+      hero_script_a: 'Твой профиль',
+      hero_script_b: 'твоя история',
       h1a: 'Steam-витрины.',
       h1b: 'Без рутины',
       hero_p: 'Нарезка Workshop, Featured и Split, водяной знак, лимиты Steam, скачивание исходников и предпросмотр профиля — один инструмент в браузере.',
@@ -412,6 +412,8 @@
       });
     });
     show(stage.dataset.cut || order[0]);
+    // The desktop scroll scene (home-scroll.js) drives the tabs by scroll position instead of the timer.
+    window.__homeCut = { show: show, stop: stop, order: order };
     if (!auto || !('IntersectionObserver' in window)) return;
     new IntersectionObserver(function (entries) {
       clearInterval(timer); timer = 0;
@@ -427,7 +429,8 @@
      transitions of the cards work as written in the stylesheet. */
   function initReveal() {
     var root = document.querySelector('.home-blocks');
-    if (!root) return;
+    // The desktop scroll scene (home-scroll.js) animates the blocks itself.
+    if (!root || document.documentElement.classList.contains('hs-own-reveal')) return;
     var items = [];
     function mark(selector, kind) {
       root.querySelectorAll(selector).forEach(function (el) {

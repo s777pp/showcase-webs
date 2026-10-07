@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import BackgroundTasks, Request
+from starlette.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from PIL import Image
 
@@ -179,7 +180,8 @@ async def auth_send_code(request: Request):
         return JSONResponse({"ok": False, "msg": create_msg, "code": reason}, status_code=status)
 
     lang = (request.headers.get("accept-language") or "en")
-    ok, msg = mailer.send_verify_code(email, code, lang)
+    # Network call to the mail service: keep it off the event loop.
+    ok, msg = await run_in_threadpool(mailer.send_verify_code, email, code, lang)
     if not ok:
         auth_db.discard_email_code(email)
         LOGGER.warning("send_verify_code failed for %s: %s", email, msg)
@@ -202,11 +204,11 @@ async def auth_register(request: Request):
     if not rs.rate_limit(f"auth-register-email:{identity}", 3, 3600)[0]:
         return JSONResponse({"ok": False, "msg": "Too many requests. Try later.", "code": "rate_limited"}, status_code=429)
         
-    ok, msg, reason = auth_db.register_with_email_code(email, password, code)
+    ok, msg, reason = await run_in_threadpool(auth_db.register_with_email_code, email, password, code)
     if not ok:
         LOGGER.warning("auth register rejected identity=%s ip=%s", identity, request.client.host if request.client else "-")
         return JSONResponse({"ok": False, "msg": msg, "code": reason}, status_code=400)
-    ok2, msg2, token = auth_db.login(email, password)
+    ok2, msg2, token = await run_in_threadpool(auth_db.login, email, password)
     resp = JSONResponse({"ok": True, "msg": msg, "session": bool(token)})
     if token:
         _attach_session_cookie(resp, token, request)
@@ -230,7 +232,8 @@ async def auth_login(request: Request):
     identity = hashlib.sha256(email.strip().lower().encode()).hexdigest()[:24]
     if not rs.rate_limit(f"auth-login-email:{identity}", 8, 300)[0]:
         return JSONResponse({"ok": False, "msg": "Too many requests. Try later."}, status_code=429)
-    ok, msg, token = auth_db.login(email, password)
+    # PBKDF2 (600k rounds) blocks for 70-200 ms: run it in the thread pool, not the event loop.
+    ok, msg, token = await run_in_threadpool(auth_db.login, email, password)
     if not ok:
         LOGGER.warning("auth login failed identity=%s ip=%s", identity, request.client.host if request.client else "-")
         return JSONResponse({"ok": False, "msg": msg}, status_code=400)
@@ -261,7 +264,7 @@ async def auth_change_password(request: Request):
     token = (request.headers.get("x-session-token") or request.cookies.get("sm_session") or "").strip()
     if not rs.rate_limit(f"auth-change-password:{int(user['id'])}", 5, 900)[0]:
         return JSONResponse({"ok": False, "msg": "Too many requests. Try later."}, status_code=429)
-    ok, msg = auth_db.change_password(int(user["id"]), current_password, new_password, token)
+    ok, msg = await run_in_threadpool(auth_db.change_password, int(user["id"]), current_password, new_password, token)
     LOGGER.info("auth password_change user_id=%s ok=%s", user["id"], ok)
     return JSONResponse({"ok": ok, "msg": msg}, status_code=200 if ok else 400)
 
@@ -311,7 +314,7 @@ async def auth_password_reset_confirm(request: Request):
     identity = hashlib.sha256(email.encode()).hexdigest()[:24] if email else "invalid"
     if not rs.rate_limit(f"auth-password-reset-confirm:{identity}", 8, 900)[0]:
         return JSONResponse({"ok": False, "msg": "Too many requests. Try later.", "code": "rate_limited"}, status_code=429)
-    ok, message, reason = auth_db.reset_password_with_code(email, code, new_password)
+    ok, message, reason = await run_in_threadpool(auth_db.reset_password_with_code, email, code, new_password)
     LOGGER.info("auth password_reset identity=%s ok=%s", identity, ok)
     return JSONResponse({"ok": ok, "msg": message, "code": reason}, status_code=200 if ok else 400)
 

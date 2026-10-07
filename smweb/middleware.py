@@ -181,7 +181,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # not on this list, so a script could try codes as fast as it liked.
         ("/api/unlock", 10, 60),
         ("/api/analytics/event", 60, 60),
-        ("/api/presence", 6, 60),
+        # One ping per open tab a minute; many people can share one IP (NAT, dorms), so keep it roomy.
+        ("/api/presence", 120, 60),
         # Admin login stays deliberately tight. Once authenticated, the control
         # centre may perform several legitimate mutations in one minute.
         ("/api/admin/control/session", 5, 300),
@@ -205,7 +206,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/hex21", 12, 60),
         ("/api/preview-build", 6, 60),
         ("/api/preview_wm", 20, 60),
-        ("/api/builder/render", 8, 60),
         # Paid remove.bg calls: the router also applies account/day and global/day caps.
         ("/api/builder/remove-background", 6, 60),
         # The preflight reads and decodes complete showcase sets. It is Pro-only,
@@ -230,14 +230,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/billing/gumroad/claim", 10, 60),
         ("/api/billing/gumroad", 30, 60),
     )
+    # GETs that reach outside services. Everything else read-only stays unlimited.
+    GET_RULES = (
+        # Anonymous Steam profile fetch: each call may hit Steam from this server's IP.
+        ("/api/steam/profile", 6, 300),
+        # Steam CDN proxy: up to 25 MB per uncached file; the builder loads many at once.
+        ("/api/steam/proxy-image", 300, 60),
+    )
+
     async def dispatch(self, request, call_next):
         path = request.url.path
         # Same IP source as the quota. This used to read request.client.host
         # directly, which behind a proxy is the PROXY's address — so every user
         # shared one bucket and a single client could lock login for everyone.
         client = _ip(request)
-        for prefix, limit, window in self.RULES:
-            if path.startswith(prefix) and request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        rules = self.RULES if request.method in ("POST", "PUT", "DELETE", "PATCH") else self.GET_RULES
+        for prefix, limit, window in rules:
+            if path.startswith(prefix):
                 if _limit_exempt(request):
                     break
                 ok, _left = rs.rate_limit(f"{prefix}:{client}", limit, window)
@@ -366,6 +375,10 @@ class _GZipResponder:
         if h.get("content-encoding"):
             return False
         ctype = h.get("content-type", "").split(";")[0].strip().lower()
+        # A live stream must never be held back: buffering /api/jobs/events until 4 MB or
+        # its end (6 minutes) meant browsers got no job updates at all.
+        if ctype == "text/event-stream":
+            return False
         return ctype.startswith(self.cfg.COMPRESSIBLE)
 
     async def _flush_plain(self, more: bool) -> None:

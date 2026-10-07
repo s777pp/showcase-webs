@@ -26,13 +26,13 @@ body .pon-intro__close:hover{border-color:#1fc9f1;background:rgba(31,201,241,.22
 /* the little Steam profile */
 body .pon-demo{display:grid;gap:8px;padding:12px;border:1px solid rgba(110,170,255,.22);border-radius:12px;background:linear-gradient(180deg,#1b2838,#10171f);box-shadow:0 14px 40px rgba(0,0,0,.4)}
 body .pon-demo__head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px}
-body .pon-demo__avatar{width:30px;height:30px;border-radius:4px;background:url('/static/img/samples/sample-art.webp?v=2') 46% 28%/360% auto no-repeat;border:2px solid #4c6b22}
+body .pon-demo__avatar{width:30px;height:30px;border-radius:4px;background:url('/static/img/samples/sample-art-960.webp?v=1') 46% 28%/360% auto no-repeat;border:2px solid #4c6b22}
 body .pon-demo__name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:800;color:#fff}
 body .pon-demo__level{display:grid;place-items:center;width:24px;height:24px;border:2px solid #8a7dff;border-radius:50%;font-size:10px;font-weight:800;color:#e9f3ff;white-space:nowrap}
 body .pon-demo__showcase{position:relative;display:grid;gap:6px;padding:8px;border-radius:6px;background:rgba(0,0,0,.35);outline:2px solid #1fc9f1;outline-offset:2px;box-shadow:0 0 22px rgba(31,201,241,.45)}
 body .pon-demo__label{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7fe9ff}
 body .pon-demo__parts{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
-body .pon-demo__parts i{display:block;aspect-ratio:2/5;border-radius:2px;background:url('/static/img/samples/sample-art.webp?v=2') no-repeat;background-size:500% auto;background-position:calc(var(--i) * 25%) 40%;animation:pon-glow 3.2s ease-in-out infinite;animation-delay:calc(var(--i) * .18s)}
+body .pon-demo__parts i{display:block;aspect-ratio:2/5;border-radius:2px;background:url('/static/img/samples/sample-art-960.webp?v=1') no-repeat;background-size:500% auto;background-position:calc(var(--i) * 25%) 40%;animation:pon-glow 3.2s ease-in-out infinite;animation-delay:calc(var(--i) * .18s)}
 @keyframes pon-glow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.25)}}
 body .pon-demo__rest{display:block;height:10px;border-radius:3px;background:rgba(255,255,255,.07)}
 body .pon-demo__rest.is-short{width:62%}
@@ -110,7 +110,7 @@ body.site-v2 #tab-process #wmCanvasEmpty>.btn{min-height:42px;margin-top:6px!imp
 body.site-v2 #tab-process #wmCanvasEmpty>.btn:hover{filter:brightness(1.08)}
 body.site-v2 #tab-process .editor-preview-sample{gap:6px!important;width:min(78%,340px)!important;max-width:none!important;height:auto!important;aspect-ratio:2.4/1;margin:0 0 8px!important;transform:none!important}
 body.site-v2 #tab-process .editor-preview-sample i{position:relative;flex:1;overflow:hidden;border:1px solid rgba(111,227,255,.35)!important;border-radius:6px!important;
-  background:url('/static/img/samples/sample-art.webp?v=2') no-repeat!important;background-size:500% 100%!important;filter:brightness(.6) saturate(.85);box-shadow:0 0 18px rgba(31,201,241,.12)}
+  background:url('/static/img/samples/sample-art-960.webp?v=1') no-repeat!important;background-size:500% 100%!important;filter:brightness(.6) saturate(.85);box-shadow:0 0 18px rgba(31,201,241,.12)}
 body.site-v2 #tab-process .editor-preview-sample i::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(5,10,28,.55))}
 body.site-v2 #tab-process .editor-preview-sample i:nth-child(1){background-position:0 50%!important}
 body.site-v2 #tab-process .editor-preview-sample i:nth-child(2){background-position:25% 50%!important}

@@ -346,46 +346,16 @@ async def unlock(request: Request):
         sale_id = gumroad["sale_id"]
         marker = _gumroad_sale_marker(sale_id)
 
-        # Bind one Gumroad sale permanently to one ShowcaseMaker account.
-        claimed_uid = auth_db.code_used(marker)
-
-        if claimed_uid is not None:
-            try:
-                claimed_uid = int(claimed_uid)
-            except (TypeError, ValueError):
-                LOGGER.error("Invalid Gumroad activation owner for %s", marker)
-                return JSONResponse(
-                    {"ok": False, "msg": "Activation database error"},
-                    status_code=500,
-                )
-
-            if claimed_uid != uid:
-                return JSONResponse(
-                    {
-                        "ok": False,
-                        "msg": "This Gumroad license is already activated on another ShowcaseMaker account",
-                    },
-                    status_code=400,
-                )
-        else:
-            auth_db.mark_code_used(marker, uid)
-
-            # Read it back before granting Pro.
-            confirmed_uid = auth_db.code_used(marker)
-            if confirmed_uid is not None:
-                try:
-                    confirmed_uid = int(confirmed_uid)
-                except (TypeError, ValueError):
-                    confirmed_uid = None
-
-                if confirmed_uid != uid:
-                    return JSONResponse(
-                        {
-                            "ok": False,
-                            "msg": "This Gumroad license is already activated on another ShowcaseMaker account",
-                        },
-                        status_code=400,
-                    )
+        # Bind one Gumroad sale permanently to one ShowcaseMaker account (atomic: two
+        # simultaneous activations of one license can no longer both win).
+        if not auth_db.claim_code(marker, uid) and auth_db.code_used(marker) != uid:
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "msg": "This Gumroad license is already activated on another ShowcaseMaker account",
+                },
+                status_code=400,
+            )
 
         # Never store the actual Gumroad license key on the user account.
         # Store our irreversible sale marker instead.
@@ -412,12 +382,14 @@ async def unlock(request: Request):
             "msg": "ShowcaseMaker Pro activated successfully",
             "until": None,
         }
-    # already Pro on this account
-    if user.get("is_pro"):
+    # Permanent Pro needs nothing more. Time-limited Pro (a bought day, a trial) may still take
+    # a code that gives more: "forever" upgrades it, a shorter trial is refused without burning
+    # the code. effective_pro also clears an expired flag, so an ended trial no longer blocks.
+    active = auth_db.effective_pro(user)
+    current_until = user.get("pro_until") if active else None
+    if active and current_until is None:
         return {"ok": True, "label": "Pro", "msg": "Already Pro on this account"}
-    # one-time codes
-    used_uid = auth_db.code_used(code)
-    if used_uid is not None:
+    if auth_db.code_used(code) is not None:
         return JSONResponse({"ok": False, "msg": "Code already used"}, status_code=400)
     # legacy file used_codes.json
     used = _load_used()
@@ -437,8 +409,11 @@ async def unlock(request: Request):
     until = None
     if ctype == "trial" and hours > 0:
         until = time.time() + hours * 3600
+    if until is not None and current_until is not None and float(current_until) >= until:
+        return {"ok": True, "label": "Pro", "msg": "Your Pro already lasts longer than this code gives"}
+    if not auth_db.claim_code(code, int(user["id"])):
+        return JSONResponse({"ok": False, "msg": "Code already used"}, status_code=400)
     auth_db.set_pro(int(user["id"]), True, code=code, until=until)
-    auth_db.mark_code_used(code, int(user["id"]))
     if code.startswith("SM-WEB-") or code.startswith("SM-TRIAL-"):
         used.add(code)
         _save_used(used)

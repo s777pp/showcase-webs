@@ -15,6 +15,8 @@ import os
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from PIL import Image
@@ -144,6 +146,14 @@ try:
     app.mount("/fonts", CachedStaticFiles(directory=str(FONTS)), name="fonts")
 except Exception:
     pass
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_error(request: Request, exc: StarletteHTTPException):
+    # A person following a dead link sees the site's 404 page; API clients and assets keep JSON.
+    if exc.status_code == 404 and pages.wants_not_found_page(request):
+        return pages.not_found_page(request)
+    return await http_exception_handler(request, exc)
 
 
 @app.exception_handler(Exception)

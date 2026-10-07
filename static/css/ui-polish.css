@@ -1,0 +1,233 @@
+/* UI polish (2026-10-07 front-end pass, owner: "make what users notice better").
+   Loaded LAST on every shell page. One place for cross-page fixes found by walking every page and tool
+   at 1440 and 390 px; page-specific CSS stays where it was. */
+
+/* 1. One typeface. Old "terminal" labels still used Consolas (and on Windows the site's own @font-face
+   made browsers download a 97 KB TTF for them). Selectors generated from every rule that set Consolas;
+   code, the Steam mock-up and font previews keep their own fonts. */
+body:is(.site-v2,.page-home) :is(
+  #builderElementCount,
+  .account-dock__eyebrow,
+  .account-metrics strong,
+  .account-person span,
+  .author-settings header small,
+  .author-settings__card>span,
+  .author-settings__preview>small,
+  .back,
+  .brand span,
+  .builder-ai-help summary,
+  .builder-backdrops>span,
+  .builder-chroma-settings output,
+  .builder-grade__controls output,
+  .builder-grade__selected,
+  .builder-inspector select optgroup,
+  .builder-shortcuts,
+  .community-author__identity span,
+  .community-card__adult,
+  .community-card__badges span,
+  .community-card__content span,
+  .community-detail__metrics small,
+  .community-detail__top,
+  .community-kicker,
+  .community-publish__top,
+  .community-results__head span,
+  .community-total,
+  .compose-controls>h2,
+  .compose-preview-panel h3,
+  .dna-ai-badge,
+  .dna-designs>header,
+  .dna-experiment,
+  .dna-fact span,
+  .dna-identity span,
+  .dna-kicker,
+  .dna-mode,
+  .dna-profile-url,
+  .dna-profile-url input,
+  .dna-reading article span,
+  .dna-reading header,
+  .dna-section-title,
+  .dna-signal button,
+  .dna-signal output,
+  .drop,
+  .field,
+  .file-rotate--half,
+  .file-rotate--reset,
+  .fl-wall__eyebrow,
+  .gallery-publish-field,
+  .gallery-publish-kicker,
+  .gallery-publish-preview span,
+  .guide__kicker,
+  .h-sub,
+  .hero-note,
+  .insight-empty,
+  .insight-query,
+  .insight-tool__intro>small,
+  .loop-drop span,
+  .loop-editor__head,
+  .loop-editor__meta b,
+  .loop-editor__meta small,
+  .loop-empty small,
+  .loop-file,
+  .loop-kicker,
+  .loop-play,
+  .loop-result__badge,
+  .loop-source__label,
+  .loop-timeline__ticks span,
+  .mode strong,
+  .page-home .hero-telegram-offer__action,
+  .page-home .hero-telegram-offer__copy>span,
+  .page-home .hero-telegram-offer__mark b,
+  .page-tools #drop small,
+  .page-tools #processModeCard .mode>small,
+  .page-tools .range-val,
+  .process-file__angle,
+  .process-file__meta,
+  .process-file__rotation,
+  .process-mode-help li b,
+  .process-preflight header>em,
+  .process-preflight header>span,
+  .process-preflight__empty>span,
+  .process-rotation__kicker,
+  .process-route button>span,
+  .ss-auth__eyebrow,
+  .ss-drawer__language label,
+  .ss-lang__btn,
+  .ss-lang__menu b,
+  .steam-block h3,
+  .steam-check__datum,
+  .steam-check__drop>span:last-child,
+  .steam-check__file small,
+  .steam-check__kicker,
+  .steam-check__metric span,
+  .steam-check__mode-tag,
+  .steam-check__node small,
+  .steam-check__verdict small,
+  .steam-extension-card__kicker,
+  .tab .btn,
+  .tab>.card>h2:first-child,
+  .top-actions .btn,
+  .top-actions .pill,
+  .top-chrome .nav button,
+  .workspace-result-ext__kicker,
+  .workspace-result-modal__eyebrow,
+  .workspace-result__files,
+  .workspace-result__readiness-empty>span,
+  .wsx-head__kicker,
+  .wsx-stage__title
+){font-family:Montserrat,system-ui,-apple-system,'Segoe UI',sans-serif!important}
+body:is(.site-v2,.page-home) .builder-effect-swatch:after,
+body:is(.site-v2,.page-home) .builder-templates>summary i:before,
+body:is(.site-v2,.page-home) .h-title::before,
+body:is(.site-v2,.page-home) .hero-studio::before,
+body:is(.site-v2,.page-home) .hero::before,
+body:is(.site-v2,.page-home) .process-advanced>summary>i:before,
+body:is(.site-v2,.page-home) .workspace-result__download-state::before{font-family:Montserrat,system-ui,-apple-system,'Segoe UI',sans-serif!important}
+
+/* 2. Disabled main buttons were an empty dark box (opacity .4 on a 35 % cyan fill with dark text):
+   people could not read what the button would do once a file is added. */
+html body.site-v2 :is(#btnRun,#workshopCreate,.btn:not(.ghost),.btn-pill):disabled{
+  opacity:1!important;background:rgba(31,201,241,.08)!important;border:1px solid rgba(111,227,255,.28)!important;
+  color:rgba(214,236,250,.62)!important;box-shadow:none!important;filter:none!important;cursor:not-allowed!important}
+html body.site-v2 .btn.ghost:disabled{opacity:.55!important;cursor:not-allowed!important}
+
+/* 3. Header labels were 8.5-9 px (FREE plan, "new" tag): readable now. */
+html body #ssHeadHost .ss-pill__plan{font-size:10px!important;letter-spacing:.06em!important;padding:2px 6px!important}
+html body #ssHeadHost .ss-nav__tag{font-size:9.5px!important;letter-spacing:.06em!important}
+
+/* 4. Footer links were 21 px tall on phones: comfortable tap targets. */
+@media (max-width:760px){
+  html body .home-footer__nav{row-gap:2px!important}
+  html body .home-footer__nav a{display:inline-flex!important;align-items:center;min-height:40px;padding:0 4px}
+}
+
+/* 5. Tools > Profile: the page title is hidden on this tab but its 105 px of space stayed above the editor. */
+html body.site-v2 .main:has(> #tab-preview.active){padding-top:14px!important}
+
+/* 6. The embedded profile editor drew an empty site header strip, the maintenance bar and a second
+   analytics banner inside the tools page. */
+html.profile-embedded #ssHeadHost,html.profile-embedded #ssFootHost,html.profile-embedded .ss-maintenance,
+html.profile-embedded .sm-consent{display:none!important}
+
+/* 7. Create a design on phones: the three showcase types were squeezed until words broke letter by
+   letter ("Мас/терс/кая"). Full width, picture above the name. */
+@media (max-width:640px){
+  #showcaseBuilder.bx .builder-mode-switch{flex:1 1 100%!important;max-width:none!important;width:100%!important}
+  #showcaseBuilder.bx .builder-mode-switch>button{flex-direction:column!important;gap:5px!important;padding:8px 6px!important;min-height:58px!important}
+  #showcaseBuilder.bx .builder-mode-switch .builder-mode-name{text-align:center!important;overflow-wrap:normal!important;word-break:normal!important;
+    hyphens:auto;font-size:11px!important;line-height:1.2!important}
+}
+
+/* 8. My projects: no second "MY PROJECTS" caps heading under the page title, readable cards, a real
+   empty state. The card preview shows the showcase shape instead of the raw word "workshop". */
+html body.site-v2 .builder-projects-head>div>span,html body.site-v2 .builder-projects-head h2{display:none!important}
+html body.site-v2 .builder-projects-head{align-items:center!important;padding-bottom:16px!important;border-bottom-color:rgba(110,170,255,.14)!important}
+html body.site-v2 .builder-projects-head p{font-size:13.5px!important;color:rgba(214,229,250,.7)!important;max-width:620px}
+html body.site-v2 .builder-project-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))!important;gap:14px!important}
+html body.site-v2 .builder-project-card{border:1px solid rgba(110,170,255,.18)!important;border-radius:16px!important;padding:12px!important;
+  background:linear-gradient(180deg,rgba(14,26,60,.85),rgba(5,10,28,.9))!important;transition:border-color .15s,transform .15s}
+html body.site-v2 .builder-project-card:hover{border-color:rgba(31,201,241,.55)!important;transform:translateY(-2px)}
+html body.site-v2 .builder-project-card h3{font-size:15px!important;font-weight:800}
+html body.site-v2 .builder-project-card p{font-size:12px!important;color:rgba(214,229,250,.6)!important}
+html body.site-v2 .builder-project-card__preview{position:relative;height:120px!important;border-radius:11px;overflow:hidden;font-size:0!important;
+  background:radial-gradient(90% 120% at 0% 0%,rgba(31,201,241,.18),transparent 60%),linear-gradient(135deg,#0b1d3f,#050a1c)!important}
+html body.site-v2 .builder-project-card__preview::before{content:"";position:absolute;inset:30px 16px;border-radius:4px;
+  background:repeating-linear-gradient(90deg,rgba(111,227,255,.55) 0 calc(20% - 4px),transparent calc(20% - 4px) 20%)}
+html body.site-v2 .builder-project-card__preview[data-mode="featured"]::before{background:rgba(111,227,255,.5)}
+html body.site-v2 .builder-project-card__preview[data-mode="split"]::before{background:linear-gradient(90deg,rgba(111,227,255,.55) 0 81%,transparent 81% 83%,rgba(138,125,255,.6) 83%)}
+html body.site-v2 .builder-project-card__preview>b{position:absolute;left:10px;bottom:8px;font:700 11px/1 Montserrat,system-ui,sans-serif;color:#dff6ff}
+html body.site-v2 #builderProjectGrid>.builder-empty-layers{grid-column:1/-1;padding:44px 20px!important;border:1px dashed rgba(110,170,255,.28)!important;
+  border-radius:16px!important;text-align:center;font-size:14px!important;color:rgba(214,229,250,.7)!important;background:rgba(5,10,28,.4)}
+
+/* 9. Gallery: the zero-padded "011" next to the button repeated the "11 works" below it; phones saw
+   only filters on the first screen, so the filters are tighter and the note is gone. */
+html body.page-community .community-total{display:none!important}
+@media (max-width:760px){
+  html body.page-community .community{padding-top:18px!important}
+  html body.page-community .community-hero{padding:14px 0 16px!important;gap:14px!important}
+  html body.page-community .community-hero h1{font-size:clamp(30px,9vw,40px)!important;line-height:1.04!important;margin:10px 0 8px!important}
+  html body.page-community .community-hero p{font-size:14px!important}
+  html body.page-community .community-hero__actions{width:100%}
+  html body.page-community .community-hero__actions .community-primary{width:100%}
+  html body.page-community .community-layout{margin-top:14px!important;gap:16px!important}
+  html body.page-community .community-filter-divider{margin:10px 0!important}
+  html body.page-community .community-sidebar h2{margin-bottom:8px!important}
+  html body.page-community .community-sidebar__note{display:none!important}
+  html body.page-community .community-filters{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent)}
+  html body.page-community .community-filters::-webkit-scrollbar{display:none}
+  html body.page-community .community-filters button{flex:none!important;white-space:nowrap}
+}
+
+/* 11. Profile page on phones: the account panel was 5 px wider than the screen. */
+@media (max-width:760px){
+  html body.site-v2 .workspace>.account-dock{box-sizing:border-box!important;max-width:100%!important;grid-template-columns:minmax(0,1fr)!important}
+  html body.site-v2 .workspace>.account-dock :is(h2,p){overflow-wrap:anywhere}
+}
+
+/* 12. Steam DNA on phones: the lab bar label kept one line and pushed the page sideways. */
+html body.site-v2 .dna-labbar{flex-wrap:wrap!important;row-gap:8px}
+html body.site-v2 .dna-experiment{max-width:100%;white-space:normal!important}
+
+/* 13. Phones: the analytics banner took a quarter of the first screen and its first button broke
+   into two lines. Same content, tighter. */
+@media (max-width:620px){
+  html body:is(.page-home,.site-v2) .sm-consent{padding:12px 14px!important;gap:10px!important;bottom:8px!important}
+  html body:is(.page-home,.site-v2) .sm-consent__title{font-size:14px!important;margin-bottom:2px!important}
+  html body:is(.page-home,.site-v2) .sm-consent__text{font-size:12px!important;line-height:1.45!important}
+  html body:is(.page-home,.site-v2) .sm-consent__button{min-height:40px!important;padding:0 10px!important;font-size:12.5px!important;white-space:nowrap}
+  html body.sm-consent-open .studio-support{bottom:150px!important}
+}
+
+/* 14. Phones: the tools strip scrolls sideways but nothing showed it. A fade sits over its right edge
+   (a separate layer: a mask on #nav itself clipped the Profile group's drop-down menu); the padding lets
+   the last tool scroll fully clear of the fade. tools-unified.js keeps the open tool in view. */
+@media (max-width:760px){
+  html body.site-v2 .top-chrome #nav{padding-right:40px!important}
+  html body.site-v2 .top-chrome-inner{position:relative}
+  html body.site-v2 .top-chrome-inner::after{content:"";position:absolute;top:0;right:0;bottom:0;width:40px;pointer-events:none;
+    background:linear-gradient(90deg,rgba(4,9,24,0),rgba(4,9,24,.92))}
+}
+
+/* 15. Loop lock: says what is true for this visitor (guest / weekly try used) and offers the way out. */
+html body.site-v2 #loopLock b{display:block;margin-bottom:4px}
+html body.site-v2 .loop-lock__actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+html body.site-v2 .loop-lock__actions .btn{min-height:40px}

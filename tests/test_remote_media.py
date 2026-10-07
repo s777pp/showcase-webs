@@ -143,15 +143,14 @@ def test_proxy_never_serves_a_half_written_temp_file(monkeypatch, tmp_path):
     assert response.status_code == 200 and response.content == b"whole-file" and fetch.call_count == 1
 
 
-def test_builder_rejects_lookalike_host_before_fetch(monkeypatch):
+def test_legacy_heavy_routes_are_gone():
+    """/api/optimizer and /api/builder/render ran FFmpeg/Pillow inside the event loop with no UI using them."""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     import tools_api
 
-    monkeypatch.setitem(tools_api._D, "quota_state", lambda request: {"pro": True})
     app = FastAPI()
     app.include_router(tools_api.router)
-    with patch("tools_api.fetch_media") as fetch:
-        response = TestClient(app).post("/api/builder/render", data={"background_url": "https://evilsteamstatic.com/a"})
-        assert response.status_code == 400
-        fetch.assert_not_called()
+    client = TestClient(app)
+    assert client.post("/api/optimizer").status_code in (404, 405)
+    assert client.post("/api/builder/render").status_code in (404, 405)

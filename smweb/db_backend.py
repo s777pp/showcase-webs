@@ -155,7 +155,9 @@ def pool(database_url: str) -> ConnectionPool:
             _pool = ConnectionPool(
                 conninfo=database_url,
                 min_size=1,
-                max_size=int(os.environ.get("PG_POOL_MAX", "10")),
+                # Sync routes run on AnyIO's 40-thread pool; 10 connections made bursts wait for
+                # the 10 s pool timeout. 20 x (2 app + 1 worker) stays well under max_connections=100.
+                max_size=int(os.environ.get("PG_POOL_MAX", "20")),
                 timeout=10,
                 # Without a check, every connection pooled before a PostgreSQL
                 # restart is handed out dead and each request fails until the

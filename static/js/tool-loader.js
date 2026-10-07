@@ -12,12 +12,12 @@
       '/static/js/builder-effects.js?v=20260930-r5',
       '/static/js/builder-text-fx.js?v=20260930-t7',
       '/static/js/builder-export.js?v=20261004-enc1',
-      '/static/js/showcase-builder.js?v=20261005-names1',
+      '/static/js/showcase-builder.js?v=20261007-ux1',
       '/static/js/builder-layout.js?v=20261005-rev1',
       '/static/js/builder-fonts.js?v=20260930-bx9'
     ],
     dna: ['/static/js/steam-dna.js?v=20260912-exp7'],
-    loop: ['/static/js/builder-motion-copy.js?v=20260928-loop3','/static/js/seamless-loop.js?v=20261006-fl1']
+    loop: ['/static/js/builder-motion-copy.js?v=20260928-loop3','/static/js/seamless-loop.js?v=20261007-ux1']
   };
 
   function script(src) {

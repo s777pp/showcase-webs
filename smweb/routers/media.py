@@ -514,7 +514,8 @@ async def preview_wm(
     raw = await file.read()
     if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
         return JSONResponse({"ok": False, "msg": "File too large"}, status_code=400)
-    try:
+
+    def render():
         img = Image.open(io.BytesIO(raw)).convert("RGBA")
         if max(img.size) > 1200:
             img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
@@ -544,13 +545,18 @@ async def preview_wm(
         )
         buf = io.BytesIO()
         out.save(buf, format="PNG")
+        return buf.getvalue(), suggestion, opacity
+
+    try:
+        # Decoding up to 40 MP and drawing the mark is CPU work: keep it off the event loop.
+        data, suggestion, opacity = await run_in_threadpool(render)
         if opacity > 0.45 and not suggestion:
             suggestion = "Opacity is high — try 15–25% so the watermark is less noticeable."
         headers = {}
         if suggestion:
             headers["X-WM-Suggestion"] = suggestion.encode("latin-1", "replace").decode("latin-1")
         from fastapi.responses import Response
-        return Response(content=buf.getvalue(), media_type="image/png", headers=headers)
+        return Response(content=data, media_type="image/png", headers=headers)
     except Exception:
         rid = getattr(request.state, "request_id", "-")
         LOGGER.exception("watermark preview failed rid=%s", rid)

@@ -232,3 +232,22 @@
   document.addEventListener('click',function(event){if(event.target.closest&&event.target.closest('#nav [data-tab]'))setTimeout(paintAll,0)});
   paintAll();refreshPlan();
 })();
+
+/* Phones (2026-10-07): keep the open tool visible in the sideways-scrolling tools strip, e.g. after
+   opening /app#loop or switching tools from another page. */
+(function () {
+  'use strict';
+  var nav = document.getElementById('nav');
+  if (!nav || !('MutationObserver' in window)) return;
+  function reveal() {
+    // Phones only, and instant: a smooth scroll still running when the next tab is tapped moves it.
+    if (!window.matchMedia('(max-width: 760px)').matches || nav.scrollWidth <= nav.clientWidth + 4) return;
+    var active = nav.querySelector('.active, .is-current');
+    if (!active) return;
+    var left = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
+    nav.scrollLeft = Math.max(0, left);
+  }
+  new MutationObserver(function () { window.requestAnimationFrame(reveal); })
+    .observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('load', function () { setTimeout(reveal, 300); });
+})();

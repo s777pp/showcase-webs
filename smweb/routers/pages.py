@@ -22,7 +22,7 @@ from fastapi import APIRouter
 from smweb import guides
 from smweb.core import JOBS, STATIC
 from smweb.job_access import browser_owns_job
-from smweb.locales import SUPPORTED_LANGUAGES, localized_path, localized_request_url
+from smweb.locales import SUPPORTED_LANGUAGES, localized_path, localized_request_url, request_language
 
 
 router = APIRouter()
@@ -99,6 +99,33 @@ def _localized_content(content: str, language: str, route_path: str = "/", statu
         metadata = f'<link rel="canonical" href="https://showcasemaker.com{canonical_path}">\n' + "\n".join(locale_links) + "\n"
         content = content.replace("</head>", metadata + "</head>", 1)
     response = _html(content, status_code=status_code)
+    response.headers["Content-Language"] = language
+    return response
+
+
+# Paths whose 404 stays machine-readable JSON (API clients, assets, mirrors of R2).
+_NOT_FOUND_RAW = ("/api/", "/static/", "/fonts/", "/r2m/", "/r2s/", "/admin/")
+
+
+def wants_not_found_page(request: Request) -> bool:
+    """A browser opening an unknown site address gets the 404 page instead of raw JSON."""
+    path = request.url.path
+    if request.method not in ("GET", "HEAD") or path.startswith(_NOT_FOUND_RAW):
+        return False
+    return "text/html" in (request.headers.get("accept") or "")
+
+
+def not_found_page(request: Request | None = None, language: str | None = None) -> HTMLResponse:
+    """The site's 404 page (static/404.html) in the visitor's language: the /<lang>/ prefix of the
+    address, else the saved / browser language. noindex; no canonical or hreflang links."""
+    if not language and request is not None:
+        first = request.url.path.strip("/").split("/", 1)[0]
+        language = first if first in SUPPORTED_LANGUAGES else request_language(request)
+    language = language if language in SUPPORTED_LANGUAGES else "en"
+    content = _page(STATIC / "404.html")
+    content = re.sub(r'<html\b([^>]*?)\blang="[^"]*"', rf'<html\1lang="{language}"', content, count=1, flags=re.I)
+    content = _language_pack(content, language)
+    response = _html(content, status_code=404)
     response.headers["Content-Language"] = language
     return response
 
@@ -285,7 +312,7 @@ def _guides_hub(language: str):
 def _guide(language: str, slug: str):
     versions = guides.GUIDES.get(slug)
     if not versions:
-        return _html("<h1>Guide not found</h1>", status_code=404)
+        return not_found_page(language=language)
     text_language = guides.content_language(language)
     guide, ui = versions[text_language], guides.UI[text_language]
     bars = {"workshop": 5, "featured": 1, "split": 2}[guide["mode"]]

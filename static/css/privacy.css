@@ -49,7 +49,7 @@ footer span{margin-right:auto}
 .sm-head__nav a:hover{color:#fff}
 .sm-head__nav a::after{content:"";position:absolute;left:14px;right:14px;bottom:0;height:2px;background:#1fc9f1;transform:scaleX(0);transition:transform .18s}
 .sm-head__nav a:hover::after{transform:scaleX(1)}
-.sm-head__nav em{padding:3px 6px;border:1px solid rgba(31,201,241,.6);border-radius:5px;background:rgba(31,201,241,.12);color:#6fe3ff;font:800 9px/1 Consolas,monospace;letter-spacing:.1em;font-style:normal}
+.sm-head__nav em{padding:3px 6px;border:1px solid rgba(31,201,241,.6);border-radius:5px;background:rgba(31,201,241,.12);color:#6fe3ff;font:800 9.5px/1 Montserrat,"Segoe UI",Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;font-style:normal}
 .sm-head__lang{position:relative;flex:none}
 .sm-head__lang summary{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:1px solid rgba(110,160,230,.3);border-radius:10px;background:rgba(8,16,36,.85);color:#e6f0ff;font:700 13px/1 Montserrat,"Segoe UI",Arial,sans-serif;cursor:pointer;list-style:none}
 .sm-head__lang summary::-webkit-details-marker{display:none}
@@ -88,9 +88,13 @@ footer.sm-foot{box-sizing:border-box;width:100%;max-width:none;margin:48px 0 0;d
 @media(max-width:760px){.sm-foot__nav{margin-left:0}}
 @media print{footer.sm-foot{display:none}}
 /* Header fits every width: icons go first, then labels (2026-09-28). */
-@media(max-width:1400px){.top.sm-head{gap:14px}.sm-head__nav a{padding:0 9px}.sm-head__nav a svg{display:none}}
+/* Icons go first, like the live shell header (which hides them up to 1460 px): at 1440 they pushed "Support" under "Activate". */
+@media(max-width:1600px){.top.sm-head{gap:14px}.sm-head__nav a{padding:0 9px}.sm-head__nav a svg{display:none}}
 @media(max-width:1240px){.sm-head__nav a svg{display:inline}.sm-head__nav a span,.sm-head__nav a em{display:none}.sm-head__btn span{display:none}.sm-head__btn{padding:0 10px}}
 @media(max-width:420px){.sm-head__right{gap:6px}.sm-head__nav a{padding:0 6px}}
 /* Long words (e.g. "конфиденциальности") shrink instead of breaking mid-word on small phones. */
 h1{overflow-wrap:normal;hyphens:auto}
 @media(max-width:420px){h1{font-size:clamp(24px,7.4vw,32px)}}
+/* Phones: the icon row of the static header overlapped Activate and the language button. Brand, language
+   and sign-in stay; the same links are in the footer and "Back to the site". */
+@media(max-width:600px){.sm-head__nav{display:none!important}.top.sm-head{justify-content:space-between}}

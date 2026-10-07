@@ -1086,6 +1086,29 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
         c.close()
 
 
+_last_session_prune = 0.0
+
+
+def prune_sessions(interval: float = 3600) -> int:
+    """Delete sessions past SESSION_TTL_DAYS, at most once per ``interval`` (job cleaner).
+
+    user_by_token already ignores them; without this the table only ever grew.
+    """
+    global _last_session_prune
+    now = time.time()
+    if now - _last_session_prune < interval:
+        return 0
+    _last_session_prune = now
+    cutoff = now - max(1, int(os.environ.get("SESSION_TTL_DAYS") or 30)) * 86400
+    c = _conn()
+    try:
+        cur = c.execute("DELETE FROM sessions WHERE created_at<?", (cutoff,))
+        c.commit()
+        return max(0, int(cur.rowcount or 0))
+    finally:
+        c.close()
+
+
 def user_by_token(token: str) -> Optional[dict]:
     if not token:
         return None
@@ -1225,9 +1248,16 @@ def effective_pro(user: dict | None) -> bool:
     except (TypeError, ValueError):
         return True
     if time.time() > until_f:
-        # expire
+        # Clear the flag only if the row is STILL expired: `user` was read at the start of the
+        # request, and a purchase landing meanwhile must not be wiped by this stale copy.
         try:
-            set_pro(int(user["id"]), False, code=user.get("pro_code"), until=None)
+            c = _conn()
+            try:
+                c.execute("UPDATE users SET is_pro=0, pro_until=NULL WHERE id=? AND pro_until IS NOT NULL AND pro_until<=?",
+                          (int(user["id"]), time.time()))
+                c.commit()
+            finally:
+                c.close()
         except Exception:
             pass
         return False
@@ -1509,6 +1539,23 @@ def mark_code_used(code: str, user_id: int) -> None:
     )
     c.commit()
     c.close()
+
+
+def claim_code(code: str, user_id: int) -> bool:
+    """Bind a one-time code to one account atomically.
+
+    True only for the call that inserted the row. The old check-then-mark pair
+    (code_used + mark_code_used, last write wins) let two simultaneous requests
+    both pass the check and both get Pro from one code.
+    """
+    c = _conn()
+    try:
+        cur = c.execute("INSERT OR IGNORE INTO used_codes(code, user_id, used_at) VALUES (?,?,?)",
+                        (code, int(user_id), time.time()))
+        c.commit()
+        return cur.rowcount == 1
+    finally:
+        c.close()
 
 
 def set_da_tokens(user_id: int, access: str | None, refresh: str | None = None) -> None:

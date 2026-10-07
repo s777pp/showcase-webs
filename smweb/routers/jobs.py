@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 import redis_store as rs
-from smweb.core import JOBS, _auth_user, max_jobs_for_user, owner_key, quota_state, quota_inc
+from smweb.core import JOBS, StartGuard, _auth_user, max_jobs_for_user, owner_key, quota_state
 from smweb.jobs import _job_pool, _worker_mode
 
 
@@ -160,46 +160,55 @@ def retry_job(job_id: str, request: Request):
         from smweb import free_limits
         return free_limits.refusal(request, "daily_more" if int(quota.get("left") or 0) > 0 else "daily", "files",
                                    n=quota.get("limit") or 0)
-    if rs.job_count_user(_owner(request)) >= max_jobs_for_user(quota.get("user_id")):
-        return JSONResponse({"ok": False, "msg": "Too many active jobs. Wait for current processing to finish."}, status_code=429)
-    allowed, _ = rs.rate_limit(f"job-retry:{_owner(request)}", 1, 5, fail_closed=True)
-    if not allowed:
-        return JSONResponse({"ok": False, "msg": "Please wait before retrying again"}, status_code=429)
-    jid = secrets.token_hex(12 if kind == "process" else 16)
-    payload = {key: value for key, value in old.items() if key not in {
-        "status", "pct", "stage", "error", "updated", "result_path", "result_key", "zip_path", "job_dir",
-        "processed", "errors", "listed", "readiness", "cancel_requested", "cache_hit",
-        "error_traces", "runner", "started", "finished",
-    }}
-    payload.update({"status": "queued", "pct": 1, "stage": "queued", "created": time.time(), "retry_of": job_id})
-    payload["opts"] = dict(old.get("opts") or {})
-    payload["opts"]["steam_check"] = bool(quota.get("email"))
-    if not quota.get("pro"):
-        from smweb.routers.process import _watermark_options
-        keys = ("text", "wm_font", "opacity", "corner", "scale", "color", "wm_x", "wm_y")
-        payload["opts"].update(zip(keys, _watermark_options(quota, "", "", 0, "0", "bl", 1.0, "#ffffff", "", "")))
-    # The previous job may expire while this one waits in the queue. Give the
-    # retry its own inputs so ordinary cleanup cannot break accepted work.
-    retry_dir = JOBS / jid
-    retry_dir.mkdir(parents=True, exist_ok=False)
+    # Same start guard as /api/process/start: one start per owner, files reserved atomically.
+    guard = StartGuard(request, quota, _owner(request))
+    if not guard.lock():
+        return JSONResponse({"ok": False, "msg": "Your previous upload is still starting. Try again in a moment."}, status_code=429)
     try:
-        files = []
-        for index, item in enumerate(old.get("files") or []):
-            source = Path(item["path"])
-            target = retry_dir / f"input_{index}{source.suffix}"
-            shutil.copyfile(source, target)
-            files.append({**item, "path": str(target)})
-        payload["files"] = files
-    except OSError:
-        shutil.rmtree(retry_dir, ignore_errors=True)
-        return JSONResponse({"ok": False, "msg": "Source files are unavailable. Upload them again."}, status_code=410)
-    external = _worker_mode() == "external" and rs.redis_ok() and rs.worker_alive()
-    rs.job_create(jid, payload, enqueue=external)
-    if not quota.get("pro"):
-        quota_inc(request, file_count)
-    if not external:
-        _dispatch_embedded(jid, payload)
-    return JSONResponse({"ok": True, "job_id": jid}, status_code=202)
+        if rs.job_count_user(_owner(request)) >= max_jobs_for_user(quota.get("user_id")):
+            return JSONResponse({"ok": False, "msg": "Too many active jobs. Wait for current processing to finish."}, status_code=429)
+        allowed, _ = rs.rate_limit(f"job-retry:{_owner(request)}", 1, 5, fail_closed=True)
+        if not allowed:
+            return JSONResponse({"ok": False, "msg": "Please wait before retrying again"}, status_code=429)
+        if not guard.reserve(file_count):
+            from smweb import free_limits
+            return free_limits.refusal(request, "daily", "files", n=quota.get("limit") or 0)
+        jid = secrets.token_hex(12 if kind == "process" else 16)
+        payload = {key: value for key, value in old.items() if key not in {
+            "status", "pct", "stage", "error", "updated", "result_path", "result_key", "zip_path", "job_dir",
+            "processed", "errors", "listed", "readiness", "cancel_requested", "cache_hit",
+            "error_traces", "runner", "started", "finished",
+        }}
+        payload.update({"status": "queued", "pct": 1, "stage": "queued", "created": time.time(), "retry_of": job_id})
+        payload["opts"] = dict(old.get("opts") or {})
+        payload["opts"]["steam_check"] = bool(quota.get("email"))
+        if not quota.get("pro"):
+            from smweb.routers.process import _watermark_options
+            keys = ("text", "wm_font", "opacity", "corner", "scale", "color", "wm_x", "wm_y")
+            payload["opts"].update(zip(keys, _watermark_options(quota, "", "", 0, "0", "bl", 1.0, "#ffffff", "", "")))
+        # The previous job may expire while this one waits in the queue. Give the
+        # retry its own inputs so ordinary cleanup cannot break accepted work.
+        retry_dir = JOBS / jid
+        retry_dir.mkdir(parents=True, exist_ok=False)
+        try:
+            files = []
+            for index, item in enumerate(old.get("files") or []):
+                source = Path(item["path"])
+                target = retry_dir / f"input_{index}{source.suffix}"
+                shutil.copyfile(source, target)
+                files.append({**item, "path": str(target)})
+            payload["files"] = files
+        except OSError:
+            shutil.rmtree(retry_dir, ignore_errors=True)
+            return JSONResponse({"ok": False, "msg": "Source files are unavailable. Upload them again."}, status_code=410)
+        external = _worker_mode() == "external" and rs.redis_ok() and rs.worker_alive()
+        rs.job_create(jid, payload, enqueue=external)
+        guard.settle(file_count)
+        if not external:
+            _dispatch_embedded(jid, payload)
+        return JSONResponse({"ok": True, "job_id": jid}, status_code=202)
+    finally:
+        guard.release()
 
 
 @router.get("/api/jobs/events")

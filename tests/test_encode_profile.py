@@ -196,7 +196,7 @@ def test_start_routes_store_the_choice(tmp_path, monkeypatch):
     monkeypatch.setattr(process._job_pool, "submit", lambda *a, **k: None)
     # Other tests in the run spend the shared free daily limit.
     monkeypatch.setattr(process, "quota_state", lambda _request: {"pro": False, "left": 5, "limit": 5, "email": ""})
-    monkeypatch.setattr(process, "quota_inc", lambda *a, **k: None)
+    monkeypatch.setattr(process.rs, "quota_inc", lambda ip, day, n=1: 0)  # StartGuard reserves through it
     buffer = io.BytesIO()
     Image.new("RGB", (300, 300), "#235070").save(buffer, format="PNG")
     app = FastAPI()

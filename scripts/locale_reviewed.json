@@ -233,7 +233,15 @@
     "Is this made by Valve?": "Ist das von Valve?",
     "No. It is an independent project; Steam and Valve are trademarks of Valve Corporation.": "Nein. Es ist ein unabhängiges Projekt; Steam und Valve sind Marken der Valve Corporation.",
     "The rest is up to you": "Der Rest liegt bei dir",
-    "Your showcase is ready": "Deine Vitrine ist fertig"
+    "Your showcase is ready": "Deine Vitrine ist fertig",
+    "Free once a week with an account": "Einmal pro Woche kostenlos mit Konto",
+    "Sign in to make a loop for free. Pro removes the weekly limit.": "Melde dich an, um kostenlos eine Schleife zu erstellen. Pro hebt das Wochenlimit auf.",
+    "This week's free loop is used": "Die kostenlose Schleife dieser Woche ist verbraucht",
+    "The next free try comes on Monday. Pro makes loops without limits.": "Der nächste kostenlose Versuch kommt am Montag. Mit Pro ohne Limit.",
+    "Sign in": "Anmelden",
+    "Get Pro": "Pro holen",
+    "Your Profile": "Dein Profil",
+    "Your Story": "Deine Geschichte"
   },
   "tr": {
     "3 Steam formats": "3 Steam formatı",
@@ -468,7 +476,15 @@
     "Is this made by Valve?": "Bu Valve’ın mı?",
     "No. It is an independent project; Steam and Valve are trademarks of Valve Corporation.": "Hayır. Bağımsız bir projedir; Steam ve Valve, Valve Corporation’ın ticari markalarıdır.",
     "The rest is up to you": "Gerisi sende",
-    "Your showcase is ready": "Vitrinin hazır"
+    "Your showcase is ready": "Vitrinin hazır",
+    "Free once a week with an account": "Hesapla haftada bir kez ücretsiz",
+    "Sign in to make a loop for free. Pro removes the weekly limit.": "Ücretsiz döngü yapmak için giriş yap. Pro haftalık sınırı kaldırır.",
+    "This week's free loop is used": "Bu haftanın ücretsiz döngüsü kullanıldı",
+    "The next free try comes on Monday. Pro makes loops without limits.": "Sonraki ücretsiz deneme pazartesi gelir. Pro ile sınırsız döngü.",
+    "Sign in": "Giriş yap",
+    "Get Pro": "Pro al",
+    "Your Profile": "Senin profilin",
+    "Your Story": "Senin hikâyen"
   },
   "fr": {
     "3 Steam formats": "3 formats Steam",
@@ -704,7 +720,15 @@
     "Is this made by Valve?": "Est-ce un service de Valve ?",
     "No. It is an independent project; Steam and Valve are trademarks of Valve Corporation.": "Non. C’est un projet indépendant ; Steam et Valve sont des marques de Valve Corporation.",
     "The rest is up to you": "À vous de jouer",
-    "Your showcase is ready": "Votre vitrine est prête"
+    "Your showcase is ready": "Votre vitrine est prête",
+    "Free once a week with an account": "Gratuit une fois par semaine avec un compte",
+    "Sign in to make a loop for free. Pro removes the weekly limit.": "Connectez-vous pour créer une boucle gratuitement. Pro supprime la limite hebdomadaire.",
+    "This week's free loop is used": "La boucle gratuite de cette semaine est utilisée",
+    "The next free try comes on Monday. Pro makes loops without limits.": "Le prochain essai gratuit arrive lundi. Avec Pro, sans limite.",
+    "Sign in": "Se connecter",
+    "Get Pro": "Passer à Pro",
+    "Your Profile": "Votre profil",
+    "Your Story": "Votre histoire"
   },
   "uk": {
     "3 Steam formats": "3 формати Steam",
@@ -942,7 +966,15 @@
     "Is this made by Valve?": "Це сервіс від Valve?",
     "No. It is an independent project; Steam and Valve are trademarks of Valve Corporation.": "Ні. Це незалежний проєкт; Steam і Valve — торговельні марки Valve Corporation.",
     "The rest is up to you": "Справа за тобою",
-    "Your showcase is ready": "Вітрина готова"
+    "Your showcase is ready": "Вітрина готова",
+    "Free once a week with an account": "Безкоштовно раз на тиждень з акаунтом",
+    "Sign in to make a loop for free. Pro removes the weekly limit.": "Увійди, щоб зробити цикл безкоштовно. З Pro — без тижневого ліміту.",
+    "This week's free loop is used": "Безкоштовний цикл цього тижня вже зроблено",
+    "The next free try comes on Monday. Pro makes loops without limits.": "Наступна безкоштовна спроба — у понеділок. З Pro цикли без обмежень.",
+    "Sign in": "Увійти",
+    "Get Pro": "Узяти Pro",
+    "Your Profile": "Твій профіль",
+    "Your Story": "Твоя історія"
   },
   "es": {
     "3 Steam formats": "3 formatos de Steam",
@@ -1177,7 +1209,15 @@
     "Is this made by Valve?": "¿Es un servicio de Valve?",
     "No. It is an independent project; Steam and Valve are trademarks of Valve Corporation.": "No. Es un proyecto independiente; Steam y Valve son marcas de Valve Corporation.",
     "The rest is up to you": "Lo demás depende de ti",
-    "Your showcase is ready": "Tu escaparate está listo"
+    "Your showcase is ready": "Tu escaparate está listo",
+    "Free once a week with an account": "Gratis una vez por semana con una cuenta",
+    "Sign in to make a loop for free. Pro removes the weekly limit.": "Inicia sesión para crear un bucle gratis. Pro quita el límite semanal.",
+    "This week's free loop is used": "El bucle gratis de esta semana ya se usó",
+    "The next free try comes on Monday. Pro makes loops without limits.": "El próximo intento gratis llega el lunes. Con Pro, sin límites.",
+    "Sign in": "Iniciar sesión",
+    "Get Pro": "Obtener Pro",
+    "Your Profile": "Tu perfil",
+    "Your Story": "Tu historia"
   },
   "pt": {
     "3 Steam formats": "3 formatos da Steam",
@@ -1412,6 +1452,14 @@
     "Is this made by Valve?": "É um serviço da Valve?",
     "No. It is an independent project; Steam and Valve are trademarks of Valve Corporation.": "Não. É um projeto independente; Steam e Valve são marcas da Valve Corporation.",
     "The rest is up to you": "Agora é com você",
-    "Your showcase is ready": "Sua vitrine está pronta"
+    "Your showcase is ready": "Sua vitrine está pronta",
+    "Free once a week with an account": "Grátis uma vez por semana com uma conta",
+    "Sign in to make a loop for free. Pro removes the weekly limit.": "Entre para criar um loop de graça. O Pro remove o limite semanal.",
+    "This week's free loop is used": "O loop grátis desta semana já foi usado",
+    "The next free try comes on Monday. Pro makes loops without limits.": "A próxima tentativa grátis chega na segunda-feira. Com Pro, sem limites.",
+    "Sign in": "Entrar",
+    "Get Pro": "Assinar o Pro",
+    "Your Profile": "Seu perfil",
+    "Your Story": "Sua história"
   }
 }

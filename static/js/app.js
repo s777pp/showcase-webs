@@ -645,11 +645,23 @@ document.getElementById('btnRun').onclick = async () => {
         try {
           let job = null;
           const deadline = Date.now() + 15 * 60 * 1000;
+          let pollFailures = 0;
           while (Date.now() < deadline) {
-            const response = await fetch('/api/process/status/' + encodeURIComponent(jid), {
-              credentials: 'include', cache: 'no-store', headers: headers()
-            });
-            job = await response.json();
+            // A dropped connection or a 5xx during a deploy is not a failed job: the work goes on
+            // on the server, so try again with a growing pause before giving up.
+            let response;
+            try {
+              response = await fetch('/api/process/status/' + encodeURIComponent(jid), {
+                credentials: 'include', cache: 'no-store', headers: headers()
+              });
+              if (response.status >= 500 || response.status === 429) throw new Error('HTTP ' + response.status);
+              job = await response.json();
+              pollFailures = 0;
+            } catch (pollError) {
+              if (++pollFailures > 8) throw pollError;
+              await new Promise(function (done) { setTimeout(done, Math.min(8000, 1000 * pollFailures)); });
+              continue;
+            }
             if (!response.ok || !job.ok) throw new Error(job.msg || ('HTTP ' + response.status));
             if (job.status === 'error' || job.status === 'cancelled') throw new Error(job.status === 'cancelled' ? smT('Обработка отменена', 'Processing cancelled') : (job.error || (job.errors || []).join(' · ') || smT('Ошибка обработки', 'Processing failed')));
             if (job.status === 'done') break;
@@ -679,19 +691,12 @@ document.getElementById('btnRun').onclick = async () => {
             hideProgLater(); resolve(); return;
           }
           setProg(99, ru ? 'Подготавливаем ZIP…' : 'Preparing ZIP…', '');
-          const result = await fetch('/api/process/download/' + encodeURIComponent(jid), {
-            credentials: 'include', cache: 'no-store', headers: headers()
-          });
-          if (!result.ok) {
-            let problem = {}; try { problem = await result.json(); } catch (e) {}
-            throw new Error(problem.msg || ('HTTP ' + result.status));
-          }
-          const blob = await result.blob();
-          const url = URL.createObjectURL(blob);
+          // Let the browser download the file itself (the job is "done", so the link works): reading
+          // the ZIP into a Blob first kept up to 80 MB in the tab's memory and phones closed the tab.
+          const zipUrl = '/api/process/download/' + encodeURIComponent(jid);
           const a = document.createElement('a');
-          a.href = url; a.download = 'showcase_' + (state.mode || 'out') + '.zip';
+          a.href = zipUrl; a.download = 'showcase_' + (state.mode || 'out') + '.zip';
           document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
           setProg(100, ru ? 'Готово!' : 'Done!', ru ? 'ZIP скачан' : 'ZIP downloaded');
           st.className = 'status ok';
           st.textContent = (ru ? 'Готово: ' : 'Done: ') + (job.processed || state.files.length) + (ru ? ' файл(ов) — скачано' : ' file(s) — downloaded');
