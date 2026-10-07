@@ -26,3 +26,9 @@
 .guide__more a {display:block;padding:14px 16px;border:1px solid rgba(110,170,255,.18);border-radius:12px;background:linear-gradient(160deg,rgba(14,26,60,.92),rgba(5,10,28,.95));color:#f4f9ff;text-decoration:none;font:700 14px/1.45 Montserrat,sans-serif;transition:border-color .18s,transform .18s,box-shadow .18s}
 .guide__more a:hover {border-color:rgba(111,227,255,.6);box-shadow:0 12px 30px rgba(0,0,0,.3);transform:translateY(-1px)}
 .guide__more small {display:block;margin-top:6px;color:rgba(200,214,238,.6);font:500 12px/1.5 Montserrat,sans-serif}
+/* The extension, offered once and calmly after the manual steps (2026-10-08). */
+.guide__ext {display:grid;gap:6px;margin-top:22px;padding:16px 18px;border:1px dashed rgba(110,170,255,.28);border-radius:14px;background:rgba(5,10,28,.55)}
+.guide__ext b {font:800 15px/1.4 Montserrat,sans-serif;color:#f4f9ff}
+.guide__ext p {margin:0;color:rgba(214,229,250,.7);font:500 14px/1.6 Montserrat,sans-serif}
+.guide__ext a {justify-self:start;color:#6fe3ff;font:700 14px/1.4 Montserrat,sans-serif;text-decoration:none}
+.guide__ext a:hover {color:#fff;text-decoration:underline}

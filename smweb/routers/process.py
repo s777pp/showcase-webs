@@ -543,23 +543,47 @@ def _process_job_for(request: Request, job_id: str) -> dict | None:
     return job
 
 
+# Seconds per unit of work (one file x one showcase type) until a server has its own history (measured on the
+# OVH VPS, 2026-09-28: Workshop / Featured from an 8 s video ~40 s, pictures ~1-2 s).
+_ETA_DEFAULT = {"still": 2.0, "motion-standard": 30.0, "motion-max": 40.0}
+
+
 def _process_eta(job_id: str, job: dict) -> dict:
-    """Queue position and a rough "seconds left" from recent job durations."""
+    """Queue position, "seconds left" and a time-based progress for the running job.
+
+    The estimate is per kind of work (pictures vs GIF / video, fast vs best encoding) and per unit (file x
+    showcase type): one median for every job said "5 s left" for GIFs that still needed half a minute. Once the
+    estimate runs out the answer is ``eta_over`` ("almost done") instead of a number that keeps lying.
+    """
     status = job.get("status")
     if status not in ("queued", "running"):
         return {}
-    typical = rs.eta_typical("process")
+    kind = str(job.get("eta_kind") or "")
+    units = max(1, int(job.get("eta_units") or 1))
+    per_unit = rs.eta_typical(f"process:{kind}") if kind else None
+    if per_unit:
+        total = per_unit * units
+    elif kind in _ETA_DEFAULT:
+        total = _ETA_DEFAULT[kind] * units
+    else:
+        total = rs.eta_typical("process")             # jobs queued before this change
     out: dict = {}
     if status == "queued":
         ahead = rs.queue_ahead(job_id)
         if ahead is not None:
             out["queue_ahead"] = ahead
-            if typical:
+            if total:
                 workers = max(1, int(os.environ.get("MAX_JOB_WORKERS") or 1))
-                out["eta_seconds"] = int(typical * (1 + ahead // workers))
-    elif typical:
-        elapsed = time.time() - float(job.get("started") or time.time())
-        out["eta_seconds"] = int(max(5, typical - elapsed))
+                out["eta_seconds"] = int(total * (1 + ahead // workers))
+    elif total:
+        elapsed = max(0.0, time.time() - float(job.get("started") or time.time()))
+        left = total - elapsed
+        # Past the estimate the job says "almost done" rather than a number that stays wrong.
+        if left > 2:
+            out["eta_seconds"] = int(left + 0.999)
+        else:
+            out["eta_over"] = True
+        out["pct_time"] = round(min(95.0, 100.0 * elapsed / total), 1)
     return out
 
 
@@ -573,6 +597,8 @@ def api_process_status(job_id: str, request: Request):
         "status": j.get("status"),
         "pct": int(j.get("pct") or 0),
         "stage": j.get("stage") or "",
+        "file_no": j.get("file_no"),
+        "files_total": j.get("files_total"),
         "error": j.get("error"),
         "processed": j.get("processed"),
         "errors": j.get("errors") or [],

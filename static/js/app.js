@@ -644,6 +644,7 @@ document.getElementById('btnRun').onclick = async () => {
         if (cancelButton) { cancelButton.hidden = false; cancelButton.textContent = ru ? 'Отменить задачу' : 'Cancel job'; }
         try {
           let job = null;
+          let processShownPct = 0;
           const deadline = Date.now() + 15 * 60 * 1000;
           let pollFailures = 0;
           while (Date.now() < deadline) {
@@ -665,16 +666,21 @@ document.getElementById('btnRun').onclick = async () => {
             if (!response.ok || !job.ok) throw new Error(job.msg || ('HTTP ' + response.status));
             if (job.status === 'error' || job.status === 'cancelled') throw new Error(job.status === 'cancelled' ? smT('Обработка отменена', 'Processing cancelled') : (job.error || (job.errors || []).join(' · ') || smT('Ошибка обработки', 'Processing failed')));
             if (job.status === 'done') break;
+            // The server's own step counter moves in big jumps (one long step while a GIF is encoded), so the bar
+            // also follows the time estimate (pct_time) and never goes backwards.
             const realPct = Math.max(0, Math.min(99, Number(job.pct) || 0));
-            // Queue position and a rough time left, estimated by the server from recent jobs.
+            const shownPct = Math.max(realPct, Math.min(95, Number(job.pct_time) || 0));
+            processShownPct = Math.max(processShownPct, shownPct);
+            // Queue position and time left, estimated by the server per kind of work (pictures vs GIF / video).
             const secs = Number(job.eta_seconds) || 0;
             const left = secs ? (secs < 60 ? secs + (ru ? ' сек' : ' s') : Math.floor(secs / 60) + (ru ? ' мин ' : ' min ') + (secs % 60) + (ru ? ' сек' : ' s')) : '';
             const ahead = Number(job.queue_ahead) || 0;
             let title = job.status === 'queued'
               ? (ahead > 0 ? (ru ? 'В очереди, перед вами: ' : 'Queued, jobs ahead: ') + ahead : (ru ? 'Задание в очереди…' : 'Job queued…'))
-              : (ru ? 'Обработка' : 'Processing');
-            if (left) title += (ru ? ' · осталось ≈ ' : ' · ≈ ') + left + (ru ? '' : ' left');
-            setProg(40 + realPct * .58, title,
+              : processStageLabel(job);
+            if (left) title += ' · ' + smT('осталось ≈ {t}', '≈ {t} left').replace('{t}', left);
+            else if (job.eta_over && job.status === 'running') title += ' · ' + smT('почти готово…', 'almost done…');
+            setProg(40 + Math.max(processShownPct, shownPct) * .58, title,
               ru ? 'сайт остаётся доступным во время обработки' : 'the site stays responsive while this runs');
             await new Promise(function (done) { setTimeout(done, 850); });
           }
@@ -3914,3 +3920,37 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
     }
   });
 })();
+
+/* What the server is doing right now, in words (owner, 2026-10-08: show the steps, not only a bar).
+   Stages come from smweb/jobs.py: prepare, file:<name>, image|gif|video:<mode>:<name>, upload. */
+function processStageLabel(job) {
+  // Whole phrases (not glued pieces), so every site language has a reviewed translation (smT -> SMLang.translate).
+  const stage = String(job.stage || '');
+  const kind = stage.split(':')[0];
+  const mode = stage.split(':')[1] || '';
+  const PICTURE = {
+    workshop: ['Режем картинку на 5 частей', 'Cutting the picture into 5 parts'],
+    featured: ['Режем картинку в один файл', 'Cutting the picture into one file'],
+    split: ['Режем картинку на 2 части', 'Cutting the picture into 2 parts'],
+    '': ['Режем картинку на части', 'Cutting the picture into parts']
+  };
+  const MOTION = {
+    workshop: ['Режем на 5 частей и подгоняем под 5 МБ', 'Cutting into 5 parts and fitting under 5 MB'],
+    featured: ['Режем в один файл и подгоняем под 5 МБ', 'Cutting into one file and fitting under 5 MB'],
+    split: ['Режем на 2 части и подгоняем под 5 МБ', 'Cutting into 2 parts and fitting under 5 MB'],
+    '': ['Режем на части и подгоняем под 5 МБ', 'Cutting into parts and fitting under 5 MB']
+  };
+  let pair;
+  if (kind === 'prepare') pair = ['Готовим файлы', 'Preparing the files'];
+  else if (kind === 'file') pair = ['Читаем файл', 'Reading the file'];
+  else if (kind === 'image') pair = PICTURE[mode] || PICTURE[''];
+  else if (kind === 'gif' || kind === 'video') pair = MOTION[mode] || MOTION[''];
+  else if (kind === 'upload') pair = ['Сохраняем результат', 'Saving the result'];
+  else pair = ['Обработка', 'Processing'];
+  let text = smT(pair[0], pair[1]);
+  const total = Number(job.files_total) || 0, no = Number(job.file_no) || 0;
+  if (total > 1 && no > 0 && kind !== 'upload' && kind !== 'prepare') {
+    text = smT('Файл {n} из {m}', 'File {n} of {m}').replace('{n}', no).replace('{m}', total) + ' · ' + text;
+  }
+  return text;
+}

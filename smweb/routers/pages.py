@@ -322,6 +322,8 @@ def _guide(language: str, slug: str):
     body = (f'<span class="guide__kicker">{html.escape(ui["kicker"])}</span><h1>{html.escape(guide["title"])}</h1>'
             f'<p class="guide__lead">{html.escape(guide["intro"])}</p>{diagram}'
             f'<h2>{html.escape(ui["steps"])}</h2><ol class="guide__steps">{steps}</ol>'
+            f'<aside class="guide__ext"><b>{html.escape(ui["ext_title"])}</b><p>{html.escape(ui["ext_text"])}</p>'
+            f'<a href="{localized_path(language, "/extension")}">{html.escape(ui["ext_link"])} →</a></aside>'
             f'<a class="guide__cta" href="{localized_path(language, "/app")}">{html.escape(ui["cta"])} →</a>'
             f'<h2>{html.escape(ui["faq"])}</h2><div class="guide__faq">{faq}</div>'
             f'<h2>{html.escape(ui["more"])}</h2>{_guide_links(language, text_language, skip=slug)}')

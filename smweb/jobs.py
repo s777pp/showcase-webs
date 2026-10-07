@@ -350,6 +350,22 @@ def _extra_wanted(name: str, extras) -> bool:
     return True
 
 
+_STILL_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".ico", ".cur", ".tif", ".tiff", ".avif", ".tga",
+               ".psd", ".qoi", ".jp2", ".j2k", ".jfif", ".dds", ".icns", ".pcx", ".heic", ".heif")
+
+
+def process_eta_kind(files_data: list[tuple], opts: dict, animated_frame: bool = False) -> str:
+    """'still' when every source is a picture (and no animated frame turns it into a clip), else
+    'motion-<encode profile>': the two differ by more than an order of magnitude in time."""
+    motion = animated_frame or any(
+        not str(item[0]).lower().endswith(_STILL_EXTS) for item in files_data
+    )
+    if not motion:
+        return "still"
+    profile = str(opts.get("encode_profile") or "max")
+    return f"motion-{profile if profile in ('standard', 'max') else 'max'}"
+
+
 def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
     """Background worker: same pipeline as /api/process, updates progress."""
     import time as _sm_time
@@ -391,6 +407,11 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
     # None (jobs from before the option) = every extra file, as before.
     extras = None if opts.get("extras") is None else frozenset(opts.get("extras") or ())
     n_files = max(1, len(files_data))
+    # Time estimate (owner, 2026-10-08: "52 % and 5 s left, then 30 s more"): a GIF or video takes ~30 s where a
+    # picture takes ~1 s, so durations are kept per kind and per unit of work (file x showcase type).
+    eta_kind = process_eta_kind(files_data, opts, animated_frame)
+    eta_units = max(1, n_files * max(1, len(modes)))
+    _job_set(jid, eta_kind=eta_kind, eta_units=eta_units)
     try:
         process_control.checkpoint(jid)
         zf = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
@@ -401,7 +422,7 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
             if isinstance(raw, Path):
                 raw = raw.read_bytes()
             base_pct = 8 + int(80 * fi / n_files)
-            _job_set(jid, pct=base_pct, stage=f"file:{name}")
+            _job_set(jid, pct=base_pct, stage=f"file:{name}", file_no=fi + 1, files_total=n_files)
             try:
                 if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
                     errors.append(f"{name}: >{MAX_UPLOAD_MB}MB")
@@ -655,7 +676,9 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
             finished=time.time(),
         )
         # Typical duration drives the "about N seconds left" estimate on the page.
-        rs.eta_record("process", _sm_time.perf_counter() - _sm_job_t0)
+        _took = _sm_time.perf_counter() - _sm_job_t0
+        rs.eta_record("process", _took)
+        rs.eta_record(f"process:{eta_kind}", _took / eta_units)
         record = _job_get(jid) or {}
         cache_key = str(record.get("cache_key") or "")
         if cache_key:

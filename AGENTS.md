@@ -1263,6 +1263,26 @@ Only the hero exists for now; content blocks will be added below it later.
 - Verified at 1920x1080 and 1366x768 (screenshots of every scene), phones / 1024 touch untouched, qa_home_layout,
   qa_accessibility, qa_home_loader_performance and the landing tests pass.
 
+## 6.23 Wizard, honest progress, guides in 8 languages (2026-10-08, local, not deployed)
+
+- "Find my showcase" wizard inside the Process "How it works" window (`static/js/process-onboarding.js`, keys in the
+  same `COPY`, 8 languages): level (>=10 / below 10 / don't know + where to look) -> showcase type (diagrams; "don't
+  know" = Workshop) -> what you have (file / link / sample). Below 10: a screen with the owner's level-up partner link
+  `https://slvlup.com/r/uf9hte` (`rel="noopener sponsored"`) or "prepare the files now". The end clicks the real mode
+  button and opens `#fileInput`, focuses `.process-link input` or clicks `.process-sample`. Hook:
+  `SMProcessOnboarding.wizard()`. Styles at the end of `css/process-onboarding.css`.
+- Process time estimate: one median for every job said "5 s left" at 52 % for GIFs that needed 30 s more. Now
+  `jobs.process_eta_kind()` = `still` | `motion-standard` | `motion-max`, `eta_units` = files x types (stored on the
+  job), history per unit in Redis `sm:eta:process:<kind>`, built-in defaults (`_ETA_DEFAULT` in routers/process.py:
+  2 / 30 / 40 s per unit, measured on the VPS) until there are 3 samples. Status adds `pct_time` (time-based, <= 95)
+  and `eta_over` ("almost done") instead of a frozen number, plus `file_no` / `files_total`. app.js shows the stage
+  in words (`processStageLabel`, whole phrases through `smT`, reviewed translations) and moves the bar by
+  `max(pct, pct_time)`, never backwards. Tests: `tests/test_process_eta.py`.
+- Guides (`smweb/guides.py`): all 8 languages, all indexed (`GUIDE_LANGUAGES`), names of buttons / showcase types
+  as the site shows them in that language, Steam's own showcase names in English quotes. The extension is no longer a
+  tip inside the steps: one calm `.guide__ext` block after the steps ("Don't want to deal with the console?") linking
+  to `/<lang>/extension`. Tests: `tests/test_guides.py`.
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or
