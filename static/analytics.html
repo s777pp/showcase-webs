@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Центр управления · Showcase Maker</title>
   <link rel="icon" href="/static/icon-256.png">
-  <link rel="stylesheet" href="/static/css/analytics-dashboard.css?v=20261001-err1">
+  <link rel="stylesheet" href="/static/css/analytics-dashboard.css?v=20261007-msg1">
 </head>
 <body>
   <section class="admin-login" id="loginView">
@@ -33,6 +33,7 @@
         <button data-view="codes"><i>◇</i><span>Ключи и Pro</span></button>
         <p class="admin-nav__group">Контент</p>
         <button data-view="gallery"><i>▦</i><span>Галерея</span></button>
+        <button data-view="messages"><i>✉</i><span>Сообщения</span></button>
         <button data-view="announcements"><i>!</i><span>Объявления</span></button>
         <button data-view="news"><i>✎</i><span>Новости</span></button>
         <button data-view="catalog"><i>▤</i><span>Steam-каталог</span></button>
@@ -109,6 +110,10 @@
         <div class="split-grid"><form class="panel form-panel" id="announcementForm"><p class="overline">СООБЩЕНИЕ НА САЙТЕ</p><h2>Новое объявление</h2><input id="announcementId" type="hidden"><label>Заголовок RU<input id="announcementTitleRu" maxlength="100"></label><label>Текст RU<textarea id="announcementBodyRu" rows="4" maxlength="500"></textarea></label><label>Заголовок EN<input id="announcementTitleEn" maxlength="100"></label><label>Текст EN<textarea id="announcementBodyEn" rows="4" maxlength="500"></textarea></label><label>Тип<select id="announcementLevel"><option value="info">Информация</option><option value="success">Хорошая новость</option><option value="warning">Важно</option></select></label><label>Кому<select id="announcementAudience"><option value="all">Всем</option><option value="guests">Только гостям</option><option value="users">Авторизованным</option><option value="pro">Только Pro</option></select></label><label class="switch-row"><span><b>Опубликовать</b><small>Можно сохранить выключенным</small></span><input id="announcementEnabled" type="checkbox" checked></label><button class="button" type="submit">Сохранить объявление</button><button class="button button--ghost" id="announcementReset" type="button">Очистить форму</button></form><article class="panel"><p class="overline">АКТИВНЫЕ И АРХИВНЫЕ</p><h2>Объявления</h2><div id="announcementList" class="announcement-admin-list"></div></article></div>
       </section>
 
+      <section class="admin-view" data-page="messages">
+        <div id="messagesAdmin"></div>
+      </section>
+
       <section class="admin-view" data-page="errors">
         <div id="errorsAdmin"></div>
       </section>
@@ -145,6 +150,7 @@
   <script src="/static/js/admin-news-paste.js?v=20261005-paste1"></script>
   <script src="/static/js/admin-news.js?v=20261005-paste1"></script>
   <script src="/static/js/admin-errors.js?v=20261001-err1"></script>
-  <script src="/static/js/analytics-dashboard.js?v=20261001-err1"></script>
+  <script src="/static/js/admin-messages.js?v=20261007-msg1"></script>
+  <script src="/static/js/analytics-dashboard.js?v=20261007-msg1"></script>
 </body>
 </html>

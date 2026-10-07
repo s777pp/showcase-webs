@@ -591,7 +591,13 @@ def api_notifications_unread(request: Request):
     user = _auth_user(request)
     if not user:
         return {"ok": True, "unread": 0, "news_unread": 0, "news_dot": False, "logged_in": False}
-    return {"ok": True, "logged_in": True, **bell_counts(user)}
+    from smweb import admin_messages
+    try:
+        popup = admin_messages.popup_for(int(user["id"]))
+    except Exception:
+        LOGGER.debug("message popup lookup failed", exc_info=True)
+        popup = None
+    return {"ok": True, "logged_in": True, "popup": popup, **bell_counts(user)}
 
 
 @router.post("/api/gallery/mod/{item_id}")

@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 583 passed on 2026-10-07 (~150 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 590 passed on 2026-10-07 (~145 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -1081,6 +1081,23 @@ Only the hero exists for now; content blocks will be added below it later.
   + the readiness report (`.is-empty` when there is none). `offerExtension` (the floating card) was removed; the install
   button lives in the guide now. New copy keys in workspace-editor-copy.js: resultNextTitle, extAuto*, extNeedInstall,
   extOpenFail, manualTitle, partsHint.
+
+## 6.18 Messages from the owner to users (2026-10-07, local, not deployed)
+
+- Owner: "send users messages they notice at once". Admin "Сообщения" (`static/js/admin-messages.js`,
+  `SMAdminMessages.load(api, toast)`; the user card button `data-message-user` opens it with the user filled in).
+  Server `smweb/admin_messages.py` + `/api/admin/control/messages` (GET history, POST send, POST `/count`,
+  DELETE `/{id}` = recall from every bell), audited. Audiences `users` (ids, e-mails, nicknames, SteamID64; digits
+  shorter than 15 = id), `all`, `pro`, `free` (Pro = `is_pro` and `pro_until` empty or in the future, as in the
+  admin user list). Broadcasts are one `INSERT ... SELECT` into `notifications` (kind `admin_message`, `group_key`
+  `msg:<id>`, meta `{msg, popup, en:{title, body}}`; text params are `CAST(? AS TEXT)` for psycopg). History in
+  table `admin_messages` (both schemas, 365 days); read counts come from the rows (index `notifications(group_key)`).
+  `notify._cleanup` keeps `admin_message` rows 30 days, other kinds 7.
+- Delivery: `/api/notifications/unread` returns `popup` (newest unread message with `popup`); `site-bell.js` polls it
+  1.2 s after load and every 60 s while visible and shows `.sm-msg` (styles in `site-shell.css`); any close marks it
+  read. Clicking the message in the bell opens the same window. Language: ru/uk read the Russian text, others the
+  English copy when it exists. Plain text only (`white-space:pre-line`), the only link is the message's own
+  (`/path` or `https://`). Guests are not reachable (no account). Tests: `tests/test_admin_messages.py`.
 
 ## 7. Rules for agents
 

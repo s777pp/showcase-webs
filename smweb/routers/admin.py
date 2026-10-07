@@ -291,6 +291,48 @@ def errors_delete_resolved(request: Request):
     return {"ok": True, "count": count}
 
 
+# ---------------------------------------------------------------- messages to users (2026-10-07)
+@router.get("/messages")
+def messages_list(request: Request):
+    _require(request)
+    from smweb import admin_messages
+    return {"ok": True, "items": admin_messages.history()}
+
+
+@router.post("/messages/count")
+async def messages_count(request: Request):
+    _require(request, mutation=True)
+    body = await _json_object(request)
+    from smweb import admin_messages
+    return admin_messages.count(str(body.get("audience") or "users"), body.get("targets"))
+
+
+@router.post("/messages")
+async def messages_send(request: Request):
+    _require(request, mutation=True)
+    body = await _json_object(request)
+    from smweb import admin_messages
+    try:
+        result = admin_messages.send(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    admin_control.audit("messages.send", f"message:{result['id']}",
+                        {"audience": body.get("audience"), "recipients": result["recipients"]})
+    return result
+
+
+@router.delete("/messages/{message_id}")
+def messages_recall(message_id: str, request: Request):
+    _require(request, mutation=True)
+    from smweb import admin_messages
+    try:
+        removed = admin_messages.recall(message_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    admin_control.audit("messages.recall", f"message:{message_id}", {"removed": removed})
+    return {"ok": True, "removed": removed}
+
+
 # ---------------------------------------------------------------- news (2026-10-01)
 @router.get("/news")
 def news_list(request: Request):

@@ -1,7 +1,10 @@
 /* Notification bell (2026-10-01). Loaded by ss-shell.js for signed-in users only.
    The server stores kind + parameters; the text is written here in the visitor's
    language. Errors explain in plain words what went wrong and what to do.
-   Polls the unread count once a minute while the tab is visible. */
+   Polls the unread count once a minute while the tab is visible.
+   Owner messages (kind admin_message, smweb/admin_messages.py, 2026-10-07) open as a window over
+   the page: the unread poll returns the newest one marked "popup", right after load and then every
+   minute; closing it marks it read. Clicking such a message in the bell opens the same window. */
 (function () {
   'use strict';
   if (window.SMBell) return;
@@ -24,7 +27,11 @@
     now: ['just now', 'только что', 'gerade eben', 'şimdi', 'à l’instant', 'щойно', 'ahora', 'agora'],
     min: ['{n} min ago', '{n} мин назад', 'vor {n} Min.', '{n} dk önce', 'il y a {n} min', '{n} хв тому', 'hace {n} min', 'há {n} min'],
     hour: ['{n} h ago', '{n} ч назад', 'vor {n} Std.', '{n} sa önce', 'il y a {n} h', '{n} год тому', 'hace {n} h', 'há {n} h'],
-    day: ['{n} d ago', '{n} дн назад', 'vor {n} T.', '{n} gün önce', 'il y a {n} j', '{n} дн тому', 'hace {n} d', 'há {n} d']
+    day: ['{n} d ago', '{n} дн назад', 'vor {n} T.', '{n} gün önce', 'il y a {n} j', '{n} дн тому', 'hace {n} d', 'há {n} d'],
+    fromTeam: ['From the ShowcaseMaker team', 'От команды ShowcaseMaker', 'Vom ShowcaseMaker-Team', 'ShowcaseMaker ekibinden', 'De l’équipe ShowcaseMaker', 'Від команди ShowcaseMaker', 'Del equipo de ShowcaseMaker', 'Da equipe ShowcaseMaker'],
+    gotIt: ['Got it', 'Понятно', 'Verstanden', 'Anladım', 'Compris', 'Зрозуміло', 'Entendido', 'Entendi'],
+    open: ['Open', 'Открыть', 'Öffnen', 'Aç', 'Ouvrir', 'Відкрити', 'Abrir', 'Abrir'],
+    close: ['Close', 'Закрыть', 'Schließen', 'Kapat', 'Fermer', 'Закрити', 'Cerrar', 'Fechar']
   };
   var CATEGORY = {
     news: ['News', 'Новости', 'Neuigkeiten', 'Haberler', 'Actualités', 'Новини', 'Noticias', 'Novidades'],
@@ -88,7 +95,15 @@
   };
   var ICON = { news: '📰', update: '✨', feature: '✨', announcement: '📣', event: '📅', maintenance: '🛠', promo: '🎁',
                support_reply: '💬', job_done: '⚙️', job_error: '❌', pro_expiring: '💎', pro_expired: '💎', pro_purchased: '💎',
-               like: '❤️', comment: '💬', reply: '💬', downloads: '⬇️' };
+               like: '❤️', comment: '💬', reply: '💬', downloads: '⬇️', admin_message: '✉️' };
+
+  // Owner messages are written in Russian with an optional English copy: ru/uk read Russian,
+  // everyone else English when it exists.
+  function messageText(item) {
+    var meta = item.meta || {}, en = meta.en;
+    if (en && en.title && ['ru', 'uk'].indexOf(lang()) < 0) return { title: en.title, body: en.body || '' };
+    return { title: item.title || '', body: item.body || '' };
+  }
 
   function present(item) {
     var meta = item.meta || {}, tool = TOOL[meta.tool] ? L(TOOL[meta.tool]) : L(TOOL.process), kind = item.kind;
@@ -104,6 +119,7 @@
     else if (kind === 'pro_expiring') { out.title = L(TEXT['pro' + (meta.stage || '3d')] || TEXT.pro3d); out.body = L(TEXT.proBody); }
     else if (kind === 'pro_purchased') { out.title = L(TEXT.proBought); out.body = L(TEXT.proBoughtBody); }
     else if (kind === 'pro_expired') { out.title = L(TEXT.proEnded); out.body = L(TEXT.proEndedBody); }
+    else if (kind === 'admin_message') { var m = messageText(item); out.label = L(UI.fromTeam); out.title = m.title; out.body = m.body; }
     return out;
   }
   function ago(ts) {
@@ -167,18 +183,54 @@
     var link = event.target.closest('[data-bell-item]');
     if (!link) return;
     var item = items[Number(link.dataset.bellItem)];
+    if (item && item.kind === 'admin_message') { event.preventDefault(); setOpen(false); showMessage(item); return; }
     if (item && !item.is_read) {
       event.preventDefault(); item.is_read = true;
       markRead([item.id]).then(function () { location.href = link.href; });
     }
   });
 
-  // Quiet poll of the counters while the tab is visible.
+  // Owner message window. Text is plain (line breaks kept); the only link is the message's own.
+  var shown = {}, msgBox = null;
+  function onMsgKey(event) { if (event.key === 'Escape') { event.preventDefault(); closeMessage(); } }
+  function closeMessage() {
+    if (!msgBox) return;
+    msgBox.remove(); msgBox = null; document.removeEventListener('keydown', onMsgKey);
+  }
+  function showMessage(item) {
+    if (!item || msgBox) return;
+    shown[item.id] = true;
+    var view = messageText(item), external = /^https:/i.test(item.link || '');
+    var href = item.link ? (external ? item.link : url(item.link)) : '';
+    msgBox = document.createElement('div');
+    msgBox.className = 'sm-msg';
+    msgBox.innerHTML = '<div class="sm-msg__backdrop" data-msg-close></div>' +
+      '<section class="sm-msg__card" role="dialog" aria-modal="true" aria-labelledby="smMsgTitle">' +
+      '<button type="button" class="sm-msg__x" data-msg-close aria-label="' + esc(L(UI.close)) + '">×</button>' +
+      '<p class="sm-msg__from"><span aria-hidden="true">✉️</span>' + esc(L(UI.fromTeam)) + '</p>' +
+      '<h2 id="smMsgTitle">' + esc(view.title) + '</h2>' + (view.body ? '<p class="sm-msg__body">' + esc(view.body) + '</p>' : '') +
+      '<div class="sm-msg__actions">' +
+      (href ? '<a class="sm-msg__go" data-msg-close href="' + esc(href) + '"' + (external ? ' target="_blank" rel="noopener"' : '') + '>' + esc(L(UI.open)) + '</a>' : '') +
+      '<button type="button" class="sm-msg__ok" data-msg-close>' + esc(L(UI.gotIt)) + '</button></div></section>';
+    document.body.appendChild(msgBox);
+    msgBox.addEventListener('click', function (event) { if (event.target.closest('[data-msg-close]')) closeMessage(); });
+    document.addEventListener('keydown', onMsgKey);
+    var ok = msgBox.querySelector('.sm-msg__ok');
+    if (ok) ok.focus({ preventScroll: true });
+    if (!item.is_read) { item.is_read = true; markRead([item.id]); }
+  }
+
+  // Quiet poll of the counters while the tab is visible; it also brings owner messages.
   function poll() {
     if (document.hidden) return;
-    api('/api/notifications/unread').then(function (data) { if (data && data.ok && data.logged_in) counters(data); }).catch(function () {});
+    api('/api/notifications/unread').then(function (data) {
+      if (!data || !data.ok || !data.logged_in) return;
+      counters(data);
+      if (data.popup && !shown[data.popup.id]) showMessage(data.popup);
+    }).catch(function () {});
   }
+  setTimeout(poll, 1200);
   setInterval(poll, 60000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
-  window.SMBell = { reload: load, poll: poll, present: present };
+  window.SMBell = { reload: load, poll: poll, present: present, showMessage: showMessage };
 })();

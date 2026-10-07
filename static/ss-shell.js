@@ -202,7 +202,7 @@
     accountPage: { en:'Account', ru:'Аккаунт', de:'Konto', tr:'Hesap', fr:'Compte', uk:'Акаунт', es:'Cuenta', pt:'Conta' },
     accountPageHint: { en:'Plan, purchases, sign-in and password', ru:'Тариф, покупки, вход и пароль', de:'Tarif, Käufe, Anmeldung und Passwort', tr:'Plan, satın alımlar, giriş ve şifre', fr:'Offre, achats, connexion et mot de passe', uk:'Тариф, покупки, вхід і пароль', es:'Plan, compras, acceso y contraseña', pt:'Plano, compras, acesso e senha' }
   };
-  var BELL_SCRIPT = '/static/js/site-bell.js?v=20261006-pay1';
+  var BELL_SCRIPT = '/static/js/site-bell.js?v=20261007-msg1';
   // Error popup on every shell page (explains file problems, sends real errors to the developer).
   (function loadErrorReport() {
     if (window.SMErrorReport || document.querySelector('script[data-error-report]')) return;

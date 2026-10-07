@@ -275,6 +275,27 @@ def _create_schema(c: sqlite3.Connection) -> None:
             c.execute(f"ALTER TABLE notifications ADD COLUMN {col} {typ}")
     c.execute("CREATE INDEX IF NOT EXISTS idx_notif_group ON notifications(user_id, group_key)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(created_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_notif_gkey ON notifications(group_key)")
+    # Owner messages to users (smweb/admin_messages.py, 2026-10-07): history + read counts.
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS admin_messages (
+            id TEXT PRIMARY KEY,
+            created_at REAL NOT NULL,
+            audience TEXT NOT NULL,
+            targets TEXT,
+            title_ru TEXT NOT NULL,
+            body_ru TEXT,
+            title_en TEXT,
+            body_en TEXT,
+            link TEXT,
+            popup INTEGER DEFAULT 1,
+            recipients INTEGER DEFAULT 0,
+            recalled_at REAL
+        )
+        """
+    )
+    c.execute("CREATE INDEX IF NOT EXISTS idx_admin_messages_created ON admin_messages(created_at)")
     c.execute(
         """
         CREATE TABLE IF NOT EXISTS news_posts (

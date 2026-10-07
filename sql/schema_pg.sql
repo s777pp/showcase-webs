@@ -96,6 +96,22 @@ ALTER TABLE notifications ADD COLUMN IF NOT EXISTS meta_json TEXT;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS group_key TEXT;
 CREATE INDEX IF NOT EXISTS idx_notif_group ON notifications(user_id,group_key);
 CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(created_at);
+CREATE INDEX IF NOT EXISTS idx_notif_gkey ON notifications(group_key);
+CREATE TABLE IF NOT EXISTS admin_messages (
+ id TEXT PRIMARY KEY,
+ created_at DOUBLE PRECISION NOT NULL,
+ audience TEXT NOT NULL,
+ targets TEXT,
+ title_ru TEXT NOT NULL,
+ body_ru TEXT,
+ title_en TEXT,
+ body_en TEXT,
+ link TEXT,
+ popup INTEGER DEFAULT 1,
+ recipients INTEGER DEFAULT 0,
+ recalled_at DOUBLE PRECISION
+);
+CREATE INDEX IF NOT EXISTS idx_admin_messages_created ON admin_messages(created_at);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS news_seen_at DOUBLE PRECISION;
 CREATE TABLE IF NOT EXISTS news_posts (
  id TEXT PRIMARY KEY,

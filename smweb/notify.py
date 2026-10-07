@@ -6,7 +6,7 @@ plain Russian fallback for older clients. ``group_key`` makes repeated events up
 one row instead of piling up (download digests, Pro reminders, one row per job).
 
 Kinds: like, comment, reply (gallery, written by auth_db), downloads, support_reply,
-job_done, job_error, pro_expiring, pro_expired. News are not stored per user: the bell
+job_done, job_error, pro_expiring, pro_expired, admin_message (smweb/admin_messages.py). News are not stored per user: the bell
 reads published posts and ``users.news_seen_at`` (smweb/news.py).
 """
 from __future__ import annotations
@@ -180,7 +180,9 @@ def _pro_reminders(now: float) -> None:
 def _cleanup(now: float) -> None:
     c = auth_db._conn()
     try:
-        c.execute("DELETE FROM notifications WHERE created_at<?", (now - KEEP_SECONDS,))
+        # Owner messages (smweb/admin_messages.py) stay 30 days, everything else a week.
+        c.execute("DELETE FROM notifications WHERE created_at<? AND kind<>'admin_message'", (now - KEEP_SECONDS,))
+        c.execute("DELETE FROM notifications WHERE created_at<? AND kind='admin_message'", (now - 30 * 86400,))
         c.commit()
     finally:
         c.close()
