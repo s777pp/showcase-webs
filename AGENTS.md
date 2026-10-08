@@ -1327,6 +1327,26 @@ Only the hero exists for now; content blocks will be added below it later.
   worker), then the bot (`docker compose up -d --build` in the bot folder on the Oracle VM, .env and ./state untouched).
   The Oracle VM address is not recorded anywhere in this project: ask the owner.
 
+## 6.25 Gallery -> Steam through the extension (2026-10-08, local, not deployed)
+
+- Owner: "let people upload a showcase from the Gallery to Steam automatically through the extension". No extension
+  change: SteamShowcase Helper has had `START_AUTO_UPLOAD` since 1.0.3 (`{mode, lang, items:[{fileName, fileSize,
+  fileBase64: data:image/(png|jpeg|gif);base64,...}]}`, exactly 5 / 1 / 2 items, each <= 5 MB; it does NOT apply HEX 21,
+  so the server does). steam-check.js already used it for Process results.
+- `smweb/gallery_steam.py`: `find_sets(entries, mode)` groups the ZIP's images by folder, drops auxiliary files
+  (`steam_readiness._AUXILIARY`) and images over 5 MB, finds sets per folder (workshop: 5 files or part_1..5;
+  featured: names with "featured", a lone file, or width 630; split: exactly 2, center/side-like names, or widths
+  506 + 100), then `apply_safe_fixes` gives order, names and HEX 21. `manifest()` caches the parts in
+  `DATA/cache/gallery-steam/<id>-<sha1(archive_path)[:12]>/` (`<set>-<file>` + manifest.json, written to a temp dir
+  and renamed; folders older than 7 days pruned on the next build). Errors: `NoSteamSet.code` no_set | too_large.
+- Routes in `routers/gallery_releases.py`: `GET /api/gallery/works/{id}/steam` (manifest + part URLs; signed in,
+  approved, release_version 2, free with a ZIP; rate 30/h per account; counts one download per person+work+hour) and
+  `GET /api/gallery/works/{id}/steam/{set}/{file}` (FileResponse, sniffed type, private no-store).
+- `static/js/gallery-steam.js` (keyed `var COPY =`, 8 languages, in check_i18n's list): adds `#detailSteam` after
+  `#detailDownload` and follows it with a MutationObserver (no change to community-gallery.js), PING via the
+  postMessage bridge then `chrome.runtime.sendMessage` to the store id, several sets -> chips, hidden on
+  `(hover:none)`. Tests: `tests/test_gallery_steam.py`.
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or

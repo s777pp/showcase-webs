@@ -232,3 +232,16 @@ body.page-community .community-detail__preview>img,body.page-community .communit
   body.page-community #workOverlay>.gallery-peek:hover,body.page-community #workOverlay>.gallery-peek:focus-visible{
     width:clamp(52px,calc((100% - min(1240px,100% - 172px)) / 2 - 30px),200px)}
 }
+/* "Upload to Steam automatically" (static/js/gallery-steam.js): a full-width button under "Download ZIP" and a note. */
+body.page-community .community-detail__actions .community-steam{grid-column:1/-1;min-height:46px;border-radius:12px;border-color:rgba(111,227,255,.45);color:#cdf6ff;font-size:14px;white-space:nowrap}
+body.page-community .community-detail__actions .community-steam svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body.page-community .community-detail__actions .community-steam:disabled{opacity:.6;cursor:progress}
+body.page-community .community-steam__note{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:11px 13px;border:1px solid var(--cg-border);border-radius:11px;background:#0a1823;font-size:12.5px;line-height:1.5;color:var(--cg-muted)}
+body.page-community .community-steam__note[hidden]{display:none}
+body.page-community .community-steam__note span{flex:1 1 220px}
+body.page-community .community-steam__note a{color:var(--cg-cyan);font-weight:700;text-decoration:none;white-space:nowrap}
+body.page-community .community-steam__sets{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+body.page-community .community-steam__sets button{padding:7px 11px;border:1px solid var(--cg-border);border-radius:9px;background:#0d2230;color:var(--cg-text);font-size:12px}
+body.page-community .community-steam__sets button:hover{border-color:var(--cg-cyan)}
+/* Browser extensions do not exist on phones and tablets. */
+@media (hover:none){body.page-community .community-detail__actions .community-steam,body.page-community .community-steam__note{display:none}}

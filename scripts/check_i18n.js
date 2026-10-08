@@ -222,7 +222,7 @@ for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {
 }
 // Pro plans in the activation dialog, the purchase claim page, the account page, the shared avatar
 // uploader and the free-plan notes: reviewed in all eight languages.
-for (const [file, name] of [['static/js/pro-plans.js', 'Pro plans'], ['static/js/billing-claim.js', 'Purchase claim page'], ['static/js/account-page.js', 'Account page'], ['static/js/process-onboarding.js', 'Process onboarding'], ['static/js/avatar-upload.js', 'Avatar upload'], ['static/js/free-limits.js', 'Free-plan limits']]) {
+for (const [file, name] of [['static/js/pro-plans.js', 'Pro plans'], ['static/js/billing-claim.js', 'Purchase claim page'], ['static/js/account-page.js', 'Account page'], ['static/js/process-onboarding.js', 'Process onboarding'], ['static/js/avatar-upload.js', 'Avatar upload'], ['static/js/free-limits.js', 'Free-plan limits'], ['static/js/gallery-steam.js', 'Gallery Steam upload']]) {
   const dictionary = evaluateDictionary(file, 'var COPY =');
   const keys = Object.keys(dictionary.en || {}).sort().join('|');
   for (const language of ['en','ru','de','tr','fr','uk','es','pt']) {

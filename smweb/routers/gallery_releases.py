@@ -325,6 +325,68 @@ def work_download(item_id: int, request: Request):
     return JSONResponse({"ok": False, "msg": "ZIP is temporarily unavailable"}, status_code=503)
 
 
+def _steam_access(request: Request, item_id: int):
+    """(user, row, refusal): the same rules as the ZIP download (signed in, approved free release with a ZIP)."""
+    user = _auth_user(request)
+    if not user:
+        return None, None, JSONResponse({"ok": False, "code": "login", "msg": "Sign in to continue"}, status_code=401)
+    row = auth_db.gallery_get(item_id)
+    if not row or row.get("status") != "approved" or row.get("release_version") != 2:
+        return None, None, JSONResponse({"ok": False, "code": "not_found", "msg": "Work not found"}, status_code=404)
+    if row.get("is_paid") or not row.get("archive_path"):
+        return None, None, JSONResponse({"ok": False, "code": "paid", "msg": "Files are not available here"}, status_code=403)
+    return user, row, None
+
+
+@router.get("/api/gallery/works/{item_id}/steam")
+def work_steam_set(item_id: int, request: Request):
+    """The Steam-ready parts of a work for SteamShowcase Helper's automatic upload (smweb/gallery_steam.py)."""
+    from smweb import gallery_steam
+    user, row, refusal = _steam_access(request, item_id)
+    if refusal:
+        return refusal
+    uid = int(user["id"])
+    allowed, _ = rs.rate_limit(f"gallery:steam:{uid}", 30, 3600)
+    if not allowed:
+        return JSONResponse({"ok": False, "code": "rate", "msg": "Too many requests. Try again later"}, status_code=429)
+    try:
+        data = gallery_steam.manifest(item_id, row)
+    except gallery_steam.NoSteamSet as exc:
+        return JSONResponse({"ok": False, "code": exc.code, "msg": "No ready Steam set in this work"}, status_code=422)
+    except FileNotFoundError:
+        return JSONResponse({"ok": False, "code": "unavailable", "msg": "Files are temporarily unavailable"}, status_code=503)
+    except Exception:
+        LOGGER.exception("gallery Steam set failed for %s", item_id)
+        return JSONResponse({"ok": False, "code": "failed", "msg": "Could not prepare the files"}, status_code=500)
+    # An upload to Steam is a download of the work: counted once per person and hour.
+    counted, _ = rs.rate_limit(f"gallery:steamdl:{uid}:{int(item_id)}", 1, 3600)
+    if counted:
+        auth_db.gallery_release_downloaded(item_id)
+        _notify_download(item_id)
+    sets = []
+    for s_index, item in enumerate(data["sets"]):
+        files = [dict(file, url=f"/api/gallery/works/{int(item_id)}/steam/{s_index}/{f_index}")
+                 for f_index, file in enumerate(item["files"])]
+        sets.append({"label": item["label"], "files": files})
+    return {"ok": True, "mode": data["mode"], "sets": sets}
+
+
+@router.get("/api/gallery/works/{item_id}/steam/{set_index}/{file_index}")
+def work_steam_file(item_id: int, set_index: int, file_index: int, request: Request):
+    from smweb import gallery_steam
+    _, row, refusal = _steam_access(request, item_id)
+    if refusal:
+        return refusal
+    path = gallery_steam.part_path(item_id, row, set_index, file_index)
+    if not path:
+        return JSONResponse({"ok": False, "code": "expired", "msg": "Prepare the files again"}, status_code=404)
+    with path.open("rb") as handle:
+        head = handle.read(8)
+    media_type = ("image/gif" if head[:3] == b"GIF" else "image/png" if head.startswith(b"\x89PNG")
+                  else "image/jpeg")
+    return FileResponse(path, media_type=media_type, headers={"Cache-Control": "private, no-store"})
+
+
 @router.post("/api/gallery/works")
 async def work_publish(request: Request, title: str = Form(""), description: str = Form(""),
                        mode: str = Form("workshop"), background_url: str = Form(""),
