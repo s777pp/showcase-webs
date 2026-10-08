@@ -39,6 +39,10 @@ RUN pip install --no-cache-dir torch==2.14.0 --index-url https://download.pytorc
 # Pinned checksum: the build fails if the release file is ever replaced.
 ARG RIFE_SHA256=6615790efd627772917205db291f51cd392528a157ecbb2ecaeec3bff8eb6de2
 RUN mkdir -p /app/models && curl -fL --retry 4 --retry-delay 2 -o /app/models/flownet_v4.25.pkl       https://github.com/HolyWu/vs-rife/releases/download/model/flownet_v4.25.pkl     && echo "${RIFE_SHA256}  /app/models/flownet_v4.25.pkl" | sha256sum -c -
+# Depth map for the "Depth" (2.5D parallax) effect: Depth Anything V2 Small, Apache-2.0, ONNX on the CPU
+# (smweb/depth.py). Pinned to a repository commit and a checksum.
+ARG DEPTH_SHA256=afb6a5c28f3b6bf1618c6e43f02073ef9dfdc70e937502d51603e57b0a1df10c
+RUN curl -fL --retry 4 --retry-delay 2 -o /app/models/depth_anything_v2_small.onnx       https://huggingface.co/onnx-community/depth-anything-v2-small/resolve/4472b7362082ad9968fee890ca0f1e5aca36b93d/onnx/model.onnx     && echo "${DEPTH_SHA256}  /app/models/depth_anything_v2_small.onnx" | sha256sum -c -
 COPY . .
 
 # Drop Windows-only binaries from image

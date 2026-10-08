@@ -1,0 +1,114 @@
+/* "Depth" card of the Process tab (static/js/process-depth.js), before "Style it". Off: title, hint and the switch. */
+#tab-process .pdepth-card{position:relative;overflow:hidden}
+#tab-process .pdepth-card::before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,#1fc9f1,#8a7dff);opacity:.85}
+#tab-process .pdepth__head{display:flex;align-items:flex-start;flex-wrap:wrap;gap:10px 16px}
+#tab-process .pdepth__titles{flex:1 1 300px;min-width:0}
+#tab-process .pdepth__title{display:flex!important;align-items:center;gap:10px;margin:0 0 6px!important}
+#tab-process .pdepth__spark{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#1fc9f1,#8a7dff);color:#041019;font-size:13px}
+#tab-process .pdepth__new{padding:4px 8px;border-radius:999px;background:rgba(95,242,181,.14);border:1px solid rgba(95,242,181,.45);color:#8df7cd;font:800 10px/1 Montserrat,Mulish,sans-serif;font-style:normal;letter-spacing:.08em}
+#tab-process .pdepth__hint{margin:0!important}
+#tab-process .pdepth__switch{position:relative;flex:0 0 auto;margin-left:auto;margin-top:2px;display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+#tab-process .pdepth__switch input{position:absolute;opacity:0;pointer-events:none}
+#tab-process .pdepth__label{font:700 12.5px Montserrat,Mulish,sans-serif;color:#e6f0ff;white-space:nowrap}
+/* Editor (SMDepthEditor): stage on the left, effect groups on the right. Not scoped to #tab-process: the Builder reuses it. */
+.pdepth__body{display:none;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px;align-items:start}
+.pdepth.is-on .pdepth__body,.pdepth--always .pdepth__body{display:grid}
+.pdepth__stage{position:relative;display:grid;justify-items:center;gap:10px;padding:10px;border-radius:12px;
+  background:radial-gradient(120% 100% at 30% 0,#1d2550 0,#0c1230 55%,#070b1e 100%);border:1px solid rgba(110,160,230,.2)}
+.pdepth__view{position:relative;max-width:100%;border-radius:8px;overflow:hidden;background:#070b1e}
+.pdepth__img,.pdepth__still,.pdepth__overlay{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pdepth__img{object-fit:contain}
+.pdepth__img:not([src]){visibility:hidden}
+.pdepth__still,.pdepth__overlay{visibility:hidden}
+.pdepth__stage.is-marking .pdepth__still,.pdepth__stage.is-marking .pdepth__overlay{visibility:visible}
+.pdepth__stage.is-marking .pdepth__img{visibility:hidden}
+.pdepth__overlay{cursor:crosshair;touch-action:none}
+.pdepth__status{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:calc(100% - 40px);margin:0;padding:9px 12px;border-radius:10px;
+  background:rgba(4,9,24,.86);color:rgba(214,229,250,.88);font:600 12.5px/1.45 Montserrat,Mulish,sans-serif;text-align:center}
+/* Top of the picture: the bottom is where the "preview is simplified" line sits. */
+.pdepth__stage.has-preview .pdepth__status{top:18px;bottom:auto;transform:translateX(-50%)}
+.pdepth__status[hidden]{display:none}
+.pdepth__status.is-busy::before{content:"";display:inline-block;width:12px;height:12px;margin-right:8px;vertical-align:-2px;border:2px solid rgba(127,233,255,.35);border-top-color:#7fe9ff;border-radius:50%;animation:pdepth-spin .8s linear infinite}
+@keyframes pdepth-spin{to{transform:rotate(360deg)}}
+.pdepth__markbar{display:grid;gap:8px;width:100%}
+.pdepth__markbar[hidden]{display:none}
+.pdepth__markhint{margin:0;color:#bfefff;font:600 12.5px/1.45 Montserrat,Mulish,sans-serif}
+.pdepth__markbtns{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.pdepth__mini{min-height:32px;padding:0 12px;border:1px solid rgba(110,160,230,.35);border-radius:9px;background:rgba(8,16,36,.9);color:#e6f0ff;
+  font:700 12px Montserrat,Mulish,sans-serif;cursor:pointer}
+.pdepth__mini[hidden]{display:none}
+.pdepth__mini--main{border-color:transparent;background:linear-gradient(90deg,#1fc9f1,#8a7dff);color:#041019}
+.pdepth__controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:10px;min-width:0;align-items:start}
+.pdepth__group--looks{grid-column:1/-1}
+.pdepth__group{display:grid;gap:8px;padding:10px 12px;border:1px solid rgba(110,160,230,.18);border-radius:12px;background:rgba(8,14,32,.55)}
+.pdepth__group-title{margin:0!important;font:800 11px/1.2 Montserrat,Mulish,sans-serif!important;letter-spacing:.06em;text-transform:uppercase;color:rgba(191,239,255,.75)!important}
+.pdepth__looks,.pdepth__chips{display:flex;flex-wrap:wrap;gap:6px}
+.pdepth__look,.pdepth__chip,.pdepth__mark{min-height:32px;padding:0 11px;border:1px solid rgba(110,160,230,.3);border-radius:999px;background:rgba(8,16,36,.85);
+  color:#e6f0ff;font:700 12px Montserrat,Mulish,sans-serif;cursor:pointer}
+.pdepth__look{border-color:rgba(138,125,255,.45);background:linear-gradient(135deg,rgba(31,201,241,.12),rgba(138,125,255,.16))}
+.pdepth__look:hover,.pdepth__chip:hover,.pdepth__mark:hover{border-color:rgba(31,201,241,.7)}
+.pdepth__chip.is-on,.pdepth__mark.is-on{border-color:transparent;background:linear-gradient(90deg,#1fc9f1,#8a7dff);color:#041019}
+.pdepth__mark{justify-self:start;border-radius:9px}
+.pdepth__sub{display:grid;gap:8px}
+.pdepth__sub[hidden]{display:none}
+.pdepth__note{margin:0;color:rgba(214,229,250,.55);font:500 11.5px/1.45 Montserrat,Mulish,sans-serif}
+.pdepth__toggle{position:relative;display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none;justify-self:start}
+/* .pdepth prefix: tools-polish.css styles every .page-tools checkbox (relative, 42 px) and outranked the plain rule. */
+.pdepth .pdepth__toggle input[type="checkbox"]{position:absolute;width:1px;height:1px;margin:0;opacity:0;pointer-events:none}
+.pdepth__toggle-label{font:700 12.5px Montserrat,Mulish,sans-serif;color:#e6f0ff}
+.pdepth__knob{position:relative;width:42px;height:24px;border-radius:999px;background:rgba(110,160,230,.25);transition:background .18s;flex:0 0 auto}
+.pdepth__knob::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#e6f0ff;transition:transform .18s}
+.pdepth__knob--sm{width:34px;height:20px}
+.pdepth__knob--sm::after{width:14px;height:14px}
+input:checked+.pdepth__knob{background:linear-gradient(90deg,#1fc9f1,#8a7dff)}
+input:checked+.pdepth__knob::after{transform:translateX(18px);background:#041019}
+input:checked+.pdepth__knob--sm::after{transform:translateX(14px)}
+input:focus-visible+.pdepth__knob{outline:2px solid #7fe9ff;outline-offset:2px}
+.pdepth__range{margin:0!important;min-width:0}
+.pdepth__range>span{display:flex!important;align-items:baseline;justify-content:space-between;gap:8px}
+.pdepth__range i{font-style:normal}
+.pdepth__range small{color:rgba(214,229,250,.55);font-size:11px}
+.pdepth__range input[type=range]{width:100%}
+@media (prefers-reduced-motion:reduce){.pdepth__status.is-busy::before{animation:none}}
+/* Painting the hair / dragging the body box must never select page text (2026-10-08). */
+.pdepth__stage.is-marking,.pdepth__overlay{-webkit-user-select:none;user-select:none;touch-action:none}
+/* Phones: the picture to paint on gets the card's full width (the nested paddings left ~220 px on a 390 px screen). */
+@media (max-width:640px){
+  #tab-process .pdepth-card .pdepth__stage{margin-inline:-14px;padding:6px 4px;border-radius:10px}
+  #tab-process .pdepth-card .pdepth__body{gap:10px}
+}
+/* "Depth" for the Builder background (static/js/builder-depth.js): the same editor inside a window. */
+/* Builder "Depth for the character" window: a workspace as tall as the screen. The picture takes the left column at the
+   largest size that fits (painting hair needs room), the settings scroll on their own on the right, and Apply / Remove /
+   Cancel stay visible at the bottom. (.pon-intro sets overflow:hidden, which used to cut the buttons off.) */
+body .bdepth__dialog.pon-intro{display:flex;flex-direction:column;align-items:stretch;text-align:left;width:min(1560px,100%);height:calc(100dvh - 32px);max-height:none;overflow:hidden}
+.bdepth__dialog .pon-intro__lead{margin:6px 0 12px;flex:0 0 auto}
+.bdepth__dialog .pon-intro__title{flex:0 0 auto}
+.bdepth__editor{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
+.bdepth__editor .pdepth__body{margin-top:0}
+@media (min-width:900px){
+  .bdepth__editor{display:flex;overflow:hidden}
+  .bdepth__editor .pdepth__body{flex:1;min-height:0;height:100%;grid-template-columns:minmax(0,1.6fr) minmax(330px,1fr);grid-template-rows:minmax(0,1fr)}
+  .bdepth__editor .pdepth__stage{height:100%;align-content:center;overflow:hidden}
+  .bdepth__editor .pdepth__controls{height:100%;overflow:auto;overscroll-behavior:contain;padding-right:4px;grid-template-columns:minmax(0,1fr);align-content:start}
+}
+.bdepth__note{flex:0 0 auto;margin:12px 0 0;color:#bfefff;font:600 13px/1.5 Montserrat,Mulish,sans-serif}
+.bdepth__note[hidden]{display:none}
+.bdepth__foot{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(110,160,230,.16)}
+.bdepth__foot [hidden]{display:none}
+/* "Animation · Depth 3D" on the Character layer: highlighted so people notice it, with a NEW tag. The legacy button
+   sheets (redesign.css, creator-os.css, site-theme.css) set .btn backgrounds with !important, hence the !important here. */
+#showcaseBuilder .bdepth__btn.btn,.bdepth__btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:46px;padding:8px 12px;
+  border:1px solid transparent!important;border-radius:12px!important;color:#eaf6ff!important;font-weight:800!important;text-align:center;
+  background:linear-gradient(135deg,rgba(31,201,241,.16),rgba(138,125,255,.18)) padding-box,linear-gradient(#0a1430,#0a1430) padding-box,linear-gradient(135deg,#1fc9f1,#8a7dff) border-box!important;
+  box-shadow:0 0 18px rgba(31,201,241,.22)!important}
+#showcaseBuilder .bdepth__btn.btn:hover,.bdepth__btn:hover{filter:brightness(1.12);box-shadow:0 0 26px rgba(31,201,241,.36)!important}
+#showcaseBuilder .bdepth__btn.btn.is-on,.bdepth__btn.is-on{box-shadow:0 0 0 1px rgba(95,242,181,.4),0 0 18px rgba(31,201,241,.24)!important}
+.bdepth__btn-text{min-width:0}
+.bdepth__new{flex:0 0 auto;padding:4px 8px;border-radius:999px;background:rgba(95,242,181,.16);border:1px solid rgba(95,242,181,.5);color:#8df7cd;font:800 10px/1 Montserrat,Mulish,sans-serif;letter-spacing:.08em}
+.bdepth__btn[hidden]{display:none}
+.pdepth__note--tip{color:rgba(255,213,138,.86)}
+.pdepth__pnote{margin:0;max-width:100%;color:rgba(214,229,250,.55);font:500 11.5px/1.45 Montserrat,Mulish,sans-serif;text-align:center}
+.pdepth__pnote[hidden]{display:none}
+/* While painting, the still picture is shown: the "updating the preview" pill would only cover it. */
+.pdepth__stage.is-marking .pdepth__status{display:none}

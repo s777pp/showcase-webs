@@ -12,10 +12,15 @@
   // Owner decision 2026-09-26: Upscale, Loop, Converter, Download, HEX, DeviantArt and About stay as
   // top-level tabs (users could not find them inside groups). Only the profile tools are grouped.
   var GROUPS = [
-    { id: 'profile', icon: 'profile-rating', tabs: ['doctor', 'design-ai', 'preview'],
+    // 2026-10-08, owner: the Steam upload guide joins the profile group too.
+    { id: 'profile', icon: 'profile-rating', tabs: ['doctor', 'design-ai', 'preview', 'steam'],
       label: ['Profile', 'Профиль', 'Profil', 'Profil', 'Profil', 'Профіль', 'Perfil', 'Perfil'] }
   ];
   var HINTS = {
+    steam: ['Upload your showcase to Steam: with the extension or by hand', 'Загрузить витрину в Steam: расширением или вручную',
+      'Showcase zu Steam hochladen: mit der Erweiterung oder von Hand', 'Vitrini Steam’e yükle: eklentiyle ya da elle',
+      'Envoyer la vitrine sur Steam : avec l’extension ou à la main', 'Завантажити вітрину в Steam: розширенням або вручну',
+      'Subir el escaparate a Steam: con la extensión o a mano', 'Enviar a vitrine para a Steam: com a extensão ou à mão'],
     doctor: ['AI rates your profile and suggests fixes', 'ИИ оценит профиль и подскажет, что улучшить', 'KI bewertet dein Profil und gibt Tipps', 'Yapay zekâ profilini puanlar ve öneriler verir', 'L’IA note votre profil et propose des améliorations', 'ШІ оцінить профіль і підкаже, що покращити', 'La IA puntúa tu perfil y sugiere mejoras', 'A IA avalia seu perfil e sugere melhorias'],
     'design-ai': ['Design ideas that match your profile', 'Идеи оформления под твой профиль', 'Designideen passend zu deinem Profil', 'Profiline uygun tasarım fikirleri', 'Des idées de design adaptées à votre profil', 'Ідеї оформлення під твій профіль', 'Ideas de diseño para tu perfil', 'Ideias de design para o seu perfil'],
     preview: ['Try showcases on a Steam profile mock-up', 'Примерить витрины на макете профиля Steam', 'Vitrinen auf einem Steam-Profil ausprobieren', 'Vitrinleri Steam profil taslağında dene', 'Essayer les vitrines sur une maquette de profil', 'Приміряти вітрини на макеті профілю Steam', 'Probar escaparates en una maqueta de perfil', 'Testar vitrines em um modelo de perfil']

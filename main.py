@@ -81,6 +81,7 @@ from smweb.routers import (
     results as results_router,
     admin as admin_router,
     bot_admin as bot_admin_router,
+    infobox as infobox_router,
 )
 
 
@@ -202,6 +203,8 @@ app.include_router(analytics_router.router)
 app.include_router(assets.router)
 app.include_router(jobs_router.router)
 app.include_router(results_router.router)
+# Before admin_router: it owns /api/admin/control/infobox/{id} (hide a community template).
+app.include_router(infobox_router.router)
 app.include_router(admin_router.router)
 app.include_router(bot_admin_router.router)
 

@@ -357,7 +357,7 @@ _STILL_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".ico", ".cur", ".tif",
 def process_eta_kind(files_data: list[tuple], opts: dict, animated_frame: bool = False) -> str:
     """'still' when every source is a picture (and no animated frame turns it into a clip), else
     'motion-<encode profile>': the two differ by more than an order of magnitude in time."""
-    motion = animated_frame or any(
+    motion = animated_frame or bool(opts.get("parallax")) or any(
         not str(item[0]).lower().endswith(_STILL_EXTS) for item in files_data
     )
     if not motion:
@@ -430,6 +430,12 @@ def _run_process_job(jid: str, files_data: list[tuple], opts: dict) -> None:
                 name = _name_with_real_extension(name, raw)
                 name, raw = proc.normalize_upload(name, raw)  # ICO, TIFF, AVIF, TGA, PSD... -> PNG
                 name, raw = proc.graded_source(name, raw, opts.get("grade"), job_dir / f"grade_{fi}")
+                if opts.get("parallax") and Path(name).suffix.lower() in proc.NATIVE_STILL_EXTENSIONS:
+                    # "Depth": the still becomes a seamless 2.5D loop first; the clip is already upright.
+                    _job_set(jid, stage=f"depth:{name}")
+                    name, raw = proc.parallax_source(name, raw, opts["parallax"], job_dir / f"depth_{fi}",
+                                                     rotation, opts.get("fps") or 15)
+                    rotation = 0.0
                 ext = Path(name).suffix.lower()
                 stem = Path(name).stem[:40]
                 if ext not in (

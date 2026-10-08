@@ -48,7 +48,7 @@
   (function css() {
     if (document.querySelector('link[data-free-limits]')) return;
     var link = document.createElement('link');
-    link.rel = 'stylesheet'; link.href = '/static/css/free-limits.css?v=20261006-fl1'; link.dataset.freeLimits = '1';
+    link.rel = 'stylesheet'; link.href = '/static/css/free-limits.css?v=20261008-fl2'; link.dataset.freeLimits = '1';
     document.head.appendChild(link);
   })();
 

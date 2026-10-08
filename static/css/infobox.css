@@ -1,0 +1,221 @@
+/* Info box tab (#tab-infobox, static/js/infobox.js): "Templates" gallery and "Editor" views. Site theme v2 colours.
+   The Steam box copies Steam's Custom Info Box: 640 px column, 13 px text on 18 px lines, 604 px content width,
+   600 px visible height. Cards show the same box scaled down (--ibx-scale, set by the script). */
+.page-tools .top-chrome .nav button[data-tab="infobox"],.top-chrome .nav button[data-tab="infobox"]{--tool-icon:url('/static/img/tool-icons/infobox.svg?v=1')}
+#tab-infobox .ibx2{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;font-family:Montserrat,system-ui,sans-serif}
+#tab-infobox .ibx-view{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}
+#tab-infobox [hidden]{display:none!important}
+#tab-infobox .ibx-muted{margin:0;color:rgba(214,229,250,.66);font-size:12.5px;line-height:1.5}
+#tab-infobox .ibx-small{font-size:11.5px}
+#tab-infobox .ibx-h{margin:0;font:800 15px/1.3 Montserrat,system-ui,sans-serif;letter-spacing:0;text-transform:none}
+#tab-infobox .ibx-panel{display:grid;gap:12px;align-content:start;padding:16px;border:1px solid rgba(110,170,255,.18);border-radius:16px;background:linear-gradient(160deg,rgba(12,22,52,.82),rgba(5,10,28,.9));min-width:0}
+
+/* steps */
+#tab-infobox .ibx-steps{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+#tab-infobox .ibx-step{display:flex;align-items:center;gap:9px;padding:7px 14px 7px 7px;border:1px solid rgba(110,170,255,.18);border-radius:999px;background:rgba(2,6,18,.45);color:rgba(214,229,250,.6);font-size:13px;font-weight:700}
+#tab-infobox .ibx-step__n{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(110,170,255,.14);color:#cfe3ff;font-size:12px;font-weight:800}
+#tab-infobox .ibx-step.is-on{border-color:rgba(31,201,241,.55);color:#fff;background:rgba(31,201,241,.1)}
+#tab-infobox .ibx-step.is-on .ibx-step__n{background:linear-gradient(135deg,#1fc9f1,#8a7dff);color:#041019}
+#tab-infobox .ibx-step.is-done{color:#8df7cd}
+#tab-infobox .ibx-step.is-done .ibx-step__n{background:rgba(95,242,181,.18);color:#8df7cd}
+#tab-infobox .ibx-step.is-link{cursor:pointer}
+#tab-infobox .ibx-step.is-link:hover{border-color:rgba(31,201,241,.55)}
+
+/* buttons, fields */
+#tab-infobox .ibx-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 15px;border:1px solid rgba(110,170,255,.28);border-radius:11px;background:rgba(2,6,18,.6);color:#e9f3ff;font:700 13px Montserrat,system-ui,sans-serif;text-decoration:none;white-space:nowrap;cursor:pointer;transition:border-color .15s,background .15s,filter .15s}
+#tab-infobox .ibx-btn:hover{border-color:rgba(31,201,241,.7)}
+#tab-infobox .ibx-btn--primary{border-color:transparent;background:#1fc9f1;color:#021018}
+#tab-infobox .ibx-btn--primary:hover{filter:brightness(1.08)}
+#tab-infobox .ibx-btn--accent{border-color:rgba(138,125,255,.55);background:rgba(138,125,255,.14)}
+#tab-infobox .ibx-btn--ghost{background:transparent}
+#tab-infobox .ibx-btn--art{border-color:rgba(31,201,241,.5);background:rgba(31,201,241,.1);color:#cdf6ff}
+#tab-infobox .ibx-btn--big{min-height:44px;padding:0 20px;font-size:14px}
+#tab-infobox .ibx-btn--small{min-height:30px;padding:0 10px;font-size:12px}
+#tab-infobox .ibx-btn.is-done{background:#5ff2b5;color:#04150e;border-color:transparent}
+#tab-infobox .ibx-btn:disabled{opacity:.55;cursor:progress}
+#tab-infobox .ibx-field{display:grid;gap:6px;min-width:0}
+#tab-infobox .ibx-field>span{color:rgba(214,229,250,.72);font-size:12px;font-weight:700}
+#tab-infobox .ibx-field input,#tab-infobox .ibx-field select{height:40px;padding:0 12px;border:1px solid rgba(110,170,255,.26);border-radius:11px;background:rgba(2,6,18,.6);color:#e9f3ff;font:500 14px Montserrat,system-ui,sans-serif}
+#tab-infobox .ibx-field input:focus,#tab-infobox .ibx-area:focus,#tab-infobox .ibx-search input:focus{outline:2px solid rgba(31,201,241,.55);outline-offset:1px}
+#tab-infobox .ibx-check{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.45;color:rgba(214,229,250,.82)}
+#tab-infobox .ibx-check input{margin-top:2px;accent-color:#1fc9f1}
+
+/* gallery view */
+#tab-infobox .ibx-lead{margin:0;max-width:760px;color:rgba(214,229,250,.78);font-size:14.5px;line-height:1.55}
+#tab-infobox .ibx-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+#tab-infobox .ibx-search{position:relative;flex:1 1 320px;max-width:560px}
+#tab-infobox .ibx-search__icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(214,229,250,.55);font-size:18px;pointer-events:none}
+#tab-infobox .ibx-search input{width:100%;height:46px;padding:0 14px 0 42px;border:1px solid rgba(110,170,255,.28);border-radius:13px;background:rgba(2,6,18,.6);color:#e9f3ff;font:500 14.5px Montserrat,system-ui,sans-serif}
+#tab-infobox .ibx-bar__actions{display:flex;flex-wrap:wrap;gap:8px}
+#tab-infobox .ibx-tabs{display:flex;flex-wrap:wrap;gap:6px}
+#tab-infobox .ibx-tab{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid rgba(110,170,255,.2);border-radius:999px;background:rgba(2,6,18,.5);color:#dbe8ff;font:700 13px Montserrat,system-ui,sans-serif;cursor:pointer}
+#tab-infobox .ibx-tab small{padding:2px 7px;border-radius:999px;background:rgba(110,170,255,.14);color:rgba(214,229,250,.75);font-size:11px;font-weight:800}
+#tab-infobox .ibx-tab:hover{border-color:rgba(31,201,241,.6)}
+#tab-infobox .ibx-tab.is-on{border-color:transparent;background:linear-gradient(90deg,#1fc9f1,#8a7dff);color:#041019}
+#tab-infobox .ibx-tab.is-on small{background:rgba(4,16,25,.2);color:#041019}
+#tab-infobox .ibx-gridhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:4px}
+#tab-infobox .ibx-count{color:rgba(214,229,250,.6);font-size:12.5px;font-weight:700}
+#tab-infobox .ibx-sort{display:flex;gap:6px}
+#tab-infobox .ibx-chip{height:30px;padding:0 12px;border:1px solid rgba(110,170,255,.22);border-radius:999px;background:rgba(2,6,18,.55);color:#e9f3ff;font:700 12px Montserrat,system-ui,sans-serif;cursor:pointer}
+#tab-infobox .ibx-chip.is-on{border-color:transparent;background:#1fc9f1;color:#021018}
+/* Three columns on computers (owner: on a 2K monitor four were too small to read), two on tablets, one on phones. */
+#tab-infobox .ibx-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+#tab-infobox .ibx-grid__note{grid-column:1/-1;padding:24px;text-align:center}
+#tab-infobox .ibx-grid__more{grid-column:1/-1;justify-self:center}
+#tab-infobox .ibx-tcard{position:relative;display:grid;align-content:start;gap:0;border:1px solid rgba(110,170,255,.18);border-radius:15px;background:rgba(5,10,28,.7);overflow:hidden;cursor:pointer;transition:border-color .18s,transform .18s,box-shadow .18s}
+#tab-infobox .ibx-tcard:hover,#tab-infobox .ibx-tcard:focus-visible{border-color:rgba(31,201,241,.65);transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,0,0,.4),0 0 22px rgba(31,201,241,.14);outline:none}
+#tab-infobox .ibx-thumb{position:relative;height:290px;padding:16px;overflow:hidden;background:radial-gradient(120% 100% at 20% 0,#2a2f58 0,#151a33 50%,#0b0e1d 100%)}
+#tab-infobox .ibx-thumb::after{content:"";position:absolute;inset:auto 0 0 0;height:54px;background:linear-gradient(180deg,rgba(11,14,29,0),#0b0e1d);pointer-events:none}
+#tab-infobox .ibx-thumb__inner{pointer-events:none}
+/* Cards: the Steam box at a readable size (lines may wrap a little differently than on Steam; the editor preview is exact). */
+#tab-infobox .ibx-thumb .ibx-steam{width:100%}
+#tab-infobox .ibx-thumb .ibx-steam__head{padding:3px 12px;font-size:15px;line-height:30px}
+#tab-infobox .ibx-thumb .ibx-steam__block{padding:14px 10px 10px}
+#tab-infobox .ibx-thumb .ibx-text{font-size:14.5px;line-height:20px}
+#tab-infobox .ibx-thumb .ibx-h1{font-size:19px;line-height:25px;margin:2px 0}
+#tab-infobox .ibx-tcard__caption{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:13px 16px 15px}
+#tab-infobox .ibx-tcard__caption b{font-size:15.5px;color:#fff}
+#tab-infobox .ibx-tcard__cat{color:#7fe9ff;font-size:11.5px;font-weight:700}
+#tab-infobox .ibx-tcard__meta{flex-basis:100%;color:rgba(214,229,250,.55);font-size:11.5px}
+#tab-infobox .ibx-tcard__extra{padding:0 13px 13px}
+#tab-infobox .ibx-tcard--cta{place-content:center;justify-items:center;gap:8px;min-height:250px;padding:20px;border-style:dashed;text-align:center}
+#tab-infobox .ibx-tcard--cta b{font-size:15px}
+#tab-infobox .ibx-tcard--cta p{margin:0;color:rgba(214,229,250,.66);font-size:12.5px;line-height:1.5}
+#tab-infobox .ibx-cta__icon{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#1fc9f1,#8a7dff);color:#041019;font-size:24px;font-weight:800}
+#tab-infobox .ibx-morelinks{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:14px 16px;border:1px solid rgba(110,170,255,.14);border-radius:14px;background:rgba(2,6,18,.4)}
+#tab-infobox .ibx-morelinks b{font-size:13.5px}
+#tab-infobox .ibx-morelinks a{color:#7fe9ff;font-size:13px;font-weight:700;text-decoration:none}
+
+/* editor view */
+#tab-infobox .ibx-ebar{position:sticky;top:var(--ibx-sticky,118px);z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgba(110,170,255,.2);border-radius:15px;background:rgba(6,12,32,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+#tab-infobox .ibx-ebar__name{flex:1 1 auto;min-width:0;overflow:hidden;color:#fff;font-size:15px;font-weight:800;text-overflow:ellipsis;white-space:nowrap}
+#tab-infobox .ibx-ebar__actions{display:flex;flex-wrap:wrap;gap:8px}
+#tab-infobox .ibx-cols{display:grid;grid-template-columns:minmax(0,1fr) 690px;gap:16px;align-items:start}
+#tab-infobox .ibx-side{position:sticky;top:calc(var(--ibx-sticky,118px) + 76px);display:grid;gap:14px;max-height:calc(100vh - var(--ibx-sticky,118px) - 92px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+#tab-infobox .ibx-toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#tab-infobox .ibx-toolbar__gap{flex:1}
+#tab-infobox .ibx-tool{min-width:38px;height:36px;padding:0 10px;border:1px solid rgba(110,170,255,.22);border-radius:10px;background:rgba(2,6,18,.55);color:#e9f3ff;font:800 14px Montserrat,system-ui,sans-serif;cursor:pointer}
+#tab-infobox .ibx-tool:hover{border-color:rgba(31,201,241,.6)}
+#tab-infobox .ibx-tool--tbI{font-style:italic}
+#tab-infobox .ibx-tool--tbU{text-decoration:underline}
+#tab-infobox .ibx-tool--tbS{text-decoration:line-through}
+#tab-infobox .ibx-tool--tbH1{color:#5aa9d6}
+#tab-infobox .ibx-tool--ghost{background:transparent;color:rgba(214,229,250,.7);font-size:12.5px;font-weight:700}
+#tab-infobox .ibx-area{width:100%;min-height:340px;resize:vertical;padding:14px;border:1px solid rgba(110,170,255,.26);border-radius:13px;background:rgba(2,6,18,.62)!important;color:#e9f3ff!important;font:400 13.5px/19px Arial,"Segoe UI Symbol",sans-serif!important;letter-spacing:0!important;tab-size:4}
+#tab-infobox .ibx-chars{justify-self:end;color:rgba(214,229,250,.6);font-size:12px;font-weight:700}
+#tab-infobox .ibx-chars.is-bad{color:#ff8a9b}
+#tab-infobox .ibx-tools{display:grid;gap:0;border:1px solid rgba(110,170,255,.18);border-radius:14px;overflow:hidden}
+#tab-infobox .ibx-tools__tabs{display:flex;flex-wrap:wrap;background:rgba(2,6,18,.55)}
+#tab-infobox .ibx-tools__tab{flex:1 1 auto;height:42px;padding:0 14px;border:0;border-bottom:2px solid transparent;background:transparent;color:rgba(214,229,250,.7);font:700 13px Montserrat,system-ui,sans-serif;cursor:pointer}
+#tab-infobox .ibx-tools__tab:hover{color:#fff}
+#tab-infobox .ibx-tools__tab.is-on{border-bottom-color:#1fc9f1;color:#fff;background:rgba(31,201,241,.07)}
+#tab-infobox .ibx-tools__panel{padding:14px;background:rgba(5,10,28,.55)}
+#tab-infobox .ibx-symbols{display:grid;gap:5px}
+#tab-infobox .ibx-symbols__row{display:flex;flex-wrap:wrap;gap:4px}
+#tab-infobox .ibx-symbol{min-width:34px;height:34px;padding:0 6px;border:1px solid transparent;border-radius:8px;background:rgba(255,255,255,.05);color:#e9f3ff;font:16px Arial,"Segoe UI Symbol","Segoe UI Emoji",sans-serif;cursor:pointer}
+#tab-infobox .ibx-symbol:hover{border-color:rgba(31,201,241,.6);background:rgba(31,201,241,.1)}
+#tab-infobox .ibx-art{display:grid;gap:12px}
+#tab-infobox .ibx-art__row{display:flex;flex-wrap:wrap;gap:8px}
+#tab-infobox .ibx-art__controls{display:grid;gap:9px}
+#tab-infobox .ibx-range{display:grid;grid-template-columns:110px 1fr 34px;gap:10px;align-items:center;font-size:12.5px;color:rgba(214,229,250,.78)}
+#tab-infobox .ibx-range input{accent-color:#1fc9f1}
+#tab-infobox .ibx-range b{text-align:right}
+#tab-infobox .ibx-art__out{max-height:240px;overflow:auto;margin:0;padding:10px;border-radius:10px;background:#0b0f1f;color:#cfe3ff;font:9px/11px Arial,"Segoe UI Symbol",sans-serif;white-space:pre}
+#tab-infobox .ibx-share{display:grid;gap:12px}
+#tab-infobox .ibx-share__fields{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px}
+#tab-infobox .ibx-share .ibx-btn--primary{justify-self:start}
+#tab-infobox .ibx-share__msg{margin:0;min-height:1.2em;color:#7fe9ff;font-size:12.5px}
+
+/* the Steam box */
+#tab-infobox .ibx-stage{--ibx-preview-scale:1;padding:20px;border-radius:12px;overflow:hidden;background:radial-gradient(120% 90% at 20% 0,#2a2f58 0,#151a33 45%,#0b0e1d 100%)}
+#tab-infobox .ibx-stage>.ibx-steam{transform:scale(var(--ibx-preview-scale));transform-origin:0 0}
+#tab-infobox .ibx-steam{width:640px;border-radius:3px;background:rgba(0,0,0,.3);color:#acb2b8;font:13px/1.4 "Motiva Sans",Arial,Helvetica,sans-serif;text-align:left;overflow:hidden}
+#tab-infobox .ibx-steam__head{padding:5px 10px;background:linear-gradient(90deg,rgba(115,173,184,.247) 0,rgba(43,45,68,.93) 90%);color:#fff;font-size:16px;font-weight:300;line-height:30px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tab-infobox .ibx-steam__block{padding:20px 10px 11px}
+#tab-infobox .ibx-steam__content{padding:8px;border-radius:5px;background:rgba(0,0,0,.3)}
+#tab-infobox .ibx-text{color:#acb2b8;font:13px/18px "Motiva Sans",Arial,Helvetica,sans-serif;overflow-wrap:anywhere;white-space:normal}
+#tab-infobox .ibx-text--full{max-height:600px;overflow:hidden auto}
+#tab-infobox .ibx-text hr{height:1px;margin:6px 0;border:0;background:#666}
+#tab-infobox .ibx-h1{display:inline-block;width:100%;margin:4px 0;border-bottom:1px dotted #666;color:#5aa9d6;font-size:20px;line-height:26px}
+#tab-infobox .ibx-h2{color:#5aa9d6;font-size:18px;line-height:24px}
+#tab-infobox .ibx-h3{color:#5aa9d6;font-size:15px;line-height:20px}
+#tab-infobox .ibx-b{font-weight:700}
+#tab-infobox .ibx-i{font-style:italic}
+#tab-infobox .ibx-u{text-decoration:underline}
+#tab-infobox .ibx-s{text-decoration:line-through}
+#tab-infobox .ibx-spoiler{background:#000;color:#000;transition:color .2s}
+#tab-infobox .ibx-spoiler:hover{color:#fff}
+#tab-infobox .ibx-link{color:#ebebeb;text-decoration:none}
+#tab-infobox .ibx-link:hover{text-decoration:underline}
+#tab-infobox .ibx-host{color:#898989;font-size:11px}
+#tab-infobox .ibx-quote{margin:4px 0;padding:6px 10px;border:1px solid #56707f;background:rgba(0,0,0,.25)}
+#tab-infobox .ibx-code{display:block;padding:6px;border:1px solid #444;font-family:Consolas,monospace;white-space:pre}
+#tab-infobox .ibx-emoticon{display:inline;width:18px;height:18px;vertical-align:text-bottom}
+#tab-infobox .ibx-notes{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+#tab-infobox .ibx-notes li{padding:8px 11px;border-radius:10px;font-size:12.5px;line-height:1.45;background:rgba(2,6,18,.55);border:1px solid rgba(110,170,255,.16)}
+#tab-infobox .ibx-notes .is-ok{border-color:rgba(95,242,181,.35);color:#8df7cd}
+#tab-infobox .ibx-notes .is-warn{border-color:rgba(255,196,92,.4);color:#ffd28a}
+#tab-infobox .ibx-notes .is-bad{border-color:rgba(255,120,140,.45);color:#ff9aa9}
+#tab-infobox .ibx-how__list{display:grid;gap:8px;margin:0;padding:0;list-style:none;counter-reset:how}
+#tab-infobox .ibx-how__list li{position:relative;padding-left:34px;color:rgba(214,229,250,.85);font-size:13px;line-height:1.5;counter-increment:how}
+#tab-infobox .ibx-how__list li::before{content:counter(how);position:absolute;left:0;top:-1px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(31,201,241,.15);color:#7fe9ff;font-size:12px;font-weight:800}
+
+@media (max-width:1100px){#tab-infobox .ibx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1320px){
+  #tab-infobox .ibx-cols{grid-template-columns:minmax(0,1fr)}
+  #tab-infobox .ibx-side{position:static;max-height:none;overflow:visible}
+}
+@media (max-width:700px){
+  /* Steps and categories become one swipeable row each instead of half a screen of chips. */
+  #tab-infobox .ibx-steps,#tab-infobox .ibx-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}
+  #tab-infobox .ibx-steps::-webkit-scrollbar,#tab-infobox .ibx-tabs::-webkit-scrollbar{display:none}
+  #tab-infobox .ibx-step,#tab-infobox .ibx-tab{flex:none}
+  #tab-infobox .ibx-step{padding:5px 11px 5px 5px;font-size:12px}
+  #tab-infobox .ibx-lead{font-size:13.5px}
+  #tab-infobox .ibx-ebar{position:static}
+  #tab-infobox .ibx-ebar__actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  #tab-infobox .ibx-ebar__actions .ibx-btn{min-width:0;padding:4px 8px;font-size:12px;line-height:1.2;white-space:normal;text-align:center}
+  #tab-infobox .ibx-ebar__actions .ibx-btn--primary{grid-column:1/-1;grid-row:1}
+  #tab-infobox .ibx-grid{grid-template-columns:minmax(0,1fr)}
+  #tab-infobox .ibx-stage{padding:10px}
+  #tab-infobox .ibx-share__fields{grid-template-columns:minmax(0,1fr)}
+  #tab-infobox .ibx-range{grid-template-columns:90px 1fr 30px}
+  #tab-infobox .ibx-area{min-height:260px}
+}
+
+/* Site dialog that replaces the browser's confirm() (askConfirm in infobox.js); lives on <body>, so not scoped. */
+.ibx-confirm{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:16px;background:rgba(2,5,14,.66);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:ibx-fade .16s ease}
+.ibx-confirm__box{position:relative;display:grid;gap:18px;width:min(420px,100%);padding:22px 22px 18px;border:1px solid rgba(110,170,255,.3);border-radius:16px;background:linear-gradient(160deg,#0e1a3c,#050a1c);box-shadow:0 30px 80px rgba(0,0,0,.55);color:#e9f3ff;font-family:Montserrat,system-ui,sans-serif;animation:ibx-pop .18s cubic-bezier(.2,.8,.2,1)}
+.ibx-confirm__box::before{content:"";position:absolute;left:22px;right:22px;top:-1px;height:2px;border-radius:2px;background:linear-gradient(90deg,#1fc9f1,#8a7dff)}
+.ibx-confirm__text{margin:0;font-size:15px;font-weight:700;line-height:1.45}
+.ibx-confirm__row{display:flex;justify-content:flex-end;gap:8px}
+.ibx-confirm .ibx-btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 18px;border:1px solid rgba(110,170,255,.3);border-radius:11px;background:transparent;color:#e9f3ff;font:700 13px Montserrat,system-ui,sans-serif;cursor:pointer}
+.ibx-confirm .ibx-btn:hover{border-color:rgba(31,201,241,.7)}
+.ibx-confirm .ibx-btn--primary{border-color:transparent;background:#1fc9f1;color:#021018}
+.ibx-confirm .ibx-btn:focus-visible{outline:2px solid #7fe9ff;outline-offset:2px}
+@keyframes ibx-fade{from{opacity:0}to{opacity:1}}
+@keyframes ibx-pop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.ibx-confirm,.ibx-confirm__box{animation:none}}
+/* Picture from emoticons (static/js/infobox-emoji.js) */
+#tab-infobox .ibx-emo{display:grid;gap:14px}
+#tab-infobox .ibx-emo__step{display:grid;gap:9px;padding:12px;border:1px solid rgba(110,170,255,.14);border-radius:12px;background:rgba(2,6,18,.35)}
+#tab-infobox .ibx-emo__h{margin:0;color:#fff;font:800 13px Montserrat,system-ui,sans-serif}
+#tab-infobox .ibx-emo__how{display:grid;gap:5px;margin:0;padding-left:20px;color:rgba(214,229,250,.82);font-size:13px;line-height:1.5}
+#tab-infobox .ibx-emo__how a{color:#7fdcff;font-weight:700;overflow-wrap:anywhere}
+#tab-infobox .ibx-emo__paste{min-height:74px;font-size:12px}
+#tab-infobox .ibx-emo__msg:empty,#tab-infobox .ibx-emo__stats:empty{display:none}
+#tab-infobox .ibx-emo__msg{margin:0;color:#ffcf7a;font-size:12.5px}
+#tab-infobox .ibx-emo__status{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;color:#8df7cd;font-size:13px;font-weight:700}
+#tab-infobox .ibx-emo__status[hidden],#tab-infobox .ibx-emo__pal[hidden],#tab-infobox .ibx-emo__result[hidden]{display:none}
+#tab-infobox .ibx-emo__pal summary{cursor:pointer;color:rgba(214,229,250,.8);font-size:12.5px;font-weight:700}
+#tab-infobox .ibx-emo__palette{display:flex;flex-wrap:wrap;gap:3px;max-height:180px;margin-top:8px;overflow:auto}
+#tab-infobox .ibx-emo__chip{display:grid;place-items:center;width:28px;height:28px;padding:0;border:1px solid rgba(110,170,255,.18);border-radius:6px;background:rgba(2,6,18,.6);cursor:pointer}
+#tab-infobox .ibx-emo__chip img{width:18px;height:18px}
+#tab-infobox .ibx-emo__chip.is-off{opacity:.28;border-style:dashed}
+#tab-infobox .ibx-emo__stats{margin:0;color:#cfe3ff;font-size:13px;font-weight:700}
+#tab-infobox .ibx-emo__result{display:grid;gap:9px}
+#tab-infobox .ibx-emo__frame{max-width:100%;overflow:auto;padding:8px;border-radius:10px;background:#10131f}
+#tab-infobox .ibx-emo__canvas{display:block;max-width:none}
+#tab-infobox .ibx-emo__hints{display:grid;gap:4px;margin:0;padding-left:18px;color:#ffcf7a;font-size:12.5px}
+#tab-infobox .ibx-emo__hints:empty{display:none}
+@media (max-width:700px){#tab-infobox .ibx-emo__canvas{max-width:100%;height:auto}#tab-infobox .ibx-emo__real{display:none}}

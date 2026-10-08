@@ -256,7 +256,9 @@
     "File {n} of {m}": "Datei {n} von {m}",
     "almost done…": "fast fertig…",
     "Check complete": "Prüfung abgeschlossen",
-    "≈ {t} left": "noch ≈ {t}"
+    "≈ {t} left": "noch ≈ {t}",
+    "Info box": "Infobox",
+    "Templates and an editor for the Custom Info Box showcase": "Vorlagen und ein Editor für die Benutzerdefinierte Infobox"
   },
   "tr": {
     "3 Steam formats": "3 Steam formatı",
@@ -514,7 +516,9 @@
     "File {n} of {m}": "Dosya {n} / {m}",
     "almost done…": "neredeyse bitti…",
     "Check complete": "Kontrol tamamlandı",
-    "≈ {t} left": "≈ {t} kaldı"
+    "≈ {t} left": "≈ {t} kaldı",
+    "Info box": "Bilgi kutusu",
+    "Templates and an editor for the Custom Info Box showcase": "Özel Bilgi Kutusu vitrini için şablonlar ve düzenleyici"
   },
   "fr": {
     "3 Steam formats": "3 formats Steam",
@@ -773,7 +777,9 @@
     "File {n} of {m}": "Fichier {n} sur {m}",
     "almost done…": "presque terminé…",
     "Check complete": "Vérification terminée",
-    "≈ {t} left": "encore ≈ {t}"
+    "≈ {t} left": "encore ≈ {t}",
+    "Info box": "Boîte d’infos",
+    "Templates and an editor for the Custom Info Box showcase": "Modèles et éditeur pour la Boîte d’infos personnalisée"
   },
   "uk": {
     "3 Steam formats": "3 формати Steam",
@@ -1034,7 +1040,9 @@
     "File {n} of {m}": "Файл {n} з {m}",
     "almost done…": "майже готово…",
     "Check complete": "Перевірку завершено",
-    "≈ {t} left": "залишилось ≈ {t}"
+    "≈ {t} left": "залишилось ≈ {t}",
+    "Info box": "Інфо-поле",
+    "Templates and an editor for the Custom Info Box showcase": "Шаблони й редактор для вітрини «Поле зі своєю інформацією»"
   },
   "es": {
     "3 Steam formats": "3 formatos de Steam",
@@ -1292,7 +1300,9 @@
     "File {n} of {m}": "Archivo {n} de {m}",
     "almost done…": "casi listo…",
     "Check complete": "Comprobación completada",
-    "≈ {t} left": "quedan ≈ {t}"
+    "≈ {t} left": "quedan ≈ {t}",
+    "Info box": "Cuadro de info",
+    "Templates and an editor for the Custom Info Box showcase": "Plantillas y editor para el Cuadro de información personalizado"
   },
   "pt": {
     "3 Steam formats": "3 formatos da Steam",
@@ -1550,6 +1560,8 @@
     "File {n} of {m}": "Arquivo {n} de {m}",
     "almost done…": "quase pronto…",
     "Check complete": "Verificação concluída",
-    "≈ {t} left": "faltam ≈ {t}"
+    "≈ {t} left": "faltam ≈ {t}",
+    "Info box": "Caixa de info",
+    "Templates and an editor for the Custom Info Box showcase": "Modelos e editor para a Caixa de informações personalizada"
   }
 }

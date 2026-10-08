@@ -319,6 +319,19 @@ CREATE TABLE IF NOT EXISTS da_presets (
  updated_at DOUBLE PRECISION NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_da_presets_user ON da_presets(user_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS infobox_templates (
+ id TEXT PRIMARY KEY,
+ user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ title TEXT NOT NULL,
+ body TEXT NOT NULL,
+ category TEXT NOT NULL DEFAULT 'other',
+ uses INTEGER NOT NULL DEFAULT 0,
+ status TEXT NOT NULL DEFAULT 'published',
+ created_at DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_infobox_list ON infobox_templates(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_infobox_user ON infobox_templates(user_id);
 CREATE TABLE IF NOT EXISTS builder_usage (
  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  day_key TEXT NOT NULL,

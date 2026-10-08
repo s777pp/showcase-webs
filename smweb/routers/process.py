@@ -297,6 +297,7 @@ async def api_process_start(
     outline_shape: str = Form("rect"),
     outline_plate: int = Form(0),
     grade: str = Form(""),
+    parallax: str = Form(""),
     gif_encoder: str = Form("gifski"),
     all_modes: str = Form("0"),
     rotations: str = Form("[]"),
@@ -380,6 +381,8 @@ async def api_process_start(
         "size_i": size_i,
         # Colour correction (brightness/contrast/saturation/hue); None when neutral.
         "grade": proc.normalize_grade(_json_object(grade)),
+        # "Depth" (2.5D parallax loop for stills, processor.parallax_source); None when off.
+        "parallax": proc.normalize_parallax(_json_object(parallax)) if parallax else None,
         "fps": fps,
         "enc": enc,
         "wm_font": wm_font,
@@ -745,3 +748,230 @@ def job_file(job_id: str, name: str, request: Request):
     if not (shared or browser_owns_job(path.parent, request)) or not path.is_file():
         return JSONResponse({"ok": False}, status_code=404)
     return FileResponse(path, filename=name, headers={"Cache-Control": "private, no-store"})
+
+
+# ---------------------------------------------------------------- "Depth" preview (static/js/process-depth.js)
+# POST /api/process/depth: the picture (the browser sends it upright, <= 640 px) -> depth map, both kept for an hour
+# under DATA/cache/depth-preview/<token>; answers the token and a first guess of the body region.
+# POST /api/process/depth/render: token + options -> an animated WebP rendered by smweb.depth_fx, the same code as the
+# final clip (processor.parallax_source), only smaller and at 10 fps.
+# POST /api/process/depth/clip: token + options -> a seamless clip (15 fps, PARALLAX_SECONDS) at up to _DEPTH_CLIP_SIDE
+# px for the Builder's Character layer (static/js/builder-depth.js): WebM VP9 with alpha for a cut-out, else H.264 MP4. Needs the picture prepared with keep=1,
+# which also stores source.png at that size; the depth map is the 640 px one, scaled up (it is smooth anyway).
+import threading as _threading  # noqa: E402
+
+_DEPTH_SLOTS = _threading.BoundedSemaphore(max(1, int(os.environ.get("DEPTH_PREVIEW_CONCURRENCY", "2") or 2)))
+_DEPTH_PREVIEW_SIDE = 640
+# Preview size: the whole 640 px picture; "large" (the Builder window, which keeps source.png) up to 760 px.
+# 900 px took ~6 s and 3.5 MB per change, too slow for sliders. Owner asked for a sharper preview (2026-10-08).
+_DEPTH_RENDER_BOX = (640, 640)
+_DEPTH_RENDER_BOX_LARGE = (760, 760)
+_DEPTH_RENDER_QUALITY = 84
+_DEPTH_RENDER_FRAMES = 40
+_DEPTH_TTL = 3600
+_DEPTH_CACHE = JOBS.parent / "cache" / "depth-preview"
+_DEPTH_CLIP_SIDE = 1600
+_DEPTH_CLIP_FPS = 15
+
+
+def _depth_slot():
+    if not _DEPTH_SLOTS.acquire(timeout=20):
+        raise TimeoutError("busy")
+
+
+def _depth_prune():
+    now = time.time()
+    try:
+        for item in _DEPTH_CACHE.iterdir():
+            if now - item.stat().st_mtime > _DEPTH_TTL:
+                shutil.rmtree(item, ignore_errors=True)
+    except OSError:
+        pass
+
+
+def _depth_prepare(data: bytes, keep: bool = False) -> dict:
+    import io
+    import numpy as np
+    from PIL import Image
+    from smweb import depth, depth_fx
+    _depth_slot()
+    try:
+        with Image.open(io.BytesIO(proc.restore_gif_trailer(data))) as image:
+            if image.width * image.height > 40_000_000:
+                raise ValueError("too_large")
+            image.seek(0)
+            picture = image.convert("RGBA")
+        source = None
+        if keep:
+            source = picture.copy()
+            source.thumbnail((_DEPTH_CLIP_SIDE, _DEPTH_CLIP_SIDE), Image.Resampling.LANCZOS)
+        picture.thumbnail((_DEPTH_PREVIEW_SIDE, _DEPTH_PREVIEW_SIDE), Image.Resampling.LANCZOS)
+        estimate = depth.estimate(picture)
+    finally:
+        _DEPTH_SLOTS.release()
+    _depth_prune()
+    token = secrets.token_hex(16)
+    folder = _DEPTH_CACHE / token
+    folder.mkdir(parents=True, exist_ok=True)
+    picture.save(folder / "picture.png", compress_level=1)
+    if source is not None:
+        source.save(folder / "source.png", compress_level=1)
+    np.save(folder / "depth.npy", estimate.astype(np.float16))
+    return {"ok": True, "token": token, "width": picture.width, "height": picture.height,
+            "body": depth_fx.body_guess(estimate)}
+
+
+def _depth_render(token: str, options: dict, large: bool = False) -> bytes:
+    import io
+    import numpy as np
+    from PIL import Image
+    from smweb import depth_fx
+    folder = _DEPTH_CACHE / token
+    if not re.fullmatch(r"[a-f0-9]{32}", token or "") or not (folder / "depth.npy").is_file():
+        raise FileNotFoundError(token)
+    folder.touch()
+    large = large and (folder / "source.png").is_file()
+    with Image.open(folder / ("source.png" if large else "picture.png")) as image:
+        picture = image.convert("RGBA")
+    estimate = np.load(folder / "depth.npy").astype(np.float32)
+    picture.thumbnail(_DEPTH_RENDER_BOX_LARGE if large else _DEPTH_RENDER_BOX, Image.Resampling.LANCZOS)
+    estimate = np.asarray(Image.fromarray(estimate).resize(picture.size, Image.Resampling.BILINEAR), dtype=np.float32)
+    _depth_slot()
+    try:
+        scene = depth_fx.Scene(np.asarray(picture, dtype=np.uint8), estimate, options)
+        frames = [Image.fromarray(scene.frame(i / _DEPTH_RENDER_FRAMES), "RGBA") for i in range(_DEPTH_RENDER_FRAMES)]
+    finally:
+        _DEPTH_SLOTS.release()
+    out = io.BytesIO()
+    duration = int(round(proc.PARALLAX_SECONDS * 1000 / _DEPTH_RENDER_FRAMES))
+    frames[0].save(out, "WEBP", save_all=True, append_images=frames[1:], duration=duration, loop=0, quality=_DEPTH_RENDER_QUALITY, method=2)
+    return out.getvalue()
+
+
+def _depth_clip(token: str, options: dict) -> tuple[bytes, str]:
+    """The seamless loop for the Builder's Character layer: the same Scene as the preview and the Process files.
+
+    A cut-out (any transparent pixel) becomes a WebM with alpha (VP9, yuva420p), anything else an H.264 MP4.
+    Returns (bytes, media type).
+    """
+    import subprocess
+    import tempfile
+    import numpy as np
+    from PIL import Image
+    from smweb import depth_fx
+    folder = _DEPTH_CACHE / token
+    if not re.fullmatch(r"[a-f0-9]{32}", token or "") or not (folder / "depth.npy").is_file():
+        raise FileNotFoundError(token)
+    folder.touch()
+    source = folder / "source.png" if (folder / "source.png").is_file() else folder / "picture.png"
+    with Image.open(source) as image:
+        picture = image.convert("RGBA")
+    transparent = picture.getchannel("A").getextrema()[0] < 255
+    # yuv420p / yuva420p need even sides.
+    width, height = picture.width - picture.width % 2, picture.height - picture.height % 2
+    picture = picture.crop((0, 0, width, height))
+    estimate = np.load(folder / "depth.npy").astype(np.float32)
+    estimate = np.asarray(Image.fromarray(estimate).resize((width, height), Image.Resampling.BICUBIC), dtype=np.float32)
+    frames = int(round(proc.PARALLAX_SECONDS * _DEPTH_CLIP_FPS))
+    _depth_slot()
+    try:
+        scene = depth_fx.Scene(np.asarray(picture, dtype=np.uint8), estimate, options)
+        with tempfile.TemporaryDirectory() as work:
+            target = Path(work) / ("clip.webm" if transparent else "clip.mp4")
+            if transparent:
+                # -auto-alt-ref 0: libvpx drops the alpha plane with alt-ref frames on.
+                codec = ["-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-b:v", "0", "-crf", "28", "-deadline", "realtime",
+                         "-cpu-used", "6", "-row-mt", "1", "-auto-alt-ref", "0"]
+            else:
+                codec = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-movflags", "+faststart"]
+            command = [proc.find_ffmpeg() or "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                       "-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{width}x{height}", "-r", str(_DEPTH_CLIP_FPS), "-i", "-",
+                       *codec, "-an", str(target)]
+            encoder = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+            try:
+                for index in range(frames):
+                    frame = scene.frame(index / frames)
+                    if frame.shape[2] == 3:
+                        frame = np.dstack([frame, np.full(frame.shape[:2], 255, np.uint8)])
+                    encoder.stdin.write(np.ascontiguousarray(frame).tobytes())
+                encoder.stdin.close()
+                if encoder.wait(timeout=120) != 0:
+                    raise RuntimeError("ffmpeg failed")
+            finally:
+                if encoder.poll() is None:
+                    encoder.kill()
+            return target.read_bytes(), "video/webm" if transparent else "video/mp4"
+    finally:
+        _DEPTH_SLOTS.release()
+
+
+@router.post("/api/process/depth/clip")
+async def depth_clip(request: Request):
+    """Seamless clip of the "Depth" effects for the Builder's Character layer (picture prepared with keep=1)."""
+    from smweb import depth_fx
+    try:
+        body = await request.json()
+    except Exception:
+        body = None
+    if not isinstance(body, dict):
+        return JSONResponse({"ok": False, "code": "bad_request"}, status_code=400)
+    options = depth_fx.normalize(body.get("options"))
+    if not options:
+        return JSONResponse({"ok": False, "code": "nothing"}, status_code=400)
+    try:
+        clip, media_type = await run_in_threadpool(_depth_clip, str(body.get("token") or ""), options)
+    except FileNotFoundError:
+        return JSONResponse({"ok": False, "code": "expired"}, status_code=404)
+    except TimeoutError:
+        return JSONResponse({"ok": False, "code": "busy", "msg": "Busy, try again"}, status_code=503)
+    except Exception:
+        _LOG.exception("depth clip render failed")
+        return JSONResponse({"ok": False, "code": "failed"}, status_code=500)
+    return Response(clip, media_type=media_type, headers={"Cache-Control": "no-store"})
+
+
+def _depth_unavailable():
+    return JSONResponse({"ok": False, "code": "depth_unavailable", "msg": "Depth is not available right now"}, status_code=503)
+
+
+@router.post("/api/process/depth/render")
+async def depth_render(request: Request):
+    """Preview of the "Depth" effects for a picture prepared by /api/process/depth."""
+    from smweb import depth_fx
+    try:
+        body = await request.json()
+    except Exception:
+        body = None
+    if not isinstance(body, dict):
+        return JSONResponse({"ok": False, "code": "bad_request"}, status_code=400)
+    options = depth_fx.normalize(body.get("options"))
+    if not options:
+        return JSONResponse({"ok": False, "code": "nothing"}, status_code=400)
+    try:
+        webp = await run_in_threadpool(_depth_render, str(body.get("token") or ""), options, body.get("size") == "large")
+    except FileNotFoundError:
+        return JSONResponse({"ok": False, "code": "expired"}, status_code=404)
+    except TimeoutError:
+        return JSONResponse({"ok": False, "code": "busy", "msg": "Busy, try again"}, status_code=503)
+    except Exception:
+        _LOG.exception("depth preview render failed")
+        return JSONResponse({"ok": False, "code": "failed"}, status_code=500)
+    return Response(webp, media_type="image/webp", headers={"Cache-Control": "no-store"})
+
+
+@router.post("/api/process/depth")
+async def depth_preview(file: UploadFile = File(...), keep: str = Form("")):
+    """Depth map of a picture for the "Depth" preview; the frames come from /api/process/depth/render."""
+    from smweb import depth
+    if not depth.available():
+        return _depth_unavailable()
+    data = await file.read(25 * 1024 * 1024 + 1)
+    if not data or len(data) > 25 * 1024 * 1024:
+        return JSONResponse({"ok": False, "code": "too_large", "msg": "File is too large"}, status_code=413)
+    try:
+        result = await run_in_threadpool(_depth_prepare, data, keep in ("1", "true", "yes"))
+    except TimeoutError:
+        return JSONResponse({"ok": False, "code": "busy", "msg": "Busy, try again"}, status_code=503)
+    except Exception:
+        return JSONResponse({"ok": False, "code": "bad_image", "msg": "Could not read the picture"}, status_code=400)
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})

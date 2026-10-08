@@ -4,6 +4,7 @@ import time
 
 import errno
 import io
+import math
 import os
 import shutil
 import subprocess
@@ -11,6 +12,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 from PIL import Image, ImageDraw, ImageFile, ImageFont
 import logging
 _LOG = logging.getLogger(__name__)
@@ -379,6 +381,64 @@ def graded_source(name: str, raw: bytes, grade: dict | None, work_dir: Path) -> 
         return Path(name).stem + ".mkv", output.read_bytes()
     finally:
         source.unlink(missing_ok=True)
+        output.unlink(missing_ok=True)
+
+
+# "Depth" for still pictures (owner, 2026-10-08): a depth map (smweb/depth.py) + the effects of smweb/depth_fx.py
+# (camera parallax, particles between depth layers, fog / light, focus pull, breathing, hair sway) turn a still into
+# a seamless 4 s loop before cutting. The browser preview is rendered by the same code (/api/process/depth/render).
+PARALLAX_SECONDS = 4.0
+
+
+def normalize_parallax(raw) -> dict | None:
+    """Cleaned "Depth" options (smweb.depth_fx.normalize); None when off or nothing would move."""
+    from smweb import depth_fx
+    return depth_fx.normalize(raw)
+
+
+def depth_displacement(depth: np.ndarray) -> np.ndarray:
+    """The map that moves the pixels: depth grown a little (near edges carry the stretch, so a figure never tears
+    away from its own outline) and softened. float32 0..1, same size."""
+    import cv2
+    height, width = depth.shape[:2]
+    radius = max(1, int(round(max(width, height) * 0.008)))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * radius + 1, 2 * radius + 1))
+    grown = cv2.dilate(depth.astype(np.float32), kernel)
+    return np.clip(cv2.GaussianBlur(grown, (0, 0), radius * 0.75), 0, 1).astype(np.float32)
+
+
+def parallax_source(name: str, raw: bytes, parallax: dict | None, work_dir: Path, rotation: float = 0.0,
+                    fps: int = 15) -> tuple[str, bytes]:
+    """A still with "Depth" on -> a lossless FFV1 loop of PARALLAX_SECONDS; anything else is returned as is.
+    The picture's rotation is applied here (the clip itself is upright)."""
+    options = normalize_parallax(parallax) if parallax else None
+    if not options or Path(name).suffix.lower() not in NATIVE_STILL_EXTENSIONS:
+        return name, raw
+    from smweb import depth as depth_model
+    ff = find_ffmpeg()
+    if not ff:
+        raise RuntimeError("FFmpeg not found")
+    with Image.open(io.BytesIO(raw)) as image:
+        image.load()
+        picture = rotate_image(image, rotation).convert("RGBA")
+    # Steam files are at most 750 px wide: 1280 px keeps detail and the lossless clip small.
+    picture.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
+    from smweb import depth_fx
+    scene = depth_fx.Scene(np.asarray(picture, dtype=np.uint8), depth_model.estimate(picture), options)
+    fps = max(10, min(int(fps or 15), 20))
+    count = int(round(PARALLAX_SECONDS * fps))
+    work_dir.mkdir(parents=True, exist_ok=True)
+    output = work_dir / "depth_loop.mkv"
+    try:
+        for index in range(count):
+            frame = scene.frame(index / count)
+            Image.fromarray(frame, "RGBA").save(work_dir / f"f_{index:03d}.png", compress_level=1)
+        _run([ff, "-y", "-hide_banner", "-loglevel", "error", "-framerate", str(fps), "-i", str(work_dir / "f_%03d.png"),
+              "-c:v", "ffv1", "-pix_fmt", "bgra", str(output)])
+        return Path(name).stem + ".mkv", output.read_bytes()
+    finally:
+        for path in work_dir.glob("f_*.png"):
+            path.unlink(missing_ok=True)
         output.unlink(missing_ok=True)
 
 

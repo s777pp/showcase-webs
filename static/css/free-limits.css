@@ -12,6 +12,9 @@
 .fl-note.is-spent .fl-note__btn,.fl-note.is-beta .fl-note__btn{border-color:transparent;background:linear-gradient(90deg,var(--v2-cyan,#1fc9f1),var(--v2-violet,#8a7dff));color:#041019}
 .fl-inline{display:block;margin-top:6px;color:var(--v2-faint,rgba(200,214,238,.46));font:600 11.5px/1.4 var(--v2-font,'Montserrat',system-ui,sans-serif)}
 .fl-inline[hidden]{display:none}
+/* Builder: the hint sits in the AI button's two-column grid (button | ?); give it its own full row underneath, or it lands in the 34 px "?" column and stretches the button. */
+.builder-ai-cut-row>.fl-inline{grid-column:1/-1;grid-row:2;margin-top:0}
+.builder-ai-cut-row>.builder-ai-cut{grid-column:1;grid-row:1}.builder-ai-cut-row>.builder-ai-help{grid-column:2;grid-row:1}
 
 .fl-wall{position:fixed;inset:0;z-index:4000;display:grid;place-items:center;padding:18px;background:rgba(2,5,14,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:fl-fade .16s ease-out}
 .fl-wall__card{position:relative;width:min(440px,100%);max-height:calc(100vh - 36px);overflow:auto;padding:28px 26px 22px;border:1px solid var(--v2-line-hi,rgba(111,227,255,.55));border-radius:18px;background:var(--v2-panel-solid,#0a1330);box-shadow:0 30px 80px rgba(0,0,0,.55);color:var(--v2-ink,#e9f3ff);font-family:var(--v2-font,'Montserrat',system-ui,sans-serif)}

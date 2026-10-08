@@ -296,6 +296,23 @@ def _create_schema(c: sqlite3.Connection) -> None:
         """
     )
     c.execute("CREATE INDEX IF NOT EXISTS idx_admin_messages_created ON admin_messages(created_at)")
+    # Community templates for Steam's Custom Info Box (smweb/infobox.py, 2026-10-08).
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS infobox_templates (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT 'other',
+            uses INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'published',
+            created_at REAL NOT NULL
+        )
+        """
+    )
+    c.execute("CREATE INDEX IF NOT EXISTS idx_infobox_list ON infobox_templates(status, created_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_infobox_user ON infobox_templates(user_id)")
     c.execute(
         """
         CREATE TABLE IF NOT EXISTS news_posts (
@@ -932,6 +949,10 @@ def account_export_data(user_id: int, analytics_user_hash: str = "") -> dict:
         ).fetchall()]
         for item in da_presets:
             item["preset"] = _decode_export_json(item.pop("preset_json", None))
+        infobox_templates = [dict(item) for item in c.execute(
+            "SELECT id,title,body,category,uses,status,created_at FROM infobox_templates WHERE user_id=? ORDER BY created_at DESC",
+            (uid,),
+        ).fetchall()]
         saved = [dict(item) for item in c.execute(
             """SELECT id,job_id,kind,mode,title,size,file_count,created_at,expires_at
                FROM saved_results WHERE user_id=? ORDER BY created_at DESC""",
@@ -979,6 +1000,7 @@ def account_export_data(user_id: int, analytics_user_hash: str = "") -> dict:
             "builder_projects": projects,
             "builder_usage": usage,
             "deviantart_presets": da_presets,
+            "infobox_templates": infobox_templates,
             "saved_results": saved,
             "sessions": sessions,
             "activated_codes": codes,
@@ -1041,6 +1063,7 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
         c.execute("DELETE FROM profile_showcases WHERE user_id=?", (uid,))
         c.execute("DELETE FROM builder_projects WHERE user_id=?", (uid,))
         c.execute("DELETE FROM da_presets WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM infobox_templates WHERE user_id=?", (uid,))
         c.execute("DELETE FROM builder_usage WHERE user_id=?", (uid,))
         c.execute("DELETE FROM feature_uses WHERE subject=?", (f"u:{uid}",))
         c.execute("DELETE FROM saved_results WHERE user_id=?", (uid,))

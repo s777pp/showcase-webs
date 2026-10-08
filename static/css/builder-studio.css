@@ -467,3 +467,7 @@ html.bx-fonts-open{overflow:hidden}
 #showcaseBuilder.bx .bx-steamctx__block{position:absolute;border-radius:3px;background:rgba(0,0,0,.45);box-shadow:0 0 0 1px rgba(255,255,255,.06)}
 #showcaseBuilder.bx .bx-steamctx__block b{position:absolute;left:0;right:0;top:0;border-radius:3px 3px 0 0;background:linear-gradient(90deg,rgba(255,255,255,.09),rgba(255,255,255,.02))}
 #showcaseBuilder.bx .builder-canvas-wrap.has-steamctx>canvas{box-shadow:0 0 0 1px rgba(111,227,255,.55),0 12px 40px rgba(0,0,0,.6)}
+/* The switch's real checkbox stays hidden: tools-polish.css styles every .page-tools checkbox (position:relative, 42 px)
+ and outranks showcase-builder.css, which pushed every Builder switch 51 px to the right. */
+#showcaseBuilder .builder-toggle{position:relative}
+#showcaseBuilder .builder-toggle input[type="checkbox"]{position:absolute;width:1px;height:1px;margin:0;opacity:0;pointer-events:none}

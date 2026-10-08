@@ -20,7 +20,7 @@ The owner speaks Russian: reply in Russian, write code/comments in English.
    ```powershell
    $env:DATA_DIR="$env:TEMP\sm-test-data"; $env:SECRET_KEY="test-secret-key-0123456789abcdef0123456789"
    Remove-Item Env:DATABASE_URL,Env:REDIS_URL -ErrorAction SilentlyContinue
-   py -3.14 -m pytest tests -p no:cacheprovider -q     # 605 passed on 2026-10-07 (~150 s)
+   py -3.14 -m pytest tests -p no:cacheprovider -q     # 652 passed on 2026-10-08 (~160 s)
    node scripts/check_i18n.js                          # must print "complete"
    ```
    The suite is pytest-style (mixed with unittest classes). `unittest discover` is NOT enough.
@@ -1346,6 +1346,138 @@ Only the hero exists for now; content blocks will be added below it later.
   `#detailDownload` and follows it with a MutationObserver (no change to community-gallery.js), PING via the
   postMessage bridge then `chrome.runtime.sendMessage` to the store id, several sets -> chips, hidden on
   `(hover:none)`. Tests: `tests/test_gallery_steam.py`.
+
+## 6.26 Info box tab (2026-10-08, local, not deployed)
+
+- Owner: "ready templates for the Custom Info Box showcase, collected in one place". `#tab-infobox` (nav `nav_infobox`,
+  top-level like every tool; app.js EN/RU + reviewed strings in `scripts/locale_reviewed.json`; About list `d_infobox`
+  in tools-unified.js; icon `img/tool-icons/infobox.svg`). `static/js/infobox.js` (keyed COPY, 8 languages, in
+  check_i18n's list; debug hook `window.SMInfoBox`) + `static/css/infobox.css`.
+- Owner also asked to copy templates from the internet: declined (other people's works); own templates
+  (`static/js/infobox-templates.js` -> `window.SM_INFOBOX_TEMPLATES`, 68 in 9 categories, EN + RU, `uk` reads RU) +
+  community submissions with a rights checkbox + a link to Steam's ASCII art group.
+- UI (rebuilt the same day: "too few templates, hard to use, too small on 2K"): `state.view` gallery | editor, steps row
+  on top. Gallery: search (name + text), category tabs with counts, `.ibx-grid` 3 / 2 / 1 columns (>1100 / >700 / phone),
+  cards = Steam box at a readable size (not the exact 640 px box: the editor preview is the exact one). Editor: sticky
+  `.ibx-ebar` (top = tools strip bottom), text left, `.ibx-side` sticky preview right (`.ibx-cols` 1fr + 690 px, stacks
+  below 1320 px), tools tabs symbols / art / share (share replaced the publish dialog). The 640 px preview is scaled to
+  fit narrow columns (`fitPreview`, `--ibx-preview-scale`). `.ibx2` and `.ibx-view` need `minmax(0,1fr)` columns: the
+  nowrap step/tab rows on phones otherwise stretch the grid to 1241 px.
+- Preview = Steam's numbers from steam-mockup/showcases.css: 640 px column, content 604 px, 13 px / 18 px, max-height
+  600 px (~33 lines), h1 #5aa9d6 20/26. BBCode renderer builds DOM only (b i u s/strike spoiler h1-h3 hr url noparse
+  quote code, `:emoticon:` -> Steam CDN image, Steam eats the line break after a heading). Wrap check = canvas
+  measureText with "Motiva Sans", Arial (approximate). Limits shown: ~8000 characters (community figure, no Valve doc).
+- Picture to text = braille (U+2800 + dot bits, blank cells U+2800 so Steam keeps the width), rows from the image
+  aspect and the measured braille width vs 18 px lines, capped under the limit.
+- Server: `smweb/infobox.py` (clean, list, create (50 per author), used, remove/hide) + `smweb/routers/infobox.py`
+  (`GET/POST /api/infobox/templates`, `POST /{id}/use` once per IP+template a day, `DELETE /{id}` author,
+  `DELETE /api/admin/control/infobox/{id}` owner: router included BEFORE admin_router). Table `infobox_templates`
+  (both schemas, TEXT id), in account export (`infobox_templates`) and deletion. Rate rule `/api/infobox/templates`
+  30/min + 10 publishes/hour per account. Tests: `tests/test_infobox.py`.
+
+## 6.27 Depth (2.5D parallax) and the grouped tools strip (2026-10-08, local, not deployed)
+
+- Depth: `smweb/depth.py` (Depth Anything V2 Small ONNX, Apache-2.0, `DEPTH_MODEL_PATH`, default
+  /app/models/depth_anything_v2_small.onnx; Dockerfile downloads it from a pinned HF commit with sha256), `processor`
+  `normalize_parallax` / `depth_displacement` (dilate + blur: edges carry the stretch) / `parallax_offsets` /
+  `parallax_frame` (two fixed-point depth reads, BORDER_REFLECT101) / `parallax_source` (still -> FFV1 loop, 1280 px,
+  4 s, rotation applied inside; jobs then set rotation 0). Hook in `jobs._run_process_job` right after `graded_source`
+  (stage `depth:<name>`); `process_eta_kind` counts it as motion; form field `parallax` -> `opts["parallax"]` (in the
+  result cache key). Preview: `POST /api/process/depth` (async route, work in the threadpool, semaphore
+  DEPTH_PREVIEW_CONCURRENCY=2, rate rule 20/min, 503 `depth_unavailable` without the model) returns the displacement map
+  as grey PNG <= 640 px; `static/js/process-depth.js` (own card #processDepthCard with a NEW badge, inserted before #processDesignCard
+  on owner request: inside the folded Style card nobody saw it; `window.SMProcessDepth`
+  get/active/chip, WebGL shader = the Python maths: KEEP THEM IN SYNC) + `css/process-depth.css`. app.js sends
+  `parallax` and treats an active depth as animated output; process-layout.js shows the chip on `sm:process-depth-change`.
+  Local runs: `py -3.14 scripts/get_depth_model.py` puts the model into <project>/models/ (ignored by git and
+  release_sync; depth.py looks there after DEPTH_MODEL_PATH and /app/models), plus `pip install onnxruntime`.
+- Tools strip: `static/js/nav-clusters.js` inserts `.nav-cluster` captions (Create / Files / Profile, 8 languages) before
+  process / download / infobox without moving buttons; `css/nav-clusters.css` (before ui-polish) = pills, breakpoints:
+  >=2200 captions + 2040 px strip, 1920-2199 dividers, 1400-1919 no icons + 8 px padding, 761-1399 wraps. Measured with
+  RU/DE/EN so `#nav` never scrolls on desktop. Owner (same day): the Steam guide joined the Profile drop-down
+  (`nav-groups.js` GROUPS tabs + hint); Info box sits first in the Profile cluster.
+
+## 6.28 Depth effects v2 (2026-10-08 evening, done, waiting for the owner OK on samples, local, not deployed)
+
+- Owner approved (answer "1. Ок 2. Ок 3. Ок 4. Делать"): (1) distinct effects instead of 4 similar camera moves,
+  (2) Depth for the background layer in "Create a design" (Builder), (3) hair sway, show the owner samples on his art
+  before release, (4) breast physics: done as a soft "chest bounce" slider inside Breathing, never advertised.
+- DONE: `smweb/depth_fx.py` = one engine for the preview AND the final clip (`Scene(pixels, depth, options).frame(u)`,
+  seamless in u): camera none|orbit|sway|float|dolly (+strength, focus), particles snow|sakura|rain|sparks|stars drawn
+  between depth buckets (hidden behind nearer pixels, amount 1-3, fixed seed), atmosphere none|fog|light, focuspull,
+  breath {strength, chest 0-3, region cx/cy/rx/ry fractions}, hair {strength, strokes [[x,y,r]...] <= 600}.
+  `normalize()` also reads the first version ({motion, strength, focus}); `body_guess(depth)` gives a start region.
+  `processor.normalize_parallax` delegates to it, `parallax_source` renders with Scene (old parallax_offsets/_frame gone).
+  Routes (`routers/process.py`): `POST /api/process/depth` -> JSON {token, width, height, body} and keeps picture.png +
+  depth.npy in DATA/cache/depth-preview/<token> (1 h, pruned on each new prepare); `POST /api/process/depth/render`
+  {token, options} -> animated WebP, 40 frames, box 520x380 (404 expired -> the client re-prepares). Rate rules:
+  render 60/60 placed before depth 20/60. No WebGL any more: the browser shows the server's WebP.
+  `static/js/process-depth.js` (key depth5): `window.SMDepthEditor.create(host, {onChange})` = reusable editor (quick
+  looks Snowfall/Sakura/Rainy night/Cinema/Living portrait/Starry night, groups Camera/Particles/Air+focus pull/
+  Breathing/Hair, marking mode on the stage: body box drag, hair brush + undo/clear/done); Process wiring keeps
+  `SMProcessDepth.active/get/chip` (+ `.editor`). CSS `process-depth.css` (editor rules unscoped for Builder reuse,
+  preview on top, groups in an auto-fit grid). Tests `tests/test_depth_parallax.py` (23 incl. rate rules) pass;
+  check_i18n complete. Browser check at 1440: looks render, hair painting works.
+- Hair (fixed 2026-10-08): `_hair_maps` takes the roots from the WHOLE painted mask (2nd..99.5th percentile of its rows),
+  weight = mask x smoothstep((tip - 0.35) / 0.5). Per-column roots made strokes over a fringe move the eyes below it.
+- Builder depth (done) lives on the **Character** layer (owner moved it off the background the same evening: breathing and
+  hair are about the character; every effect kept). `static/js/builder-depth.js` (keyed COPY, 8 languages, in check_i18n's
+  list, tool-loader "builder" group after builder-layout.js; `window.SMBuilderDepth.open/close`) adds "Animation · Depth 3D"
+  + a NEW tag (`.bdepth__btn`, gradient border; legacy .btn sheets use !important, so does this rule) to
+  `#builderMediaControls` for a still character layer and opens a full-height `.pon-modal` window with
+  `SMDepthEditor.create(host, {keepSource, fitHeight, largePreview})`: picture left at the largest size that fits
+  (`sizeView` computes a pixel width; a percentage width broke the grid row), settings scroll on the right, the footer
+  (Apply / Remove / Cancel) is always visible (`.pon-intro` has overflow:hidden; the old window cut the buttons off).
+  `keepSource` sends `keep=1` to `/api/process/depth` (stores `source.png` <= 1600 px); `largePreview` renders the preview
+  from it at 760 px (`size: "large"`; default 640 px from picture.png, WebP quality 84). Apply -> `POST
+  /api/process/depth/clip` -> WebM VP9 yuva420p (`-auto-alt-ref 0`) for a cut-out, H.264 MP4 for an opaque picture;
+  `layer.mediaType` = the blob type. The layer keeps `depthSource` / `depthSourceType` / `depthFx`
+  (`routers/builder.py` accepts them on character layers only, `_allowed_source`); Save uploads a `blob:` depthSource too.
+- Cut-outs in `depth_fx.Scene`: any alpha < 255 -> pixels are warped premultiplied and divided back at the end (no dark
+  fringe), fog / light / particle glow are scaled by the output alpha (only on the figure), particles composite with
+  "over" alpha. `depth.estimate` puts an RGBA picture on grey and multiplies the depth by alpha (transparent = far).
+  Opaque pictures give exactly the old result.
+- Body marking is a brush (owner: the box was clumsy): `o.bodyStrokes` -> `breath.strokes` (same [x, y, r] format and
+  MAX_STROKES as hair) -> `Scene._breath_from_strokes` (feathered mask around its centroid, chest = upper part of the
+  mask). Without strokes the region / `pic.guess` is used silently (no outline: the owner wants only the brush; an oval looked draggable). Undo keeps one stack of
+  [list, length] for both brushes. Hair tip (owner): sway reads well only on clearly visible hair (`hairTip`).
+- Preview note `previewNote` under the picture (8 languages): the preview is smaller / 10 fps, the result is sharper.
+- Site-wide gotcha found here: `tools-polish.css` `.page-tools input[type="checkbox"]` (position:relative, 42 px) outranks
+  `.builder-toggle input` / `.pdepth__toggle input`; every hidden switch checkbox needs a stronger selector and a
+  positioned label, or the switch shifts ~50 px and focusing it scrolls an overflow:hidden dialog.
+- Verified 2026-10-08: full Workshop job with Living portrait + painted hair at 1440 and 390 px (5 GIFs x 48 frames,
+  < 5 MB); Builder apply / re-open / remove / save at 1440 and 390 px; character WebM keeps alpha in the browser (corner
+  alpha 0, figure 255); dialog at 1680x1050, 1366x768, 390x844 never scrolls away from Apply; check_i18n complete.
+- Samples for the owner: `output/depth-samples/` (hair, breath, living portrait). WAIT for his OK before any release.
+- The emoticon mosaic that was pending here is done: section 6.29.
+
+## 6.29 Picture from Steam emoticons (2026-10-08, local, not deployed)
+
+- Owner's idea list item 3: a picture rebuilt from the visitor's OWN Steam emoticons, pasted into the Info box text.
+  Steam renders only emoticons the author owns, and the site cannot read anyone's emoticon list (Steam's
+  `/actions/EmoticonList` needs the Steam login cookie; the extension 1.1.0 reads it in the Steam tab). So the visitor
+  opens `https://steamcommunity.com/actions/EmoticonList` in their own browser, copies the JSON and pastes it. A future
+  Helper bridge message could make this one click; no extension change was made.
+- `static/js/infobox-emoji.js` (keyed COPY, 8 languages, in check_i18n's list, loaded before infobox.js;
+  `window.SMInfoBoxEmoji` = label / panel(api) / engine / state / text). The engine part also loads in node
+  (`module.exports`), used by `tests/test_infobox_emoticons.py`. infobox.js adds the tool tab "🧩" and a gallery button
+  when SMInfoBoxEmoji exists and passes `emojiApi` {limit, body, insert, copy}.
+- Server `smweb/emoticon_colors.py` + `POST /api/infobox/emoticons` (routers/infobox.py, no login, <= 400 names per
+  request, rate rule 30/60, in error-report.js QUIET): downloads `community.fastly.steamstatic.com/economy/emoticon/<name>`
+  (18x18 PNG; the cloudflare host 301s there), 3x3 cells of [r, g, b, a] (alpha-weighted mean + coverage), cached for
+  good in `DATA/cache/emoticons/<name>.json` (atomic writes), 404 cached as missing for a day, other errors not cached.
+- Matching in the browser: OKLab over the 3x3 cells after compositing on `BG` [16, 19, 32]; picture downscaled in
+  halving steps to cols*3 x rows*3; cols <= 33 (604 px / 18), rows <= 33. `fit()` keeps the text under
+  `LIMIT - current text - 40`: distances once per size, then name-length penalties `LAMBDAS` (mild, colour still
+  decides), then a narrower grid. Error diffusion is optional, off by default, damped x0.6 and clamped to 0.12: full
+  diffusion with no white emoticon painted the inside of the logo blue. Output delimiter U+02D0 (`ːnameː`), what Steam
+  stores; infobox.js now renders both delimiters, allows "-" in names and counts an emoticon as 18 px in the width check.
+- Lists kept per browser: localStorage `sm_infobox_emoticons` {names, off}. Detailed art turns to noise at 33 cells:
+  the tip says so and the sample is `/static/icon-256.png`.
+- Verified with 600 real points-shop emoticon names (fetched via `steam_catalog.points_items('points_emoticon')`; the
+  market search answered 429 locally): logo -> 30x30, 7815 chars, Steam preview 900 emoticons; 1440 / 390 px clean.
+  NOT verified on a real Steam profile (no account): ask the owner to paste one result into his Info box before
+  announcing it.
 
 ## 7. Rules for agents
 

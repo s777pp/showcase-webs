@@ -119,6 +119,7 @@
     var wm = document.getElementById('wmEnable');
     list.push(wm && wm.checked ? word('wmOn') : word('wmOff'));
     if (gradeChanged()) list.push(word('gradeChip'));
+    if (window.SMProcessDepth && SMProcessDepth.active()) list.push(SMProcessDepth.chip());
     return list;
   }
   function paint() {
@@ -352,6 +353,7 @@
   root.addEventListener('click', function (event) { if (event.target.closest('.mode')) setTimeout(function () { refresh(); syncStudioLink(); save(); }, 0); });
   ['wmEnable', 'allModes'].forEach(function (id) { var node = document.getElementById(id); if (node) node.addEventListener('change', refresh); });
   document.addEventListener('sm:process-frame-change', refresh);
+  document.addEventListener('sm:process-depth-change', refresh);
   window.addEventListener('resize', syncDock);
   window.addEventListener('sm:langchange', localize);
   localize();

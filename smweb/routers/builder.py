@@ -118,6 +118,13 @@ def _validated_local_motion(raw):
     return clean
 
 
+def _allowed_source(src: str) -> bool:
+    """Layer media may only come from our own assets, the Steam proxy or Steam's CDN."""
+    return (src.startswith("/api/builder/assets/") or src.startswith("/api/steam/proxy-image?")
+            or src.startswith("https://shared.cloudflare.steamstatic.com/")
+            or src.startswith("https://cdn.cloudflare.steamstatic.com/"))
+
+
 def _validated_project(raw) -> dict:
     if not isinstance(raw, dict):
         raise ValueError("Invalid project")
@@ -256,16 +263,30 @@ def _validated_project(raw) -> dict:
             item.pop("chromaHoles", None)
         if "src" in item:
             src = str(item["src"])[:3000]
-            if not (src.startswith("/api/builder/assets/") or
-                    src.startswith("/api/steam/proxy-image?") or
-                    src.startswith("https://shared.cloudflare.steamstatic.com/") or
-                    src.startswith("https://cdn.cloudflare.steamstatic.com/")):
+            if not _allowed_source(src):
                 src = ""
             item["src"] = src
         if item["type"] == "background":
             item["steamAlign"] = item.get("steamAlign") is True
         else:
             item.pop("steamAlign", None)
+        if item["type"] == "character":
+            # "Depth" on a Character layer (static/js/builder-depth.js): the effect options and the still picture the
+            # loop was made from, so the effect can be changed or removed later. Same source rules as `src`.
+            from smweb import depth_fx
+            depth_fx_options = depth_fx.normalize(item.get("depthFx")) if isinstance(item.get("depthFx"), dict) else None
+            source = str(item.get("depthSource") or "")[:3000]
+            if depth_fx_options and _allowed_source(source):
+                item["depthFx"] = depth_fx_options
+                item["depthSource"] = source
+                source_type = str(item.get("depthSourceType") or "")
+                item["depthSourceType"] = source_type if source_type in ("image/png", "image/jpeg", "image/webp") else "image/png"
+            else:
+                for key in ("depthFx", "depthSource", "depthSourceType"):
+                    item.pop(key, None)
+        else:
+            for key in ("depthFx", "depthSource", "depthSourceType"):
+                item.pop(key, None)
         if item["type"] == "background" and item.get("buyUrl"):
             item["buyUrl"] = _steam_purchase_url(item["buyUrl"])
         else:

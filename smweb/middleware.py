@@ -183,6 +183,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/analytics/event", 60, 60),
         # One ping per open tab a minute; many people can share one IP (NAT, dorms), so keep it roomy.
         ("/api/presence", 120, 60),
+        ("/api/infobox/templates", 30, 60),
+        # "Picture from emoticons": the list goes up in batches of 400 (a collector may own a few thousand).
+        ("/api/infobox/emoticons", 30, 60),
         # Admin login stays deliberately tight. Once authenticated, the control
         # centre may perform several legitimate mutations in one minute.
         ("/api/admin/control/session", 5, 300),
@@ -193,6 +196,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # "/api/process" used to come first, so /start never had its own rule and
         # every other /api/process/* POST shared the start budget.
         ("/api/process/start", 8, 60),
+        ("/api/process/depth/render", 60, 60),
+        ("/api/process/depth/clip", 10, 60),
+        ("/api/process/depth", 20, 60),
         ("/api/process/profile-preview/", 10, 60),
         ("/api/process", 8, 60),
         ("/api/workshop-studio/start", 8, 60),

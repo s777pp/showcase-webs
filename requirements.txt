@@ -18,3 +18,5 @@ defusedxml>=0.7.1,<1
 numpy>=2.0,<3.0
 # Optical-flow morph for the seamless-loop transition (no GUI libraries needed).
 opencv-python-headless>=4.10
+# Depth map for the "Depth" effect (smweb/depth.py, CPU only).
+onnxruntime>=1.20,<2

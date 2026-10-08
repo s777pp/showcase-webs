@@ -207,7 +207,7 @@
   (function loadErrorReport() {
     if (window.SMErrorReport || document.querySelector('script[data-error-report]')) return;
     var script = document.createElement('script');
-    script.src = '/static/js/error-report.js?v=20261007-online1'; script.async = true; script.dataset.errorReport = '1';
+    script.src = '/static/js/error-report.js?v=20261008-emo1'; script.async = true; script.dataset.errorReport = '1';
     (document.head || document.documentElement).appendChild(script);
   })();
   NAV.forEach(function (n) { if (n.key === 'news') n.label = SHELL_COPY.news; });
