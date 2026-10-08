@@ -1264,6 +1264,16 @@ Only the hero exists for now; content blocks will be added below it later.
   Checked: full pytest 605, qa_home_layout / qa_accessibility / qa_home_loader_performance / qa_polish, full-page
   scroll sweep at 1920 / 1366 / 1024 touch / 390 (ru, en): no console errors, no 4xx, no horizontal scroll; GPU and
   SwiftShader runs both clean (lite only on SwiftShader).
+- Round 11 (2026-10-08, owner: "the black hole is too much"; "everything is very fast at a normal scroll"):
+  `BLACK_HOLE = false`, `EYE_LIGHT = true` (no vortex shader, no pulled copy, no star spiral, no warp). Two `.hs-glint`
+  elements in the hero (z-index 7, above the vignette) sit on the pupils: home-vrm.js publishes `__homeEyes.dx/dy`
+  (half the bone-to-bone vector, keeps the head tilt), pupils = bones x `PUPIL_SPAN` (3) plus `PUPIL_DROP`. Timeline in
+  hero p: zoom 0-0.6, dim 0.12-0.5, glints 0.3-0.42, she dissolves 0.5-0.66, glints meet 0.5-0.68, hand-over to the sky
+  canvas `drawEyeLight` (point + flare) from 0.67; the title's stars burst out of that point (`sampleWord` sources when
+  EYE_LIGHT) and the point fades with brand q 0.04-0.16. Pace: `PACE = 1.6` multiplies every pin and the demo approach;
+  CSS overlaps re-derived (hero track `margin-bottom:-158vh` so the title still pins at ~0.77 of the hero pin; brand
+  stays -30vh: -48vh let the demo copy show under the facts strip). Follower 0.1 (was 0.2), wheel step x1 (was 1.25),
+  one-off CSS entrances x1.4 (transitions under 0.3 s and the endless nebulae unchanged), count-up 1.6 s.
 - Verified at 1920x1080 and 1366x768 (screenshots of every scene), phones / 1024 touch untouched, qa_home_layout,
   qa_accessibility, qa_home_loader_performance and the landing tests pass.
 

@@ -62,6 +62,9 @@
   if (lite) root.classList.add('hs-lite');            // visible marker for testing
   function amount(n) { return Math.round(n * (lite ? 0.5 : 1)); }
   var ART_W = 1672, ART_H = 941;
+  // Scroll length of every pinned scene, in windows, is multiplied by this (owner, 2026-10-08: "everything is far too
+  // fast at a normal scroll"). The track overlaps in home-scroll.css (hero / brand margin-bottom) assume 1.6.
+  var PACE = 1.6;
   var ART_ZOOM_MAX = 2.4;
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function seg(p, a, b) { return clamp((p - a) / (b - a), 0, 1); }
@@ -102,12 +105,21 @@
   var dim = make('div', 'hs-dim');
   dim.setAttribute('aria-hidden', 'true');
   if (art && vrmBox) art.insertBefore(dim, vrmBox);
-  var heroScene = { kind: 'hero', track: wrap(hero, 'hero'), el: hero, pin: function () { return innerHeight * 1.5; } };
+  var heroScene = { kind: 'hero', track: wrap(hero, 'hero'), el: hero, pin: function () { return innerHeight * 1.5 * PACE; } };
   scenes.push(heroScene);
 
   // Black hole (owner, 2026-10-07: "as if the character herself is a black hole that pulls everything in"; still the
-  // same dive into her eyes). Set to false to get the plain dive back.
-  var BLACK_HOLE = true;
+  // same dive into her eyes). Owner, 2026-10-08: "too much" -> off; EYE_LIGHT below replaced it.
+  // Turning BLACK_HOLE back on needs EYE_LIGHT = false.
+  var BLACK_HOLE = false;
+  // Eye light (2026-10-08): the same dive, calmer. A glint lights up in each pupil, she dissolves, the two glints
+  // drift together into one point of light, and the stars of "Showcase Maker" burst out of that point.
+  var EYE_LIGHT = !BLACK_HOLE;
+  // The VRM eye bones sit inside the head: the pupils are about this many bone distances apart on screen.
+  var PUPIL_SPAN = 3;
+  var PUPIL_DROP = 0.035;           // pupils below the bone line, as a share of the pupil distance
+  var glints = EYE_LIGHT ? [make('i', 'hs-glint', hero), make('i', 'hs-glint', hero)] : [];
+  glints.forEach(function (g) { g.setAttribute('aria-hidden', 'true'); });
   // a) The painting is redrawn by a small WebGL shader over itself: a vortex around her eyes that twists the room and
   //    pulls it inwards, with a dark core and a spinning accretion ring. It lives inside .home-art, so the CSS zoom
   //    applies to it too.
@@ -254,7 +266,7 @@
     brandScene = {
       kind: 'brand', track: wrap(brand, 'brand'), el: brand, glow: glow, word: word, letters: letters, shine: shine,
       shineWrap: shineRow, line: line, tag: tag, tagText: tagText, tagline: tagline, key: '', facts: factItems, factsPanel: factsPanel, counted: false,
-      pin: function () { return innerHeight * 1.15; },
+      pin: function () { return innerHeight * 1.15 * PACE; },
       // One gradient across the whole word: every letter shows its own window of it.
       layout: function () {
         var width = word.offsetWidth;
@@ -312,9 +324,12 @@
       pts = pts.slice(0, amount(1300));
       var cx = ox + ww / 2, cy = oy + fs * 0.55, far = Math.max(innerWidth, innerHeight);
       brandScene.stars = pts.map(function (pt, i) {
-        var meteor = i < 9;
+        var meteor = !EYE_LIGHT && i < 9;
         var sx, sy;
-        if (meteor) {                                   // a few meteors come in from the upper left, long tails
+        if (EYE_LIGHT) {                                // burst out of the point where the eye glints met
+          var ja = Math.random() * Math.PI * 2, jr = Math.random() * 6;
+          sx = innerWidth / 2 + Math.cos(ja) * jr; sy = innerHeight * 0.48 + Math.sin(ja) * jr;
+        } else if (meteor) {                                   // a few meteors come in from the upper left, long tails
           sx = -innerWidth * (0.15 + Math.random() * 0.4); sy = -innerHeight * (0.2 + Math.random() * 0.5);
         } else if (Math.random() < 0.55) {              // pulled in from beyond the edges
           var ang = Math.random() * Math.PI * 2, r = far * (0.65 + Math.random() * 0.6);
@@ -325,8 +340,8 @@
         var rank = Math.abs(pt[0] - cx) / (ww / 2);
         return {
           tx: pt[0], ty: pt[1], sx: sx, sy: sy, meteor: meteor,
-          d: (meteor ? 0.01 : rank * 0.1 + Math.random() * 0.05),
-          bend: (Math.random() - 0.5) * (meteor ? 60 : 150),
+          d: (meteor ? 0.01 : EYE_LIGHT ? rank * 0.06 + Math.random() * 0.04 : rank * 0.1 + Math.random() * 0.05),
+          bend: (Math.random() - 0.5) * (meteor ? 60 : EYE_LIGHT ? 380 : 150),
           r: meteor ? 2.6 : 0.7 + Math.random() * 1.4,
           tw: 1 + Math.random() * 3, ph: Math.random() * 6.28,
           rgb: gradientAt(clamp((pt[0] - ox) / ww, 0, 1)), keep: Math.random() < 0.18
@@ -364,7 +379,7 @@
     demoScene = {
       kind: 'demo', track: wrap(demo, 'demo'), el: demo, last: '',
       copy: Array.prototype.slice.call(demo.querySelectorAll('.hb-demo__copy > *')),
-      pin: function () { return innerHeight * 1.8; }
+      pin: function () { return innerHeight * 1.8 * PACE; }
     };
     demoScene.bar = bar.firstChild;
     scenes.push(demoScene);
@@ -415,7 +430,7 @@
     (function tick(now) {
       var busy = false;
       counts.forEach(function (c) {
-        var t = clamp((now - start - c.delay) / 1100, 0, 1);
+        var t = clamp((now - start - c.delay) / 1600, 0, 1);
         c.node.textContent = t >= 1 ? c.text : c.text.replace(/\d+/, String(Math.round(c.value * easeOut(t))));
         if (t < 1) busy = true;
       });
@@ -477,7 +492,7 @@
     var scene = {
       kind: 'tools', track: wrap(tools, 'tools'), el: tools, grid: grid, items: items.concat(all), total: items.length,
       count: count.querySelector('b'), bar: tbar.firstChild, ghost: ghost, cur: -1, shown: -1, ghostText: '',
-      pin: function (s) { return (s.items.length - 1) * innerHeight * 0.17 + innerHeight * 0.15; }
+      pin: function (s) { return ((s.items.length - 1) * innerHeight * 0.17 + innerHeight * 0.15) * PACE; }
     };
     scenes.push(scene);
     // Keyboard users: a focused card brings its stop of the ride into view.
@@ -584,7 +599,7 @@
   // The title assembling from stars: each star flies from its start to its point of the word along a bent path
   // (progress from the scroll, so scrolling back scatters them again), leaving a short tail; once the letters
   // light up most of them fade, a few stay twinkling on the letters until the scene leaves.
-  var starQ = 0, holePull = 0, slowFrames = 0;
+  var starQ = 0, holePull = 0, slowFrames = 0, eyeLight = 0;
   function goLite() {
     lite = true;
     root.classList.add('hs-lite');
@@ -620,6 +635,30 @@
       c.drawImage(sprite, x - size / 2, y - size / 2, size, size);
     }
     c.globalAlpha = 1;
+  }
+  // The point of light the two eye glints became: a soft core with a long horizontal flare, breathing a little.
+  function drawEyeLight(c, t) {
+    var cx = skyW / 2, cy = skyH * 0.48, k = eyeLight * (0.92 + 0.08 * Math.sin(t * 3.1));
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    var r = 70 + 50 * k;
+    var halo = c.createRadialGradient(cx, cy, 0, cx, cy, r * 2.2);
+    halo.addColorStop(0, 'rgba(200,245,255,' + (0.5 * k).toFixed(3) + ')');
+    halo.addColorStop(0.25, 'rgba(111,210,255,' + (0.18 * k).toFixed(3) + ')');
+    halo.addColorStop(1, 'rgba(111,200,255,0)');
+    c.fillStyle = halo;
+    c.fillRect(cx - r * 2.2, cy - r * 2.2, r * 4.4, r * 4.4);
+    var fw = Math.min(skyW * 0.42, 520) * k;
+    var flare = c.createLinearGradient(cx - fw, 0, cx + fw, 0);
+    flare.addColorStop(0, 'rgba(111,227,255,0)');
+    flare.addColorStop(0.5, 'rgba(225,248,255,' + (0.85 * k).toFixed(3) + ')');
+    flare.addColorStop(1, 'rgba(160,150,255,0)');
+    c.fillStyle = flare;
+    c.fillRect(cx - fw, cy - 1.2, fw * 2, 2.4);
+    c.globalAlpha = k;
+    var core = 26 + 14 * k;
+    c.drawImage(sprite, cx - core / 2, cy - core / 2, core, core);
+    c.restore();
   }
   function drawSky(now) {
     skyRaf = 0;
@@ -673,6 +712,7 @@
     if (warp < 0.004 && warpTarget === 0) warp = 0;
     if (warp > 0) drawWarp(c, dt);
     if (brandScene && starQ > 0 && starQ < 1 && brandScene.stars) drawStarWord(c, t);
+    if (eyeLight > 0.003) drawEyeLight(c, t);
     if (now >= nextMeteor && warp < 0.2 && !(starQ > 0 && starQ < 0.5)) spawnMeteor(now);
     c.lineCap = 'round';
     for (var m = meteors.length - 1; m >= 0; m--) {
@@ -734,8 +774,8 @@
         : parseFloat(getComputedStyle(demoScene.el).top) || 80;
       demoScene.land = demoScene.top - stickTop;
       // The block arrives with a small stage and stays pinned while it grows (first 0.6 window of the pin).
-      demoScene.from = demoScene.land - innerHeight * 0.85;
-      demoScene.grown = demoScene.land + innerHeight * 0.4;
+      demoScene.from = demoScene.land - innerHeight * 0.85 * PACE;
+      demoScene.grown = demoScene.land + innerHeight * 0.4 * PACE;
       // How far the stage centre is from the window centre once landed (it grows out of the middle).
       demoScene.shiftX = innerWidth / 2 - (stage.offsetLeft + docLeft(demoScene.el) + stage.offsetWidth / 2);
     }
@@ -755,16 +795,19 @@
       ex = vrmBox.offsetLeft + live.x * vrmBox.offsetWidth;
       ey = vrmBox.offsetTop + live.y * vrmBox.offsetHeight;
       span = Math.max(4, live.span * vrmBox.offsetWidth);
+      var hx = (live.dx || 0) * vrmBox.offsetWidth, hy = (live.dy || 0) * vrmBox.offsetHeight;
     } else {            // no character (WebGL off): dive into the painted face
       ex = W * (806 / ART_W); ey = H * (170 / ART_H); span = W * 0.014;
     }
-    if (!eye || p < 0.001) eye = { x: ex, y: ey, span: span };
-    else { eye.x += (ex - eye.x) * 0.06; eye.y += (ey - eye.y) * 0.06; }
+    if (hx === undefined) { hx = span / 2; hy = 0; }
+    if (!eye || p < 0.001) eye = { x: ex, y: ey, span: span, hx: hx, hy: hy };
+    else { eye.x += (ex - eye.x) * 0.06; eye.y += (ey - eye.y) * 0.06; eye.hx += (hx - eye.hx) * 0.06; eye.hy += (hy - eye.hy) * 0.06; }
     var vw = innerWidth, vh = innerHeight;
     // The VRM eye bones sit inside the head, about a third of the visible distance between the pupils
     // apart; end with the pupils ~40% of the window apart, both eyes on screen.
-    var zmax = clamp(0.4 * vw / (eye.span * 3), 4, 16);
-    var zoom = Math.exp(Math.log(zmax) * ease(seg(p, 0, 0.8)));
+    var zmax = clamp(0.4 * vw / (eye.span * PUPIL_SPAN), 4, 16);
+    // Eye light: the camera arrives earlier, so the glints have time to meet before the title pins (~0.73).
+    var zoom = Math.exp(Math.log(zmax) * ease(seg(p, 0, EYE_LIGHT ? 0.6 : 0.8)));
     var zArt = Math.min(zoom, ART_ZOOM_MAX);
     var pull = ease(seg(p, 0, 0.55));
     // Eye point before the transform (the art is centred on the pinned hero), pulled to the screen centre.
@@ -781,13 +824,28 @@
     setVar(hero, '--hs-lift', seg(p, 0, 0.2) * 90);
     setVar(hero, '--hs-hint', 1 - seg(p, 0, 0.04));
     // With the black hole the room stays longer, so the vortex can be seen before it fades into space.
-    setVar(hero, '--hs-dim', BLACK_HOLE ? ease(seg(p, 0.22, 0.62)) : ease(seg(p, 0.05, 0.45)));
+    setVar(hero, '--hs-dim', BLACK_HOLE ? ease(seg(p, 0.22, 0.62)) : EYE_LIGHT ? ease(seg(p, 0.12, 0.5)) : ease(seg(p, 0.05, 0.45)));
     // She dissolves into the dark at the end of the dive.
-    setVar(hero, '--hs-vrm', 1 - ease(seg(p, 0.62, 0.82)));
+    setVar(hero, '--hs-vrm', 1 - (EYE_LIGHT ? ease(seg(p, 0.5, 0.66)) : ease(seg(p, 0.62, 0.82))));
     hero.classList.toggle('hs-moving', p > 0);
     hero.classList.toggle('hs-dark', p > 0.84);
-    // Black hole: where the eyes are on screen now, how strong the pull is.
+    // Where the eyes are on screen now.
     var eyeX = x0 + (vw / 2 - x0) * pull, eyeY = y0 + (vh * 0.48 - y0) * pull;
+    if (glints.length) {
+      // One glint per pupil; they light up once the eyes are big, then drift together into one point at the centre
+      // (the sky canvas takes the point over, see eyeLight) while she dissolves.
+      var on = ease(seg(p, 0.3, 0.42)), meet = ease(seg(p, 0.5, 0.68)), out = seg(p, 0.7, 0.75);
+      // Half the pupil-to-pupil vector on screen (head tilt included); the pupils sit a little below the bones.
+      var k = PUPIL_SPAN * zoom * (1 - meet);
+      var vx = eye.hx * k, vy = eye.hy * k, drop = PUPIL_DROP * eye.span * PUPIL_SPAN * zoom * (1 - meet);
+      var cx = eyeX + (vw / 2 - eyeX) * meet, cy = eyeY + drop + (vh * 0.48 - eyeY) * meet;
+      glints.forEach(function (g, i) {
+        if (on <= 0) { if (g.style.opacity !== '0') g.style.opacity = '0'; return; }
+        var s = i ? 1 : -1;
+        g.style.opacity = (on * (1 - out)).toFixed(3);
+        g.style.transform = 'translate3d(' + (cx + s * vx).toFixed(1) + 'px,' + (cy + s * vy).toFixed(1) + 'px,0) scale(' + (0.45 + 0.55 * on + 0.5 * meet).toFixed(3) + ')';
+      });
+    }
     var strength = BLACK_HOLE ? ease(seg(p, 0.02, 0.6)) : 0;
     holePull = BLACK_HOLE ? ease(seg(p, 0.08, 0.62)) * (1 - ease(seg(p, 0.66, 0.8))) : 0;
     if (hole) hole.draw(eye.x / W, eye.y / H, strength, performance.now());
@@ -868,7 +926,7 @@
   function renderDemo(scene, y, p) {
     var a = scene.length ? clamp((y - scene.from) / (scene.grown - scene.from), 0, 1) : 1;
     // The type walk uses the rest of the pin.
-    var intro = innerHeight * 0.4 / Math.max(1, scene.length);
+    var intro = innerHeight * 0.4 * PACE / Math.max(1, scene.length);
     p = scene.length ? seg(p, intro, 1) : p;
     var key = a.toFixed(4) + '|' + p.toFixed(4);
     if (key !== scene.key) {
@@ -941,7 +999,7 @@
     var dt = lastFrame ? Math.min(48, now - lastFrame) : 16;
     lastFrame = now;
     if (Math.abs(y - sy) > vh * 2.5) sy = y;
-    else sy += (y - sy) * (1 - Math.pow(1 - 0.2, dt / 16.7));
+    else sy += (y - sy) * (1 - Math.pow(1 - 0.1, dt / 16.7));
     if (Math.abs(y - sy) < 0.3) sy = y;
     var moving = sy !== y;
 
@@ -961,7 +1019,9 @@
       else if (scene.kind === 'tools') renderTools(scene, p);
     });
     // Hyperspace: builds up while she dissolves, peaks as the title pins, calms down while its line draws.
-    warpTarget = ease(seg(heroP, 0.55, 0.8)) * (1 - ease(seg(brandP, 0.03, 0.2)));
+    warpTarget = EYE_LIGHT ? 0 : ease(seg(heroP, 0.55, 0.8)) * (1 - ease(seg(brandP, 0.03, 0.2)));
+    // The point where the two glints met: lit on the sky canvas from the hand-over until the stars burst out of it.
+    eyeLight = EYE_LIGHT ? seg(heroP, 0.67, 0.72) * (1 - ease(seg(brandP, 0.04, 0.16))) : 0;
     starQ = brandP;
     if (brandScene && sy > brandScene.top + brandScene.length) warpTarget = 0;
     if (moving) schedule(); else lastFrame = 0;
@@ -1016,7 +1076,7 @@
     event.preventDefault();
     if (!gliding) { current = scrollY; target = scrollY; }
     var max = document.documentElement.scrollHeight - innerHeight;
-    target = clamp(target + dy * 1.25, 0, max);
+    target = clamp(target + dy, 0, max);
     if (!gliding) { gliding = true; requestAnimationFrame(glide); }
   }, { passive: false });
   // Anything else that scrolls (scrollbar, keys, anchor links) wins over a glide in progress.

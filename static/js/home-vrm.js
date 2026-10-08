@@ -347,6 +347,9 @@ async function initHomeVrm() {
       x: ((eyeL.x + eyeR.x) / 2 + 1) / 2,
       y: (1 - (eyeL.y + eyeR.y) / 2) / 2,
       span: Math.abs(eyeL.x - eyeR.x) / 2,
+      // Half the bone-to-bone vector in box fractions (keeps the head tilt for the eye glints of the scroll scene).
+      dx: (eyeR.x - eyeL.x) / 4,
+      dy: (eyeL.y - eyeR.y) / 4,
     };
   }
 

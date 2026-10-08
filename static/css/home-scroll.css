@@ -17,8 +17,8 @@ html.hs-on .home-blocks>.hs-track>section{width:min(1240px,100% - 2 * max(24px,5
    (owner: "once she is on black, make it the background of the other blocks"). */
 html.hs-on .hs-track--hero>.home-hero{position:sticky;top:0;background:transparent}
 /* The next blocks start rising while she dissolves: the dark end of the hero is overlapped, not scrolled through. */
-/* The title scene pins at ~73% of the hero's pin (hero track 2.5 windows: 1 + 1.5), while she is still dissolving. */
-html.hs-on .hs-track--hero{margin-bottom:-140vh;z-index:0}
+/* The title scene pins at ~76% of the hero's pin (hero track 3.4 windows: 1 + 1.5 x PACE 1.6), while she is still dissolving. */
+html.hs-on .hs-track--hero{margin-bottom:-158vh;z-index:0}
 html.hs-on .home-blocks{position:relative;z-index:1}
 html.hs-on .home-hero .home-art{
   transform:translate(-50%,-50%) translate(var(--hs-tx,0px),var(--hs-ty,0px)) scale(var(--hs-zoom,1));
@@ -98,9 +98,9 @@ html.hs-on .hs-pieces{position:absolute;inset:0}
 html.hs-on .hs-piece{position:absolute;top:0;bottom:0;overflow:hidden;--g1:0px;--g2:0px;--w:20;
   left:calc(var(--l) * 1cqw + var(--g1));width:calc(var(--w) * 1cqw - var(--g1) - var(--g2));
   box-shadow:inset 0 0 0 1px rgba(111,227,255,var(--edge,0));
-  transition:left .8s cubic-bezier(.65,0,.35,1),width .8s cubic-bezier(.65,0,.35,1),translate .8s cubic-bezier(.65,0,.35,1),box-shadow .5s}
+  transition:left 1.12s cubic-bezier(.65,0,.35,1),width 1.12s cubic-bezier(.65,0,.35,1),translate 1.12s cubic-bezier(.65,0,.35,1),box-shadow .7s}
 html.hs-on .hs-piece>b{position:absolute;top:0;left:calc((var(--l) * 1cqw + var(--g1)) * -1);width:100cqw;height:100cqh;
-  background:center/cover no-repeat;transition:left .8s cubic-bezier(.65,0,.35,1)}
+  background:center/cover no-repeat;transition:left 1.12s cubic-bezier(.65,0,.35,1)}
 html.hs-on .hs-piece:nth-child(2),html.hs-on .hs-piece:nth-child(2)>b{transition-delay:.04s}
 html.hs-on .hs-piece:nth-child(3),html.hs-on .hs-piece:nth-child(3)>b{transition-delay:.08s}
 html.hs-on .hs-piece:nth-child(4),html.hs-on .hs-piece:nth-child(4)>b{transition-delay:.12s}
@@ -142,7 +142,7 @@ html.hs-on .hs-ghost{position:absolute;left:0;right:0;bottom:4vh;z-index:0;point
   padding-left:var(--site-gutter,max(24px,7.75vw));white-space:nowrap;
   font:900 clamp(110px,13vw,250px)/1 Montserrat,"Segoe UI",Arial,sans-serif;letter-spacing:-.03em;
   color:transparent;-webkit-text-stroke:1.5px rgba(111,227,255,.3);opacity:.9}
-html.hs-on .hs-ghost.is-new{animation:hs-ghost-in .9s cubic-bezier(.16,1,.3,1)}
+html.hs-on .hs-ghost.is-new{animation:hs-ghost-in 1.26s cubic-bezier(.16,1,.3,1)}
 @keyframes hs-ghost-in{from{opacity:0;transform:translate3d(80px,0,0)}to{opacity:.9;transform:none}}
 /* Cards leaving to the left are cut at the rail's edge, so they never slide under the title column. */
 html.hs-on .hs-tools__rail{position:relative;z-index:1;min-width:0;clip-path:inset(-60vh -100vw -60vh -24px)}
@@ -182,44 +182,44 @@ html.hs-on .hs-tools .hb-tool--all svg{width:46px;height:46px;fill:none;stroke:#
    compositor plays them at full frame rate whatever the scroll does. --hs-delay / --hs-k stagger siblings. */
 html.hs-on [data-hs-in]{--hs-ease:cubic-bezier(.16,1,.3,1)}
 /* Section heads: eyebrow, then the two title lines rise out of a mask, then the rest. */
-html.hs-on [data-hs-in="head"] .hb-eyebrow{opacity:0;transform:translate3d(0,14px,0);transition:opacity .7s ease,transform .9s var(--hs-ease)}
+html.hs-on [data-hs-in="head"] .hb-eyebrow{opacity:0;transform:translate3d(0,14px,0);transition:opacity .98s ease,transform 1.26s var(--hs-ease)}
 html.hs-on [data-hs-in="head"] .hb-title>span{display:block;overflow:hidden;padding-bottom:.06em}
 html.hs-on [data-hs-in="head"] .hb-title>span{opacity:0;transform:translate3d(0,.8em,0);
-  transition:opacity .8s ease .08s,transform 1.1s var(--hs-ease) .08s}
+  transition:opacity 1.12s ease .08s,transform 1.54s var(--hs-ease) .08s}
 html.hs-on [data-hs-in="head"] .hb-title>span+span{transition-delay:.2s}
 html.hs-on [data-hs-in="head"] .hb-lead,html.hs-on [data-hs-in="head"] .hb-actions{opacity:0;transform:translate3d(0,20px,0);
-  transition:opacity .8s ease .32s,transform 1s var(--hs-ease) .32s}
+  transition:opacity 1.12s ease .45s,transform 1.4s var(--hs-ease) .45s}
 html.hs-on [data-hs-in="head"].hs-in :is(.hb-eyebrow,.hb-title>span,.hb-lead,.hb-actions){opacity:1;transform:none}
 /* Steps: they come up one by one and light up along a line that draws itself. */
 html.hs-on [data-hs-in="steps"]{position:relative}
 html.hs-on [data-hs-in="steps"]::before{content:"";position:absolute;left:0;right:0;top:-18px;height:2px;border-radius:2px;background:rgba(110,170,255,.14)}
 html.hs-on [data-hs-in="steps"]::after{content:"";position:absolute;left:0;right:0;top:-18px;height:2px;border-radius:2px;
   background:linear-gradient(90deg,#1fc9f1,#8a7dff);box-shadow:0 0 12px rgba(31,201,241,.5);
-  transform:scaleX(0);transform-origin:0 50%;transition:transform 1.6s cubic-bezier(.65,0,.35,1) .1s}
+  transform:scaleX(0);transform-origin:0 50%;transition:transform 2.24s cubic-bezier(.65,0,.35,1) .1s}
 html.hs-on [data-hs-in="steps"].hs-in::after{transform:none}
 html.hs-on [data-hs-in="steps"]>.hb-step{opacity:0;transform:translate3d(0,40px,0);
-  transition:opacity .8s ease calc(var(--hs-k,0) * 320ms + .15s),transform 1.1s var(--hs-ease) calc(var(--hs-k,0) * 320ms + .15s),border-color .25s,box-shadow .45s}
+  transition:opacity 1.12s ease calc(var(--hs-k,0) * 448ms + .15s),transform 1.54s var(--hs-ease) calc(var(--hs-k,0) * 448ms + .15s),border-color .25s,box-shadow .63s}
 html.hs-on [data-hs-in="steps"].hs-in>.hb-step{opacity:1;transform:none;border-color:rgba(111,227,255,.38)}
-html.hs-on [data-hs-in="steps"]>.hb-step .hb-step__n{transition:-webkit-text-stroke-color .6s ease calc(var(--hs-k,0) * 320ms + .5s),text-shadow .6s ease calc(var(--hs-k,0) * 320ms + .5s)}
+html.hs-on [data-hs-in="steps"]>.hb-step .hb-step__n{transition:-webkit-text-stroke-color .84s ease calc(var(--hs-k,0) * 448ms + .7s),text-shadow .84s ease calc(var(--hs-k,0) * 448ms + .7s)}
 html.hs-on [data-hs-in="steps"].hs-in>.hb-step .hb-step__n{-webkit-text-stroke-color:#6fe3ff;text-shadow:0 0 30px rgba(31,201,241,.55)}
 html.hs-on [data-hs-in="steps"].hs-in>.hb-step:hover{transform:translate3d(0,-4px,0)}
 /* Extension: the panel rises and widens, the copy follows line by line, the screenshots fly in from two sides. */
-html.hs-on [data-hs-in="ext"]{opacity:0;transform:translate3d(0,60px,0) scale(.94);transition:opacity .9s ease,transform 1.2s var(--hs-ease)}
+html.hs-on [data-hs-in="ext"]{opacity:0;transform:translate3d(0,60px,0) scale(.94);transition:opacity 1.26s ease,transform 1.68s var(--hs-ease)}
 html.hs-on [data-hs-in="ext"] .hb-ext__copy>*{opacity:0;transform:translate3d(-46px,0,0);
-  transition:opacity .8s ease calc(.25s + var(--hs-k,0) * 90ms),transform 1s var(--hs-ease) calc(.25s + var(--hs-k,0) * 90ms)}
-html.hs-on [data-hs-in="ext"] .hb-ext__shot--back{opacity:0;transform:translate3d(180px,-30px,0) rotate(6deg);transition:opacity .9s ease .35s,transform 1.4s var(--hs-ease) .35s}
-html.hs-on [data-hs-in="ext"] .hb-ext__shot--front{opacity:0;transform:translate3d(-40px,200px,0) rotate(-8deg);transition:opacity .9s ease .55s,transform 1.4s var(--hs-ease) .55s}
+  transition:opacity 1.12s ease calc(.25s + var(--hs-k,0) * 126ms),transform 1.4s var(--hs-ease) calc(.25s + var(--hs-k,0) * 126ms)}
+html.hs-on [data-hs-in="ext"] .hb-ext__shot--back{opacity:0;transform:translate3d(180px,-30px,0) rotate(6deg);transition:opacity 1.26s ease .49s,transform 1.96s var(--hs-ease) .49s}
+html.hs-on [data-hs-in="ext"] .hb-ext__shot--front{opacity:0;transform:translate3d(-40px,200px,0) rotate(-8deg);transition:opacity 1.26s ease .77s,transform 1.96s var(--hs-ease) .77s}
 html.hs-on [data-hs-in="ext"].hs-in,html.hs-on [data-hs-in="ext"].hs-in :is(.hb-ext__copy>*,.hb-ext__shot){opacity:1;transform:none}
-html.hs-on [data-hs-in="trial"]{opacity:0;transform:translate3d(-50px,0,0);transition:opacity .8s ease .2s,transform 1.1s var(--hs-ease) .2s}
+html.hs-on [data-hs-in="trial"]{opacity:0;transform:translate3d(-50px,0,0);transition:opacity 1.12s ease .2s,transform 1.54s var(--hs-ease) .2s}
 html.hs-on [data-hs-in="trial"].hs-in{opacity:1;transform:none}
 /* Questions slide in one by one from the right. */
 html.hs-on [data-hs-in="faq"]>*{opacity:0;transform:translate3d(70px,0,0);
-  transition:opacity .7s ease calc(var(--hs-k,0) * 90ms),transform 1s var(--hs-ease) calc(var(--hs-k,0) * 90ms),border-color .25s,background .25s}
+  transition:opacity .98s ease calc(var(--hs-k,0) * 126ms),transform 1.4s var(--hs-ease) calc(var(--hs-k,0) * 126ms),border-color .25s,background .25s}
 html.hs-on [data-hs-in="faq"].hs-in>*{opacity:1;transform:none}
 /* Final: the card zooms in while its picture settles from a closer crop. */
-html.hs-on [data-hs-in="final"]{opacity:0;transform:scale(.88);transition:opacity .9s ease,transform 1.4s var(--hs-ease)}
-html.hs-on [data-hs-in="final"] .hb-final__art{transform:scale(1.25);transition:transform 1.8s var(--hs-ease)}
-html.hs-on [data-hs-in="final"] .hb-final__copy{opacity:0;transform:translate3d(0,36px,0);transition:opacity .8s ease .35s,transform 1.1s var(--hs-ease) .35s}
+html.hs-on [data-hs-in="final"]{opacity:0;transform:scale(.88);transition:opacity 1.26s ease,transform 1.96s var(--hs-ease)}
+html.hs-on [data-hs-in="final"] .hb-final__art{transform:scale(1.25);transition:transform 2.52s var(--hs-ease)}
+html.hs-on [data-hs-in="final"] .hb-final__copy{opacity:0;transform:translate3d(0,36px,0);transition:opacity 1.12s ease .49s,transform 1.54s var(--hs-ease) .49s}
 html.hs-on [data-hs-in="final"].hs-in,html.hs-on [data-hs-in="final"].hs-in :is(.hb-final__art,.hb-final__copy){opacity:1;transform:none}
 
 /* ---------------------------------------------------------------- 6. one grid, bigger extension and pricing
@@ -267,7 +267,7 @@ html.hs-on .home-blocks .hb-trial{width:100%;padding:20px 26px}
 /* Entrance: the cards lie as a deck in the middle, then are dealt to their places, turning face up; a light band
    runs over each one as it lands. Transform / opacity only (compositor). */
 html.hs-on [data-hs-in="plans"]>.hb-plan{opacity:0;transform-origin:50% 60%;
-  transition:opacity .5s ease calc(var(--hs-k,0) * 140ms),transform 1.25s cubic-bezier(.2,.9,.25,1) calc(var(--hs-k,0) * 140ms)}
+  transition:opacity .7s ease calc(var(--hs-k,0) * 196ms),transform 1.75s cubic-bezier(.2,.9,.25,1) calc(var(--hs-k,0) * 196ms)}
 html.hs-on [data-hs-in="plans"]>.hb-plan:nth-child(1){transform:translate3d(calc(100% + clamp(18px,1.6vw,30px)),60px,-120px) rotateZ(-6deg) rotateY(-55deg)}
 html.hs-on [data-hs-in="plans"]>.hb-plan:nth-child(2){transform:translate3d(0,90px,-60px) rotateX(18deg) scale(.94);transition-delay:0ms}
 html.hs-on [data-hs-in="plans"]>.hb-plan:nth-child(3){transform:translate3d(calc(-100% - clamp(18px,1.6vw,30px)),60px,-120px) rotateZ(6deg) rotateY(55deg)}
@@ -277,13 +277,13 @@ html.hs-on .hs-plan-shine{position:absolute;inset:0;z-index:3;border-radius:inhe
 html.hs-on .hs-plan-shine>i{position:absolute;top:-10%;bottom:-10%;left:0;width:38%;transform:translate3d(-130%,0,0) skewX(-16deg);
   background:linear-gradient(100deg,rgba(255,255,255,0),rgba(170,235,255,.16) 50%,rgba(255,255,255,0))}
 html.hs-on [data-hs-in="plans"].hs-in .hs-plan-shine>i{transform:translate3d(330%,0,0) skewX(-16deg);
-  transition:transform 1.3s cubic-bezier(.45,0,.2,1) calc(.9s + var(--hs-k,0) * 160ms)}
+  transition:transform 1.82s cubic-bezier(.45,0,.2,1) calc(1.26s + var(--hs-k,0) * 224ms)}
 
 /* ---------------------------------------------------------------- 7. space backdrop behind every block after the
    hero: drifting nebulae (transform / opacity keyframes) and a canvas of stars and shooting stars (home-scroll.js).
    The blocks themselves become transparent so it shows through; the hero and the footer cover it. */
 html.hs-on .hs-space{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:var(--home-bg,#03070a);
-  opacity:0;transition:opacity 1s ease}
+  opacity:0;transition:opacity 1.4s ease}
 html.hs-on .hs-space.is-on{opacity:1}
 html.hs-on .hs-space__sky{position:absolute;inset:0;width:100%;height:100%}
 html.hs-on .hs-space__neb{position:absolute;border-radius:50%;will-change:transform,opacity;animation:hs-neb-a 52s ease-in-out infinite alternate}
@@ -340,3 +340,14 @@ html.hs-on .hs-tools__side .hb-head .hb-lead{font-size:clamp(15px,1.05vw,18px)}
 html.hs-on .home-art>.hs-hole{position:absolute;inset:0;width:100%;height:100%;display:none;pointer-events:none;opacity:calc(1 - var(--hs-dim,0))}
 html.hs-on.hs-hole-on .home-hero__content{opacity:1;translate:none}
 html.hs-on.hs-hole-on .home-hero__content>*{will-change:transform,opacity}
+
+/* Eye light (2026-10-08, replaces the black hole): one glint per pupil, placed and faded by home-scroll.js
+   (transform / opacity only). Above the vignette (::after, z-index 6). */
+html.hs-on .hs-glint{position:absolute;left:0;top:0;z-index:7;width:150px;height:150px;margin:-75px 0 0 -75px;
+  pointer-events:none;opacity:0;will-change:transform,opacity;mix-blend-mode:screen;border-radius:50%;
+  background:radial-gradient(circle,#fff 0 3%,rgba(205,246,255,.92) 6%,rgba(111,227,255,.34) 17%,rgba(111,227,255,.08) 32%,rgba(111,227,255,0) 52%)}
+html.hs-on .hs-glint::before,html.hs-on .hs-glint::after{content:"";position:absolute;left:50%;top:50%;border-radius:2px}
+html.hs-on .hs-glint::before{width:340%;height:2px;margin:-1px 0 0 -170%;
+  background:linear-gradient(90deg,rgba(111,227,255,0),rgba(215,246,255,.8) 50%,rgba(160,150,255,0))}
+html.hs-on .hs-glint::after{width:2px;height:120%;margin:-60% 0 0 -1px;
+  background:linear-gradient(180deg,rgba(111,227,255,0),rgba(215,246,255,.55) 50%,rgba(111,227,255,0))}
