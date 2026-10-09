@@ -614,23 +614,8 @@ async def api_upscale_start(
     user = _auth_user(request)
     if not user:
         return JSONResponse({"ok": False, "msg": "Log in required", "code": "auth"}, status_code=401)
-    if not auth_db.effective_pro(user):
-        return JSONResponse(
-            {"ok": False, "msg": "Upscale is available for Pro subscribers", "code": "pro"},
-            status_code=403,
-        )
-    if not modal_upscale_client.configured() or not object_store.configured():
-        return JSONResponse({"ok": False, "msg": "Upscale service is not configured"}, status_code=503)
-    if not (rs.redis_ok() and rs.worker_alive()):
-        return JSONResponse({"ok": False, "msg": "Upscale worker is temporarily unavailable"}, status_code=503)
-
-    user_key = _upscale_owner(user)
-    if rs.job_count_user(user_key) >= max_jobs_for_user(int(user["id"])):
-        return JSONResponse({"ok": False, "msg": "Too many active jobs. Wait for the current job."}, status_code=429)
-    allowed, _ = rs.rate_limit(f"upscale-start:{user_key}", 8, 3600)
-    if not allowed:
-        return JSONResponse({"ok": False, "msg": "Too many upscale requests. Try again later."}, status_code=429)
-
+    if (refused := upscale_refusal(user)):
+        return refused
     asset = media_assets.resolve(asset_id, media_assets.owner_key(request)) if asset_id else None
     if asset_id and not asset:
         return JSONResponse({"ok": False, "msg": "Source asset is unavailable"}, status_code=410)
@@ -645,6 +630,34 @@ async def api_upscale_start(
         source_type = file.content_type or "application/octet-stream"
     else:
         raw = b""; source_name = "upscale"; source_type = "application/octet-stream"
+    # The R2 upload is a network call: keep it off the event loop.
+    return await run_in_threadpool(queue_upscale, user, raw, source_name, source_type, preset, scale)
+
+
+def upscale_refusal(user: dict) -> JSONResponse | None:
+    """Why this account cannot start an upscale now (Pro, service, worker, job caps), or None."""
+    if not auth_db.effective_pro(user):
+        return JSONResponse(
+            {"ok": False, "msg": "Upscale is available for Pro subscribers", "code": "pro"},
+            status_code=403,
+        )
+    if not modal_upscale_client.configured() or not object_store.configured():
+        return JSONResponse({"ok": False, "msg": "Upscale service is not configured"}, status_code=503)
+    if not (rs.redis_ok() and rs.worker_alive()):
+        return JSONResponse({"ok": False, "msg": "Upscale worker is temporarily unavailable"}, status_code=503)
+    user_key = _upscale_owner(user)
+    if rs.job_count_user(user_key) >= max_jobs_for_user(int(user["id"])):
+        return JSONResponse({"ok": False, "msg": "Too many active jobs. Wait for the current job."}, status_code=429)
+    allowed, _ = rs.rate_limit(f"upscale-start:{user_key}", 8, 3600)
+    if not allowed:
+        return JSONResponse({"ok": False, "msg": "Too many upscale requests. Try again later."}, status_code=429)
+    return None
+
+
+def queue_upscale(user: dict, raw: bytes, source_name: str, source_type: str, preset: str, scale: int) -> JSONResponse:
+    """Validate the file and queue it for Modal; shared by the site and the Telegram mini app (smweb/routers/tg_app.py).
+    The caller has already passed upscale_refusal()."""
+    user_key = _upscale_owner(user)
     if not raw:
         return JSONResponse({"ok": False, "msg": "Empty file"}, status_code=400)
     max_mb = min(MAX_UPLOAD_MB, int(os.environ.get("MODAL_UPSCALE_MAX_UPLOAD_MB", "40")))

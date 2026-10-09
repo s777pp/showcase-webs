@@ -243,8 +243,8 @@
   function tplText(tpl) { return slavic() ? tpl.ru : tpl.en; }
   function tplName(tpl) { return slavic() ? tpl.name.ru : tpl.name.en; }
 
+  // Without the tab (e.g. the Telegram mini app, static/tg-app.html) only the renderer is exported, at the end.
   var host = document.getElementById('infoBox');
-  if (!host) return;
 
   var state = { view: 'gallery', cat: 'all', query: '', title: '', body: '', editing: '', copied: false,
     tool: 'symbols', community: [], communityTotal: 0, sort: 'new', loading: false, loggedIn: false, art: null };
@@ -869,6 +869,10 @@
     host.append(root);
   }
 
+  if (!host) {
+    window.SMInfoBox = { render: renderBBCode, wraps: wrappedLines, templates: TEMPLATES, limit: LIMIT };
+    return;
+  }
   build();
   window.addEventListener('sm:langchange', build);
   window.addEventListener('resize', fitPreview);

@@ -1523,6 +1523,36 @@ Only the hero exists for now; content blocks will be added below it later.
   edits). IndexNow: `smweb/indexnow.py` (key from SECRET_KEY or INDEXNOW_KEY at `/<key>.txt`, production only,
   off under pytest, hourly from the job cleaner with a Redis lock, news announced on save via routers/admin.py).
 
+## 6.32 Telegram mini app (2026-10-09, local, not deployed)
+
+- Owner: "a mini app in the bot, the site's design, nothing extra": cut for showcases, download by link, convert,
+  upscale, Info box, news. Page `/tg` (`smweb/routers/tg_app.py` serves `static/tg-app.html`, included in main.py BEFORE
+  pages.router so /tg is never localized), `static/js/tg-app.js` (keyed COPY, 8 languages by Telegram's language_code,
+  in check_i18n's list; debug hook `window.SMTgApp.go/state`), `static/css/tg-app.css` (`tga-` prefix, own tokens).
+- Identity: every `/api/tg-app/*` call sends `X-Tg-Init-Data`; `tg_app.verify` checks Telegram's HMAC (key =
+  HMAC("WebAppData", token)) and auth_date <= 24 h. Token: `TG_APP_BOT_TOKEN`, else `ADMIN_BOT_TOKEN` (must be the bot
+  whose button opens the app). No cookies on purpose: web.telegram.org frames the app (third-party iframe).
+- Framing: the page sends its own CSP with `frame-ancestors https://web.telegram.org https://*.telegram.org`;
+  SecurityHeadersMiddleware skips X-Frame-Options for /tg, and nginx has `location ~ ^/tg/?$` without it (nginx.conf is
+  bind-mounted: restart nginx after deploy).
+- Limits = the bot's cutting limits (`telegram_cut.quota`, owner `tg:<id>`): cut, download and convert all charge it
+  (`tg_app.can_use/charge`). Download calls `media.download_url(..., purpose="process")` (no browser charge) and marks
+  the job folder with `.tg_owner`; convert runs `processor.convert_media` in the threadpool into `JOBS/<uuid>/`.
+  Upscale: `tg_app.account` (telegram_billing.account_for) + `media.upscale_refusal` / `media.queue_upscale` (split out
+  of the site route, which now queues in the threadpool); result owned by the account id.
+- Results: `tg_app.resolve(tg, kind cut|file|upscale, ref)`; previews and WebApp.downloadFile use signed links
+  `/api/tg-app/dl/<token>` (HMAC of SECRET_KEY, 15 min); "To chat" = `POST /api/tg-app/send` -> Bot API sendDocument
+  (<= 49 MB, 20 per 10 min per user); Info box text -> `POST /api/tg-app/text` (sendMessage, > 4000 chars -> .txt).
+  News uses the public `/api/news`. Info box reuses `infobox-templates.js` + `infobox.js`, which now exports only
+  `window.SMInfoBox = {render, wraps, templates, limit}` when there is no `#infoBox`.
+- Rate rules: cut/start 8, upscale/start 6, download 5, convert 12, the rest 40 per minute. `/api/tg-app/` is private
+  no-store. Tests: `tests/test_tg_app.py`. Local check: launch config `showcase-tgapp` (port 8096, test token), open
+  `/tg#tgWebAppData=<urlencoded signed initData>&tgWebAppVersion=8.0&tgWebAppPlatform=weba` (telegram-web-app.js reads
+  the hash), build the signed string like `tests/test_tg_app.init_data`.
+- Bot (`Desktop\bottg-main`): `settings.app_url` (`MINIAPP_URL`, else `SITE_URL/tg`), reply button "📱 Приложение"
+  (`KeyboardButton(web_app=...)`) next to the cut button, `set_chat_menu_button(MenuButtonWebApp)` at start. Channels
+  cannot show web_app buttons: use BotFather's main mini app + `https://t.me/<bot>?startapp` links there.
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or

@@ -1,0 +1,176 @@
+Steam Community guide (EN). Pictures are in the images folder next to this file (scripts/build_steam_guide.py).
+A line [[IMAGE: name]] marks where to insert that picture from the guide's "Images" panel in the Steam editor.
+
+######## TITLE
+How to Make an Aesthetic Steam Profile: Animated Showcases, GIFs & Backgrounds
+
+######## DESCRIPTION
+Step by step: make a good-looking Steam profile with an animated Workshop or Artwork showcase. The exact sizes, how to cut a picture or GIF for each showcase, how to upload the parts to Steam (automatically with an extension or with a console code) and how to put it all together. Free, no Photoshop.
+
+######## GUIDE PREVIEW IMAGE
+01-cover.png
+
+######## SECTION 1 — What you will get
+[[IMAGE: 02-result.gif]]
+
+[b]One picture (or a GIF, or a video) across the whole profile[/b], cut into parts that Steam shows as one big animated artwork.
+
+[hr][/hr]
+[h2]What this guide covers[/h2]
+[list]
+[*]what you need for showcases and which ones exist;
+[*]how to make files with Steam's exact sizes;
+[*]how to upload them to Steam, automatically or by hand;
+[*]how to set up the showcase and the rest of the profile.
+[/list]
+
+[quote]Everything happens in the browser on [url=https://showcasemaker.com/en/]Showcase Maker[/url]. It cuts the picture for you, keeps animations in sync and fits every file into Steam's limits. [b]No Photoshop, no pixel math.[/b][/quote]
+
+######## SECTION 2 — What you need
+[list]
+[*][b]Steam level 10.[/b] Showcases unlock at level 10, and higher levels give more showcase slots. Below level 10 you can still change the background, avatar and frame.
+[*][b]A picture, GIF or video.[/b] PNG, JPG, WebP, GIF, MP4, WebM and many other formats work. For an animated showcase, use a GIF or a short video.
+[*][b]A desktop browser:[/b] Chrome, Edge, Opera or another Chromium browser.
+[/list]
+
+[hr][/hr]
+[h2]What about the background?[/h2]
+[b]Profile backgrounds[/b] can't be uploaded: Steam sells them in the Points Shop and on the Community Market. Pick the background first, then match the showcase to its colours, and the profile looks like one design.
+
+######## SECTION 3 — Which showcase to pick
+[[IMAGE: 05-showcase-types.png]]
+
+[table]
+[tr][th]Showcase[/th][th]Files[/th][th]Width[/th][th]Result[/th][/tr]
+[tr][td]Workshop Showcase[/td][td]5[/td][td]150 px each[/td][td]The widest picture, across the whole profile. The most popular choice.[/td][/tr]
+[tr][td]Featured Artwork Showcase[/td][td]1[/td][td]630 px[/td][td]One large picture. The easiest option.[/td][/tr]
+[tr][td]Artwork Showcase[/td][td]2[/td][td]506 + 100 px[/td][td]A large picture with a narrow side panel.[/td][/tr]
+[/table]
+
+The height can be anything: a taller picture makes a longer showcase. Steam's limit is [b]5 MB per file[/b].
+
+[quote][b]Not sure which one to pick?[/b] Go with Workshop: it is the widest and the most eye-catching.[/quote]
+
+######## SECTION 4 — Make the files
+[[IMAGE: 04-tools.png]]
+
+[h2]Four steps[/h2]
+[olist]
+[*]Open [url=https://showcasemaker.com/en/app]Showcase Maker → Tools[/url], the "Process" tab.
+[*]Drop in a picture, GIF or video (or paste a link). No account needed: 5 files a day are free.
+[*]Choose the showcase: "Workshop", "One large artwork" or "Artwork + side panel". The preview shows exactly where the cuts go.
+[*]Press "Create Steam files".
+[/olist]
+
+[hr][/hr]
+[h2]What the site does for you[/h2]
+[list]
+[*]cuts the files to Steam's exact sizes;
+[*]keeps the animation in sync across all parts;
+[*]fits every GIF under 5 MB;
+[*]adds the HEX 21 last byte that Steam needs to accept these files.
+[/list]
+
+[h3]Which files you get[/h3]
+When there is more than one file, you get a ZIP: part_1 … part_5 for Workshop, featured_630 for Featured Artwork, center_506 and side_100 for Artwork.
+
+[[IMAGE: 07-result-window.png]]
+
+######## SECTION 5 — Style it (optional)
+[[IMAGE: 06-frame-preview.gif]]
+
+Under "Style it" you can add a frame: plain, neon, RGB or animated. It goes around each part or around the whole showcase.
+
+[h2]Also handy[/h2]
+[list]
+[*][b]Colour correction[/b] matches the brightness and hue to your profile background.
+[*][b]"Depth (3D effect)"[/b] brings a still picture to life: a gentle camera move, particles and light.
+[*][b]"Loop"[/b] turns a short video into a seamless GIF with no jump at the end.
+[*][b]"Create a design"[/b] is a layered editor: Steam background, character, text, frames and effects.
+[/list]
+
+######## SECTION 6 — Preview it on a profile
+[[IMAGE: 03-profile-mockup.png]]
+
+In the result window press "See it on a Steam profile". Your files appear inside a Steam profile template before you upload anything, so you see the showcase next to the rest of the profile.
+
+######## SECTION 7 — Upload to Steam automatically (extension)
+[b]The easiest way[/b] is the free [url=https://showcasemaker.com/en/extension]SteamShowcase Helper[/url] extension for Chrome, Edge, Opera and other Chromium browsers. No console, no code.
+
+[h2]How to upload[/h2]
+[olist]
+[*]Install the extension (link above) and log in to Steam in the same browser.
+[*]In the result window on the site press "Upload to Steam automatically", or open the extension and start the showcase auto-upload.
+[*]Pick the showcase type and drop the files into the slots, in order.
+[*]Press "Upload".
+[/olist]
+
+[[IMAGE: 08-ext-uploader.gif]]
+
+The extension uploads the parts to Steam in the right order and shows which one is going up right now:
+
+[[IMAGE: 09-ext-uploading.gif]]
+
+[[IMAGE: 11-ext-done.png]]
+
+[hr][/hr]
+[h3]Artwork showcase[/h3]
+It works the same, with two files:
+
+[[IMAGE: 10-ext-artwork.png]]
+
+######## SECTION 8 — Upload to Steam by hand (console code)
+[[IMAGE: 12-manual-steam-tab.png]]
+
+If you'd rather not install an extension, the browser console does the job.
+
+[h2]Steps[/h2]
+[olist]
+[*]Log in to Steam in your browser and open the artwork upload page:
+[url=https://steamcommunity.com/sharedfiles/edititem/767/3/]steamcommunity.com/sharedfiles/edititem/767/3/[/url]
+[*]Press F12 and open the Console tab.
+[*]Paste the code for your showcase (below) and press Enter. If the browser blocks pasting, type [b]allow pasting[/b], press Enter and paste again.
+[*]Choose the file, give it any title and upload it.
+[*]Repeat for every file [b]in order[/b]: part_1, part_2 … part_5, or center_506 first and side_100 second. If the page reloads, paste the code again.
+[/olist]
+
+[hr][/hr]
+[h2]Console codes[/h2]
+[h3]Workshop showcase[/h3]
+[code]$J('[name=consumer_app_id]').val(480);$J('[name=file_type]').val(0);$J('[name=visibility]').val(0);[/code]
+
+[h3]Featured Artwork and Artwork showcases[/h3]
+[code]$J('#image_width').val(1000).attr('id',''),$J('#image_height').val(1).attr('id','');[/code]
+
+[quote]The same codes, with a "Copy" button, are in the Steam tab on the site.[/quote]
+
+######## SECTION 9 — Set up the showcase on your profile
+[olist]
+[*]Open your profile → Edit Profile → Featured Showcase.
+[*]Choose the type: "Workshop Showcase", "Featured Artwork Showcase" or "Artwork Showcase".
+[*]Select the uploaded items [b]in the same order[/b]: part_1 is the leftmost; for Artwork pick center_506 first.
+[*]Save.
+[/olist]
+
+[quote][b]Parts don't line up at the edges?[/b] It is almost always the order: select them again strictly by number.[/quote]
+
+######## SECTION 10 — Fill the Custom Info Box
+[[IMAGE: 13-infobox.png]]
+
+[b]A text box with symbol frames, dividers and lists is the finishing touch.[/b]
+The "Info box" tab has dozens of ready templates and an editor that previews the text the way Steam shows it. Pick a template, change the text, copy it and paste it into Edit Profile → Featured Showcase → Custom Info Box.
+
+######## SECTION 11 — Tips
+[list]
+[*][b]Background first, showcase second.[/b] Match the art to the background colours, not the other way round.
+[*][b]One idea for the whole profile:[/b] one palette, one character or one theme.
+[*][b]Keep animations short and looping.[/b] A 3–6 second loop is plenty; 15 frames per second look smooth and weigh half as much as 30.
+[*][b]A GIF doesn't move or won't upload?[/b] It is over 5 MB or lacks the HEX 21 byte. Run it through Showcase Maker.
+[*][b]Long showcase:[/b] take a tall portrait picture (for example 750 × 2000) and cut it for Workshop.
+[/list]
+
+[hr][/hr]
+[h2]More guides[/h2]
+Step-by-step guides for every showcase and all the sizes: [url=https://showcasemaker.com/en/guides]showcasemaker.com/en/guides[/url]
+
+[quote]If this guide helped, [b]give it a thumbs up[/b] and add it to your favourites so others can find it. Questions are welcome in the comments.[/quote]

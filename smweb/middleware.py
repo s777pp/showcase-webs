@@ -95,13 +95,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         "/api/support/my",
         "/api/da/",
         "/api/admin/",
+        "/api/tg-app/",
     )
 
     async def dispatch(self, request, call_next):
         response = await call_next(request)
         h = response.headers
         h.setdefault("X-Content-Type-Options", "nosniff")
-        h.setdefault("X-Frame-Options", "SAMEORIGIN")
+        # The Telegram mini app is framed by web.telegram.org; its page sends frame-ancestors itself (routers/tg_app.py).
+        if request.url.path not in ("/tg", "/tg/"):
+            h.setdefault("X-Frame-Options", "SAMEORIGIN")
         h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         h.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
         h.setdefault("Content-Security-Policy", self.CSP)
@@ -183,6 +186,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/analytics/event", 60, 60),
         # One ping per open tab a minute; many people can share one IP (NAT, dorms), so keep it roomy.
         ("/api/presence", 120, 60),
+        # Telegram mini app: starts are capped like the site's, sending into the chat has its own cap in the router.
+        ("/api/tg-app/cut/start", 8, 60),
+        ("/api/tg-app/upscale/start", 6, 60),
+        ("/api/tg-app/download", 5, 60),
+        ("/api/tg-app/convert", 12, 60),
+        ("/api/tg-app/", 40, 60),
         ("/api/infobox/templates", 30, 60),
         # "Picture from emoticons": the list goes up in batches of 400 (a collector may own a few thousand).
         ("/api/infobox/emoticons", 30, 60),
