@@ -6,7 +6,7 @@
 (function () {
   'use strict';
   var COPY = {
-    en: { hello: 'Hi, {name}!', helloLead: 'Everything for your Steam profile, right in Telegram.',
+    en: { hello: 'Hi, {name}!', helloAnon: 'Hi!', helloLead: 'Everything for your Steam profile, right in Telegram.',
       toolCut: 'Cut a file', toolCutHint: 'Picture, GIF or video into showcase files', toolDownload: 'Download', toolDownloadHint: 'YouTube, TikTok, Pinterest and more',
       toolConvert: 'Converter', toolConvertHint: 'GIF ↔ video, PNG, JPG, WebP', toolUpscale: 'Upscale', toolUpscaleHint: 'Enlarge a picture or GIF with AI',
       toolInfobox: 'Info box', toolInfoboxHint: 'Templates and an editor with a Steam preview', toolNews: 'News', toolNewsHint: 'What is new on the site',
@@ -24,9 +24,9 @@
       catAbout: 'About me', catFrames: 'Frames', catGames: 'Games', catStream: 'Streams', catQuotes: 'Quotes', catAesthetic: 'Aesthetic', catHoliday: 'Holidays', catArt: 'Art', catFun: 'Fun',
       newsEmpty: 'No news yet.', errLimit: 'Today’s limit is used up. Pro removes the limits.', errActive: 'The previous file is still being cut.',
       errBig: 'The file is too big.', errNetwork: 'No connection to the server. Try again.', errFailed: 'That did not work. Try another file.',
-      errBlocked: 'The bot cannot write to you: press Start in the chat with the bot.', errAuth: 'Open the app from the Telegram bot.', openBot: 'Open the bot',
+      errBlocked: 'The bot cannot write to you: press Start in the chat with the bot.', errAuth: 'Open the app with the menu button next to the message field in the bot.', openBot: 'Open the bot',
       errBusy: 'Too many requests. Wait a minute.', errLink: 'Could not download from this link.' },
-    ru: { hello: 'Привет, {name}!', helloLead: 'Всё для оформления профиля Steam прямо в Telegram.',
+    ru: { hello: 'Привет, {name}!', helloAnon: 'Привет!', helloLead: 'Всё для оформления профиля Steam прямо в Telegram.',
       toolCut: 'Нарезать файл', toolCutHint: 'Картинка, GIF или видео в файлы для витрины', toolDownload: 'Скачать', toolDownloadHint: 'YouTube, TikTok, Pinterest и другие',
       toolConvert: 'Конвертер', toolConvertHint: 'GIF ↔ видео, PNG, JPG, WebP', toolUpscale: 'Апскейл', toolUpscaleHint: 'Увеличить картинку или GIF нейросетью',
       toolInfobox: 'Инфо-поле', toolInfoboxHint: 'Шаблоны и редактор с предпросмотром как в Steam', toolNews: 'Новости', toolNewsHint: 'Что нового на сайте',
@@ -44,9 +44,9 @@
       catAbout: 'Обо мне', catFrames: 'Рамки', catGames: 'Игры', catStream: 'Стримы', catQuotes: 'Цитаты', catAesthetic: 'Эстетика', catHoliday: 'Праздники', catArt: 'Арт', catFun: 'Юмор',
       newsEmpty: 'Новостей пока нет.', errLimit: 'Лимит на сегодня исчерпан. Pro снимает ограничения.', errActive: 'Предыдущий файл ещё нарезается.',
       errBig: 'Файл слишком большой.', errNetwork: 'Нет связи с сервером. Попробуй ещё раз.', errFailed: 'Не получилось. Попробуй другой файл.',
-      errBlocked: 'Бот не может тебе написать: нажми «Старт» в чате с ботом.', errAuth: 'Открой приложение из Telegram-бота.', openBot: 'Открыть бота',
+      errBlocked: 'Бот не может тебе написать: нажми «Старт» в чате с ботом.', errAuth: 'Открой приложение кнопкой «Обработать» слева от поля ввода в боте.', openBot: 'Открыть бота',
       errBusy: 'Слишком часто. Подожди минуту.', errLink: 'Не получилось скачать по этой ссылке.' },
-    de: { hello: 'Hallo, {name}!', helloLead: 'Alles für dein Steam-Profil, direkt in Telegram.',
+    de: { hello: 'Hallo, {name}!', helloAnon: 'Hallo!', helloLead: 'Alles für dein Steam-Profil, direkt in Telegram.',
       toolCut: 'Datei zuschneiden', toolCutHint: 'Bild, GIF oder Video in Showcase-Dateien', toolDownload: 'Herunterladen', toolDownloadHint: 'YouTube, TikTok, Pinterest und mehr',
       toolConvert: 'Konverter', toolConvertHint: 'GIF ↔ Video, PNG, JPG, WebP', toolUpscale: 'Hochskalieren', toolUpscaleHint: 'Bild oder GIF mit KI vergrößern',
       toolInfobox: 'Infobox', toolInfoboxHint: 'Vorlagen und Editor mit Steam-Vorschau', toolNews: 'Neuigkeiten', toolNewsHint: 'Was es Neues auf der Seite gibt',
@@ -64,9 +64,9 @@
       catAbout: 'Über mich', catFrames: 'Rahmen', catGames: 'Spiele', catStream: 'Streams', catQuotes: 'Zitate', catAesthetic: 'Ästhetik', catHoliday: 'Feiertage', catArt: 'Kunst', catFun: 'Spaß',
       newsEmpty: 'Noch keine Neuigkeiten.', errLimit: 'Das heutige Limit ist aufgebraucht. Pro hebt die Limits auf.', errActive: 'Die vorige Datei wird noch zugeschnitten.',
       errBig: 'Die Datei ist zu groß.', errNetwork: 'Keine Verbindung zum Server. Versuche es noch einmal.', errFailed: 'Das hat nicht geklappt. Versuche eine andere Datei.',
-      errBlocked: 'Der Bot kann dir nicht schreiben: Tippe im Chat mit dem Bot auf Start.', errAuth: 'Öffne die App aus dem Telegram-Bot.', openBot: 'Bot öffnen',
+      errBlocked: 'Der Bot kann dir nicht schreiben: Tippe im Chat mit dem Bot auf Start.', errAuth: 'Öffne die App über die Menütaste neben dem Eingabefeld im Bot.', openBot: 'Bot öffnen',
       errBusy: 'Zu viele Anfragen. Warte eine Minute.', errLink: 'Über diesen Link konnte nichts heruntergeladen werden.' },
-    tr: { hello: 'Merhaba, {name}!', helloLead: 'Steam profilin için her şey, doğrudan Telegram’da.',
+    tr: { hello: 'Merhaba, {name}!', helloAnon: 'Merhaba!', helloLead: 'Steam profilin için her şey, doğrudan Telegram’da.',
       toolCut: 'Dosya kes', toolCutHint: 'Resim, GIF veya videoyu vitrin dosyalarına', toolDownload: 'İndir', toolDownloadHint: 'YouTube, TikTok, Pinterest ve daha fazlası',
       toolConvert: 'Dönüştürücü', toolConvertHint: 'GIF ↔ video, PNG, JPG, WebP', toolUpscale: 'Büyüt', toolUpscaleHint: 'Resmi veya GIF’i yapay zekâyla büyüt',
       toolInfobox: 'Bilgi kutusu', toolInfoboxHint: 'Şablonlar ve Steam önizlemeli düzenleyici', toolNews: 'Haberler', toolNewsHint: 'Sitede neler yeni',
@@ -84,9 +84,9 @@
       catAbout: 'Hakkımda', catFrames: 'Çerçeveler', catGames: 'Oyunlar', catStream: 'Yayınlar', catQuotes: 'Alıntılar', catAesthetic: 'Estetik', catHoliday: 'Bayramlar', catArt: 'Sanat', catFun: 'Eğlence',
       newsEmpty: 'Henüz haber yok.', errLimit: 'Bugünkü sınır doldu. Pro sınırları kaldırır.', errActive: 'Önceki dosya hâlâ kesiliyor.',
       errBig: 'Dosya çok büyük.', errNetwork: 'Sunucuya bağlanılamadı. Tekrar dene.', errFailed: 'Olmadı. Başka bir dosya dene.',
-      errBlocked: 'Bot sana yazamıyor: botla sohbette Başlat’a dokun.', errAuth: 'Uygulamayı Telegram botundan aç.', openBot: 'Botu aç',
+      errBlocked: 'Bot sana yazamıyor: botla sohbette Başlat’a dokun.', errAuth: 'Uygulamayı botta mesaj alanının yanındaki menü düğmesiyle aç.', openBot: 'Botu aç',
       errBusy: 'Çok fazla istek. Bir dakika bekle.', errLink: 'Bu bağlantıdan indirilemedi.' },
-    fr: { hello: 'Salut, {name} !', helloLead: 'Tout pour ton profil Steam, directement dans Telegram.',
+    fr: { hello: 'Salut, {name} !', helloAnon: 'Salut !', helloLead: 'Tout pour ton profil Steam, directement dans Telegram.',
       toolCut: 'Découper un fichier', toolCutHint: 'Image, GIF ou vidéo en fichiers de vitrine', toolDownload: 'Télécharger', toolDownloadHint: 'YouTube, TikTok, Pinterest et plus',
       toolConvert: 'Convertisseur', toolConvertHint: 'GIF ↔ vidéo, PNG, JPG, WebP', toolUpscale: 'Agrandir', toolUpscaleHint: 'Agrandir une image ou un GIF par IA',
       toolInfobox: 'Zone d’infos', toolInfoboxHint: 'Modèles et éditeur avec aperçu Steam', toolNews: 'Actualités', toolNewsHint: 'Les nouveautés du site',
@@ -104,9 +104,9 @@
       catAbout: 'À propos', catFrames: 'Cadres', catGames: 'Jeux', catStream: 'Streams', catQuotes: 'Citations', catAesthetic: 'Esthétique', catHoliday: 'Fêtes', catArt: 'Art', catFun: 'Humour',
       newsEmpty: 'Pas encore d’actualités.', errLimit: 'La limite du jour est atteinte. Pro supprime les limites.', errActive: 'Le fichier précédent est encore en découpe.',
       errBig: 'Le fichier est trop lourd.', errNetwork: 'Pas de connexion au serveur. Réessaie.', errFailed: 'Ça n’a pas marché. Essaie un autre fichier.',
-      errBlocked: 'Le bot ne peut pas t’écrire : appuie sur Démarrer dans le chat avec le bot.', errAuth: 'Ouvre l’app depuis le bot Telegram.', openBot: 'Ouvrir le bot',
+      errBlocked: 'Le bot ne peut pas t’écrire : appuie sur Démarrer dans le chat avec le bot.', errAuth: 'Ouvre l’app avec le bouton de menu à côté du champ de message dans le bot.', openBot: 'Ouvrir le bot',
       errBusy: 'Trop de demandes. Attends une minute.', errLink: 'Impossible de télécharger depuis ce lien.' },
-    uk: { hello: 'Привіт, {name}!', helloLead: 'Усе для оформлення профілю Steam просто в Telegram.',
+    uk: { hello: 'Привіт, {name}!', helloAnon: 'Привіт!', helloLead: 'Усе для оформлення профілю Steam просто в Telegram.',
       toolCut: 'Нарізати файл', toolCutHint: 'Картинка, GIF або відео у файли для вітрини', toolDownload: 'Завантажити', toolDownloadHint: 'YouTube, TikTok, Pinterest та інші',
       toolConvert: 'Конвертер', toolConvertHint: 'GIF ↔ відео, PNG, JPG, WebP', toolUpscale: 'Апскейл', toolUpscaleHint: 'Збільшити картинку або GIF нейромережею',
       toolInfobox: 'Інфо-поле', toolInfoboxHint: 'Шаблони й редактор із переглядом як у Steam', toolNews: 'Новини', toolNewsHint: 'Що нового на сайті',
@@ -124,9 +124,9 @@
       catAbout: 'Про мене', catFrames: 'Рамки', catGames: 'Ігри', catStream: 'Стріми', catQuotes: 'Цитати', catAesthetic: 'Естетика', catHoliday: 'Свята', catArt: 'Арт', catFun: 'Гумор',
       newsEmpty: 'Новин поки немає.', errLimit: 'Ліміт на сьогодні вичерпано. Pro знімає обмеження.', errActive: 'Попередній файл ще нарізається.',
       errBig: 'Файл завеликий.', errNetwork: 'Немає зв’язку із сервером. Спробуй ще раз.', errFailed: 'Не вийшло. Спробуй інший файл.',
-      errBlocked: 'Бот не може тобі написати: натисни «Старт» у чаті з ботом.', errAuth: 'Відкрий застосунок із Telegram-бота.', openBot: 'Відкрити бота',
+      errBlocked: 'Бот не може тобі написати: натисни «Старт» у чаті з ботом.', errAuth: 'Відкрий застосунок кнопкою «Обработать» ліворуч від поля введення в боті.', openBot: 'Відкрити бота',
       errBusy: 'Надто часто. Зачекай хвилину.', errLink: 'Не вдалося завантажити за цим посиланням.' },
-    es: { hello: '¡Hola, {name}!', helloLead: 'Todo para tu perfil de Steam, directamente en Telegram.',
+    es: { hello: '¡Hola, {name}!', helloAnon: '¡Hola!', helloLead: 'Todo para tu perfil de Steam, directamente en Telegram.',
       toolCut: 'Cortar un archivo', toolCutHint: 'Imagen, GIF o vídeo en archivos de escaparate', toolDownload: 'Descargar', toolDownloadHint: 'YouTube, TikTok, Pinterest y más',
       toolConvert: 'Conversor', toolConvertHint: 'GIF ↔ vídeo, PNG, JPG, WebP', toolUpscale: 'Ampliar', toolUpscaleHint: 'Ampliar una imagen o GIF con IA',
       toolInfobox: 'Cuadro de info', toolInfoboxHint: 'Plantillas y editor con vista de Steam', toolNews: 'Noticias', toolNewsHint: 'Novedades del sitio',
@@ -144,9 +144,9 @@
       catAbout: 'Sobre mí', catFrames: 'Marcos', catGames: 'Juegos', catStream: 'Streams', catQuotes: 'Citas', catAesthetic: 'Estética', catHoliday: 'Fiestas', catArt: 'Arte', catFun: 'Humor',
       newsEmpty: 'Aún no hay noticias.', errLimit: 'Se acabó el límite de hoy. Pro quita los límites.', errActive: 'El archivo anterior aún se está cortando.',
       errBig: 'El archivo es demasiado grande.', errNetwork: 'Sin conexión con el servidor. Inténtalo de nuevo.', errFailed: 'No funcionó. Prueba otro archivo.',
-      errBlocked: 'El bot no puede escribirte: pulsa Iniciar en el chat con el bot.', errAuth: 'Abre la app desde el bot de Telegram.', openBot: 'Abrir el bot',
+      errBlocked: 'El bot no puede escribirte: pulsa Iniciar en el chat con el bot.', errAuth: 'Abre la app con el botón de menú junto al campo de mensaje en el bot.', openBot: 'Abrir el bot',
       errBusy: 'Demasiadas solicitudes. Espera un minuto.', errLink: 'No se pudo descargar desde este enlace.' },
-    pt: { hello: 'Olá, {name}!', helloLead: 'Tudo para o seu perfil Steam, direto no Telegram.',
+    pt: { hello: 'Olá, {name}!', helloAnon: 'Olá!', helloLead: 'Tudo para o seu perfil Steam, direto no Telegram.',
       toolCut: 'Cortar arquivo', toolCutHint: 'Imagem, GIF ou vídeo em arquivos de vitrine', toolDownload: 'Baixar', toolDownloadHint: 'YouTube, TikTok, Pinterest e mais',
       toolConvert: 'Conversor', toolConvertHint: 'GIF ↔ vídeo, PNG, JPG, WebP', toolUpscale: 'Ampliar', toolUpscaleHint: 'Ampliar imagem ou GIF com IA',
       toolInfobox: 'Caixa de info', toolInfoboxHint: 'Modelos e editor com prévia do Steam', toolNews: 'Notícias', toolNewsHint: 'O que há de novo no site',
@@ -164,15 +164,22 @@
       catAbout: 'Sobre mim', catFrames: 'Molduras', catGames: 'Jogos', catStream: 'Lives', catQuotes: 'Citações', catAesthetic: 'Estética', catHoliday: 'Feriados', catArt: 'Arte', catFun: 'Humor',
       newsEmpty: 'Ainda não há notícias.', errLimit: 'O limite de hoje acabou. O Pro remove os limites.', errActive: 'O arquivo anterior ainda está sendo cortado.',
       errBig: 'O arquivo é grande demais.', errNetwork: 'Sem conexão com o servidor. Tente de novo.', errFailed: 'Não deu certo. Tente outro arquivo.',
-      errBlocked: 'O bot não consegue te escrever: toque em Iniciar no chat com o bot.', errAuth: 'Abra o app pelo bot do Telegram.', openBot: 'Abrir o bot',
+      errBlocked: 'O bot não consegue te escrever: toque em Iniciar no chat com o bot.', errAuth: 'Abra o app pelo botão de menu ao lado do campo de mensagem no bot.', openBot: 'Abrir o bot',
       errBusy: 'Muitas solicitações. Espere um minuto.', errLink: 'Não foi possível baixar deste link.' }
   };
 
   var TG = window.Telegram && window.Telegram.WebApp;
   var INIT = (TG && TG.initData) || '';
   var tgUser = (TG && TG.initDataUnsafe && TG.initDataUnsafe.user) || {};
+  // Apps opened from a reply-keyboard button get no initData: the bot then signs the link itself (?k=, smweb/tg_app.py).
+  var LAUNCH = (function () {
+    var k = '';
+    try { k = new URLSearchParams(location.search).get('k') || sessionStorage.getItem('sm_tga_k') || ''; } catch (_) {}
+    try { if (k) sessionStorage.setItem('sm_tga_k', k); } catch (_) {}
+    return /^\d{3,20}\.\d+\.[a-z-]{0,8}\.[0-9a-f]{32}$/.test(k) ? k : '';
+  })();
   var LANG = (function () {
-    var code = String(tgUser.language_code || navigator.language || 'en').slice(0, 2).toLowerCase();
+    var code = String(tgUser.language_code || (LAUNCH && LAUNCH.split('.')[2]) || navigator.language || 'en').slice(0, 2).toLowerCase();
     return COPY[code] ? code : (code === 'be' || code === 'kk' ? 'ru' : 'en');
   })();
   document.documentElement.lang = LANG;
@@ -212,7 +219,7 @@
   // ---------------------------------------------------------------- API
   function api(path, options) {
     options = options || {};
-    var headers = { 'X-Tg-Init-Data': INIT };
+    var headers = INIT ? { 'X-Tg-Init-Data': INIT } : { 'X-Tg-Launch': LAUNCH };
     var body = options.body;
     if (body && !(body instanceof FormData)) { headers['Content-Type'] = 'application/json'; body = JSON.stringify(body); }
     return fetch(path, { method: options.method || (body ? 'POST' : 'GET'), headers: headers, body: body, credentials: 'same-origin' })
@@ -277,7 +284,8 @@
 
   function viewHome() {
     var hello = el('div', 'tga-hello');
-    hello.append(el('h1', '', t('hello', { name: tgUser.first_name || 'Steam' })), el('p', '', t('helloLead')));
+    var name = tgUser.first_name || '';
+    hello.append(el('h1', '', name ? t('hello', { name: name }) : t('helloAnon')), el('p', '', t('helloLead')));
     var grid = el('div', 'tga-grid');
     TOOLS.forEach(function (tool) {
       var tile = btn('tga-tile' + (tool[0] === 'cut' || tool[0] === 'news' ? ' tga-tile--wide' : ''), null, function () { tap(); go(tool[0]); });
@@ -643,7 +651,7 @@
 
   // ---------------------------------------------------------------- start
   fetch('/api/tg-app/config').then(function (r) { return r.json(); }).then(function (cfg) { state.bot = cfg.bot || ''; }).catch(function () {});
-  if (!INIT) {
+  if (!INIT && !LAUNCH) {
     main.replaceChildren();
     var box = card(null);
     box.append(el('b', '', t('errAuth')));

@@ -1549,8 +1549,16 @@ Only the hero exists for now; content blocks will be added below it later.
   no-store. Tests: `tests/test_tg_app.py`. Local check: launch config `showcase-tgapp` (port 8096, test token), open
   `/tg#tgWebAppData=<urlencoded signed initData>&tgWebAppVersion=8.0&tgWebAppPlatform=weba` (telegram-web-app.js reads
   the hash), build the signed string like `tests/test_tg_app.init_data`.
-- Bot (`Desktop\bottg-main`): `settings.app_url` (`MINIAPP_URL`, else `SITE_URL/tg`), reply button "📱 Приложение"
-  (`KeyboardButton(web_app=...)`) next to the cut button, `set_chat_menu_button(MenuButtonWebApp)` at start. Channels
+- Bot (`Desktop\bottg-main`): `settings.app_url` (`MINIAPP_URL`, else `SITE_URL/tg`), reply menu in two rows (owner:
+  no scrolling on phones): Профиль / Купить Pro / Товары; Pro на 2 часа + /admin sections (live:
+  "Промокод") + Помощь. "Мои покупки" = inline button under Профиль (`profile_kb`), "Открыть приложение" and
+  "✂️ Нарезать прямо в чате" (`cut:open`) under Помощь (`help_kb`); old labels stay handled.
+  `set_chat_menu_button(MenuButtonWebApp("Обработать"))` at start, plus a per-chat button on /start. Launch pass: the bot
+  signs `?k=<tg_id>.<expires>.<lang>.<hmac>` (app/services/miniapp.py, BOT_ADMIN_SECRET, 30 days) into every app link;
+  `tg_app.verify_launch` accepts it as `X-Tg-Launch` when there is no initData (keep both sides identical). Bot English:
+  `app/i18n.py` translates outgoing texts/buttons for non-ru/uk/be/kk Telegram and maps English menu labels back; new
+  Russian user-facing text needs a pair in `PAIRS`. Never put the app on the REPLY keyboard: Telegram
+  gives keyboard-button apps no initData, so /tg shows "open it from the bot" (owner hit this on 2026-10-09). Channels
   cannot show web_app buttons: use BotFather's main mini app + `https://t.me/<bot>?startapp` links there.
 
 ## 7. Rules for agents

@@ -119,3 +119,18 @@ def test_rate_rules_cover_the_mini_app():
     from smweb.middleware import RateLimitMiddleware
     prefixes = [rule[0] for rule in RateLimitMiddleware.RULES]
     assert prefixes.index("/api/tg-app/cut/start") < prefixes.index("/api/tg-app/")
+
+
+def test_launch_token_from_the_bot(client, monkeypatch):
+    monkeypatch.setenv("BOT_ADMIN_SECRET", "shared-secret-0123456789")
+    token = tg_app.launch_token("777000111", "de")
+    assert tg_app.verify_launch(token) == {"id": "777000111", "first_name": "", "username": "", "language": "de"}
+    # The bot side (app/services/miniapp.py) builds the same string.
+    body = token.rsplit(".", 1)[0]
+    assert token.endswith(hmac.new(b"shared-secret-0123456789", ("tgapp:" + body).encode(), hashlib.sha256).hexdigest()[:32])
+    assert tg_app.verify_launch(token.replace("777000111", "777000112")) is None
+    assert tg_app.verify_launch(tg_app.launch_token("777000111", ttl=-1)) is None
+    response = client.get("/api/tg-app/me", headers={"X-Tg-Launch": token})
+    assert response.status_code == 200 and response.json()["quota"]["limit"] > 0
+    monkeypatch.setenv("BOT_ADMIN_SECRET", "")
+    assert tg_app.verify_launch(token) is None

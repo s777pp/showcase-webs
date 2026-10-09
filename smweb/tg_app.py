@@ -34,6 +34,7 @@ from smweb.core import JOBS, _day
 LOGGER = logging.getLogger(__name__)
 INIT_MAX_AGE = 24 * 3600
 LINK_TTL = 15 * 60
+LAUNCH_TTL = 30 * 24 * 3600          # the bot refreshes the link every time it sends a menu
 SEND_MAX_BYTES = 49 * 1024 * 1024          # Bot API sendDocument limit is 50 MB
 OWNER_FILE = ".tg_owner"
 _FILE_ID = re.compile(r"^[0-9a-f]{32}$")
@@ -77,8 +78,44 @@ def verify(init_data: str, token: str | None = None, now: float | None = None) -
             "username": str(user.get("username") or "")[:64], "language": str(user.get("language_code") or "")[:8]}
 
 
+def launch_token(tg_id: str, lang: str = "", ttl: int = LAUNCH_TTL, now: float | None = None) -> str:
+    """What the bot puts into the app link (?k=...): "<id>.<expires>.<lang>.<signature>", signed with BOT_ADMIN_SECRET
+    (the secret the bot and the site already share). The bot builds the same string in app/services/miniapp.py."""
+    secret = _launch_secret()
+    if not secret or not telegram_cut.valid_tg(str(tg_id)):
+        return ""
+    lang = re.sub(r"[^a-z-]", "", str(lang or "").lower())[:8]
+    body = f"{tg_id}.{int((now or time.time()) + ttl)}.{lang}"
+    return body + "." + hmac.new(secret, ("tgapp:" + body).encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+
+
+def verify_launch(token: str, now: float | None = None) -> dict | None:
+    """The user of a launch token from the bot. Telegram passes no initData to apps opened from a reply-keyboard button
+    (and some clients drop it), so the bot signs the link itself."""
+    secret = _launch_secret()
+    parts = str(token or "").split(".")
+    if not secret or len(parts) != 4 or len(token) > 120:
+        return None
+    tg_id, expires, lang, mac = parts
+    expected = hmac.new(secret, f"tgapp:{tg_id}.{expires}.{lang}".encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    if not hmac.compare_digest(expected, mac) or not telegram_cut.valid_tg(tg_id):
+        return None
+    try:
+        if int(expires) < (now or time.time()):
+            return None
+    except ValueError:
+        return None
+    return {"id": tg_id, "first_name": "", "username": "", "language": lang}
+
+
+def _launch_secret() -> bytes:
+    return (os.environ.get("BOT_ADMIN_SECRET") or "").strip().encode("utf-8")
+
+
 def user_from(request) -> dict | None:
-    return verify(request.headers.get("x-tg-init-data") or "")
+    """Telegram's signed initData first; else the bot's signed launch token."""
+    return (verify(request.headers.get("x-tg-init-data") or "")
+            or verify_launch(request.headers.get("x-tg-launch") or ""))
 
 
 # ---------------------------------------------------------------- account, Pro and the daily limit
