@@ -1510,9 +1510,18 @@ Only the hero exists for now; content blocks will be added below it later.
   extension-guide.js, app.js until the visitor clicks a tab: `window.__smTabTitle`, profile.js). Keep copy facts true.
 - Preview pictures `static/img/og/og-<lang>.jpg` from `scripts/build_og_images.py` (Montserrat from the Windows fonts
   folder or `--fonts`). Tests: `tests/test_seo.py`.
-- The landing body text is still translated in the browser for de/tr/fr/uk/es/pt (data-i + generated packs; the
-  observer uses requestAnimationFrame, so a hidden test pane shows English: not a bug). Server-side body
-  translation was not done.
+- Body text in the page language on the server (same day): `smweb/server_copy.py` swaps English text nodes of
+  /, /app, /gallery, /extension (never attributes, scripts, code, SVG, `data-no-translate`) using
+  `smweb/server_copy/<lang>.json` = {route: {english: translated}}, recorded by `scripts/build_server_copy.py`
+  (Playwright + Edge renders /en/ and /<lang>/ with scripts and pairs text nodes by DOM position; run against a
+  local server, AFTER changing page copy, and restart the server afterwards: maps are lru_cached). `SERVER_COPY=0`
+  switches it off; launch config `showcase-nocopy` (port 8095) runs without it for comparisons. In the hidden
+  browser pane requestAnimationFrame is paused, so client-side packs look untranslated there: not a bug.
+- Guides 2026-10-09: `smweb/guides_extra.py` (profile design, showcase sizes with a `table`, GIF over 5 MB, long
+  Workshop showcase), merged into `guides.GUIDES`; `mode` may be None (no diagram).
+- Sitemap: `pages.sitemap_entries()` -> (url, last change) with `<lastmod>` (file mtimes, newest gallery work, news
+  edits). IndexNow: `smweb/indexnow.py` (key from SECRET_KEY or INDEXNOW_KEY at `/<key>.txt`, production only,
+  off under pytest, hourly from the job cleaner with a Redis lock, news announced on save via routers/admin.py).
 
 ## 7. Rules for agents
 

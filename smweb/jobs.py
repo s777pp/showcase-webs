@@ -171,6 +171,11 @@ def _cleanup_loop():
             except Exception:
                 _LOG.debug("ignored error", exc_info=True)
             try:
+                from smweb import indexnow
+                indexnow.maybe_run()
+            except Exception:
+                _LOG.debug("ignored error", exc_info=True)
+            try:
                 from smweb import admin_notify
                 admin_notify.check_disk(str(JOBS))
             except Exception:

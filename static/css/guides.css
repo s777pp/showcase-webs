@@ -32,3 +32,9 @@
 .guide__ext p {margin:0;color:rgba(214,229,250,.7);font:500 14px/1.6 Montserrat,sans-serif}
 .guide__ext a {justify-self:start;color:#6fe3ff;font:700 14px/1.4 Montserrat,sans-serif;text-decoration:none}
 .guide__ext a:hover {color:#fff;text-decoration:underline}
+/* 2026-10-09: size table in guides (steam-showcase-sizes) */
+.guide__table {margin:0 0 30px;overflow-x:auto;border:1px solid rgba(110,170,255,.2);border-radius:12px;background:linear-gradient(160deg,#0e1a3c,#050a1c)}
+.guide__table table {width:100%;min-width:560px;border-collapse:collapse;font:500 14px/1.5 Montserrat,sans-serif;color:rgba(214,229,250,.82)}
+.guide__table th {padding:12px 14px;text-align:left;font-weight:700;font-size:12px;letter-spacing:.04em;color:#6fe3ff;border-bottom:1px solid rgba(110,170,255,.2)}
+.guide__table td {padding:12px 14px;vertical-align:top;border-top:1px solid rgba(110,170,255,.1)}
+.guide__table td:first-child {color:#f4f9ff;font-weight:700}

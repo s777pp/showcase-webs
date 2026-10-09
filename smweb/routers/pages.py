@@ -19,7 +19,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse,
 from fastapi import APIRouter
 
 
-from smweb import guides, seo
+from smweb import guides, seo, server_copy
 from smweb.core import JOBS, STATIC
 from smweb.job_access import browser_owns_job
 from smweb.locales import SUPPORTED_LANGUAGES, localized_path, localized_request_url, request_language
@@ -91,6 +91,9 @@ def _localized_content(content: str, language: str, route_path: str = "/", statu
     content = re.sub(r'<html\b([^>]*?)\blang="[^"]*"', rf'<html\1lang="{language}"', content, count=1, flags=re.I)
     content = content.replace('href="/"', f'href="{localized_path(language, "/")}"')
     content = _language_pack(content, language)
+    # Body text in the page language for engines that do not run scripts (smweb/server_copy.py).
+    if route_path in ("/", "/app", "/gallery", "/extension"):
+        content = server_copy.translate(content, language, route_path)
     # Title / description in the page language, link previews (Open Graph), landing JSON-LD (smweb/seo.py).
     content = seo.apply(content, language, route_path)
     if 'rel="canonical"' not in content:
@@ -150,6 +153,23 @@ def robots_txt():
                              headers={"Cache-Control": "public, max-age=3600"})
 
 
+@router.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    """Dark-background site icon (scripts/build_favicons.py); search engines ask for /favicon.ico first."""
+    from fastapi.responses import FileResponse
+    return FileResponse(STATIC / "favicon.ico", media_type="image/x-icon",
+                        headers={"Cache-Control": "public, max-age=604800"})
+
+
+@router.get("/{name}.txt", include_in_schema=False)
+def indexnow_key(name: str):
+    """IndexNow key file (smweb/indexnow.py): /<key>.txt answers with the key. /robots.txt is matched earlier."""
+    from smweb import indexnow
+    if name != indexnow.key():
+        return PlainTextResponse("Not found", status_code=404)
+    return PlainTextResponse(name, headers={"Cache-Control": "public, max-age=86400"})
+
+
 # Yandex Webmaster ownership files (public by design). One code per site added in Webmaster:
 # ru.showcasemaker.com (2026-10-09). The same app serves both hosts, so a code works on either.
 YANDEX_VERIFICATION = ("57bdfe0a5d97b483",)
@@ -164,22 +184,74 @@ def yandex_verification(code: str):
     return HTMLResponse(body, headers={"Cache-Control": "public, max-age=3600"})
 
 
-@router.get("/sitemap.xml", include_in_schema=False)
-def sitemap_xml():
-    # Do not enumerate private projects, jobs or user accounts.
-    urls = ["https://showcasemaker.com" + localized_path(language, path)
-            for language in SUPPORTED_LANGUAGES for path in ("/", "/app", "/gallery", "/privacy")]
-    urls += ["https://showcasemaker.com" + localized_path(language, "/extension") for language in ("en", "ru")]
-    urls += ["https://showcasemaker.com" + localized_path(language, path)
-             for language in guides.GUIDE_LANGUAGES
-             for path in ["/guides", *(f"/guides/{slug}" for slug in guides.GUIDES)]]
+def _mtime(*paths: Path) -> float | None:
+    times = []
+    for path in paths:
+        try:
+            times.append(path.stat().st_mtime)
+        except OSError:
+            pass
+    return max(times) if times else None
+
+
+def _lastmod(timestamp: float | None) -> str:
+    if not timestamp:
+        return ""
+    from datetime import datetime, timezone
+    return "<lastmod>" + datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00") + "</lastmod>"
+
+
+def _newest_gallery_work() -> float | None:
     try:
-        from smweb.routers.news import sitemap_urls
-        urls += sitemap_urls()
+        import auth_db
+        connection = auth_db._conn()
+        try:
+            row = connection.execute("SELECT MAX(created_at) AS t FROM gallery WHERE status='approved'").fetchone()
+        finally:
+            connection.close()
+        return float(dict(row)["t"]) if row and dict(row)["t"] else None
+    except Exception:
+        return None
+
+
+def sitemap_entries() -> list[tuple[str, float | None]]:
+    """(url, last change) of every public page; /sitemap.xml and IndexNow (smweb/indexnow.py) both use it.
+    Do not enumerate private projects, jobs or user accounts."""
+    # <lastmod> (2026-10-09): when the page really changed, so search engines re-read changed pages first. Fixed
+    # pages use the modification time of the files that make them (git sets it when a deploy changes a file);
+    # the gallery also counts its newest published work, news its newest edit.
+    site = "https://showcasemaker.com"
+    seo_file = Path(__file__).resolve().parents[1] / "seo.py"
+    guide_files = [Path(guides.__file__), Path(guides.__file__).with_name("guides_extra.py"), STATIC / "guide.html"]
+    page_files = {"/": [STATIC / "index.html", seo_file], "/app": [STATIC / "app.html", seo_file],
+                  "/gallery": [STATIC / "gallery.html", seo_file], "/extension": [STATIC / "extension.html", seo_file]}
+    gallery_changed = _newest_gallery_work()
+    entries: list[tuple[str, float | None]] = []
+    for language in SUPPORTED_LANGUAGES:
+        for path in ("/", "/app", "/gallery"):
+            changed = _mtime(*page_files[path])
+            if path == "/gallery" and gallery_changed:
+                changed = max(changed or 0, gallery_changed)
+            entries.append((site + localized_path(language, path), changed))
+        entries.append((site + localized_path(language, "/privacy"), _mtime(STATIC / f"privacy-{language}.html")))
+    entries += [(site + localized_path(language, "/extension"), _mtime(*page_files["/extension"])) for language in ("en", "ru")]
+    guides_changed = _mtime(*guide_files)
+    entries += [(site + localized_path(language, path), guides_changed)
+                for language in guides.GUIDE_LANGUAGES
+                for path in ["/guides", *(f"/guides/{slug}" for slug in guides.GUIDES)]]
+    try:
+        from smweb.routers.news import sitemap_entries
+        entries += sitemap_entries()
     except Exception:
         pass
+    return entries
+
+
+@router.get("/sitemap.xml", include_in_schema=False)
+def sitemap_xml():
     body ='<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-    body += "".join(f"<url><loc>{html.escape(url)}</loc></url>" for url in urls) + "</urlset>"
+    body += "".join(f"<url><loc>{html.escape(url)}</loc>{_lastmod(changed)}</url>"
+                    for url, changed in sitemap_entries()) + "</urlset>"
     return Response(body, media_type="application/xml", headers={"Cache-Control": "public, max-age=3600"})
 
 
@@ -282,7 +354,19 @@ def _public_profile(language: str, username: str):
     filename = "profile-view.html" if (STATIC / "profile-view.html").is_file() else "profile.html"
     if not (STATIC / filename).is_file():
         return _html("profile page missing", status_code=404)
-    return _localized_html(filename, language, "/profile/" + quote(username, safe=""))
+    # An unknown name used to get a normal page (200), so search engines indexed empty profiles such as
+    # /ru/profile/profile. Unknown -> the 404 page; hidden profiles stay reachable by link but are not indexed.
+    import auth_db
+    try:
+        profile = auth_db.get_public_profile(username)
+    except Exception:
+        profile = {}
+    if profile is None:
+        return not_found_page(language=language)
+    response = _localized_html(filename, language, "/profile/" + quote(username, safe=""))
+    if str((profile or {}).get("profile_visibility") or "public").lower() != "public":
+        response.headers["X-Robots-Tag"] = "noindex, follow"
+    return response
 
 
 def _extension(language: str):
@@ -331,8 +415,14 @@ def _guide(language: str, slug: str):
         return not_found_page(language=language)
     text_language = guides.content_language(language)
     guide, ui = versions[text_language], guides.UI[text_language]
-    bars = {"workshop": 5, "featured": 1, "split": 2}[guide["mode"]]
-    diagram = f'<div class="guide__diagram guide__diagram--{guide["mode"]}" aria-hidden="true">' + "<i></i>" * bars + "</div>"
+    bars = {"workshop": 5, "featured": 1, "split": 2}.get(guide.get("mode") or "")
+    diagram = (f'<div class="guide__diagram guide__diagram--{guide["mode"]}" aria-hidden="true">' + "<i></i>" * bars + "</div>"
+               if bars else "")
+    table = guide.get("table")
+    if table:
+        head = "".join(f"<th scope=\"col\">{html.escape(cell)}</th>" for cell in table["head"])
+        rows = "".join("<tr>" + "".join(f"<td>{html.escape(cell)}</td>" for cell in row) + "</tr>" for row in table["rows"])
+        diagram += f'<div class="guide__table"><table><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>'
     steps = "".join(f"<li><b>{html.escape(title)}</b><p>{html.escape(text)}</p></li>" for title, text in guide["steps"])
     faq = "".join(f"<details><summary>{html.escape(q)}</summary><p>{html.escape(a)}</p></details>" for q, a in guide["faq"])
     body = (f'<span class="guide__kicker">{html.escape(ui["kicker"])}</span><h1>{html.escape(guide["title"])}</h1>'

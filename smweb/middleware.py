@@ -488,3 +488,32 @@ class CachedStaticFiles(StaticFiles):
             if lower.endswith((".html", ".htm", ".json", ".txt")):
                 response.headers.setdefault("Cache-Control", "no-cache")
         return response
+
+
+class WwwRedirectMiddleware:
+    """www.<site> -> <site> with a permanent redirect (2026-10-09).
+
+    The www host served the whole site, so Google indexed www.showcasemaker.com as a second copy of every page.
+    Only the www form of APP_URL's host is redirected; the mirror and local hosts are untouched.
+    """
+
+    def __init__(self, app):
+        self.app = app
+        url = urlparse((os.environ.get("APP_URL") or "").strip())
+        host = (url.hostname or "").lower()
+        self.target = f"{url.scheme or 'https'}://{host}" if host and not host.startswith("www.") else ""
+        self.www = f"www.{host}" if self.target else ""
+
+    async def __call__(self, scope, receive, send):
+        if self.www and scope.get("type") == "http":
+            host = dict(scope.get("headers") or []).get(b"host", b"").decode("latin-1").split(":")[0].lower()
+            if host == self.www:
+                path = scope.get("raw_path") or scope.get("path", "/").encode()
+                query = scope.get("query_string") or b""
+                location = self.target + path.decode("latin-1") + (("?" + query.decode("latin-1")) if query else "")
+                await send({"type": "http.response.start", "status": 301,
+                            "headers": [(b"location", location.encode("latin-1")), (b"cache-control", b"public, max-age=86400"),
+                                        (b"content-length", b"0")]})
+                await send({"type": "http.response.body", "body": b""})
+                return
+        await self.app(scope, receive, send)

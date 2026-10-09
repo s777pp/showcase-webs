@@ -422,7 +422,22 @@ async def news_save(request: Request):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     admin_control.audit("news.save", f"news:{result['id']}", {"status": body.get("status")})
+    _announce_news(result.get("slug"))
     return result
+
+
+def _announce_news(slug) -> None:
+    """IndexNow (smweb/indexnow.py): a post that is live now goes to Yandex/Bing at once; scheduled ones are
+    picked up by the hourly sitemap check when their time comes."""
+    try:
+        from smweb import indexnow, news
+        from smweb.locales import localized_path
+        post = next((p for p in news.published(limit=60) if p.get("slug") == slug), None)
+        if post:
+            indexnow.announce([indexnow.SITE + localized_path(language, path) for language in ("en", "ru")
+                               for path in ("/news/" + post["slug"], "/news")])
+    except Exception:
+        pass
 
 
 @router.delete("/news/{post_id}")

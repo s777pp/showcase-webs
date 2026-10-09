@@ -133,6 +133,11 @@ app.add_middleware(MirrorMiddleware)
 app.add_middleware(GZipMiddleware)
 
 
+# www.<site> -> <site> (one host for search engines); outermost but the error capture.
+from smweb.middleware import WwwRedirectMiddleware
+app.add_middleware(WwwRedirectMiddleware)
+
+
 # Server errors survive container rebuilds: ERROR logs and unexplained 5xx go to
 # the database ("Ошибки сайта" in the admin console) and new ones to the owner's bot.
 from smweb import error_log

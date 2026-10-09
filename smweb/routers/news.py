@@ -208,7 +208,16 @@ def api_news_media(name: str):
 
 
 def sitemap_urls() -> list[str]:
-    urls = ["https://showcasemaker.com" + localized_path(language, "/news") for language in ("en", "ru")]
-    for post in news.published(limit=60):
-        urls += ["https://showcasemaker.com" + localized_path(language, "/news/" + post["slug"]) for language in ("en", "ru")]
-    return urls
+    return [url for url, _changed in sitemap_entries()]
+
+
+def sitemap_entries() -> list[tuple[str, float | None]]:
+    """(url, last change) for the sitemap: the hub changes with its newest post, a post with its last edit."""
+    posts = news.published(limit=60)
+    newest = max((float(p.get("updated_at") or p.get("published_at") or 0) for p in posts), default=0) or None
+    entries = [("https://showcasemaker.com" + localized_path(language, "/news"), newest) for language in ("en", "ru")]
+    for post in posts:
+        changed = max(float(post.get("updated_at") or 0), float(post.get("published_at") or 0)) or None
+        entries += [("https://showcasemaker.com" + localized_path(language, "/news/" + post["slug"]), changed)
+                    for language in ("en", "ru")]
+    return entries

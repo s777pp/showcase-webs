@@ -48,3 +48,20 @@ def test_sitemap_lists_guides():
     body = _client().get("/sitemap.xml").text
     assert "https://showcasemaker.com/ru/guides/steam-artwork-showcase-split" in body
     assert "https://showcasemaker.com/pt/guides/steam-workshop-showcase" in body
+
+
+def test_new_guides_are_complete_in_every_language_and_the_size_table_renders():
+    for slug in ("steam-profile-design", "steam-showcase-sizes", "steam-gif-too-large", "steam-long-workshop-showcase"):
+        versions = guides.GUIDES[slug]
+        assert set(versions) == set(guides.GUIDE_LANGUAGES), slug
+        en = versions["en"]
+        for language, guide in versions.items():
+            assert len(guide["steps"]) == len(en["steps"]) and len(guide["faq"]) == len(en["faq"]), (slug, language)
+            assert guide["mode"] == en["mode"] and len(guide["title"]) <= 75, (slug, language)
+            if "table" in en:
+                assert len(guide["table"]["rows"]) == len(en["table"]["rows"]), (slug, language)
+                assert all(len(row) == len(guide["table"]["head"]) for row in guide["table"]["rows"])
+    page = _client().get("/ru/guides/steam-showcase-sizes").text
+    assert '<div class="guide__table"><table>' in page and "506 px + 100 px" in page
+    assert 'class="guide__diagram' not in page
+    assert 'guide__diagram--workshop' in _client().get("/de/guides/steam-long-workshop-showcase").text

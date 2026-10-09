@@ -71,7 +71,9 @@ def test_guides_and_privacy_keep_their_titles_and_get_previews(client):
     assert title.startswith("Политика конфиденциальности") and og["og:title"] == title
 
 
-def test_author_page_names_the_author(client):
+def test_author_page_names_the_author(client, monkeypatch):
+    import auth_db
+    monkeypatch.setattr(auth_db, "get_public_profile", lambda name: {"profile_visibility": "public"})
     text = client.get("/ru/profile/saba%20chan").text
     title, _d, og = _head(text)
     assert title.startswith("saba chan — Витрины Steam автора")
@@ -87,3 +89,35 @@ def test_page_scripts_do_not_overwrite_the_server_title():
     for name in ("home.js", "community-gallery.js", "extension-guide.js", "app.js", "profile.js"):
         source = (STATIC / "js" / name).read_text(encoding="utf-8")
         assert 'meta[name="sm-seo"]' in source, name
+
+
+def test_www_host_redirects_permanently_to_the_main_host(monkeypatch):
+    from starlette.responses import PlainTextResponse
+    from smweb.middleware import WwwRedirectMiddleware
+    monkeypatch.setenv("APP_URL", "https://showcasemaker.com")
+    inner = FastAPI()
+    inner.add_api_route("/{path:path}", lambda path: PlainTextResponse("ok"))
+    client = TestClient(WwwRedirectMiddleware(inner))
+    response = client.get("https://www.showcasemaker.com/ru/app?x=1", follow_redirects=False)
+    assert response.status_code == 301 and response.headers["location"] == "https://showcasemaker.com/ru/app?x=1"
+    assert client.get("https://showcasemaker.com/ru/app").text == "ok"
+    assert client.get("https://ru.showcasemaker.com/ru/").text == "ok"
+
+
+def test_favicon_and_icon_links(client):
+    response = client.get("/favicon.ico")
+    assert response.status_code == 200 and response.headers["content-type"] == "image/x-icon"
+    for name in ("index.html", "app.html", "privacy-ru.html", "guide.html"):
+        source = (STATIC / name).read_text(encoding="utf-8")
+        assert '<link rel="icon" href="/favicon.ico" sizes="48x48">' in source and "icon-256.png\"/>" not in source
+    assert (STATIC / "img" / "favicon" / "favicon-192.png").is_file()
+
+
+def test_unknown_public_profile_is_a_404(client, monkeypatch):
+    import auth_db
+    monkeypatch.setattr(auth_db, "get_public_profile", lambda name: None if name == "profile" else
+                        {"profile_visibility": "private" if name == "hidden" else "public"})
+    assert client.get("/ru/profile/profile").status_code == 404
+    assert client.get("/ru/profile/saba").status_code == 200
+    hidden = client.get("/ru/profile/hidden")
+    assert hidden.status_code == 200 and hidden.headers["x-robots-tag"] == "noindex, follow"
