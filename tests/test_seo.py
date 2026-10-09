@@ -121,3 +121,16 @@ def test_unknown_public_profile_is_a_404(client, monkeypatch):
     assert client.get("/ru/profile/saba").status_code == 200
     hidden = client.get("/ru/profile/hidden")
     assert hidden.status_code == 200 and hidden.headers["x-robots-tag"] == "noindex, follow"
+
+
+def test_tabs_get_the_bare_mark_by_theme_while_html_keeps_the_tile():
+    script = (STATIC / "js" / "favicon-theme.js").read_text(encoding="utf-8")
+    assert "prefers-color-scheme: dark" in script and "/static/img/favicon/tab-' + (dark ? 'dark' : 'light') + '.png" in script
+    for name in ("tab-dark.png", "tab-light.png"):
+        assert (STATIC / "img" / "favicon" / name).is_file()
+    for page in STATIC.glob("*.html"):
+        source = page.read_text(encoding="utf-8")
+        if page.name.startswith("privacy-"):
+            assert "<script" not in source              # privacy pages stay script-free (navy tile in the tab)
+            continue
+        assert "favicon-theme.js" in source and '<link rel="icon" href="/favicon.ico" sizes="48x48">' in source, page.name

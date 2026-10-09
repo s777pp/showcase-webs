@@ -5,6 +5,10 @@ its results the icon vanished. These files put the mark on the site's navy (full
 circle itself, browsers show the square). Google wants a multiple of 48 px and a stable URL; /favicon.ico is
 served by pages.py.
 
+Browser tabs (owner, same day: "keep the plain S in the tab"): static/js/favicon-theme.js swaps the icon for
+tab-dark.png (white S) or tab-light.png (black S) by the browser's colour scheme. Search engines read the icon
+links of the HTML and never run that script, so they keep the navy tile.
+
     py -3.14 scripts/build_favicons.py
 """
 from __future__ import annotations
@@ -37,11 +41,28 @@ def tile(size: int) -> Image.Image:
     return base
 
 
+def plain(size: int, colour: tuple[int, int, int] | None) -> Image.Image:
+    """The bare mark for browser tabs: white as drawn (dark tabs) or recoloured (light tabs), transparent around it."""
+    mark = Image.open(MARK).convert("RGBA")
+    mark = mark.crop(mark.getbbox() or (0, 0, mark.width, mark.height))
+    scale = round(size * 0.92) / max(mark.size)
+    mark = mark.resize((max(1, round(mark.width * scale)), max(1, round(mark.height * scale))), Image.LANCZOS)
+    if colour:
+        alpha = mark.getchannel("A")
+        mark = Image.new("RGBA", mark.size, colour + (255,))
+        mark.putalpha(alpha)
+    canvas = Image.new("RGBA", (size, size))
+    canvas.alpha_composite(mark, ((size - mark.width) // 2, (size - mark.height) // 2))
+    return canvas
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     for size in (48, 96, 192, 512):
         tile(size).save(OUT / f"favicon-{size}.png", optimize=True)
     tile(180).convert("RGB").save(OUT / "apple-touch-icon.png", optimize=True)
+    plain(64, None).save(OUT / "tab-dark.png", optimize=True)
+    plain(64, (17, 20, 32)).save(OUT / "tab-light.png", optimize=True)
     big = tile(256)
     big.save(ROOT / "static" / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48), (64, 64)])
     for path in sorted(OUT.iterdir()) + [ROOT / "static" / "favicon.ico"]:
