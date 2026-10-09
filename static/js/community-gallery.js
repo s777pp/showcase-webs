@@ -67,7 +67,8 @@
 
   function localize() {
     document.documentElement.lang = lang();
-    document.title = (author ? t('authorWorks') + ' · ' : '') + t('allWorks') + ' — Showcase Maker';
+    // The plain gallery keeps the server title in the page language (smweb/seo.py); author views name the author.
+    if (author || !document.querySelector('meta[name="sm-seo"]')) document.title = (author ? t('authorWorks') + ' · ' : '') + t('allWorks') + ' — Showcase Maker';
     document.querySelectorAll('[data-gallery-i]').forEach((node) => { node.textContent = t(node.dataset.galleryI); });
     $('publishMode').querySelectorAll('option').forEach((node) => { node.textContent = t(node.value); });
     if(state.jobId&&!state.editId&&!$('publishOverlay').hidden){

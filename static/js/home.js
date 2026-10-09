@@ -340,7 +340,8 @@
 
   function applyCopy() {
     if (window.SMLang) SMLang.apply(I18N);
-    document.title = pack().page_title;
+    // The server writes the title in the page language (smweb/seo.py); keep it.
+    if (!document.querySelector('meta[name="sm-seo"]')) document.title = pack().page_title;
   }
 
   /* Pricing cards show the prices the store really charges (Gumroad, read by the server). */

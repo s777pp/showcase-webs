@@ -4,9 +4,10 @@
   var ru = lang === 'ru';
   if (ru) {
     document.documentElement.lang = 'ru';
-    document.title = 'SteamShowcase Helper — расширение для витрин Steam | Showcase Maker';
+    var seoLocked = document.querySelector('meta[name="sm-seo"]');  // the server already wrote both in the page language (smweb/seo.py)
+    if (!seoLocked) document.title = 'SteamShowcase Helper — расширение для витрин Steam | Showcase Maker';
     var description = document.querySelector('meta[name="description"]');
-    if (description) description.content = 'SteamShowcase Helper 1.0.9: автозагрузка файлов Showcase Maker в Steam, автоматическая расстановка по витринам, пачки загрузок, пресеты профиля и помощники для страниц Steam.';
+    if (description && !seoLocked) description.content = 'SteamShowcase Helper 1.0.9: автозагрузка файлов Showcase Maker в Steam, автоматическая расстановка по витринам, пачки загрузок, пресеты профиля и помощники для страниц Steam.';
     document.querySelectorAll('[data-eg-ru]').forEach(function (node) { node.textContent = node.getAttribute('data-eg-ru'); });
     document.querySelectorAll('[data-eg-alt-ru]').forEach(function (node) { node.alt = node.getAttribute('data-eg-alt-ru'); });
     document.querySelectorAll('[data-eg-aria-ru]').forEach(function (node) { node.setAttribute('aria-label', node.getAttribute('data-eg-aria-ru')); });

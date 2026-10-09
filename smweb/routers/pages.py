@@ -19,7 +19,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse,
 from fastapi import APIRouter
 
 
-from smweb import guides
+from smweb import guides, seo
 from smweb.core import JOBS, STATIC
 from smweb.job_access import browser_owns_job
 from smweb.locales import SUPPORTED_LANGUAGES, localized_path, localized_request_url, request_language
@@ -91,6 +91,8 @@ def _localized_content(content: str, language: str, route_path: str = "/", statu
     content = re.sub(r'<html\b([^>]*?)\blang="[^"]*"', rf'<html\1lang="{language}"', content, count=1, flags=re.I)
     content = content.replace('href="/"', f'href="{localized_path(language, "/")}"')
     content = _language_pack(content, language)
+    # Title / description in the page language, link previews (Open Graph), landing JSON-LD (smweb/seo.py).
+    content = seo.apply(content, language, route_path)
     if 'rel="canonical"' not in content:
         canonical_path = localized_path(language, route_path)
         alternate_languages = alternates or (("en", "ru") if route_path == "/extension" else SUPPORTED_LANGUAGES)

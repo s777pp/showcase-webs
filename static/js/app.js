@@ -2470,7 +2470,8 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
       var ps = document.getElementById("pageSub");
       if (pt && pack["title_" + tab]) pt.textContent = pack["title_" + tab];
       if (ps && pack["sub_" + tab]) ps.textContent = pack["sub_" + tab];
-      if (pack["title_" + tab]) document.title = pack["title_" + tab] + " · Showcase Maker";
+      // On load the server title (page language, smweb/seo.py) stays; a tab the visitor opens names itself.
+      if (pack["title_" + tab] && (window.__smTabTitle || !document.querySelector('meta[name="sm-seo"]'))) document.title = pack["title_" + tab] + " · Showcase Maker";
     }
 
     var lb = document.getElementById("langBtn");
@@ -2639,7 +2640,7 @@ document.getElementById('btnHex')?.addEventListener('click', async () => {
 
   document.addEventListener("click", function (e) {
     var btn = e.target && e.target.closest && e.target.closest("#nav button[data-tab]");
-    if (btn) setTimeout(function () { applyDict(getLang()); }, 0);
+    if (btn) { window.__smTabTitle = true; setTimeout(function () { applyDict(getLang()); }, 0); }
   });
   // steam mode change
   document.addEventListener("change", function (e) {

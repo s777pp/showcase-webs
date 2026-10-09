@@ -1500,6 +1500,20 @@ Only the hero exists for now; content blocks will be added below it later.
   bucket without spending). Tests: `tests/test_admin_upgrade.py`. Local admin QA: launch config `showcase-admin-qa`
   (port 8094, own DATA_DIR, test ADMIN_SECRET in `.claude/launch.json`).
 
+## 6.31 Search snippets and link previews per language (2026-10-09, local, not deployed)
+
+- `smweb/seo.py` `apply(content, language, route_path)` runs inside `pages._localized_content` (every localized
+  page): `PAGES[page][lang]` = (title, description) for home / app / gallery / extension / support / account /
+  profile / author (`page_for` maps the route), Open Graph + Twitter tags for all localized pages (title/description
+  read back from the page, so guides/news/privacy get previews too), JSON-LD for the landing, `<meta name="sm-seo">`.
+  Page scripts check that meta before touching `document.title` (home.js, community-gallery.js without an author,
+  extension-guide.js, app.js until the visitor clicks a tab: `window.__smTabTitle`, profile.js). Keep copy facts true.
+- Preview pictures `static/img/og/og-<lang>.jpg` from `scripts/build_og_images.py` (Montserrat from the Windows fonts
+  folder or `--fonts`). Tests: `tests/test_seo.py`.
+- The landing body text is still translated in the browser for de/tr/fr/uk/es/pt (data-i + generated packs; the
+  observer uses requestAnimationFrame, so a hidden test pane shows English: not a bug). Server-side body
+  translation was not done.
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or
