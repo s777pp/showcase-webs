@@ -148,6 +148,20 @@ def robots_txt():
                              headers={"Cache-Control": "public, max-age=3600"})
 
 
+# Yandex Webmaster ownership files (public by design). One code per site added in Webmaster:
+# ru.showcasemaker.com (2026-10-09). The same app serves both hosts, so a code works on either.
+YANDEX_VERIFICATION = ("57bdfe0a5d97b483",)
+
+
+@router.get("/yandex_{code}.html", include_in_schema=False)
+def yandex_verification(code: str):
+    if code not in YANDEX_VERIFICATION:
+        return PlainTextResponse("Not found", status_code=404)
+    body = ('<html>\n    <head>\n        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">\n'
+            f'    </head>\n    <body>Verification: {code}</body>\n</html>\n')
+    return HTMLResponse(body, headers={"Cache-Control": "public, max-age=3600"})
+
+
 @router.get("/sitemap.xml", include_in_schema=False)
 def sitemap_xml():
     # Do not enumerate private projects, jobs or user accounts.

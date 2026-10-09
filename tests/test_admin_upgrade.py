@@ -261,3 +261,13 @@ def test_new_system_checks(monkeypatch):
     usage.update(modal=100, iloveapi=120)
     check = health_checks._bg_budget(make)
     assert check["state"] == "down" and "Modal: 100 из 100" in check["technical"]
+
+
+def test_yandex_verification_file():
+    from smweb.routers import pages
+    app = FastAPI()
+    app.include_router(pages.router)
+    client = TestClient(app)
+    ok = client.get("/yandex_57bdfe0a5d97b483.html")
+    assert ok.status_code == 200 and "Verification: 57bdfe0a5d97b483" in ok.text
+    assert client.get("/yandex_0000000000000000.html").status_code == 404
