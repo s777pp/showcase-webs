@@ -1479,6 +1479,27 @@ Only the hero exists for now; content blocks will be added below it later.
   NOT verified on a real Steam profile (no account): ask the owner to paste one result into his Info box before
   announcing it.
 
+## 6.30 Control centre round (2026-10-09, local, not deployed)
+
+- Owner: "do everything" for the admin. Jobs: `admin_jobs._key_user_id` ignores `tg:<telegram id>` keys (they were read
+  as account ids); `_owner` shows "Telegram <id>" or the account linked through `telegram_links` (cached 60 s);
+  `job_source` / `job_tags` / `depth_summary`; `/jobs?source=site|telegram|depth`. Dashboard link targets may carry a
+  third part: `jobs:<status>:<source>`, `purchases:pending`.
+- Purchases: `smweb/admin_billing.py` (`purchases`, `attach` via `telegram_billing.claim` / `gumroad_billing.sync_sale(
+  claim_user=)`, `recheck`, `refund_telegram`, `for_user`, `pending_count`), routes `/api/admin/control/purchases*`
+  (attach runs in the threadpool: Gumroad is a network call), UI `static/js/admin-purchases.js` (`SMAdminPurchases`).
+  Claim links of pending bot sales are shown to the owner only.
+- Info box moderation: `infobox.admin_listing` / `restore`, `GET /infobox`, `POST /infobox/{id}/restore`; hiding stays
+  `DELETE /api/admin/control/infobox/{id}` in routers/infobox.py (now 404 when missing). UI `static/js/admin-infobox.js`.
+- Weekly tries: owner bonus rows `+u:<uid>` in `feature_uses` (`used` = extra tries LEFT), spent by `consume` only after
+  the normal account+IP try fails (`_spend_bonus`); `give_bonus`, `clear_bonus`, `account_week`; `left`/`state` add the
+  bonus; account deletion removes both subjects. User actions `grant_try` (`feature` or `all`, `count` 1-10) /
+  `clear_tries`. SQLite `lower()` does not fold Cyrillic: admin searches are case-sensitive for it locally (PG is fine).
+- Overview: `online` (`presence.count()`, no ping), `purchases` (`admin_billing.summary`), `fresh` (`fresh_activity`).
+  System: `health_checks._depth`, `_gifsicle`, `_bg_budget` (`remove_bg_client.budget_used` reads the Redis calendar
+  bucket without spending). Tests: `tests/test_admin_upgrade.py`. Local admin QA: launch config `showcase-admin-qa`
+  (port 8094, own DATA_DIR, test ADMIN_SECRET in `.claude/launch.json`).
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or

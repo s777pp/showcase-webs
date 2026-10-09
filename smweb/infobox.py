@@ -100,3 +100,54 @@ def remove(template_id: str, user_id: int | None = None) -> bool:
         return bool(cur.rowcount)
     finally:
         c.close()
+
+
+# ---------------------------------------------------------------- owner moderation (admin console, 2026-10-09)
+def admin_listing(status: str = "published", query: str = "", limit: int = 60, offset: int = 0) -> dict:
+    """Every template with its author for the control centre (hidden ones too)."""
+    limit = max(1, min(200, int(limit or 60)))
+    offset = max(0, int(offset or 0))
+    where, params = [], []
+    if status in ("published", "hidden"):
+        where.append("t.status=?")
+        params.append(status)
+    query = str(query or "").strip().lower()[:80]
+    if query:
+        where.append("(lower(t.title) LIKE ? OR lower(t.body) LIKE ? OR lower(COALESCE(u.email,'')) LIKE ? "
+                     "OR lower(COALESCE(u.profile_username,'')) LIKE ? OR lower(COALESCE(u.display_name,'')) LIKE ?)")
+        params += [f"%{query}%"] * 5
+    clause = ("WHERE " + " AND ".join(where)) if where else ""
+    c = auth_db._conn()
+    try:
+        total = dict(c.execute(f"SELECT COUNT(*) AS n FROM infobox_templates t LEFT JOIN users u ON u.id=t.user_id {clause}",
+                               params).fetchone())["n"]
+        rows = c.execute(
+            "SELECT t.id, t.user_id, t.title, t.body, t.category, t.uses, t.status, t.created_at, "
+            "u.email, u.display_name, u.profile_username FROM infobox_templates t "
+            f"LEFT JOIN users u ON u.id=t.user_id {clause} ORDER BY t.created_at DESC LIMIT ? OFFSET ?",
+            params + [limit, offset]).fetchall()
+        counts = {str(row["status"]): int(row["n"]) for row in
+                  c.execute("SELECT status, COUNT(*) AS n FROM infobox_templates GROUP BY status").fetchall()}
+        week = dict(c.execute("SELECT COUNT(*) AS n FROM infobox_templates WHERE created_at>?",
+                              (time.time() - 7 * 86400,)).fetchone())["n"]
+    finally:
+        c.close()
+    items = []
+    for row in rows:
+        item = dict(row)
+        item["author"] = item.pop("display_name") or item.get("profile_username") or item.get("email") or f"ID {item['user_id']}"
+        item["lines"] = item["body"].count("\n") + 1
+        item["chars"] = len(item["body"])
+        items.append(item)
+    return {"items": items, "total": int(total), "counts": {"published": counts.get("published", 0),
+            "hidden": counts.get("hidden", 0)}, "new_week": int(week)}
+
+
+def restore(template_id: str) -> bool:
+    c = auth_db._conn()
+    try:
+        cur = c.execute("UPDATE infobox_templates SET status='published' WHERE id=? AND status='hidden'", (str(template_id),))
+        c.commit()
+        return bool(cur.rowcount)
+    finally:
+        c.close()

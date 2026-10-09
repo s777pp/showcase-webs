@@ -196,7 +196,68 @@ def _backups(c):
              "" if ok else "Проверь docker compose logs db-backup.", f"{latest['Key'].rsplit('/', 1)[-1]} · {latest['Size'] / 1048576:.1f} МБ")
 
 
-CHECKS = (_mirror, _relay, _steam_import, _modal, _bg_remove, _loop_ai, _telegram, _bot_api, _backups)
+def _depth(c):
+    from smweb import depth
+
+    name = "Глубина 3D"
+    runtime = importlib.util.find_spec("onnxruntime") is not None
+    if depth.available() and runtime:
+        size = depth.MODEL_PATH.stat().st_size / 1048576
+        return c("depth", name, "ok", "Модель глубины на месте",
+                 "Карточка «Глубина 3D» в Обработке и анимация персонажа в «Создать дизайн» работают.", "",
+                 f"{depth.MODEL_NAME} · {size:.0f} МБ")
+    missing = "модель" if not depth.available() else "onnxruntime"
+    return c("depth", name, "warn", f"Не хватает: {missing}",
+             "Кнопка «Глубина 3D» ответит пользователю ошибкой, остальная обработка работает.",
+             "Пересобери образ (Dockerfile скачивает модель) или задай DEPTH_MODEL_PATH.", f"нет: {missing}")
+
+
+def _gifsicle(c):
+    from smweb import gif_optimizer
+
+    found = gif_optimizer.find_gifsicle()
+    if found:
+        return c("gifsicle", "GIF оптимизатор", "ok", "gifsicle установлен",
+                 "Ручное сжатие GIF работает быстро, без перекодирования.", "", "gifsicle")
+    return c("gifsicle", "GIF оптимизатор", "warn", "gifsicle не найден",
+             "Ручное сжатие идёт через запасной путь FFmpeg: медленнее и может менять кадры.",
+             "Проверь, что Dockerfile ставит пакет gifsicle, и пересобери app и worker.", "нет gifsicle")
+
+
+def _bg_budget(c):
+    from smweb import remove_bg_client
+
+    names = remove_bg_client.providers()
+    labels = {"modal": "Modal", "iloveapi": "iLoveAPI", "problembo": "Problembo", "removebg": "remove.bg"}
+    name = "Лимиты удаления фона"
+    if not names:
+        # The "Удаление фона (ИИ)" check already warns about this; one warning is enough.
+        return c("bg_budget", name, "ok", "Считать нечего", "Ни один сервис удаления фона не подключён.", "", "")
+    parts, worst, full = [], 0.0, 0
+    for provider in names:
+        cap = remove_bg_client.monthly_cap(provider)
+        used = remove_bg_client.budget_used(provider)
+        if used is None:
+            parts.append(f"{labels[provider]}: ? из {cap}")
+            continue
+        share = used / cap if cap else 1.0
+        worst = max(worst, share)
+        full += share >= 1
+        parts.append(f"{labels[provider]}: {used} из {cap}")
+    line = " · ".join(parts)
+    if full and full == len(names):
+        return c("bg_budget", name, "down", "Месячные лимиты исчерпаны у всех сервисов",
+                 "Удаление фона не будет работать до 1-го числа.",
+                 "Подними BG_REMOVE_MONTHLY_<СЕРВИС> в .env или подключи ещё один сервис.", line)
+    if worst >= 0.8:
+        return c("bg_budget", name, "warn", "Один из сервисов близок к лимиту месяца",
+                 "Когда лимит кончится, сайт сам перейдёт на следующий сервис в цепочке.",
+                 "Проверь расходы у сервиса или подними лимит в .env.", line)
+    return c("bg_budget", name, "ok", "Лимиты в норме", "Расход за месяц далёк от лимитов.", "", line)
+
+
+CHECKS = (_mirror, _relay, _steam_import, _modal, _bg_remove, _bg_budget, _depth, _gifsicle, _loop_ai, _telegram,
+          _bot_api, _backups)
 
 
 def components(make_component) -> list[dict]:

@@ -154,6 +154,26 @@ def _take_budget(name: str) -> bool:
     return allowed
 
 
+def budget_used(name: str) -> int | None:
+    """Images counted against the provider's cap this calendar month (None without Redis). Reads only."""
+    try:
+        import redis_store as rs
+        r = rs._r()
+    except Exception:
+        return None
+    if not r:
+        return None
+    now = datetime.now(timezone.utc)
+    key = f"bg-provider:{name}:{now.strftime('%Y-%m')}"
+    window = 32 * 86400
+    epoch = int(now.timestamp()) // window
+    try:
+        names = [f"sm:rl:calendar:{key}"] + [f"sm:rl:{key}:{slot}" for slot in (epoch - 1, epoch)]
+        return sum(int(value or 0) for value in r.mget(names))
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------- shared helpers
 
 def _validated_source(data: bytes) -> tuple[str, str]:

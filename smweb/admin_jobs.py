@@ -108,12 +108,57 @@ def _preview_index(entries: list[zipfile.ZipInfo]) -> int | None:
     return None
 
 
+def _key_user_id(key) -> int | None:
+    """Account id inside a job's user_key ("12", "steam:12"). Telegram keys ("tg:<telegram id>") hold
+    a Telegram id, never an account id: reading them as one showed bot jobs as "ID 7123456789"."""
+    key = str(key or "")
+    if key.startswith("tg:"):
+        return None
+    match = re.fullmatch(r"(?:[a-z-]+:)?(\d{1,12})", key)
+    return int(match.group(1)) if match else None
+
+
+def _telegram_id(job: dict) -> str:
+    key = str(job.get("user_key") or "")
+    return key[3:] if key.startswith("tg:") and key[3:].isdigit() else ""
+
+
+_tg_accounts: dict[str, tuple[float, int | None]] = {}
+
+
+def _telegram_account(job: dict) -> int | None:
+    """The site account a Telegram user's purchases go to (cached a minute: the jobs list asks per job)."""
+    tg_id = _telegram_id(job)
+    if not tg_id:
+        return None
+    cached = _tg_accounts.get(tg_id)
+    if cached and time.time() - cached[0] < 60:
+        return cached[1]
+    try:
+        from smweb import telegram_billing
+        account = telegram_billing.account_for(tg_id)
+    except Exception:
+        account = None
+    _tg_accounts[tg_id] = (time.time(), account)
+    return account
+
+
+def job_source(job: dict) -> str:
+    return "telegram" if job.get("source") == "telegram" or _telegram_id(job) else "site"
+
+
 def _owner(job: dict, users: dict[int, dict]) -> dict:
     key = str(job.get("user_key") or "")
-    uid = job.get("user_id") or (job.get("opts") or {}).get("_analytics", {}).get("user_id")
-    if not uid:
-        match = re.fullmatch(r"(?:[a-z-]+:)?(\d{1,12})", key)
-        uid = int(match.group(1)) if match else None
+    tg_id = _telegram_id(job)
+    if tg_id:
+        account = _telegram_account(job)
+        user = users.get(int(account)) if account else None
+        if user:
+            name = user.get("display_name") or user.get("profile_username") or user.get("email") or f"ID {account}"
+            return {"id": int(account), "name": f"{name} · через Telegram", "email": user.get("email") or "",
+                    "pro": bool(user.get("is_pro")), "telegram": tg_id}
+        return {"id": None, "name": f"Telegram {tg_id}", "email": "", "telegram": tg_id}
+    uid = job.get("user_id") or (job.get("opts") or {}).get("_analytics", {}).get("user_id") or _key_user_id(key)
     if uid:
         user = users.get(int(uid)) or {}
         return {"id": int(uid), "name": user.get("display_name") or user.get("profile_username") or user.get("email") or f"ID {uid}",
@@ -127,8 +172,7 @@ def _users_for(jobs: list[tuple[str, dict]]) -> dict[int, dict]:
     ids = set()
     for _, job in jobs:
         uid = job.get("user_id") or (job.get("opts") or {}).get("_analytics", {}).get("user_id")
-        match = re.fullmatch(r"(?:[a-z-]+:)?(\d{1,12})", str(job.get("user_key") or ""))
-        for value in (uid, match.group(1) if match else None):
+        for value in (uid, _key_user_id(job.get("user_key")), _telegram_account(job)):
             try:
                 if value:
                     ids.add(int(value))
@@ -154,6 +198,43 @@ def _users_for(jobs: list[tuple[str, dict]]) -> dict[int, dict]:
     return result
 
 
+_DEPTH_WORDS = {
+    "camera": {"orbit": "облёт", "sway": "покачивание", "float": "парение", "dolly": "наезд"},
+    "particles": {"snow": "снег", "sakura": "сакура", "rain": "дождь", "sparks": "искры", "stars": "звёзды"},
+    "atmosphere": {"fog": "туман", "light": "свет"},
+}
+
+
+def depth_summary(depth: dict) -> str:
+    """'Глубина 3D: облёт, снег, туман, дыхание' from opts["parallax"] (depth_fx.normalize)."""
+    parts = []
+    camera = (depth.get("camera") or {}).get("motion")
+    if camera and camera != "none":
+        parts.append(_DEPTH_WORDS["camera"].get(camera, camera))
+    particles = (depth.get("particles") or {}).get("kind") if isinstance(depth.get("particles"), dict) else None
+    if particles:
+        parts.append(_DEPTH_WORDS["particles"].get(particles, particles))
+    if depth.get("atmosphere") in _DEPTH_WORDS["atmosphere"]:
+        parts.append(_DEPTH_WORDS["atmosphere"][depth["atmosphere"]])
+    if depth.get("focuspull"):
+        parts.append("перевод фокуса")
+    if depth.get("breath"):
+        parts.append("дыхание")
+    if depth.get("hair"):
+        parts.append("волосы")
+    return "Глубина 3D: " + (", ".join(parts) or "включена")
+
+
+def job_tags(job: dict) -> list[str]:
+    """Short marks for the jobs list: where the job came from and new effects it used."""
+    tags = []
+    if job_source(job) == "telegram":
+        tags.append("Telegram-бот")
+    if isinstance((job.get("opts") or {}).get("parallax"), dict):
+        tags.append("Глубина 3D")
+    return tags
+
+
 def settings_summary(job: dict) -> list[str]:
     """Short human list of the options a job ran with."""
     kind = str(job.get("kind") or "process")
@@ -170,6 +251,9 @@ def settings_summary(job: dict) -> list[str]:
             out.append(f"Обводка {opts.get('outline_width')} px {opts.get('outline_color')}")
         if opts.get("do_ac"):
             out.append("Автоконтраст")
+        depth = opts.get("parallax")
+        if isinstance(depth, dict):
+            out.append(depth_summary(depth))
         rotations = [item.get("rotation") for item in job.get("files") or [] if isinstance(item, dict) and item.get("rotation")]
         if rotations:
             out.append("Поворот: " + ", ".join(f"{r:g}°" for r in rotations))
@@ -265,6 +349,7 @@ def _summary(jid: str, job: dict, users: dict[int, dict]) -> dict:
                      and bool(sources) and all(path.is_file() for _, path in sources),
         "stale": bool(explanation and explanation.get("category") == "stale"),
         "cached": bool(job.get("cache_hit")), "retry_of": str(job.get("retry_of") or ""),
+        "source": job_source(job), "tags": job_tags(job),
     }
 
 
@@ -274,7 +359,7 @@ def sniff_name(name: str) -> str:
 
 
 # ------------------------------------------------------------------- public
-def list_jobs(limit: int = 150, status: str = "all", kind: str = "", query: str = "") -> dict:
+def list_jobs(limit: int = 150, status: str = "all", kind: str = "", query: str = "", source: str = "") -> dict:
     raw = rs.job_list_all(max(1, min(250, int(limit or 150))))
     users = _users_for(raw)
     items = [_summary(jid, job, users) for jid, job in raw]
@@ -282,6 +367,10 @@ def list_jobs(limit: int = 150, status: str = "all", kind: str = "", query: str 
     query = str(query or "").strip().lower()
     if kind:
         items = [item for item in items if item["kind"] == kind]
+    if source in {"site", "telegram"}:
+        items = [item for item in items if item["source"] == source]
+    elif source == "depth":
+        items = [item for item in items if "Глубина 3D" in item["tags"]]
     if status == "active":
         items = [item for item in items if item["status"] in {"queued", "running"}]
     elif status == "problem":

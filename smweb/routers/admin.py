@@ -7,6 +7,7 @@ import zipfile
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
+from starlette.concurrency import run_in_threadpool
 
 import auth_db
 from smweb import admin_content, admin_control, admin_jobs, maintenance, runtime_settings
@@ -137,9 +138,9 @@ def revoke_code(code: str, request: Request):
 
 
 @router.get("/jobs")
-def jobs(request: Request, limit: int = 150, status: str = "all", kind: str = "", q: str = ""):
+def jobs(request: Request, limit: int = 150, status: str = "all", kind: str = "", q: str = "", source: str = ""):
     _require(request)
-    return admin_control.jobs(limit, status, kind, q)
+    return admin_control.jobs(limit, status, kind, q, source)
 
 
 # Literal job sub-routes live under /jobs/{id}/... ; the files are served inline
@@ -253,6 +254,76 @@ async def reply_support_ticket(ticket_id: str, request: Request):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     admin_control.audit("support.reply", f"ticket:{ticket_id}", {"emailed": result.get("emailed")})
     return result
+
+
+# ---------------------------------------------------------------- purchases (2026-10-09)
+@router.get("/purchases")
+def purchases_list(request: Request, days: int = 30, source: str = "", status: str = "", q: str = ""):
+    _require(request)
+    from smweb import admin_billing
+    return admin_billing.purchases(days, source if source in ("gumroad", "telegram") else "", status, q)
+
+
+@router.post("/purchases/gumroad/{sale_id}/recheck")
+def purchases_recheck(sale_id: str, request: Request):
+    _require(request, mutation=True)
+    from smweb import admin_billing
+    try:
+        result = admin_billing.recheck(sale_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    admin_control.audit("purchases.recheck", "gumroad_sale", {"status": result.get("status")})
+    return {"ok": True, **result}
+
+
+@router.post("/purchases/telegram/{payment_id}/refund")
+def purchases_refund(payment_id: str, request: Request):
+    _require(request, mutation=True)
+    from smweb import admin_billing
+    try:
+        result = admin_billing.refund_telegram(payment_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    admin_control.audit("purchases.refund", "telegram_sale", {"status": result.get("status"), "plan": result.get("plan")})
+    return {"ok": True, **result}
+
+
+@router.post("/purchases/{source}/{sale_id}/attach")
+async def purchases_attach(source: str, sale_id: str, request: Request):
+    _require(request, mutation=True)
+    body = await _json_object(request)
+    from smweb import admin_billing
+    try:
+        # sync_sale may call Gumroad over the network: keep it off the event loop.
+        result = await run_in_threadpool(admin_billing.attach, source, sale_id, body.get("user"))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    admin_control.audit("purchases.attach", f"user:{result['user_id']}",
+                        {"source": source, "status": result.get("status"), "plan": result.get("plan")})
+    return {"ok": True, **result}
+
+
+# ---------------------------------------------------------------- Info box community templates (2026-10-09)
+# Hiding is DELETE /api/admin/control/infobox/{id} in routers/infobox.py (included before this router).
+@router.get("/infobox")
+def infobox_list(request: Request, status: str = "published", q: str = "", offset: int = 0):
+    _require(request)
+    from smweb import infobox
+    return {"ok": True, **infobox.admin_listing(status, q, 60, offset)}
+
+
+@router.post("/infobox/{template_id}/restore")
+def infobox_restore(template_id: str, request: Request):
+    _require(request, mutation=True)
+    from smweb import infobox
+    if not infobox.restore(template_id):
+        raise HTTPException(status_code=404, detail="Шаблон не найден или уже опубликован")
+    admin_control.audit("infobox.restore", f"infobox:{template_id}")
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------- server errors (2026-10-01)

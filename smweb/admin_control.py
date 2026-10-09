@@ -237,7 +237,64 @@ def account_summary() -> dict:
 def overview(days: int = 30) -> dict:
     return {"ok": True, "system": system_snapshot(), "accounts": account_summary(),
             "analytics": analytics.report(days), "maintenance": maintenance.get_state(),
-            "settings": runtime_settings.snapshot(), "attention": attention_items()}
+            "settings": runtime_settings.snapshot(), "attention": attention_items(),
+            "online": _online(), "purchases": _purchases_summary(days), "fresh": fresh_activity()}
+
+
+def _online() -> int | None:
+    try:
+        from smweb import presence
+        return presence.count()
+    except Exception:
+        return None
+
+
+def _purchases_summary(days: int) -> dict | None:
+    try:
+        from smweb import admin_billing
+        return admin_billing.summary(days)
+    except Exception:
+        return None
+
+
+def fresh_activity() -> list[dict]:
+    """The recently added tools at a glance (jobs: what Redis still holds, about a day; the rest: 7 days)."""
+    try:
+        raw = [job for _, job in rs.job_list_all(250)]
+    except Exception:
+        raw = []
+    telegram = [job for job in raw if admin_jobs.job_source(job) == "telegram"]
+    depth = [job for job in raw if isinstance((job.get("opts") or {}).get("parallax"), dict)]
+    optimizer = [job for job in raw if job.get("kind") == "gif_optimizer"]
+    errors = lambda jobs: sum(1 for job in jobs if job.get("status") == "error")  # noqa: E731
+    week = time.time() - 7 * 86400
+    infobox_new = tries = 0
+    connection = auth_db._conn()
+    try:
+        try:
+            infobox_new = int(dict(connection.execute(
+                "SELECT COUNT(*) AS n FROM infobox_templates WHERE created_at>?", (week,)).fetchone())["n"] or 0)
+        except Exception:
+            pass
+        try:
+            # Normal tries only ("u:<id>"); owner's extra tries are "+u:<id>" and count what is LEFT.
+            tries = int(dict(connection.execute(
+                "SELECT COALESCE(SUM(used),0) AS n FROM feature_uses WHERE subject LIKE ? AND updated_at>?",
+                ("u:%", week)).fetchone())["n"] or 0)
+        except Exception:
+            pass
+    finally:
+        connection.close()
+    return [
+        {"key": "telegram", "title": "Нарезка через Telegram-бота", "value": len(telegram),
+         "sub": f"за сутки · ошибок {errors(telegram)}", "target": "jobs:all:telegram"},
+        {"key": "depth", "title": "Обработки с «Глубиной 3D»", "value": len(depth),
+         "sub": f"за сутки · ошибок {errors(depth)}", "target": "jobs:all:depth"},
+        {"key": "gifopt", "title": "GIF оптимизатор", "value": len(optimizer),
+         "sub": f"за сутки · ошибок {errors(optimizer)}", "target": "jobs:all"},
+        {"key": "infobox", "title": "Новые шаблоны Info box", "value": infobox_new, "sub": "за 7 дней", "target": "infobox"},
+        {"key": "tries", "title": "Бесплатные попытки недели", "value": tries, "sub": "потрачено за 7 дней", "target": "users"},
+    ]
 
 
 def attention_items() -> list[dict]:
@@ -271,6 +328,15 @@ def attention_items() -> list[dict]:
     if summary["gallery_pending"]:
         items.append({"kind": "gallery", "severity": "info", "title": f"На модерации: {summary['gallery_pending']}",
                       "detail": "Работы ещё не опубликованы.", "action": "Проверь галерею.", "target": "gallery"})
+    try:
+        from smweb import admin_billing
+        waiting = admin_billing.pending_count()
+    except Exception:
+        waiting = 0
+    if waiting:
+        items.append({"kind": "purchases", "severity": "warning", "title": f"Оплачено, но Pro не получен: {waiting}",
+                      "detail": "Покупка прошла, но ещё не привязана ни к одному аккаунту.",
+                      "action": "Привяжи к аккаунту или отправь покупателю ссылку.", "target": "purchases:pending"})
     backup = admin_content.backup_snapshot()
     if backup["state"] != "ok":
         items.append({"kind": "backup", "severity": "warning", "title": "Свежая резервная копия не найдена",
@@ -353,15 +419,46 @@ def user_detail(user_id: int) -> dict:
         except (TypeError, ValueError, json.JSONDecodeError):
             value["details"] = {}
         audit_safe.append(value)
+    from smweb import admin_billing, free_limits
     return {"ok": True, "user": dict(user), "projects": [dict(row) for row in projects],
             "gallery": [dict(row) for row in gallery], "jobs": recent_jobs,
             "sessions": {"count": int(session_row["total"] or 0), "last_active": session_row["last_active"]},
-            "limits": user_limits.get(uid), "audit": audit_safe}
+            "limits": user_limits.get(uid), "audit": audit_safe,
+            "purchases": admin_billing.for_user(uid), "weekly": free_limits.account_week(uid),
+            "results": _saved_results_count(uid)}
+
+
+def _saved_results_count(uid: int) -> int:
+    connection = auth_db._conn()
+    try:
+        return int(dict(connection.execute("SELECT COUNT(*) AS n FROM saved_results WHERE user_id=?", (uid,)).fetchone())["n"] or 0)
+    except Exception:
+        return 0
+    finally:
+        connection.close()
 
 
 def user_action(user_id: int, action: str, payload: dict) -> dict:
     uid = int(user_id)
     action = str(action or "")
+    if action in {"grant_try", "clear_tries"}:
+        check = auth_db._conn()
+        try:
+            if not check.execute("SELECT id FROM users WHERE id=?", (uid,)).fetchone():
+                raise LookupError("Account not found")
+        finally:
+            check.close()
+        from smweb import free_limits
+        if action == "grant_try":
+            feature = str(payload.get("feature") or "all")
+            features = list(free_limits.WEEKLY_FEATURES) if feature == "all" else [feature]
+            count = max(1, min(10, int(payload.get("count") or 1)))
+            weekly = free_limits.give_bonus(uid, features, count)
+            audit("user.grant_try", f"user:{uid}", {"feature": feature, "count": count})
+        else:
+            weekly = free_limits.clear_bonus(uid)
+            audit("user.clear_tries", f"user:{uid}")
+        return {"ok": True, "weekly": weekly}
     if action in {"set_limits", "clear_limits"}:
         check = auth_db._conn()
         try:
@@ -424,8 +521,8 @@ def user_action(user_id: int, action: str, payload: dict) -> dict:
 
 
 
-def jobs(limit: int = 100, status: str = "all", kind: str = "", query: str = "") -> dict:
-    return admin_jobs.list_jobs(limit, status, kind, query)
+def jobs(limit: int = 100, status: str = "all", kind: str = "", query: str = "", source: str = "") -> dict:
+    return admin_jobs.list_jobs(limit, status, kind, query, source)
 
 
 def cancel_job(job_id: str) -> dict:

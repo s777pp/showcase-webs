@@ -44,3 +44,16 @@ def ping(owner_key: str, now: float | None = None) -> int:
         for key in [k for k, seen in _local.items() if seen < now - WINDOW]:
             _local.pop(key, None)
         return len(_local)
+
+
+def count(now: float | None = None) -> int:
+    """Visitors seen within the window, without adding one (admin overview)."""
+    now = time.time() if now is None else now
+    r = rs._r()
+    if r:
+        try:
+            return int(r.zcount(KEY, now - WINDOW, "+inf") or 0)
+        except Exception as exc:
+            rs._note(exc)
+    with _lock:
+        return sum(1 for seen in _local.values() if seen >= now - WINDOW)

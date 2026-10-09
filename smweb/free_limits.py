@@ -11,6 +11,10 @@
 
 Still Pro-only with no free try: Upscale and Steam Check. The daily file quota itself lives in core.quota_state.
 
+Extra tries from the owner (admin user card, 2026-10-09) are a separate row ``+u:<uid>`` per feature and week whose
+``used`` column counts the extra tries LEFT. They are spent only after the normal account + address try is gone,
+so they also help when the address was used by somebody else first.
+
 A try spent on a job that then fails is given back (``ticket`` in the job payload, ``refund_job`` from
 redis_store.job_update), so a server error never costs the user their week.
 """
@@ -92,6 +96,10 @@ def subjects(user_id: int | None, ip: str | None) -> list[str]:
     return result
 
 
+def bonus_subject(user_id: int) -> str:
+    return f"+u:{int(user_id)}"
+
+
 def _used(c, feature: str, subject: str, period: str) -> int:
     row = c.execute("SELECT used FROM feature_uses WHERE feature=? AND subject=? AND period=?",
                     (feature, subject, period)).fetchone()
@@ -106,7 +114,8 @@ def left(feature: str, user_id: int | None, ip: str | None, now: float | None = 
     period, limit = week(now), weekly_limit()
     c = auth_db._conn()
     try:
-        return max(0, min(limit - _used(c, feature, subject, period) for subject in who))
+        bonus = _used(c, feature, bonus_subject(user_id), period) if user_id else 0
+        return max(0, min(limit - _used(c, feature, subject, period) for subject in who)) + bonus
     finally:
         c.close()
 
@@ -129,11 +138,70 @@ def consume(feature: str, user_id: int | None, ip: str | None, now: float | None
                 (feature, subject, period, stamp, limit))
             if cursor.rowcount != 1:
                 c.rollback()
-                return False
+                return _spend_bonus(c, feature, user_id, period, stamp)
         c.commit()
         return True
     finally:
         c.close()
+
+
+def _spend_bonus(c, feature: str, user_id: int | None, period: str, stamp: float) -> bool:
+    """An extra try the owner gave this account for this week, if one is left."""
+    if not user_id:
+        return False
+    cursor = c.execute("UPDATE feature_uses SET used=used-1, updated_at=? WHERE feature=? AND subject=? AND period=? AND used>0",
+                       (stamp, feature, bonus_subject(user_id), period))
+    if cursor.rowcount == 1:
+        c.commit()
+        return True
+    c.rollback()
+    return False
+
+
+def give_bonus(user_id: int, features, count: int = 1, now: float | None = None) -> dict:
+    """Owner action: extra tries for this week (they vanish on Monday like the normal ones)."""
+    period, stamp = week(now), time.time()
+    count = max(1, min(10, int(count or 1)))
+    chosen = [f for f in (features or WEEKLY_FEATURES) if f in WEEKLY_FEATURES]
+    if not chosen:
+        raise ValueError("feature")
+    c = auth_db._conn()
+    try:
+        for feature in chosen:
+            c.execute(
+                "INSERT INTO feature_uses (feature, subject, period, used, updated_at) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(feature, subject, period) DO UPDATE SET used=feature_uses.used+excluded.used, "
+                "updated_at=excluded.updated_at",
+                (feature, bonus_subject(user_id), period, count, stamp))
+        c.commit()
+    finally:
+        c.close()
+    return account_week(user_id, now)
+
+
+def clear_bonus(user_id: int, now: float | None = None) -> dict:
+    c = auth_db._conn()
+    try:
+        c.execute("DELETE FROM feature_uses WHERE subject=? AND period=?", (bonus_subject(user_id), week(now)))
+        c.commit()
+    finally:
+        c.close()
+    return account_week(user_id, now)
+
+
+def account_week(user_id: int, now: float | None = None) -> dict:
+    """For the admin user card: this week's tries of the account (the address part is not known here)."""
+    period, limit = week(now), weekly_limit()
+    c = auth_db._conn()
+    try:
+        rows = {}
+        for feature in WEEKLY_FEATURES:
+            used = _used(c, feature, f"u:{int(user_id)}", period)
+            bonus = _used(c, feature, bonus_subject(user_id), period)
+            rows[feature] = {"used": used, "limit": limit, "bonus": bonus, "left": max(0, limit - used) + bonus}
+    finally:
+        c.close()
+    return {"period": period, "resets_at": week_resets_at(now), "limit": limit, "features": rows}
 
 
 def refund(feature: str, who: list[str], period: str) -> None:
@@ -185,7 +253,8 @@ def state(user_id: int | None, ip: str | None, pro: bool) -> dict:
     try:
         for feature in WEEKLY_FEATURES:
             used = max((_used(c, feature, subject, period) for subject in who), default=0)
-            weekly[feature] = {"limit": limit, "left": max(0, limit - used) if who else 0}
+            bonus = _used(c, feature, bonus_subject(user_id), period) if user_id else 0
+            weekly[feature] = {"limit": limit, "left": (max(0, limit - used) + bonus) if who else 0}
         if user_id:
             day = time.strftime("%Y-%m-%d", time.gmtime())
             row = c.execute("SELECT renders FROM builder_usage WHERE user_id=? AND day_key=?", (int(user_id), day)).fetchone()

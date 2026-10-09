@@ -89,6 +89,7 @@ def hide(template_id: str, request: Request):
     """The owner hides any community template (admin session + CSRF header, like the rest of the control centre)."""
     if not admin_control.authorised(request, mutation=True) or not admin_control.origin_allowed(request):
         return JSONResponse({"ok": False, "msg": "Administrator session required"}, status_code=403)
-    ok = infobox.remove(template_id)
-    admin_control.audit("infobox.hide", template_id)
-    return {"ok": ok}
+    if not infobox.remove(template_id):
+        return JSONResponse({"ok": False, "msg": "Шаблон не найден"}, status_code=404)
+    admin_control.audit("infobox.hide", f"infobox:{template_id}")
+    return {"ok": True}

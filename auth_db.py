@@ -1065,7 +1065,7 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
         c.execute("DELETE FROM da_presets WHERE user_id=?", (uid,))
         c.execute("DELETE FROM infobox_templates WHERE user_id=?", (uid,))
         c.execute("DELETE FROM builder_usage WHERE user_id=?", (uid,))
-        c.execute("DELETE FROM feature_uses WHERE subject=?", (f"u:{uid}",))
+        c.execute("DELETE FROM feature_uses WHERE subject IN (?,?)", (f"u:{uid}", f"+u:{uid}"))
         c.execute("DELETE FROM saved_results WHERE user_id=?", (uid,))
         c.execute("DELETE FROM gumroad_orders WHERE user_id=?", (uid,))
         c.execute("UPDATE gumroad_sales SET user_id=NULL WHERE user_id=?", (uid,))
