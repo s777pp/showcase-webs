@@ -55,6 +55,8 @@ def normalize(raw) -> dict | None:
         out["particles"] = {"kind": particles["kind"], "amount": int(round(_num(particles.get("amount"), 2, 1, 3)))}
     if raw.get("atmosphere") in ATMOSPHERE:
         out["atmosphere"] = raw["atmosphere"]
+    # Fog / light brightness (user feedback 2026-10-10: one fog density does not suit every picture).
+    out["atmosphereLevel"] = round(_num(raw.get("atmosphereLevel"), 1.0, 0.25, 2.0), 2)
     def strokes_of(block):
         out_strokes = []
         for item in (block.get("strokes") or [])[:MAX_STROKES] if isinstance(block.get("strokes"), list) else []:
@@ -113,6 +115,19 @@ def _sprite_disc(radius: float) -> np.ndarray:
     return np.clip(1 - d, 0, 1) ** 1.6
 
 
+def _sprite_star(radius: float) -> np.ndarray:
+    """A bright core with a soft four-point glint, so a star still reads at preview size."""
+    size = int(math.ceil(radius * 6 + 3)) | 1
+    ys, xs = np.mgrid[0:size, 0:size].astype(np.float32)
+    c = (size - 1) / 2
+    dx, dy = np.abs(xs - c), np.abs(ys - c)
+    core = np.clip(1 - np.sqrt(dx ** 2 + dy ** 2) / max(0.8, radius), 0, 1) ** 1.3
+    reach = max(2.0, radius * 3)
+    rays = np.maximum(np.clip(1 - dx / reach, 0, 1) * np.clip(1 - dy / 0.9, 0, 1),
+                      np.clip(1 - dy / reach, 0, 1) * np.clip(1 - dx / 0.9, 0, 1)) ** 1.5 * 0.75
+    return np.maximum(core, rays)
+
+
 def _sprite_petal(length: float, angle: float) -> np.ndarray:
     size = int(math.ceil(length * 2 + 3))
     ys, xs = np.mgrid[0:size, 0:size].astype(np.float32)
@@ -139,7 +154,7 @@ PARTICLE_STYLE = {
     "sakura": (42, (255, 183, 214), 0.013, (1, 1), 0.05, 0.0),
     "rain":   (140, (210, 228, 255), 0.04, (3, 5), 0.0, 0.0),
     "sparks": (55, (255, 196, 110), 0.0055, (1, 2), 0.01, 0.6),
-    "stars":  (70, (225, 240, 255), 0.0045, (0, 0), 0.0, 0.5),
+    "stars":  (60, (235, 244, 255), 0.0065, (0, 0), 0.0, 0.7),
 }
 BUCKETS = (0.28, 0.5, 0.72, 0.95)
 
@@ -245,12 +260,23 @@ class Scene:
         count, color, size, cycles, drift, glow = PARTICLE_STYLE[p["kind"]]
         self.glow = glow
         count = int(count * (0.55, 1.0, 1.7)[p["amount"] - 1])
+        # Stars sit on the far part of THIS picture: a fixed far bucket (0.28) hid them behind everything on most art,
+        # whose background is rarely that far (user feedback 2026-10-10: "the stars effect is not there at all").
+        star_far = float(np.clip(np.percentile(self.depth, 45) + 0.03, 0.12, 0.9))
         for _ in range(count):
-            z = float(rng.uniform(0.3, 1.0) ** 0.7) if p["kind"] != "stars" else float(rng.uniform(0.05, 0.35))
-            bucket = min(BUCKETS, key=lambda b: abs(b - z))
+            x, y = float(rng.uniform(0, 1)), float(rng.uniform(0, 1))
+            if p["kind"] == "stars":
+                for _try in range(24):               # prefer spots where the sky / far background is
+                    if self.depth[min(self.h - 1, int(y * self.h)), min(self.w - 1, int(x * self.w))] < star_far:
+                        break
+                    x, y = float(rng.uniform(0, 1)), float(rng.uniform(0, 1))
+                z, bucket = 0.5, star_far
+            else:
+                z = float(rng.uniform(0.3, 1.0) ** 0.7)
+                bucket = min(BUCKETS, key=lambda b: abs(b - z))
             scale = 0.55 + 0.9 * z
             self.parts.append({
-                "x": float(rng.uniform(0, 1)), "y": float(rng.uniform(0, 1)), "bucket": bucket,
+                "x": x, "y": y, "bucket": bucket,
                 "size": max(0.6, size * self.w * scale), "fall": int(rng.integers(cycles[0], cycles[1] + 1)) if cycles[1] else 0,
                 "drift": drift * float(rng.uniform(0.4, 1.0)), "sway": int(rng.integers(1, 3)), "phase": float(rng.uniform(0, 1)),
                 "spin": int(rng.choice([-2, -1, 1, 2])), "alpha": float(rng.uniform(0.75, 1.0)) * (0.7 + 0.3 * z),
@@ -327,12 +353,12 @@ class Scene:
         far = np.clip(1 - depth_here, 0, 1)
         if self.fog is not None:
             haze = np.roll(self.fog, int(round(u * self.w)), axis=1)
-            alpha = (0.42 * haze * far ** 1.6)[..., None]
+            alpha = np.minimum(0.92, 0.42 * o["atmosphereLevel"] * haze * far ** 1.6)[..., None]
             out[..., :3] = out[..., :3] * (1 - alpha) + np.array([0.78, 0.84, 0.95], np.float32) * alpha * out[..., 3:4]
         if o["atmosphere"] == "light":
             centre = -0.35 + 1.7 * u
             band = np.exp(-((self.diag - centre) / 0.07) ** 2) * far ** 1.2
-            out[..., :3] = np.clip(out[..., :3] + (band * 0.38)[..., None] * np.array([1.0, 0.94, 0.86], np.float32) * out[..., 3:4], 0, 1)
+            out[..., :3] = np.clip(out[..., :3] + (band * 0.38 * o["atmosphereLevel"])[..., None] * np.array([1.0, 0.94, 0.86], np.float32) * out[..., 3:4], 0, 1)
         if self.parts:
             out = self._draw_particles(out, depth_here, u)
         if self.premultiplied:
@@ -341,14 +367,14 @@ class Scene:
         return np.clip(out * 255 + 0.5, 0, 255).astype(np.uint8)
 
     def _draw_particles(self, out, depth_here, u):
-        layers = {b: np.zeros((self.h, self.w), np.float32) for b in BUCKETS}
+        layers = {}
         for p in self.parts:
             kind = self.kind
             alpha = p["alpha"]
             if kind == "stars":
                 x, y = p["x"], p["y"]
-                alpha *= 0.45 + 0.55 * (0.5 + 0.5 * math.sin(2 * math.pi * (p["sway"] * u + p["phase"])))
-                sprite = self._sprite(("disc", round(p["size"], 1)), lambda: _sprite_disc(p["size"]))
+                alpha *= 0.35 + 0.65 * (0.5 + 0.5 * math.sin(2 * math.pi * (p["sway"] * u + p["phase"])))
+                sprite = self._sprite(("star", round(p["size"], 1)), lambda: _sprite_star(p["size"]))
             elif kind == "sparks":
                 y = (p["y"] - p["fall"] * u) % 1.0
                 x = (p["x"] + p["drift"] * math.sin(2 * math.pi * (p["sway"] * u + p["phase"]))) % 1.0
@@ -368,6 +394,8 @@ class Scene:
                 y = (p["y"] + p["fall"] * u) % 1.0
                 x = (p["x"] + p["drift"] * math.sin(2 * math.pi * (p["sway"] * u + p["phase"]))) % 1.0
                 sprite = self._sprite(("disc", round(p["size"], 1)), lambda: _sprite_disc(p["size"]))
+            if p["bucket"] not in layers:
+                layers[p["bucket"]] = np.zeros((self.h, self.w), np.float32)
             self._stamp(layers[p["bucket"]], sprite, x * self.w, y * self.h, alpha)
         for bucket, layer in layers.items():
             if not layer.any():

@@ -1654,6 +1654,59 @@ Only the hero exists for now; content blocks will be added below it later.
 - Privacy pages (8 languages) list fal.ai (MiniMax) and Gemini rewriting the wish. Tests: `tests/test_ai_animate.py`.
 - Not built yet (owner wants beta feedback first): credits / packs (proposed 5 / $3.99, 15 / $9.99, 40 / $22.99).
 
+## 6.37 Letters tab rebuilt + automatic fill through the extension (2026-10-10, local, not deployed)
+
+- Owner: "like the reference screenshots, our design, never copy steamprofile.io code or names". `#tab-letters` is two
+  views (`static/js/achievement-letters.js`, keyed COPY in 8 languages, `css/achievement-letters.css`, key ach8):
+  **gallery** = text field capped at 7 (Steam's limit, counter n/7), examples, game search, alphabet filter All/A-Z/A-Я,
+  colour chips, "N games", cards = a small copy of Steam's Achievement Showcase with the visitor's text in that game's
+  style over its blurred capsule art + "A-Z 26/26 · А-Я 33/33 · 0-9 10/10 · +N symbols" + "your text a/b" + Open; the
+  first card is the mix (fewest games). **editor** = back, Steam-sized preview (64 px icons 28 px apart, sample stats
+  row labelled as an example), text + note about 7 slots and spaces, "Icons in order" (per-position picks
+  `state.slots[i] = {c, appid, v}`; a click opens every option for that slot), "All icons of the game · N" grouped
+  Latin / Cyrillic / digits / symbols with colour chips (mix: tabs per used game; a click replaces the same character
+  or appends it, max 7), sticky "What to do": extension block, per-slot achievement + %, games with "Buy on Steam", steps.
+- **Steam facts checked live on the owner's account 2026-10-10:** `PreviewShowcaseConfig('17', p, level, slots)` with
+  `{appid, title: statid_bit}` fills the editor; `<profile>/ajaxgetachievementsforgame/<appid>` lists only unlocked
+  achievements and its img src carries the same 40-hex icon hash as GetSchemaForGame (matched for Zup! 8). **The public
+  profile drops empty slots**: H,E,L,(empty),O was saved and showed "HELO" (then the owner's Game Collector was put
+  back and saved). So a space needs a blank achievement: the builder now maps names Space/Blank/Пробел/... to the
+  symbol " " (needs the next catalogue run); without one the slot shows as missing and the extension leaves it out.
+  In a background Chrome tab `setTimeout` is throttled to minutes: never `await` timers in CDP evaluate there.
+- Catalogue: the builder also reads the Russian schema (Cyrillic sets: a set needs 20 Latin OR 20 Cyrillic letters) and
+  symbols; rerun on 2026-10-10 seeded with the previous appids (Steam API answers 403 now and then, the script retries).
+- Extension **1.2.1** = copy of 1.2.0 in `Desktop\Projects\расширение\1.2.1` (+ `showcase-helper-1.2.1.zip`): PING
+  returns `features: ['achievement_letters']`; bridge message `APPLY_ACHIEVEMENT_LETTERS {mode: auto|manual, word,
+  picks: [{appid, icon, letter, title, game} | null] (<= 7)}` -> background stores `sshPendingLetters` and opens
+  `/my/edit/showcases`; `content-showcase-manager.js` resolves every icon hash to `statid_bit`, picks the place
+  (existing type 17 -> free place -> asks which showcase to replace), fills through the shared `configure` path,
+  verifies the hidden inputs, pulses Save. Not unlocked letters: offers to place the rest (says what the profile will
+  show) or the checklist. Manual mode = a right-side checklist panel (icon, letter, game, state placed / unlocked / not
+  unlocked + Store link, "Fill it for me"). The site asks for 1.2.1+ and otherwise shows Update / Install.
+- Icon hosts (`ICON_HOSTS` + `setIcon` in achievement-letters.js, tried in order): `shared.akamai.steamstatic.com/
+  community_assets/images/apps/` first (serves every game, no redirect), then the old `cdn.cloudflare.../steamcommunity/
+  public/images/apps/` (404 for newer games), then `community.fastly...`. The owner (Germany, local server) saw most
+  icons stay blank with the Fastly host; `shared.steamstatic.com` / `shared.cloudflare` redirect to Fastly too. Cards:
+  whole card = button (no Open); a character the game has only in other colours is shown dimmed (`off`, orange dot).
+- Not tested end to end yet: the 1.2.1 package itself in a browser (the owner loads it unpacked or publishes it). The
+  Steam side (fill, save, profile look) was tested directly in the page.
+
+## 6.38 User feedback fixes: landing particles, depth stars and fog level (2026-10-10, local, not deployed)
+
+- Landing: `home-petals.js` draws each colour ONCE into a sprite with its glow (`sprite()`, REF 32, blur 1.33 x size)
+  and frames only `drawImage` it under one `setTransform` (rotation, tumble, scale): per-petal `shadowBlur` every frame
+  was the stutter users saw in every browser. `home-stars.js` canvas covers only the left `SPAN` = 56 % of the hero
+  (home.css) and fades out inside the canvas (`fadeOut`, destination-out gradient; bands 47-56 % with the VRM
+  silhouette, 30-41 % without); the old full-screen canvas under a CSS mask-image is gone. Hero sizes use the hero
+  width `FW = W / SPAN`. `home-scroll.js` sky stars are sorted by colour, fillStyle changes only between groups.
+  Main-thread cost was already small (~1 ms/frame, Playwright + CDP); these are raster / compositor savings.
+  `scripts/qa_home_layout.py` now waits after viewport changes (home-scroll reloads the page across 1100 px).
+- Depth (`smweb/depth_fx.py`): stars use a bucket from THIS picture (`percentile(depth, 45) + 0.03`) and prefer far
+  spots, with a four-point glint sprite (`_sprite_star`); the fixed 0.28 bucket hid them on most art. New option
+  `atmosphereLevel` 0.25-2 (fog alpha and light band), slider "Brightness" (`airLevel` in process-depth.js COPY) under
+  Air when fog or light is on. Test: `test_stars_show_on_a_mid_depth_background_and_fog_follows_its_level`.
+- Not done (owner decision): the same user would move "Rows and squares" into Process.
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or

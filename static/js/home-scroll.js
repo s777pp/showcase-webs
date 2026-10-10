@@ -544,6 +544,9 @@
         });
       }
     });
+    // Grouped by colour: the frame loop then sets fillStyle a handful of times instead of once per star.
+    stars.sort(function (a, b) { return a.depth - b.depth || (a.c < b.c ? -1 : a.c > b.c ? 1 : 0); });
+    stars.forEach(function (st) { st.fill = 'rgb(' + st.c + ')'; });
   }
   function spawnMeteor(now) {
     var ang = (20 + Math.random() * 12) * Math.PI / 180;      // upper left -> lower right, like on the hero
@@ -677,6 +680,7 @@
     var c = skyCtx, t = now / 1000, scroll = scrollY;
     c.setTransform(skyDpr, 0, 0, skyDpr, 0, 0);
     c.clearRect(0, 0, skyW, skyH);
+    var fill = '';
     for (var i = 0; i < stars.length; i++) {
       var st = stars[i];
       var y = ((st.y - scroll * st.par) % skyH + skyH) % skyH;
@@ -697,7 +701,7 @@
         }
         c.globalAlpha = a;
         if (st.depth === 2) { var sz = st.r * 7; c.drawImage(sprite, px - sz / 2, py - sz / 2, sz, sz); }
-        else { c.fillStyle = 'rgb(' + st.c + ')'; c.fillRect(px, py, st.r, st.r); }
+        else { if (fill !== st.fill) { fill = st.fill; c.fillStyle = fill; } c.fillRect(px, py, st.r, st.r); }
         continue;
       }
       if (st.depth === 2) {
@@ -706,7 +710,7 @@
         c.drawImage(sprite, st.x - size / 2, y - size / 2, size, size);
       } else {
         c.globalAlpha = a;
-        c.fillStyle = 'rgb(' + st.c + ')';
+        if (fill !== st.fill) { fill = st.fill; c.fillStyle = fill; }
         c.fillRect(st.x, y, st.r, st.r);
       }
     }

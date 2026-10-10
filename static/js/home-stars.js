@@ -1,5 +1,8 @@
 /* Landing hero: shooting stars and a few twinkling stars over the painted background.
-   One canvas over the hero shade; the VRM silhouette is cut out, so stars fly behind her, paused off screen, in hidden tabs and for reduced motion. */
+   One canvas over the hero shade; the VRM silhouette is cut out, so stars fly behind her, paused off screen, in hidden tabs and for reduced motion.
+   2026-10-10 (user report: particles stutter): the canvas covers only the left SPAN of the hero (stars never go further)
+   and fades out inside the canvas; it used to cover the whole hero under a CSS mask-image, which the browser had to
+   re-apply to a full-screen layer on every frame. */
 (function () {
   'use strict';
   var canvas = document.getElementById('homeStars');
@@ -10,7 +13,11 @@
   var ANGLE = 0.42;                       // ~24 deg down to the right, like IMAGE/stars.png
   var DIR_X = Math.cos(ANGLE), DIR_Y = Math.sin(ANGLE);
   var COLORS = ['255,255,255', '140,230,255', '190,160,255', '120,200,255'];
-  var W = 0, H = 0, unit = 1, dpr = 1;
+  var W = 0, H = 0, FW = 0, unit = 1, dpr = 1;
+  var SPAN = 0.56;                        // the canvas width as a share of the hero (home.css .home-stars)
+  // Where the stars fade out, as shares of the hero width: behind the character once her silhouette is known,
+  // before her otherwise (the old CSS masks: 47-56 % and 30-41 %).
+  var FADE = { occluded: [0.47, 0.56], plain: [0.30, 0.41] };
   var meteors = [], sparks = [], nextSpawn = 0, last = 0, raf = 0, visible = true;
   // Character silhouette, copied from the VRM canvas right after each render (WebGL buffers
   // are only readable in the same task), so stars pass BEHIND her.
@@ -33,13 +40,14 @@
     var box = canvas.getBoundingClientRect();
     dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     W = Math.max(1, box.width); H = Math.max(1, box.height);
-    unit = Math.max(0.6, Math.min(W / 1672, H / 941)); // one reference pixel of the 1672x941 art
+    FW = W / SPAN;                                       // the whole hero width
+    unit = Math.max(0.6, Math.min(FW / 1672, H / 941)); // one reference pixel of the 1672x941 art
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     sparks = [];
-    var count = Math.round(Math.min(70, W * H / 26000));
+    var count = Math.round(Math.min(70, FW * H / 26000));
     for (var i = 0; i < count; i++) {
-      sparks.push({ x: rand(0, W * 0.55), y: rand(0, H * 0.62), r: rand(0.7, 1.7) * Math.max(unit, 0.7),
+      sparks.push({ x: rand(0, FW * 0.55), y: rand(0, H * 0.62), r: rand(0.7, 1.7) * Math.max(unit, 0.7),
         phase: rand(0, Math.PI * 2), speed: rand(0.6, 1.8), color: COLORS[i % COLORS.length] });
     }
   }
@@ -47,7 +55,7 @@
   function spawn(now) {
     // Mostly enter from the upper-left area and cross the copy column / sky.
     var fromTop = Math.random() < 0.45;
-    var x = fromTop ? rand(-0.05 * W, 0.42 * W) : rand(-0.25 * W, -0.02 * W);
+    var x = fromTop ? rand(-0.05 * FW, 0.42 * FW) : rand(-0.25 * FW, -0.02 * FW);
     var y = fromTop ? rand(-0.08 * H, 0.02 * H) : rand(0, 0.7 * H);
     var big = Math.random() < 0.22;
     meteors.push({
@@ -105,12 +113,26 @@
     }
     if (now >= nextSpawn && meteors.length < 8) spawn(now);
     meteors = meteors.filter(function (m) { return drawMeteor(m, now); });
-    if (occ && ms - occ.at < 1000) {
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.drawImage(occluder, occ.x, occ.y, occ.w, occ.h);
-    }
+    var occluded = occ && ms - occ.at < 1000;
+    ctx.globalCompositeOperation = 'destination-out';
+    if (occluded) ctx.drawImage(occluder, occ.x, occ.y, occ.w, occ.h);
+    fadeOut(canvas.classList.contains('is-occluded') ? FADE.occluded : FADE.plain);
     ctx.globalCompositeOperation = 'source-over';
     raf = requestAnimationFrame(frame);
+  }
+
+  // Erase towards the right edge of the star area (destination-out is already set).
+  var fadeCache = { key: '', grad: null };
+  function fadeOut(band) {
+    var x0 = band[0] * FW, x1 = Math.min(W, band[1] * FW), key = x0 + ':' + x1;
+    if (fadeCache.key !== key) {
+      var g = ctx.createLinearGradient(x0, 0, x1, 0);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,1)');
+      fadeCache = { key: key, grad: g };
+    }
+    ctx.fillStyle = fadeCache.grad;
+    ctx.fillRect(x0, 0, x1 - x0, H);
+    if (x1 < W) { ctx.fillStyle = '#000'; ctx.fillRect(x1, 0, W - x1, H); }
   }
 
   function start() { if (!raf && visible && !document.hidden) { last = 0; meteors = []; raf = requestAnimationFrame(frame); } }

@@ -13,7 +13,7 @@
     en: { title: 'Depth (3D effect)', hint: 'The picture comes alive: depth, particles between the layers, haze, focus, breathing and hair. You get a seamless 4-second GIF.',
       on: 'Add depth', looks: 'Quick looks', lookSnow: 'Snowfall', lookSakura: 'Sakura', lookRain: 'Rainy night', lookCinema: 'Cinema', lookAlive: 'Living portrait', lookNight: 'Starry night',
       camera: 'Camera', none: 'None', orbit: 'Orbit', sway: 'Sway', float: 'Float', dolly: 'Zoom in', strength: 'Strength', focus: 'What stays still', near: 'near', far: 'far',
-      particles: 'Particles between the layers', snow: 'Snow', sakura: 'Sakura', rain: 'Rain', sparks: 'Sparks', stars: 'Stars', amount: 'How many',
+      particles: 'Particles between the layers', snow: 'Snow', sakura: 'Sakura', rain: 'Rain', sparks: 'Sparks', stars: 'Stars', amount: 'How many', airLevel: 'Brightness',
       atmosphere: 'Air', fog: 'Fog', light: 'Light beam', focuspull: 'Focus pull', focuspullHint: 'Sharpness moves from the far plane to the near one and back.',
       breath: 'Breathing', chest: 'Chest bounce', markBody: 'Mark the body', bodyHint: 'Paint over what should breathe: the chest and shoulders. Paint nothing and the body is found automatically.',
       hair: 'Hair sway', hairTip: 'Works best on hair that is clearly visible: loose behind the back or at the sides. Better not paint the fringe or strands over the face.', markHair: 'Paint the hair', brush: 'Brush', undo: 'Undo', clear: 'Clear', hairHint: 'Paint over the strands that should sway, from the roots to the tips.',
@@ -24,7 +24,7 @@
     ru: { title: 'Объём (3D-эффект)', hint: 'Картинка оживает: объём, частицы между слоями, туман, фокус, дыхание и волосы. Получается бесшовная GIF на 4 секунды.',
       on: 'Добавить объём', looks: 'Быстрый выбор', lookSnow: 'Снегопад', lookSakura: 'Сакура', lookRain: 'Дождливая ночь', lookCinema: 'Кино', lookAlive: 'Живой портрет', lookNight: 'Звёздная ночь',
       camera: 'Камера', none: 'Нет', orbit: 'Облёт', sway: 'Покачивание', float: 'Парение', dolly: 'Наезд', strength: 'Сила', focus: 'Что стоит на месте', near: 'ближнее', far: 'дальнее',
-      particles: 'Частицы между слоями', snow: 'Снег', sakura: 'Сакура', rain: 'Дождь', sparks: 'Искры', stars: 'Звёзды', amount: 'Сколько',
+      particles: 'Частицы между слоями', snow: 'Снег', sakura: 'Сакура', rain: 'Дождь', sparks: 'Искры', stars: 'Звёзды', amount: 'Сколько', airLevel: 'Яркость',
       atmosphere: 'Воздух', fog: 'Туман', light: 'Луч света', focuspull: 'Перевод фокуса', focuspullHint: 'Резкость переходит с дальнего плана на ближний и обратно.',
       breath: 'Дыхание', chest: 'Покачивание груди', markBody: 'Указать корпус', bodyHint: 'Закрась кистью то, что должно дышать: грудь и плечи. Если ничего не закрашивать, корпус найдётся сам.',
       hair: 'Волосы на ветру', hairTip: 'Лучше всего качаются волосы, которые хорошо видны: распущенные за спиной или по бокам. Чёлку и пряди на лице лучше не закрашивать.', markHair: 'Закрасить волосы', brush: 'Кисть', undo: 'Отменить', clear: 'Очистить', hairHint: 'Закрась кистью пряди, которые должны качаться, от корней до кончиков.',
@@ -35,7 +35,7 @@
     de: { title: 'Tiefe (3D-Effekt)', hint: 'Das Bild wird lebendig: Tiefe, Partikel zwischen den Ebenen, Dunst, Fokus, Atmen und Haare. Du bekommst ein nahtloses 4-Sekunden-GIF.',
       on: 'Tiefe hinzufügen', looks: 'Schnellauswahl', lookSnow: 'Schneefall', lookSakura: 'Sakura', lookRain: 'Regennacht', lookCinema: 'Kino', lookAlive: 'Lebendiges Porträt', lookNight: 'Sternennacht',
       camera: 'Kamera', none: 'Keine', orbit: 'Umkreisen', sway: 'Schwenken', float: 'Schweben', dolly: 'Heranzoomen', strength: 'Stärke', focus: 'Was stillsteht', near: 'nah', far: 'fern',
-      particles: 'Partikel zwischen den Ebenen', snow: 'Schnee', sakura: 'Sakura', rain: 'Regen', sparks: 'Funken', stars: 'Sterne', amount: 'Wie viele',
+      particles: 'Partikel zwischen den Ebenen', snow: 'Schnee', sakura: 'Sakura', rain: 'Regen', sparks: 'Funken', stars: 'Sterne', amount: 'Wie viele', airLevel: 'Helligkeit',
       atmosphere: 'Luft', fog: 'Nebel', light: 'Lichtstrahl', focuspull: 'Schärfeverlagerung', focuspullHint: 'Die Schärfe wandert von hinten nach vorne und zurück.',
       breath: 'Atmen', chest: 'Brustwippen', markBody: 'Oberkörper markieren', bodyHint: 'Male über das, was atmen soll: Brust und Schultern. Malst du nichts, wird der Oberkörper automatisch erkannt.',
       hair: 'Haare im Wind', hairTip: 'Am besten wirkt es bei gut sichtbaren Haaren: offen hinter dem Rücken oder an den Seiten. Pony und Strähnen über dem Gesicht besser nicht bemalen.', markHair: 'Haare bemalen', brush: 'Pinsel', undo: 'Rückgängig', clear: 'Leeren', hairHint: 'Male über die Strähnen, die schwingen sollen, vom Ansatz bis zu den Spitzen.',
@@ -46,7 +46,7 @@
     tr: { title: 'Derinlik (3D efekt)', hint: 'Resim canlanır: derinlik, katmanlar arasında parçacıklar, sis, odak, nefes ve saçlar. Kusursuz döngülü 4 saniyelik bir GIF elde edersin.',
       on: 'Derinlik ekle', looks: 'Hızlı seçim', lookSnow: 'Kar yağışı', lookSakura: 'Sakura', lookRain: 'Yağmurlu gece', lookCinema: 'Sinema', lookAlive: 'Canlı portre', lookNight: 'Yıldızlı gece',
       camera: 'Kamera', none: 'Yok', orbit: 'Çevrele', sway: 'Salınım', float: 'Süzül', dolly: 'Yakınlaş', strength: 'Güç', focus: 'Sabit kalan', near: 'yakın', far: 'uzak',
-      particles: 'Katmanlar arasında parçacıklar', snow: 'Kar', sakura: 'Sakura', rain: 'Yağmur', sparks: 'Kıvılcımlar', stars: 'Yıldızlar', amount: 'Ne kadar',
+      particles: 'Katmanlar arasında parçacıklar', snow: 'Kar', sakura: 'Sakura', rain: 'Yağmur', sparks: 'Kıvılcımlar', stars: 'Yıldızlar', amount: 'Ne kadar', airLevel: 'Parlaklık',
       atmosphere: 'Hava', fog: 'Sis', light: 'Işık huzmesi', focuspull: 'Odak kaydırma', focuspullHint: 'Netlik uzak plandan yakın plana geçer ve geri döner.',
       breath: 'Nefes', chest: 'Göğüs salınımı', markBody: 'Gövdeyi işaretle', bodyHint: 'Nefes alması gereken yeri boya: göğüs ve omuzlar. Hiçbir şey boyamazsan gövde otomatik bulunur.',
       hair: 'Rüzgarda saçlar', hairTip: 'En iyi sonuç iyi görünen saçlarda olur: sırtta ya da yanlarda açık saçlar. Kâküle ve yüzün üstündeki tutamlara boya sürmemek daha iyi.', markHair: 'Saçları boya', brush: 'Fırça', undo: 'Geri al', clear: 'Temizle', hairHint: 'Sallanması gereken tutamları kökten uca kadar fırçayla boya.',
@@ -57,7 +57,7 @@
     fr: { title: 'Profondeur (effet 3D)', hint: 'L’image prend vie : profondeur, particules entre les plans, brume, mise au point, respiration et cheveux. Tu obtiens un GIF de 4 secondes qui boucle sans coupure.',
       on: 'Ajouter de la profondeur', looks: 'Choix rapide', lookSnow: 'Chute de neige', lookSakura: 'Sakura', lookRain: 'Nuit pluvieuse', lookCinema: 'Cinéma', lookAlive: 'Portrait vivant', lookNight: 'Nuit étoilée',
       camera: 'Caméra', none: 'Aucun', orbit: 'Orbite', sway: 'Balancement', float: 'Flottement', dolly: 'Zoom avant', strength: 'Intensité', focus: 'Ce qui reste fixe', near: 'proche', far: 'lointain',
-      particles: 'Particules entre les plans', snow: 'Neige', sakura: 'Sakura', rain: 'Pluie', sparks: 'Étincelles', stars: 'Étoiles', amount: 'Quantité',
+      particles: 'Particules entre les plans', snow: 'Neige', sakura: 'Sakura', rain: 'Pluie', sparks: 'Étincelles', stars: 'Étoiles', amount: 'Quantité', airLevel: 'Luminosité',
       atmosphere: 'Air', fog: 'Brouillard', light: 'Rayon de lumière', focuspull: 'Bascule de mise au point', focuspullHint: 'La netteté passe du plan lointain au plan proche, puis revient.',
       breath: 'Respiration', chest: 'Rebond de la poitrine', markBody: 'Indiquer le buste', bodyHint: 'Peins ce qui doit respirer : la poitrine et les épaules. Si tu ne peins rien, le buste est trouvé automatiquement.',
       hair: 'Cheveux au vent', hairTip: 'Ça marche le mieux sur des cheveux bien visibles : lâchés dans le dos ou sur les côtés. Mieux vaut ne pas peindre la frange ni les mèches sur le visage.', markHair: 'Peindre les cheveux', brush: 'Pinceau', undo: 'Annuler', clear: 'Effacer', hairHint: 'Peins les mèches qui doivent bouger, des racines aux pointes.',
@@ -68,7 +68,7 @@
     uk: { title: 'Обʼєм (3D-ефект)', hint: 'Картинка оживає: обʼєм, частинки між шарами, туман, фокус, дихання й волосся. Виходить безшовна GIF на 4 секунди.',
       on: 'Додати обʼєм', looks: 'Швидкий вибір', lookSnow: 'Снігопад', lookSakura: 'Сакура', lookRain: 'Дощова ніч', lookCinema: 'Кіно', lookAlive: 'Живий портрет', lookNight: 'Зоряна ніч',
       camera: 'Камера', none: 'Немає', orbit: 'Обліт', sway: 'Погойдування', float: 'Ширяння', dolly: 'Наїзд', strength: 'Сила', focus: 'Що стоїть на місці', near: 'ближнє', far: 'дальнє',
-      particles: 'Частинки між шарами', snow: 'Сніг', sakura: 'Сакура', rain: 'Дощ', sparks: 'Іскри', stars: 'Зорі', amount: 'Скільки',
+      particles: 'Частинки між шарами', snow: 'Сніг', sakura: 'Сакура', rain: 'Дощ', sparks: 'Іскри', stars: 'Зорі', amount: 'Скільки', airLevel: 'Яскравість',
       atmosphere: 'Повітря', fog: 'Туман', light: 'Промінь світла', focuspull: 'Переведення фокуса', focuspullHint: 'Різкість переходить з дальнього плану на ближній і назад.',
       breath: 'Дихання', chest: 'Погойдування грудей', markBody: 'Вказати корпус', bodyHint: 'Зафарбуй пензлем те, що має дихати: груди й плечі. Якщо нічого не зафарбувати, корпус знайдеться сам.',
       hair: 'Волосся на вітрі', hairTip: 'Найкраще гойдається волосся, яке добре видно: розпущене за спиною або з боків. Чубчик і пасма на обличчі краще не зафарбовувати.', markHair: 'Зафарбувати волосся', brush: 'Пензель', undo: 'Скасувати', clear: 'Очистити', hairHint: 'Зафарбуй пензлем пасма, які мають гойдатися, від коренів до кінчиків.',
@@ -79,7 +79,7 @@
     es: { title: 'Profundidad (efecto 3D)', hint: 'La imagen cobra vida: profundidad, partículas entre capas, niebla, enfoque, respiración y cabello. Obtienes un GIF de 4 segundos que se repite sin cortes.',
       on: 'Añadir profundidad', looks: 'Elección rápida', lookSnow: 'Nevada', lookSakura: 'Sakura', lookRain: 'Noche lluviosa', lookCinema: 'Cine', lookAlive: 'Retrato vivo', lookNight: 'Noche estrellada',
       camera: 'Cámara', none: 'Nada', orbit: 'Órbita', sway: 'Balanceo', float: 'Flotar', dolly: 'Acercar', strength: 'Intensidad', focus: 'Lo que queda quieto', near: 'cerca', far: 'lejos',
-      particles: 'Partículas entre capas', snow: 'Nieve', sakura: 'Sakura', rain: 'Lluvia', sparks: 'Chispas', stars: 'Estrellas', amount: 'Cantidad',
+      particles: 'Partículas entre capas', snow: 'Nieve', sakura: 'Sakura', rain: 'Lluvia', sparks: 'Chispas', stars: 'Estrellas', amount: 'Cantidad', airLevel: 'Brillo',
       atmosphere: 'Aire', fog: 'Niebla', light: 'Haz de luz', focuspull: 'Cambio de enfoque', focuspullHint: 'La nitidez pasa del plano lejano al cercano y vuelve.',
       breath: 'Respiración', chest: 'Rebote del pecho', markBody: 'Marcar el torso', bodyHint: 'Pinta lo que debe respirar: el pecho y los hombros. Si no pintas nada, el torso se detecta automáticamente.',
       hair: 'Cabello al viento', hairTip: 'Funciona mejor con cabello bien visible: suelto a la espalda o a los lados. Mejor no pintar el flequillo ni los mechones sobre la cara.', markHair: 'Pintar el cabello', brush: 'Pincel', undo: 'Deshacer', clear: 'Borrar', hairHint: 'Pinta los mechones que deben moverse, de la raíz a las puntas.',
@@ -90,7 +90,7 @@
     pt: { title: 'Profundidade (efeito 3D)', hint: 'A imagem ganha vida: profundidade, partículas entre camadas, névoa, foco, respiração e cabelo. Você recebe um GIF de 4 segundos em loop perfeito.',
       on: 'Adicionar profundidade', looks: 'Escolha rápida', lookSnow: 'Nevasca', lookSakura: 'Sakura', lookRain: 'Noite chuvosa', lookCinema: 'Cinema', lookAlive: 'Retrato vivo', lookNight: 'Noite estrelada',
       camera: 'Câmera', none: 'Nada', orbit: 'Órbita', sway: 'Balanço', float: 'Flutuar', dolly: 'Aproximar', strength: 'Intensidade', focus: 'O que fica parado', near: 'perto', far: 'longe',
-      particles: 'Partículas entre camadas', snow: 'Neve', sakura: 'Sakura', rain: 'Chuva', sparks: 'Faíscas', stars: 'Estrelas', amount: 'Quantidade',
+      particles: 'Partículas entre camadas', snow: 'Neve', sakura: 'Sakura', rain: 'Chuva', sparks: 'Faíscas', stars: 'Estrelas', amount: 'Quantidade', airLevel: 'Brilho',
       atmosphere: 'Ar', fog: 'Névoa', light: 'Feixe de luz', focuspull: 'Troca de foco', focuspullHint: 'A nitidez passa do plano distante para o próximo e volta.',
       breath: 'Respiração', chest: 'Balanço do peito', markBody: 'Marcar o tronco', bodyHint: 'Pinte o que deve respirar: o peito e os ombros. Se não pintar nada, o tronco é encontrado automaticamente.',
       hair: 'Cabelo ao vento', hairTip: 'Funciona melhor com cabelo bem visível: solto nas costas ou nos lados. Melhor não pintar a franja nem as mechas sobre o rosto.', markHair: 'Pintar o cabelo', brush: 'Pincel', undo: 'Desfazer', clear: 'Limpar', hairHint: 'Pinte as mechas que devem balançar, da raiz às pontas.',
@@ -124,7 +124,7 @@
   function create(host, hooks) {
     hooks = hooks || {};
     var o = {
-      camera: 'orbit', strength: 1.5, focus: 0.5, particles: 'none', amount: 2, atmosphere: 'none', focuspull: false,
+      camera: 'orbit', strength: 1.5, focus: 0.5, particles: 'none', amount: 2, atmosphere: 'none', airLevel: 1, focuspull: false,
       breath: false, breathStrength: 1.5, chest: 1, region: null, bodyStrokes: [], hair: false, hairStrength: 1.5, strokes: [], brush: 0.025
     };
     var pic = { token: '', canvas: null, guess: null, status: '', busy: false };
@@ -135,7 +135,7 @@
       return {
         camera: { motion: o.camera, strength: o.strength }, focus: o.focus,
         particles: o.particles === 'none' ? null : { kind: o.particles, amount: o.amount },
-        atmosphere: o.atmosphere, focuspull: o.focuspull,
+        atmosphere: o.atmosphere, atmosphereLevel: o.airLevel, focuspull: o.focuspull,
         breath: o.breath ? { on: true, strength: o.breathStrength, chest: o.chest, region: o.region || pic.guess || { cx: 0.5, cy: 0.55, rx: 0.16, ry: 0.14 },
           strokes: o.bodyStrokes.length ? o.bodyStrokes : undefined } : null,
         hair: o.hair && o.strokes.length ? { on: true, strength: o.hairStrength, strokes: o.strokes } : null
@@ -423,7 +423,11 @@
       parts.append(chips(PARTICLES, o.particles, function (v) { o.particles = v; partExtra.hidden = v === 'none'; changed(); }), partExtra);
       // Air + focus pull
       var air = group(t('atmosphere'));
-      air.append(chips(AIRS, o.atmosphere, function (v) { o.atmosphere = v; changed(); }),
+      // Fog / light brightness (user feedback 2026-10-10): smweb/depth_fx.py atmosphereLevel 0.25-2.
+      var airExtra = el('div', 'pdepth__sub');
+      airExtra.append(range(t('airLevel'), 0.25, 2, 0.05, o.airLevel, function (v) { o.airLevel = v; }));
+      airExtra.hidden = o.atmosphere === 'none';
+      air.append(chips(AIRS, o.atmosphere, function (v) { o.atmosphere = v; airExtra.hidden = v === 'none'; changed(); }), airExtra,
         toggle(t('focuspull'), o.focuspull, function (on) { o.focuspull = on; changed(); }),
         el('p', 'pdepth__note', t('focuspullHint')));
       // Breathing
@@ -484,6 +488,7 @@
         o.particles = saved.particles && PARTICLES.indexOf(saved.particles.kind) >= 0 ? saved.particles.kind : 'none';
         if (saved.particles && saved.particles.amount) o.amount = saved.particles.amount;
         o.atmosphere = AIRS.indexOf(saved.atmosphere) >= 0 ? saved.atmosphere : 'none';
+        if (saved.atmosphereLevel) o.airLevel = saved.atmosphereLevel;
         o.focuspull = !!saved.focuspull;
         o.breath = !!saved.breath;
         if (saved.breath) {

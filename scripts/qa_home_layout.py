@@ -23,6 +23,11 @@ def run():
             for width in [390, 1440, 1920, 2560]:
                 page.set_viewport_size({'width': width, 'height': 1080})
                 page.wait_for_timeout(250)
+                # home-scroll.js reloads the page when the desktop scroll mode switches on or off (1100 px).
+                page.wait_for_load_state('load')
+                page.locator('.home-features li:last-child').wait_for(state='attached')
+                page.locator('html:not(.home-is-loading)').wait_for(state='attached')
+                page.wait_for_timeout(250)
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (language, width)
                 geometry = page.evaluate('''() => {
                     const box = s => document.querySelector(s).getBoundingClientRect();

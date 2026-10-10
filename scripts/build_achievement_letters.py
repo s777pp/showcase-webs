@@ -4,11 +4,12 @@ static/js/achievement-letters.js). Run it on a computer, not on the VPS (Steam r
     py -3.14 scripts/build_achievement_letters.py            # STEAM_API_KEY from the environment or .env
 
 Discovery: Steam store search for letter-ish words, then every game of the developers/publishers of the sets found
-(letter games come in series). A game is a set when at least MIN_LETTERS different Latin letters are achievement names
-("A", "a", "Letter A", "A!", "[A]" ...). Achievement icons and global percentages come from the official Steam Web API
-(GetSchemaForGame, GetGlobalAchievementPercentagesForApp). Output: static/assets/achievements/letters.json, compact:
-{"generated", "cdn", "colors", "sets": [{"appid", "name", "total", "letters": {"A": [[icon, percent, title, color], ...]},
-"digits": {...}}]}. ``color`` is the icon's main colour (red / orange / yellow / green / blue / purple / pink / white /
+(letter games come in series), plus the sets of the previous catalogue. A game is a set when at least MIN_LETTERS
+different Latin OR Cyrillic letters are achievement names ("A", "a", "Letter A", "A!", "[A]", "П", "Буква П" ...). Achievement icons and global percentages come from the official Steam Web API
+(GetSchemaForGame in English AND Russian, so games whose achievements are Cyrillic letters are found too;
+GetGlobalAchievementPercentagesForApp). Output: static/assets/achievements/letters.json, compact:
+{"generated", "cdn", "colors", "sets": [{"appid", "name", "total", "letters": {"A": [[icon, percent, title, color], ...],
+"П": [...]}, "digits": {...}, "symbols": {"!": [...]}}]}. Latin and Cyrillic letters share "letters" (different keys). ``color`` is the icon's main colour (red / orange / yellow / green / blue / purple / pink / white /
 black), measured on the icon itself, for the colour filter of the tab.
 Icons are Steam's own CDN files (cdn + appid + "/" + icon + ".jpg"); nothing is copied from other sites.
 """
@@ -29,7 +30,8 @@ import colorsys
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "static" / "assets" / "achievements" / "letters.json"
-CDN = "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/"
+# The older cloudflare path 404s for newer games (2026-10-10); this is the host Steam's own editor uses.
+CDN = "https://shared.akamai.steamstatic.com/community_assets/images/apps/"  # Fastly hosts fail for some visitors
 MIN_LETTERS = 20
 MAX_VARIANTS = 12
 WORKERS = 8
@@ -39,13 +41,22 @@ TERMS = [
     "words", "word puzzle", "zup", "neon letters", "pixel letters", "alphabet puzzle", "alphabet shooter",
     "keyboard", "type", "letters puzzle", "puzzle achievements", "1000 achievements", "easy achievements",
     "relaxing achievements", "minimal puzzle", "the letters", "spelling",
+    "буквы", "алфавит", "русский алфавит", "кириллица", "cyrillic", "russian alphabet", "russia", "русь",
+    "achievement letters", "letters achievements", "alphabet achievements", "font achievements", "symbols",
 ]
+LATIN = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+CYRILLIC = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
+LETTER = r"A-Za-zА-Яа-яЁё"
 PATTERNS = [
-    re.compile(r"^\s*([A-Za-z])\s*[!?.:]*\s*$"),
-    re.compile(r"^\s*(?:letter|буква)\s+([A-Za-z])\s*[!?.]*\s*$", re.I),
-    re.compile(r"^\s*[\[\(\"'«]\s*([A-Za-z])\s*[\]\)\"'»]\s*$"),
+    re.compile(rf"^\s*([{LETTER}])\s*[!?.:]*\s*$"),
+    re.compile(rf"^\s*(?:letter|буква|литера)\s+[\"'«]?([{LETTER}])[\"'»]?\s*[!?.]*\s*$", re.I),
+    re.compile(rf"^\s*[\[\(\"'«]\s*([{LETTER}])\s*[\]\)\"'»]\s*$"),
 ]
-DIGIT = re.compile(r"^\s*(?:number\s+)?([0-9])\s*[!?.]*\s*$", re.I)
+DIGIT = re.compile(r"^\s*(?:number\s+|цифра\s+)?([0-9])\s*[!?.]*\s*$", re.I)
+# One printable symbol on its own (punctuation, hearts, stars...): letters, digits and spaces are handled above.
+SYMBOL = re.compile(r"^\s*([^\w\s])\s*$")
+# A blank tile: Steam closes empty showcase slots on the profile, so a space needs an achievement of its own.
+SPACE = re.compile(r"^\s*(?:space|blank|empty|\(space\)|\[space\]|пробел|пусто)\s*$", re.I)
 
 
 def steam_key() -> str:
@@ -67,6 +78,8 @@ def fetch(url: str, tries: int = 4):
             with urllib.request.urlopen(req, timeout=25) as resp:
                 return resp.read().decode("utf-8", "replace")
         except Exception as exc:                      # 429 / timeouts: back off and retry
+            if getattr(exc, "code", None) in (400, 403, 404):
+                return None                           # a definite answer (e.g. a game without stats): no retry
             wait = 5 * (attempt + 1) * (6 if "429" in str(exc) else 1)
             print(f"  retry in {wait}s ({type(exc).__name__}: {str(exc)[:60]})", flush=True)
             time.sleep(wait)
@@ -144,35 +157,52 @@ def icon_color(appid: int, icon: str) -> str:
 
 
 def letter_of(name: str) -> tuple[str, str] | None:
+    if SPACE.match(name or ""):
+        return "symbol", " "
     for pattern in PATTERNS:
         m = pattern.match(name or "")
         if m:
             return "letter", m.group(1).upper()
     m = DIGIT.match(name or "")
-    return ("digit", m.group(1)) if m else None
+    if m:
+        return "digit", m.group(1)
+    m = SYMBOL.match(name or "")
+    return ("symbol", m.group(1)) if m else None
+
+
+def _schema(appid: int, key: str, lang: str) -> dict:
+    raw = fetch(f"https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key={key}&appid={appid}&l={lang}")
+    time.sleep(0.35)
+    try:
+        return json.loads(raw or "{}").get("game") or {}
+    except ValueError:
+        return {}
 
 
 def check(appid: int, key: str) -> dict | None:
-    raw = fetch(f"https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key={key}&appid={appid}&l=english")
-    time.sleep(0.35)
-    if not raw:
-        return None
-    try:
-        game = json.loads(raw).get("game") or {}
-    except ValueError:
-        return None
+    game = _schema(appid, key, "english")
     achievements = (game.get("availableGameStats") or {}).get("achievements") or []
     if len(achievements) < MIN_LETTERS:
         return None
+    # The Russian schema names the same achievements in Russian: Cyrillic letter sets often exist only there.
+    russian = {a.get("name"): a for a in ((_schema(appid, key, "russian").get("availableGameStats") or {})
+                                          .get("achievements") or [])}
     letters: dict[str, list] = {}
     digits: dict[str, list] = {}
+    symbols: dict[str, list] = {}
     rows = []
     for a in achievements:
-        hit = letter_of(a.get("displayName") or "")
         icon = re.search(r"/apps/\d+/([0-9a-f]{40})\.jpg", a.get("icon") or "")
-        if hit and icon:
-            rows.append((hit, icon.group(1), a.get("name"), (a.get("displayName") or "").strip()[:24]))
-    if len({h[1] for h, *_ in rows if h[0] == "letter"}) < MIN_LETTERS:
+        if not icon:
+            continue
+        names = [(a.get("displayName") or "").strip(), ((russian.get(a.get("name")) or {}).get("displayName") or "").strip()]
+        for name in dict.fromkeys(n for n in names if n):
+            hit = letter_of(name)
+            if hit:
+                rows.append((hit, icon.group(1), a.get("name"), name[:24]))
+    latin = {h[1] for h, *_ in rows if h[0] == "letter" and h[1] in LATIN}
+    cyrillic = {h[1] for h, *_ in rows if h[0] == "letter" and h[1] in CYRILLIC}
+    if max(len(latin), len(cyrillic)) < MIN_LETTERS:
         return None
     percents = {}
     raw = fetch(f"https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/?gameid={appid}")
@@ -183,12 +213,13 @@ def check(appid: int, key: str) -> dict | None:
     except (ValueError, TypeError, KeyError):
         pass
     for (kind, char), icon, api_name, title in rows:
-        target = letters if kind == "letter" else digits
+        target = letters if kind == "letter" else digits if kind == "digit" else symbols
         variants = target.setdefault(char, [])
         if len(variants) < MAX_VARIANTS and all(v[0] != icon for v in variants):
             variants.append([icon, percents.get(api_name), title])
     return {"appid": appid, "name": html.unescape(game.get("gameName") or str(appid))[:80], "total": len(achievements),
-            "letters": dict(sorted(letters.items())), "digits": dict(sorted(digits.items()))}
+            "letters": dict(sorted(letters.items())), "digits": dict(sorted(digits.items())),
+            "symbols": dict(sorted(symbols.items()))}
 
 
 def details(appid: int) -> tuple[str, list[str], list[str]]:
@@ -204,6 +235,12 @@ def details(appid: int) -> tuple[str, list[str], list[str]]:
 def main() -> None:
     key = steam_key()
     candidates: set[int] = set()
+    if OUT.is_file():
+        # The previous catalogue's games are known sets: check them again (Cyrillic, new icons, percentages).
+        try:
+            candidates |= {int(s["appid"]) for s in json.loads(OUT.read_text(encoding="utf-8")).get("sets", [])}
+        except (ValueError, KeyError, TypeError):
+            pass
     for term in TERMS:
         ids = search(term=term)
         print(f"search {term!r}: {len(ids)}", flush=True)
@@ -222,7 +259,8 @@ def main() -> None:
                     print(f"  checked {index}/{len(batch)}", flush=True)
                 if not found:
                     continue
-                print(f"  set {appid} {found['name']!r}: {len(found['letters'])} letters", flush=True)
+                print(f"  set {appid} {found['name']!r}: {len(found['letters'])} letters, "
+                      f"{len(found['symbols'])} symbols", flush=True)
                 name, developers, publishers = details(appid)
                 if name:
                     found["name"] = name[:80]
@@ -234,7 +272,8 @@ def main() -> None:
                     print(f"    {kind} {who!r}: {len(more)} games", flush=True)
                     queue.extend(sorted(more - set(checked)))
     sets = sorted((s for s in checked.values() if s), key=lambda s: (-len(s["letters"]), s["name"].lower()))
-    variants = [(s["appid"], v) for s in sets for group in ("letters", "digits") for vs in s[group].values() for v in vs]
+    variants = [(s["appid"], v) for s in sets for group in ("letters", "digits", "symbols") for vs in s[group].values()
+                for v in vs]
     print(f"colours for {len(variants)} icons", flush=True)
     with ThreadPoolExecutor(WORKERS * 2) as pool:
         for index, ((appid, variant), color) in enumerate(zip(variants, pool.map(lambda av: icon_color(*av[0:1], av[1][0]),
@@ -245,7 +284,7 @@ def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({"generated": time.strftime("%Y-%m-%d"), "cdn": CDN, "colors": list(COLORS), "sets": sets},
                               ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    items = sum(len(v) for s in sets for v in list(s["letters"].values()) + list(s["digits"].values()))
+    items = sum(len(v) for s in sets for group in ("letters", "digits", "symbols") for v in s[group].values())
     print(f"{len(sets)} sets, {items} icons, {len(checked)} games checked -> {OUT} ({OUT.stat().st_size // 1024} KB)")
 
 

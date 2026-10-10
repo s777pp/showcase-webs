@@ -110,9 +110,8 @@ body.page-home::before,body.page-home::after{content:none!important}
 /* VRM stage: sized to the character's area of the painting. */
 /* Shooting stars (home-stars.js): above the shade so they stay bright. Once the VRM silhouette is cut out
    (.is-occluded) they fly behind the character and fade before the monitor; without it, before the character. */
-.home-stars{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;
-  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 30%,transparent 41%);mask-image:linear-gradient(90deg,#000 0,#000 30%,transparent 41%)}
-.home-stars.is-occluded{-webkit-mask-image:linear-gradient(90deg,#000 0,#000 47%,transparent 56%);mask-image:linear-gradient(90deg,#000 0,#000 47%,transparent 56%)}
+/* Only the left 56 % (SPAN in home-stars.js), which fades out inside the canvas: no CSS mask on a full-screen layer. */
+.home-stars{position:absolute;left:0;top:0;width:56%;height:100%;z-index:1;pointer-events:none}
 /* Sakura petals (home-petals.js): a canvas over the painted monitor, placed UNDER the VRM box, so the character
    always covers them. Percentages of the art frame, like the VRM box. */
 .home-petals{position:absolute;left:50%;top:26%;width:36%;height:74%;z-index:0;pointer-events:none}

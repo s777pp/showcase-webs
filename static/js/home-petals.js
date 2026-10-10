@@ -1,6 +1,8 @@
 /* Landing hero: sakura petals drifting down over the painted monitor (owner's sketch, 2026-10-07).
    The canvas sits inside .home-art UNDER the VRM box, so the character always covers the petals and no
-   silhouette mask is needed. Paused off screen and in hidden tabs, off for reduced motion. */
+   silhouette mask is needed. Paused off screen and in hidden tabs, off for reduced motion.
+   Each colour is drawn ONCE into a sprite with its pink glow (2026-10-10: shadowBlur on every petal every frame made
+   the petals stutter in every browser, user report); frames only drawImage the sprite with the petal's transform. */
 (function () {
   'use strict';
   var canvas = document.getElementById('homePetals');
@@ -15,6 +17,33 @@
   var petals = [], raf = 0, last = 0, nextSpawn = 0, visible = true;
 
   function rand(a, b) { return a + Math.random() * (b - a); }
+
+  // Sprite geometry: the petal path at s = REF with the glow (blur = 1.33 s, as the old 10 * unit at an average size).
+  var REF = 32, BLUR = REF * 1.33, HALF = Math.ceil(REF + BLUR * 1.25), sprites = {};
+  function petalPath(c, s) {
+    c.beginPath();                                             // a petal with the small notch at its tip
+    c.moveTo(0, -s * 0.72);
+    c.lineTo(s * 0.17, -s);
+    c.bezierCurveTo(s * 0.98, -s * 0.72, s * 0.82, s * 0.52, 0, s);
+    c.bezierCurveTo(-s * 0.82, s * 0.52, -s * 0.98, -s * 0.72, -s * 0.17, -s);
+    c.closePath();
+  }
+  function sprite(color) {
+    if (sprites[color]) return sprites[color];
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = HALF * 2;
+    var c = cv.getContext('2d');
+    c.translate(HALF, HALF);
+    c.shadowColor = 'rgba(255,140,205,0.75)';
+    c.shadowBlur = BLUR;
+    c.fillStyle = 'rgb(' + color + ')';
+    petalPath(c, REF);
+    c.fill();
+    c.shadowBlur = 0;
+    c.fillStyle = 'rgba(255,255,255,0.3)';
+    c.beginPath(); c.ellipse(0, REF * 0.18, REF * 0.26, REF * 0.5, 0, 0, Math.PI * 2); c.fill();
+    return (sprites[color] = cv);
+  }
 
   function resize() {
     var box = canvas.getBoundingClientRect();
@@ -57,25 +86,11 @@
     var fadeOut = Math.min(1, Math.max(0, (H - p.y) / (H * 0.16)));
     var alpha = p.alpha * fadeIn * fadeOut;
     if (alpha <= 0.01) return true;
-    var s = p.size;
-    ctx.save();
-    ctx.translate(x, p.y);
-    ctx.rotate(p.rot);
-    ctx.scale(1, 0.32 + 0.68 * Math.abs(Math.cos(p.flip)));    // tumbling: the petal turns edge-on
-    ctx.shadowColor = 'rgba(255,140,205,' + (0.75 * alpha).toFixed(3) + ')';
-    ctx.shadowBlur = 10 * unit;
-    ctx.fillStyle = 'rgba(' + p.color + ',' + alpha.toFixed(3) + ')';
-    ctx.beginPath();                                           // a petal with the small notch at its tip
-    ctx.moveTo(0, -s * 0.72);
-    ctx.lineTo(s * 0.17, -s);
-    ctx.bezierCurveTo(s * 0.98, -s * 0.72, s * 0.82, s * 0.52, 0, s);
-    ctx.bezierCurveTo(-s * 0.82, s * 0.52, -s * 0.98, -s * 0.72, -s * 0.17, -s);
-    ctx.closePath();
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = 'rgba(255,255,255,' + (0.3 * alpha).toFixed(3) + ')';
-    ctx.beginPath(); ctx.ellipse(0, s * 0.18, s * 0.26, s * 0.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
+    var k = p.size / REF, flip = 0.32 + 0.68 * Math.abs(Math.cos(p.flip));   // tumbling: the petal turns edge-on
+    var cos = Math.cos(p.rot), sin = Math.sin(p.rot);
+    ctx.setTransform(dpr * cos * k, dpr * sin * k, -dpr * sin * k * flip, dpr * cos * k * flip, dpr * x, dpr * p.y);
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(sprite(p.color), -HALF, -HALF);
     return true;
   }
 
@@ -89,9 +104,13 @@
     }
     var dt = Math.min(0.05, now - last);
     last = now;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1;
     ctx.clearRect(0, 0, W, H);
     if (now >= nextSpawn && petals.length < limit) { spawn(now, false); nextSpawn = now + rand(0.5, 1.2); }
     petals = petals.filter(function (p) { return draw(p, now, dt); });
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1;
     raf = requestAnimationFrame(frame);
   }
 

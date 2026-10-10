@@ -18,7 +18,12 @@ def test_letter_names_are_recognised():
     assert builder.letter_of("[z]") == ("letter", "Z")
     assert builder.letter_of("7") == ("digit", "7")
     assert builder.letter_of("Number 3") == ("digit", "3")
-    for name in ("AB", "Ace", "Level 1 complete", "", None):
+    assert builder.letter_of("П") == ("letter", "П")
+    assert builder.letter_of("Буква Ж") == ("letter", "Ж")
+    assert builder.letter_of("[ё]") == ("letter", "Ё")
+    assert builder.letter_of("!") == ("symbol", "!")
+    assert builder.letter_of("Space") == ("symbol", " ")
+    for name in ("AB", "Ace", "Level 1 complete", "Spacebar", "", None):
         assert builder.letter_of(name) is None
 
 
@@ -67,6 +72,7 @@ def test_tab_is_wired():
     assert 'data-tab="letters" data-i="nav_letters"' in app and '<section class="tab" id="tab-letters">' in app
     assert "achievement-letters.js?v=" in app and "achievement-letters.css?v=" in app
     js = (ROOT / "static" / "js" / "achievement-letters.js").read_text(encoding="utf-8")
-    for needle in ("colorOk", "paintSet", "setColor", "letters.json"):
+    for needle in ("colorOk", "paintGallery", "paintEditor", "setColor", "letters.json", "APPLY_ACHIEVEMENT_LETTERS"):
         assert needle in js
+    assert "var SLOTS = 7;" in js and "input.maxLength = SLOTS" in js   # Steam's Achievement Showcase holds 7 icons
     assert (ROOT / "static" / "img" / "tool-icons" / "letters.svg").is_file()

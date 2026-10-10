@@ -240,3 +240,23 @@ def test_painted_body_breathes_only_where_painted():
     assert moved[110:130, 90:110].mean() > 5          # inside the painted body
     assert moved[:40, :40].mean() < 0.5                # the corner the old region pointed at stays still
     assert moved[:, 180:].mean() < 0.5
+
+
+def test_stars_show_on_a_mid_depth_background_and_fog_follows_its_level():
+    """User feedback 2026-10-10: stars were hidden on most art (fixed far bucket); fog needs a brightness control."""
+    import numpy as np
+    from smweb import depth_fx
+    rng = np.random.default_rng(1)
+    pixels = (rng.random((120, 200, 3)) * 60 + 40).astype(np.uint8)
+    depth = np.full((120, 200), 0.45, np.float32)          # nothing is "far" in absolute terms
+    depth[70:, :] = 0.9
+    plain = depth_fx.Scene(pixels, depth, depth_fx.normalize({"camera": {"motion": "none"}, "focuspull": True}) | {"focuspull": False})
+    stars = depth_fx.Scene(pixels, depth, depth_fx.normalize({"camera": {"motion": "none"}, "particles": {"kind": "stars", "amount": 2}}))
+    diff = np.abs(stars.frame(0.0)[..., :3].astype(int) - plain.frame(0.0)[..., :3].astype(int)).sum(axis=2)
+    assert (diff[:70] > 40).sum() > 40                      # visible in the far part
+    assert (diff[75:] > 40).sum() < (diff[:70] > 40).sum() / 4  # mostly not over the near part
+    def fog(level):
+        opts = depth_fx.normalize({"camera": {"motion": "none"}, "atmosphere": "fog", "atmosphereLevel": level})
+        return depth_fx.Scene(pixels, np.zeros((120, 200), np.float32), opts).frame(0.3)[..., :3].astype(float).mean()
+    assert fog(2.0) > fog(1.0) > fog(0.25)
+    assert depth_fx.normalize({"atmosphere": "fog", "atmosphereLevel": 9})["atmosphereLevel"] == 2.0
