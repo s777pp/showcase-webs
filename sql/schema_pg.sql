@@ -212,6 +212,12 @@ CREATE INDEX IF NOT EXISTS idx_telegram_orders_user ON telegram_orders(user_id,c
 CREATE INDEX IF NOT EXISTS idx_telegram_sales_user ON telegram_sales(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_sales_claim ON telegram_sales(claim_token);
 CREATE INDEX IF NOT EXISTS idx_telegram_links_user ON telegram_links(user_id);
+CREATE TABLE IF NOT EXISTS ai_animate_allowance (
+ user_id BIGINT PRIMARY KEY,
+ used INTEGER NOT NULL DEFAULT 0,
+ extra INTEGER NOT NULL DEFAULT 0,
+ updated_at DOUBLE PRECISION
+);
 CREATE TABLE IF NOT EXISTS feature_uses (
  feature TEXT NOT NULL,
  subject TEXT NOT NULL,

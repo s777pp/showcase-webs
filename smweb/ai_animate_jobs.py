@@ -45,8 +45,8 @@ def run(jid: str, job: dict) -> None:
             process_control.checkpoint(jid)
             rs.job_update(jid, pct=74, stage="assembling", ai_seconds=info.get("seconds"))
             stem = str(job.get("stem") or "animation")
-            result = ai_animate.render(clip, source, root, seconds=int(job.get("seconds") or 3),
-                                       keep_background=bool(job.get("keep_background", True)), jid=jid, stem=stem)
+            result = ai_animate.render(clip, source, root, keep_background=bool(job.get("keep_background", True)),
+                                       jid=jid, stem=stem)
             clip.unlink(missing_ok=True)
             rs.job_update(jid, pct=96, stage="saving")
             saved_id = None

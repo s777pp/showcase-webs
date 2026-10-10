@@ -425,7 +425,16 @@ def user_detail(user_id: int) -> dict:
             "sessions": {"count": int(session_row["total"] or 0), "last_active": session_row["last_active"]},
             "limits": user_limits.get(uid), "audit": audit_safe,
             "purchases": admin_billing.for_user(uid), "weekly": free_limits.account_week(uid),
-            "results": _saved_results_count(uid)}
+            "results": _saved_results_count(uid), "aianim": _aianim(uid)}
+
+
+def _aianim(uid: int) -> dict | None:
+    """AI animation beta allowance of one account (smweb/ai_animate.py)."""
+    try:
+        from smweb import ai_animate
+        return ai_animate.allowance(uid)
+    except Exception:
+        return None
 
 
 def _saved_results_count(uid: int) -> int:
@@ -459,6 +468,22 @@ def user_action(user_id: int, action: str, payload: dict) -> dict:
             weekly = free_limits.clear_bonus(uid)
             audit("user.clear_tries", f"user:{uid}")
         return {"ok": True, "weekly": weekly}
+    if action in {"aianim_grant", "aianim_clear"}:
+        check = auth_db._conn()
+        try:
+            if not check.execute("SELECT id FROM users WHERE id=?", (uid,)).fetchone():
+                raise LookupError("Account not found")
+        finally:
+            check.close()
+        from smweb import ai_animate
+        if action == "aianim_grant":
+            count = max(1, min(50, int(payload.get("count") or 1)))
+            allowance = ai_animate.grant(uid, count)
+            audit("user.aianim_grant", f"user:{uid}", {"count": count})
+        else:
+            allowance = ai_animate.grant(uid, -ai_animate.allowance(uid)["extra"])
+            audit("user.aianim_clear", f"user:{uid}")
+        return {"ok": True, "aianim": allowance}
     if action in {"set_limits", "clear_limits"}:
         check = auth_db._conn()
         try:

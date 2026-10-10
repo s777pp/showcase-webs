@@ -1627,15 +1627,21 @@ Only the hero exists for now; content blocks will be added below it later.
   owner's fal Usage page: H3 $0.30 per 5 s 768P clip; moderation refusals are not billed. Kling ~$0.42 and nearly static.
 - Server: `smweb/ai_animate.py` (prompt = base + mode calm|lively + motion chips + the wish rewritten by Gemini; fal queue
   API with data URI and `end_image_url` = start, checker off, `prompt_expansion_mode: "disabled"`; `Refused` on
-  content_policy_violation; daily counters `sm:aianim:<YYYYMMDD>:u:<uid>` / `:all` with `take` / `give_back`; `render`:
-  frames <= 1080 px, `pick_loop` window of 2/3/5 s (24/20/16 fps) closest to its start + `crossfade_loop`, `motion_mask`
-  composite over the original still, MP4 + `fit_frames_to_gif` <= 5 MB), job `smweb/ai_animate_jobs.py` (kind
+  content_policy_violation; owner decision 2026-10-10: ONE animation per Pro account for the whole beta
+  (`AI_ANIMATE_BETA_FREE`, table `ai_animate_allowance` (user_id, used, extra) in both schemas, never pruned, removed with
+  the account; `allowance` / `grant` / `take` / `give_back`), more only from the admin user card (`aianim_grant` /
+  `aianim_clear` in admin_control.user_action, block "ИИ-анимация (бета)" in analytics-dashboard.js), plus the site budget
+  `sm:aianim:<YYYYMMDD>:all` (`AI_ANIMATE_GLOBAL_DAILY`); `render`: frames <= 1080 px, by default the WHOLE 5 s clip at
+  16 fps with no loop processing (owner: the model already loops; short loops later via `loop_seconds` = `pick_loop` +
+  `crossfade_loop`), `motion_mask` composite over the original still, MP4 + `fit_frames_to_gif` <= 5 MB), job
+  `smweb/ai_animate_jobs.py` (kind
   `ai_animate`, queue `gpu`, stages prepare/wish/sending/queued_ai/animating/assembling/saving, saves to My results,
   gives the use back on refusal/error/cancel; a job cancelled while queued returns early without a second refund),
   routes `smweb/routers/ai_animate.py` (`/api/ai-animate/info|start|status/{id}|file/{id}/{gif|mp4|source}|cancel/{id}`;
-  Pro only (`free_limits.refusal(..., "beta", "aianim")`), 503 `unavailable` without FAL_KEY; `ai_daily` answers carry
-  `daily`, NOT `limit`: free-limits.js opens its dialog for any `limit` object). Env: FAL_KEY, AI_ANIMATE_PRO_DAILY (3),
-  AI_ANIMATE_GLOBAL_DAILY (30), AI_ANIMATE_ENDPOINT. Wired into worker.py, `rs.queue_for_kind`, jobs center (cancel),
+  Pro only (`free_limits.refusal(..., "beta", "aianim")`), 503 `unavailable` without FAL_KEY; `info.quota` and the
+  `ai_beta_used` refusal never carry a `limit` key: free-limits.js opens its dialog for any `limit` object). Env:
+  FAL_KEY, AI_ANIMATE_BETA_FREE (1), AI_ANIMATE_GLOBAL_DAILY (30), AI_ANIMATE_ENDPOINT. One-off welcome panel in place
+  of the hero (`intro()`, localStorage `sm_aianim_intro_v1`, support button = `[data-support-choice]`). Wired into worker.py, `rs.queue_for_kind`, jobs center (cancel),
   notify LONG_JOBS, site-bell TOOL, job-center names, admin kind label, job_diagnostics `ai_moderated`, rate rules,
   error-report QUIET, DEFAULT_BETA `gifopt,aianim` (the VPS sets BETA_FEATURES itself: add `aianim` there).
 - UI: `#tab-aianim` (`static/js/ai-animate.js`, keyed COPY 8 languages in check_i18n's list, `window.SMAiAnimate`;

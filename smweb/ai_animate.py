@@ -12,8 +12,9 @@ Flow (one job of kind ``ai_animate`` on the ``gpu`` queue, smweb/ai_animate_jobs
      (as steamprofile does: a sharp background and a lighter GIF), the best loop of the chosen length (2/3/5 s) with
      a short cross-fade, then an MP4 (for Process) and a GIF that fits Steam's 5 MB.
 
-Money guards: Pro only while in beta, ``AI_ANIMATE_PRO_DAILY`` per account and ``AI_ANIMATE_GLOBAL_DAILY`` for the
-whole site per UTC day (``take`` / ``give_back``: a failed or refused animation gives its use back). Without
+Money guards: Pro only while in beta, ``AI_ANIMATE_BETA_FREE`` animations per account for the whole beta (1; more
+only from the owner, admin user card -> ``grant``) and ``AI_ANIMATE_GLOBAL_DAILY`` for the whole site per UTC day
+(``take`` / ``give_back``: a failed, refused or cancelled animation gives its use back). Without
 ``FAL_KEY`` the tool reports itself unavailable. The fal key never leaves the server and is never logged.
 """
 from __future__ import annotations
@@ -45,7 +46,8 @@ QUEUE_URL = "https://queue.fal.run/"
 MAX_INPUT_SIDE = 1536          # the picture sent to the model
 MAX_OUTPUT_SIDE = 1080         # frames we work with (MP4 size)
 GIF_WIDTH = 630                # Steam shows showcases 630 px wide
-LENGTHS = {2: 24, 3: 20, 5: 16}  # seconds -> GIF frame rate (shorter loops can afford more frames in 5 MB)
+FPS = 16                       # the whole 5 s clip; 80 frames fit Steam's 5 MB at 630 px
+LENGTHS = {2: 24, 3: 20, 5: 16}  # for short loops (render(loop_seconds=...)), not offered while in beta
 MODES = ("lively", "calm")
 MOTIONS = ("hair", "breath", "blink", "gaze", "wind", "glow")
 WISH_MAX = 200
@@ -131,16 +133,19 @@ def rewrite_wish(wish: str) -> str:
         return wish
 
 
-# ---------------------------------------------------------------- daily limits (with refunds)
+# ---------------------------------------------------------------- beta allowance + site budget (with refunds)
+# Owner decision 2026-10-10: during the beta every Pro account gets AI_ANIMATE_BETA_FREE animations in total (1),
+# more only through support: the owner adds them in the admin user card (``grant``). Stored in the database table
+# ai_animate_allowance (never pruned). A site-wide daily budget (Redis, UTC day) stays as the money guard.
 _LOCAL: dict[str, int] = {}
 _LOCAL_LOCK = threading.Lock()
 
 
-def pro_daily() -> int:
+def beta_free() -> int:
     try:
-        return max(0, int(os.environ.get("AI_ANIMATE_PRO_DAILY") or 3))
+        return max(0, min(100, int(os.environ.get("AI_ANIMATE_BETA_FREE") or 1)))
     except ValueError:
-        return 3
+        return 1
 
 
 def global_daily() -> int:
@@ -180,26 +185,85 @@ def _read(key: str) -> int:
         return _LOCAL.get(key, 0)
 
 
-def _keys(uid: int, day: str) -> tuple[str, str]:
-    return f"sm:aianim:{day}:u:{uid}", f"sm:aianim:{day}:all"
+def _site_key(day: str) -> str:
+    return f"sm:aianim:{day}:all"
 
 
-def used_today(uid: int) -> dict:
-    user_key, all_key = _keys(uid, _day())
-    return {"used": _read(user_key), "limit": pro_daily(), "site_used": _read(all_key), "site_limit": global_daily()}
+def allowance(uid: int) -> dict:
+    """{"used", "extra", "total", "left"} of one account for the whole beta."""
+    import auth_db
+    c = auth_db._conn()
+    try:
+        row = c.execute("SELECT used, extra FROM ai_animate_allowance WHERE user_id=?", (int(uid),)).fetchone()
+    finally:
+        c.close()
+    row = dict(row) if row else {}
+    used, extra = int(row.get("used") or 0), int(row.get("extra") or 0)
+    total = beta_free() + extra
+    return {"used": used, "extra": extra, "total": total, "left": max(0, total - used)}
+
+
+def _take_user(uid: int) -> bool:
+    """Spend one beta animation atomically; False when none are left."""
+    import auth_db
+    stamp, free = time.time(), beta_free()
+    c = auth_db._conn()
+    try:
+        if free >= 1:
+            cursor = c.execute(
+                "INSERT INTO ai_animate_allowance (user_id, used, extra, updated_at) VALUES (?,1,0,?) "
+                "ON CONFLICT(user_id) DO UPDATE SET used=ai_animate_allowance.used+1, updated_at=excluded.updated_at "
+                "WHERE ai_animate_allowance.used < ? + ai_animate_allowance.extra",
+                (int(uid), stamp, free))
+        else:
+            cursor = c.execute("UPDATE ai_animate_allowance SET used=used+1, updated_at=? WHERE user_id=? AND used < extra",
+                               (stamp, int(uid)))
+        ok = cursor.rowcount == 1
+        c.commit() if ok else c.rollback()
+        return ok
+    finally:
+        c.close()
+
+
+def _give_user(uid: int) -> None:
+    import auth_db
+    c = auth_db._conn()
+    try:
+        c.execute("UPDATE ai_animate_allowance SET used=used-1, updated_at=? WHERE user_id=? AND used>0", (time.time(), int(uid)))
+        c.commit()
+    finally:
+        c.close()
+
+
+def grant(uid: int, count: int) -> dict:
+    """Owner action: add (or, with a negative count, take back) extra animations for this account."""
+    import auth_db
+    count = max(-50, min(50, int(count)))
+    c = auth_db._conn()
+    try:
+        c.execute("INSERT INTO ai_animate_allowance (user_id, used, extra, updated_at) VALUES (?,0,?,?) "
+                  "ON CONFLICT(user_id) DO UPDATE SET extra=CASE WHEN ai_animate_allowance.extra + ? < 0 THEN 0 "
+                  "ELSE ai_animate_allowance.extra + ? END, updated_at=excluded.updated_at",
+                  (int(uid), max(0, count), time.time(), count, count))
+        c.commit()
+    finally:
+        c.close()
+    return allowance(uid)
+
+
+def usage(uid: int) -> dict:
+    return {**allowance(uid), "site_used": _read(_site_key(_day())), "site_limit": global_daily()}
 
 
 def take(uid: int, exempt: bool = False) -> tuple[dict | None, str]:
-    """Reserve one animation for today. Returns (ticket, "") or (None, "user" | "site")."""
-    day = _day()
-    user_key, all_key = _keys(uid, day)
-    if not exempt and _bump(user_key, 1) > pro_daily():
-        _bump(user_key, -1)
+    """Reserve one animation. Returns (ticket, "") or (None, "user" | "site")."""
+    if not exempt and not _take_user(uid):
         return None, "user"
-    if _bump(all_key, 1) > global_daily():
-        _bump(all_key, -1)
+    day = _day()
+    if _bump(_site_key(day), 1) > global_daily():
+        _bump(_site_key(day), -1)
         if not exempt:
-            _bump(user_key, -1)
+            _give_user(uid)
         return None, "site"
     return {"day": day, "uid": int(uid), "user": not exempt}, ""
 
@@ -207,10 +271,9 @@ def take(uid: int, exempt: bool = False) -> tuple[dict | None, str]:
 def give_back(ticket: dict | None) -> None:
     if not ticket:
         return
-    user_key, all_key = _keys(int(ticket["uid"]), str(ticket["day"]))
     if ticket.get("user"):
-        _bump(user_key, -1)
-    _bump(all_key, -1)
+        _give_user(int(ticket["uid"]))
+    _bump(_site_key(str(ticket["day"])), -1)
 
 
 # ---------------------------------------------------------------- fal
@@ -332,11 +395,12 @@ def motion_mask(small: list[np.ndarray], size: tuple[int, int]) -> np.ndarray:
     return np.asarray(mask, dtype=np.float32)[..., None] / 255
 
 
-def render(video: Path, source: Path, out_dir: Path, seconds: int = 3, keep_background: bool = True,
-           jid: str = "", stem: str = "animation") -> dict:
-    """MP4 + GIF (<= 5 MB) of the best ``seconds`` loop. Returns paths and numbers."""
-    seconds = seconds if seconds in LENGTHS else 3
-    fps = LENGTHS[seconds]
+def render(video: Path, source: Path, out_dir: Path, keep_background: bool = True, jid: str = "",
+           stem: str = "animation", loop_seconds: int | None = None) -> dict:
+    """MP4 + GIF (<= 5 MB). By default the model's whole clip as it is (owner 2026-10-10: the model already returns to
+    its first frame; our own short loops come later). ``loop_seconds`` (2/3/5) cuts the best loop of that length."""
+    seconds = loop_seconds if loop_seconds in LENGTHS else None
+    fps = LENGTHS[seconds] if seconds else FPS
     ffmpeg = proc.find_ffmpeg()
     if not ffmpeg:
         raise RuntimeError("FFmpeg is unavailable")
@@ -354,14 +418,17 @@ def render(video: Path, source: Path, out_dir: Path, seconds: int = 3, keep_back
         frames = [np.asarray(Image.open(p).convert("RGB")) for p in paths]
         h, w = frames[0].shape[:2]
         small = [_small(f) for f in frames]
-        # The loop: a window of the chosen length that comes back to its start, then a short cross-fade.
-        want = min(len(frames), seconds * fps + max(2, fps // 4))
-        start, end = pick_loop(small, want)
-        frames, small = frames[start:end], small[start:end]
-        steps = [float(np.abs(small[i + 1] - small[i]).mean()) for i in range(len(small) - 1)]
         seam_before = float(np.abs(small[-1] - small[0]).mean())
-        fade = max(2, fps // 4) if seam_before > 1.2 * (np.mean(steps) if steps else 0) else 0
-        frames = crossfade_loop(frames, fade)
+        fade = 0
+        if seconds:
+            # A short loop: a window of that length that comes back to its start, then a short cross-fade.
+            want = min(len(frames), seconds * fps + max(2, fps // 4))
+            start, end = pick_loop(small, want)
+            frames, small = frames[start:end], small[start:end]
+            steps = [float(np.abs(small[i + 1] - small[i]).mean()) for i in range(len(small) - 1)]
+            seam_before = float(np.abs(small[-1] - small[0]).mean())
+            fade = max(2, fps // 4) if seam_before > 1.2 * (np.mean(steps) if steps else 0) else 0
+            frames = crossfade_loop(frames, fade)
         process_control.checkpoint(jid or None)
         moving = 100.0
         if keep_background:
@@ -386,7 +453,7 @@ def render(video: Path, source: Path, out_dir: Path, seconds: int = 3, keep_back
         gif = out_dir / f"{stem}.gif"
         chosen = proc.fit_frames_to_gif(gif_dir, gif, fps=fps, max_mb=proc.MAX_STEAM_MB)
         if not chosen:
-            proc.media_to_gif(mp4, gif, fps=fps, width=gif_size[0], duration=float(seconds) + 1, encoder="gifski")
+            proc.media_to_gif(mp4, gif, fps=fps, width=gif_size[0], duration=float(seconds or 6) + 1, encoder="gifski")
             proc.ensure_under_mb(gif, max_mb=proc.MAX_STEAM_MB)
         return {"mp4": str(mp4), "gif": str(gif), "fps": fps, "frames": len(frames), "width": w, "height": h,
                 "gif_width": gif_size[0], "gif_height": gif_size[1], "gif_bytes": gif.stat().st_size,

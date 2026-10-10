@@ -1,5 +1,5 @@
 /* AI animation tab (#tab-aianim, static/js/ai-animate.js). Site theme v2 colours, prefix aia-.
-   Hero (still -> alive) -> lock card (guest / free / unavailable) -> settings in four steps beside a sticky result
+   Hero (still -> alive) -> lock card (guest / free / unavailable) -> settings in four steps (picture, motion style, what moves, background) beside a sticky result
    panel -> tips. Demo clips: static/img/ai-animate/ (made by the real pipeline on the site's sample art). */
 .page-tools .top-chrome .nav button[data-tab="aianim"],.top-chrome .nav button[data-tab="aianim"]{--tool-icon:url('/static/img/tool-icons/ai-animate.svg?v=1')}
 #tab-aianim [hidden]{display:none!important}
@@ -31,6 +31,44 @@
 #tab-aianim .aia-hero__card--live{box-shadow:0 18px 50px rgba(31,201,241,.25),0 0 0 2px rgba(31,201,241,.55)}
 #tab-aianim .aia-hero__card figcaption{position:absolute;left:8px;bottom:8px;padding:3px 10px;border-radius:999px;background:rgba(3,7,10,.8);font-size:11.5px;font-weight:800}
 #tab-aianim .aia-hero__arrow{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--aia-cyan),var(--aia-violet));color:#041019;padding:7px}
+
+/* one-off welcome (replaces the hero until "Got it") */
+#tab-aianim .aia-intro{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:34px;align-items:center;padding:36px;overflow:hidden;
+  border:1px solid rgba(31,201,241,.45);border-radius:26px;
+  background:radial-gradient(80% 130% at 0% 0%,rgba(31,201,241,.2),transparent 55%),radial-gradient(70% 130% at 100% 100%,rgba(138,125,255,.26),transparent 55%),
+  linear-gradient(160deg,rgba(14,26,60,.95),rgba(4,8,22,.97));box-shadow:0 24px 60px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.03) inset;
+  animation:aia-in .45s ease-out}
+@keyframes aia-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#tab-aianim .aia-intro__copy{display:grid;gap:16px;align-content:center}
+#tab-aianim .aia-intro__title{margin:0;font:900 clamp(30px,3.2vw,46px)/1.08 Montserrat,system-ui,sans-serif;letter-spacing:-.015em;
+  background:linear-gradient(135deg,#ffffff 30%,#9fe9ff 70%,#c4b8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+#tab-aianim .aia-intro__lead{margin:0;color:rgba(214,229,250,.82);font-size:16px;line-height:1.6;max-width:600px}
+#tab-aianim .aia-intro__points{display:grid;gap:10px;margin:4px 0 0;padding:0;list-style:none}
+#tab-aianim .aia-intro__points li{display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;align-items:start;padding:12px 14px;border:1px solid rgba(110,170,255,.16);
+  border-radius:14px;background:rgba(2,6,18,.5)}
+#tab-aianim .aia-intro__points li>div{display:grid;gap:3px}
+#tab-aianim .aia-intro__points b{font-size:15px}
+#tab-aianim .aia-intro__points span{color:var(--aia-muted);font-size:13.5px;line-height:1.5}
+#tab-aianim .aia-intro__icon{display:grid;place-items:center;width:40px;height:40px;padding:9px;border-radius:12px;background:linear-gradient(135deg,var(--aia-cyan),var(--aia-violet));color:#041019}
+#tab-aianim .aia-intro__icon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#tab-aianim .aia-intro__actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+#tab-aianim .aia-intro__support{min-height:54px;padding:0 22px;font-size:14.5px}
+#tab-aianim .aia-intro__show{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#tab-aianim .aia-intro__card{position:relative;margin:0;border-radius:18px;overflow:hidden;box-shadow:0 22px 50px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.07)}
+#tab-aianim .aia-intro__card img,#tab-aianim .aia-intro__card video{display:block;width:100%;aspect-ratio:3/4;object-fit:cover}
+#tab-aianim .aia-intro__card--live{box-shadow:0 22px 60px rgba(31,201,241,.3),0 0 0 2px rgba(31,201,241,.6)}
+#tab-aianim .aia-intro__card figcaption{position:absolute;left:10px;bottom:10px;padding:5px 12px;border-radius:999px;background:rgba(3,7,10,.82);font-size:13px;font-weight:800}
+#tab-aianim .aia-message__support{margin-left:6px;vertical-align:middle}
+@media (max-width:1000px){
+  #tab-aianim .aia-intro{grid-template-columns:minmax(0,1fr);padding:24px}
+  #tab-aianim .aia-intro__show{order:-1}
+  #tab-aianim .aia-intro__card img,#tab-aianim .aia-intro__card video{aspect-ratio:4/3}
+}
+@media (max-width:640px){
+  #tab-aianim .aia-intro{padding:18px;gap:20px;border-radius:20px}
+  #tab-aianim .aia-intro__actions>*{width:100%}
+}
+@media (prefers-reduced-motion:reduce){#tab-aianim .aia-intro{animation:none}}
 
 /* lock */
 #tab-aianim .aia-lock{display:grid;justify-items:center}
@@ -83,10 +121,7 @@
 #tab-aianim .aia-wish textarea:focus{border-color:rgba(31,201,241,.6);box-shadow:0 0 0 3px rgba(31,201,241,.14)}
 #tab-aianim .aia-wish__count{position:absolute;right:12px;bottom:8px;color:var(--aia-muted);font-size:11px}
 
-/* 4 length + background */
-#tab-aianim .aia-seg{display:inline-flex;justify-self:start;padding:4px;border:1px solid var(--aia-line);border-radius:13px;background:rgba(2,6,18,.6)}
-#tab-aianim .aia-seg__btn{min-width:70px;min-height:38px;padding:0 16px;border:0;border-radius:10px;background:none;color:var(--aia-muted);font:800 14px Montserrat,system-ui,sans-serif;cursor:pointer}
-#tab-aianim .aia-seg__btn.is-on{background:linear-gradient(135deg,var(--aia-cyan),var(--aia-violet));color:#041019}
+/* 4 background */
 #tab-aianim .aia-switch{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;cursor:pointer}
 #tab-aianim .aia-switch input[type="checkbox"]{position:absolute!important;width:1px!important;height:1px!important;margin:0!important;opacity:0!important;pointer-events:none}
 #tab-aianim .aia-switch__ui{position:relative;width:42px;height:24px;margin-top:2px;border-radius:999px;background:rgba(110,170,255,.25);transition:background .15s}

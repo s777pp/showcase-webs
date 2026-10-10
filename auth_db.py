@@ -447,6 +447,18 @@ def _create_schema(c: sqlite3.Connection) -> None:
     c.execute("CREATE INDEX IF NOT EXISTS idx_telegram_sales_user ON telegram_sales(user_id)")
     c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_sales_claim ON telegram_sales(claim_token)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_telegram_links_user ON telegram_links(user_id)")
+    # AI animation beta (smweb/ai_animate.py, 2026-10-10): animations used by an account for the whole beta and
+    # the extra ones the owner granted from the admin console. Never pruned (a one-off allowance).
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ai_animate_allowance (
+            user_id INTEGER PRIMARY KEY,
+            used INTEGER NOT NULL DEFAULT 0,
+            extra INTEGER NOT NULL DEFAULT 0,
+            updated_at REAL
+        )
+        """
+    )
     # Free-tier weekly tries (smweb/free_limits.py, 2026-10-06): one row per tool, per subject (an account "u:<id>"
     # or a hashed address "ip:<hash>") and per ISO week.
     c.execute(
@@ -1067,6 +1079,7 @@ def delete_account_data(user_id: int, analytics_user_hash: str = "") -> dict:
         c.execute("DELETE FROM infobox_templates WHERE user_id=?", (uid,))
         c.execute("DELETE FROM builder_usage WHERE user_id=?", (uid,))
         c.execute("DELETE FROM feature_uses WHERE subject IN (?,?)", (f"u:{uid}", f"+u:{uid}"))
+        c.execute("DELETE FROM ai_animate_allowance WHERE user_id=?", (uid,))
         c.execute("DELETE FROM saved_results WHERE user_id=?", (uid,))
         c.execute("DELETE FROM gumroad_orders WHERE user_id=?", (uid,))
         c.execute("UPDATE gumroad_sales SET user_id=NULL WHERE user_id=?", (uid,))

@@ -25,7 +25,7 @@ KIND = "ai_animate"
 FEATURE = "aianim"
 MIN_SIDE = 128
 MAX_PIXELS = 40_000_000
-PUBLIC_FIELDS = ("status", "pct", "stage", "mode", "seconds", "keep_background", "out_width", "out_height",
+PUBLIC_FIELDS = ("status", "pct", "stage", "mode", "keep_background", "out_width", "out_height",
                  "out_fps", "gif_bytes", "mp4_bytes", "saved_id")
 
 
@@ -67,19 +67,20 @@ def _user_state(request: Request) -> tuple[dict | None, bool]:
 def info(request: Request):
     user, pro = _user_state(request)
     body = {"ok": True, "available": ai_animate.configured(), "signed_in": bool(user), "pro": pro,
-            "lengths": sorted(ai_animate.LENGTHS), "modes": list(ai_animate.MODES), "motions": list(ai_animate.MOTIONS),
+            "modes": list(ai_animate.MODES), "motions": list(ai_animate.MOTIONS),
             "wish_max": ai_animate.WISH_MAX}
     if user and pro:
-        usage = ai_animate.used_today(int(user["id"]))
+        usage = ai_animate.usage(int(user["id"]))
         exempt = _is_limit_exempt(user)
-        body["limit"] = {"daily": usage["limit"], "left": None if exempt else max(0, usage["limit"] - usage["used"]),
+        # "quota", not "limit": free-limits.js treats any "limit" object in an answer as a refusal dialog.
+        body["quota"] = {"total": usage["total"], "used": usage["used"], "left": None if exempt else usage["left"],
                          "site_busy": usage["site_used"] >= usage["site_limit"]}
     return body
 
 
 @router.post("/api/ai-animate/start")
 async def start(request: Request, file: UploadFile = File(...), mode: str = Form("calm"), motions: str = Form(""),
-                wish: str = Form(""), seconds: int = Form(3), keep_background: bool = Form(True)):
+                wish: str = Form(""), keep_background: bool = Form(True)):
     user, pro = _user_state(request)
     if not user:
         return JSONResponse({"ok": False, "code": "login", "msg": "Sign in to use AI animation"}, status_code=401)
@@ -101,14 +102,11 @@ async def start(request: Request, file: UploadFile = File(...), mode: str = Form
         return JSONResponse({"ok": False, "code": str(exc), "msg": "Could not read the picture"}, status_code=400)
     mode = mode if mode in ai_animate.MODES else "calm"
     chosen = [m for m in re.split(r"[,\s]+", motions or "") if m in ai_animate.MOTIONS][:6]
-    seconds = seconds if seconds in ai_animate.LENGTHS else 3
     ticket, refused = ai_animate.take(int(user["id"]), exempt=_is_limit_exempt(user))
     if not ticket:
-        usage = ai_animate.used_today(int(user["id"]))
         if refused == "user":
-            # "daily", not "limit": free-limits.js opens its own dialog for any answer with a "limit" object.
-            return JSONResponse({"ok": False, "code": "ai_daily", "daily": usage["limit"],
-                                 "msg": f"Today's {usage['limit']} AI animations are used. They renew at midnight UTC."},
+            return JSONResponse({"ok": False, "code": "ai_beta_used",
+                                 "msg": "Your beta AI animations are used. Write to support to get more."},
                                 status_code=429)
         return JSONResponse({"ok": False, "code": "ai_site_busy",
                              "msg": "Today's AI animations for the whole site are used up. Try again tomorrow."},
@@ -123,7 +121,7 @@ async def start(request: Request, file: UploadFile = File(...), mode: str = Form
         payload = {"kind": KIND, "queue": "gpu", "job_dir": str(root), "source_path": str(source),
                    "user_key": owner, "user_id": int(user["id"]), "status": "queued", "pct": 2, "stage": "queued",
                    "created": time.time(), "mode": mode, "motions": chosen, "wish": ai_animate.clean_wish(wish),
-                   "seconds": seconds, "keep_background": bool(keep_background), "stem": _stem(file.filename),
+                   "keep_background": bool(keep_background), "stem": _stem(file.filename),
                    "in_width": width, "in_height": height, "ticket": ticket}
         rs.job_create(jid, payload, enqueue=external)
     except Exception:
