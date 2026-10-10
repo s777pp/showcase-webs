@@ -51,6 +51,7 @@
     steam_profile_import: ['Steam profile import', 'Импорт профиля Steam', 'Steam-Profilimport', 'Steam profili içe aktarma', 'Import du profil Steam', 'Імпорт профілю Steam', 'Importación del perfil de Steam', 'Importação do perfil Steam'],
     profile_insight: ['Profile rating', 'Оценка профиля', 'Profilbewertung', 'Profil değerlendirmesi', 'Évaluation du profil', 'Оцінка профілю', 'Valoración del perfil', 'Avaliação do perfil'],
     steam_dna: ['Steam DNA', 'Steam DNA', 'Steam DNA', 'Steam DNA', 'Steam DNA', 'Steam DNA', 'Steam DNA', 'Steam DNA'],
+    ai_animate: ['AI animation', 'ИИ-анимация', 'KI-Animation', 'Yapay zekâ animasyonu', 'Animation IA', 'ШІ-анімація', 'Animación con IA', 'Animação com IA'],
     builder_bg_remove: ['Background removal', 'Удаление фона', 'Hintergrundentfernung', 'Arka plan kaldırma', 'Suppression du fond', 'Видалення тла', 'Quitar el fondo', 'Remoção de fundo']
   };
   var TEXT = {

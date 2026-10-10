@@ -5,6 +5,7 @@ import contextlib
 import os
 import subprocess
 import threading
+from pathlib import Path
 from typing import Iterator
 
 import redis_store as rs
@@ -48,6 +49,28 @@ def mark_cancelled(jid: str) -> None:
     rs.job_update(jid, status="cancelled", pct=100, stage="cancelled", error="")
 
 
+def tolerant(command: list[str]) -> list[str]:
+    """FFmpeg command that keeps going over damaged input frames.
+
+    FFmpeg 6.1+ exits with status 69 when more than 2/3 of the decoded packets fail
+    (seen in production 2026-10-09 on a damaged GIF in Workshop Studio). The frames that do
+    decode are still worth a result, so the error rate check is switched off; a file with
+    nothing readable still fails later on its empty output.
+    """
+    if not command or "-max_error_rate" in command:
+        return command
+    if not Path(str(command[0])).name.lower().startswith("ffmpeg"):
+        return command
+    return [command[0], "-max_error_rate", "1", *command[1:]]
+
+
+def stderr_tail(exc: BaseException, limit: int = 400) -> str:
+    """The end of a failed subprocess's stderr, for error messages (scrub before showing users)."""
+    data = getattr(exc, "stderr", None) or b""
+    text = data.decode("utf-8", "replace") if isinstance(data, bytes) else str(data)
+    return " ".join(text.split())[-limit:]
+
+
 def run(command: list[str], *, check: bool = False, capture_output: bool = False,
         text: bool = False, job_id: str | None = None, **kwargs) -> subprocess.CompletedProcess:
     """Run a subprocess while polling its persisted cancellation flag.
@@ -55,6 +78,7 @@ def run(command: list[str], *, check: bool = False, capture_output: bool = False
     This works in the external worker too: the API writes the flag to Redis and
     the worker terminates FFmpeg/gifski without requiring an in-process handle.
     """
+    command = tolerant(command)
     identifier = str(job_id or current_job())
     checkpoint(identifier)
     if capture_output:

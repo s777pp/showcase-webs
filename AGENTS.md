@@ -1602,6 +1602,52 @@ Only the hero exists for now; content blocks will be added below it later.
   smaller (`kept_original`, returned by the status route). gifsicle is not installed on the dev machine (FFmpeg
   fallback), so local preset sizes are pessimistic.
 
+## 6.35 Damaged media (2026-10-10, local, not deployed)
+
+- Production error: Workshop Studio rows, GIF + free watermark, FFmpeg exit status 69 = FFmpeg 6.1+'s "decode error
+  rate exceeds 2/3" (VPS has Debian's 7.1; the dev machine's 8.1 does not fail on the same files, so it never showed
+  locally). `process_control.tolerant(command)` adds `-max_error_rate 1` to any ffmpeg command and `process_control.run`
+  applies it to everything it runs; `process_control.stderr_tail(exc)`.
+- `workshop_studio_jobs._run_on_source` runs the two commands that read the visitor's file (rows, squares): tolerant
+  first, then one retry from `_readable_gif` (frames Pillow can load, `_readable.gif` removed afterwards), then
+  `ValueError(DAMAGED_SOURCE)` with FFmpeg's stderr chained for `trace_text`. job_diagnostics `broken_file` matches
+  "file is damaged" / "exit status 69" / "error rate" / "LZW decode failed", so users get error-report.js's 8-language
+  `broken_file` text. Tests: `tests/test_damaged_media.py`.
+- Encoder versions on the VPS (checked over SSH 2026-10-10): Debian 13.7, FFmpeg 7.1.5-0+deb13u1 (Debian stable; upstream
+  9.0.2), gifski 1.34.0, gifsicle 1.96, Deno 2.9.7, Pillow 12.3.0, pillow-heif 1.8.0, OpenCV 5.0.0, yt-dlp 2026.08.19,
+  onnxruntime 1.30.0, torch 2.14.0+cpu: all current except FFmpeg. OWNER DECISION: stay on Debian's FFmpeg (no static
+  third-party build); a newer one arrives with the next Debian stable. Animated WebP is still read as a still in
+  Process (`.webp` is in NATIVE_STILL_EXTENSIONS); Pillow could decode it, offered to the owner, not requested yet.
+
+## 6.36 AI animation beta (2026-10-10, local, not deployed)
+
+- Owner: "like steamprofile.io: simple prompts such as 'animated hair and breathing'; it costs real money". Bench
+  (`output/ai-bench/index.html`, fal.ai): Wan 3.0 and Seedance refuse suggestive anime art even with fal's checker off;
+  MiniMax H3 (`minimax/h3/image-to-video`), Wan 2.2 A14B and Kling v3 pass; owner picked **MiniMax H3**. Real cost from the
+  owner's fal Usage page: H3 $0.30 per 5 s 768P clip; moderation refusals are not billed. Kling ~$0.42 and nearly static.
+- Server: `smweb/ai_animate.py` (prompt = base + mode calm|lively + motion chips + the wish rewritten by Gemini; fal queue
+  API with data URI and `end_image_url` = start, checker off, `prompt_expansion_mode: "disabled"`; `Refused` on
+  content_policy_violation; daily counters `sm:aianim:<YYYYMMDD>:u:<uid>` / `:all` with `take` / `give_back`; `render`:
+  frames <= 1080 px, `pick_loop` window of 2/3/5 s (24/20/16 fps) closest to its start + `crossfade_loop`, `motion_mask`
+  composite over the original still, MP4 + `fit_frames_to_gif` <= 5 MB), job `smweb/ai_animate_jobs.py` (kind
+  `ai_animate`, queue `gpu`, stages prepare/wish/sending/queued_ai/animating/assembling/saving, saves to My results,
+  gives the use back on refusal/error/cancel; a job cancelled while queued returns early without a second refund),
+  routes `smweb/routers/ai_animate.py` (`/api/ai-animate/info|start|status/{id}|file/{id}/{gif|mp4|source}|cancel/{id}`;
+  Pro only (`free_limits.refusal(..., "beta", "aianim")`), 503 `unavailable` without FAL_KEY; `ai_daily` answers carry
+  `daily`, NOT `limit`: free-limits.js opens its dialog for any `limit` object). Env: FAL_KEY, AI_ANIMATE_PRO_DAILY (3),
+  AI_ANIMATE_GLOBAL_DAILY (30), AI_ANIMATE_ENDPOINT. Wired into worker.py, `rs.queue_for_kind`, jobs center (cancel),
+  notify LONG_JOBS, site-bell TOOL, job-center names, admin kind label, job_diagnostics `ai_moderated`, rate rules,
+  error-report QUIET, DEFAULT_BETA `gifopt,aianim` (the VPS sets BETA_FEATURES itself: add `aianim` there).
+- UI: `#tab-aianim` (`static/js/ai-animate.js`, keyed COPY 8 languages in check_i18n's list, `window.SMAiAnimate`;
+  `static/css/ai-animate.css`, prefix `aia-`; icon `img/tool-icons/ai-animate.svg`; demo clips
+  `static/img/ai-animate/demo-{calm,lively}.{mp4,webp}` made by the real pipeline on sample-art). Running job id in
+  sessionStorage `sm_aianim_job`, settings in localStorage `sm_aianim_settings`. "Cut for Steam" fetches the MP4 and
+  fires `sm:assets-selected` after clicking the Process tab. Tools strip (`nav-clusters.css`): 1400-1499 px padding 5 /
+  12 px, 1500-1599 padding 6 / 12.5 px, >= 1920 padding 8 / gap 5, >= 2200 strip up to 2160 px: no overflow for all 8
+  languages at 1400-2200 (measured).
+- Privacy pages (8 languages) list fal.ai (MiniMax) and Gemini rewriting the wish. Tests: `tests/test_ai_animate.py`.
+- Not built yet (owner wants beta feedback first): credits / packs (proposed 5 / $3.99, 15 / $9.99, 40 / $22.99).
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or

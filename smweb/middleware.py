@@ -212,6 +212,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ("/api/process", 8, 60),
         ("/api/workshop-studio/start", 8, 60),
         ("/api/gif-optimizer/start", 8, 60),
+        # Every AI animation costs real money (fal.ai); the router also caps them per day.
+        ("/api/ai-animate/start", 6, 60),
+        ("/api/ai-animate/cancel/", 20, 60),
         # Modal GPU time costs money; the router also caps jobs per account.
         ("/api/upscale/start", 6, 60),
         ("/api/upscale", 6, 60),

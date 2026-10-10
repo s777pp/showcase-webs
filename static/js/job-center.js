@@ -4,7 +4,7 @@
   const authHeaders = function () { return window.__smHeaders ? window.__smHeaders() : {}; };
   let overlay, list, source, notice, previousFocus;
   const pending = new Set();
-  function jobName(kind) { return ({process:t('Нарезка витрины','Showcase processing'),compose:t('Персонаж + фон','Character + background'),upscale:t('Апскейл','Upscale'),seamless_loop:t('Бесшовный цикл','Seamless loop'),builder_bg_remove:t('Удаление фона','Background removal'),steam_profile_import:t('Импорт Steam-профиля','Steam profile import'),profile_insight:t('Анализ профиля','Profile analysis'),steam_dna:'Steam DNA'}[kind]||kind); }
+  function jobName(kind) { return ({process:t('Нарезка витрины','Showcase processing'),compose:t('Персонаж + фон','Character + background'),upscale:t('Апскейл','Upscale'),seamless_loop:t('Бесшовный цикл','Seamless loop'),ai_animate:t('ИИ-анимация','AI animation'),builder_bg_remove:t('Удаление фона','Background removal'),steam_profile_import:t('Импорт Steam-профиля','Steam profile import'),profile_insight:t('Анализ профиля','Profile analysis'),steam_dna:'Steam DNA'}[kind]||kind); }
   function shell() {
     if (overlay) return;
     overlay=document.createElement('div'); overlay.className='job-center';overlay.hidden=true;

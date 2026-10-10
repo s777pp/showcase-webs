@@ -77,6 +77,8 @@ def _urls(jid: str, job: dict) -> tuple[str, str]:
         return f"/api/compose/status/{jid}", f"/api/compose/download/{jid}"
     if kind == "seamless_loop":
         return f"/api/loop/status/{jid}", f"/api/loop/download/{jid}"
+    if kind == "ai_animate":
+        return f"/api/ai-animate/status/{jid}", f"/api/ai-animate/file/{jid}/gif"
     return f"/api/jobs/{jid}", ""
 
 
@@ -87,7 +89,7 @@ def _public(jid: str, job: dict) -> dict:
     # Local encoders can be terminated for real. Modal exposes no cancellation
     # endpoint in the current proxy, so the UI must not promise that GPU billing
     # stops when an upscale result is no longer needed.
-    cancellable = {"process", "compose", "seamless_loop", "upscale"}
+    cancellable = {"process", "compose", "seamless_loop", "upscale", "ai_animate"}
     process_sources = [Path(str(item.get("path") or "")) for item in job.get("files") or []]
     return {
         "id": jid,

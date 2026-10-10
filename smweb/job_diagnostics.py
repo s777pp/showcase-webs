@@ -54,6 +54,13 @@ def runner_label() -> str:
 # Each rule: (category, regex over error text, explanation fields).
 # Order matters: the first match wins, so specific patterns come first.
 _RULES: list[tuple[str, str, dict]] = [
+    ("ai_moderated", r"refused this picture|ai_moderated|content_policy_violation",
+     {"title": "ИИ-сервис отказался анимировать картинку",
+      "meaning": "Модель (MiniMax H3 на fal.ai) отклонила картинку по своим правилам контента.",
+      "cause": "Обычно обнажёнка или то, что фильтр принял за неё. fal за такие отказы денег не берёт.",
+      "fault": "user",
+      "user_fix": "Взять другую картинку. Попытка вернулась автоматически.",
+      "admin_fix": "Ничего делать не нужно: попытка возвращена, деньги не списаны."}),
     ("steam_limit", r"cannot fit|under 5 ?MB|group encoding failed|SynchronizedGroupFit|fit all synchronized",
      {"title": "Не влезло в лимит Steam 5 МБ",
       "meaning": "Файл обработался, но даже на минимальном качестве и FPS результат больше 5 МБ, поэтому сайт остановился, чтобы не отдать файл, который Steam не примет.",
@@ -82,7 +89,7 @@ _RULES: list[tuple[str, str, dict]] = [
       "fault": "user",
       "user_fix": "Конвертировать анимацию в GIF или MP4.",
       "admin_fix": "Можно научить инструмент принимать анимированный WebP."}),
-    ("broken_file", r"cannot identify image|UnidentifiedImageError|Invalid data found|moov atom not found|truncated|broken data stream|image file is truncated|End of file|could not find codec|Decoder .* not found|cannot probe dimensions|unreadable",
+    ("broken_file", r"file is damaged|exit status 69|error rate|LZW decode failed|cannot identify image|UnidentifiedImageError|Invalid data found|moov atom not found|truncated|broken data stream|image file is truncated|End of file|could not find codec|Decoder .* not found|cannot probe dimensions|unreadable",
      {"title": "Файл повреждён или это не тот формат",
       "meaning": "Декодер не смог прочитать файл.",
       "cause": "Файл скачался не полностью, расширение переименовано вручную (например .webp назван .png) или кодек не поддерживается (HEVC/ProRes).",

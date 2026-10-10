@@ -26,7 +26,7 @@ JOB_ID = re.compile(r"[a-f0-9]{24,32}")
 
 KIND_LABELS = {
     "process": "Обработка витрины", "workshop_studio": "Мастерская", "compose": "Персонаж",
-    "seamless_loop": "Зацикливание", "gif_optimizer": "GIF оптимизатор", "upscale": "Апскейл", "builder_bg_remove": "Удаление фона",
+    "seamless_loop": "Зацикливание", "gif_optimizer": "GIF оптимизатор", "ai_animate": "ИИ-анимация", "upscale": "Апскейл", "builder_bg_remove": "Удаление фона",
     "steam_profile_import": "Импорт профиля", "profile_insight": "Оценка профиля", "steam_dna": "Steam DNA",
 }
 MODE_LABELS = {"workshop": "Workshop", "featured": "Featured", "split": "Artwork Split",

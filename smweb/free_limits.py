@@ -29,7 +29,7 @@ from datetime import datetime, timedelta, timezone
 import auth_db
 
 WEEKLY_FEATURES = ("bg", "doctor", "dna", "loop", "design", "da")
-DEFAULT_BETA = "gifopt"
+DEFAULT_BETA = "gifopt,aianim"
 
 
 def weekly_limit() -> int:

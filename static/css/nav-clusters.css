@@ -40,6 +40,23 @@
   html body.site-v2.page-tools .top-chrome #nav>button::before,
   html body.site-v2.page-tools .top-chrome #nav .nav-group__trigger::before{display:none!important}
 }
+/* 2026-10-10: one more tool (AI animation). Tighter steps so every label of all 8 languages stays in one row
+   (measured: ru/en/de/tr/fr/uk/es/pt at 1400, 1440, 1536, 1600, 1680, 1920, 2200 px). */
+@media (min-width:1400px) and (max-width:1499px){
+  html body.site-v2.page-tools .top-chrome #nav>button,
+  html body.site-v2.page-tools .top-chrome #nav .nav-group__trigger{padding:0 5px!important;font-size:12px!important}
+  #nav .nav-cluster{margin-left:4px;margin-right:4px}
+}
+@media (min-width:1500px) and (max-width:1599px){
+  html body.site-v2.page-tools .top-chrome #nav>button,
+  html body.site-v2.page-tools .top-chrome #nav .nav-group__trigger{padding:0 6px!important;font-size:12.5px!important}
+  #nav .nav-cluster{margin-left:6px;margin-right:6px}
+}
+@media (min-width:1920px){
+  html body.site-v2.page-tools .top-chrome #nav>button,
+  html body.site-v2.page-tools .top-chrome #nav .nav-group__trigger{padding:0 8px!important;gap:5px!important}
+}
+@media (min-width:2200px){html body.site-v2.page-tools .top-chrome-inner{width:min(100% - 48px,2160px)!important}}
 @media (min-width:761px) and (max-width:1399px){
   /* Small laptops and tablets: two rows rather than tools hidden past the edge. */
   html body.site-v2.page-tools .top-chrome #nav{flex-wrap:wrap!important;justify-content:center!important;row-gap:2px!important;overflow:visible!important}

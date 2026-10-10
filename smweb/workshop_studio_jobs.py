@@ -19,7 +19,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
 import processor as proc
-from smweb import job_diagnostics, saved_results, square_fx
+from smweb import job_diagnostics, process_control, saved_results, square_fx
 from smweb.core import JOBS
 from smweb.jobs import _job_set
 
@@ -154,6 +154,57 @@ def render_image_animation(path: Path, output: Path, settings: dict, frame: dict
         shutil.rmtree(frames_dir, ignore_errors=True)
 
 
+DAMAGED_SOURCE = ("This file is damaged: most of its frames cannot be read. "
+                  "Re-save it in an editor or the Converter tab and upload it again.")
+
+
+def _readable_gif(path: Path) -> Path | None:
+    """A clean copy of a damaged GIF made of the frames Pillow can still read (None when none)."""
+    frames, durations = [], []
+    try:
+        with Image.open(path) as image:
+            for index in range(10_000):
+                try:
+                    image.seek(index)
+                    image.load()
+                except (EOFError, IndexError, OSError, ValueError):
+                    break
+                frames.append(image.convert("RGBA"))
+                durations.append(max(20, int(image.info.get("duration") or 100)))
+    except Exception:
+        return None
+    if not frames:
+        return None
+    clean = path.with_name(path.stem + "_readable.gif")
+    frames[0].save(clean, save_all=True, append_images=frames[1:], duration=durations, loop=0, disposal=2)
+    return clean
+
+
+def _run_on_source(command: list[str], path: Path, timeout: int = 90) -> None:
+    """FFmpeg over the visitor's file. Damaged frames do not stop it (process_control.tolerant); a GIF
+    FFmpeg still rejects gets one retry from the frames Pillow reads; otherwise a clear error for the user,
+    with FFmpeg's own words kept in the exception chain for the admin console."""
+    try:
+        subprocess.run(process_control.tolerant(command), check=True, capture_output=True, timeout=timeout)
+        return
+    except subprocess.CalledProcessError as exc:
+        failure = exc
+    repaired = _readable_gif(path) if path.suffix.lower() == ".gif" else None
+    if repaired:
+        retry = [str(repaired) if part == str(path) else part for part in command]
+        try:
+            subprocess.run(process_control.tolerant(retry), check=True, capture_output=True, timeout=timeout)
+            LOG.info("Workshop Studio: %s read again from its readable frames", path.name)
+            return
+        except subprocess.CalledProcessError as exc:
+            failure = exc
+        finally:
+            repaired.unlink(missing_ok=True)
+    detail = RuntimeError(f"FFmpeg exit status {failure.returncode}: {process_control.stderr_tail(failure)}")
+    detail.__cause__ = failure
+    raise ValueError(DAMAGED_SOURCE) from detail
+
+
 def render_animation(path: Path, output: Path, settings: dict, fps: int, duration: float, start: float,
                      outline: bool = False, free_watermark: bool = False, frame: dict | None = None) -> None:
     ffmpeg = proc.find_ffmpeg()
@@ -191,7 +242,7 @@ def render_animation(path: Path, output: Path, settings: dict, fps: int, duratio
         command += ["-t", f"{duration:.3f}", "-an", "-vf", filters]
     command += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p", str(temporary)]
     try:
-        subprocess.run(command, check=True, capture_output=True, timeout=90)
+        _run_on_source(command, path)
         if frame:
             # Decode at the output FPS and draw the frame loop on every frame.
             frames_dir.mkdir(exist_ok=True)
@@ -412,7 +463,7 @@ def render_squares_animation(path: Path, work_dir: Path, settings: dict, crop: d
     frames_dir = work_dir / "fx_frames"
     video = work_dir / "squares_fx.mkv"
     try:
-        subprocess.run(command, check=True, capture_output=True, timeout=90)
+        _run_on_source(command, path)
         source = strip
         if not square_fx.is_empty(effects):
             # Decode at the output FPS, draw the loop on every frame, re-encode losslessly.

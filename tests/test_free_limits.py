@@ -115,7 +115,7 @@ def test_owner_can_raise_the_weekly_number(monkeypatch):
 
 
 def test_beta_list_comes_from_the_environment(monkeypatch):
-    assert fl.beta_features() == ("gifopt",) and fl.is_beta("gifopt") and not fl.is_beta("loop")
+    assert fl.beta_features() == ("aianim", "gifopt") and fl.is_beta("gifopt") and fl.is_beta("aianim") and not fl.is_beta("loop")
     monkeypatch.setenv("BETA_FEATURES", " Loop, gifopt ,,")
     assert fl.beta_features() == ("gifopt", "loop")
     monkeypatch.setenv("BETA_FEATURES", "")
@@ -126,7 +126,7 @@ def test_state_for_the_pages():
     uid, ip = _uid(), _ip()
     assert fl.consume("loop", uid, ip)
     free = fl.state(uid, ip, pro=False)
-    assert free["pro"] is False and free["beta"] == ["gifopt"] and free["weekly_limit"] == 1
+    assert free["pro"] is False and free["beta"] == ["aianim", "gifopt"] and free["weekly_limit"] == 1
     assert free["weekly"]["loop"] == {"limit": 1, "left": 0} and free["weekly"]["design"] == {"limit": 1, "left": 1}
     assert set(free["weekly"]) == set(fl.WEEKLY_FEATURES)
     assert free["builder"] == {"limit": 3, "left": 3}
@@ -134,7 +134,7 @@ def test_state_for_the_pages():
     guest = fl.state(None, ip, pro=False)
     assert guest["weekly"]["loop"]["left"] == 0 and "builder" not in guest, "the address is already spent"
     pro = fl.state(uid, ip, pro=True)
-    assert pro["pro"] is True and "weekly" not in pro and pro["beta"] == ["gifopt"]
+    assert pro["pro"] is True and "weekly" not in pro and pro["beta"] == ["aianim", "gifopt"]
 
 
 def test_builder_gives_three_exports_a_day(monkeypatch):
@@ -227,7 +227,7 @@ def test_quota_endpoint_reports_weekly_tries(monkeypatch):
     with _app(system.router) as client:
         free = client.get("/api/quota").json()
     assert free["left"] == 4 and free["free"]["weekly"]["design"]["left"] == 0 and free["free"]["weekly"]["loop"]["left"] == 1
-    assert free["free"]["beta"] == ["gifopt"] and free["free"]["builder"]["limit"] == 3
+    assert free["free"]["beta"] == ["aianim", "gifopt"] and free["free"]["builder"]["limit"] == 3
 
 
 def test_loop_is_open_to_a_free_account_once_a_week(monkeypatch, tmp_path):

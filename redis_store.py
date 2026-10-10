@@ -410,7 +410,7 @@ def queue_for_kind(kind: str) -> str:
     kind = str(kind or "process")
     if kind in {"steam_profile_import", "profile_insight", "steam_dna"}:
         return "profile"
-    if kind == "upscale":
+    if kind in {"upscale", "ai_animate"}:   # both mostly wait on a remote GPU
         return "gpu"
     return "media"
 

@@ -26,7 +26,8 @@ _periodic_lock = threading.Lock()
 _last_periodic = 0.0
 
 # Jobs whose success is worth a notification: they take minutes, the user has often left.
-LONG_JOBS = {"upscale", "seamless_loop", "workshop_studio", "steam_profile_import", "profile_insight", "steam_dna"}
+LONG_JOBS = {"upscale", "seamless_loop", "workshop_studio", "steam_profile_import", "profile_insight", "steam_dna",
+             "ai_animate"}
 JOB_LINKS = {
     "process": "/app", "workshop_studio": "/app#workshop", "compose": "/app#compose", "upscale": "/app#upscale",
     "seamless_loop": "/app#loop", "steam_profile_import": "/profile", "profile_insight": "/app#doctor",

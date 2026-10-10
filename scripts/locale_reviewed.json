@@ -261,7 +261,10 @@
     "Templates and an editor for the Custom Info Box showcase": "Vorlagen und ein Editor für die Benutzerdefinierte Infobox",
     "Achievement letters": "Buchstaben aus Errungenschaften",
     "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Ein Wort in der Errungenschafts-Präsentation aus Buchstaben-Errungenschaften von Steam-Spielen",
-    "Letters": "Buchstaben"
+    "Letters": "Buchstaben",
+    "AI Animate": "KI-Animation",
+    "AI animation": "KI-Animation",
+    "Bring a still art to life: hair, breathing, a seamless loop. Beta for Pro": "Erwecke ein Standbild zum Leben: Haare, Atmung, eine nahtlose Schleife. Beta für Pro"
   },
   "tr": {
     "3 Steam formats": "3 Steam formatı",
@@ -524,7 +527,10 @@
     "Templates and an editor for the Custom Info Box showcase": "Özel Bilgi Kutusu vitrini için şablonlar ve düzenleyici",
     "Achievement letters": "Başarım harfleri",
     "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Steam oyunlarının harf başarımlarıyla Başarım Vitrini’nde bir kelime yaz",
-    "Letters": "Harfler"
+    "Letters": "Harfler",
+    "AI Animate": "YZ animasyon",
+    "AI animation": "Yapay zekâ animasyonu",
+    "Bring a still art to life: hair, breathing, a seamless loop. Beta for Pro": "Durağan bir çizimi canlandır: saçlar, nefes, kesintisiz döngü. Pro için beta"
   },
   "fr": {
     "3 Steam formats": "3 formats Steam",
@@ -788,7 +794,10 @@
     "Templates and an editor for the Custom Info Box showcase": "Modèles et éditeur pour la Boîte d’infos personnalisée",
     "Achievement letters": "Lettres de succès",
     "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Écris un mot dans la vitrine des succès avec des succès-lettres de jeux Steam",
-    "Letters": "Lettres"
+    "Letters": "Lettres",
+    "AI Animate": "Animation IA",
+    "AI animation": "Animation IA",
+    "Bring a still art to life: hair, breathing, a seamless loop. Beta for Pro": "Donne vie à une image fixe : cheveux, respiration, boucle parfaite. Bêta pour Pro"
   },
   "uk": {
     "3 Steam formats": "3 формати Steam",
@@ -1054,7 +1063,10 @@
     "Templates and an editor for the Custom Info Box showcase": "Шаблони й редактор для вітрини «Поле зі своєю інформацією»",
     "Achievement letters": "Літери з досягнень",
     "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Слово на вітрині досягнень із літерних досягнень ігор Steam",
-    "Letters": "Літери"
+    "Letters": "Літери",
+    "AI Animate": "ШІ-анімація",
+    "AI animation": "ШІ-анімація",
+    "Bring a still art to life: hair, breathing, a seamless loop. Beta for Pro": "Оживи статичний арт: волосся, дихання, безшовна петля. Бета для Pro"
   },
   "es": {
     "3 Steam formats": "3 formatos de Steam",
@@ -1317,7 +1329,10 @@
     "Templates and an editor for the Custom Info Box showcase": "Plantillas y editor para el Cuadro de información personalizado",
     "Achievement letters": "Letras de logros",
     "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Escribe una palabra en el escaparate de logros con logros de letras de juegos de Steam",
-    "Letters": "Letras"
+    "Letters": "Letras",
+    "AI Animate": "Animación IA",
+    "AI animation": "Animación con IA",
+    "Bring a still art to life: hair, breathing, a seamless loop. Beta for Pro": "Da vida a una imagen fija: pelo, respiración, un bucle sin cortes. Beta para Pro"
   },
   "pt": {
     "3 Steam formats": "3 formatos da Steam",
@@ -1580,6 +1595,9 @@
     "Templates and an editor for the Custom Info Box showcase": "Modelos e editor para a Caixa de informações personalizada",
     "Achievement letters": "Letras de conquistas",
     "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Escreva uma palavra na vitrine de conquistas com conquistas de letras de jogos da Steam",
-    "Letters": "Letras"
+    "Letters": "Letras",
+    "AI Animate": "Animação IA",
+    "AI animation": "Animação com IA",
+    "Bring a still art to life: hair, breathing, a seamless loop. Beta for Pro": "Dê vida a uma imagem parada: cabelo, respiração, um loop sem emenda. Beta para o Pro"
   }
 }
