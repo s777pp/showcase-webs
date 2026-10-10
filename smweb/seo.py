@@ -233,8 +233,9 @@ def _jsonld_home(language: str, title: str, description: str) -> str:
              "inLanguage": list(SUPPORTED_LANGUAGES)},
             {"@type": "WebApplication", "name": BRAND, "url": f"{SITE}{localized_path(language, '/')}",
              "description": description, "inLanguage": language, "applicationCategory": "DesignApplication",
-             "operatingSystem": "Web browser", "image": og_image(language),
-             "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}},
+             "operatingSystem": "Web browser", "image": og_image(language), "isAccessibleForFree": True},
+            # No "offers": a price made Google treat the site as a product and ask for reviews, ratings, a return
+            # policy and shipping (Search Console 2026-10-10). We have none of those and never invent them.
         ],
     }
     return '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + "</script>"

@@ -53,12 +53,14 @@ def test_pages_serve_their_own_language(client, path, page):
         assert response.text.count("<title>") == 1
 
 
-def test_landing_has_structured_data_with_the_free_offer(client):
+def test_landing_has_structured_data_without_a_product_offer(client):
     text = client.get("/ru/").text
     block = re.search(r'<script type="application/ld\+json">(.*?)</script>', text, re.S).group(1)
     graph = json.loads(block)["@graph"]
     app = next(item for item in graph if item["@type"] == "WebApplication")
-    assert app["inLanguage"] == "ru" and app["offers"]["price"] == "0"
+    # No Offer: Google read the price as a product and asked for reviews / returns / shipping (2026-10-10).
+    assert app["inLanguage"] == "ru" and "offers" not in app and app["isAccessibleForFree"] is True
+    assert '"Offer"' not in block and '"Product"' not in block
     assert "оформите профиль Steam" in app["description"]
 
 
@@ -102,6 +104,45 @@ def test_www_host_redirects_permanently_to_the_main_host(monkeypatch):
     assert response.status_code == 301 and response.headers["location"] == "https://showcasemaker.com/ru/app?x=1"
     assert client.get("https://showcasemaker.com/ru/app").text == "ok"
     assert client.get("https://ru.showcasemaker.com/ru/").text == "ok"
+
+
+def test_plain_http_on_the_main_host_goes_to_https(monkeypatch):
+    """Yandex 2026-10-10: http://showcasemaker.com/ served pages. Cloudflare's Cf-Visitor tells the visitor's scheme."""
+    from fastapi import FastAPI
+    from fastapi.responses import PlainTextResponse
+    from fastapi.testclient import TestClient
+    from smweb.middleware import WwwRedirectMiddleware
+    monkeypatch.setenv("APP_URL", "https://showcasemaker.com")
+    inner = FastAPI()
+    inner.add_api_route("/{path:path}", lambda path: PlainTextResponse("ok"))
+    client = TestClient(WwwRedirectMiddleware(inner))
+    plain = client.get("http://showcasemaker.com/ru/?a=1", headers={"cf-visitor": '{"scheme":"http"}'}, follow_redirects=False)
+    assert plain.status_code == 301 and plain.headers["location"] == "https://showcasemaker.com/ru/?a=1"
+    secure = client.get("http://showcasemaker.com/ru/", headers={"cf-visitor": '{"scheme":"https"}'})
+    assert secure.text == "ok"                     # nginx -> app is plain http, the visitor's scheme decides
+    assert client.get("http://showcasemaker.com/ru/").text == "ok"          # no Cloudflare header: left alone
+    mirror = client.get("http://ru.showcasemaker.com/ru/", headers={"cf-visitor": '{"scheme":"http"}'})
+    assert mirror.text == "ok"
+    monkeypatch.setenv("APP_URL", "http://127.0.0.1:8091")
+    local = TestClient(WwwRedirectMiddleware(inner))
+    assert local.get("http://127.0.0.1/ru/", headers={"cf-visitor": '{"scheme":"http"}'}).text == "ok"
+
+
+def test_head_works_for_pages_robots_and_sitemap():
+    """Crawlers check with HEAD; FastAPI GET routes used to answer 405 (Yandex: "no Sitemap used")."""
+    from fastapi.responses import PlainTextResponse
+    from smweb.middleware import HeadAsGetMiddleware
+    app = FastAPI()
+    app.include_router(pages.router)
+    app.add_api_route("/api/thing", lambda: PlainTextResponse("x"))
+    client = TestClient(HeadAsGetMiddleware(app))
+    for path in ("/ru/", "/robots.txt", "/sitemap.xml"):
+        get = client.get(path)
+        head = client.head(path)
+        assert head.status_code == get.status_code == 200, path
+        assert head.content == b"" and head.headers.get("content-type") == get.headers.get("content-type")
+    assert client.head("/api/thing").status_code == 405        # /api/ keeps its own HEAD rules
+    assert client.get("/api/thing").text == "x"
 
 
 def test_favicon_and_icon_links(client):

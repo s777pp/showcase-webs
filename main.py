@@ -135,8 +135,12 @@ app.add_middleware(MirrorMiddleware)
 app.add_middleware(GZipMiddleware)
 
 
-# www.<site> -> <site> (one host for search engines); outermost but the error capture.
-from smweb.middleware import WwwRedirectMiddleware
+# HEAD answers like GET without a body (crawlers check robots.txt / sitemap.xml / pages with HEAD).
+from smweb.middleware import HeadAsGetMiddleware, WwwRedirectMiddleware
+app.add_middleware(HeadAsGetMiddleware)
+
+
+# www.<site> -> <site> and http -> https (one address for search engines); outermost but the error capture.
 app.add_middleware(WwwRedirectMiddleware)
 
 

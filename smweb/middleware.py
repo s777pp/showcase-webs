@@ -503,10 +503,13 @@ class CachedStaticFiles(StaticFiles):
 
 
 class WwwRedirectMiddleware:
-    """www.<site> -> <site> with a permanent redirect (2026-10-09).
+    """www.<site> -> <site> and http -> https with a permanent redirect (2026-10-09 / 2026-10-10).
 
     The www host served the whole site, so Google indexed www.showcasemaker.com as a second copy of every page.
-    Only the www form of APP_URL's host is redirected; the mirror and local hosts are untouched.
+    Plain http on the main host served pages too (http://showcasemaker.com/ answered 307 -> http://.../en/), so
+    Yandex took the http address as the main one. nginx always sends X-Forwarded-Proto https, so the visitor's
+    scheme comes from Cloudflare's Cf-Visitor header. Only APP_URL's host (and its www form) is redirected, and the
+    http redirect only when APP_URL itself is https; the mirror and local hosts are untouched.
     """
 
     def __init__(self, app):
@@ -515,11 +518,14 @@ class WwwRedirectMiddleware:
         host = (url.hostname or "").lower()
         self.target = f"{url.scheme or 'https'}://{host}" if host and not host.startswith("www.") else ""
         self.www = f"www.{host}" if self.target else ""
+        self.host = host if self.target and url.scheme == "https" else ""
 
     async def __call__(self, scope, receive, send):
         if self.www and scope.get("type") == "http":
-            host = dict(scope.get("headers") or []).get(b"host", b"").decode("latin-1").split(":")[0].lower()
-            if host == self.www:
+            headers = dict(scope.get("headers") or [])
+            host = headers.get(b"host", b"").decode("latin-1").split(":")[0].lower()
+            plain_http = bool(self.host) and host == self.host and b'"scheme":"http"' in headers.get(b"cf-visitor", b"").replace(b" ", b"")
+            if host == self.www or plain_http:
                 path = scope.get("raw_path") or scope.get("path", "/").encode()
                 query = scope.get("query_string") or b""
                 location = self.target + path.decode("latin-1") + (("?" + query.decode("latin-1")) if query else "")
@@ -529,3 +535,30 @@ class WwwRedirectMiddleware:
                 await send({"type": "http.response.body", "body": b""})
                 return
         await self.app(scope, receive, send)
+
+
+class HeadAsGetMiddleware:
+    """HEAD for every page, robots.txt and sitemap.xml (2026-10-10).
+
+    FastAPI routes declared with GET answered HEAD with 405, and crawlers check robots.txt, sitemap.xml and pages with
+    HEAD (Yandex reported "no Sitemap used" while the file was fine). A HEAD request runs as GET and the body is
+    dropped; the headers, Content-Length included, stay those of the GET answer. /api/ is left alone: it has its own
+    HEAD routes (resumable uploads) and streams that a HEAD must not wait on.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http" or scope.get("method") != "HEAD" or scope.get("path", "").startswith("/api/"):
+            await self.app(scope, receive, send)
+            return
+
+        async def head_send(message):
+            if message.get("type") == "http.response.body":
+                if message.get("more_body"):
+                    return
+                message = {"type": "http.response.body", "body": b"", "more_body": False}
+            await send(message)
+
+        await self.app(dict(scope, method="GET"), receive, head_send)

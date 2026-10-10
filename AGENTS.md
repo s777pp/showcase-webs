@@ -1707,6 +1707,19 @@ Only the hero exists for now; content blocks will be added below it later.
   Air when fog or light is on. Test: `test_stars_show_on_a_mid_depth_background_and_fog_follows_its_level`.
 - Not done (owner decision): the same user would move "Rows and squares" into Process.
 
+## 6.39 Search engines: https, HEAD, no Offer markup (2026-10-10, local, not deployed)
+
+- Yandex said the main address is not https: `http://showcasemaker.com/` served pages (nginx always sends
+  `X-Forwarded-Proto: https`, so the app could not tell). `WwwRedirectMiddleware` now also 301s APP_URL's host to https
+  when Cloudflare's `Cf-Visitor` says `"scheme":"http"` (only when APP_URL is https; mirror / localhost untouched).
+- Yandex said no sitemap is used: every FastAPI GET route answered HEAD with 405 (pages, robots.txt, sitemap.xml).
+  `HeadAsGetMiddleware` (main.py, inside the redirect) runs HEAD as GET and drops the body, except under `/api/`
+  (own HEAD routes such as resumable uploads, and streams).
+- Google Search Console "Product snippets" / "Merchant listings" (missing review, aggregateRating,
+  hasMerchantReturnPolicy, shippingDetails): the landing WebApplication carried `offers` (price 0). Removed; it has
+  `isAccessibleForFree: true`. Never add invented reviews or ratings.
+- Tests: `tests/test_seo.py` (`test_plain_http_on_the_main_host_goes_to_https`, `test_head_works_for_pages_robots_and_sitemap`).
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or
