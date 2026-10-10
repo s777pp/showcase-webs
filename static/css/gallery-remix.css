@@ -1,0 +1,16 @@
+/* "Change the design" (static/js/gallery-remix.js): the project picker in the gallery publish form, the button in
+   the work window and the "opening the design" note on the tools page. */
+.gremix-box{display:grid;gap:8px;padding:12px 14px;border:1px solid rgba(127,233,255,.2);border-radius:12px;background:rgba(31,201,241,.05)}
+.gremix-box[hidden]{display:none}
+.gremix-field{display:grid;gap:6px;margin:0}
+.gremix-field select{width:100%}
+.gremix-allow[hidden]{display:none!important}
+.gremix-hint{color:rgba(214,229,250,.62);font-size:12px;line-height:1.45}
+.gremix-edit{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.gremix-edit[hidden]{display:none!important}
+.gremix-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:3000;max-width:calc(100% - 32px);padding:12px 18px;
+  border-radius:12px;border:1px solid rgba(110,160,230,.34);background:#0e1a3c;color:#e6f0ff;font:700 13px/1.4 Montserrat,Mulish,sans-serif;
+  box-shadow:0 14px 34px rgba(0,0,0,.45)}
+.gremix-toast[hidden]{display:none}
+/* In the work window it takes the whole row, like "Upload to Steam automatically" (community-gallery.css). */
+body.page-community .community-detail__actions .gremix-edit{grid-column:1/-1;min-height:46px;border-radius:12px;font-size:14px;white-space:nowrap}

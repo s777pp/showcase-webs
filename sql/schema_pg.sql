@@ -79,6 +79,8 @@ ALTER TABLE gallery ADD COLUMN IF NOT EXISTS is_adult INTEGER DEFAULT 0;
 ALTER TABLE gallery ADD COLUMN IF NOT EXISTS is_animated INTEGER DEFAULT 0;
 ALTER TABLE gallery ADD COLUMN IF NOT EXISTS download_count INTEGER DEFAULT 0;
 ALTER TABLE gallery ADD COLUMN IF NOT EXISTS storage_bytes BIGINT DEFAULT 0;
+-- "Create a design" project attached to a work so others can open a copy (smweb/gallery_remix.py).
+ALTER TABLE gallery ADD COLUMN IF NOT EXISTS remix_path TEXT;
 CREATE INDEX IF NOT EXISTS idx_gallery_status_created ON gallery(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_gallery_release_feed ON gallery(status, release_version, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_gallery_release_author ON gallery(user_id, status, release_version);

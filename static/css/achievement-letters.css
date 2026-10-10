@@ -1,0 +1,181 @@
+/* "Achievement letters" tab (#tab-letters, static/js/achievement-letters.js). Site theme v2 colours.
+   Rebuilt 2026-10-09 (owner: "chaos"): three numbered steps. 1 = the word, examples and the Steam showcase (a copy of
+   Steam's Achievement Showcase: 64 px icons on a dark profile panel) with the icon picker for the tapped letter;
+   2 = style gallery (each style drawn on the visitor's word); 3 = what you need (sticky beside the gallery on wide
+   screens; --achl-sticky = site header + tools strip, like infobox.css). */
+.page-tools .top-chrome .nav button[data-tab="letters"],.top-chrome .nav button[data-tab="letters"]{--tool-icon:url('/static/img/tool-icons/letters.svg?v=1')}
+#tab-letters [hidden]{display:none!important}
+#tab-letters .achl{--achl-line:rgba(110,170,255,.16);--achl-cyan:#1fc9f1;--achl-violet:#8a7dff;--achl-muted:rgba(214,229,250,.64);--achl-sticky:118px;
+  display:grid;grid-template-columns:minmax(0,1fr);gap:18px;font-family:Montserrat,system-ui,sans-serif;color:#e9f3ff}
+#tab-letters .achl-panel{display:grid;gap:16px;align-content:start;min-width:0;padding:22px;border:1px solid var(--achl-line);border-radius:18px;
+  background:linear-gradient(160deg,rgba(12,22,52,.84),rgba(5,10,28,.92))}
+#tab-letters .achl-note{color:var(--achl-muted);font-size:14px}
+#tab-letters .achl-h{margin:0;font:800 17px/1.3 Montserrat,system-ui,sans-serif;letter-spacing:0;text-transform:none;color:#f4f9ff}
+#tab-letters .achl-sub{margin:4px 0 0;font:800 14px/1.3 Montserrat,system-ui,sans-serif;color:#f4f9ff}
+#tab-letters .achl-hint{margin:0;color:var(--achl-muted);font-size:13px;line-height:1.5}
+
+/* step heads */
+#tab-letters .achl-step{display:flex;align-items:flex-start;gap:12px}
+#tab-letters .achl-step__n{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;
+  background:linear-gradient(135deg,var(--achl-cyan),var(--achl-violet));color:#041019;font-size:14px;font-weight:800}
+#tab-letters .achl-step__text{display:grid;gap:3px;padding-top:4px;min-width:0}
+
+/* buttons, chips, fields */
+#tab-letters .achl-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:0 16px;border:1px solid rgba(110,170,255,.28);
+  border-radius:12px;background:rgba(2,6,18,.6);color:#e9f3ff;font:700 13.5px Montserrat,system-ui,sans-serif;cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s}
+#tab-letters .achl-btn:hover{border-color:rgba(31,201,241,.6);background:rgba(31,201,241,.08)}
+#tab-letters .achl-more{justify-self:center;min-width:200px}
+#tab-letters .achl-chip{min-height:32px;padding:0 13px;border:1px solid rgba(110,170,255,.24);border-radius:999px;background:rgba(2,6,18,.5);color:#dbe9ff;
+  font:800 12px Montserrat,system-ui,sans-serif;letter-spacing:.08em;cursor:pointer}
+#tab-letters .achl-chip:hover{border-color:rgba(31,201,241,.6);color:#fff}
+#tab-letters .achl-link{display:inline-flex;align-items:center;min-height:30px;padding:0 10px;border:1px solid rgba(110,170,255,.24);border-radius:9px;color:#cfe3ff;
+  font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap}
+#tab-letters .achl-link:hover{border-color:rgba(31,201,241,.6);color:#fff}
+#tab-letters .achl-field{width:100%;min-height:44px;padding:0 14px;border:1px solid rgba(110,170,255,.24);border-radius:12px;background:rgba(2,6,18,.6);color:#fff;
+  font:600 14px Montserrat,system-ui,sans-serif;outline:none}
+#tab-letters .achl-field:focus{border-color:rgba(31,201,241,.6);box-shadow:0 0 0 3px rgba(31,201,241,.14)}
+
+/* 1 word */
+#tab-letters .achl-word{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
+#tab-letters .achl-word__input{width:100%;min-height:64px;padding:0 20px;border:1px solid rgba(110,170,255,.3);border-radius:14px;background:rgba(2,6,18,.66);
+  color:#fff;font:800 28px Montserrat,system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase;outline:none}
+#tab-letters .achl-word__input::placeholder{color:rgba(214,229,250,.3);letter-spacing:.06em;font-weight:700}
+#tab-letters .achl-word__input:focus{border-color:rgba(31,201,241,.7);box-shadow:0 0 0 4px rgba(31,201,241,.14)}
+#tab-letters .achl-word__shuffle{min-height:64px;border-radius:14px}
+#tab-letters .achl-examples{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:-4px}
+#tab-letters .achl-examples>span{margin-right:2px;color:var(--achl-muted);font-size:12.5px;font-weight:700}
+
+/* the Steam showcase */
+#tab-letters .achl-steam{display:grid;gap:0;overflow:hidden;border:1px solid rgba(0,0,0,.6);border-radius:4px;
+  background:radial-gradient(120% 140% at 0 0,rgba(52,96,148,.35),transparent 60%),#1b2433;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+#tab-letters .achl-steam__head{padding:9px 14px;background:linear-gradient(90deg,rgba(255,255,255,.07),rgba(255,255,255,0));
+  color:#fff;font:400 17px/1.3 "Motiva Sans",Arial,Helvetica,sans-serif}
+#tab-letters .achl-steam__row{display:flex;flex-wrap:wrap;gap:6px;padding:14px;min-height:92px;align-items:center}
+#tab-letters .achl-steam__empty{margin:0;color:#8f98a0;font:400 14px "Motiva Sans",Arial,sans-serif}
+#tab-letters .achl-steam__hint{margin:0;padding:0 14px 12px;color:#8f98a0;font:400 12.5px "Motiva Sans",Arial,sans-serif}
+#tab-letters .achl-slot{position:relative;display:grid;place-items:center;width:64px;height:64px;padding:0;border:0;border-radius:2px;background:#0e141b;
+  cursor:pointer;outline:none;transition:transform .15s}
+#tab-letters .achl-slot img{display:block;width:64px;height:64px;border-radius:2px}
+#tab-letters .achl-slot::after{content:"";position:absolute;inset:-3px;border:2px solid transparent;border-radius:5px;transition:border-color .15s}
+#tab-letters .achl-slot:hover{transform:translateY(-2px)}
+#tab-letters .achl-slot:hover::after,#tab-letters .achl-slot:focus-visible::after{border-color:rgba(31,201,241,.55)}
+#tab-letters .achl-slot.is-sel::after{border-color:var(--achl-cyan);box-shadow:0 0 18px rgba(31,201,241,.45)}
+#tab-letters .achl-slot.is-missing{border:2px dashed rgba(255,120,140,.55);background:rgba(255,80,110,.06)}
+#tab-letters .achl-slot.is-missing b{color:#ff9fb0;font-size:24px}
+#tab-letters .achl-slot b{color:#c7d5e0;font-size:24px}
+#tab-letters .achl-gap{width:22px;height:64px}
+
+/* icon picker for the tapped letter */
+#tab-letters .achl-picker{display:grid;gap:12px;padding:16px;border:1px solid rgba(31,201,241,.35);border-radius:14px;background:rgba(31,201,241,.05);
+  animation:achl-in .18s ease-out}
+@keyframes achl-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+#tab-letters .achl-picker__head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+#tab-letters .achl-picker__title{display:grid;gap:2px}
+#tab-letters .achl-picker__title b{font-size:15px}
+#tab-letters .achl-picker__title small{color:var(--achl-muted);font-size:12px}
+#tab-letters .achl-picker__now{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex:1 1 300px;min-width:0}
+#tab-letters .achl-picker__now span{margin-right:4px;color:#dbe9ff;font-size:12.5px;font-weight:600}
+#tab-letters .achl-picker__close{display:grid;place-items:center;width:34px;height:34px;margin-left:auto;padding:0;border:1px solid rgba(110,170,255,.24);border-radius:10px;
+  background:rgba(2,6,18,.5);color:#dbe9ff;font-size:20px;line-height:1;cursor:pointer}
+#tab-letters .achl-picker__close:hover{border-color:rgba(31,201,241,.6);color:#fff}
+#tab-letters .achl-picker__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:8px;max-height:340px;overflow:auto;padding:2px;overscroll-behavior:contain}
+#tab-letters .achl-icon{display:grid;justify-items:center;gap:4px;padding:6px 4px 5px;border:1px solid rgba(110,170,255,.14);border-radius:10px;background:rgba(2,6,18,.45);
+  color:var(--achl-muted);cursor:pointer;transition:border-color .15s,background .15s}
+#tab-letters .achl-icon img{width:56px;height:56px;border-radius:3px}
+#tab-letters .achl-icon small{font-size:10.5px;font-weight:700}
+#tab-letters .achl-icon:hover{border-color:rgba(31,201,241,.55);background:rgba(31,201,241,.07)}
+#tab-letters .achl-icon.is-on{border-color:var(--achl-cyan);background:rgba(31,201,241,.14);color:#fff}
+
+/* 2 + 3 columns */
+#tab-letters .achl-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+
+/* 2 style gallery */
+#tab-letters .achl-style__bar{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:center}
+#tab-letters .achl-search{max-width:420px}
+#tab-letters .achl-colors{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+#tab-letters .achl-colors__label{margin-right:4px;color:var(--achl-muted);font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+#tab-letters .achl-colors .achl-color{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px 0 9px;border:1px solid rgba(110,170,255,.22);
+  border-radius:999px!important;background:rgba(2,6,18,.5);color:#dbe9ff;font:700 12.5px Montserrat,system-ui,sans-serif;cursor:pointer;transition:border-color .15s,background .15s}
+#tab-letters .achl-colors .achl-color i{width:14px;height:14px;border-radius:50%;background:var(--swatch);box-shadow:0 0 0 1px rgba(255,255,255,.3),0 0 10px color-mix(in srgb,var(--swatch) 45%,transparent)}
+#tab-letters .achl-colors .achl-color:hover:not(:disabled){border-color:rgba(31,201,241,.6);color:#fff}
+#tab-letters .achl-colors .achl-color.is-on{border-color:var(--swatch,transparent);background:color-mix(in srgb,var(--swatch,#1fc9f1) 22%,rgba(2,6,18,.6));color:#fff;box-shadow:0 0 0 1px var(--swatch,transparent)}
+#tab-letters .achl-colors .achl-color:disabled{opacity:.35;cursor:not-allowed}
+#tab-letters .achl-colors .achl-color--all{padding:0 14px}
+#tab-letters .achl-colors .achl-color--all.is-on{border-color:transparent;background:linear-gradient(135deg,var(--achl-cyan),var(--achl-violet));color:#041019;box-shadow:none}
+#tab-letters .achl-styles{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+#tab-letters .achl-styles__empty{grid-column:1/-1}
+#tab-letters .achl-style-card{display:grid;gap:8px;align-content:start;padding:14px;border:1px solid rgba(110,170,255,.14);border-radius:14px;background:rgba(2,6,18,.42);
+  color:#e9f3ff;text-align:left;font:inherit;cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+#tab-letters .achl-style-card:hover{border-color:rgba(31,201,241,.5);background:rgba(31,201,241,.05);transform:translateY(-2px)}
+#tab-letters .achl-style-card.is-on{border-color:var(--achl-cyan);background:rgba(31,201,241,.09);box-shadow:inset 0 0 0 1px rgba(31,201,241,.35)}
+#tab-letters .achl-style-card--mix{background:linear-gradient(135deg,rgba(31,201,241,.08),rgba(138,125,255,.1))}
+#tab-letters .achl-style-card__word{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,40px));gap:3px}
+#tab-letters .achl-style-card__word img,#tab-letters .achl-style-card__miss{width:100%;height:auto;aspect-ratio:1;border-radius:2px;background:#0e141b}
+#tab-letters .achl-style-card__miss{display:grid;place-items:center;box-sizing:border-box;border:1px dashed rgba(255,255,255,.18);background:none;color:rgba(214,229,250,.32);font-weight:800;font-size:13px}
+#tab-letters .achl-style-card__head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+#tab-letters .achl-style-card__head b{overflow:hidden;font-size:14px;text-overflow:ellipsis;white-space:nowrap}
+#tab-letters .achl-style-card>small{color:var(--achl-muted);font-size:12px;line-height:1.4}
+#tab-letters .achl-badge{flex:none;padding:3px 8px;border-radius:999px;background:rgba(255,191,90,.14);color:#ffcf85;font-size:11px;font-weight:800;white-space:nowrap}
+#tab-letters .achl-badge--full{background:rgba(95,242,181,.14);color:#8df7cd}
+#tab-letters .achl-badge--on{background:linear-gradient(135deg,var(--achl-cyan),var(--achl-violet));color:#041019}
+
+/* 3 what you need */
+#tab-letters .achl-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px}
+#tab-letters .achl-stat{display:grid;gap:2px;padding:10px 12px;border:1px solid rgba(110,170,255,.14);border-radius:12px;background:rgba(2,6,18,.42)}
+#tab-letters .achl-stat b{font-size:22px;line-height:1.1}
+#tab-letters .achl-stat small{color:var(--achl-muted);font-size:11.5px;font-weight:700}
+#tab-letters .achl-stat.is-warn{border-color:rgba(255,120,140,.35)}
+#tab-letters .achl-stat.is-warn b{color:#ff9fb0}
+#tab-letters .achl-games{display:grid;gap:10px}
+#tab-letters .achl-game{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;align-items:start;padding:10px;border:1px solid rgba(110,170,255,.14);border-radius:12px;background:rgba(2,6,18,.42)}
+#tab-letters .achl-game__cap{width:120px;height:45px;border-radius:6px;object-fit:cover;background:#0e141b}
+#tab-letters .achl-game__cap--none{display:grid;place-items:center;background:linear-gradient(135deg,rgba(31,201,241,.2),rgba(138,125,255,.24));color:#fff;font-size:20px;font-weight:800}
+#tab-letters .achl-game__body{display:grid;gap:7px;min-width:0}
+#tab-letters .achl-game__body>b{font-size:14px;line-height:1.3}
+#tab-letters .achl-game__letters{display:flex;flex-wrap:wrap;gap:3px}
+#tab-letters .achl-game__letters img{width:26px;height:26px;border-radius:2px}
+#tab-letters .achl-game__links{display:flex;flex-wrap:wrap;gap:6px}
+#tab-letters .achl-details{border:1px solid rgba(110,170,255,.14);border-radius:12px;background:rgba(2,6,18,.3)}
+#tab-letters .achl-details summary{padding:12px 14px;font-size:13.5px;font-weight:800;cursor:pointer}
+#tab-letters .achl-details[open] summary{border-bottom:1px solid rgba(110,170,255,.12)}
+#tab-letters .achl-list{display:grid;gap:4px;max-height:360px;overflow:auto;padding:8px}
+#tab-letters .achl-line{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:10px;padding:6px 8px;border-radius:9px}
+#tab-letters .achl-line:nth-child(odd){background:rgba(110,170,255,.05)}
+#tab-letters .achl-line__char{display:grid;place-items:center;width:28px;height:28px;border-radius:7px;background:rgba(110,170,255,.14);font-weight:800;font-size:13px}
+#tab-letters .achl-line__info{display:grid;gap:1px;min-width:0}
+#tab-letters .achl-line__info b{overflow:hidden;font-size:12.5px;text-overflow:ellipsis;white-space:nowrap}
+#tab-letters .achl-line__info small,#tab-letters .achl-line>small{color:var(--achl-muted);font-size:11.5px}
+#tab-letters .achl-line.is-missing .achl-line__char{background:rgba(255,120,140,.18);color:#ff9fb0}
+#tab-letters .achl-how{display:grid;gap:8px;margin:0;padding:0;list-style:none;counter-reset:achl}
+#tab-letters .achl-how li{position:relative;padding-left:34px;color:#dbe9ff;font-size:13px;line-height:1.5;counter-increment:achl}
+#tab-letters .achl-how li::before{content:counter(achl);position:absolute;left:0;top:-1px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;
+  background:rgba(110,170,255,.14);color:#cfe3ff;font-size:12px;font-weight:800}
+
+/* wide screens: the gallery and a sticky "what you need" column */
+@media (min-width:1100px){
+  #tab-letters .achl-cols{grid-template-columns:minmax(0,1fr) 380px}
+  #tab-letters .achl-need{position:sticky;top:calc(var(--achl-sticky) + 12px);max-height:calc(100vh - var(--achl-sticky) - 24px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+}
+@media (min-width:1600px){
+  #tab-letters .achl-cols{grid-template-columns:minmax(0,1fr) 420px}
+}
+@media (max-width:760px){
+  #tab-letters .achl-panel{padding:16px;border-radius:16px}
+  #tab-letters .achl-word{grid-template-columns:minmax(0,1fr)}
+  #tab-letters .achl-word__input{min-height:56px;font-size:22px;letter-spacing:.14em}
+  #tab-letters .achl-word__shuffle{min-height:44px}
+  #tab-letters .achl-style__bar{grid-template-columns:minmax(0,1fr)}
+  #tab-letters .achl-steam__row{gap:5px;padding:10px}
+  #tab-letters .achl-slot,#tab-letters .achl-slot img{width:48px;height:48px}
+  #tab-letters .achl-gap{width:14px;height:48px}
+  #tab-letters .achl-picker{padding:12px}
+  #tab-letters .achl-picker__grid{grid-template-columns:repeat(auto-fill,minmax(58px,1fr));max-height:280px}
+  #tab-letters .achl-icon img{width:46px;height:46px}
+  #tab-letters .achl-styles{grid-template-columns:minmax(0,1fr)}
+  #tab-letters .achl-game{grid-template-columns:minmax(0,1fr)}
+  #tab-letters .achl-game__cap{width:100%;height:auto;aspect-ratio:184/69}
+}
+@media (prefers-reduced-motion:reduce){
+  #tab-letters .achl-picker{animation:none}
+  #tab-letters .achl-slot,#tab-letters .achl-style-card,#tab-letters .achl-color{transition:none}
+}

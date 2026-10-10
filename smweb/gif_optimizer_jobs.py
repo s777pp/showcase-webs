@@ -25,6 +25,10 @@ def run(jid: str, job: dict) -> None:
             engine = gif_optimizer.manual(source, result, colors=int(job.get("colors") or 256),
                                           lossy=int(job.get("lossy") or 0), job_id=jid)
             details = {"engine": engine}
+            # A preset can make an already well-packed GIF heavier: never hand back a bigger file.
+            if result.stat().st_size >= before:
+                shutil.copyfile(source, result)
+                details["kept_original"] = True
         process_control.checkpoint(jid)
         after_info = gif_optimizer.info(result)
         result_key = ""
@@ -36,7 +40,8 @@ def run(jid: str, job: dict) -> None:
                       media_type="image/gif", size_before=before, size_after=after_info["size"],
                       out_width=after_info["width"], out_height=after_info["height"],
                       out_frames=after_info["frames"], engine=details.get("engine", ""),
-                      already_fits=bool(details.get("already_fits")))
+                      already_fits=bool(details.get("already_fits")),
+                      kept_original=bool(details.get("kept_original")))
         cache_key = str(job.get("cache_key") or "")
         if cache_key:
             rs.job_cache_put(cache_key, jid)

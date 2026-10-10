@@ -272,6 +272,7 @@
     $('detailBuy').hidden=!item.paid;$('detailBuy').href=item.sale_url||'#';
     $('detailLike').classList.toggle('is-liked',!!item.liked);
     $('detailOwner').hidden=!item.owner;$('detailFeedback').textContent='';
+    document.dispatchEvent(new CustomEvent('sm:gallery-detail',{detail:item}));
   }
   function selectedPaid() { return document.querySelector('input[name="accessMode"]:checked')?.value==='paid'; }
   function updateAccess() {const paid=selectedPaid();$('saleLinkField').hidden=!paid;$('publishSaleUrl').required=paid;$('publishArchive').closest('label').hidden=paid||!!state.editId;$('publishArchive').required=!paid&&!state.jobId&&!state.editId;}
@@ -288,7 +289,7 @@
   }
   function openPublish(editItem) {
     if(!state.loggedIn){window.SSShell?.openAuth?.('login');return;}
-    $('publishForm').reset();state.editId=editItem?.id||null;
+    $('publishForm').reset();state.editId=editItem?.id||null;window.SMGalleryRemix?.reset(!!state.editId);
     $('publishTitle').textContent=state.editId?t('edit'):t('publishTitle');
     $('publishName').value=editItem?.title||query.get('title')||'';
     $('publishDescription').value=editItem?.description||'';
@@ -323,6 +324,7 @@
         const fd=new FormData();for(const [key,value] of [['title',$('publishName').value],['description',$('publishDescription').value],['mode',$('publishMode').value],['background_url',$('publishBackground').value],['sale_url',$('publishSaleUrl').value],['is_paid',String(paid)],['is_adult',String($('publishAdult').checked)],['rights_confirmed',String($('publishRights').checked)],['job_id',state.jobId]])fd.append(key,value);
         if($('publishPreview').files?.[0])fd.append('preview',$('publishPreview').files[0]);
         if($('publishArchive').files?.[0])fd.append('archive',$('publishArchive').files[0]);
+        window.SMGalleryRemix?.append(fd);
         response=await fetch('/api/gallery/works',{method:'POST',credentials:'same-origin',body:fd});
       }
       const data=await response.json();

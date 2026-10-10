@@ -1561,6 +1561,47 @@ Only the hero exists for now; content blocks will be added below it later.
   gives keyboard-button apps no initData, so /tg shows "open it from the bot" (owner hit this on 2026-10-09). Channels
   cannot show web_app buttons: use BotFather's main mini app + `https://t.me/<bot>?startapp` links there.
 
+## 6.33 Achievement letters tab and gallery remix (2026-10-09, local, not deployed)
+
+- Letters (`#tab-letters`, nav `nav_letters` short label "Letters"/"Буквы", after Info box): `static/js/achievement-letters.js`
+  (keyed COPY 8 languages, in check_i18n; `window.SMAchLetters`), `static/css/achievement-letters.css`, icon
+  `img/tool-icons/letters.svg`, About row `d_letters`. Catalogue `static/assets/achievements/letters.json` from
+  `scripts/build_achievement_letters.py` (store search TERMS + developers/publishers of found sets, GetSchemaForGame,
+  global percentages, `icon_color` per icon from the CDN; variant = [icon hash, percent, title, colour], MAX_VARIANTS 12,
+  MIN_LETTERS 20, `total` achievements). Run on the dev machine only. Logic: greedy fewest games (`plan`), colour filter
+  (`colorOk`/`firstOk`, counts), "Set" panel (`paintSet`) for a single style, slot click cycles variants.
+  Tests `tests/test_achievement_letters.py`. The tools strip overflow at 1400-1440 px for de/uk/fr/es is pre-existing.
+- Gallery remix: `smweb/gallery_remix.py` (capture/store/public_project/media/remove + `adopt`: saving a remixed project
+  copies `/api/gallery/works/<id>/remix/<name>` media into the saver's `builder/<uid>/` assets, called from
+  `routers/builder.save_project` in the threadpool), routes in `routers/gallery_releases.py`, column `gallery.remix_path`
+  (both schemas), `static/js/gallery-remix.js` (+css; publish form fields, "Change the design" button, `?remix=<id>` on
+  /app, "Publish to the gallery" after `sm:builder-saved` from showcase-builder.js). Tests `tests/test_gallery_remix.py`.
+  Clicked through end to end on 2026-10-09 (two local accounts, 1440 and 390 px): `?project=<id>` preselects the
+  project AND ticks "allow"; the work window button spans the actions row like the Steam button.
+
+## 6.34 Letters and GIF Optimizer redesign, landing on touch screens (2026-10-09 evening, local, not deployed)
+
+- Landing scroll gate (`home-scroll.js`): `(min-width:1100px) and (min-height:560px) and (orientation:landscape)`; touch
+  and "reduce motion" no longer switch it off (owner saw the plain landing on a Surface and on work laptops). Reduce
+  motion = no wheel glide, faster follower (0.35). Section 6.22's "desktop only / fine pointer" is outdated.
+  The owner also saw "old-design tools" there: NOT reproduced (touch, light theme, reduce motion, 1080 px all render
+  site-v2); ask for a screenshot + browser/version before changing anything.
+- Letters (`achievement-letters.js/.css`, ach6): three steps. 1 word + examples + Steam showcase; a tap on a slot
+  sets `state.sel` and opens `.achl-picker` (every option for that letter, 60 per page, broken CDN icons removed by
+  onerror). 2 style gallery `.achl-style-card` (word drawn in the style, `coverage()` badge, mix card first, search,
+  round colour swatches; the shared tools button rule squares buttons, hence the !important radius). 3 `.achl-need`
+  (sticky >= 1100 px, `--achl-sticky` 118 px): stats, games with letters, `<details>` letter list, how-to. The old
+  select / set panel are gone (`paintSet` now paints the picker). Colours (ach7): `colorCounts()` counts the word's letters over
+  EVERY set (it used to count only the chosen style), chips are dot + name, zero-count colours disabled; `setColor`
+  switches to the mix when the chosen style cannot spell the whole word in that colour; the gallery hides styles with
+  no letter of the word in it.
+- GIF Optimizer (`gif-optimizer.js/.css`, gox2, prefix `gox-`): stage (drop zone over the whole stage, file chip,
+  slider / side-by-side, busy overlay), size meter vs 5 MB, `GOALS` fit (= server auto) / balance 192+30 / max 96+70 /
+  manual (palette + Lossy), one action bar. Debug: `SMGifOptimizer.setGoal`. The compare range needs !important size
+  (a shared 26 px range rule). Server: `gif_optimizer_jobs.run` copies the source back when a manual result is not
+  smaller (`kept_original`, returned by the status route). gifsicle is not installed on the dev machine (FFmpeg
+  fallback), so local preset sizes are pessimistic.
+
 ## 7. Rules for agents
 
 1. Preserve owner files; never delete `data/`, `.env`, production `.before-*`/backups, or

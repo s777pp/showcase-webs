@@ -223,6 +223,7 @@ def _create_schema(c: sqlite3.Connection) -> None:
         ("sale_url", "TEXT"), ("is_paid", "INTEGER DEFAULT 0"),
         ("is_adult", "INTEGER DEFAULT 0"), ("is_animated", "INTEGER DEFAULT 0"),
         ("download_count", "INTEGER DEFAULT 0"), ("storage_bytes", "INTEGER DEFAULT 0"),
+        ("remix_path", "TEXT"),
     ):
         if col not in gallery_cols:
             c.execute(f"ALTER TABLE gallery ADD COLUMN {col} {typ}")
@@ -2033,6 +2034,15 @@ def gallery_release_create(user_id: int, *, title: str, mode: str, image_path: s
         )
         c.commit()
         return int(cur.lastrowid or 0)
+    finally:
+        c.close()
+
+
+def gallery_set_remix(item_id: int, remix_path: str | None) -> None:
+    c = _conn()
+    try:
+        c.execute("UPDATE gallery SET remix_path=? WHERE id=?", (remix_path, int(item_id)))
+        c.commit()
     finally:
         c.close()
 

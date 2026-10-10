@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
+from starlette.concurrency import run_in_threadpool
 from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from PIL import Image, UnidentifiedImageError
@@ -119,7 +120,9 @@ def _validated_local_motion(raw):
 
 
 def _allowed_source(src: str) -> bool:
-    """Layer media may only come from our own assets, the Steam proxy or Steam's CDN."""
+    """Layer media may only come from our own assets, a remixable gallery work, the Steam proxy or Steam's CDN."""
+    if re.fullmatch(r"/api/gallery/works/\d{1,12}/remix/[a-f0-9]{32}\.(?:png|jpe?g|webp|gif|mp4|webm|mov)", src, re.I):
+        return True      # media of a gallery work opened for remixing (smweb/gallery_remix.py)
     return (src.startswith("/api/builder/assets/") or src.startswith("/api/steam/proxy-image?")
             or src.startswith("https://shared.cloudflare.steamstatic.com/")
             or src.startswith("https://cdn.cloudflare.steamstatic.com/"))
@@ -332,6 +335,9 @@ async def save_project(request: Request):
         if not project_id:
             project_id = secrets.token_hex(12)
         name = str(body.get("name") or "Untitled showcase").strip()[:80] or "Untitled showcase"
+        # A copy opened from the gallery keeps its own media (smweb/gallery_remix.py).
+        from smweb import gallery_remix
+        project = await run_in_threadpool(gallery_remix.adopt, project, int(user["id"]))
         mode = project["mode"]
         pro = auth_db.effective_pro(user)
         item = auth_db.save_builder_project(

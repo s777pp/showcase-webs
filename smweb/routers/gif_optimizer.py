@@ -109,7 +109,7 @@ def status(request: Request, job_id: str):
             "error": job.get("error", ""), "mode": job.get("mode"),
             "size_before": job.get("size_before"), "size_after": job.get("size_after") if done else None,
             "width": job.get("in_width"), "height": job.get("in_height"), "frames": job.get("in_frames"),
-            "already_fits": bool(job.get("already_fits")),
+            "already_fits": bool(job.get("already_fits")), "kept_original": bool(job.get("kept_original")),
             "download_url": base + "/result" if done else "", "result_url": base + "/result?inline=1" if done else "",
             "source_url": base + "/source",
             **(job_diagnostics.public_error(job.get("error")) if job.get("status") == "error" else {})}

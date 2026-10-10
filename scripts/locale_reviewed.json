@@ -258,7 +258,10 @@
     "Check complete": "Prüfung abgeschlossen",
     "≈ {t} left": "noch ≈ {t}",
     "Info box": "Infobox",
-    "Templates and an editor for the Custom Info Box showcase": "Vorlagen und ein Editor für die Benutzerdefinierte Infobox"
+    "Templates and an editor for the Custom Info Box showcase": "Vorlagen und ein Editor für die Benutzerdefinierte Infobox",
+    "Achievement letters": "Buchstaben aus Errungenschaften",
+    "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Ein Wort in der Errungenschafts-Präsentation aus Buchstaben-Errungenschaften von Steam-Spielen",
+    "Letters": "Buchstaben"
   },
   "tr": {
     "3 Steam formats": "3 Steam formatı",
@@ -518,7 +521,10 @@
     "Check complete": "Kontrol tamamlandı",
     "≈ {t} left": "≈ {t} kaldı",
     "Info box": "Bilgi kutusu",
-    "Templates and an editor for the Custom Info Box showcase": "Özel Bilgi Kutusu vitrini için şablonlar ve düzenleyici"
+    "Templates and an editor for the Custom Info Box showcase": "Özel Bilgi Kutusu vitrini için şablonlar ve düzenleyici",
+    "Achievement letters": "Başarım harfleri",
+    "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Steam oyunlarının harf başarımlarıyla Başarım Vitrini’nde bir kelime yaz",
+    "Letters": "Harfler"
   },
   "fr": {
     "3 Steam formats": "3 formats Steam",
@@ -779,7 +785,10 @@
     "Check complete": "Vérification terminée",
     "≈ {t} left": "encore ≈ {t}",
     "Info box": "Boîte d’infos",
-    "Templates and an editor for the Custom Info Box showcase": "Modèles et éditeur pour la Boîte d’infos personnalisée"
+    "Templates and an editor for the Custom Info Box showcase": "Modèles et éditeur pour la Boîte d’infos personnalisée",
+    "Achievement letters": "Lettres de succès",
+    "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Écris un mot dans la vitrine des succès avec des succès-lettres de jeux Steam",
+    "Letters": "Lettres"
   },
   "uk": {
     "3 Steam formats": "3 формати Steam",
@@ -1042,7 +1051,10 @@
     "Check complete": "Перевірку завершено",
     "≈ {t} left": "залишилось ≈ {t}",
     "Info box": "Інфо-поле",
-    "Templates and an editor for the Custom Info Box showcase": "Шаблони й редактор для вітрини «Поле зі своєю інформацією»"
+    "Templates and an editor for the Custom Info Box showcase": "Шаблони й редактор для вітрини «Поле зі своєю інформацією»",
+    "Achievement letters": "Літери з досягнень",
+    "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Слово на вітрині досягнень із літерних досягнень ігор Steam",
+    "Letters": "Літери"
   },
   "es": {
     "3 Steam formats": "3 formatos de Steam",
@@ -1302,7 +1314,10 @@
     "Check complete": "Comprobación completada",
     "≈ {t} left": "quedan ≈ {t}",
     "Info box": "Cuadro de info",
-    "Templates and an editor for the Custom Info Box showcase": "Plantillas y editor para el Cuadro de información personalizado"
+    "Templates and an editor for the Custom Info Box showcase": "Plantillas y editor para el Cuadro de información personalizado",
+    "Achievement letters": "Letras de logros",
+    "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Escribe una palabra en el escaparate de logros con logros de letras de juegos de Steam",
+    "Letters": "Letras"
   },
   "pt": {
     "3 Steam formats": "3 formatos da Steam",
@@ -1562,6 +1577,9 @@
     "Check complete": "Verificação concluída",
     "≈ {t} left": "faltam ≈ {t}",
     "Info box": "Caixa de info",
-    "Templates and an editor for the Custom Info Box showcase": "Modelos e editor para a Caixa de informações personalizada"
+    "Templates and an editor for the Custom Info Box showcase": "Modelos e editor para a Caixa de informações personalizada",
+    "Achievement letters": "Letras de conquistas",
+    "Spell a word on the Achievement Showcase with letter achievements from Steam games": "Escreva uma palavra na vitrine de conquistas com conquistas de letras de jogos da Steam",
+    "Letters": "Letras"
   }
 }

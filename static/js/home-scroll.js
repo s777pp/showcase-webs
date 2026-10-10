@@ -1,8 +1,10 @@
 /* Scroll-driven landing for computers (2026-10-07, owner: "scrolling the home page should feel like an
    animation, not an ordinary page"; reference: motionsites' Obsidian template).
 
-   Phones and tablets keep the page exactly as it was: nothing runs below 1100 px, without a fine pointer
-   (mouse / trackpad) or with "reduce motion". Roll back = remove home-scroll.css and home-scroll.js from
+   Phones keep the page exactly as it was: nothing runs below 1100 x 560 px or in portrait. Touch screens and
+   "reduce motion" no longer switch it off (2026-10-09, owner saw the plain landing on a Surface and on work laptops,
+   where Windows animations are often off by policy): every scene moves only while the visitor scrolls; with
+   "reduce motion" the wheel steps do not glide and the follower is quicker. Roll back = remove home-scroll.css and home-scroll.js from
    index.html; the small hooks in home.js (window.__homeCut) and home-vrm.js (window.__homeLook,
    __homeEyes, __homeVrmSync, the close-up view) are inert without this file.
 
@@ -31,10 +33,10 @@
 (function () {
   'use strict';
   var root = document.documentElement;
-  var desk = window.matchMedia('(min-width: 1100px) and (hover: hover) and (pointer: fine)');
+  var desk = window.matchMedia('(min-width: 1100px) and (min-height: 560px) and (orientation: landscape)');
   var still = window.matchMedia('(prefers-reduced-motion: reduce)');
   var hero = document.querySelector('.home-hero');
-  if (!hero || !desk.matches || still.matches) return;
+  if (!hero || !desk.matches) return;
   root.classList.add('hs-on');
   // Crossing the breakpoint (window resized to tablet size, motion setting changed): rebuild cleanly.
   [desk, still].forEach(function (mq) {
@@ -999,7 +1001,7 @@
     var dt = lastFrame ? Math.min(48, now - lastFrame) : 16;
     lastFrame = now;
     if (Math.abs(y - sy) > vh * 2.5) sy = y;
-    else sy += (y - sy) * (1 - Math.pow(1 - 0.1, dt / 16.7));
+    else sy += (y - sy) * (1 - Math.pow(1 - (still.matches ? 0.35 : 0.1), dt / 16.7));
     if (Math.abs(y - sy) < 0.3) sy = y;
     var moving = sy !== y;
 
@@ -1072,7 +1074,7 @@
     if (event.ctrlKey || event.defaultPrevented) return;
     var dy = event.deltaMode === 1 ? event.deltaY * 40 : event.deltaMode === 2 ? event.deltaY * innerHeight : event.deltaY;
     var notched = event.deltaMode !== 0 || Math.abs(event.deltaY) >= 50;
-    if (!notched || Math.abs(event.deltaX) > Math.abs(event.deltaY) || pageLocked() || canScroll(event.target, dy)) return;
+    if (still.matches || !notched || Math.abs(event.deltaX) > Math.abs(event.deltaY) || pageLocked() || canScroll(event.target, dy)) return;
     event.preventDefault();
     if (!gliding) { current = scrollY; target = scrollY; }
     var max = document.documentElement.scrollHeight - innerHeight;

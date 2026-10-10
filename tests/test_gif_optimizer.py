@@ -158,3 +158,21 @@ def test_jobs_are_private_to_their_owner(tmp_path, monkeypatch):
     with _client(tmp_path, monkeypatch, owner="owner-b") as client:
         assert client.get(f"/api/gif-optimizer/status/{jid}").status_code == 404
         assert client.get(f"/api/gif-optimizer/file/{jid}/source").status_code == 404
+
+
+def test_a_preset_never_returns_a_bigger_file(tmp_path, monkeypatch):
+    raw = _noisy_gif(tmp_path / "src.gif").read_bytes()
+
+    def heavier(src, dest, colors, lossy, job_id=""):
+        dest.write_bytes(src.read_bytes() + b"\0" * 4096)   # a "compressed" file that came out bigger
+        return "gifsicle"
+
+    monkeypatch.setattr(opt, "manual", heavier)
+    with _client(tmp_path, monkeypatch) as client:
+        started = client.post("/api/gif-optimizer/start", data={"mode": "manual", "colors": "192", "lossy": "30"},
+                              files={"file": ("art.gif", raw, "image/gif")})
+        assert started.status_code in (200, 202), started.text
+        state = client.get(f"/api/gif-optimizer/status/{started.json()['job_id']}").json()
+        assert state["status"] == "done" and state["kept_original"] is True
+        assert state["size_after"] == len(raw)
+        assert client.get(state["download_url"]).content == raw

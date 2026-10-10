@@ -237,6 +237,7 @@ def _work(item: dict, viewer_id: int | None = None) -> dict:
         "thumb_url": f"/api/gallery/works/{int(item['id'])}/thumb" if item.get("thumb_path") else "",
         "download_url": f"/api/gallery/works/{int(item['id'])}/download" if item.get("archive_path") and not item.get("is_paid") else "",
         "owner": uid == viewer_id if viewer_id else False, "created_at": item.get("created_at"),
+        "remix": bool(item.get("remix_path")),
     }
 
 
@@ -387,11 +388,52 @@ def work_steam_file(item_id: int, set_index: int, file_index: int, request: Requ
     return FileResponse(path, media_type=media_type, headers={"Cache-Control": "private, no-store"})
 
 
+def _remix_row(item_id: int, request: Request) -> dict | None:
+    """A published work with an editable project (its author may also see it while it is pending)."""
+    row = auth_db.gallery_get(item_id)
+    if not row or row.get("release_version") != 2 or not row.get("remix_path"):
+        return None
+    if row.get("status") != "approved":
+        user = _auth_user(request)
+        if not user or int(row.get("user_id") or 0) != int(user["id"]):
+            return None
+    return row
+
+
+@router.get("/api/gallery/works/{item_id}/remix")
+def work_remix(item_id: int, request: Request):
+    """The work's "Create a design" project for a copy in the Builder (static/js/gallery-remix.js)."""
+    from smweb import gallery_remix
+    row = _remix_row(item_id, request)
+    if not row:
+        return JSONResponse({"ok": False, "msg": "This work cannot be edited"}, status_code=404)
+    try:
+        project = gallery_remix.public_project(item_id, str(row["remix_path"]))
+    except Exception:
+        LOGGER.exception("gallery remix read failed for %s", item_id)
+        return JSONResponse({"ok": False, "msg": "This work cannot be edited"}, status_code=404)
+    return {"ok": True, "id": item_id, "title": row.get("title") or "", "project": project}
+
+
+@router.get("/api/gallery/works/{item_id}/remix/{name}")
+def work_remix_media(item_id: int, name: str, request: Request):
+    from smweb import gallery_remix
+    row = _remix_row(item_id, request)
+    if not row:
+        return JSONResponse({"ok": False}, status_code=404)
+    try:
+        data, media_type = gallery_remix.media(str(row["remix_path"]), name)
+    except Exception:
+        return JSONResponse({"ok": False}, status_code=404)
+    return Response(data, media_type=media_type, headers={"Cache-Control": "public, max-age=86400"})
+
+
 @router.post("/api/gallery/works")
 async def work_publish(request: Request, title: str = Form(""), description: str = Form(""),
                        mode: str = Form("workshop"), background_url: str = Form(""),
                        sale_url: str = Form(""), is_paid: bool = Form(False), is_adult: bool = Form(False),
                        rights_confirmed: bool = Form(False), job_id: str = Form(""),
+                       builder_project_id: str = Form(""), remix_allowed: bool = Form(False),
                        preview: UploadFile | None = File(None), archive: UploadFile | None = File(None)):
     user = _auth_user(request)
     if not user:
@@ -424,7 +466,16 @@ async def work_publish(request: Request, title: str = Form(""), description: str
             raise ValueError("Add a preview image, GIF or video")
         suffix, animated = _preview_type(preview_data)
         thumb = await run_in_threadpool(_preview_thumb, preview_data, suffix)
+        remix = None
+        if builder_project_id and remix_allowed:
+            # The author's "Create a design" project, so others can open a copy and change everything.
+            from smweb import gallery_remix
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", builder_project_id):
+                raise ValueError("Invalid project")
+            remix = await run_in_threadpool(gallery_remix.capture, int(user["id"]), builder_project_id)
         storage_bytes = len(preview_data) + len(thumb) + (len(zip_data) if not is_paid else 0)
+        if remix:
+            storage_bytes += sum(len(data) for data in remix[1].values())
         storage_limit = PRO_STORAGE_LIMIT if auth_db.effective_pro(user) else FREE_STORAGE_LIMIT
         if auth_db.gallery_release_storage_bytes(int(user["id"])) + storage_bytes > storage_limit:
             return JSONResponse({"ok": False, "code": "GALLERY_STORAGE_QUOTA",
@@ -471,6 +522,16 @@ async def work_publish(request: Request, title: str = Form(""), description: str
             thumb_path=thumb_key, archive_path=archive_key, description=description,
             background_url=background_url, sale_url=sale_url, is_paid=is_paid,
             is_adult=is_adult, is_animated=animated, storage_bytes=storage_bytes)
+        if remix:
+            from smweb import gallery_remix
+            folder = f"gallery_releases/u{uid}/{token}/remix"
+            try:
+                await run_in_threadpool(gallery_remix.store, folder, remix[0], remix[1])
+                auth_db.gallery_set_remix(gid, folder)
+            except Exception:
+                # The work itself is published; only the editable copy is missing.
+                LOGGER.exception("gallery remix store failed for work %s", gid)
+                gallery_remix.remove(folder)
         return {"ok": True, "id": gid, "url": f"/gallery?work={gid}"}
     except Exception:
         LOGGER.exception("gallery release publish failed")
@@ -542,6 +603,10 @@ def work_remove(item_id: int, request: Request):
         return JSONResponse({"ok": False, "msg": "Work not found"}, status_code=404)
     if not auth_db.gallery_set_status(item_id, "rejected"):
         return JSONResponse({"ok": False, "msg": "Could not remove"}, status_code=500)
+    if row.get("remix_path"):
+        from smweb import gallery_remix
+        gallery_remix.remove(str(row["remix_path"]))
+        auth_db.gallery_set_remix(item_id, None)
     # Status changes first, so a storage failure never leaves the work public.
     for field, public in (("image_path", True), ("thumb_path", True), ("archive_path", False)):
         stored = row.get(field)
